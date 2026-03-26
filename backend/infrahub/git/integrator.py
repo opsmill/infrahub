@@ -1208,7 +1208,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
-        jinja2_template = Jinja2Template(template=Path(location), template_directory=Path(commit_worktree.directory))
+        jinja2_template = Jinja2Template(
+            template=Path(location), template_directory=Path(commit_worktree.directory), client=self.sdk
+        )
         try:
             return await jinja2_template.render(variables=data)
         except JinjaTemplateError as exc:
