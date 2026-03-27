@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Request, Response
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_access_token, get_db, get_refresh_token
-from infrahub.api.helper import make_event_meta, make_login_event, make_logout_event
+from infrahub.api.event_builder import make_event_meta, make_login_event, make_logout_event
 from infrahub.auth import (
     AccountSession,
     AuthType,
@@ -14,6 +14,7 @@ from infrahub.auth import (
     create_fresh_access_token,
     invalidate_refresh_token,
 )
+from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericAccount
 from infrahub.events.account_action import AuthMethod
@@ -49,10 +50,11 @@ async def login_user(
     )
     service: InfrahubServices = request.app.state.service
     session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
+    branch = await registry.get_branch(db=db)
     try:
         event = make_login_event(
             request=request,
-            event_meta=await make_event_meta(db=db, account_session=session),
+            event_meta=await make_event_meta(account_session=session, branch=branch),
             auth_result=auth_result,
             auth_method=AuthMethod.PASSWORD,
         )
@@ -92,10 +94,11 @@ async def logout(
         account_name = account.name.value if account else user_session.account_id
         session_id = user_session.session_id or ""
         service: InfrahubServices = request.app.state.service
+        branch = await registry.get_branch(db=db)
         try:
             event = make_logout_event(
                 request=request,
-                event_meta=await make_event_meta(db=db, account_session=user_session),
+                event_meta=await make_event_meta(account_session=user_session, branch=branch),
                 account_id=user_session.account_id,
                 account_name=account_name,
                 session_id=session_id,

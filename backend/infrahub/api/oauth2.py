@@ -11,7 +11,7 @@ from opentelemetry import trace
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
-from infrahub.api.helper import make_event_meta, make_login_event
+from infrahub.api.event_builder import make_event_meta, make_login_event
 from infrahub.auth import (
     AccountSession,
     AuthType,
@@ -21,6 +21,7 @@ from infrahub.auth import (
     validate_auth_response,
 )
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
+from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod, SSOProvider
 from infrahub.exceptions import ProcessingError
 from infrahub.log import get_logger
@@ -172,10 +173,11 @@ async def token(
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
     session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
+    branch = await registry.get_branch(db=db)
     try:
         event = make_login_event(
             request=request,
-            event_meta=await make_event_meta(db=db, account_session=session),
+            event_meta=await make_event_meta(account_session=session, branch=branch),
             auth_result=auth_result,
             auth_method=AuthMethod.OAUTH2,
             sso_provider=SSOProvider.OAUTH2,

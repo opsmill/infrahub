@@ -2,14 +2,12 @@ from fastapi import Request
 
 from infrahub.auth import AccountSession, AuthResult
 from infrahub.context import InfrahubContext
-from infrahub.core.registry import registry
-from infrahub.database import InfrahubDatabase
+from infrahub.core.branch.models import Branch
 from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod, SSOProvider
 from infrahub.events.models import EventMeta
 
 
-async def make_event_meta(db: InfrahubDatabase, account_session: AccountSession) -> EventMeta:
-    branch = await registry.get_branch(db=db)
+async def make_event_meta(account_session: AccountSession, branch: Branch) -> EventMeta:
     return EventMeta(
         branch=branch,
         context=InfrahubContext.init(branch=branch, account=account_session),
