@@ -778,7 +778,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 failed_attributes.add(target.attribute.name)
                 continue
 
-            attr: BaseAttribute = self.get_attribute(name=target.attribute.name)
+            attr = self.get_attribute(name=target.attribute.name)
             if attr.value != new_value:
                 try:
                     attr.validate(value=new_value, name=attr.name, schema=attr.schema)
