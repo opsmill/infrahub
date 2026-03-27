@@ -52,6 +52,14 @@ class ComputedAttributeTriggerNode(BaseModel):
         return self.attributes + self.relationships
 
 
+class RelationshipDependency(BaseModel):
+    """Groups the two facets of a relationship-based computed attribute dependency:
+    the targets to recompute and the peer attributes needed for template rendering."""
+
+    targets: list[ComputedAttributeTarget] = Field(default_factory=list)
+    peer_attributes: set[str] = Field(default_factory=set)
+
+
 class RegisteredNodeComputedAttribute(BaseModel):
     """Dependency record for a single trigger node kind in the Jinja2 computed attribute registry.
     Each instance describes what should happen when a node of a particular kind is mutated.
@@ -73,19 +81,15 @@ class RegisteredNodeComputedAttribute(BaseModel):
         default_factory=dict,
         description="These are fields local to the modified node, which can include the names of attributes and relationships",
     )
-    relationships: dict[str, list[ComputedAttributeTarget]] = Field(
+    relationship_dependencies: dict[str, RelationshipDependency] = Field(
         default_factory=dict,
-        description="These relationships refer to the name of the relationship as seen from the source node.",
-    )
-    relationship_peer_attributes: dict[str, set[str]] = Field(
-        default_factory=dict,
-        description="Maps relationship names to the set of peer attribute names needed for Jinja2 template rendering.",
+        description="Maps relationship names to their dependency info: targets to recompute and peer attributes needed for rendering.",
     )
 
     @property
     def relationship_fields(self) -> dict[str, set[str]]:
         """Return mapping of relationship names to peer attribute names needed for computed attribute templates."""
-        return {rel: set(attrs) for rel, attrs in self.relationship_peer_attributes.items()}
+        return {rel: dep.peer_attributes for rel, dep in self.relationship_dependencies.items()}
 
     def get_targets(self, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Resolve which ComputedAttributeTargets are affected by changes to this node.
@@ -107,13 +111,86 @@ class RegisteredNodeComputedAttribute(BaseModel):
                 if entry.key_name not in targets:
                     targets[entry.key_name] = entry
 
-        for relationship_name, entries in self.relationships.items():
-            for entry in entries:
+        for relationship_name, dep in self.relationship_dependencies.items():
+            for entry in dep.targets:
                 filter_key = f"{relationship_name}__ids"
                 if entry.key_name in targets and filter_key not in targets[entry.key_name].filter_keys:
                     targets[entry.key_name].filter_keys.append(filter_key)
 
         return list(targets.values())
+
+    def get_local_targets_in_dependency_order(self, kind: str, updates: list[str]) -> list[ComputedAttributeTarget]:
+        """Walk local_fields wave by wave, returning self-targeting targets in dependency order.
+
+        Starting from the given field names, each wave collects targets triggered by
+        the previous wave's computed attribute names. Within each wave, targets that
+        are dependencies of other wave members are emitted first by deferring
+        dependents to the next iteration.
+        """
+        processed: set[str] = set()
+        result: list[ComputedAttributeTarget] = []
+        pending_fields = set(updates)
+
+        while pending_fields:
+            wave = self._collect_wave(pending_fields, kind, processed)
+            if not wave:
+                break
+
+            ready, deferred = self._partition_wave(wave, kind)
+            result.extend(ready)
+            pending_fields = {t.attribute.name for t in ready}
+            processed.difference_update(target.key_name for target in deferred)
+
+        return result
+
+    def _collect_wave(
+        self, pending_fields: set[str], kind: str, processed: set[str]
+    ) -> dict[str, ComputedAttributeTarget]:
+        """Gather unprocessed local targets triggered by the given fields.
+
+        Marks collected targets as processed (side effect on ``processed``).
+        """
+        wave: dict[str, ComputedAttributeTarget] = {}
+        for field_name in pending_fields:
+            for entry in self.local_fields.get(field_name, []):
+                if entry.kind == kind and entry.key_name not in processed:
+                    processed.add(entry.key_name)
+                    wave[entry.key_name] = entry
+        return wave
+
+    def _partition_wave(
+        self, wave: dict[str, ComputedAttributeTarget], kind: str
+    ) -> tuple[list[ComputedAttributeTarget], list[ComputedAttributeTarget]]:
+        """Split a wave into (ready, deferred) based on intra-wave dependencies.
+
+        Ready targets have no unresolved prerequisites within the wave.
+        Deferred targets depend on a ready target and must wait for the next iteration.
+        When no intra-wave dependencies exist, all targets are ready.
+        """
+        wave_attr_names = {t.attribute.name for t in wave.values()}
+
+        # Attributes whose output triggers another wave member (prerequisites).
+        prerequisite_attrs = {
+            attr_name
+            for attr_name in wave_attr_names
+            for entry in self.local_fields.get(attr_name, [])
+            if entry.kind == kind and entry.attribute.name in wave_attr_names
+        }
+
+        if not prerequisite_attrs:
+            return list(wave.values()), []
+
+        # Attributes that depend on a prerequisite — only these need deferring.
+        dependent_attrs = {
+            entry.attribute.name
+            for attr_name in prerequisite_attrs
+            for entry in self.local_fields.get(attr_name, [])
+            if entry.kind == kind and entry.attribute.name in wave_attr_names
+        }
+
+        ready = [t for t in wave.values() if t.attribute.name not in dependent_attrs]
+        deferred = [t for t in wave.values() if t.attribute.name in dependent_attrs]
+        return ready, deferred
 
 
 class Jinja2ComputedRegistry:
@@ -161,15 +238,16 @@ class Jinja2ComputedRegistry:
             rel_name = schema_path.active_relationship_schema.name
 
             # Record the relationship on the *peer* entry
-            trigger_node.relationships.setdefault(rel_name, []).append(deepcopy(source_attribute))
+            peer_dep = trigger_node.relationship_dependencies.setdefault(rel_name, RelationshipDependency())
+            peer_dep.targets.append(deepcopy(source_attribute))
 
             # Register on the *owner* entry so that a relationship re-assignment
             owner_entry = self._map.setdefault(source_attribute.kind, RegisteredNodeComputedAttribute())
             owner_entry.local_fields.setdefault(rel_name, []).append(deepcopy(source_attribute))
 
             # Record which peer attributes are needed per relationship
-            peer_attr = schema_path.active_attribute_schema.name
-            owner_entry.relationship_peer_attributes.setdefault(rel_name, set()).add(peer_attr)
+            owner_dep = owner_entry.relationship_dependencies.setdefault(rel_name, RelationshipDependency())
+            owner_dep.peer_attributes.add(schema_path.active_attribute_schema.name)
 
     def get_impacted_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Return computed Jinja2 attribute targets that need re-evaluation when a node of the given kind is modified.
@@ -193,10 +271,16 @@ class Jinja2ComputedRegistry:
     def get_local_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
         """Return only self-targeting Jinja2 computed attribute targets for a given kind.
 
-        Filters get_impacted_targets() to targets where target.kind == kind,
-        meaning the computed attribute lives on the same node that was modified (local change).
+        Transitively includes targets that depend on the initially matched targets
+        (e.g. if label depends on name and fqdn depends on label, updating name
+        returns both label and fqdn targets in dependency order).
         """
-        return [target for target in self.get_impacted_targets(kind=kind, updates=updates) if target.kind == kind]
+        registered = self._map.get(kind)
+        if not registered:
+            return []
+
+        effective_updates = updates or list(registered.local_fields.keys())
+        return registered.get_local_targets_in_dependency_order(kind=kind, updates=effective_updates)
 
     def get_registered_node(self, kind: str) -> RegisteredNodeComputedAttribute | None:
         """Return the registered node entry for a given kind, or None."""
@@ -251,8 +335,8 @@ class Jinja2ComputedRegistry:
                 for target in targets:
                     _ensure_trigger(target, node_kind).attributes.append(local_field)
             # Relationships: the trigger node is a peer reached via this relationship
-            for relationship, targets in registered.relationships.items():
-                for target in targets:
+            for relationship, dep in registered.relationship_dependencies.items():
+                for target in dep.targets:
                     _ensure_trigger(target, node_kind).relationships.append(relationship)
 
         return {target: list(nodes.values()) for target, nodes in working_map.items()}
