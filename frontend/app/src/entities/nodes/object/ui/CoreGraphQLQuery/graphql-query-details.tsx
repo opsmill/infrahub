@@ -2,10 +2,10 @@ import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { GRAPHQL_QUERY_OBJECT } from "@/shared/config/constants";
 
-import GraphqlQueryDetailsCard from "@/entities/graphql/ui/graphql-query-details-card";
 import GraphQLQueryDetailsPageSkeleton from "@/entities/graphql/ui/graphql-query-details-page-skeleton";
 import { GraphqlQueryViewerCard } from "@/entities/graphql/ui/graphql-query-viewer-card";
 import { ObjectActivitiesCard } from "@/entities/nodes/object/ui/object-details/object-activities-card";
+import { ObjectDetailsCard } from "@/entities/nodes/object/ui/object-details/object-details-card";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
@@ -46,9 +46,12 @@ export function GraphqlQueryDetails({
       />
 
       <Col>
-        <GraphqlQueryDetailsCard
-          data={graphqlQuery}
-          schema={graphqlQuerySchema}
+        <ObjectDetailsCard
+          objectSchema={{
+            ...graphqlQuerySchema,
+            attributes: graphqlQuerySchema.attributes?.filter((attr) => attr.name !== "query"),
+          }}
+          objectData={graphqlQuery}
           permission={permission}
         />
 

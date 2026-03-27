@@ -53,7 +53,7 @@ class Events(ObjectType):
             # Prefect restricts this to 50
             raise ValidationError(input_value="The parameter 'limit' can't be above 50")
 
-        exclude_prefixes = None
+        exclude_prefixes: list[str] | None = None
         graphql_context: GraphqlContext = info.context
 
         if event_type and any(et.startswith(ACCOUNT_EVENT_PREFIX) for et in event_type):

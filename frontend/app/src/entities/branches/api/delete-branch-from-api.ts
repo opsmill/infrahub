@@ -3,8 +3,8 @@ import { graphql, type VariablesOf } from "gql.tada";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const BRANCH_DELETE = graphql(`
-  mutation BRANCH_DELETE($name: String) {
-    BranchDelete(data: { name: $name }) {
+  mutation BRANCH_DELETE($name: String, $deleteFromGit: Boolean) {
+    BranchDelete(data: { name: $name, delete_from_git: $deleteFromGit }) {
       ok
     }
   }

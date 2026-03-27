@@ -15,25 +15,18 @@ query getProposedChangesObjectThreadCommentsFor{{kind}}{
         resolved {
           value
         }
-        created_by {
-          node {
-            display_label
-          }
-        }
         comments {
           count
           edges {
+            node_metadata {
+              created_at
+              created_by {
+                display_label
+              }
+            }
             node {
               id
               display_label
-              created_by {
-                node {
-                  display_label
-                }
-              }
-              created_at {
-                value
-              }
               text {
                 value
               }

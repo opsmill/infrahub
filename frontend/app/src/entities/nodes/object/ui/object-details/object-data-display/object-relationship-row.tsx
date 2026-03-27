@@ -6,6 +6,7 @@ import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltip
 import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { Link } from "@/shared/components/ui/link";
 
+import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
@@ -117,6 +118,8 @@ function RelationshipOneRow({
               )}
             </>
           )}
+
+          {relationshipSchema.display === "extra" && <ExtraFieldIndicator className="ml-auto" />}
         </>
       }
     />
@@ -135,9 +138,16 @@ function RelationshipManyRow({
   objectKind,
 }: RelationshipManyRowProps) {
   const relatedNodeEdges = relationshipData.edges;
+  const isExtraField = relationshipSchema.display === "extra";
 
   if (relatedNodeEdges.length === 0) {
-    return <ObjectDataRow fieldSchema={relationshipSchema} objectKind={objectKind} value="-" />;
+    return (
+      <ObjectDataRow
+        fieldSchema={relationshipSchema}
+        objectKind={objectKind}
+        value={<>-{isExtraField && <ExtraFieldIndicator className="ml-auto" />}</>}
+      />
+    );
   }
 
   return (
@@ -145,34 +155,40 @@ function RelationshipManyRow({
       fieldSchema={relationshipSchema}
       objectKind={objectKind}
       value={
-        <dl className="flex flex-col">
-          {relatedNodeEdges.map((edge) => {
-            const relatedNode = edge.node;
-            const edgeProperties = edge.properties;
+        <>
+          <dl className="flex flex-col">
+            {relatedNodeEdges.map((edge) => {
+              const relatedNode = edge.node;
+              const edgeProperties = edge.properties;
 
-            if (!relatedNode) return null;
+              if (!relatedNode) return null;
 
-            return (
-              <Row key={relatedNode.id}>
-                <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
-                  {getNodeLabel(relatedNode)}
-                </Link>
+              return (
+                <Row key={relatedNode.id}>
+                  <Link to={getObjectDetailsUrl(relatedNode.__typename, relatedNode.id)}>
+                    {getNodeLabel(relatedNode)}
+                  </Link>
 
-                {edgeProperties && (
-                  <>
-                    <MetaDetailsTooltip
-                      updatedAt={edgeProperties.updated_at}
-                      source={edgeProperties.source}
-                      owner={edgeProperties.owner}
-                      isProtected={edgeProperties.is_protected}
-                    />
-                    {edgeProperties.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
-                  </>
-                )}
-              </Row>
-            );
-          })}
-        </dl>
+                  {edgeProperties && (
+                    <>
+                      <MetaDetailsTooltip
+                        updatedAt={edgeProperties.updated_at}
+                        source={edgeProperties.source}
+                        owner={edgeProperties.owner}
+                        isProtected={edgeProperties.is_protected}
+                      />
+                      {edgeProperties.is_protected && (
+                        <LockIcon className="size-3.5 text-gray-600" />
+                      )}
+                    </>
+                  )}
+                </Row>
+              );
+            })}
+          </dl>
+
+          {isExtraField && <ExtraFieldIndicator className="ml-auto" />}
+        </>
       }
     />
   );
