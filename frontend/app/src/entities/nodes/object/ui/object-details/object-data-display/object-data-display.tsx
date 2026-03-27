@@ -27,12 +27,14 @@ interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
   permission: Permission;
+  showExtra?: boolean;
 }
 
 export function ObjectDataDisplay({
   objectSchema,
   objectData,
   permission,
+  showExtra = false,
 }: ObjectDataDisplayProps) {
   const { currentBranch } = useCurrentBranch();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
@@ -60,7 +62,8 @@ export function ObjectDataDisplay({
 
   const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
   const relationships = getRelationshipsVisibleInDataDisplay(objectSchema.relationships ?? []);
-  const fields = sortByOrderWeight([...attributes, ...relationships]);
+  const allFields = sortByOrderWeight([...attributes, ...relationships]);
+  const fields = showExtra ? allFields : allFields.filter((field) => field.display !== "extra");
 
   return (
     <div className="divide-y divide-gray-200">

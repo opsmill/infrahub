@@ -1,5 +1,4 @@
 import { gql, useQuery } from "@apollo/client";
-import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { use } from "react";
 import { useParams } from "react-router";
@@ -9,7 +8,6 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getThreadLabel } from "@/entities/diff/ui/diff-utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
@@ -30,14 +28,11 @@ export const DiffComments = (props: tDiffComments) => {
 
   const { proposedChangeId } = useParams();
   const [schemaList] = useAtom(nodeSchemasAtom);
-  const auth = useAuth();
   const { refetch: contextRefetch, node, currentBranch } = use(DiffContext);
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
 
   const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
-
-  const approverId = auth?.data?.sub;
 
   const queryString = schemaData
     ? getProposedChangesObjectThreadComments({
@@ -68,13 +63,11 @@ export const DiffComments = (props: tDiffComments) => {
   };
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
-    if (!comment || !approverId) {
+    if (!comment) {
       return;
     }
 
     const label = getThreadLabel(node, currentBranch, path);
-
-    const newDate = formatISO(new Date());
 
     const newThread = {
       change: {
@@ -85,9 +78,6 @@ export const DiffComments = (props: tDiffComments) => {
       },
       object_path: {
         value: path,
-      },
-      created_at: {
-        value: newDate,
       },
       resolved: {
         value: false,
@@ -106,12 +96,6 @@ export const DiffComments = (props: tDiffComments) => {
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,

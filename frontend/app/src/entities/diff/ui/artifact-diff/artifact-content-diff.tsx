@@ -1,5 +1,4 @@
 import { gql, useQuery } from "@apollo/client";
-import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
@@ -95,7 +94,7 @@ interface ArtifactContentDiffProps {
 
 export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactContentDiffProps) => {
   const { proposedChangeId } = useParams();
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
@@ -143,18 +142,15 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
 
   const threads =
     data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
-  const approverId = auth?.data?.sub;
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
   };
 
   const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    if (!comment || !approverId || !id) {
+    if (!comment || !id) {
       return;
     }
-
-    const newDate = formatISO(new Date());
 
     const lineNumber = displayAddComment.isNormal
       ? displayAddComment.side === "new"
@@ -165,12 +161,6 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     const newThread = {
       change: {
         id: proposedChangeId,
-      },
-      created_at: {
-        value: newDate,
-      },
-      created_by: {
-        id: approverId,
       },
       resolved: {
         value: false,
@@ -198,12 +188,6 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,
@@ -299,7 +283,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
       itemNew?.storage_id
     );
 
-    if (thread || !auth?.isAuthenticated || !proposedChangeId) {
+    if (thread || !isAuthenticated || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }
