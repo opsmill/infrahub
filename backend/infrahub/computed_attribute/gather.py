@@ -16,6 +16,7 @@ from infrahub.git.utils import get_repositories_commit_per_branch
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.execution import cached_parse
 from infrahub.graphql.initialization import prepare_graphql_params
+from infrahub.trigger.constants import TRIGGER_PLACEHOLDER_FIELD
 
 from .models import (
     ComputedAttrJinja2TriggerDefinition,
@@ -127,7 +128,7 @@ async def gather_trigger_computed_attribute_jinja2(
                     # NodeUpdatedEvents. The trigger definition still exists for schema-change
                     # detection in the setup flow. This matches the HFID and display label pattern.
                     effective_trigger = trigger_node.model_copy(
-                        update={"attributes": ["_trigger_placeholder"], "relationships": []}
+                        update={"attributes": [TRIGGER_PLACEHOLDER_FIELD], "relationships": []}
                     )
                 trigger = ComputedAttrJinja2TriggerDefinition.from_computed_attribute(
                     branch=branch_scope,

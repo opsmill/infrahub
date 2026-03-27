@@ -22,8 +22,6 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
-TRIGGER_PLACEHOLDER = "_trigger_placeholder"
-
 
 class TestGatherJinja2Triggers(TestInfrahubApp):
     """Verify that gather_trigger_computed_attribute_jinja2 produces the correct
@@ -53,7 +51,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         assert len(self_triggers) == 1, "Expected exactly one self-targeting trigger"
 
         trigger_def = self_triggers[0]
-        assert trigger_def.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER], (
+        assert trigger_def.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD], (
             f"Self-targeting trigger for {trigger_def.trigger_kind} should use placeholder fields, "
             f"got {trigger_def.trigger.match_related['infrahub.field.name']}"
         )
@@ -74,7 +72,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
 
         trigger_def = remote_triggers[0]
         fields = trigger_def.trigger.match_related["infrahub.field.name"]
-        assert TRIGGER_PLACEHOLDER not in fields, (
+        assert TRIGGER_PLACEHOLDER_FIELD not in fields, (
             f"Remote trigger for {trigger_def.trigger_kind} should NOT use placeholder fields, got {fields}"
         )
         assert sorted(fields) == ["description", "name"], (
