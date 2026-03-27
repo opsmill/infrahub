@@ -666,21 +666,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 node_schema=self._schema, path=variable, allowed_path_types=allowed_path_types
             )
             if attribute_path.is_type_relationship:
-                relationship_attribute: RelationshipManager = getattr(
-                    self, attribute_path.active_relationship_schema.name
-                )
-                if peer := await relationship_attribute.get_peer(db=db, raise_on_error=False):
-                    variables[variable] = getattr(
-                        getattr(peer, attribute_path.active_attribute_schema.name),
-                        attribute_path.active_attribute_property_name,
-                    )
+                relationship = self.get_relationship(attribute_path.active_relationship_schema.name)
+                if peer := await relationship.get_peer(db=db, raise_on_error=False):
+                    peer_attribute = peer.get_attribute(attribute_path.active_attribute_schema.name)
+                    variables[variable] = peer_attribute.get_property(attribute_path.active_attribute_property_name)
                 else:
                     variables[variable] = None
             elif attribute_path.is_type_attribute:
-                variables[variable] = getattr(
-                    getattr(self, attribute_path.active_attribute_schema.name),
-                    attribute_path.active_attribute_property_name,
-                )
+                attribute = self.get_attribute(attribute_path.active_attribute_schema.name)
+                variables[variable] = attribute.get_property(attribute_path.active_attribute_property_name)
 
         return variables
 
