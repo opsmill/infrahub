@@ -113,7 +113,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
 
     await test.step("View branch diff", async () => {
       await page.getByText("UpdatedOrganization ›Tenantmy-first-Tenant").click();
-      await expect(page.getByText("Testing Infrahub")).toBeVisible();
+      await expect(page.getByText("Testing Infrahub").first()).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
       await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
     });
