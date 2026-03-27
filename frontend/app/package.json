@@ -66,7 +66,7 @@
     "gql.tada": "^1.9.0",
     "graphiql": "^5.2.2",
     "graphql": "^16.13.1",
-    "handlebars": "^4.7.8",
+    "handlebars": "^4.7.9",
     "jotai": "^2.18.1",
     "json-to-graphql-query": "^2.2.5",
     "lucide-react": "^0.577.0",
