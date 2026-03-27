@@ -1,12 +1,8 @@
-from __future__ import annotations
-
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
-from invoke import Context, task  # type: ignore[import-not-found]
-
-if TYPE_CHECKING:
-    from invoke.runners import Result
+from invoke import Context, task
+from invoke.runners import Result
 
 from .shared import (
     INFRAHUB_DATABASE,
@@ -150,7 +146,7 @@ def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Resu
 @task(optional=["schema", "stager", "amount", "test", "attrs", "rels", "changes"])
 def test_scale(
     context: Context,
-    schema: Path = Path(f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml"),
+    schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
     stager: str | None = None,
     amount: int | None = None,
     test: str | None = None,
@@ -223,9 +219,9 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
 
 
 def _generate_schemas(context: Context) -> None:
-    from jinja2 import Environment, FileSystemLoader, StrictUndefined  # type: ignore[reportMissingImports]
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-    from infrahub.core.schema.definitions.internal import (  # type: ignore[reportMissingImports]
+    from infrahub.core.schema.definitions.internal import (
         attribute_schema,
         base_node_schema,
         generic_schema,
@@ -276,7 +272,7 @@ def _jinja2_filter_inheritance(value: dict[str, Any], sync: bool = False) -> str
 
 
 def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive: bool = False) -> str:
-    from infrahub.types import ATTRIBUTE_TYPES  # pyright: ignore[reportMissingImports]
+    from infrahub.types import ATTRIBUTE_TYPES
 
     attr_name: str = value["name"]
     attr_kind: str = value["kind"]
@@ -286,15 +282,15 @@ def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive:
         return f"{attr_name}: Enum"
 
     if use_python_primitive:
-        type_name = PYTHON_PRIMITIVE_MAP[attr_kind.lower()]
+        value = PYTHON_PRIMITIVE_MAP[attr_kind.lower()]
         if optional:
-            type_name = f"Optional[{type_name}]"
-        return f"{attr_name}: {type_name}"
+            value = f"Optional[{value}]"
+        return f"{attr_name}: {value}"
 
-    type_name = ATTRIBUTE_TYPES[attr_kind].infrahub
+    value = ATTRIBUTE_TYPES[attr_kind].infrahub
     if optional:
-        type_name = f"{type_name}Optional"
-    return f"{attr_name}: {type_name}"
+        value = f"{value}Optional"
+    return f"{attr_name}: {value}"
 
 
 def _sort_and_filter_models(
@@ -316,9 +312,9 @@ def _sort_and_filter_models(
 def _generate_protocols(context: Context) -> None:
     import sys
 
-    from jinja2 import Environment, FileSystemLoader, StrictUndefined  # type: ignore[reportMissingImports]
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-    from infrahub.core.schema.definitions.core import core_models  # type: ignore[reportMissingImports]
+    from infrahub.core.schema.definitions.core import core_models
 
     # We need to insert this folder in the search order to ensure
     # that it appears before the python_sdk folder since that folder also has

@@ -1,12 +1,5 @@
-from __future__ import annotations
-
-from pathlib import Path
-from typing import TYPE_CHECKING
-
-from invoke import Context, task  # type: ignore[reportMissingImports]
-
-if TYPE_CHECKING:
-    from invoke.runners import Result
+from invoke import Context, task
+from invoke.runners import Result
 
 from .shared import (
     INFRAHUB_DATABASE,
@@ -14,7 +7,7 @@ from .shared import (
 )
 from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
-MAIN_DIRECTORY = Path("python_sdk")
+MAIN_DIRECTORY = "python_sdk"
 NAMESPACE = "SDK"
 MAIN_DIRECTORY_PATH = REPO_BASE / MAIN_DIRECTORY
 

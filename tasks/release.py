@@ -5,7 +5,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from invoke import Context, task  # type: ignore[reportMissingImports]
+from invoke import Context, task
 
 from tasks.shared import init_yaml_obj
 from tasks.utils import (
@@ -15,7 +15,7 @@ from tasks.utils import (
 )
 
 if TYPE_CHECKING:
-    from ruamel.yaml import YAML
+    from ruamel.yaml.main import YAML
 
 
 @task
@@ -98,12 +98,12 @@ def ship(context: Context) -> None:
 
 
 @task
-def update_helm_chart(context: Context, chart_repo: str = "helm/") -> None:  # noqa: ARG001
+def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:  # noqa: ARG001
     """Update helm/Chart.yaml with the current version from pyproject.toml."""
     print(" - [release] Update Helm chart")
 
     # Import here to not require installing packaging when running invoke without installing dependencies.
-    from packaging.version import Version  # pyright: ignore[reportMissingImports]
+    from packaging.version import Version
 
     # Get the app version directly from pyproject.toml
     app_version = Version(get_version_from_pyproject())  # Returns a string like '1.1.0a1'
@@ -154,9 +154,9 @@ def update_helm_chart(context: Context, chart_repo: str = "helm/") -> None:  # n
         chart_yaml["appVersion"] = new_app_version
         chart_yaml["version"] = new_helm_version
 
-        dependency_version = str(new_helm_version)
-
         if chart == "infrahub":
+            dependency_version = str(new_helm_version)
+
             yaml_values: YAML = init_yaml_obj()
             values_path = Path(chart_repo) / "charts" / Path(chart) / "values.yaml"
             values_yaml = yaml_values.load(values_path)
@@ -200,7 +200,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
 
     # Initialize YAML and load the docker-compose file
     yaml: YAML = init_yaml_obj(line_length=4096)
-    docker_path = Path(docker_file or "docker-compose.yml")
+    docker_path = Path(docker_file)
     docker_yaml: dict = yaml.load(docker_path)
 
     # Define services to update
@@ -237,7 +237,7 @@ def update_docker_compose(context: Context, docker_file: str | None = "docker-co
 
 
 @task
-def update_test_containers(context: Context, toml_file: str = "python_testcontainers/pyproject.toml") -> None:  # noqa: ARG001
+def update_test_containers(context: Context, toml_file: str | None = "python_testcontainers/pyproject.toml") -> None:  # noqa: ARG001
     """Update test containers pyproject.toml with the current version from pyproject.toml."""
     print(" - [release] Update python_testcontainers/pyproject.toml")
 
@@ -257,7 +257,7 @@ def update_test_containers(context: Context, toml_file: str = "python_testcontai
 
 def get_enum_mappings() -> dict:
     """Extracts enum mappings dynamically."""
-    from infrahub.config import (  # type: ignore[reportMissingImports]
+    from infrahub.config import (
         BrokerDriver,
         CacheDriver,
         ExtraLogLevel,
@@ -269,7 +269,7 @@ def get_enum_mappings() -> dict:
         TraceTransportProtocol,
         WorkflowDriver,
     )
-    from infrahub.constants.database import DatabaseType  # type: ignore[reportMissingImports]
+    from infrahub.constants.database import DatabaseType
 
     enum_mappings = {}
 
@@ -301,7 +301,7 @@ def update_docker_compose_env_vars(
     """Update the docker-compose.yml file with the environment variables."""
     import json
 
-    docker_path = Path(docker_file or "docker-compose.yml")
+    docker_path = Path(docker_file)
     docker_compose = docker_path.read_text(encoding="utf-8").splitlines()
 
     def get_env_vars_in_anchor(anchor_name: str, docker_compose: list[str]) -> tuple[dict, int | None, int | None]:
@@ -393,10 +393,10 @@ def gen_config_env(
     update_docker_file: bool | None = False,
 ) -> None:
     """Generate list of env vars required for configuration and update docker file.yml if need be."""
-    from pydantic_settings import BaseSettings  # type: ignore[reportMissingImports]
-    from pydantic_settings.sources import EnvSettingsSource  # type: ignore[reportMissingImports]
+    from pydantic_settings import BaseSettings
+    from pydantic_settings.sources import EnvSettingsSource
 
-    from infrahub.config import Settings  # type: ignore[reportMissingImports]
+    from infrahub.config import Settings
 
     enum_mappings = get_enum_mappings()
 

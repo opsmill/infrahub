@@ -1,6 +1,6 @@
 """Replacement for Makefile."""
 
-from invoke import Collection, Context, task  # type: ignore[reportMissingImports]
+from invoke import Collection, Context, task
 
 from . import backend, bundle, demo, dev, docs, main, performance, release, schema, sdk
 from .utils import ESCAPED_REPO_PATH
@@ -39,9 +39,9 @@ def _collect_tasks(collection: Collection, prefix: str = "") -> list[tuple[str, 
 @task(name="list")
 def list_tasks(_context: Context) -> None:
     """List all available invoke tasks with descriptions."""
-    from rich import box  # type: ignore[reportMissingImports]
-    from rich.console import Console  # type: ignore[reportMissingImports]
-    from rich.table import Table  # type: ignore[reportMissingImports]
+    from rich import box
+    from rich.console import Console
+    from rich.table import Table
 
     console = Console()
     tasks_info = _collect_tasks(ns)
