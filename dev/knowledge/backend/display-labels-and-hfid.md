@@ -63,17 +63,20 @@ resolve_relationships()
 
 ### Guard Conditions
 
-In `_collect_extra_filters()`, extra filters are only computed when needed:
+In `_collect_extra_filters()`, extra filters are computed for three sources:
 
 ```python
 if not self._existing or self._human_friendly_id:
     # Fetch HFID-related peer attributes
 if not self._existing or self._display_label:
     # Fetch display-label-related peer attributes
+if self._existing:
+    # Fetch peer attributes needed by Jinja2 computed attribute templates
 ```
 
-- **New nodes** (`not self._existing`): Always need extra filters
+- **New nodes** (`not self._existing`): Always need HFID/display_label extra filters
 - **Existing nodes with HFID/display_label set**: Need extra filters for recomputation during updates
+- **Existing nodes (updates)**: Always include peer attributes needed by Jinja2 computed attribute templates (via `computed_attributes.get_registered_jinja2_node`)
 
 ## Lifecycle
 

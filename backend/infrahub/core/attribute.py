@@ -190,6 +190,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
             return self.value.value
         return self.value
 
+    def get_property(self, name: str) -> Any:
+        if not hasattr(self, name):
+            raise ValueError(f"{name} is not a valid property of {self.name} on {self.node.get_kind()}")
+        return getattr(self, name)
+
     def set_default_value(self) -> None:
         self.value = self.schema.default_value
         if self.is_enum and self.value:

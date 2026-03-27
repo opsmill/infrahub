@@ -59,7 +59,9 @@ mutate_update()
                  -> _update()
                       -> attr.save() for each changed attribute
                       -> rel.save() for each changed relationship
-                      -> recompute HFID/display_label if needs_update()
+                      -> _recompute_local_jinja2()  # Jinja2 computed attrs (dependency-ordered, skips on upstream failure)
+                      -> _recompute_hfid()           # if needs_update()
+                      -> _recompute_display_label()  # if needs_update()
   -> emit NodeUpdatedEvent
 ```
 
