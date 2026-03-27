@@ -35,6 +35,7 @@ from infrahub_sdk.spec.menu import MenuFile
 from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError
+from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import InfrahubFile, SchemaFile
 from prefect import flow, task
@@ -1212,6 +1213,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             template=Path(location), template_directory=Path(commit_worktree.directory), client=self.sdk
         )
         try:
+            jinja2_template.validate(context=ExecutionContext.CORE | ExecutionContext.WORKER)
             return await jinja2_template.render(variables=data)
         except JinjaTemplateError as exc:
             log.error(str(exc), exc_info=True)
