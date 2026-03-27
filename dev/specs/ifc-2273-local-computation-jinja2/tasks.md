@@ -63,10 +63,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Ensure `_recompute_local_jinja2()` handles relationship-type template variables in `backend/infrahub/core/node/__init__.py`: when a template variable references a relationship peer attribute (e.g., `site__name__value`), resolve the value from the already-resolved `RelationshipManager` peer objects loaded via the extended `_collect_extra_filters()` — the peer attributes should already be available after `resolve_relationships()`
-- [ ] T012 [US2] Handle null/empty relationship case in `_recompute_local_jinja2()` in `backend/infrahub/core/node/__init__.py`: when a relationship is being set to null, pass `None` for that variable to the Jinja2 template and let it render accordingly (edge case from spec)
-- [ ] T013 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create a Device with computed `name` = `{{ instance__value }}-{{ site__name__value }}`, assign to SiteA, then re-assign to SiteB, verify computed name uses SiteB's name in mutation response
-- [ ] T014 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: set a relationship to null on a node with a computed attribute referencing that relationship, verify the template renders with null context and the mutation succeeds
+- [x] T011 [US2] Ensure `_recompute_local_jinja2()` handles relationship-type template variables in `backend/infrahub/core/node/__init__.py`: when a template variable references a relationship peer attribute (e.g., `site__name__value`), resolve the value from the already-resolved `RelationshipManager` peer objects loaded via the extended `_collect_extra_filters()` — the peer attributes should already be available after `resolve_relationships()`
+- [x] T012 [US2] Handle null/empty relationship case in `_recompute_local_jinja2()` in `backend/infrahub/core/node/__init__.py`: when a relationship is being set to null, pass `None` for that variable to the Jinja2 template and let it render accordingly (edge case from spec)
+- [x] T013 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create a Device with computed `name` = `{{ instance__value }}-{{ site__name__value }}`, assign to SiteA, then re-assign to SiteB, verify computed name uses SiteB's name in mutation response
+- [x] T014 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: set a relationship to null on a node with a computed attribute referencing that relationship, verify the template renders with null context and the mutation succeeds
 
 **Checkpoint**: Both local attribute and relationship changes trigger inline recomputation.
 
