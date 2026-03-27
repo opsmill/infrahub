@@ -201,88 +201,82 @@ class TestEventConsolidation(TestInfrahubApp):
         initialize_registry: None,
         default_branch: Branch,
     ) -> None:
-        server_schema = NodeSchema(
-            name="Server",
-            namespace="Testevent",
-            default_filter="hostname__value",
-            attributes=[
-                AttributeSchema(name="hostname", kind="Text", unique=True),
-                AttributeSchema(name="role", kind="Text"),
-                AttributeSchema(
-                    name="label",
-                    kind="Text",
-                    read_only=True,
-                    computed_attribute=ComputedAttribute(
-                        kind=ComputedAttributeKind.JINJA2,
-                        jinja2_template="{{ hostname__value }}-{{ role__value }}",
-                    ),
-                ),
-            ],
-        )
-        await load_schema(db, schema=SchemaRoot(nodes=[server_schema]), update_db=True)
+        await load_schema(db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), update_db=True)
+
+    @pytest.fixture(scope="class")
+    async def color_node(
+        self,
+        db: InfrahubDatabase,
+        schema_loaded: None,
+        default_branch: Branch,
+    ) -> Node:
+        color = await Node.init(db=db, schema="TestingColor", branch=default_branch)
+        await color.new(db=db, name="Green", description="Forest green")
+        await color.save(db=db)
+        return color
 
     async def test_single_changelog_contains_both_original_and_computed_fields(
         self,
         db: InfrahubDatabase,
-        schema_loaded: None,
+        color_node: Node,
         default_branch: Branch,
     ) -> None:
         """Updating a local attribute that triggers Jinja2 recomputation produces a single
         NodeChangelog with both the original attribute and the computed attribute in updated_fields."""
-        server = await Node.init(db=db, schema="TesteventServer", branch=default_branch)
-        await server.new(db=db, hostname="web01", role="frontend")
-        await server.save(db=db)
+        tshirt = await Node.init(db=db, schema="TestingTShirt", branch=default_branch)
+        await tshirt.new(db=db, name="Classic", color=color_node)
+        await tshirt.save(db=db)
 
-        assert server.get_attribute("label").value == "web01-frontend"
+        assert tshirt.get_attribute("description").value == "A Green Classic t-shirt. Forest green"
 
-        # Update the role attribute
-        server.get_attribute("role").value = "backend"
-        await server.save(db=db)
+        # Update the name attribute
+        tshirt.get_attribute("name").value = "Premium"
+        await tshirt.save(db=db)
 
-        # The computed 'label' should have been recomputed inline
-        assert server.get_attribute("label").value == "web01-backend"
+        # The computed 'description' should have been recomputed inline
+        assert tshirt.get_attribute("description").value == "A Green Premium t-shirt. Forest green"
 
         # Verify the changelog records BOTH the original and computed attribute changes
-        changelog = server.node_changelog
+        changelog = tshirt.node_changelog
         updated = changelog.updated_fields
-        assert "role" in updated, f"Expected 'role' in updated_fields, got {updated}"
-        assert "label" in updated, f"Expected 'label' in updated_fields, got {updated}"
+        assert "name" in updated, f"Expected 'name' in updated_fields, got {updated}"
+        assert "description" in updated, f"Expected 'description' in updated_fields, got {updated}"
 
         # Verify there is exactly one changelog containing both changes
         assert changelog.has_changes
-        assert "role" in changelog.attributes
-        assert "label" in changelog.attributes
+        assert "name" in changelog.attributes
+        assert "description" in changelog.attributes
 
         # Verify persisted in DB
-        reloaded = await NodeManager.get_one(db=db, id=server.id, branch=default_branch)
-        assert reloaded.get_attribute("label").value == "web01-backend"
+        reloaded = await NodeManager.get_one(db=db, id=tshirt.id, branch=default_branch)
+        assert reloaded.get_attribute("description").value == "A Green Premium t-shirt. Forest green"
 
     async def test_no_spurious_computed_changelog_when_value_unchanged(
         self,
         db: InfrahubDatabase,
-        schema_loaded: None,
+        color_node: Node,
         default_branch: Branch,
     ) -> None:
         """If an update does not change the computed attribute value, it should NOT appear
         in the changelog (no-op recomputation is filtered out)."""
-        server = await Node.init(db=db, schema="TesteventServer", branch=default_branch)
-        await server.new(db=db, hostname="db01", role="database")
-        await server.save(db=db)
+        tshirt = await Node.init(db=db, schema="TestingTShirt", branch=default_branch)
+        await tshirt.new(db=db, name="Basic", color=color_node)
+        await tshirt.save(db=db)
 
-        assert server.get_attribute("label").value == "db01-database"
+        assert tshirt.get_attribute("description").value == "A Green Basic t-shirt. Forest green"
 
-        # Update hostname to the same value (no change)
-        server.get_attribute("hostname").value = "db01"
-        await server.save(db=db)
+        # Update name to the same value (no change)
+        tshirt.get_attribute("name").value = "Basic"
+        await tshirt.save(db=db)
 
-        # The label should still be the same
-        assert server.get_attribute("label").value == "db01-database"
+        # The description should still be the same
+        assert tshirt.get_attribute("description").value == "A Green Basic t-shirt. Forest green"
 
-        # Since neither hostname nor label actually changed value, the changelog
-        # should NOT contain 'label' (the recomputation produced the same value)
-        changelog = server.node_changelog
-        assert "label" not in changelog.attributes, (
-            f"Computed attribute 'label' should not be in changelog when value is unchanged, "
+        # Since neither name nor description actually changed value, the changelog
+        # should NOT contain 'description' (the recomputation produced the same value)
+        changelog = tshirt.node_changelog
+        assert "description" not in changelog.attributes, (
+            f"Computed attribute 'description' should not be in changelog when value is unchanged, "
             f"got updated_fields={changelog.updated_fields}"
         )
 
@@ -298,25 +292,7 @@ class TestBulkUpdateLocalComputation(TestInfrahubApp):
         initialize_registry: None,
         default_branch: Branch,
     ) -> None:
-        interface_schema = NodeSchema(
-            name="Interface",
-            namespace="Testbulk",
-            default_filter="name__value",
-            attributes=[
-                AttributeSchema(name="name", kind="Text", unique=True),
-                AttributeSchema(name="speed", kind="Text"),
-                AttributeSchema(
-                    name="description",
-                    kind="Text",
-                    read_only=True,
-                    computed_attribute=ComputedAttribute(
-                        kind=ComputedAttributeKind.JINJA2,
-                        jinja2_template="{{ name__value }} running at {{ speed__value }}",
-                    ),
-                ),
-            ],
-        )
-        await load_schema(db, schema=SchemaRoot(nodes=[interface_schema]), update_db=True)
+        await load_schema(db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), update_db=True)
 
     async def test_bulk_update_recomputes_all_computed_attributes(
         self,
@@ -330,23 +306,27 @@ class TestBulkUpdateLocalComputation(TestInfrahubApp):
         node_count = 55
         node_ids: list[str] = []
 
-        # Create nodes with varying speeds
-        for i in range(node_count):
-            iface = await Node.init(db=db, schema="TestbulkInterface", branch=default_branch)
-            await iface.new(db=db, name=f"eth{i}", speed=f"{i}G")
-            await iface.save(db=db)
-            assert iface.get_attribute("description").value == f"eth{i} running at {i}G"
-            node_ids.append(iface.id)
+        color = await Node.init(db=db, schema="TestingColor", branch=default_branch)
+        await color.new(db=db, name="BulkBlue", description="Bulk test blue")
+        await color.save(db=db)
 
-        # Bulk-update the speed attribute on each node
+        # Create nodes with varying names
+        for i in range(node_count):
+            tshirt = await Node.init(db=db, schema="TestingTShirt", branch=default_branch)
+            await tshirt.new(db=db, name=f"shirt{i}", color=color)
+            await tshirt.save(db=db)
+            assert tshirt.get_attribute("description").value == f"A BulkBlue shirt{i} t-shirt. Bulk test blue"
+            node_ids.append(tshirt.id)
+
+        # Bulk-update the name attribute on each node
         for idx, node_id in enumerate(node_ids):
             node = await NodeManager.get_one(db=db, id=node_id, branch=default_branch)
-            node.get_attribute("speed").value = f"{idx * 10}G"
+            node.get_attribute("name").value = f"shirt{idx}v2"
             await node.save(db=db)
 
         # Verify all computed values are correct after bulk update
         for idx, node_id in enumerate(node_ids):
             reloaded = await NodeManager.get_one(db=db, id=node_id, branch=default_branch)
-            expected = f"eth{idx} running at {idx * 10}G"
+            expected = f"A BulkBlue shirt{idx}v2 t-shirt. Bulk test blue"
             actual = reloaded.get_attribute("description").value
-            assert actual == expected, f"Node eth{idx}: expected '{expected}', got '{actual}'"
+            assert actual == expected, f"Node shirt{idx}: expected '{expected}', got '{actual}'"
