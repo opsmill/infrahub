@@ -78,20 +78,18 @@ class SSOStateCache(BaseModel):
 
 async def fetch_account_groups_and_roles(db: InfrahubDatabase, account_id: str) -> tuple[list[str], list[str]]:
     """Fetch group and role names for an account. Returns empty lists on any failure."""
-    try:
-        groups = await NodeManager.query(
-            schema=CoreAccountGroup,
-            db=db,
-            filters={"members__ids": [account_id]},
-        )
-        group_names = [g.name.value for g in groups if hasattr(g, "name")]
-        role_names: list[str] = []
-        for group in groups:
-            roles = await group.roles.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccountRole)
-            role_names.extend(r.name.value for r in roles.values() if hasattr(r, "name"))
-    except Exception:
-        group_names = []
-        role_names = []
+    group_names: list[str] = []
+    role_names: list[str] = []
+
+    groups = await NodeManager.query(
+        schema=CoreAccountGroup,
+        db=db,
+        filters={"members__ids": [account_id]},
+    )
+    group_names.extend(g.name.value for g in groups)
+    for group in groups:
+        roles = await group.roles.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccountRole)
+        role_names.extend(r.name.value for r in roles.values())
 
     return group_names, role_names
 
@@ -140,13 +138,12 @@ async def authenticate_with_password(
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
-    account_type = account.account_type.value if hasattr(account, "account_type") else "User"
 
     return AuthResult(
         token=models.UserToken(access_token=access_token, refresh_token=refresh_token),
         account_id=account.id,
         account_name=account.name.value,
-        account_type=account_type,
+        account_type=account.account_type.value,
         session_id=session_id,
         groups=groups,
         roles=roles,

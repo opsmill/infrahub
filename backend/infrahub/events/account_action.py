@@ -15,7 +15,6 @@ class AuthMethod(InfrahubStringEnum):
     PASSWORD = "password"
     OAUTH2 = "oauth2"
     OIDC = "oidc"
-    API_KEY = "api_key"
 
 
 class SSOProvider(InfrahubStringEnum):
@@ -23,10 +22,9 @@ class SSOProvider(InfrahubStringEnum):
     OIDC = "oidc"
 
 
-class LogoutType(InfrahubStringEnum):
-    USER_INITIATED = "user_initiated"
-    ADMIN_REVOKED = "admin_revoked"
-    TOKEN_EXPIRED = "token_expired"
+class AccountType(InfrahubStringEnum):
+    USER = "USER"
+    SCRIPT = "SCRIPT"
 
 
 class AccountLoggedInEvent(InfrahubEvent):
@@ -36,7 +34,7 @@ class AccountLoggedInEvent(InfrahubEvent):
 
     account_id: str = Field(..., description="UUID of the account")
     account_name: str = Field(..., description="Username of the account")
-    account_type: str = Field(..., description="USER or SCRIPT")
+    account_type: AccountType = Field(..., description="USER or SCRIPT")
     auth_method: AuthMethod = Field(..., description="How they authenticated")
     session_id: str = Field(..., description="UUID of the session")
     groups: list[str] = Field(default_factory=list, description="List of group names/IDs")
@@ -66,7 +64,7 @@ class AccountLoggedOutEvent(InfrahubEvent):
     account_id: str = Field(..., description="UUID of the account")
     account_name: str = Field(..., description="Username of the account")
     session_id: str = Field(..., description="UUID of the session being terminated")
-    logout_type: LogoutType = Field(default=LogoutType.USER_INITIATED, description="How logout occurred")
+    logout_type: str = Field(default="user_initiated", description="How logout occurred")
     client_ip: str | None = Field(default=None, description="Source IP address")
     user_agent: str | None = Field(default=None, description="Browser/client info")
     timestamp: datetime = Field(

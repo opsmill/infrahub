@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import Flag, auto
 
 from infrahub.core.constants import infrahubkind as InfrahubKind  # noqa: N812
+from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent
 from infrahub.exceptions import ValidationError
 from infrahub.utils import InfrahubNumberEnum, InfrahubStringEnum
 
@@ -89,8 +90,8 @@ class EventType(InfrahubStringEnum):
     VALIDATOR_PASSED = f"{EVENT_NAMESPACE}.validator.passed"
     VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
 
-    ACCOUNT_LOGGED_IN = f"{EVENT_NAMESPACE}.account.logged_in"
-    ACCOUNT_LOGGED_OUT = f"{EVENT_NAMESPACE}.account.logged_out"
+    ACCOUNT_LOGGED_IN = AccountLoggedInEvent.event_name
+    ACCOUNT_LOGGED_OUT = AccountLoggedOutEvent.event_name
 
 
 class PermissionLevel(Flag):
