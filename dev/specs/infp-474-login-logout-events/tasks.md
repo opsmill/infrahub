@@ -51,18 +51,18 @@
 
 ### Implementation — US1 (Password auth + user logout)
 
-- [ ] T012 [US1] Emit `AccountLoggedInEvent` on successful password login in `backend/infrahub/api/auth.py`
-- [ ] T013 [US1] Emit `AccountLoggedOutEvent` with `logout_type="user_initiated"` in `backend/infrahub/api/auth.py`
-- [ ] T014 [P] [US1] Emit `AccountLoggedInEvent` on successful OAuth2 SSO callback in `backend/infrahub/api/oauth2.py`
-- [ ] T015 [P] [US1] Emit `AccountLoggedInEvent` on successful OIDC SSO callback in `backend/infrahub/api/oidc.py`
+- [x] T012 [US1] Emit `AccountLoggedInEvent` on successful password login in `backend/infrahub/api/auth.py`
+- [x] T013 [US1] Emit `AccountLoggedOutEvent` with `logout_type="user_initiated"` in `backend/infrahub/api/auth.py`
+- [x] T014 [P] [US1] Emit `AccountLoggedInEvent` on successful OAuth2 SSO callback in `backend/infrahub/api/oauth2.py`
+- [x] T015 [P] [US1] Emit `AccountLoggedInEvent` on successful OIDC SSO callback in `backend/infrahub/api/oidc.py`
 
 ### Tests — US1
 
-- [ ] T016 [P] [US1] Unit tests for `AccountLoggedInEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
-- [ ] T017 [P] [US1] Unit tests for `AccountLoggedOutEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
-- [ ] T018 [US1] Component test: successful password login emits `AccountLoggedInEvent` in `backend/tests/component/api/test_auth_events.py`
-- [ ] T019 [US1] Component test: user-initiated logout emits `AccountLoggedOutEvent` in `backend/tests/component/api/test_auth_events.py`
-- [ ] T020 [P] [US1] Add `timestamp` field assertion to existing unit tests for both event classes in `backend/tests/unit/event/test_auth_action.py`
+- [x] T016 [P] [US1] Unit tests for `AccountLoggedInEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
+- [x] T017 [P] [US1] Unit tests for `AccountLoggedOutEvent.get_resource()` and `get_payload()` in `backend/tests/unit/event/test_auth_action.py`
+- [x] T018 [US1] Component test: successful password login emits `AccountLoggedInEvent` in `backend/tests/component/api/test_auth_events.py`
+- [x] T019 [US1] Component test: user-initiated logout emits `AccountLoggedOutEvent` in `backend/tests/component/api/test_auth_events.py`
+- [x] T020 [P] [US1] Add `timestamp` field assertion to existing unit tests for both event classes in `backend/tests/unit/event/test_auth_action.py`
 
 **Checkpoint**: US1 fully functional — password login and user logout emit queryable events (admin-only via GraphQL).
 
@@ -70,9 +70,9 @@
 
 ## Phase 4: Polish & Cross-Cutting Concerns
 
-- [ ] T021 [P] Run `uv run ruff format` on all modified Python files
-- [ ] T022 [P] Run `uv run ruff check --fix` on all modified Python files
-- [ ] T023 Run `uv run pytest backend/tests/unit/event/test_auth_action.py backend/tests/component/api/test_auth_events.py -v` and confirm all pass
+- [x] T021 [P] Run `uv run ruff format` on all modified Python files
+- [x] T022 [P] Run `uv run ruff check --fix` on all modified Python files
+- [x] T023 Run `uv run pytest backend/tests/unit/event/test_auth_action.py backend/tests/component/api/test_auth_events.py -v` and confirm all pass
 
 ---
 
@@ -108,6 +108,6 @@ Phase 1 (T001–T007) → Phase 2 (T008–T011)
 |-------|-------|-------|------|-----------|
 | 1 — Setup | — | 7 | 7 | 0 |
 | 2 — GraphQL | — | 4 | 4 | 0 |
-| 3 — US1 Audit Trail | P1 | 9 | 0 | 9 |
-| 4 — Polish | — | 3 | 0 | 3 |
-| **Total** | | **23** | **11** | **12** |
+| 3 — US1 Audit Trail | P1 | 9 | 9 | 0 |
+| 4 — Polish | — | 3 | 3 | 0 |
+| **Total** | | **23** | **23** | **0** |

@@ -17,7 +17,7 @@ from infrahub.config import (
     SecurityOIDCSettings,
 )
 from infrahub.core.account import validate_token
-from infrahub.core.constants import AccountStatus, InfrahubKind
+from infrahub.core.constants import AccountStatus, AccountType, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole, CoreGenericAccount
@@ -42,7 +42,7 @@ class AuthResult(BaseModel):
     token: models.UserToken
     account_id: str
     account_name: str
-    account_type: str
+    account_type: AccountType
     session_id: uuid.UUID
     groups: list[str]
     roles: list[str]
@@ -309,10 +309,12 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
     return AccountSession(account_id=account_id, auth_type=AuthType.API)
 
 
-async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
+async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> bool:
     refresh_token = await NodeManager.get_one(id=token_id, db=db)
     if refresh_token:
         await refresh_token.delete(db=db)
+        return True
+    return False
 
 
 async def get_groups_from_provider(
