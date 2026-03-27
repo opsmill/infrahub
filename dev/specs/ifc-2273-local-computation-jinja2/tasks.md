@@ -44,12 +44,12 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [US1] Create `_recompute_local_jinja2()` async method on `Node` in `backend/infrahub/core/node/__init__.py` that: (1) gets the schema_branch, (2) calls `computed_attributes.get_local_jinja2_targets(kind=self._schema.kind, updates=fields)`, (3) for each target, resolves Jinja2 template variables from the node's in-memory attribute values and resolved relationship peers (reusing the variable resolution pattern from `_process_macros()`), (4) renders the template via `InfrahubJinja2Template.render()`, (5) if value changed, updates the attribute on `self` and saves it via `attr.save()`, (6) records in `NodeChangelog`, (7) on Jinja2 rendering error: logs warning and leaves value unchanged (FR-013)
-- [ ] T006 [US1] Call `_recompute_local_jinja2()` from `Node._update()` in `backend/infrahub/core/node/__init__.py` — insert the call after attribute and relationship saves (after line ~924) but before HFID/display_label recomputation (before line ~934), passing the `fields` parameter to scope which computed attributes to check
-- [ ] T007 [US1] Handle chained computed attribute dependencies in `_recompute_local_jinja2()`: when multiple computed attributes on the same node are affected, sort by dependency order (if computed attr A references computed attr B, compute B first) using iterative resolution — in `backend/infrahub/core/node/__init__.py`
-- [ ] T008 [US1] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: create a schema with a Jinja2 computed attribute referencing a local attribute, create a node, update the local attribute, verify the computed attribute is recalculated in the same mutation and the response value is correct
-- [ ] T009 [US1] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: verify that updating an attribute NOT used by the computed attribute template does NOT trigger recomputation (FR-005 — acceptance scenario 3)
-- [ ] T010 [US1] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: verify that inline Jinja2 evaluation failure logs an error and leaves the computed attribute unchanged while the mutation succeeds (FR-013)
+- [x] T005 [US1] Create `_recompute_local_jinja2()` async method on `Node` in `backend/infrahub/core/node/__init__.py` that: (1) gets the schema_branch, (2) calls `computed_attributes.get_local_jinja2_targets(kind=self._schema.kind, updates=fields)`, (3) for each target, resolves Jinja2 template variables from the node's in-memory attribute values and resolved relationship peers (reusing the variable resolution pattern from `_process_macros()`), (4) renders the template via `InfrahubJinja2Template.render()`, (5) if value changed, updates the attribute on `self` and saves it via `attr.save()`, (6) records in `NodeChangelog`, (7) on Jinja2 rendering error: logs warning and leaves value unchanged (FR-013)
+- [x] T006 [US1] Call `_recompute_local_jinja2()` from `Node._update()` in `backend/infrahub/core/node/__init__.py` — insert the call after attribute and relationship saves (after line ~924) but before HFID/display_label recomputation (before line ~934), passing the `fields` parameter to scope which computed attributes to check
+- [x] T007 [US1] Handle chained computed attribute dependencies in `_recompute_local_jinja2()`: when multiple computed attributes on the same node are affected, sort by dependency order (if computed attr A references computed attr B, compute B first) using iterative resolution — in `backend/infrahub/core/node/__init__.py`
+- [x] T008 [US1] Add component test in `backend/tests/component/computed_attribute/test_local_computation.py`: create a schema with a Jinja2 computed attribute referencing a local attribute, create a node, update the local attribute, verify the computed attribute is recalculated in the same mutation and the response value is correct
+- [x] T009 [US1] Add component test in `backend/tests/component/computed_attribute/test_local_computation.py`: verify that updating an attribute NOT used by the computed attribute template does NOT trigger recomputation (FR-005 — acceptance scenario 3)
+- [x] T010 [US1] Add component test in `backend/tests/component/computed_attribute/test_local_computation.py`: verify that inline Jinja2 evaluation failure logs an error and leaves the computed attribute unchanged while the mutation succeeds (FR-013)
 
 **Checkpoint**: Local attribute changes trigger inline computed attribute recomputation. Core value proposition delivered.
 
@@ -65,8 +65,8 @@
 
 - [ ] T011 [US2] Ensure `_recompute_local_jinja2()` handles relationship-type template variables in `backend/infrahub/core/node/__init__.py`: when a template variable references a relationship peer attribute (e.g., `site__name__value`), resolve the value from the already-resolved `RelationshipManager` peer objects loaded via the extended `_collect_extra_filters()` — the peer attributes should already be available after `resolve_relationships()`
 - [ ] T012 [US2] Handle null/empty relationship case in `_recompute_local_jinja2()` in `backend/infrahub/core/node/__init__.py`: when a relationship is being set to null, pass `None` for that variable to the Jinja2 template and let it render accordingly (edge case from spec)
-- [ ] T013 [US2] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: create a Device with computed `name` = `{{ instance__value }}-{{ site__name__value }}`, assign to SiteA, then re-assign to SiteB, verify computed name uses SiteB's name in mutation response
-- [ ] T014 [US2] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: set a relationship to null on a node with a computed attribute referencing that relationship, verify the template renders with null context and the mutation succeeds
+- [ ] T013 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create a Device with computed `name` = `{{ instance__value }}-{{ site__name__value }}`, assign to SiteA, then re-assign to SiteB, verify computed name uses SiteB's name in mutation response
+- [ ] T014 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: set a relationship to null on a node with a computed attribute referencing that relationship, verify the template renders with null context and the mutation succeeds
 
 **Checkpoint**: Both local attribute and relationship changes trigger inline recomputation.
 
@@ -80,9 +80,9 @@
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] In `backend/infrahub/computed_attribute/gather.py`, modify `gather_trigger_computed_attribute_jinja2()` so that `targets_self=True` trigger nodes have their fields replaced with `["_trigger_placeholder"]` before calling `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` — matching the pattern in `hfid/models.py:59-61` and `display_labels/models.py:59-61`. Remote trigger nodes (`targets_self=False`) keep their real field names.
-- [ ] T016 [US3] Add test in `backend/tests/unit/computed_attribute/test_trigger_definition.py` (or `backend/tests/component/` if needed): verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
-- [ ] T017 [US3] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: update a peer node attribute (e.g., rename a Site) and verify that computed attributes on related nodes (Devices) are still updated via background tasks (existing behavior preserved)
+- [x] T015 [US3] In `backend/infrahub/computed_attribute/gather.py`, modify `gather_trigger_computed_attribute_jinja2()` so that `targets_self=True` trigger nodes have their fields replaced with `["_trigger_placeholder"]` before calling `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` — matching the pattern in `hfid/models.py:59-61` and `display_labels/models.py:59-61`. Remote trigger nodes (`targets_self=False`) keep their real field names.
+- [x] T016 [US3] Add test in `backend/tests/unit/computed_attribute/test_trigger_definition.py` (or `backend/tests/component/` if needed): verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
+- [x] T017 [US3] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: update a peer node attribute (e.g., rename a Site) and verify that computed attributes on related nodes (Devices) are still updated via background tasks (existing behavior preserved)
 
 **Checkpoint**: Self-targeting triggers are placeholders. Remote triggers work via background tasks. Both paths coexist correctly.
 
@@ -96,7 +96,7 @@
 
 ### Implementation for User Story 4
 
-- [ ] T018 [US4] Verify event consolidation works automatically: since `_recompute_local_jinja2()` saves computed attributes within `_update()` and records changes in the same `NodeChangelog`, the single `NodeUpdatedEvent` emitted by `generate_node_mutation_events()` should already include both the original change and the computed attribute update — add a functional test in `backend/tests/functional/computed_attribute/test_local_computation.py` that asserts only one event is emitted and it contains both the original field and the computed attribute field in `updated_fields`
+- [ ] T018 [US4] Verify event consolidation works automatically: since `_recompute_local_jinja2()` saves computed attributes within `_update()` and records changes in the same `NodeChangelog`, the single `NodeUpdatedEvent` emitted by `generate_node_mutation_events()` should already include both the original change and the computed attribute update — add a functional test in `backend/tests/functional/computed_attributes/test_local_computation.py` that asserts only one event is emitted and it contains both the original field and the computed attribute field in `updated_fields`
 
 **Checkpoint**: Single consolidated event per mutation confirmed.
 
@@ -110,7 +110,7 @@
 
 ### Implementation for User Story 5
 
-- [ ] T019 [US5] Add functional test in `backend/tests/functional/computed_attribute/test_local_computation.py`: create 50+ nodes with Jinja2 computed attributes depending on local attributes, then bulk-update a local attribute on each node, verify all computed values are correct post-update (functional tests have no Prefect server, so correct values prove the inline path handled everything)
+- [ ] T019 [US5] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create 50+ nodes with Jinja2 computed attributes depending on local attributes, then bulk-update a local attribute on each node, verify all computed values are correct post-update (functional tests have no Prefect server, so correct values prove the inline path handled everything)
 
 **Checkpoint**: Bulk update performance validated.
 
