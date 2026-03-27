@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 from pydantic import Field
 
@@ -9,6 +9,9 @@ from infrahub.utils import InfrahubStringEnum
 
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
+
+if TYPE_CHECKING:
+    from infrahub.core.constants import AccountType
 
 
 class AuthMethod(InfrahubStringEnum):
@@ -20,11 +23,6 @@ class AuthMethod(InfrahubStringEnum):
 class SSOProvider(InfrahubStringEnum):
     OAUTH2 = "oauth2"
     OIDC = "oidc"
-
-
-class AccountType(InfrahubStringEnum):
-    USER = "USER"
-    SCRIPT = "SCRIPT"
 
 
 class AccountLoggedInEvent(InfrahubEvent):
