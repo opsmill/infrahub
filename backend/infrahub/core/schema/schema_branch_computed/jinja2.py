@@ -333,10 +333,14 @@ class Jinja2ComputedRegistry:
             # Local fields: attributes and relationship names on the trigger node itself
             for local_field, targets in registered.local_fields.items():
                 for target in targets:
-                    _ensure_trigger(target, node_kind).attributes.append(local_field)
+                    trigger = _ensure_trigger(target, node_kind)
+                    if local_field not in trigger.attributes:
+                        trigger.attributes.append(local_field)
             # Relationships: the trigger node is a peer reached via this relationship
             for relationship, dep in registered.relationship_dependencies.items():
                 for target in dep.targets:
-                    _ensure_trigger(target, node_kind).relationships.append(relationship)
+                    trigger = _ensure_trigger(target, node_kind)
+                    if relationship not in trigger.relationships:
+                        trigger.relationships.append(relationship)
 
         return {target: list(nodes.values()) for target, nodes in working_map.items()}
