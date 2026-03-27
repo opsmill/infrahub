@@ -72,7 +72,9 @@ class TestCascadeWithExplicitUpdates:
             },
         )
         results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["alpha"])
-        assert {r.attribute.name for r in results} == {"alpha", "beta"}
+        names = [r.attribute.name for r in results]
+        assert len(names) == 2
+        assert set(names) == {"alpha", "beta"}
 
     def test_cascade_diamond(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """Diamond: name -> label, name -> desc, label -> summary, desc -> summary."""
@@ -202,7 +204,9 @@ class TestCascadeWithExplicitUpdates:
             },
         )
         results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["alpha"])
-        assert {r.attribute.name for r in results} == {"alpha", "beta", "gamma"}
+        names = [r.attribute.name for r in results]
+        assert len(names) == 3
+        assert set(names) == {"alpha", "beta", "gamma"}
 
     def test_multiple_updates_dedup(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """updates=['name', 'desc'] both trigger label: label appears once."""
@@ -339,6 +343,7 @@ class TestCascadeWithFullSave:
         )
         results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=None)
         names = [r.attribute.name for r in results]
+        assert len(names) == len(set(names)), f"Duplicate targets detected: {names}"
         assert set(names) == {"label", "fqdn"}
         assert names.index("label") < names.index("fqdn")
 
@@ -377,6 +382,7 @@ class TestCascadeWithFullSave:
         )
         results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=[])
         names = [r.attribute.name for r in results]
+        assert len(names) == len(set(names)), f"Duplicate targets detected: {names}"
         assert set(names) == {"label", "fqdn"}
         assert names.index("label") < names.index("fqdn")
 
