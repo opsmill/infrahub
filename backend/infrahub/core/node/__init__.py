@@ -786,6 +786,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
             attr: BaseAttribute = self.get_attribute(name=target.attribute.name)
             if attr.value != new_value:
+                try:
+                    attr.validate(value=new_value, name=attr.name, schema=attr.schema)
+                except ValidationError:
+                    log.warning(
+                        "Recomputed Jinja2 attribute failed validation",
+                        node_kind=self._schema.kind,
+                        attribute_name=target.attribute.name,
+                        exc_info=True,
+                    )
+                    failed_attributes.add(target.attribute.name)
+                    continue
                 attr.value = new_value
                 updated_attribute = await attr.save(db=db, user_id=user_id, at=update_at)
                 if updated_attribute:
