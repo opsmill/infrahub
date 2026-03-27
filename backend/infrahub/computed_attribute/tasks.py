@@ -341,7 +341,7 @@ async def computed_attribute_setup_jinja2(
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_computed_attribute_jinja2, trigger_type=TriggerType.COMPUTED_ATTR_JINJA2
-        )  # type: ignore[misc]
+        )
         # Configure all ComputedAttrJinja2Trigger in Prefect
 
         all_triggers = report.triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)
