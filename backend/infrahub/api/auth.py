@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Request, Response
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_access_token, get_db, get_refresh_token
+from infrahub.api.helper import make_event_meta, make_login_event, make_logout_event
 from infrahub.auth import (
     AccountSession,
     AuthType,
@@ -13,40 +14,17 @@ from infrahub.auth import (
     create_fresh_access_token,
     invalidate_refresh_token,
 )
-from infrahub.context import InfrahubContext
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericAccount
-from infrahub.core.registry import registry
-from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod, LogoutType
-from infrahub.events.models import EventMeta
+from infrahub.events.account_action import AuthMethod
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from infrahub.database import InfrahubDatabase
-    from infrahub.events.models import InfrahubEvent
     from infrahub.services import InfrahubServices
 
 log = get_logger()
 router = APIRouter(prefix="/auth")
-
-
-async def emit_auth_event(
-    request: Request,
-    db: InfrahubDatabase,
-    account_id: str,
-    account_session: AccountSession,
-    event_factory: Callable[[EventMeta], InfrahubEvent],
-) -> None:
-    service: InfrahubServices = request.app.state.service
-    branch = await registry.get_branch(db=db)
-    meta = EventMeta(
-        branch=branch,
-        context=InfrahubContext.init(branch=branch, account=account_session),
-        account_id=account_id,
-    )
-    await service.event.send(event=event_factory(meta))
 
 
 @router.post("/login")
@@ -69,28 +47,18 @@ async def login_user(
         httponly=True,
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
+    service: InfrahubServices = request.app.state.service
+    session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
     try:
-        session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
-        await emit_auth_event(
+        event = make_login_event(
             request=request,
-            db=db,
-            account_id=auth_result.account_id,
-            account_session=session,
-            event_factory=lambda meta: AccountLoggedInEvent(
-                meta=meta,
-                account_id=auth_result.account_id,
-                account_name=auth_result.account_name,
-                account_type=auth_result.account_type,
-                auth_method=AuthMethod.PASSWORD,
-                session_id=str(auth_result.session_id),
-                groups=auth_result.groups,
-                roles=auth_result.roles,
-                client_ip=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
-            ),
+            event_meta=await make_event_meta(db=db, account_session=session),
+            auth_result=auth_result,
+            auth_method=AuthMethod.PASSWORD,
         )
-    except Exception:
-        log.warning("Failed to emit login event")
+        await service.event.send(event=event)
+    except Exception as ex:
+        log.warning(f"Failed to emit login event for account_id={auth_result.account_id}: {str(ex)}")
     return auth_result.token
 
 
@@ -115,30 +83,26 @@ async def logout(
     db: InfrahubDatabase = Depends(get_db),
     user_session: AccountSession = Depends(get_access_token),
 ) -> None:
+    invalidated = False
     if user_session.session_id:
-        await invalidate_refresh_token(db=db, token_id=user_session.session_id)
+        invalidated = await invalidate_refresh_token(db=db, token_id=user_session.session_id)
 
-    try:
+    if invalidated:
         account = await NodeManager.get_one(id=user_session.account_id, db=db, kind=CoreGenericAccount)
         account_name = account.name.value if account else user_session.account_id
         session_id = user_session.session_id or ""
-        await emit_auth_event(
-            request=request,
-            db=db,
-            account_id=user_session.account_id,
-            account_session=user_session,
-            event_factory=lambda meta: AccountLoggedOutEvent(
-                meta=meta,
+        service: InfrahubServices = request.app.state.service
+        try:
+            event = make_logout_event(
+                request=request,
+                event_meta=await make_event_meta(db=db, account_session=user_session),
                 account_id=user_session.account_id,
                 account_name=account_name,
                 session_id=session_id,
-                logout_type=LogoutType.USER_INITIATED,
-                client_ip=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
-            ),
-        )
-    except Exception:
-        log.warning("Failed to emit logout event")
+            )
+            await service.event.send(event=event)
+        except Exception as ex:
+            log.warning(f"Failed to emit logout event for account_id={user_session.account_id}: {str(ex)}")
 
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")

@@ -12,8 +12,8 @@ from opentelemetry import trace
 from pydantic import BaseModel, HttpUrl
 
 from infrahub import config, models
-from infrahub.api.auth import emit_auth_event
 from infrahub.api.dependencies import get_db
+from infrahub.api.helper import make_event_meta, make_login_event
 from infrahub.auth import (
     AccountSession,
     AuthType,
@@ -23,7 +23,7 @@ from infrahub.auth import (
     validate_auth_response,
 )
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
-from infrahub.events.account_action import AccountLoggedInEvent, AuthMethod, SSOProvider
+from infrahub.events.account_action import AuthMethod, SSOProvider
 from infrahub.exceptions import ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -218,30 +218,18 @@ async def token(
         httponly=True,
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
-
+    session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
     try:
-        session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
-        await emit_auth_event(
+        event = make_login_event(
             request=request,
-            db=db,
-            account_id=auth_result.account_id,
-            account_session=session,
-            event_factory=lambda meta: AccountLoggedInEvent(
-                meta=meta,
-                account_id=auth_result.account_id,
-                account_name=auth_result.account_name,
-                account_type=auth_result.account_type,
-                auth_method=AuthMethod.OIDC,
-                session_id=str(auth_result.session_id),
-                groups=auth_result.groups,
-                roles=auth_result.roles,
-                sso_provider=SSOProvider.OIDC,
-                client_ip=request.client.host if request.client else None,
-                user_agent=request.headers.get("user-agent"),
-            ),
+            event_meta=await make_event_meta(db=db, account_session=session),
+            auth_result=auth_result,
+            auth_method=AuthMethod.OIDC,
+            sso_provider=SSOProvider.OIDC,
         )
-    except Exception:
-        log.warning("Failed to emit OIDC login event")
+        await service.event.send(event=event)
+    except Exception as ex:
+        log.warning(f"Failed to emit OIDC login event for account_id={auth_result.account_id}: {str(ex)}")
 
     return models.UserTokenWithUrl(
         access_token=auth_result.token.access_token,

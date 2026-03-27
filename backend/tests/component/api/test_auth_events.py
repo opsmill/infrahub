@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
-from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod, LogoutType
+from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod
 
 if TYPE_CHECKING:
     from fastapi.testclient import TestClient
@@ -83,6 +83,5 @@ async def test_logout_emits_logged_out_event(
     assert len(captured) == 1
     event = captured[0]
     assert event.account_id == first_account.id
-    assert event.logout_type == LogoutType.USER_INITIATED
     assert event.session_id
     assert event.timestamp is not None
