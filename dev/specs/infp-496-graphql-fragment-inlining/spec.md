@@ -97,7 +97,8 @@ A platform engineer updates a fragment definition in the fragment file (e.g., ad
 
 ### Edge Cases
 
-- What happens when a fragment file is listed in `graphql_fragments` but does not exist in the repository? Import should fail with a clear error identifying the missing file path.
+- What happens when a fragment file or directory is listed in `graphql_fragments` but does not exist in the repository? Import should fail with a clear error identifying the missing path.
+- What happens when a `file_path` is a directory containing no `.gql` files? No fragment content is loaded for that entry — treated the same as declaring no fragments.
 - What happens when a fragment definition has a syntax error? The import of any query using that fragment should fail with the syntax error reported.
 - What happens when a fragment name is defined more than once — either within the same fragment file or across different fragment files declared in `graphql_fragments`? The importer treats this as an error and reports it, since the correct definition to use would be ambiguous.
 - What happens when a fragment's type condition (`on TypeName`) references a type that does not exist in the Infrahub schema? Not validated at import time; the stored query is valid GraphQL and any type error surfaces at execution time.
@@ -139,7 +140,7 @@ No fragment rendering logic should be added to the Infrahub server codebase dire
 
 ### Functional Requirements
 
-- **FR-001**: The `.infrahub.yml` configuration file MUST support a `graphql_fragments` section that declares one or more fragment files, each identified by a name and a file path relative to the repository root.
+- **FR-001**: The `.infrahub.yml` configuration file MUST support a `graphql_fragments` section that declares one or more fragment sources, each identified by a name and a path relative to the repository root. The path MAY point to a single `.gql` file or to a directory; if a directory, all `.gql` files within it are treated as fragment sources.
 - **FR-002**: When importing a GraphQL query from a repository, the importer MUST scan the query document for named fragment spreads (`...fragmentName`).
 - **FR-003**: For each named fragment spread found, the importer MUST search across all fragment files declared in the same `.infrahub.yml` to locate a matching fragment definition by name — the required fragment may be in any of the declared files.
 - **FR-004**: The importer MUST resolve transitive fragment dependencies — if fragment A uses fragment B, both definitions must be included in the rendered output.
@@ -147,7 +148,7 @@ No fragment rendering logic should be added to the Infrahub server codebase dire
 - **FR-006**: The rendered query stored in Infrahub MUST be a valid, self-contained GraphQL document that can be executed without any external fragment resolution at runtime.
 - **FR-007**: If a query contains a fragment spread for which no definition can be found in the declared fragment files, the import of that query MUST fail with an error message identifying the unresolved fragment name and the query file.
 - **FR-008**: If a declared fragment file path does not exist in the repository, the repository sync MUST report an error identifying the missing file path.
-- **FR-009**: A failure to resolve fragments for one query MUST NOT prevent other queries in the same repository (that have no missing fragments) from being imported successfully.
+- **FR-009**: A failure to resolve fragments for any query MUST fail the repository import and report an error identifying the affected query and missing fragment.
 - **FR-010**: When a repository is re-synced and a fragment file has changed, all queries that depend on that fragment MUST be re-rendered with the updated fragment definition and updated in the database.
 - **FR-011**: The fragment rendering logic MUST handle queries that use no fragment spreads, storing them as-is without modification.
 - **FR-012**: Fragment scoping MUST be per-repository — fragment files from one repository are not accessible when importing queries from a different repository.
@@ -175,7 +176,7 @@ No fragment rendering logic should be added to the Infrahub server codebase dire
 
 - Fragment files are standard GraphQL documents containing only `fragment` definitions (no operation definitions).
 - Fragment names are intended to be unique across all of a repository's declared fragment files combined. A duplicate name in any two files (or twice within the same file) is treated as an error because the correct definition to use would be ambiguous.
-- The `graphql_fragments` section in `.infrahub.yml` follows the same list-of-items structure as the existing `graphql_queries` section, with `name` and `file_path` fields per entry.
+- The `graphql_fragments` section in `.infrahub.yml` follows the same list-of-items structure as the existing `graphql_queries` section, with `name` and `file_path` fields per entry. The `file_path` value may be a single `.gql` file or a directory; directories are expanded to all `.gql` files they contain.
 - Fragment resolution and inlining happens at import time (repository sync), not at query execution time. The stored query text is the fully rendered document.
 - Fragment type condition validation (checking that `on TypeName` references a valid Infrahub schema type) is deferred to execution time, not enforced at import time.
 - Fragment files may contain more fragment definitions than any single query needs — the importer selects only the required ones.
