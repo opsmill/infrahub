@@ -1,0 +1,26 @@
+fragment interfaceFragment on InterfaceL3 {
+  id
+  name {
+    value
+  }
+  ip_addresses {
+    edges {
+      node {
+        id
+        address {
+          value
+        }
+      }
+    }
+  }
+}
+
+fragment portFragment on InterfaceL2 {
+  id
+  name {
+    value
+  }
+  enabled {
+    value
+  }
+}
