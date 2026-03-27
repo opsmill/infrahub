@@ -68,6 +68,50 @@ mutation CreateDevice {
 
 The next step is to create a query that returns the data we just created. The rest of this guide assumes that the following query will return a response similar to the response below the query.
 
+:::warning Single-target query requirement
+For proper artifact detection, your query must target a **unique node** using a unique attribute or ID. This ensures Infrahub only regenerates the necessary artifacts instead of regenerating all artifacts unnecessarily.
+
+**Requirements for a valid single-target query:**
+
+- Must filter on a unique identifier (ID or unique attribute like `name`)
+- Must use a required variable, for example, `$name: String!`
+- Must use exact match filters, for example, `name__value: $name`, not list filters, for example, `name__values: $name`
+
+**Valid example:**
+
+```graphql
+query BuiltinTag($name: String!) {
+  BuiltinTag(name__value: $name) {
+    edges { node { id } }
+  }
+}
+```
+
+**Invalid examples (will cause excessive artifact generation):**
+
+No filter at all:
+
+```graphql
+query BuiltinTag {
+  BuiltinTag {
+    edges { node { id } }
+  }
+}
+```
+
+Filtering on a non-unique attribute:
+
+```graphql
+query BuiltinTag($description: String!) {
+  BuiltinTag(description__value: $description) {
+    edges { node { id } }
+  }
+}
+```
+
+To learn more about single-target queries and why they are important, see the [GraphQL topic](../topics/graphql.mdx#single-target-query-pattern).
+:::
+
 :::info Convert query to Infrahub SDK objects
 We provide `convert_query_response` option to be toggled to be able to access objects from the GraphQL query as Infrahub SDK objects rather than the raw dictionary response.
 
@@ -440,9 +484,9 @@ We have now successfully created a Transformation. Most of the Transformations y
 
 Within the `device_config_render` folder you should now have 3 files:
 
-* `device_config_render/device_config.gql`: Contains the GraphQL query
-* `device_config_render/device_config.py`: Contains the Python code for the Transformation
-* `.infrahub.yml`: Contains the definition for the Transformation
+- `device_config_render/device_config.gql`: Contains the GraphQL query
+- `device_config_render/device_config.py`: Contains the Python code for the Transformation
+- `.infrahub.yml`: Contains the definition for the Transformation
 
 Before we can test our Transformation we must add the files to a local Git repository.
 

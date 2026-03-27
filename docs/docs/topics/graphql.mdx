@@ -253,6 +253,189 @@ More details on the `.infrahub.yml` file format can be found in [.infrahub.yml t
 
 Stored GraphQL queries can be executed by using the `/api/query/{query_id}` REST API endpoint. The `{query_id}` can be the name or the id of the `GraphQLQuery` node in the database. More information can be found in the [Swagger documentation](http://localhost:8000/api/docs).
 
+## Single-target query pattern
+
+When writing GraphQL queries for [transforms](./transformation.mdx), [generators](./generator.mdx), [artifacts](./artifact.mdx), and [computed attributes](./computed-attributes.mdx), it's critical to use a **single-target query pattern** to ensure proper tracking by the system.
+
+### What is a single-target query?
+
+A single-target query is a GraphQL query that targets a **unique node** using a unique attribute or ID. This pattern enables Infrahub to identify exactly which objects are affected by a change, allowing it to selectively trigger the necessary action instead of everything.
+
+### Why is this important?
+
+Without single-target queries, Infrahub cannot determine which specific actions need to be triggered when data changes. This can lead to excessive processing that significantly impacts performance.
+
+**Real-world impact:** In one production scenario, a proposed change pipeline generated 600 artifact regenerations when only 5 actually required execution. Properly using single-target queries resolved this issue.
+
+### Requirements for a valid single-target query
+
+For a query to be recognized as single-target, it must meet **all** of these criteria:
+
+1. **Filter on a unique identifier**: Use either `id` or a unique attribute like `name__value`
+2. **Use a required variable**: The filter must use a required variable, for example, `$name: String!`. A literal value is also valid but limits the query to a single fixed object
+3. **Use exact match filters**: Use singular filters, for example, `name__value: $name`, **not** list filters, for example, `name__values: $name`
+
+### Valid single-target query examples
+
+**Using a unique attribute with required variable:**
+
+```graphql
+query DeviceConfig($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+        interfaces {
+          edges {
+            node {
+              name {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+**Using ID with required variable:**
+
+```graphql
+query DeviceById($device_id: String!) {
+  InfraDevice(ids: [$device_id]) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+### Invalid query examples (will cause excessive artifact generation)
+
+**Missing filter (queries all objects):**
+
+```graphql
+query AllDevices {
+  InfraDevice {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+**Using optional variable:**
+
+```graphql
+query DeviceConfig($device_name: String) {  # NOT required (no !)
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
+```
+
+**Using list filter instead of exact match:**
+
+```graphql
+query DeviceConfig($device_name: String!) {
+  InfraDevice(name__values: $device_name) {  # name__values instead of name__value
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
+```
+
+**Filtering on non-unique attribute:**
+
+```graphql
+query DevicesByRole($role: String!) {
+  InfraDevice(role__value: $role) {  # role is not unique
+    edges {
+      node {
+        id
+      }
+    }
+  }
+}
+```
+
+**Part of the query is not unique:**
+
+```graphql
+query DeviceConfig($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        id
+        name {
+          value
+        }
+      }
+    }
+  }
+  BuiltinTag {  # This part is not unique
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+### Ensuring your query is single-target
+
+There is currently no automated way to verify that a query is single-target. The best way to verify is to review the query and ensure it meets all the criteria outlined above.
+
+When loaded into the system, Infrahub will analyze the query and determine if it is single-target or not. If it is not single-target, Infrahub will log a warning.
+
+It's planned to add more integrated checks in the future to streamline the development process and ensure that queries are correctly structured directly during development.
+
+### When single-target queries are required
+
+Single-target queries are **required** for:
+
+- **Python transforms** - See [Creating a Python transform](../guides/python-transform.mdx)
+- **Jinja2 transforms** - See [Creating a Jinja transform](../guides/jinja2-transform.mdx)
+- **Generators** - See [Generators](./generator.mdx)
+- **Artifact definitions** - See [Artifacts](./artifact.mdx)
+- **Computed attributes** - See [Computed attributes](./computed-attributes.mdx)
+
+### When single-target queries are NOT required
+
+You do **not** need single-target queries for:
+
+- **Ad-hoc queries** via the GraphQL interface or API
+- **Reporting queries** that intentionally fetch multiple objects
+- **Dashboard queries** for UI components
+- **Bulk data exports**
+
+In these cases, you can freely query multiple objects without unique filters.
+
 ## Working with groups in GraphQL
 
 [Groups](./groups.mdx) are first-class objects in Infrahub that can be queried and manipulated through GraphQL. Groups provide powerful ways to organize and operate on collections of infrastructure objects.
