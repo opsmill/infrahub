@@ -1,17 +1,15 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from pydantic import Field
 
+from infrahub.core.constants import AccountType  # noqa: TC001
 from infrahub.utils import InfrahubStringEnum
 
 from .constants import EVENT_NAMESPACE
 from .models import InfrahubEvent
-
-if TYPE_CHECKING:
-    from infrahub.core.constants import AccountType
 
 
 class AuthMethod(InfrahubStringEnum):
