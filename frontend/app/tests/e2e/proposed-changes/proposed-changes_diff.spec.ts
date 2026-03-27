@@ -28,14 +28,14 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("check diff data", async () => {
-      await expect(page.getByText("UpdatedInfra ›InterfaceL3Ethernet1")).toBeVisible();
+      await expect(page.getByText("UpdatedInfra ›Interface L3Ethernet1")).toBeVisible();
       await expect(page.getByRole("link", { name: "Ethernet1" })).toBeVisible();
       await expect(page.getByText("UpdatedInfra ›Deviceden1-edge1")).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
       await saveScreenshotForDocs(page, "topics/proposed_change/pc_tab_data");
-      await page.getByText("UpdatedInfra ›InterfaceL3Ethernet1").click();
+      await page.getByText("UpdatedInfra ›Interface L3Ethernet1").click();
       await expect(
-        page.getByText("UpdatedInfra ›InterfaceL3Ethernet1 main den1-maintenance-")
+        page.getByText("UpdatedInfra ›Interface L3Ethernet1 main den1-maintenance-")
       ).toBeVisible();
       await page.getByLabel("diff tree").getByText("den1-edge1").click();
       await page
