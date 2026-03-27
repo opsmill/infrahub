@@ -119,6 +119,7 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'guides/generator',
+            'guides/chaining-generators',
           ],
         },
         {
