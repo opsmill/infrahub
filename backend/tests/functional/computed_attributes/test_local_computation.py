@@ -51,6 +51,7 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         assert len(self_triggers) == 1, "Expected exactly one self-targeting trigger"
 
         trigger_def = self_triggers[0]
+        assert isinstance(trigger_def.trigger.match_related, dict)
         assert trigger_def.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD], (
             f"Self-targeting trigger for {trigger_def.trigger_kind} should use placeholder fields, "
             f"got {trigger_def.trigger.match_related['infrahub.field.name']}"
@@ -71,10 +72,11 @@ class TestGatherJinja2Triggers(TestInfrahubApp):
         assert len(remote_triggers) == 1, "Expected exactly one remote trigger"
 
         trigger_def = remote_triggers[0]
+        assert isinstance(trigger_def.trigger.match_related, dict)
         fields = trigger_def.trigger.match_related["infrahub.field.name"]
         assert TRIGGER_PLACEHOLDER_FIELD not in fields, (
             f"Remote trigger for {trigger_def.trigger_kind} should NOT use placeholder fields, got {fields}"
         )
-        assert sorted(fields) == ["description", "name"], (
-            f"Remote trigger should match 'name' and 'description' fields, got {fields}"
+        assert sorted(fields) == ["color", "description", "name"], (
+            f"Remote trigger should match 'color', 'name' and 'description' fields, got {fields}"
         )
