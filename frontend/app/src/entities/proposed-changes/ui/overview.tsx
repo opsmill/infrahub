@@ -1,4 +1,3 @@
-import { formatISO } from "date-fns";
 import { type HTMLAttributes, useRef } from "react";
 import { useParams } from "react-router";
 
@@ -12,7 +11,6 @@ import {
 } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
@@ -24,13 +22,9 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
   const { proposedChangeId } = useParams();
-  const auth = useAuth();
-  const approverId = auth.user?.id;
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
-    if (!approverId) return;
-
-    const newDate = formatISO(new Date());
+    if (!comment) return;
 
     const newThread = {
       change: {
@@ -38,9 +32,6 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
       },
       label: {
         value: "Conversation",
-      },
-      created_at: {
-        value: newDate,
       },
       resolved: {
         value: false,
@@ -59,12 +50,6 @@ export const Overview = ({ className, ...props }: HTMLAttributes<HTMLDivElement>
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,
