@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, TypeVar, overload
+from typing import TYPE_CHECKING, Any, Protocol, Sequence, TypeVar, overload
 
 from infrahub_sdk.utils import is_valid_uuid
 from infrahub_sdk.uuidt import UUIDT
@@ -54,11 +54,15 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.creation_context import NodeCreationContext
     from infrahub.core.schema.schema_branch import SchemaBranch
-    from infrahub.core.schema.schema_branch_display import TemplateLabel
-    from infrahub.core.schema.schema_branch_hfid import HFIDDefinition
     from infrahub.database import InfrahubDatabase
 
 SchemaProtocol = TypeVar("SchemaProtocol")
+
+
+class HasRelationshipFields(Protocol):
+    @property
+    def relationship_fields(self) -> dict[str, set[str]]: ...
+
 
 # ---------------------------------------------------------------------------------------
 # Type of Nodes
@@ -809,7 +813,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     @staticmethod
     def _merge_relationship_fields(
-        definitions: list[HFIDDefinition | TemplateLabel],
+        definitions: Sequence[HasRelationshipFields],
     ) -> dict[str, set[str]]:
         """Merge ``relationship_fields`` from the given definitions into a single mapping."""
         extra_filters: dict[str, set[str]] = {}
@@ -820,7 +824,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     def _collect_extra_filters(self, schema_branch: SchemaBranch) -> dict[str, set[str]]:
         """Collect peer attributes that must be loaded during relationship resolution."""
-        definitions: list[HFIDDefinition | TemplateLabel] = []
+        definitions: list[HasRelationshipFields] = []
 
         # If we are creating a new node, we need to resolve extra filters from Display Labels or HFIDs, if we don't do
         # this the fields might be blank.
@@ -831,6 +835,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if (not self._existing) or self._display_label:
             if display_labels := schema_branch.display_labels.get_template_nodes().get(self._schema.kind):
                 definitions.append(display_labels)
+
+        # For existing nodes (updates), also include peer attributes needed by Jinja2 computed attribute templates
+        if self._existing:
+            if computed := schema_branch.computed_attributes.get_registered_jinja2_node(self._schema.kind):
+                definitions.append(computed)
 
         return self._merge_relationship_fields(definitions)
 
