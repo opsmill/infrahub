@@ -206,6 +206,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/generator',
+                'topics/modular-generators',
               ],
             },
             {
