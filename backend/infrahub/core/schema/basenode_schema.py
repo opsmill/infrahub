@@ -697,8 +697,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return False
 
     def check_if_attr_supports_profiles(self, attribute_schema: AttributeSchema) -> bool:
-        return attribute_schema.support_profiles and not (
-            attribute_schema.optional and self.check_attr_in_uniqueness_constraint(attr=attribute_schema.name)
+        return attribute_schema.support_profiles and not self.check_attr_in_uniqueness_constraint(
+            attr=attribute_schema.name
+        )
+
+    def check_if_attr_supports_templates(self, attribute_schema: AttributeSchema) -> bool:
+        return attribute_schema.support_templates and not self.check_attr_in_uniqueness_constraint(
+            attr=attribute_schema.name
         )
 
 

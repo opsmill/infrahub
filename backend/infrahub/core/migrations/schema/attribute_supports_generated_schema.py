@@ -141,12 +141,18 @@ class AttributeSupportsGeneratedSchemaMigration(AttributeSchemaMigration):
                 all_queries.append(ProfilesAttributeRemoveMigrationQuery)
 
         # Check template support changes
+        prev_schema_supports_template = self.previous_schema.check_if_attr_supports_templates(
+            attribute_schema=self.previous_attribute_schema
+        )
+        new_schema_supports_template = self.new_schema.check_if_attr_supports_templates(
+            attribute_schema=self.new_attribute_schema
+        )
         if (
             isinstance(self.new_schema, NodeSchema)
             and self.new_schema.generate_template
-            and self.previous_attribute_schema.support_templates != self.new_attribute_schema.support_templates
+            and prev_schema_supports_template != new_schema_supports_template
         ):
-            if self.new_attribute_schema.support_templates:
+            if new_schema_supports_template:
                 all_queries.append(TemplatesAttributeAddMigrationQuery)
             else:
                 all_queries.append(TemplatesAttributeRemoveMigrationQuery)

@@ -12,6 +12,8 @@ from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult, 
 from .attribute_supports_generated_schema import (
     ProfilesAttributeAddMigrationQuery,
     ProfilesAttributeRemoveMigrationQuery,
+    TemplatesAttributeAddMigrationQuery,
+    TemplatesAttributeRemoveMigrationQuery,
 )
 
 if TYPE_CHECKING:
@@ -32,14 +34,34 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
 
         if not isinstance(self.new_schema, (NodeSchema, GenericSchema)):
             return result
-        if not self.new_schema.generate_profile:
-            return result
 
         for attr in self.new_schema.attributes:
             previous_supports_profiles = self.previous_schema.check_if_attr_supports_profiles(attribute_schema=attr)
             new_supports_profiles = self.new_schema.check_if_attr_supports_profiles(attribute_schema=attr)
+            previous_supports_templates = self.previous_schema.check_if_attr_supports_templates(attribute_schema=attr)
+            new_supports_templates = self.new_schema.check_if_attr_supports_templates(attribute_schema=attr)
 
-            if previous_supports_profiles == new_supports_profiles:
+            queries_to_run: list[type[MigrationBaseQuery]] = []
+
+            if self.new_schema.generate_profile and previous_supports_profiles != new_supports_profiles:
+                queries_to_run.append(
+                    ProfilesAttributeRemoveMigrationQuery
+                    if not new_supports_profiles
+                    else ProfilesAttributeAddMigrationQuery
+                )
+
+            if (
+                isinstance(self.new_schema, NodeSchema)
+                and self.new_schema.generate_template
+                and previous_supports_templates != new_supports_templates
+            ):
+                queries_to_run.append(
+                    TemplatesAttributeRemoveMigrationQuery
+                    if not new_supports_templates
+                    else TemplatesAttributeAddMigrationQuery
+                )
+
+            if not queries_to_run:
                 continue
 
             attr_migration = AttributeSchemaMigration(
@@ -54,16 +76,15 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
                 ),
             )
 
-            query_class = (
-                ProfilesAttributeRemoveMigrationQuery
-                if not new_supports_profiles
-                else ProfilesAttributeAddMigrationQuery
-            )
-            attr_result = await attr_migration.execute(
-                migration_input=migration_input, branch=branch, queries=[query_class]
-            )
-            result.errors.extend(attr_result.errors)
-            result.nbr_migrations_executed += attr_result.nbr_migrations_executed
+            for query_class in queries_to_run:
+                attr_result = await attr_migration.execute(
+                    migration_input=migration_input, branch=branch, queries=[query_class]
+                )
+                result.errors.extend(attr_result.errors)
+                result.nbr_migrations_executed += attr_result.nbr_migrations_executed
+                if result.errors:
+                    break
+
             if result.errors:
                 break
 

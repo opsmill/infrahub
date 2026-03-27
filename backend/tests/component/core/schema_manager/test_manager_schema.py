@@ -4530,6 +4530,8 @@ async def test_manage_object_templates_with_component_relationships() -> None:
     assert test_interface_template.uniqueness_constraints == [["template_name__value", "device"]]
     test_interface = schema_branch.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False)
     for attr in test_interface.attributes:
+        if not test_interface.check_if_attr_supports_templates(attribute_schema=attr):
+            continue
         template_attr = test_interface_template.get_attribute(name=attr.name)
         # Optional value in component template should match original's
         assert attr.optional == template_attr.optional
@@ -4540,6 +4542,8 @@ async def test_manage_object_templates_with_component_relationships() -> None:
     test_interface = schema_branch.get(name=TestKind.INTERFACE, duplicate=False)
     assert test_interface.is_generic_schema
     for attr in test_interface.attributes:
+        if not test_interface.check_if_attr_supports_templates(attribute_schema=attr):
+            continue
         template_attr = test_interface_template.get_attribute(name=attr.name)
         assert attr.optional == template_attr.optional
     for rel in test_interface.relationships:
