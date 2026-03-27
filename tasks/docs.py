@@ -2,15 +2,15 @@ import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
-from invoke import Context, task
-from pydantic_settings import EnvSettingsSource
+from invoke import Context, task  # type: ignore[reportMissingImports]
+from pydantic_settings import EnvSettingsSource  # type: ignore[reportMissingImports]
 
 from .utils import ESCAPED_REPO_PATH, check_if_command_available
 
 if TYPE_CHECKING:
-    from pydantic import BaseModel
+    from pydantic import BaseModel  # type: ignore[reportMissingImports]
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 DOCUMENTATION_DIRECTORY = CURRENT_DIRECTORY.parent / "docs"
@@ -43,6 +43,7 @@ def generate_schema(context: Context) -> None:  # noqa: ARG001
 
 @task
 def generate_config(context: Context) -> None:  # noqa: ARG001
+    """Generate documentation for Infrahub configuration settings."""
     _generate_infrahub_config_documentation()
 
 
@@ -158,13 +159,13 @@ def format_markdownlint(context: Context) -> None:
 
 @task
 def format(context: Context) -> None:
-    """This will run all formatter."""
+    """Format all documentation markdown files."""
     format_markdownlint(context)
 
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linter."""
+    """Run all documentation linters (markdownlint, vale)."""
     markdownlint(context)
     vale(context)
 
@@ -198,9 +199,11 @@ def _generate(context: Context) -> None:
 
 def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
     """Generate documentation for any attributes that have parameters defined to be defined by users."""
-    import jinja2
+    import jinja2  # type: ignore[reportMissingImports]
 
-    from infrahub.core.schema.attribute_schema import attribute_schema_class_by_kind
+    from infrahub.core.schema.attribute_schema import (
+        attribute_schema_class_by_kind,  # type: ignore[reportMissingImports]
+    )
 
     kind_ap_parameters: dict[str, dict] = {}
     for kind, schema_cls in attribute_schema_class_by_kind.items():
@@ -236,9 +239,9 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
 def _generate_infrahub_schema_documentation() -> None:
     """Generate documentation for the schema"""
-    import jinja2
+    import jinja2  # type: ignore[reportMissingImports]
 
-    from infrahub.core.schema import internal, internal_schema
+    from infrahub.core.schema import internal, internal_schema  # type: ignore[reportMissingImports]
 
     schemas_to_generate = {
         "node": internal_schema,
@@ -267,10 +270,10 @@ def _generate_infrahub_schema_documentation() -> None:
 
 
 def _extract_nested_parameters(
-    prop_schema: dict,
+    prop_schema: dict[str, Any],
     model_fields: dict,
     env_source: EnvSettingsSource,
-    defs: dict[str, object],
+    defs: dict[str, Any],
     parent_default: dict | None = None,
     env_prefix: str | None = None,
 ) -> list["ConfigurationSectionParameter"]:
@@ -288,14 +291,14 @@ def _extract_nested_parameters(
     Returns:
         List of ConfigurationSectionParameter objects for nested fields.
     """
-    from infrahub import config
+    from infrahub import config  # type: ignore[reportMissingImports]
 
     nested_params: list[ConfigurationSectionParameter] = []
 
     # Resolve $ref at the top level if present
     if "$ref" in prop_schema:
         ref_name = prop_schema["$ref"].split("/")[-1]
-        prop_schema = defs[ref_name]
+        prop_schema = dict(defs[ref_name])  # type: ignore[arg-type]
 
     for nested_name, orig_nested_schema in prop_schema.get("properties", {}).items():
         nested_schema = orig_nested_schema
@@ -318,7 +321,7 @@ def _extract_nested_parameters(
         nested_type = nested_schema.get("type")
         if "$ref" in nested_schema:
             ref_name = nested_schema["$ref"].split("/")[-1]
-            nested_schema = defs[ref_name]
+            nested_schema = cast("dict", defs[ref_name])
             nested_type = nested_schema.get("type")
 
         # If the nested type is object, flatten by recursing into _process_section_parameters
@@ -351,7 +354,7 @@ def _extract_nested_parameters(
 
         param = ConfigurationSectionParameter(
             name=nested_schema.get("title", nested_name).lower(),
-            description=nested_schema.get("description"),
+            description=nested_schema.get("description", ""),
             default=default_value,
             type=nested_type,
             env=env,
@@ -440,10 +443,10 @@ def _generate_infrahub_config_documentation() -> None:
     This function introspects the config.Settings model, extracts all configuration
     sections and their parameters, and renders documentation using a Jinja2 template.
     """
-    import jinja2
-    from pydantic_settings import EnvSettingsSource
+    import jinja2  # type: ignore[reportMissingImports]
+    from pydantic_settings import EnvSettingsSource  # type: ignore[reportMissingImports]
 
-    from infrahub import config
+    from infrahub import config  # type: ignore[reportMissingImports]
 
     sections: list[ConfigurationSection] = []
     schema = config.Settings.model_json_schema()
@@ -496,7 +499,7 @@ def _generate_infrahub_config_documentation() -> None:
     print(f"Docs saved to: {output_label}")
 
 
-def _get_env_vars() -> dict[str, str]:
+def _get_env_vars() -> dict[str, list[str]]:
     from infrahub_sdk.config import ConfigBase
 
     env_vars: dict[str, list[str]] = defaultdict(list[str])
@@ -512,8 +515,8 @@ def _get_env_vars() -> dict[str, str]:
 
 def _generate_infrahub_sdk_configuration_documentation() -> None:
     """Generate documentation for the Infrahub SDK configuration"""
-    import jinja2
-    from infrahub_sdk.config import ConfigBase
+    import jinja2  # type: ignore[reportMissingImports]
+    from infrahub_sdk.config import ConfigBase  # type: ignore[reportMissingImports]
 
     schema = ConfigBase.model_json_schema()
     env_vars = _get_env_vars()
@@ -564,8 +567,8 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
     """Generate documentation for the Infrahub repository configuration file"""
     from copy import deepcopy
 
-    import jinja2
-    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
+    import jinja2  # type: ignore[reportMissingImports]
+    from infrahub_sdk.schema.repository import InfrahubRepositoryConfig  # type: ignore[reportMissingImports]
 
     schema = InfrahubRepositoryConfig.model_json_schema()
 
@@ -616,12 +619,12 @@ def _generate_infrahub_bus_events_documentation() -> None:
     Generate documentation for all classes in the event system into a single file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
-    from infrahub.message_bus import InfrahubMessage, InfrahubResponse
+    from infrahub.message_bus import InfrahubMessage, InfrahubResponse  # type: ignore[reportMissingImports]
 
     def group_classes_by_category(
         classes: dict[str, type[InfrahubMessage | InfrahubResponse]],
         priority_map: dict[str, int] | None = None,
-    ) -> dict[str, dict[str, list[dict[str, any]]]]:
+    ) -> dict[str, dict[str, list[dict[str, Any]]]]:
         """
         Group classes into a nested dictionary by primary and secondary categories, including priority.
         """
@@ -675,7 +678,7 @@ def _generate_infrahub_bus_events_documentation() -> None:
                 "fields": fields,
             }
             grouped[primary][secondary].append(event_info)
-        return grouped
+        return {k: dict(v) for k, v in grouped.items()}
 
     template_file = DOCUMENTATION_DIRECTORY / "_templates" / "message-bus-events.j2"
     output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "message-bus-events.mdx"
@@ -686,9 +689,13 @@ def _generate_infrahub_bus_events_documentation() -> None:
         print(f"Unable to find the template file at {template_file}")
         sys.exit(-1)
 
-    import jinja2
+    import jinja2  # type: ignore[reportMissingImports]
 
-    from infrahub.message_bus.messages import MESSAGE_MAP, PRIORITY_MAP, RESPONSE_MAP
+    from infrahub.message_bus.messages import (  # type: ignore[reportMissingImports]
+        MESSAGE_MAP,
+        PRIORITY_MAP,
+        RESPONSE_MAP,
+    )
 
     template_text = template_file.read_text(encoding="utf-8")
     environment = jinja2.Environment()

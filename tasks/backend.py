@@ -1,8 +1,12 @@
-from pathlib import Path
-from typing import Any
+from __future__ import annotations
 
-from invoke import Context, task
-from invoke.runners import Result
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
+from invoke import Context, task  # type: ignore[import-not-found]
+
+if TYPE_CHECKING:
+    from invoke.runners import Result
 
 from .shared import (
     INFRAHUB_DATABASE,
@@ -33,7 +37,7 @@ def _format_ruff(context: Context) -> None:
 
 @task(name="format")
 def format_all(context: Context) -> None:
-    """This will run all formatter."""
+    """Format all backend Python files with ruff."""
 
     _format_ruff(context)
 
@@ -45,7 +49,7 @@ def format_all(context: Context) -> None:
 # ----------------------------------------------------------------------------
 @task
 def ruff(context: Context) -> None:
-    """Run ruff to check that Python files adherence to ruff standards."""
+    """Run ruff linter against backend Python files."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY}"
@@ -71,7 +75,7 @@ def ty(context: Context) -> None:
 
 @task
 def mypy(context: Context) -> None:
-    """This will run mypy for the specified name and Python version."""
+    """Run mypy type checking against backend Python files."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"uv run mypy --show-error-codes {MAIN_DIRECTORY}"
@@ -82,7 +86,7 @@ def mypy(context: Context) -> None:
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linters."""
+    """Run all backend linters (ruff, ty, mypy)."""
     ruff(context)
     ty(context)
     mypy(context)
@@ -92,6 +96,7 @@ def lint(context: Context) -> None:
 
 @task(optional=["database"])
 def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend component tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
@@ -102,6 +107,7 @@ def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Resul
 
 @task
 def test_unit(context: Context) -> Result | None:
+    """Run backend unit tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
@@ -110,6 +116,7 @@ def test_unit(context: Context) -> Result | None:
 
 @task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend core component tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component/core"
         if database == "neo4j":
@@ -120,6 +127,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend integration tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
@@ -130,6 +138,7 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Res
 
 @task(optional=["database"])
 def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend functional tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
         if database == "neo4j":
@@ -141,7 +150,7 @@ def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Resu
 @task(optional=["schema", "stager", "amount", "test", "attrs", "rels", "changes"])
 def test_scale(
     context: Context,
-    schema: Path = f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml",
+    schema: Path = Path(f"{ESCAPED_REPO_PATH}/backend/tests/scale/schema.yml"),
     stager: str | None = None,
     amount: int | None = None,
     test: str | None = None,
@@ -149,6 +158,7 @@ def test_scale(
     rels: int | None = None,
     changes: int | None = None,
 ) -> Result | None:
+    """Run backend scale/performance tests."""
     args = []
     if stager:
         args.extend(["--stager", stager])
@@ -180,6 +190,7 @@ def test_scale(
 
 @task(default=True)
 def format_and_lint(context: Context) -> None:
+    """Format and lint all backend Python files."""
     format_all(context)
     lint(context)
 
@@ -198,7 +209,7 @@ def generate(context: Context) -> None:
 
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
-    """Validate that the generated documentation is committed to Git."""
+    """Validate that generated schemas and protocols are committed to Git."""
 
     _generate_schemas(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"
@@ -212,9 +223,9 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
 
 
 def _generate_schemas(context: Context) -> None:
-    from jinja2 import Environment, FileSystemLoader, StrictUndefined
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined  # type: ignore[reportMissingImports]
 
-    from infrahub.core.schema.definitions.internal import (
+    from infrahub.core.schema.definitions.internal import (  # type: ignore[reportMissingImports]
         attribute_schema,
         base_node_schema,
         generic_schema,
@@ -265,7 +276,7 @@ def _jinja2_filter_inheritance(value: dict[str, Any], sync: bool = False) -> str
 
 
 def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive: bool = False) -> str:
-    from infrahub.types import ATTRIBUTE_TYPES
+    from infrahub.types import ATTRIBUTE_TYPES  # pyright: ignore[reportMissingImports]
 
     attr_name: str = value["name"]
     attr_kind: str = value["kind"]
@@ -275,15 +286,15 @@ def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive:
         return f"{attr_name}: Enum"
 
     if use_python_primitive:
-        value = PYTHON_PRIMITIVE_MAP[attr_kind.lower()]
+        type_name = PYTHON_PRIMITIVE_MAP[attr_kind.lower()]
         if optional:
-            value = f"Optional[{value}]"
-        return f"{attr_name}: {value}"
+            type_name = f"Optional[{type_name}]"
+        return f"{attr_name}: {type_name}"
 
-    value = ATTRIBUTE_TYPES[attr_kind].infrahub
+    type_name = ATTRIBUTE_TYPES[attr_kind].infrahub
     if optional:
-        value = f"{value}Optional"
-    return f"{attr_name}: {value}"
+        type_name = f"{type_name}Optional"
+    return f"{attr_name}: {type_name}"
 
 
 def _sort_and_filter_models(
@@ -305,9 +316,9 @@ def _sort_and_filter_models(
 def _generate_protocols(context: Context) -> None:
     import sys
 
-    from jinja2 import Environment, FileSystemLoader, StrictUndefined
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined  # type: ignore[reportMissingImports]
 
-    from infrahub.core.schema.definitions.core import core_models
+    from infrahub.core.schema.definitions.core import core_models  # type: ignore[reportMissingImports]
 
     # We need to insert this folder in the search order to ensure
     # that it appears before the python_sdk folder since that folder also has

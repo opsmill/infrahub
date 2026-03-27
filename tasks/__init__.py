@@ -1,9 +1,14 @@
 """Replacement for Makefile."""
 
 from invoke import Collection, Context, task
+from rich import box
+from rich.console import Console
+from rich.table import Table
 
 from . import backend, bundle, demo, dev, docs, main, performance, release, schema, sdk
 from .utils import ESCAPED_REPO_PATH
+
+console = Console()
 
 ns = Collection()
 ns.add_collection(sdk)
@@ -18,9 +23,49 @@ ns.add_collection(schema)
 ns.add_collection(release)
 
 
+def _collect_tasks(collection: Collection, prefix: str = "") -> list[tuple[str, str]]:
+    """Recursively collect all tasks from a collection and its sub-collections."""
+    tasks_info: list[tuple[str, str]] = []
+
+    for task_name in sorted(collection.tasks):
+        qualified_name = f"{prefix}.{task_name}" if prefix else task_name
+        task_obj = collection.tasks[task_name]
+        doc = task_obj.__doc__.strip().split("\n")[0] if task_obj.__doc__ else "No description"
+        tasks_info.append((qualified_name, doc))
+
+    for sub_name in sorted(collection.collections):
+        sub_collection = collection.collections[sub_name]
+        sub_prefix = f"{prefix}.{sub_name}" if prefix else sub_name
+        tasks_info.extend(_collect_tasks(sub_collection, sub_prefix))
+
+    return tasks_info
+
+
+@task(name="list")
+def list_tasks(_context: Context) -> None:
+    """List all available invoke tasks with descriptions."""
+    tasks_info = _collect_tasks(ns)
+
+    table = Table(
+        title="Available Invoke Tasks",
+        box=box.SIMPLE,
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("Task", style="green", no_wrap=True)
+    table.add_column("Description", style="white")
+
+    for name, desc in tasks_info:
+        table.add_row(name, desc)
+
+    console.print()
+    console.print(table)
+    console.print()
+
+
 @task
 def yamllint(context: Context) -> None:
-    """This will run yamllint to validate formatting of all yaml files."""
+    """Validate formatting of all YAML files with yamllint."""
 
     exec_cmd = "yamllint -s ."
     context.run(exec_cmd, pty=True)
@@ -28,12 +73,14 @@ def yamllint(context: Context) -> None:
 
 @task(name="format")
 def format_all(context: Context) -> None:
+    """Run all formatters for main and backend code."""
     main.format_all(context)
     backend.format_all(context)
 
 
 @task(name="lint")
 def lint_all(context: Context) -> None:
+    """Run all linters for YAML, main, and backend code."""
     yamllint(context)
     main.lint(context)
     backend.lint(context)
@@ -48,6 +95,7 @@ def pull(context: Context) -> None:
             context.run(command, pty=True)
 
 
+ns.add_task(list_tasks)
 ns.add_task(format_all)
 ns.add_task(lint_all)
 ns.add_task(yamllint)

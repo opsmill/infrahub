@@ -104,7 +104,7 @@ def infra_git_create(
     name: str = "demo-edge",
     location: str = "/remote/infrahub-demo-edge",
 ) -> None:
-    """Load some demo data."""
+    """Register a Git repository with Infrahub via docker compose."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
         compose_cmd = get_compose_cmd(namespace=NAMESPACE)
@@ -117,7 +117,7 @@ def infra_git_create(
 
 @task(optional=["database"])
 def infra_git_import(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Load some demo data."""
+    """Initialize a demo Git repository inside the worker container."""
     REPO_NAME = "infrahub-demo-edge"
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database, namespace=NAMESPACE)
@@ -273,6 +273,7 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
 
 @task
 def test_branch_graph_version(context: Context, branch: str) -> None:  # noqa: ARG001
+    """Verify a branch has been rebased and upgraded with a valid graph version."""
     from infrahub_sdk import InfrahubClientSync
 
     client = InfrahubClientSync()

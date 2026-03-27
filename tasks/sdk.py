@@ -1,5 +1,12 @@
-from invoke import Context, task
-from invoke.runners import Result
+from __future__ import annotations
+
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+from invoke import Context, task  # type: ignore[reportMissingImports]
+
+if TYPE_CHECKING:
+    from invoke.runners import Result
 
 from .shared import (
     INFRAHUB_DATABASE,
@@ -7,7 +14,7 @@ from .shared import (
 )
 from .utils import ESCAPED_REPO_PATH, REPO_BASE
 
-MAIN_DIRECTORY = "python_sdk"
+MAIN_DIRECTORY = Path("python_sdk")
 NAMESPACE = "SDK"
 MAIN_DIRECTORY_PATH = REPO_BASE / MAIN_DIRECTORY
 
@@ -29,7 +36,7 @@ def _format_ruff(context: Context) -> None:
 
 @task(name="format")
 def format_all(context: Context) -> None:
-    """This will run all formatter."""
+    """Format all Python SDK files with ruff."""
 
     _format_ruff(context)
 
@@ -41,7 +48,7 @@ def format_all(context: Context) -> None:
 # ----------------------------------------------------------------------------
 @task
 def ruff(context: Context) -> None:
-    """Run ruff to check that Python files adherence to black standards."""
+    """Run ruff linter against Python SDK files."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_directory = MAIN_DIRECTORY_PATH
@@ -53,7 +60,7 @@ def ruff(context: Context) -> None:
 
 @task
 def mypy(context: Context) -> None:
-    """This will run mypy for the specified name and Python version."""
+    """Run mypy type checking against the Python SDK."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = "mypy --show-error-codes infrahub_sdk/"
@@ -65,7 +72,7 @@ def mypy(context: Context) -> None:
 
 @task
 def lint(context: Context) -> Result | None:
-    """This will run all linter."""
+    """Run all linters (ruff, mypy) against the Python SDK."""
     ruff(context)
     mypy(context)
 
@@ -90,5 +97,6 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Res
 
 @task(default=True)
 def format_and_lint(context: Context) -> None:
+    """Format and lint all Python SDK files."""
     format_all(context)
     lint(context)
