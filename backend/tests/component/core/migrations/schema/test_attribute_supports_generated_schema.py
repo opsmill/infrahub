@@ -4,7 +4,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipKind, SchemaPathType
 from infrahub.core.migrations.schema.attribute_supports_generated_schema import (
     AttributeSupportsGeneratedSchemaMigration,
 )
@@ -12,7 +12,10 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.definitions.core.template import core_object_template
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
+from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -280,6 +283,137 @@ async def test_migration_disable_support(
         attr_name="nbr_seats",
         branch_name=default_branch.name,
         expected_status="deleted",
+    )
+
+
+def _device_part_schema_root(part_serial_read_only: bool = False) -> SchemaRoot:
+    """Schema with Device (generate_template=True) having a Component relationship to Part.
+
+    Part has generate_template=False but gets a sub-template (TemplateTestPart)
+    because it is a component of Device.
+    """
+    return SchemaRoot(
+        generics=[core_object_template, core_object_component_template],
+        nodes=[
+            NodeSchema(
+                name="Device",
+                namespace="Test",
+                default_filter="name__value",
+                display_labels=["name__value"],
+                branch=BranchSupportType.AWARE,
+                generate_template=True,
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="description", kind="Text", optional=True),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="parts",
+                        peer="TestPart",
+                        kind=RelationshipKind.COMPONENT,
+                        optional=True,
+                        cardinality=RelationshipCardinality.MANY,
+                        identifier="device__parts",
+                    ),
+                ],
+            ),
+            NodeSchema(
+                name="Part",
+                namespace="Test",
+                default_filter="name__value",
+                display_labels=["name__value"],
+                branch=BranchSupportType.AWARE,
+                # generate_template=False (default) — sub-template via Component relationship
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="serial_number", kind="Text", optional=True, read_only=part_serial_read_only),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="device",
+                        peer="TestDevice",
+                        kind=RelationshipKind.PARENT,
+                        optional=False,
+                        cardinality=RelationshipCardinality.ONE,
+                        identifier="device__parts",
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+async def device_part_schema_subtemplate_read_only_serial(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> SchemaBranch:
+    """Device/Part schema where Part.serial_number is read_only (no template support).
+
+    TemplateTestPart nodes exist as sub-templates but won't have serial_number.
+    """
+    return registry.schema.register_schema(
+        schema=_device_part_schema_root(part_serial_read_only=True),
+        branch=default_branch.name,
+    )
+
+
+async def test_migration_enable_support_on_subtemplate(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_part_schema_subtemplate_read_only_serial: SchemaBranch,
+) -> None:
+    """Test that enabling template support adds attributes to sub-template nodes.
+
+    Sub-templates are templates for schemas where generate_template=False, but
+    template nodes exist because the schema is a Component of a schema with
+    generate_template=True.
+
+    This is a regression test: the migration checks new_schema.generate_template
+    which is False for sub-templates, causing the migration to be silently skipped.
+    """
+    # Create a device template (required as parent for the part sub-template)
+    template_device = await Node.init(db=db, schema="TemplateTestDevice", branch=default_branch)
+    await template_device.new(db=db, template_name="Template Device 1")
+    await template_device.save(db=db)
+
+    # Create sub-template node — serial_number is read_only so won't be on the template
+    template_part = await Node.init(db=db, schema="TemplateTestPart", branch=default_branch)
+    await template_part.new(db=db, template_name="Template Part Sub", device=template_device)
+    await template_part.save(db=db)
+
+    # Verify serial_number is NOT on the template node
+    with pytest.raises(ValueError):
+        template_part.get_attribute(name="serial_number")
+
+    # Set up migration: read_only=True -> read_only=False on TestPart.serial_number
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    prev_part_schema = schema.get(name="TestPart")
+    prev_attr = prev_part_schema.get_attribute(name="serial_number")
+    prev_attr.id = str(uuid.uuid4())
+
+    candidate_schema = schema.duplicate()
+    new_part_schema = candidate_schema.get(name="TestPart")
+    new_attr = new_part_schema.get_attribute(name="serial_number")
+    new_attr.id = prev_attr.id
+    new_attr.read_only = False
+    candidate_schema.set(name="TestPart", schema=new_part_schema)
+
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=prev_part_schema,
+        new_node_schema=new_part_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPart", field_name="serial_number"),
+    )
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    # Verify the serial_number attribute was added to the sub-template node
+    await assert_attribute_path_status(
+        db=db,
+        node_label="TemplateTestPart",
+        attr_name="serial_number",
+        branch_name=default_branch.name,
+        expected_status="active",
     )
 
 
