@@ -95,3 +95,9 @@ Key methods:
 | `computed_attribute/models.py` | `ComputedAttrJinja2TriggerDefinition`, `targets_self` property |
 | `computed_attribute/tasks.py` | Prefect task definitions for async recomputation |
 | `computed_attribute/gather.py` | Gathers computed attribute triggers from schema |
+
+## See Also
+
+- [Testing](testing.md) — integration_docker test patterns for computed attributes
+- [Mutations](mutations.md) — where `_recompute_local_jinja2()` fits in the update flow
+- [Display Labels & HFID](display-labels-and-hfid.md) — parallel `_collect_extra_filters()` pattern
