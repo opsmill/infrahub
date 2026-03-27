@@ -102,4 +102,4 @@ async def test_gather_trigger_gather_trigger_display_labels_jinja2_custom_schema
     assert test_car_trigger.trigger.match == {"infrahub.node.kind": "TestCar"}
     assert isinstance(test_car_trigger.trigger.match_related, dict)
     assert "infrahub.field.name" in test_car_trigger.trigger.match_related
-    assert sorted(test_car_trigger.trigger.match_related["infrahub.field.name"]) == [TRIGGER_PLACEHOLDER_FIELD]
+    assert test_car_trigger.trigger.match_related["infrahub.field.name"] == [TRIGGER_PLACEHOLDER_FIELD]
