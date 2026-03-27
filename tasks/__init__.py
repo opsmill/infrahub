@@ -39,28 +39,14 @@ def _collect_tasks(collection: Collection, prefix: str = "") -> list[tuple[str, 
 @task(name="list")
 def list_tasks(_context: Context) -> None:
     """List all available invoke tasks with descriptions."""
-    from rich import box
-    from rich.console import Console
-    from rich.table import Table
-
-    console = Console()
     tasks_info = _collect_tasks(ns)
+    name_width = max(len(name) for name, _ in tasks_info)
 
-    table = Table(
-        title="Available Invoke Tasks",
-        box=box.SIMPLE,
-        show_header=True,
-        header_style="bold cyan",
-    )
-    table.add_column("Task", style="green", no_wrap=True)
-    table.add_column("Description", style="white")
-
+    print(f"\n  {'Task':<{name_width}}   Description")
+    print(f"  {'-' * name_width}   {'-' * 50}")
     for name, desc in tasks_info:
-        table.add_row(name, desc)
-
-    console.print()
-    console.print(table)
-    console.print()
+        print(f"  {name:<{name_width}}   {desc}")
+    print()
 
 
 @task
