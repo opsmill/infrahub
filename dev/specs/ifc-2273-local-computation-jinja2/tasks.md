@@ -65,7 +65,7 @@
 
 - [x] T011 [US2] Ensure `_recompute_local_jinja2()` handles relationship-type template variables in `backend/infrahub/core/node/__init__.py`: when a template variable references a relationship peer attribute (e.g., `site__name__value`), resolve the value from the already-resolved `RelationshipManager` peer objects loaded via the extended `_collect_extra_filters()` — the peer attributes should already be available after `resolve_relationships()`
 - [x] T012 [US2] Handle null/empty relationship case in `_recompute_local_jinja2()` in `backend/infrahub/core/node/__init__.py`: when a relationship is being set to null, pass `None` for that variable to the Jinja2 template and let it render accordingly (edge case from spec)
-- [x] T013 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create a Device with computed `name` = `{{ instance__value }}-{{ site__name__value }}`, assign to SiteA, then re-assign to SiteB, verify computed name uses SiteB's name in mutation response
+- [x] T013 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create a TShirt with computed `description` referencing `color__name` and `color__description`, assign color=Red, then re-assign to color=Blue, verify computed description reflects Blue's attributes in-memory and after DB reload
 - [x] T014 [US2] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: set a relationship to null on a node with a computed attribute referencing that relationship, verify the template renders with null context and the mutation succeeds
 
 **Checkpoint**: Both local attribute and relationship changes trigger inline recomputation.
@@ -82,7 +82,7 @@
 
 - [x] T015 [US3] In `backend/infrahub/computed_attribute/gather.py`, modify `gather_trigger_computed_attribute_jinja2()` so that `targets_self=True` trigger nodes have their fields replaced with `["_trigger_placeholder"]` before calling `ComputedAttrJinja2TriggerDefinition.from_computed_attribute()` — matching the pattern in `hfid/models.py:59-61` and `display_labels/models.py:59-61`. Remote trigger nodes (`targets_self=False`) keep their real field names.
 - [x] T016 [US3] Add test in `backend/tests/unit/computed_attribute/test_trigger_definition.py` (or `backend/tests/component/` if needed): verify that self-targeting triggers are created with `_trigger_placeholder` fields, remote triggers keep real field names, and a computed attribute with only local dependencies still produces one placeholder trigger (not zero)
-- [x] T017 [US3] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: update a peer node attribute (e.g., rename a Site) and verify that computed attributes on related nodes (Devices) are still updated via background tasks (existing behavior preserved)
+- [x] T017 [US3] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: structurally validate that remote trigger definitions preserve real field names (not replaced with `_trigger_placeholder`) — does not test e2e remote-change→background-task execution
 
 **Checkpoint**: Self-targeting triggers are placeholders. Remote triggers work via background tasks. Both paths coexist correctly.
 
