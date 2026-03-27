@@ -36,9 +36,9 @@ A security auditor or administrator needs to review who logged in and out of Inf
 ### Functional Requirements
 
 - **FR-001**: System MUST emit a login event for every successful interactive authentication via password, OAuth2, or OIDC.
-- **FR-002**: Successful login events MUST include: account identifier, authentication method (password/OAuth2/OIDC), session identifier, and timestamp.
+- **FR-002**: Successful login events MUST include: account_name, account_type, auth_method, session_id, groups, roles, sso_provider, client_ip, user_agent and timestamp.
 - **FR-003**: System MUST emit a logout event when a user explicitly initiates a logout.
-- **FR-004**: Logout events MUST include: account identifier, session identifier, logout type, and timestamp.
+- **FR-004**: Logout events MUST include: account_name, session_id, logout_type, client_ip, user_agent and timestamp.
 - **FR-005**: Authentication events (`infrahub.account.*`) MUST be queryable via the existing activity event interface, filterable by account identifier, event type, and time range — and accessible only to users with admin role.
 - **FR-006**: API key authentication (per-request, non-interactive) MUST NOT generate login or logout events.
 - **FR-007**: Automatic session expiry (session times out without explicit user action) MUST NOT generate a logout event.
@@ -54,7 +54,7 @@ A security auditor or administrator needs to review who logged in and out of Inf
 ### Measurable Outcomes
 
 - **SC-001**: Login and logout events appear in the activity event feed within 5 seconds of the authentication action under normal load.
-- **SC-002**: Administrators can retrieve all authentication events for a specific user within the platform's standard event retention window without missing entries.
+- **SC-002**: Administrators (accounts that have the `MANAGE_ACCOUNTS` permission) can retrieve all authentication events for a specific user within the platform's standard event retention window without missing entries.
 - **SC-003**: Authentication events (`infrahub.account.*`) are accessible only to users with admin role via the activity event interface — non-admin users cannot query these events.
 - **SC-004**: Zero successful authentication events are silently dropped under normal operating conditions.
 
