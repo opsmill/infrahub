@@ -7,7 +7,8 @@ from unittest.mock import MagicMock
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod, LogoutType
+from infrahub.core.constants import AccountType
+from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod
 from infrahub.events.models import EventMeta
 
 
@@ -32,7 +33,7 @@ def test_account_logged_in_get_resource() -> None:
         meta=meta,
         account_id="acct-123",
         account_name="testuser",
-        account_type="User",
+        account_type=AccountType.USER,
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
         groups=["admins"],
@@ -53,7 +54,7 @@ def test_account_logged_in_get_payload() -> None:
         meta=meta,
         account_id="acct-123",
         account_name="testuser",
-        account_type="User",
+        account_type=AccountType.USER,
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
         groups=["admins"],
@@ -84,7 +85,7 @@ def test_account_logged_in_timestamp_is_utc() -> None:
         meta=meta,
         account_id="acct-123",
         account_name="testuser",
-        account_type="User",
+        account_type=AccountType.USER,
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
     )
@@ -100,7 +101,6 @@ def test_account_logged_out_get_resource() -> None:
         account_id="acct-789",
         account_name="testuser",
         session_id="sess-abc",
-        logout_type=LogoutType.USER_INITIATED,
     )
 
     resource = event.get_resource()
@@ -111,20 +111,6 @@ def test_account_logged_out_get_resource() -> None:
     assert resource["infrahub.account.logout_type"] == "user_initiated"
 
 
-def test_account_logged_out_admin_revoked() -> None:
-    meta = _make_meta("acct-789")
-    event = AccountLoggedOutEvent(
-        meta=meta,
-        account_id="acct-789",
-        account_name="testuser",
-        session_id="sess-abc",
-        logout_type=LogoutType.ADMIN_REVOKED,
-    )
-
-    resource = event.get_resource()
-    assert resource["infrahub.account.logout_type"] == "admin_revoked"
-
-
 def test_account_logged_out_get_payload() -> None:
     meta = _make_meta("acct-789")
     event = AccountLoggedOutEvent(
@@ -132,7 +118,6 @@ def test_account_logged_out_get_payload() -> None:
         account_id="acct-789",
         account_name="testuser",
         session_id="sess-abc",
-        logout_type=LogoutType.USER_INITIATED,
         client_ip="10.0.0.1",
         user_agent="TestClient/2.0",
     )
@@ -168,7 +153,7 @@ def test_account_logged_in_custom_timestamp() -> None:
         meta=meta,
         account_id="acct-123",
         account_name="testuser",
-        account_type="User",
+        account_type=AccountType.USER,
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
         timestamp=custom_ts,
