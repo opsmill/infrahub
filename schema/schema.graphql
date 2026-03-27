@@ -1365,10 +1365,7 @@ type CoreArtifactThread implements CoreNode & CoreThread {
   """Unique identifier of the artifact being discussed"""
   artifact_id: TextAttribute
   change: NestedEdgedCoreProposedChange!
-  comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
-  """Timestamp when the thread was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
+  comments(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -1396,9 +1393,6 @@ input CoreArtifactThreadCreateInput {
   artifact_id: TextAttributeCreate
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeCreate
-  created_by: RelatedNodeInput
   id: String
   label: TextAttributeCreate
   """Line number in the artifact being discussed"""
@@ -1427,9 +1421,6 @@ input CoreArtifactThreadUpdateInput {
   artifact_id: TextAttributeUpdate
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -1454,9 +1445,6 @@ input CoreArtifactThreadUpsertInput {
   artifact_id: TextAttributeUpdate
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -1661,9 +1649,6 @@ input CoreBasePermissionUpdateInput {
 type CoreChangeComment implements CoreComment & CoreNode {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   change: NestedEdgedCoreProposedChange!
-  """Timestamp when the comment was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -1683,9 +1668,6 @@ type CoreChangeCommentCreate {
 
 input CoreChangeCommentCreateInput {
   change: RelatedNodeInput
-  """Timestamp when the comment was created"""
-  created_at: TextAttributeCreate
-  created_by: RelatedNodeInput
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -1706,9 +1688,6 @@ type CoreChangeCommentUpdate {
 
 input CoreChangeCommentUpdateInput {
   change: RelatedNodeInput
-  """Timestamp when the comment was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -1725,9 +1704,6 @@ type CoreChangeCommentUpsert {
 
 input CoreChangeCommentUpsertInput {
   change: RelatedNodeInput
-  """Timestamp when the comment was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -1740,10 +1716,7 @@ input CoreChangeCommentUpsertInput {
 type CoreChangeThread implements CoreNode & CoreThread {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   change: NestedEdgedCoreProposedChange!
-  comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
-  """Timestamp when the thread was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
+  comments(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -1765,9 +1738,6 @@ type CoreChangeThreadCreate {
 input CoreChangeThreadCreateInput {
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeCreate
-  created_by: RelatedNodeInput
   id: String
   label: TextAttributeCreate
   member_of_groups: [RelatedNodeInput]
@@ -1790,9 +1760,6 @@ type CoreChangeThreadUpdate {
 input CoreChangeThreadUpdateInput {
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -1811,9 +1778,6 @@ type CoreChangeThreadUpsert {
 input CoreChangeThreadUpsertInput {
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -1996,9 +1960,6 @@ input CoreCheckUpdateInput {
 
 """A comment on a Proposed Change"""
 interface CoreComment {
-  """Timestamp when the comment was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -2017,9 +1978,6 @@ type CoreCommentUpdate {
 }
 
 input CoreCommentUpdateInput {
-  """Timestamp when the comment was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -2692,12 +2650,9 @@ input CoreFileObjectUpdateInput {
 type CoreFileThread implements CoreNode & CoreThread {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   change: NestedEdgedCoreProposedChange!
-  comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
+  comments(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
   """Git commit hash the thread refers to"""
   commit: TextAttribute
-  """Timestamp when the thread was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
   display_label: String
   """Path to the file being discussed"""
   file: TextAttribute
@@ -2726,9 +2681,6 @@ input CoreFileThreadCreateInput {
   comments: [RelatedNodeInput]
   """Git commit hash the thread refers to"""
   commit: TextAttributeCreate
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeCreate
-  created_by: RelatedNodeInput
   """Path to the file being discussed"""
   file: TextAttributeCreate
   id: String
@@ -2758,9 +2710,6 @@ input CoreFileThreadUpdateInput {
   comments: [RelatedNodeInput]
   """Git commit hash the thread refers to"""
   commit: TextAttributeUpdate
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   """Path to the file being discussed"""
   file: TextAttributeUpdate
   hfid: [String]
@@ -2786,9 +2735,6 @@ input CoreFileThreadUpsertInput {
   comments: [RelatedNodeInput]
   """Git commit hash the thread refers to"""
   commit: TextAttributeUpdate
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   """Path to the file being discussed"""
   file: TextAttributeUpdate
   hfid: [String]
@@ -5267,10 +5213,7 @@ input CoreObjectTemplateUpdateInput {
 type CoreObjectThread implements CoreNode & CoreThread {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   change: NestedEdgedCoreProposedChange!
-  comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
-  """Timestamp when the thread was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
+  comments(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -5294,9 +5237,6 @@ type CoreObjectThreadCreate {
 input CoreObjectThreadCreateInput {
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeCreate
-  created_by: RelatedNodeInput
   id: String
   label: TextAttributeCreate
   member_of_groups: [RelatedNodeInput]
@@ -5321,9 +5261,6 @@ type CoreObjectThreadUpdate {
 input CoreObjectThreadUpdateInput {
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -5344,9 +5281,6 @@ type CoreObjectThreadUpsert {
 input CoreObjectThreadUpsertInput {
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -5475,7 +5409,7 @@ input CoreProfileUpdateInput {
 type CoreProposedChange implements CoreNode & CoreTaskTarget {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   approved_by(account_type__is_protected: Boolean, account_type__owner__id: ID, account_type__source__id: ID, account_type__value: String, account_type__values: [String], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, password__is_protected: Boolean, password__owner__id: ID, password__source__id: ID, password__value: String, password__values: [String], status__is_protected: Boolean, status__owner__id: ID, status__source__id: ID, status__value: String, status__values: [String]): NestedPaginatedCoreGenericAccount!
-  comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreChangeComment!
+  comments(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreChangeComment!
   """None"""
   description: TextAttribute
   """Name of the branch to merge changes into (required)"""
@@ -5497,7 +5431,7 @@ type CoreProposedChange implements CoreNode & CoreTaskTarget {
   """Current state of the proposed change"""
   state: TextAttribute
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
-  threads(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, offset: Int, order: OrderInput, resolved__is_protected: Boolean, resolved__owner__id: ID, resolved__source__id: ID, resolved__value: Boolean, resolved__values: [Boolean]): NestedPaginatedCoreThread!
+  threads(ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, offset: Int, order: OrderInput, resolved__is_protected: Boolean, resolved__owner__id: ID, resolved__source__id: ID, resolved__value: Boolean, resolved__values: [Boolean]): NestedPaginatedCoreThread!
   """Total number of comments on this proposed change"""
   total_comments: NumberAttribute
   validations(completed_at__is_protected: Boolean, completed_at__owner__id: ID, completed_at__source__id: ID, completed_at__value: DateTime, completed_at__values: [DateTime], conclusion__is_protected: Boolean, conclusion__owner__id: ID, conclusion__source__id: ID, conclusion__value: String, conclusion__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, offset: Int, order: OrderInput, started_at__is_protected: Boolean, started_at__owner__id: ID, started_at__source__id: ID, started_at__value: DateTime, started_at__values: [DateTime], state__is_protected: Boolean, state__owner__id: ID, state__source__id: ID, state__value: String, state__values: [String]): NestedPaginatedCoreValidator!
@@ -6794,10 +6728,7 @@ input CoreTaskTargetUpdateInput {
 """A thread on a Proposed Change"""
 interface CoreThread {
   change: NestedEdgedCoreProposedChange!
-  comments(created_at__is_protected: Boolean, created_at__owner__id: ID, created_at__source__id: ID, created_at__value: DateTime, created_at__values: [DateTime], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
-  """Timestamp when the thread was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
+  comments(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, offset: Int, order: OrderInput, text__is_protected: Boolean, text__owner__id: ID, text__source__id: ID, text__value: String, text__values: [String]): NestedPaginatedCoreThreadComment!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -6813,9 +6744,6 @@ interface CoreThread {
 """A comment on thread within a Proposed Change"""
 type CoreThreadComment implements CoreComment & CoreNode {
   _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
-  """Timestamp when the comment was created"""
-  created_at: TextAttribute
-  created_by: NestedEdgedCoreGenericAccount!
   display_label: String
   """Human friendly identifier"""
   hfid: [String!]
@@ -6835,9 +6763,6 @@ type CoreThreadCommentCreate {
 }
 
 input CoreThreadCommentCreateInput {
-  """Timestamp when the comment was created"""
-  created_at: TextAttributeCreate
-  created_by: RelatedNodeInput
   id: String
   member_of_groups: [RelatedNodeInput]
   subscriber_of_groups: [RelatedNodeInput]
@@ -6858,9 +6783,6 @@ type CoreThreadCommentUpdate {
 }
 
 input CoreThreadCommentUpdateInput {
-  """Timestamp when the comment was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -6877,9 +6799,6 @@ type CoreThreadCommentUpsert {
 }
 
 input CoreThreadCommentUpsertInput {
-  """Timestamp when the comment was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   member_of_groups: [RelatedNodeInput]
@@ -6898,9 +6817,6 @@ type CoreThreadUpdate {
 input CoreThreadUpdateInput {
   change: RelatedNodeInput
   comments: [RelatedNodeInput]
-  """Timestamp when the thread was created"""
-  created_at: TextAttributeUpdate
-  created_by: RelatedNodeInput
   hfid: [String]
   id: String
   label: TextAttributeUpdate
@@ -14261,11 +14177,6 @@ type Query {
     change__total_comments__source__id: ID
     change__total_comments__value: BigInt
     change__total_comments__values: [BigInt]
-    comments__created_at__is_protected: Boolean
-    comments__created_at__owner__id: ID
-    comments__created_at__source__id: ID
-    comments__created_at__value: DateTime
-    comments__created_at__values: [DateTime]
     comments__display_label__isnull: Boolean
     comments__display_label__value: String
     comments__display_label__values: [String]
@@ -14276,47 +14187,6 @@ type Query {
     comments__text__source__id: ID
     comments__text__value: String
     comments__text__values: [String]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     ids: [ID]
     label__is_protected: Boolean
     label__isnull: Boolean
@@ -14725,47 +14595,6 @@ type Query {
     change__total_comments__source__id: ID
     change__total_comments__value: BigInt
     change__total_comments__values: [BigInt]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
@@ -14873,11 +14702,6 @@ type Query {
     change__total_comments__source__id: ID
     change__total_comments__value: BigInt
     change__total_comments__values: [BigInt]
-    comments__created_at__is_protected: Boolean
-    comments__created_at__owner__id: ID
-    comments__created_at__source__id: ID
-    comments__created_at__value: DateTime
-    comments__created_at__values: [DateTime]
     comments__display_label__isnull: Boolean
     comments__display_label__value: String
     comments__display_label__values: [String]
@@ -14888,47 +14712,6 @@ type Query {
     comments__text__source__id: ID
     comments__text__value: String
     comments__text__values: [String]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     ids: [ID]
     label__is_protected: Boolean
     label__isnull: Boolean
@@ -15356,47 +15139,6 @@ type Query {
     any__source__id: ID
     any__value: String
     any__values: [String]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
@@ -16423,11 +16165,6 @@ type Query {
     change__total_comments__source__id: ID
     change__total_comments__value: BigInt
     change__total_comments__values: [BigInt]
-    comments__created_at__is_protected: Boolean
-    comments__created_at__owner__id: ID
-    comments__created_at__source__id: ID
-    comments__created_at__value: DateTime
-    comments__created_at__values: [DateTime]
     comments__display_label__isnull: Boolean
     comments__display_label__value: String
     comments__display_label__values: [String]
@@ -16444,47 +16181,6 @@ type Query {
     commit__source__id: ID
     commit__value: String
     commit__values: [String]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     file__is_protected: Boolean
     file__isnull: Boolean
     file__owner__id: ID
@@ -20682,11 +20378,6 @@ type Query {
     change__total_comments__source__id: ID
     change__total_comments__value: BigInt
     change__total_comments__values: [BigInt]
-    comments__created_at__is_protected: Boolean
-    comments__created_at__owner__id: ID
-    comments__created_at__source__id: ID
-    comments__created_at__value: DateTime
-    comments__created_at__values: [DateTime]
     comments__display_label__isnull: Boolean
     comments__display_label__value: String
     comments__display_label__values: [String]
@@ -20697,47 +20388,6 @@ type Query {
     comments__text__source__id: ID
     comments__text__value: String
     comments__text__values: [String]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     ids: [ID]
     label__is_protected: Boolean
     label__isnull: Boolean
@@ -21015,11 +20665,6 @@ type Query {
     approved_by__status__source__id: ID
     approved_by__status__value: String
     approved_by__status__values: [String]
-    comments__created_at__is_protected: Boolean
-    comments__created_at__owner__id: ID
-    comments__created_at__source__id: ID
-    comments__created_at__value: DateTime
-    comments__created_at__values: [DateTime]
     comments__display_label__isnull: Boolean
     comments__display_label__value: String
     comments__display_label__values: [String]
@@ -21190,11 +20835,6 @@ type Query {
     subscriber_of_groups__label__values: [String]
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
-    threads__created_at__is_protected: Boolean
-    threads__created_at__owner__id: ID
-    threads__created_at__source__id: ID
-    threads__created_at__value: DateTime
-    threads__created_at__values: [DateTime]
     threads__ids: [ID]
     threads__isnull: Boolean
     threads__label__is_protected: Boolean
@@ -23246,11 +22886,6 @@ type Query {
     change__total_comments__source__id: ID
     change__total_comments__value: BigInt
     change__total_comments__values: [BigInt]
-    comments__created_at__is_protected: Boolean
-    comments__created_at__owner__id: ID
-    comments__created_at__source__id: ID
-    comments__created_at__value: DateTime
-    comments__created_at__values: [DateTime]
     comments__display_label__isnull: Boolean
     comments__display_label__value: String
     comments__display_label__values: [String]
@@ -23261,47 +22896,6 @@ type Query {
     comments__text__source__id: ID
     comments__text__value: String
     comments__text__values: [String]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     ids: [ID]
     label__is_protected: Boolean
     label__isnull: Boolean
@@ -23372,47 +22966,6 @@ type Query {
     any__source__id: ID
     any__value: String
     any__values: [String]
-    created_at__is_protected: Boolean
-    created_at__isnull: Boolean
-    created_at__owner__id: ID
-    created_at__source__id: ID
-    created_at__value: DateTime
-    created_at__values: [DateTime]
-    created_by__account_type__is_protected: Boolean
-    created_by__account_type__owner__id: ID
-    created_by__account_type__source__id: ID
-    created_by__account_type__value: String
-    created_by__account_type__values: [String]
-    created_by__description__is_protected: Boolean
-    created_by__description__owner__id: ID
-    created_by__description__source__id: ID
-    created_by__description__value: String
-    created_by__description__values: [String]
-    created_by__display_label__isnull: Boolean
-    created_by__display_label__value: String
-    created_by__display_label__values: [String]
-    created_by__ids: [ID]
-    created_by__isnull: Boolean
-    created_by__label__is_protected: Boolean
-    created_by__label__owner__id: ID
-    created_by__label__source__id: ID
-    created_by__label__value: String
-    created_by__label__values: [String]
-    created_by__name__is_protected: Boolean
-    created_by__name__owner__id: ID
-    created_by__name__source__id: ID
-    created_by__name__value: String
-    created_by__name__values: [String]
-    created_by__password__is_protected: Boolean
-    created_by__password__owner__id: ID
-    created_by__password__source__id: ID
-    created_by__password__value: String
-    created_by__password__values: [String]
-    created_by__status__is_protected: Boolean
-    created_by__status__owner__id: ID
-    created_by__status__source__id: ID
-    created_by__status__value: String
-    created_by__status__values: [String]
     display_label__isnull: Boolean
     display_label__value: String
     display_label__values: [String]
@@ -23473,11 +23026,6 @@ type Query {
     text__source__id: ID
     text__value: String
     text__values: [String]
-    thread__created_at__is_protected: Boolean
-    thread__created_at__owner__id: ID
-    thread__created_at__source__id: ID
-    thread__created_at__value: DateTime
-    thread__created_at__values: [DateTime]
     thread__ids: [ID]
     thread__isnull: Boolean
     thread__label__is_protected: Boolean
