@@ -115,7 +115,9 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
       await page.getByText("UpdatedOrganization ›Tenantmy-first-Tenant").click();
       await expect(page.getByText("Testing Infrahub").first()).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_diff");
-      await expect(page.getByText("Changes from branch cr1234")).toBeVisible();
+      await expect(
+        page.getByTestId("object-details").getByText("Changes from branch cr1234")
+      ).toBeVisible();
     });
 
     await test.step("Merge branch cr1234 into main", async () => {
