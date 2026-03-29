@@ -83,9 +83,7 @@ describe("ObjectDetailsHeader", () => {
     const component = await render(<ObjectDetailsHeader {...defaultProps} />);
 
     // THEN
-    await expect
-      .element(component.queryByRole("heading", { name: "atl1-core1" }))
-      .not.toBeInTheDocument();
+    expect(component.getByRole("heading", { name: "atl1-core1" }).query()).toBeNull();
     expect(
       component.getByTestId("object-header").element().querySelectorAll("[class*=skeleton]")
     ).not.toHaveLength(0);
@@ -103,9 +101,7 @@ describe("ObjectDetailsHeader", () => {
     const component = await render(<ObjectDetailsHeader {...defaultProps} />);
 
     // THEN
-    await expect
-      .element(component.queryByRole("heading", { name: "atl1-core1" }))
-      .not.toBeInTheDocument();
-    expect(component.queryByTestId("object-header")).toBeFalsy();
+    expect(component.getByRole("heading", { name: "atl1-core1" }).query()).toBeNull();
+    expect(component.getByTestId("object-header").query()).toBeNull();
   });
 });
