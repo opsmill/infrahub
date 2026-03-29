@@ -85,7 +85,7 @@ describe("ObjectDetailsHeader", () => {
     // THEN
     expect(component.getByRole("heading", { name: "atl1-core1" }).query()).toBeNull();
     expect(
-      component.getByTestId("object-header").element().querySelectorAll("[class*=skeleton]")
+      component.getByTestId("object-header").element().querySelectorAll("[class*=animate]")
     ).not.toHaveLength(0);
   });
 
