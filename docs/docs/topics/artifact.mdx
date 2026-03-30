@@ -71,3 +71,7 @@ nodes:
     namespace: "Infra"
     inherit_from: ["CoreArtifactTarget"]
 ```
+
+:::warning Deletion behavior
+When a `CoreArtifactTarget` node is deleted, all artifacts associated with it are automatically deleted as well.
+:::
