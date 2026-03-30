@@ -201,3 +201,4 @@ Available dependencies:
 - [Events System](events.md) - Event-driven workflow triggers
 - [Webhooks](webhooks.md) - Primary consumer of events and async tasks
 - [Backend Architecture](architecture.md) - Overall backend structure
+- [Computed Attributes](computed-attributes.md) - Jinja2 local recomputation is inline, not async
