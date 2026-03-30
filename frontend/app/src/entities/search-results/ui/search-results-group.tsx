@@ -55,7 +55,7 @@ export function SearchResultsGroup({ kind, results }: SearchResultsGroupProps) {
   if (!schema) return null;
 
   const label = schema.label || schema.name || kind;
-  const columns = getObjectTableColumns(schema);
+  const columns = getObjectTableColumns(schema, { disabled: true });
 
   const flatData = data?.pages.flat() ?? [];
   const skeletonRowCount = Math.min(results.length, DEFAULT_PAGE_SIZE);
