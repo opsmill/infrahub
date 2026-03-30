@@ -28,6 +28,7 @@ interface ObjectDataDisplayProps {
   objectData: NodeObjectWithMetadata;
   permission: Permission;
   showExtra?: boolean;
+  excludeRelationships?: string[];
 }
 
 export function ObjectDataDisplay({
@@ -35,6 +36,7 @@ export function ObjectDataDisplay({
   objectData,
   permission,
   showExtra = false,
+  excludeRelationships,
 }: ObjectDataDisplayProps) {
   const { currentBranch } = useCurrentBranch();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
@@ -61,7 +63,10 @@ export function ObjectDataDisplay({
   };
 
   const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInDataDisplay(objectSchema.relationships ?? []);
+  const relationships = getRelationshipsVisibleInDataDisplay(
+    objectSchema.relationships ?? [],
+    excludeRelationships
+  );
   const allFields = sortByOrderWeight([...attributes, ...relationships]);
   const fields = showExtra ? allFields : allFields.filter((field) => field.display !== "extra");
 
@@ -161,13 +166,15 @@ export function ObjectDataDisplay({
 }
 
 function getRelationshipsVisibleInDataDisplay(
-  relationships: RelationshipSchema[]
+  relationships: RelationshipSchema[],
+  excludeRelationships?: string[]
 ): RelationshipSchema[] {
   return relationships.filter(
     (rel) =>
       isRelationshipVisibleInDetailedView(rel) &&
       rel.name !== "member_of_groups" &&
       !isFromResourcePoolRelationship(rel.name) &&
-      rel.kind !== "Profile"
+      rel.kind !== "Profile" &&
+      (!excludeRelationships || !excludeRelationships.includes(rel.name))
   );
 }
