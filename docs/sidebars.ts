@@ -120,6 +120,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/generator',
             'guides/chaining-generators',
+            'guides/modular-generator-best-practices',
           ],
         },
         {
