@@ -51,3 +51,6 @@ schema/node_modules/*
 
 # Spec-kitty
 dev/spec-kitty/.worktrees/
+
+# Worktrees
+.worktrees/
