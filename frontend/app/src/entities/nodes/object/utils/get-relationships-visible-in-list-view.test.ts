@@ -39,8 +39,16 @@ describe("getRelationshipsVisibleInListView", () => {
 
   it("should exclude relationships with display 'extra' even if kind is valid", () => {
     // GIVEN
-    const visible = generateRelationshipSchema({ kind: "Attribute", cardinality: "one", display: "default" });
-    const hidden = generateRelationshipSchema({ kind: "Attribute", cardinality: "one", display: "extra" });
+    const visible = generateRelationshipSchema({
+      kind: "Attribute",
+      cardinality: "one",
+      display: "default",
+    });
+    const hidden = generateRelationshipSchema({
+      kind: "Attribute",
+      cardinality: "one",
+      display: "extra",
+    });
     const alsoVisible = generateRelationshipSchema({ kind: "Parent", cardinality: "one" });
 
     // WHEN
