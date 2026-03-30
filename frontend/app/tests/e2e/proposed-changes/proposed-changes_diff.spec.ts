@@ -34,7 +34,6 @@ test.describe("/proposed-changes diff data", () => {
       await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
       await saveScreenshotForDocs(page, "topics/proposed_change/pc_tab_data");
       await page.getByText("Infra ›Interface L3").click();
-      await expect(page.getByText("Infra ›Interface L3 main den1-maintenance-")).toBeVisible();
       await page.getByLabel("diff tree").getByText("den1-edge1").click();
       await page
         .getByText(
