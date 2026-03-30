@@ -25,6 +25,6 @@ class GeneratedGenericSchema(BaseNodeSchema):
     )
     restricted_namespaces: list[str] | None = Field(
         default=None,
-        description="Namespaces that Nodes inheriting from this Generic are restricted to",
+        description="Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
         json_schema_extra={"update": "allowed"},
     )

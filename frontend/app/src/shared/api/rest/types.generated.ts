@@ -676,7 +676,7 @@ export interface components {
             used_by?: string[];
             /**
              * Restricted Namespaces
-             * @description Namespaces that Nodes inheriting from this Generic are restricted to
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
              */
             restricted_namespaces?: string[] | null;
             /** Kind */
@@ -1556,7 +1556,7 @@ export interface components {
             used_by?: string[];
             /**
              * Restricted Namespaces
-             * @description Namespaces that Nodes inheriting from this Generic are restricted to
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
              */
             restricted_namespaces?: string[] | null;
         };
