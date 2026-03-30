@@ -45,6 +45,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
+from infrahub import config
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -1213,7 +1214,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             template=Path(location), template_directory=Path(commit_worktree.directory), client=self.sdk
         )
         try:
-            jinja2_template.validate(context=ExecutionContext.CORE | ExecutionContext.WORKER)
+            context = ExecutionContext.CORE | ExecutionContext.WORKER
+            if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+                context = ExecutionContext.ALL
+            jinja2_template.validate(context=context)
             return await jinja2_template.render(variables=data)
         except JinjaTemplateError as exc:
             log.error(str(exc), exc_info=True)
