@@ -1,5 +1,7 @@
 import { Outlet } from "react-router";
+
 import Content from "@/shared/components/layout/content";
+
 import { RoleManagementNavigation } from "@/entities/role-manager/ui";
 
 export function Component() {
