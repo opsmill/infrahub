@@ -1,11 +1,12 @@
 import { Icon } from "@iconify-icon/react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
 import Content from "@/shared/components/layout/content";
 import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import { datetimeAtom } from "@/shared/stores/time.atom";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getObjects } from "@/entities/nodes/object/domain/get-objects";
@@ -27,17 +28,25 @@ export function SearchResultsGroup({ kind, results, isOpen, onToggle }: SearchRe
 
   const ids = results.map((r) => r.id);
 
-  const { data, isPending } = useQuery({
+  const { data, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["search-group-objects", currentBranch.name, atDate, kind, ids],
-    queryFn: () =>
-      getObjects({
+    queryFn: ({ pageParam }: { pageParam: { offset: number; limit: number } }) => {
+      const pageIds = ids.slice(pageParam.offset, pageParam.offset + pageParam.limit);
+      return getObjects({
         schema: schema!,
         branchName: currentBranch.name,
         atDate,
-        filters: [{ name: "ids", value: ids.map((id) => ({ id })) }],
-        limit: ids.length,
+        filters: [{ name: "ids", value: pageIds.map((id) => ({ id })) }],
+        limit: pageIds.length,
         offset: 0,
-      }),
+      });
+    },
+    initialPageParam: { offset: 0, limit: DEFAULT_PAGE_SIZE },
+    getNextPageParam: (_lastPage, _allPages, lastPageParam) => {
+      const nextOffset = lastPageParam.offset + lastPageParam.limit;
+      if (nextOffset >= ids.length) return undefined;
+      return { offset: nextOffset, limit: DEFAULT_PAGE_SIZE };
+    },
     enabled: !!schema && isOpen,
   });
 
@@ -46,32 +55,40 @@ export function SearchResultsGroup({ kind, results, isOpen, onToggle }: SearchRe
   const label = schema.label || schema.name || kind;
   const columns = getObjectTableColumns(schema);
 
+  const flatData = data?.pages.flat() ?? [];
+  const skeletonRowCount = Math.min(results.length, DEFAULT_PAGE_SIZE);
+
   return (
     <Content.Card className="flex flex-col">
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
-        className="flex w-full items-center gap-3 border-gray-200 p-5 text-left hover:bg-gray-50"
-        style={{ borderBottomWidth: isOpen ? 1 : 0 }}
+        className={`flex w-full items-center gap-2 border-gray-200 px-4 py-3 text-left hover:bg-gray-50 ${isOpen ? "border-b" : ""}`}
       >
         <Icon
           icon={isOpen ? "mdi:chevron-down" : "mdi:chevron-right"}
-          className="text-gray-400 text-lg"
+          className="text-gray-400 text-sm"
         />
-        <span className="font-bold text-xl">{label}</span>
-        <span className="rounded-full bg-custom-blue-700/10 px-2.5 py-0.5 text-custom-blue-700 text-sm">
+        <span className="font-semibold text-sm">{label}</span>
+        <span className="rounded-full bg-custom-blue-700/10 px-1.5 py-0.5 text-custom-blue-700 text-xs">
           {results.length}
         </span>
       </button>
 
       {isOpen && (
-        <InfiniteScroll scrollX hasNextPage={false} onLoadMore={() => {}}>
+        <InfiniteScroll
+          scrollX
+          hasNextPage={hasNextPage}
+          onLoadMore={fetchNextPage}
+          className="max-h-[50vh]"
+        >
           <DataTable
             columns={columns}
             count={results.length}
-            data={data ?? []}
-            isLoading={isPending}
+            data={flatData}
+            isLoading={isPending || isFetchingNextPage}
+            skeletonRowCount={skeletonRowCount}
           />
         </InfiniteScroll>
       )}

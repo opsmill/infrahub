@@ -1,63 +1,73 @@
 import { Icon } from "@iconify-icon/react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
+import { SearchInput } from "@/shared/components/inputs/search-input";
 import { Badge } from "@/shared/components/ui/badge";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 type SearchResultsHeaderProps = {
   query: string;
   totalCount: number;
   onQueryChange: (query: string) => void;
+  allExpanded: boolean;
+  hasMultipleGroups: boolean;
+  onToggleAll: () => void;
 };
 
 export function SearchResultsHeader({
   query,
   totalCount,
   onQueryChange,
+  allExpanded,
+  hasMultipleGroups,
+  onToggleAll,
 }: SearchResultsHeaderProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [localQuery, setLocalQuery] = useState(query);
+  const debouncedQuery = useDebounce(localQuery.trim(), 300);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
-    inputRef.current?.focus();
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "/" && document.activeElement !== inputRef.current) {
-        event.preventDefault();
-        inputRef.current?.focus();
-        inputRef.current?.select();
-      }
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
     }
-
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
-
-  function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-    const value = inputRef.current?.value.trim();
-    if (value !== undefined && value !== query) {
-      onQueryChange(value);
+    if (debouncedQuery !== query) {
+      onQueryChange(debouncedQuery);
     }
-  }
+  }, [debouncedQuery, query, onQueryChange]);
 
   return (
-    <header className="flex items-center gap-4 border-gray-200 border-b bg-white px-4 py-3">
-      <form onSubmit={handleSubmit} className="flex grow items-center gap-2">
-        <Icon icon="mdi:magnify" className="text-custom-blue-600 text-xl" />
-        <input
-          ref={inputRef}
-          type="text"
-          defaultValue={query}
-          key={query}
-          placeholder="Search..."
-          aria-label="Search query"
-          className="grow border-none bg-transparent py-1 text-lg outline-hidden"
-          data-testid="search-results-input"
-        />
-      </form>
+    <div className="flex h-14 items-center gap-2 px-3">
+      <SearchInput
+        value={localQuery}
+        onChange={setLocalQuery}
+        onSubmit={() => onQueryChange(localQuery.trim())}
+        onPressReset={() => {
+          setLocalQuery("");
+          onQueryChange("");
+        }}
+        placeholder="Search..."
+        className="h-8"
+        aria-label="Search query"
+      />
 
       <Badge variant="blue" className="shrink-0">
         {totalCount} {totalCount === 1 ? "result" : "results"}
       </Badge>
-    </header>
+
+      {hasMultipleGroups && (
+        <button
+          type="button"
+          onClick={onToggleAll}
+          className="flex shrink-0 items-center gap-1.5 rounded px-2 py-1 text-gray-600 text-sm hover:bg-gray-100"
+        >
+          <Icon
+            icon={allExpanded ? "mdi:unfold-less-horizontal" : "mdi:unfold-more-horizontal"}
+            className="text-base"
+          />
+          {allExpanded ? "Collapse all" : "Expand all"}
+        </button>
+      )}
+    </div>
   );
 }

@@ -1,11 +1,13 @@
-import { Icon } from "@iconify-icon/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 
 import Content from "@/shared/components/layout/content";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
 
-import { useSearchResults } from "@/entities/search-results/domain/search-results.query";
+import { groupSearchResultsByKind } from "@/entities/search-results/domain/group-search-results-by-kind";
+import { useSearchResultsCount } from "@/entities/search-results/ui/queries/get-search-results-count.query";
+import { useSearchResults } from "@/entities/search-results/ui/queries/search-results.query";
 import { SearchResultsGroup } from "@/entities/search-results/ui/search-results-group";
 import { SearchResultsHeader } from "@/entities/search-results/ui/search-results-header";
 
@@ -18,11 +20,26 @@ export function SearchResultsPage() {
     setOpenGroups(new Set());
   }, [query]);
 
-  const { data, isPending } = useSearchResults({ search: query, limit: 500 }, { enabled: !!query });
+  const {
+    data: totalCount,
+    isSuccess: isCountSuccess,
+    isError: isCountError,
+  } = useSearchResultsCount({ search: query }, { enabled: !!query });
 
-  function handleQueryChange(newQuery: string) {
-    setSearchParams({ q: newQuery });
-  }
+  const { data, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } = useSearchResults(
+    { search: query, totalCount },
+    { enabled: !!query && (isCountSuccess || isCountError) }
+  );
+
+  const allResults = useMemo(() => data?.pages.flat() ?? [], [data?.pages]);
+  const groups = useMemo(() => groupSearchResultsByKind(allResults), [allResults]);
+
+  const handleQueryChange = useCallback(
+    (newQuery: string) => {
+      setSearchParams({ q: newQuery });
+    },
+    [setSearchParams]
+  );
 
   const toggleGroup = useCallback((kind: string) => {
     setOpenGroups((prev) => {
@@ -36,7 +53,7 @@ export function SearchResultsPage() {
     });
   }, []);
 
-  const allKinds = data?.groups.map((g) => g.kind) ?? [];
+  const allKinds = groups.map((g) => g.kind);
   const allExpanded = allKinds.length > 0 && allKinds.every((k) => openGroups.has(k));
 
   function toggleAll() {
@@ -53,8 +70,11 @@ export function SearchResultsPage() {
 
       <SearchResultsHeader
         query={query}
-        totalCount={data?.totalCount ?? 0}
+        totalCount={totalCount ?? 0}
         onQueryChange={handleQueryChange}
+        allExpanded={allExpanded}
+        hasMultipleGroups={groups.length > 1}
+        onToggleAll={toggleAll}
       />
 
       <div className="flex flex-col gap-2 p-2">
@@ -66,7 +86,7 @@ export function SearchResultsPage() {
           </Content.Card>
         )}
 
-        {!isPending && query && data?.groups.length === 0 && (
+        {!isPending && query && groups.length === 0 && (
           <Content.Card className="py-12 text-center text-gray-500">
             No results found for &ldquo;{query}&rdquo;
           </Content.Card>
@@ -78,23 +98,7 @@ export function SearchResultsPage() {
           </Content.Card>
         )}
 
-        {data && data.groups.length > 1 && (
-          <div className="flex justify-end px-2">
-            <button
-              type="button"
-              onClick={toggleAll}
-              className="flex items-center gap-1.5 rounded px-2 py-1 text-gray-600 text-sm hover:bg-gray-100"
-            >
-              <Icon
-                icon={allExpanded ? "mdi:unfold-less-horizontal" : "mdi:unfold-more-horizontal"}
-                className="text-base"
-              />
-              {allExpanded ? "Collapse all" : "Expand all"}
-            </button>
-          </div>
-        )}
-
-        {data?.groups.map((group) => (
+        {groups.map((group) => (
           <SearchResultsGroup
             key={group.kind}
             kind={group.kind}
@@ -103,6 +107,19 @@ export function SearchResultsPage() {
             onToggle={() => toggleGroup(group.kind)}
           />
         ))}
+
+        <InfiniteTrigger
+          hasNextPage={hasNextPage}
+          onLoadMore={fetchNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+        />
+
+        {isFetchingNextPage && (
+          <Content.Card className="flex flex-col gap-3 p-4">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </Content.Card>
+        )}
       </div>
     </Content>
   );
