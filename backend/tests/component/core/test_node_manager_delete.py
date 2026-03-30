@@ -527,7 +527,7 @@ async def test_delete_cascade_artifacts(
         transformation=transform,
         content_type="application/json",
         artifact_name="cascade-artifact",
-        parameters={},
+        parameters={"value": {"name": "name__value"}},
     )
     await definition.save(db=db)
 
