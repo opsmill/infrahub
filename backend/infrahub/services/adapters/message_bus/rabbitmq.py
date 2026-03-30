@@ -118,6 +118,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
     async def shutdown(self) -> None:
         await self.connection.close()
 
+    async def is_healthy(self) -> bool:
+        try:
+            return not self.connection.is_closed
+        except Exception:
+            return False
+
     async def on_callback(self, message: AbstractIncomingMessage) -> None:
         if message.correlation_id:
             future: asyncio.Future = self.futures.pop(message.correlation_id)

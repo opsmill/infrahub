@@ -151,3 +151,9 @@ class NATSCache(InfrahubCache):
         return True
 
     async def close_connection(self) -> None: ...
+
+    async def is_healthy(self) -> bool:
+        try:
+            return self.connection.is_connected
+        except Exception:
+            return False

@@ -55,3 +55,8 @@ class InfrahubCache(ABC):
     @abstractmethod
     async def close_connection(self) -> None:
         raise NotImplementedError()
+
+    @abstractmethod
+    async def is_healthy(self) -> bool:
+        """Check if the cache service is reachable."""
+        raise NotImplementedError()

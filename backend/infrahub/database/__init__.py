@@ -310,6 +310,15 @@ class InfrahubDatabase:
     async def close(self) -> None:
         await self._driver.close()
 
+    async def is_healthy(self) -> bool:
+        """Check if the database is reachable by executing a lightweight query."""
+        try:
+            async with self.start_session(read_only=True) as db:
+                await db.execute_query(query="RETURN 1", name="health_check")
+            return True
+        except Exception:
+            return False
+
     async def execute_query(
         self,
         query: str,
