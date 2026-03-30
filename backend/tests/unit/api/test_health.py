@@ -14,6 +14,7 @@ from infrahub.api.health import (
     _check_database,
     _check_message_bus,
     _classify_error,
+    determine_status,
     get_health_checks,
 )
 from infrahub.exceptions import InitializationError
@@ -105,7 +106,7 @@ class TestCheckMessageBus:
         result = await _check_message_bus(message_bus=bus)
         assert result.name == DependencyName.MESSAGE_BUS
         assert result.status == "down"
-        assert result.error == ErrorCategory.CONNECTION_CLOSED
+        assert result.error == ErrorCategory.UNKNOWN_ERROR
 
     @pytest.mark.anyio
     async def test_unhealthy_initialization_error(self) -> None:
@@ -134,7 +135,7 @@ class TestCheckCache:
         result = await _check_cache(cache=cache)
         assert result.name == DependencyName.CACHE
         assert result.status == "down"
-        assert result.error == ErrorCategory.CONNECTION_CLOSED
+        assert result.error == ErrorCategory.UNKNOWN_ERROR
 
     @pytest.mark.anyio
     async def test_unhealthy_os_error(self) -> None:
@@ -196,6 +197,35 @@ class TestGetHealthChecks:
 
         checks = await get_health_checks(service=service, db=db)
         assert all(c.status == "down" for c in checks)
+
+
+class TestDetermineStatus:
+    def test_all_up(self) -> None:
+        checks = [
+            DependencyHealth(name=DependencyName.DATABASE, status="up"),
+            DependencyHealth(name=DependencyName.MESSAGE_BUS, status="up"),
+            DependencyHealth(name=DependencyName.CACHE, status="up"),
+        ]
+        assert determine_status(checks) == "healthy"
+
+    def test_one_down(self) -> None:
+        checks = [
+            DependencyHealth(name=DependencyName.DATABASE, status="down", error=ErrorCategory.TIMEOUT),
+            DependencyHealth(name=DependencyName.MESSAGE_BUS, status="up"),
+            DependencyHealth(name=DependencyName.CACHE, status="up"),
+        ]
+        assert determine_status(checks) == "unhealthy"
+
+    def test_all_down(self) -> None:
+        checks = [
+            DependencyHealth(name=DependencyName.DATABASE, status="down", error=ErrorCategory.CONNECTION_REFUSED),
+            DependencyHealth(name=DependencyName.MESSAGE_BUS, status="down", error=ErrorCategory.CONNECTION_CLOSED),
+            DependencyHealth(name=DependencyName.CACHE, status="down", error=ErrorCategory.TIMEOUT),
+        ]
+        assert determine_status(checks) == "unhealthy"
+
+    def test_empty_checks(self) -> None:
+        assert determine_status([]) == "healthy"
 
 
 class TestHealthResponseModel:

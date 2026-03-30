@@ -2144,6 +2144,34 @@
                 }
             }
         },
+        "/health": {
+            "get": {
+                "summary": "Health",
+                "operationId": "health_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/schema.graphql": {
             "get": {
                 "summary": "Get Graphql Schema",
@@ -4334,6 +4362,42 @@
                 ],
                 "title": "ConfigAPI"
             },
+            "DependencyHealth": {
+                "properties": {
+                    "name": {
+                        "$ref": "#/components/schemas/DependencyName"
+                    },
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "error": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ErrorCategory"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "name",
+                    "status"
+                ],
+                "title": "DependencyHealth"
+            },
+            "DependencyName": {
+                "type": "string",
+                "enum": [
+                    "database",
+                    "message_bus",
+                    "cache"
+                ],
+                "title": "DependencyName"
+            },
             "DiffAction": {
                 "type": "string",
                 "enum": [
@@ -4405,6 +4469,17 @@
                     "name"
                 ],
                 "title": "DropdownChoice"
+            },
+            "ErrorCategory": {
+                "type": "string",
+                "enum": [
+                    "timeout",
+                    "connection_refused",
+                    "connection_closed",
+                    "not_initialized",
+                    "unknown_error"
+                ],
+                "title": "ErrorCategory"
             },
             "ExperimentalFeaturesSettings": {
                 "properties": {
@@ -4764,6 +4839,32 @@
                     "absent"
                 ],
                 "title": "HashableModelState"
+            },
+            "HealthResponse": {
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "title": "Status"
+                    },
+                    "checks": {
+                        "items": {
+                            "$ref": "#/components/schemas/DependencyHealth"
+                        },
+                        "type": "array",
+                        "title": "Checks"
+                    },
+                    "timestamp": {
+                        "type": "string",
+                        "title": "Timestamp"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "status",
+                    "checks",
+                    "timestamp"
+                ],
+                "title": "HealthResponse"
             },
             "InfoAPI": {
                 "properties": {

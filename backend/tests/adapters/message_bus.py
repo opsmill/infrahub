@@ -19,6 +19,9 @@ class BusRecorder(InfrahubMessageBus):
         self.messages: list[InfrahubMessage] = []
         self.messages_per_routing_key: dict[str, list[InfrahubMessage]] = {}
 
+    async def is_healthy(self) -> bool:
+        return True
+
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
     ) -> None:
@@ -45,6 +48,9 @@ class BusSimulator(InfrahubMessageBus):
 
         self.replies: dict[str, list[InfrahubMessage]] = defaultdict(list)
         build_component_registry()
+
+    async def is_healthy(self) -> bool:
+        return True
 
     async def publish(
         self, message: InfrahubMessage, routing_key: str, delay: MessageTTL | None = None, is_retry: bool = False
