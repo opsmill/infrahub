@@ -66,7 +66,7 @@ export function SearchResultsPage() {
         onToggleAll={toggleAll}
       />
 
-      <div className="flex flex-col gap-2 p-2">
+      <div className="flex flex-col gap-2 p-2 pt-0">
         {isPending && query && (
           <Content.Card className="flex flex-col gap-3 p-4">
             <Skeleton className="h-10 w-full" />
@@ -88,7 +88,12 @@ export function SearchResultsPage() {
         )}
 
         {groups.length > 0 && (
-          <Accordion type="multiple" value={openGroups} onValueChange={setOpenGroups} className="flex flex-col gap-2">
+          <Accordion
+            type="multiple"
+            value={openGroups}
+            onValueChange={setOpenGroups}
+            className="flex flex-col gap-2"
+          >
             {groups.map((group) => (
               <SearchResultsGroup key={group.kind} kind={group.kind} results={group.results} />
             ))}
