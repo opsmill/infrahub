@@ -17,7 +17,7 @@ type SearchModalProps = {
 };
 
 export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
-  let [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   function closeDialog() {
     setIsOpen(false);
