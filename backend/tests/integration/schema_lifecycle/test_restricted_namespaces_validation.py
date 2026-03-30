@@ -31,9 +31,9 @@ class TestRestrictedNamespacesValidation(TestSchemaLifecycleBase):
         """Test that changing restricted_namespaces is rejected when existing nodes violate the new restriction.
 
         Scenario:
-        - Initial: generic Animal (restricted_namespaces: ["Dog"]) and node Dog (namespace: Dog)
+        - Initial: generic Animal (restricted_namespaces: ["Dog"]) and node Dog
         - Update: Animal's restricted_namespaces changed to ["Cat"]
-        - Expected: Validation fails because Dog node (namespace: Dog) doesn't comply with new restriction
+        - Expected: Validation fails because Dog node (namespace: Dog) doesn't comply
         """
         schema_branch: SchemaBranch = registry.schema.get_schema_branch(name=registry.default_branch)
 
@@ -47,61 +47,22 @@ class TestRestrictedNamespacesValidation(TestSchemaLifecycleBase):
     # Fixtures
 
     @pytest.fixture(scope="class")
-    def schema_animal_generic(self) -> dict[str, Any]:
-        """Generic Animal with restricted_namespaces allowing only Dog namespace."""
-        return {
-            "name": "Animal",
-            "namespace": "Testing",
-            "label": "Animal",
-            "attributes": [
-                {"name": "name", "kind": "Text"},
-            ],
-            "restricted_namespaces": ["Dog"],
-        }
-
-    @pytest.fixture(scope="class")
-    def schema_animal_generic_cat_restriction(self) -> dict[str, Any]:
-        """Generic Animal with restricted_namespaces changed to only allow Cat namespace."""
-        return {
-            "name": "Animal",
-            "namespace": "Testing",
-            "label": "Animal",
-            "attributes": [
-                {"name": "name", "kind": "Text"},
-            ],
-            "restricted_namespaces": ["Cat"],
-        }
-
-    @pytest.fixture(scope="class")
-    def schema_dog_node(self) -> dict[str, Any]:
-        """Dog node in Dog namespace, inheriting from Animal generic."""
-        return {
-            "name": "Dog",
-            "namespace": "Dog",
-            "label": "Dog",
-            "inherit_from": ["TestingAnimal"],
-            "attributes": [
-                {"name": "breed", "kind": "Text", "optional": True},
-            ],
-        }
-
-    @pytest.fixture(scope="class")
     def schema_with_dog_restriction(
         self,
-        schema_animal_generic: dict[str, Any],
+        schema_animal_generic_restricted_to_dog: dict[str, Any],
         schema_dog_node: dict[str, Any],
     ) -> dict[str, Any]:
         """Schema where Animal generic allows Dog namespace."""
         return {
             "version": "1.0",
-            "generics": [schema_animal_generic],
+            "generics": [schema_animal_generic_restricted_to_dog],
             "nodes": [schema_dog_node],
         }
 
     @pytest.fixture(scope="class")
     def schema_with_cat_restriction(
         self,
-        schema_animal_generic_cat_restriction: dict[str, Any],
+        schema_animal_generic_restricted_to_cat: dict[str, Any],
         schema_dog_node: dict[str, Any],
     ) -> dict[str, Any]:
         """Schema where Animal generic allows only Cat namespace.
@@ -110,7 +71,7 @@ class TestRestrictedNamespacesValidation(TestSchemaLifecycleBase):
         """
         return {
             "version": "1.0",
-            "generics": [schema_animal_generic_cat_restriction],
+            "generics": [schema_animal_generic_restricted_to_cat],
             "nodes": [schema_dog_node],
         }
 
