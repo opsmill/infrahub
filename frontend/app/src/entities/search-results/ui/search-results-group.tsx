@@ -8,7 +8,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/shared/components/ui/accordion";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
@@ -75,7 +74,7 @@ export function SearchResultsGroup({ kind, results }: SearchResultsGroupProps) {
         </AccordionTrigger>
 
         <AccordionContent>
-          <ScrollArea scrollX scrollY className="max-h-[50vh]">
+          <div className="max-h-[50vh] overflow-auto">
             <DataTable
               columns={columns}
               count={results.length}
@@ -88,7 +87,7 @@ export function SearchResultsGroup({ kind, results }: SearchResultsGroupProps) {
               onLoadMore={fetchNextPage}
               isFetchingNextPage={isFetchingNextPage}
             />
-          </ScrollArea>
+          </div>
         </AccordionContent>
       </Content.Card>
     </AccordionItem>
