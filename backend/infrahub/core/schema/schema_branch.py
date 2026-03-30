@@ -1310,7 +1310,7 @@ class SchemaBranch:
         jinja_template = InfrahubJinja2Template(template=node.display_label)
         context = ExecutionContext.CORE
         if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
-            context = ExecutionContext.CORE | ExecutionContext.LOCAL
+            context |= ExecutionContext.LOCAL
         try:
             variables = jinja_template.get_variables()
             jinja_template.validate(context=context)
@@ -1370,7 +1370,7 @@ class SchemaBranch:
             jinja_template = InfrahubJinja2Template(template=attribute.computed_attribute.jinja2_template)
             context = ExecutionContext.CORE
             if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
-                context = ExecutionContext.CORE | ExecutionContext.LOCAL
+                context |= ExecutionContext.LOCAL
             try:
                 variables = jinja_template.get_variables()
                 jinja_template.validate(context=context)
