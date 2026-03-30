@@ -4693,10 +4693,8 @@ async def test_generic_schema_with_empty_restricted_namespace_is_failing(
     schema.load_schema(schema=test_schema)
 
     # Act
-    with pytest.raises(ValueError) as error:
+    with pytest.raises(ValueError, match="does not comply with this restriction as its namespace"):
         schema.validate_restricted_namespaces_from_generic()
-
-    assert "does not comply with this restriction as its namespace" in str(error.value)
 
 
 async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
@@ -4718,6 +4716,7 @@ async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
     assert len(schema.all_names) == 2
     assert schema.all_names[0] == "AnimalDog"
     assert schema.all_names[1] == "AnimalGeneric"
+
 
 
 async def test_schema_loading_when_node_inherits_from_core_repository(
