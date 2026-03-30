@@ -77,20 +77,22 @@ export function SearchResultsGroup({ kind, results, isOpen, onToggle }: SearchRe
       </button>
 
       {isOpen && (
-        <InfiniteScroll
-          scrollX
-          hasNextPage={hasNextPage}
-          onLoadMore={fetchNextPage}
-          className="max-h-[50vh]"
-        >
-          <DataTable
-            columns={columns}
-            count={results.length}
-            data={flatData}
-            isLoading={isPending || isFetchingNextPage}
-            skeletonRowCount={skeletonRowCount}
-          />
-        </InfiniteScroll>
+        <div className="max-h-[50vh]">
+          <InfiniteScroll
+            scrollX
+            hasNextPage={hasNextPage}
+            onLoadMore={fetchNextPage}
+            className="h-full"
+          >
+            <DataTable
+              columns={columns}
+              count={results.length}
+              data={flatData}
+              isLoading={isPending || isFetchingNextPage}
+              skeletonRowCount={skeletonRowCount}
+            />
+          </InfiniteScroll>
+        </div>
       )}
     </Content.Card>
   );
