@@ -257,23 +257,23 @@ export const router = createBrowserRouter([
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/entities/role-manager/ui/accounts"),
+                    lazy: () => import("@/pages/role-management/accounts"),
                   },
                   {
                     path: "groups",
-                    lazy: () => import("@/entities/role-manager/ui/groups"),
+                    lazy: () => import("@/pages/role-management/groups"),
                   },
                   {
                     path: "roles",
-                    lazy: () => import("@/entities/role-manager/ui/roles"),
+                    lazy: () => import("@/pages/role-management/roles"),
                   },
                   {
                     path: "global-permissions",
-                    lazy: () => import("@/entities/role-manager/ui/global-permissions"),
+                    lazy: () => import("@/pages/role-management/global-permissions"),
                   },
                   {
                     path: "object-permissions",
-                    lazy: () => import("@/entities/role-manager/ui/object-permissions"),
+                    lazy: () => import("@/pages/role-management/object-permissions"),
                   },
                 ],
               },
