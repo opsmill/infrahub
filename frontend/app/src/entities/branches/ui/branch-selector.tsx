@@ -1,15 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { useCommandState } from "cmdk";
 import { useQueryState } from "nuqs";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import type { Branch } from "@/shared/api/graphql/generated/graphql";
 import { constructPath } from "@/shared/api/rest/fetch";
-import {
-  Button,
-  ButtonWithTooltip,
-  LinkButton,
-} from "@/shared/components/buttons/button-primitive";
+import { Button, ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
   Command,
@@ -20,10 +16,12 @@ import {
 } from "@/shared/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { QSP } from "@/shared/config/qsp";
+import { useIsTruncated } from "@/shared/hooks/useIsTruncated";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
+import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 
@@ -36,6 +34,8 @@ export default function BranchSelector() {
   const { currentBranch } = useCurrentBranch();
   const [isOpen, setIsOpen] = useState(false);
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
+  const triggerNameRef = useRef<HTMLSpanElement>(null);
+  const isTriggerTruncated = useIsTruncated(triggerNameRef);
 
   return (
     <Popover
@@ -48,12 +48,18 @@ export default function BranchSelector() {
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="h-8 w-[205px] rounded-lg border-neutral-200 p-0 shadow-none"
+          className="h-8 w-60 rounded-lg border-neutral-200 p-0 shadow-none"
           data-testid="branch-selector-trigger"
+          title={isTriggerTruncated ? currentBranch.name : undefined}
         >
-          <div className="inline-flex h-full grow items-center gap-1.5 truncate border-gray-200 border-r px-3">
-            <Icon icon="mdi:source-branch" />
-            <span className="truncate">{currentBranch.name}</span>
+          <div className="inline-flex h-full grow items-center justify-between gap-1.5 overflow-hidden border-gray-200 border-r px-3">
+            <div className="inline-flex min-w-0 items-center gap-1.5">
+              <Icon icon="mdi:source-branch" className="shrink-0" />
+              <span ref={triggerNameRef} className="truncate">
+                {currentBranch.name}
+              </span>
+            </div>
+            <BranchStatusBadge status={currentBranch.status} className="shrink-0" />
           </div>
 
           <Icon icon="mdi:chevron-down" className="px-3 text-2xl" />
@@ -101,6 +107,7 @@ function BranchSelect({
       <Command
         style={{
           minWidth: "var(--radix-popover-trigger-width)",
+          maxWidth: "320px",
           maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
         }}
       >
@@ -153,6 +160,8 @@ function BranchSelect({
 
 function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => void }) {
   const { currentBranch } = useCurrentBranch();
+  const nameRef = useRef<HTMLSpanElement>(null);
+  const isTruncated = useIsTruncated(nameRef);
 
   return (
     <ComboboxItem
@@ -160,9 +169,12 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
       selectedValue={currentBranch.name}
       onSelect={onChange}
       value={branch.name}
+      title={isTruncated ? branch.name : undefined}
     >
-      <div className="flex w-full items-center truncate">
-        <span className="truncate">{branch.name}</span>
+      <div className="flex w-full items-center overflow-hidden">
+        <span ref={nameRef} className="truncate">
+          {branch.name}
+        </span>
 
         <div className="ml-auto inline-flex items-center gap-1">
           {branch.is_default && (
@@ -173,6 +185,7 @@ function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => vo
           {branch.sync_with_git && (
             <Icon icon="mdi:source-branch-sync" className="text-gray-400 text-sm" />
           )}
+          <BranchStatusBadge status={branch.status} />
         </div>
       </div>
     </ComboboxItem>

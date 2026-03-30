@@ -5,7 +5,7 @@ import pytest
 from infrahub.core.constants import BranchSupportType, InfrahubKind
 
 
-def _get_schema_by_kind(full_schema, kind) -> dict[str, Any]:
+def _get_schema_by_kind(full_schema: dict[str, Any], kind: str) -> dict[str, Any]:
     for schema_dict in full_schema["nodes"] + full_schema["generics"]:
         schema_kind = schema_dict["namespace"] + schema_dict["name"]
         if schema_kind == kind:
@@ -92,12 +92,12 @@ async def animal_person_schema_dict() -> dict:
 
 
 @pytest.fixture
-def schema_all_in_one():
+def schema_all_in_one() -> dict[str, Any]:
     FULL_SCHEMA = {
         "nodes": [
             {
                 "name": "Criticality",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "inherit_from": ["InfraGenericInterface"],
                 "default_filter": "name__value",
                 "branch": BranchSupportType.AGNOSTIC.value,
@@ -110,7 +110,7 @@ def schema_all_in_one():
                 "relationships": [
                     {
                         "name": "tags",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Tags",
                         "optional": True,
                         "cardinality": "many",
@@ -119,7 +119,7 @@ def schema_all_in_one():
             },
             {
                 "name": "Tag",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "label": "Tag",
                 "default_filter": "name__value",
                 "attributes": [
@@ -135,7 +135,7 @@ def schema_all_in_one():
             },
             {
                 "name": "Status",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
@@ -143,7 +143,7 @@ def schema_all_in_one():
             },
             {
                 "name": "Badge",
-                "namespace": "Builtin",
+                "namespace": "Testing",
                 "branch": BranchSupportType.LOCAL.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
@@ -177,7 +177,7 @@ def schema_all_in_one():
                 "relationships": [
                     {
                         "name": "primary_tag",
-                        "peer": InfrahubKind.TAG,
+                        "peer": "TestingTag",
                         "label": "Primary Tag",
                         "identifier": "primary_tag__criticality",
                         "optional": False,
@@ -186,13 +186,13 @@ def schema_all_in_one():
                     },
                     {
                         "name": "status",
-                        "peer": "BuiltinStatus",
+                        "peer": "TestingStatus",
                         "optional": True,
                         "cardinality": "one",
                     },
                     {
                         "name": "badges",
-                        "peer": "BuiltinBadge",
+                        "peer": "TestingBadge",
                         "optional": True,
                         "cardinality": "many",
                     },
@@ -242,7 +242,7 @@ def schema_all_in_one():
 
 
 @pytest.fixture
-def schema_criticality_tag():
+def schema_criticality_tag() -> dict[str, Any]:
     FULL_SCHEMA = {
         "nodes": [
             {
@@ -355,7 +355,7 @@ def schema_parent_component() -> dict:
 
 
 @pytest.fixture
-def schema_diff_attr_inheritance_types():
+def schema_diff_attr_inheritance_types() -> dict[str, Any]:
     """Two generics with the same attribute but different types and a single node implementation."""
     FULL_SCHEMA = {
         "generics": [

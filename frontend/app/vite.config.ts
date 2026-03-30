@@ -10,6 +10,15 @@ import tsconfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   server: {
     port: 8080,
+    watch: {
+      ignored: [
+        "**/graphql-env.d.ts",
+        "**/graphql-cache.d.ts",
+        "**/graphql/generated/**",
+        "**/rest/types.generated.ts",
+        "**/playwright-report/**",
+      ],
+    },
   },
   preview: {
     port: 3000,
@@ -17,7 +26,11 @@ export default defineConfig({
   },
   plugins: [
     tailwindcss(),
-    react(),
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
     svgr(),
     tsconfigPaths(),
     monacoEditorPlugin({

@@ -1,11 +1,12 @@
 import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import type { PaginationParams } from "@/shared/api/types";
+
+export const BRANCHES_PER_PAGE = 40;
 
 const GET_BRANCHES = graphql(`
-  query GetBranches($branchSearch: String, $limit: Int, $offset: Int) {
-    InfrahubBranch(name__value: $branchSearch, limit: $limit, offset: $offset, partial_match: true) {
+  query GetBranches($limit: Int, $offset: Int, $nameValue: String, $partialMatch: Boolean, $statusValue: BranchStatus, $createdById: ID, $branchedFromAfter: DateTime, $branchedFromBefore: DateTime, $createdAtAfter: DateTime, $createdAtBefore: DateTime, $updatedAtAfter: DateTime, $updatedAtBefore: DateTime) {
+    InfrahubBranch(limit: $limit, offset: $offset, name__value: $nameValue, partial_match: $partialMatch, status__value: $statusValue, node_metadata__created_by__id: $createdById, branched_from__after: $branchedFromAfter, branched_from__before: $branchedFromBefore, node_metadata__created_at__after: $createdAtAfter, node_metadata__created_at__before: $createdAtBefore, node_metadata__updated_at__after: $updatedAtAfter, node_metadata__updated_at__before: $updatedAtBefore) {
       edges {
         node {
           id
@@ -56,23 +57,37 @@ const GET_BRANCHES = graphql(`
   }
 `);
 
-export const BRANCHES_PER_PAGE = 40;
-
-export interface GetBranchesFromApiParams
-  extends PaginationParams,
-    VariablesOf<typeof GET_BRANCHES> {}
+export type GetBranchesFromApiParams = VariablesOf<typeof GET_BRANCHES>;
 
 export const getBranchesFromApi = async ({
-  branchSearch,
   limit = BRANCHES_PER_PAGE,
   offset,
+  nameValue,
+  partialMatch,
+  statusValue,
+  createdById,
+  branchedFromAfter,
+  branchedFromBefore,
+  createdAtAfter,
+  createdAtBefore,
+  updatedAtAfter,
+  updatedAtBefore,
 }: GetBranchesFromApiParams = {}) => {
   return graphqlClient.query({
     query: GET_BRANCHES,
     variables: {
-      branchSearch,
       limit,
       offset,
+      nameValue,
+      partialMatch,
+      statusValue,
+      createdById,
+      branchedFromAfter,
+      branchedFromBefore,
+      createdAtAfter,
+      createdAtBefore,
+      updatedAtAfter,
+      updatedAtBefore,
     },
   });
 };

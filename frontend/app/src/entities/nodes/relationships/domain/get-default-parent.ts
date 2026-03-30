@@ -21,7 +21,7 @@ export interface DefaultParentParams
     ContextParams,
     FormContextType {}
 
-const convertNodeObjectToNode = (nodeObject: NodeObject | null): NodeCore | null => {
+const convertNodeObjectToNode = (nodeObject: NodeObject | null | undefined): NodeCore | null => {
   if (!nodeObject) return null;
   return {
     id: nodeObject.id,

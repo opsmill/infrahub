@@ -1,25 +1,28 @@
-import { useState } from "react";
 import { toast } from "react-toastify";
 
-import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { ACCOUNT_TOKEN_OBJECT } from "@/shared/config/constants";
 
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
-interface iProps {
+interface ModalDeleteObjectProps {
   label?: string | null;
   rowToDelete: any;
-  isLoading?: boolean;
-  open: boolean;
-  close: () => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onDelete?: () => void;
 }
 
-export default function ModalDeleteObject({ label, rowToDelete, open, close, onDelete }: iProps) {
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const deleteObject = useDeleteObjectMutation();
+export default function ModalDeleteObject({
+  label,
+  rowToDelete,
+  isOpen,
+  onOpenChange,
+  onDelete,
+}: ModalDeleteObjectProps) {
+  const { mutateAsync, isPending } = useDeleteObjectMutation();
 
   const objectDisplay =
     (rowToDelete && "__typename" in rowToDelete && "id" in rowToDelete
@@ -35,9 +38,7 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
       return;
     }
 
-    setIsLoading(true);
-
-    await deleteObject.mutateAsync(
+    await mutateAsync(
       {
         objectKind:
           rowToDelete.__typename === "AccountTokenNode"
@@ -49,7 +50,7 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
         onSuccess: async () => {
           if (onDelete) await onDelete();
 
-          close();
+          onOpenChange(false);
 
           toast(<Alert type={ALERT_TYPES.SUCCESS} message={`Object ${objectDisplay} deleted`} />);
         },
@@ -58,7 +59,6 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
         },
       }
     );
-    setIsLoading(false);
   };
 
   return (
@@ -80,11 +80,10 @@ export default function ModalDeleteObject({ label, rowToDelete, open, close, onD
           </>
         )
       }
-      onCancel={close}
       onDelete={handleDeleteObject}
-      open={!!open}
-      setOpen={close}
-      isLoading={isLoading}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
+      isLoading={isPending}
     />
   );
 }

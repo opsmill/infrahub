@@ -66,18 +66,17 @@ Follow BDD structure consistently:
 - Maintainability when data structures change
 - Reusability across tests
 
-### Available Factories
+### Adding Factories
 
-Common factories available in `tests/fake/`:
+Location: `frontend/app/tests/fake/`
 
-- `generateNodeSchema()` - Generate node schema objects
-- `generateGenericSchema()` - Generate generic schema objects
-- `generateProfileSchema()` - Generate profile schema objects
-- `generateAttributeSchema()` - Generate attribute schema objects
-- `generateRelationshipSchema()` - Generate relationship schema objects
-- `buildFormField()` - Generate form field objects
-- `generateRelationshipNode()` - Generate relationship node objects
-- `generateBranch()` - Generate branch objects
+**When to add:** If you create test data that could be reused across multiple tests, add it as a factory.
+
+**How to add:**
+1. Check existing files in `tests/fake/` for related factories
+2. Add to existing file if domain matches, otherwise create new file
+3. Use `generate*` naming convention
+4. Accept optional overrides parameter for customization
 
 ### Using Factories with Overrides
 

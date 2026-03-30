@@ -65,17 +65,14 @@ describe("getRelationships", () => {
         parent__ids: [parentId],
       },
     });
-    expect(result).toEqual({
-      count: 0,
-      items: [
-        {
-          id: "1",
-          hfid: ["test", "hfid", "1"],
-          display_label: "Test Label",
-          __typename: "TestType",
-        },
-      ],
-    });
+    expect(result).toEqual([
+      {
+        id: "1",
+        hfid: ["test", "hfid", "1"],
+        display_label: "Test Label",
+        __typename: "TestType",
+      },
+    ]);
   });
 
   it("should fetch relationships without optional parameters", async () => {
@@ -108,6 +105,6 @@ describe("getRelationships", () => {
       search: undefined,
       filterQuery: undefined,
     });
-    expect(result).toEqual({ count: 0, items: [] });
+    expect(result).toEqual([]);
   });
 });

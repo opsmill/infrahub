@@ -21,7 +21,7 @@ async def ip_dataset_01(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> dict[str, Any]:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
     # -----------------------
@@ -82,7 +82,7 @@ async def ip_dataset_02(
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
     register_ipam_schema: SchemaBranch,
-):
+) -> dict[str, Any]:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -123,10 +123,10 @@ async def test_ipprefix_nextavailable(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
-    ip_dataset_01,
-    prefix,
-    prefix_length,
-    response,
+    ip_dataset_01: dict[str, Any],
+    prefix: str,
+    prefix_length: int | None,
+    response: str,
 ) -> None:
     obj = ip_dataset_01[prefix]
 
@@ -165,10 +165,10 @@ async def test_ipaddress_nextavailable(
     default_branch: Branch,
     default_ipnamespace: Node,
     register_ipam_schema: SchemaBranch,
-    ip_dataset_02,
-    prefix,
-    prefix_length,
-    response,
+    ip_dataset_02: dict[str, Any],
+    prefix: str,
+    prefix_length: int | None,
+    response: str,
 ) -> None:
     obj = ip_dataset_02[prefix]
 
@@ -253,7 +253,9 @@ class TestIpamAvailableNodes(TestInfrahubApp):
         return schema_branch
 
     @pytest.fixture(scope="class")
-    async def ip_dataset_ranges(self, db: InfrahubDatabase, default_branch: Branch, register_ipam_schema: SchemaBranch):
+    async def ip_dataset_ranges(
+        self, db: InfrahubDatabase, default_branch: Branch, register_ipam_schema: SchemaBranch
+    ) -> dict[str, Any]:
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
 
@@ -337,7 +339,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def ip_dataset_available_prefixes(
         self, db: InfrahubDatabase, default_branch: Branch, register_ipam_schema: SchemaBranch
-    ):
+    ) -> dict[str, Any]:
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
 
         ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
@@ -413,7 +415,7 @@ class TestIpamAvailableNodes(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def ip_dataset_range_various_kinds(
         self, db: InfrahubDatabase, default_branch: Branch, register_ipam_schema: SchemaBranch
-    ):
+    ) -> dict[str, Any]:
         prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
         address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
         alternative_address_schema = registry.schema.get_node_schema(name="TestIPAddress", branch=default_branch)

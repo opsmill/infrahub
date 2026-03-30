@@ -1,5 +1,5 @@
 import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { BranchContextParams } from "@/shared/api/types";
@@ -12,8 +12,9 @@ import { getRelationshipMutation } from "@/entities/nodes/object/utils/get-relat
 
 export interface UpdateObjectFromApiParams extends BranchContextParams {
   objectKind: string;
-  data: Record<string, any>;
+  data: Record<string, unknown>;
   profileIds?: Array<string>;
+  file?: File;
 }
 
 export function updateObjectFromApi({
@@ -21,10 +22,12 @@ export function updateObjectFromApi({
   objectKind,
   profileIds = [],
   branchName,
+  file,
 }: UpdateObjectFromApiParams) {
-  const objectData = Object.entries(data).reduce((acc, [key, value]) => {
-    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && value.value === null) {
-      // WHen using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
+  const objectData: Record<string, unknown> = Object.entries(data).reduce((acc, [key, value]) => {
+    const valueWithProp = value as { value?: unknown };
+    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && valueWithProp.value === null) {
+      // When using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
       return {
         ...acc,
         [key.replace(RELATIONSHIP_BULK_REMOVE_PREFIX, "")]: null,
@@ -60,7 +63,8 @@ export function updateObjectFromApi({
       return acc;
     }
 
-    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && value.value === null) {
+    const valueWithProp = value as { value?: unknown };
+    if (key.startsWith(RELATIONSHIP_BULK_REMOVE_PREFIX) && valueWithProp.value === null) {
       // When using the reset to null value, we need to use the regular mutation and not the RelationshipRemove
       return acc;
     }
@@ -72,6 +76,7 @@ export function updateObjectFromApi({
   }, {});
 
   const objectMutation = {
+    ...(file && { __variables: { file: "Upload!" } }),
     [`${objectKind}Update`]: {
       __args: {
         data: {
@@ -80,6 +85,7 @@ export function updateObjectFromApi({
             ? { profiles: profileIds.map((profileId) => ({ id: profileId })) }
             : {}),
         },
+        ...(file && { file: new VariableType("file") }),
       },
       object: {
         id: true,
@@ -93,8 +99,8 @@ export function updateObjectFromApi({
   const relationshipAddMutation =
     objectData?.id && Object.entries(relationshipAddData)?.length
       ? getRelationshipMutation({
-          id: objectData.id,
-          data: relationshipAddData,
+          id: objectData.id as string,
+          data: relationshipAddData as Record<string, Array<{ id: string }>>,
           mutation: "RelationshipAdd",
         })
       : {};
@@ -102,8 +108,8 @@ export function updateObjectFromApi({
   const relationshipRemoveMutation =
     objectData?.id && Object.entries(relationshipRemoveData)?.length
       ? getRelationshipMutation({
-          id: objectData.id,
-          data: relationshipRemoveData,
+          id: objectData.id as string,
+          data: relationshipRemoveData as Record<string, Array<{ id: string }>>,
           mutation: "RelationshipRemove",
         })
       : {};
@@ -118,6 +124,7 @@ export function updateObjectFromApi({
 
   return graphqlClient.mutate({
     mutation: gql(mutation),
+    variables: file ? { file } : undefined,
     context: {
       branch: branchName,
     },

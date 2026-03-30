@@ -38,12 +38,11 @@ from infrahub.core.graph.schema import (
 from infrahub.core.initialization import get_root_node, initialize_registry
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
-from infrahub.core.migrations.schema.models import SchemaApplyMigrationData
-from infrahub.core.migrations.schema.tasks import schema_apply_migrations
 from infrahub.core.migrations.shared import MigrationInput, get_migration_console
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
+from infrahub.core.schema.update_coordinator import MigrationExecutor, SchemaUpdateCoordinator
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
@@ -494,7 +493,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         raise typer.Exit(1)
 
     # ----------------------------------------------------------
-    # Update the schema
+    # Update the schema and run migrations
     # ----------------------------------------------------------
     origin_schema = branch_schema.duplicate()
 
@@ -503,42 +502,33 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     schema_default_branch.process()
     registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
-    update_at = Timestamp()
-    async with db.start_transaction() as dbt:
-        await registry.schema.update_schema_branch(
-            schema=candidate_schema,
-            db=dbt,
-            branch=default_branch.name,
+    coordinator = SchemaUpdateCoordinator(
+        db=db,
+        branch=default_branch,
+        schema_manager=registry.schema,
+        origin_schema=origin_schema,
+        migration_executor=MigrationExecutor.DIRECT,
+    )
+
+    try:
+        await coordinator.execute(
+            candidate_schema=candidate_schema,
+            at=Timestamp(),
             diff=result.diff,
+            migrations=result.migrations,
             limit=result.diff.all,
             update_db=True,
-            at=update_at,
+            update_registry=True,
         )
-        default_branch.update_schema_hash()
-        get_migration_console().log(
-            "The Core Schema has been updated, make sure to rebase any open branches after the upgrade"
-        )
-        if debug:
-            get_migration_console().log(f"New schema hash: {default_branch.active_schema_hash.main}")
-        await default_branch.save(db=dbt)
+    except Exception as exc:
+        get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
+        raise typer.Exit(1) from exc
 
-    # ----------------------------------------------------------
-    # Run the migrations
-    # ----------------------------------------------------------
-    apply_migration_data = SchemaApplyMigrationData(
-        branch=default_branch,
-        new_schema=candidate_schema,
-        previous_schema=origin_schema,
-        migrations=result.migrations,
-        at=update_at,
+    get_migration_console().log(
+        "The Core Schema has been updated, make sure to rebase any open branches after the upgrade"
     )
-    migration_error_msgs = await schema_apply_migrations(message=apply_migration_data)
-
-    if migration_error_msgs:
-        get_migration_console().log(f"{ERROR_BADGE} | Some error(s) happened while running the schema migrations")
-        for message in migration_error_msgs:
-            get_migration_console().log(message)
-        raise typer.Exit(1)
+    if debug:
+        get_migration_console().log(f"New schema hash: {default_branch.active_schema_hash.main}")
 
 
 @app.command(name="selected-export")

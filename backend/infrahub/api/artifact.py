@@ -13,13 +13,13 @@ from infrahub.api.dependencies import (
     get_db,
     get_permission_manager,
 )
+from infrahub.branch.status_checker import BranchStatusChecker
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
-from infrahub.core.branch.needs_rebase_status import check_need_rebase_status
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind, PermissionAction
 from infrahub.core.protocols import CoreArtifact, CoreArtifactDefinition
 from infrahub.database import InfrahubDatabase  # noqa: TC001
-from infrahub.exceptions import NodeNotFoundError
+from infrahub.exceptions import BranchStatusError, NodeNotFoundError, ValidationError
 from infrahub.git.models import RequestArtifactDefinitionGenerate
 from infrahub.log import get_logger
 from infrahub.permissions.constants import PermissionDecisionFlag
@@ -77,7 +77,10 @@ async def generate_artifact(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> None:
-    check_need_rebase_status(branch_params.branch)
+    try:
+        BranchStatusChecker().check(branch=branch_params.branch)
+    except BranchStatusError as err:
+        raise ValidationError(input_value=str(err)) from err
 
     permission_decision = (
         PermissionDecisionFlag.ALLOW_DEFAULT

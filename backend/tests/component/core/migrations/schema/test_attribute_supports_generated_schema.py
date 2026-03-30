@@ -122,9 +122,9 @@ async def test_migration_enable_support(
     await template.save(db=db)
 
     # Verify nbr_seats is not accessible on profile or template
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         profile.get_attribute(name="nbr_seats")
-    with pytest.raises(AttributeError):
+    with pytest.raises(ValueError):
         template.get_attribute(name="nbr_seats")
 
     # Set up migration: read_only=True -> read_only=False (enables support)

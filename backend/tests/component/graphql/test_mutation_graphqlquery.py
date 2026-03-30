@@ -2,12 +2,15 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_create_query_no_vars(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+async def test_create_query_no_vars(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
     query_value = """
     query MyQuery {
         CoreRepository {
@@ -68,7 +71,7 @@ async def test_create_query_no_vars(db: InfrahubDatabase, default_branch: Branch
 
 
 async def test_create_query_with_vars(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     query_value = """
     query MyQuery {
@@ -137,7 +140,9 @@ async def test_create_query_with_vars(
     assert query2.models.value == [InfrahubKind.TAG, InfrahubKind.REPOSITORY]
 
 
-async def test_update_query(db: InfrahubDatabase, default_branch: Branch, register_core_models_schema) -> None:
+async def test_update_query(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
     query_create = """
     query MyQuery {
         CoreRepository {
@@ -233,7 +238,7 @@ async def test_update_query(db: InfrahubDatabase, default_branch: Branch, regist
 
 
 async def test_update_query_no_update(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     query_create = """
     query MyQuery {

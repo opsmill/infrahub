@@ -1,10 +1,10 @@
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
+import { getExtensionFromContentType } from "@/shared/components/data-viewer/types";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Card } from "@/shared/components/ui/card";
-import { CONFIG } from "@/shared/config/config";
 
 import { assertArtifactObject } from "@/entities/artifacts/types";
 import { ArtifactFile } from "@/entities/artifacts/ui/artifact-file";
@@ -39,6 +39,10 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
     return <ErrorScreen message="Artifact data is incomplete" />;
   }
 
+  const contentType = artifact.content_type.value;
+  const extension = getExtensionFromContentType(contentType);
+  const storageId = artifact.storage_id.value;
+
   return (
     <div className="flex w-full grow flex-wrap gap-0.5 overflow-auto lg:flex-nowrap">
       <Content.Card className="flex grow flex-col">
@@ -54,15 +58,20 @@ export function ArtifactsDetails({ artifactId, artifactSchema }: ArtifactsDetail
           </Row>
         </Col>
 
-        <div className="flex grow overflow-hidden p-1">
+        {storageId ? (
           <ArtifactFile
-            artifactId={artifactId}
-            url={CONFIG.ARTIFACTS_CONTENT_URL(artifact.storage_id.value)}
-            contentType={artifact.content_type.value}
+            storageId={storageId}
+            fileName={`${artifactId}.${extension}`}
+            contentType={contentType}
+            className="m-1 grow overflow-hidden"
           />
-        </div>
+        ) : (
+          <div className="flex grow items-center justify-center p-4 text-gray-500">
+            No artifact content available
+          </div>
+        )}
       </Content.Card>
-      <Card className="min-w-[350px] p-0">
+      <Card className="min-w-90 overflow-auto p-0">
         <div className="border-gray-200 border-b p-2 font-semibold">Activities</div>
         <NodeEvents objectId={artifactId} objectKind={artifactKind} />
       </Card>

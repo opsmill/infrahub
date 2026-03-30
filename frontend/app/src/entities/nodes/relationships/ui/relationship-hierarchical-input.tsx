@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { forwardRef, useState } from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
 import { Badge } from "@/shared/components/ui/badge";
+import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,

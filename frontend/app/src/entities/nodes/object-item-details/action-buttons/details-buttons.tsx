@@ -4,8 +4,8 @@ import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ButtonWithTooltip, LinkButton } from "@/shared/components/buttons/button-primitive";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
@@ -40,7 +40,7 @@ export function DetailsButtons({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const nodeLabel = getNodeLabel(objectDetailsData);
-  const isEditAllowed = permission.update.isAllowed;
+  const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
 
   return (
     <>
@@ -70,7 +70,7 @@ export function DetailsButtons({
           size="sm"
           disabled={!isEditAllowed}
           onClick={() => setIsEditModalOpen(true)}
-          tooltipContent={!isEditAllowed ? permission.update.message : undefined}
+          tooltipContent={editTooltipMessage}
           tooltipEnabled={!isEditAllowed}
           data-testid="edit-button"
         >

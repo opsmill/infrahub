@@ -40,7 +40,6 @@ export function getIpAddressListWithAvailabilityGraphQLQuery({
           ...(objectKind !== IP_ADDRESS_GENERIC ? { kinds: [objectKind] } : {}),
           ...(filters ? addFiltersToRequest(filters) : {}),
         },
-        count: true,
         edges: {
           node: {
             id: true,
@@ -91,7 +90,6 @@ export function getIpAddressListWithoutAvailabilityGraphQLQuery({
           offset,
           ...(cleanedFilters?.length ? addFiltersToRequest(cleanedFilters) : {}),
         },
-        count: true,
         edges: {
           node: {
             id: true,

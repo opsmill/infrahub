@@ -47,6 +47,22 @@ export const getProposedChangesFromApi = async ({
         },
         count: true,
         edges: {
+          node_metadata: {
+            created_at: true,
+            created_by: {
+              id: true,
+              hfid: true,
+              display_label: true,
+              __typename: true,
+            },
+            updated_at: true,
+            updated_by: {
+              id: true,
+              hfid: true,
+              display_label: true,
+              __typename: true,
+            },
+          },
           node: {
             id: true,
             display_label: true,

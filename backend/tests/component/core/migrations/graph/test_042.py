@@ -180,7 +180,7 @@ class TestMigration042(TestInfrahubApp):
         priority_branch: Branch,
         deleted_profile_branch: Branch,
         deleted_node_branch: Branch,
-    ):
+    ) -> None:
         migration = WrappedMigration042()
         execution_result = await migration.execute(migration_input=MigrationInput(db=db))
         assert not execution_result.errors

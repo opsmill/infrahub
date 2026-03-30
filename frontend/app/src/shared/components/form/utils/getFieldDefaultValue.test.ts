@@ -8,7 +8,7 @@ import {
 import { store } from "@/shared/stores";
 
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { NodeObject, NodeObjectWithMetadata } from "@/entities/nodes/types";
 import {
   genericSchemasAtom,
   nodeSchemasAtom,
@@ -47,7 +47,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateRelationshipSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -56,7 +56,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -82,7 +82,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -91,7 +91,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -117,7 +117,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -126,7 +126,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -154,7 +154,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -163,7 +163,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject = {};
 
@@ -186,7 +186,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -195,7 +195,7 @@ describe("getFieldDefaultValue", () => {
             value: "test-value-form-profile",
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       const initialObject: Record<string, AttributeType> = {
         field1: {
@@ -224,7 +224,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -233,7 +233,7 @@ describe("getFieldDefaultValue", () => {
             value: null,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -251,7 +251,7 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -260,7 +260,7 @@ describe("getFieldDefaultValue", () => {
             value: 0,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -279,7 +279,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns profile's value with the highest priority + order by id ASC", () => {
       // GIVEN
-      const fieldSchema = {
+      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
         id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
         state: "present",
         name: "name",
@@ -299,9 +299,9 @@ describe("getFieldDefaultValue", () => {
         default_value: "test-value-form-schema",
         inherited: false,
         allow_override: "any",
-      } satisfies GetFieldDefaultValue["fieldSchema"];
+      };
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile3",
           display_label: "Profile 3",
@@ -335,7 +335,7 @@ describe("getFieldDefaultValue", () => {
             value: 1,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -354,7 +354,7 @@ describe("getFieldDefaultValue", () => {
 
     it("returns the 1st profile that contains any not null value", () => {
       // GIVEN
-      const fieldSchema = {
+      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
         id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
         state: "present",
         name: "name",
@@ -374,9 +374,9 @@ describe("getFieldDefaultValue", () => {
         default_value: "test-value-form-schema",
         inherited: false,
         allow_override: "any",
-      } satisfies GetFieldDefaultValue["fieldSchema"];
+      };
 
-      const profiles = [
+      const profiles: Array<ProfileData> = [
         {
           id: "profile1",
           display_label: "Profile 1",
@@ -399,7 +399,7 @@ describe("getFieldDefaultValue", () => {
             value: 1,
           },
         },
-      ] as Array<ProfileData>;
+      ];
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema, profiles });
@@ -420,7 +420,7 @@ describe("getFieldDefaultValue", () => {
   describe("when source is schema", () => {
     it("returns schema's default value when it exists, and no profile nor current object field value are provided", () => {
       // GIVEN
-      const fieldSchema = {
+      const fieldSchema: GetFieldDefaultValue["fieldSchema"] = {
         id: "17d67b92-f0b9-cf97-3001-c51824a9c7dc",
         state: "present",
         name: "name",
@@ -440,7 +440,7 @@ describe("getFieldDefaultValue", () => {
         default_value: "test-value-form-schema",
         inherited: false,
         allow_override: "any",
-      } satisfies GetFieldDefaultValue["fieldSchema"];
+      };
 
       // WHEN
       const defaultValue = getFieldDefaultValue({ fieldSchema });
@@ -511,10 +511,9 @@ describe("getFieldDefaultValue", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        __typename: "FakeTemplate" as any,
+        id: "template-id",
+        __typename: "FakeTemplate",
         field1: {
-          id: "field1-id",
           value: "template-value",
         },
       };
@@ -534,14 +533,126 @@ describe("getFieldDefaultValue", () => {
       });
     });
 
+    it("returns pool value from template when field value is null and source is a pool", () => {
+      // GIVEN
+      store.set(nodeSchemasAtom, [
+        generateNodeSchema({
+          kind: "CoreNumberPool",
+          inherit_from: ["CoreResourcePool"],
+        }),
+      ]);
+
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
+      const objectTemplate: NodeObjectWithMetadata = {
+        id: "template-id",
+        __typename: "FakeTemplate",
+        field1: {
+          value: null,
+          is_default: false,
+          is_from_profile: false,
+          is_protected: false,
+          is_visible: true,
+          owner: null,
+          updated_at: new Date().toISOString(),
+          source: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          fromTemplate: true,
+          id: "pool-id",
+          label: "My Number Pool",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
+    it("returns pool value from template when field value is null and companion relationship has pool", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+      const objectTemplate: NodeObject = {
+        id: "template-id",
+        __typename: "FakeTemplate",
+        weight: {
+          value: null,
+        },
+        weight_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          fromTemplate: true,
+          id: "pool-id",
+          label: "pool-id",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
+    it("returns null when template field value is null and source is not a pool", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "field1" });
+      const objectTemplate: NodeObjectWithMetadata = {
+        id: "template-id",
+        __typename: "FakeTemplate",
+        field1: {
+          value: null,
+          is_default: false,
+          is_from_profile: false,
+          is_protected: false,
+          is_visible: true,
+          owner: null,
+          updated_at: new Date().toISOString(),
+          source: {
+            id: "some-id",
+            display_label: "Some Source",
+            __typename: "TestNode",
+          },
+        },
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, objectTemplate });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "schema",
+        },
+        value: null,
+      });
+    });
+
     it("returns null value when template field value is null", () => {
       // GIVEN
       const fieldSchema = generateAttributeSchema({ name: "field1" });
       const objectTemplate: NodeObject = {
-        id: "template-id" as any,
-        __typename: "FakeTemplate" as any,
+        id: "template-id",
+        __typename: "FakeTemplate",
         field1: {
-          id: "field1-id",
           value: null,
         },
       };
@@ -623,6 +734,128 @@ describe("getFieldDefaultValue", () => {
           kind: "FakePool",
         },
         value: "my-default-value",
+      });
+    });
+  });
+
+  describe("when attribute has _from_resource_pool companion relationship set", () => {
+    it("returns pool value when companion relationship has a node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: null,
+          is_default: true,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          id: "pool-id",
+          label: "pool-id",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
+    it("returns pool value when is_default is false and companion relationship has a node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: 10,
+          is_default: false,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: {
+            id: "pool-id",
+            display_label: "My Number Pool",
+            __typename: "CoreNumberPool",
+          },
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "pool",
+          id: "pool-id",
+          label: "pool-id",
+          kind: "CoreNumberPool",
+        },
+        value: { from_pool: { id: "pool-id" } },
+      });
+    });
+
+    it("returns schema default when is_default is true and companion relationship has no node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: null,
+          is_default: true,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: null,
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: {
+          type: "schema",
+        },
+        value: null,
+      });
+    });
+
+    it("does not return pool value when companion relationship has no node", () => {
+      // GIVEN
+      const fieldSchema = generateAttributeSchema({ name: "weight", kind: "Number" });
+
+      const initialObject: Record<string, AttributeType> = {
+        weight: {
+          value: 42,
+          is_default: false,
+          is_from_profile: false,
+        },
+        weight_from_resource_pool: {
+          node: null,
+        } as any,
+      };
+
+      // WHEN
+      const defaultValue = getFieldDefaultValue({ fieldSchema, initialObject });
+
+      // THEN
+      expect(defaultValue).to.deep.equal({
+        source: { type: "user" },
+        value: 42,
       });
     });
   });

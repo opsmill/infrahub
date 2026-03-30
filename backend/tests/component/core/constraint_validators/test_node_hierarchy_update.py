@@ -6,6 +6,7 @@ from infrahub.core.constants import PathType, SchemaPathType
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.validators.model import SchemaConstraintValidatorRequest
 from infrahub.core.validators.node.hierarchy import NodeHierarchyChecker, NodeHierarchyUpdateValidatorQuery
@@ -14,7 +15,7 @@ from infrahub.database import InfrahubDatabase
 
 @pytest.fixture
 async def hierarchical_location_data_simple_and_small(
-    db: InfrahubDatabase, hierarchical_location_schema_simple
+    db: InfrahubDatabase, hierarchical_location_schema_simple: SchemaRoot
 ) -> dict[str, Node]:
     nodes = {}
 
@@ -63,7 +64,7 @@ async def hierarchical_location_data_simple_and_small(
 
 
 async def test_query_children_success(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple: dict[str, Node]
 ) -> None:
     site_schema = registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children")
@@ -80,7 +81,7 @@ async def test_query_children_success(
 
 
 async def test_query_parent_success(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple: dict[str, Node]
 ) -> None:
     site_schema = registry.schema.get(name="LocationSite")
     schema_path = SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent")
@@ -97,7 +98,7 @@ async def test_query_parent_success(
 
 
 async def test_query_children_failure(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
 ) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
@@ -161,7 +162,7 @@ async def test_query_children_failure(
 
 
 async def test_query_parent_failure(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
 ) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
@@ -225,7 +226,10 @@ async def test_query_parent_failure(
 
 
 async def test_query_update_on_branch_failure(
-    db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch: Branch,
+    hierarchical_location_data_simple_and_small: dict[str, Node],
 ) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
@@ -304,7 +308,10 @@ async def test_query_update_on_branch_failure(
 
 
 async def test_query_delete_on_branch_failure(
-    db: InfrahubDatabase, branch: Branch, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase,
+    branch: Branch,
+    default_branch: Branch,
+    hierarchical_location_data_simple_and_small: dict[str, Node],
 ) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
@@ -361,7 +368,7 @@ async def test_query_delete_on_branch_failure(
 
 
 async def test_validator_parents_failure(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
 ) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
@@ -392,7 +399,7 @@ async def test_validator_parents_failure(
 
 
 async def test_validator_parents_success(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
 ) -> None:
     site_schema = registry.schema.get(name="LocationSite")
 
@@ -413,7 +420,7 @@ async def test_validator_parents_success(
 
 
 async def test_validator_children_failure(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
 ) -> None:
     hldsas = hierarchical_location_data_simple_and_small
     site_schema = registry.schema.get(name="LocationSite")
@@ -444,7 +451,7 @@ async def test_validator_children_failure(
 
 
 async def test_validator_children_success(
-    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small
+    db: InfrahubDatabase, default_branch: Branch, hierarchical_location_data_simple_and_small: dict[str, Node]
 ) -> None:
     site_schema = registry.schema.get(name="LocationSite")
 

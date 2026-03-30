@@ -1,6 +1,6 @@
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
 
-import { Button, type ButtonProps } from "@/shared/components/buttons/button-primitive";
+import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";

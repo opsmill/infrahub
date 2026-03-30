@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { type CSSProperties, useState } from "react";
+import { type CSSProperties, type Ref, useState } from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -12,6 +12,7 @@ export type AccordionProps = {
   defaultOpen?: boolean;
   style?: CSSProperties;
   hideChevron?: boolean;
+  ref?: Ref<HTMLDivElement>;
 };
 
 export default function Accordion({
@@ -22,6 +23,7 @@ export default function Accordion({
   hideChevron,
   iconClassName,
   titleClassName,
+  ref,
   ...props
 }: AccordionProps) {
   const [isOpen, setIsOpen] = useState<boolean>();
@@ -29,7 +31,7 @@ export default function Accordion({
   const open = isOpen === undefined ? defaultOpen : isOpen;
 
   return (
-    <div className={className} {...props}>
+    <div ref={ref} className={className} {...props}>
       <div className="relative flex cursor-pointer items-center" onClick={() => setIsOpen(!open)}>
         <span
           className={classNames(

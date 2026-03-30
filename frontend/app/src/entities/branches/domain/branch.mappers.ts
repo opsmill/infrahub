@@ -5,6 +5,7 @@ import type {
   InfrahubNodeMetadata,
 } from "@/shared/api/graphql/generated/graphql";
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import type { NodeCore } from "@/entities/nodes/types";
 
@@ -15,6 +16,7 @@ export type InfrahubBranchResponse = {
 // Base fields present in both list and detail views
 interface BranchBase {
   id: string;
+  __typename: "Branch";
   name: string;
   description?: string | null;
   branched_from?: string | null;
@@ -60,6 +62,7 @@ export function mapToBranchListItem({
 }: MapToBranchListItemParams): BranchListItem {
   return {
     id: node.id,
+    __typename: "Branch",
     name: node.name.value,
     description: node.description?.value,
     branched_from: node.branched_from?.value,
@@ -77,6 +80,7 @@ export function mapToBranchListItem({
 export function mapToBranchDetail(node: InfrahubBranch): BranchDetail {
   return {
     id: node.id,
+    __typename: "Branch",
     name: node.name.value,
     description: node.description?.value,
     origin_branch: node.origin_branch?.value,
@@ -88,3 +92,38 @@ export function mapToBranchDetail(node: InfrahubBranch): BranchDetail {
     created_at: node.created_at,
   };
 }
+
+export const getNameFilterValue = (filters?: Filter[]) => {
+  const nameFilter = filters?.find((f) => f.name === "any__value");
+  return nameFilter?.value as string | undefined;
+};
+
+export const getStatusFilterValue = (filters?: Filter[]): BranchStatus | undefined => {
+  const statusFilter = filters?.find((f) => f.name === "status__value");
+  return statusFilter?.value as BranchStatus | undefined;
+};
+
+export const getCreatedByFilterValue = (filters?: Filter[]) => {
+  const createdByFilter = filters?.find((f) => f.name === "node_metadata__created_by__ids");
+  if (!createdByFilter?.value) return undefined;
+
+  const relationships = createdByFilter.value as Array<{ id: string }>;
+  // Return first ID since backend expects single ID, not array
+  return relationships[0]?.id;
+};
+
+export const getDateFilterValue = (filters?: Filter[], fieldName?: string, condition?: string) => {
+  const filter = filters?.find((f) => f.name === `${fieldName}__${condition}`);
+  return filter?.value as string | undefined;
+};
+
+export const getBranchDateFilters = (filters?: Filter[]) => {
+  return {
+    branchedFromAfter: getDateFilterValue(filters, "branched_from", "after"),
+    branchedFromBefore: getDateFilterValue(filters, "branched_from", "before"),
+    createdAtAfter: getDateFilterValue(filters, "node_metadata__created_at", "after"),
+    createdAtBefore: getDateFilterValue(filters, "node_metadata__created_at", "before"),
+    updatedAtAfter: getDateFilterValue(filters, "node_metadata__updated_at", "after"),
+    updatedAtBefore: getDateFilterValue(filters, "node_metadata__updated_at", "before"),
+  };
+};

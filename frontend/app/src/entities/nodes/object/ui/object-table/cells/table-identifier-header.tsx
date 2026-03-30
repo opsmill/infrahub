@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 
 import { Checkbox, type CheckboxProps } from "@/shared/components/aria/checkbox";
+import { Row } from "@/shared/components/container";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -20,8 +21,11 @@ export function TableIdentifierHeader({ schema, className, ...props }: TableIden
       className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white", className)}
     >
       {isAuthenticated && <Checkbox {...props} data-testid="select-all-rows" />}
-      {schema.icon && <Icon icon={getSchemaIcon(schema)} className="text-stone-400" />}
-      <span className="truncate">{schema.label}</span>
+
+      <Row className="mx-2 gap-1.5">
+        {schema.icon && <Icon icon={getSchemaIcon(schema)} />}
+        <span className="truncate">{schema.label}</span>
+      </Row>
     </div>
   );
 }

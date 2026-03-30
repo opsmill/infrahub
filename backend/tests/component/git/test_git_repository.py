@@ -1,10 +1,10 @@
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import anyio
 import pytest
-from git import Repo
+from git import Repo  # type: ignore[attr-defined]
 from git.exc import GitCommandError
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
@@ -40,11 +40,7 @@ from tests.conftest import TestHelper
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
-
-@pytest.fixture(autouse=True)
-def non_mocked_hosts() -> list:
-    """Workaround to tell HTTPX Mock to not mock the requests to prefect targeting 127.0.0.1."""
-    return ["127.0.0.1"]
+pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host != "127.0.0.1")
 
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:
@@ -299,9 +295,9 @@ async def test_get_branches_from_graph(
 
 async def test_get_commit_value(git_repo_01: InfrahubRepository) -> None:
     repo = git_repo_01
-    assert repo.get_commit_value(branch_name="main", remote=True) == "0b341c0c64122bb2a7b208f7a9452146685bc7dd"
-    assert repo.get_commit_value(branch_name="branch01", remote=True) == "92700512b5b16c0144f7fd2869669273577f1bd8"
-    assert repo.get_commit_value(branch_name="branch02", remote=True) == "49ac5e2a0f00b5eab6aedfdb19a1ef8127507f72"
+    assert repo.get_commit_value(branch_name="main", remote=True) == "f165752c1047beb50f610c01bf40d45f211607e1"
+    assert repo.get_commit_value(branch_name="branch01", remote=True) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
+    assert repo.get_commit_value(branch_name="branch02", remote=True) == "4e2fd98a5fd1fb61dc53150c778e22ee35f26191"
 
     with pytest.raises(ValueError):
         repo.get_commit_value(branch_name="branch01", remote=False)
@@ -328,7 +324,7 @@ async def test_create_branch_in_git_present_remote(git_repo_01: InfrahubReposito
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch01.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
+    assert repo.get_commit_value(branch_name=branch01.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
     assert len(worktrees) == 4
 
 
@@ -337,7 +333,7 @@ async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepositor
     await repo.create_branch_in_git(branch_name=branch99.name, branch_id=branch99.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch99.name) == "0b341c0c64122bb2a7b208f7a9452146685bc7dd"
+    assert repo.get_commit_value(branch_name=branch99.name) == "f165752c1047beb50f610c01bf40d45f211607e1"
     assert len(worktrees) == 3
 
 
@@ -481,7 +477,7 @@ async def test_sync_no_update(git_repo_02: InfrahubRepository) -> None:
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_sync_new_branch(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_03: InfrahubRepository,
     httpx_mock: HTTPXMock,
     mock_add_branch01_query: HTTPXMock,
@@ -499,12 +495,8 @@ async def test_sync_new_branch(
         method="POST", json=commit_response, match_headers={"X-Infrahub-Tracker": "mutation-repository-update-commit"}
     )
     admin_response = {"data": {"CoreGenericRepositoryUpdate": {"ok": True}}}
-    httpx_mock.add_response(
-        method="POST",
-        json=admin_response,
-        match_headers={"X-Infrahub-Tracker": "mutation-repository-update-admin-status"},
-        is_reusable=True,
-    )
+    # Note: The admin-status endpoint is only called from within import_objects_from_files,
+    # which we're mocking below, so we don't need to mock it here.
     httpx_mock.add_response(
         method="POST",
         json=admin_response,
@@ -512,14 +504,19 @@ async def test_sync_new_branch(
     )
 
     repo.client = client
-    await repo.sync()
+    # Mock import_objects_from_files since we're testing git sync, not import functionality
+    with patch(
+        "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
+    ) as mock_import:
+        await repo.sync()
+        mock_import.assert_awaited()
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch.name) == "92700512b5b16c0144f7fd2869669273577f1bd8"
+    assert repo.get_commit_value(branch_name=branch.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
     assert len(worktrees) == 4
 
 
-async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRepository) -> None:
+async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: InfrahubRepository) -> None:
     repo = git_repo_04
 
     branch = Branch(name="branch01", uuid=uuid4())
@@ -528,12 +525,17 @@ async def test_sync_updated_branch(prefect_test_fixture, git_repo_04: InfrahubRe
     # Mock update_commit_value query
     commit = repo.get_commit_value(branch_name="branch01", remote=True)
 
-    await repo.sync()
+    # Mock import_objects_from_files since we're testing git sync, not import functionality
+    with patch(
+        "infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock
+    ) as mock_import:
+        await repo.sync()
+        mock_import.assert_awaited()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
 
 
-async def test_render_jinja2_template_success(prefect_test_fixture, git_repo_jinja: InfrahubRepository) -> None:
+async def test_render_jinja2_template_success(prefect_test_fixture: None, git_repo_jinja: InfrahubRepository) -> None:
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -557,7 +559,7 @@ magnum
     assert rendered_tpl_main != rendered_tpl_branch
 
 
-async def test_render_jinja2_template_error(prefect_test_fixture, git_repo_jinja: InfrahubRepository) -> None:
+async def test_render_jinja2_template_error(prefect_test_fixture: None, git_repo_jinja: InfrahubRepository) -> None:
     repo = git_repo_jinja
 
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -569,7 +571,7 @@ async def test_render_jinja2_template_error(prefect_test_fixture, git_repo_jinja
 
 
 async def test_render_jinja2_template_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_jinja: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_jinja: InfrahubRepository
 ) -> None:
     repo = git_repo_jinja
 
@@ -582,7 +584,7 @@ async def test_render_jinja2_template_missing(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_execute_python_check_valid(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_checks: InfrahubRepository,
     mock_gql_query_my_query: HTTPXMock,
 ) -> None:
@@ -597,7 +599,7 @@ async def test_execute_python_check_valid(
 
 
 async def test_execute_python_check_file_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_checks: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_checks: InfrahubRepository
 ) -> None:
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -609,7 +611,7 @@ async def test_execute_python_check_file_missing(
 
 
 async def test_execute_python_check_class_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_checks: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_checks: InfrahubRepository
 ) -> None:
     repo = git_repo_checks
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -621,7 +623,7 @@ async def test_execute_python_check_class_missing(
 
 
 async def test_execute_python_transform_w_data(
-    client: InfrahubClient, prefect_test_fixture, git_repo_transforms: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_transforms: InfrahubRepository
 ) -> None:
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -644,7 +646,7 @@ async def test_execute_python_transform_w_data(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_execute_python_transform_w_query(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms: InfrahubRepository,
     mock_gql_query_my_query: HTTPXMock,
 ) -> None:
@@ -667,7 +669,7 @@ async def test_execute_python_transform_w_query(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_new(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -703,7 +705,7 @@ async def test_artifact_generate_python_new(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_existing_same(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -737,7 +739,7 @@ async def test_artifact_generate_python_existing_same(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_python_existing_different(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_transforms_w_client: InfrahubRepository,
     transformation_node_01: InfrahubNode,
     artifact_definition_node_01: InfrahubNode,
@@ -773,7 +775,7 @@ async def test_artifact_generate_python_existing_different(
 @pytest.mark.httpx_mock(should_mock=lambda request: "prefect" not in request.headers.get("User-Agent", ""))
 async def test_artifact_generate_jinja2_new(
     client: InfrahubClient,
-    prefect_test_fixture,
+    prefect_test_fixture: None,
     git_repo_jinja_w_client: InfrahubRepository,
     transformation_node_02: InfrahubNode,
     artifact_definition_node_02: InfrahubNode,
@@ -807,7 +809,7 @@ async def test_artifact_generate_jinja2_new(
 
 
 async def test_execute_python_transform_file_missing(
-    client: InfrahubClient, prefect_test_fixture, git_repo_transforms: InfrahubRepository
+    client: InfrahubClient, prefect_test_fixture: None, git_repo_transforms: InfrahubRepository
 ) -> None:
     repo = git_repo_transforms
     commit_main = repo.get_commit_value(branch_name="main", remote=False)
@@ -829,13 +831,13 @@ async def test_find_files(git_repo_jinja: InfrahubRepository) -> None:
         await repo.find_files(extension="yml")
 
     yaml_files = await repo.find_files(extension="yml", branch_name="main")
-    assert len(yaml_files) == 2
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml"], branch_name="main")
-    assert len(yaml_files) == 2
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name="main")
-    assert len(yaml_files) == 4
+    assert len(yaml_files) == 6  # 4 yml + 2 j2
 
     yaml_files = await repo.find_files(extension="yml", directory=Path("test_files"), branch_name="main")
     assert len(yaml_files) == 2
@@ -850,13 +852,13 @@ async def test_find_files_by_commit(git_repo_jinja: InfrahubRepository) -> None:
     commit = repo.get_commit_value(branch_name="main")
 
     yaml_files = await repo.find_files(extension="yml", commit=commit)
-    assert len(yaml_files) == 2
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml"], branch_name=commit)
-    assert len(yaml_files) == 2
+    assert len(yaml_files) == 4  # 2 in test_files/ + .infrahub.yml matched twice by both glob patterns
 
     yaml_files = await repo.find_files(extension=["yml", "j2"], branch_name=commit)
-    assert len(yaml_files) == 4
+    assert len(yaml_files) == 6  # 4 yml + 2 j2
 
 
 async def test_calculate_diff_between_commits(
@@ -949,6 +951,7 @@ async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchD
 
     assert branch01_files == [
         ".gitignore",
+        ".infrahub.yml",
         "README.md",
         "mynewfile.txt",
         "poetry.lock",
@@ -958,6 +961,7 @@ async def test_list_all_files(git_repo_01: InfrahubRepository, branch01: BranchD
     ]
     assert branch02_files == [
         ".gitignore",
+        ".infrahub.yml",
         "README.md",
         "poetry.lock",
         "pyproject.toml",
@@ -1011,7 +1015,10 @@ async def test_create_python_check_definition(
     module = helper.import_module_in_fixtures(module="checks/check01")
     check_class = module.Check01
 
+    assert repo.client is not None
+    assert repo.client.schema is not None
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
+    assert gql_schema is not None
 
     query = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
 
@@ -1042,8 +1049,12 @@ async def test_compare_python_check(
     module = helper.import_module_in_fixtures(module="checks/check01")
     check_class = module.Check01
 
+    assert repo.client is not None
+    assert repo.client.schema is not None
     gql_schema = await repo.client.schema.get(kind=InfrahubKind.GRAPHQLQUERY)
     check_schema = await repo.client.schema.get(kind=InfrahubKind.CHECKDEFINITION)
+    assert gql_schema is not None
+    assert check_schema is not None
 
     query_01 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_01)
     query_02 = InfrahubNode(client=repo.client, schema=gql_schema, data=gql_query_data_02)
@@ -1093,7 +1104,7 @@ async def test_compare_python_check(
 
 
 async def test_get_filtered_remote_branches__all_branches_exists(
-    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01, import_sync_branch_names
+    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_01: None, import_sync_branch_names: None
 ) -> None:
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
@@ -1101,7 +1112,7 @@ async def test_get_filtered_remote_branches__all_branches_exists(
 
 
 async def test_get_filtered_remote_branches__some_branches_exists(
-    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_03, import_sync_branch_names
+    git_repo_01: InfrahubRepository, mock_create_branch_git_repo_03: None, import_sync_branch_names: None
 ) -> None:
     repo = git_repo_01
     filtered_remote_branches = await repo.get_filtered_remote_branches()
@@ -1115,8 +1126,11 @@ async def test_get_filtered_remote_branches__no_import_sync_branch_names(git_rep
 
 
 async def test_repo_merge_use_explicit_merge_commit(
-    git_repo_01: InfrahubRepository, branch02: BranchData, git_user_config, git_use_explicit_merge_commit_config
-):
+    git_repo_01: InfrahubRepository,
+    branch02: BranchData,
+    git_user_config: None,
+    git_use_explicit_merge_commit_config: None,
+) -> None:
     repo = git_repo_01
     await repo.create_branch_in_git(branch_name=branch02.name, branch_id=branch02.id)
     response = await repo.merge(source_branch=branch02.name, dest_branch="main")

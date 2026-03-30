@@ -1,9 +1,12 @@
+import os
 import ssl
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
+from pydantic import ValidationError
 
-from infrahub.config import GitSettings, HTTPSettings, UserInfoMethod, load
+from infrahub.config import SETTINGS, GitSettings, HTTPSettings, StorageSettings, UserInfoMethod, load
 from tests.conftest import TestHelper
 
 TEST_DATA_DIR = Path(__file__).parent / "test_data"
@@ -37,6 +40,24 @@ def test_valid_git_settings__sync_branch_names() -> None:
 def test_invalid_git_settings__sync_branch_names() -> None:
     with pytest.raises(ValueError, match="Invalid regex pattern for import_sync_branch_names"):
         GitSettings(import_sync_branch_names=["main", "infrahub/.*", "release/.*", "a[b"])
+
+
+def test_storage_max_file_size() -> None:
+    assert StorageSettings().max_file_size == 50
+    assert StorageSettings(max_file_size=100).max_file_size == 100
+    assert StorageSettings(max_file_size=1).max_file_size == 1
+
+
+@pytest.mark.parametrize("invalid_value", [0, -10])
+def test_storage_max_file_size_rejects_invalid_values(invalid_value: int) -> None:
+    with pytest.raises(ValidationError, match="greater than or equal to 1"):
+        StorageSettings(max_file_size=invalid_value)
+
+
+def test_storage_max_file_size_environment_variable() -> None:
+    with patch.dict(os.environ, {"INFRAHUB_STORAGE_MAX_FILE_SIZE": "75"}):
+        assert StorageSettings().max_file_size == 75
+    assert isinstance(SETTINGS.storage.max_file_size, int)
 
 
 def test_http_settings_get_tls_context__default_returns_verified() -> None:

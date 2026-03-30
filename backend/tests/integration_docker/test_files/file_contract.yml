@@ -1,0 +1,60 @@
+# yaml-language-server: $schema=https://schema.infrahub.app/infrahub/schema/latest.json
+---
+version: "1.0"
+nodes:
+  - name: Vendor
+    namespace: Testing
+    description: "A vendor or supplier organization"
+    icon: "mdi:domain"
+    include_in_menu: true
+    label: "Vendor"
+    order_by:
+      - "name__value"
+    display_label: "name__value"
+    human_friendly_id:
+      - name__value
+    attributes:
+      - name: name
+        kind: Text
+        optional: false
+        unique: true
+      - name: contact_email
+        kind: Email
+        optional: true
+      - name: website
+        kind: URL
+        optional: true
+    relationships:
+      - name: contracts
+        peer: TestingFileContract
+        kind: Generic
+        cardinality: many
+        optional: true
+
+  - name: FileContract
+    namespace: Testing
+    description: "A file contract for testing file upload/download"
+    icon: "mdi:file-document"
+    inherit_from:
+      - CoreFileObject
+    include_in_menu: true
+    label: "File Contract"
+    display_label: "file_name__value"
+    human_friendly_id:
+      - file_name__value
+    attributes:
+      - name: description
+        kind: Text
+        optional: true
+      - name: contract_start
+        kind: DateTime
+        optional: true
+      - name: contract_end
+        kind: DateTime
+        optional: true
+    relationships:
+      - name: vendor
+        peer: TestingVendor
+        kind: Attribute
+        cardinality: one
+        optional: true

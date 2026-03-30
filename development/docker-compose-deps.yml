@@ -43,7 +43,7 @@ services:
       pod: "prefect-server"
   task-manager-db:
     profiles: [demo, dev]
-    image: "${POSTGRES_DOCKER_IMAGE:-pgautoupgrade/pgautoupgrade:18-alpine}"
+    image: "${POSTGRES_DOCKER_IMAGE:-postgres:18-alpine}"
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres

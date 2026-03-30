@@ -1,5 +1,9 @@
+from infrahub_sdk import InfrahubClient
+
+from infrahub.auth import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from tests.helpers.graphql import graphql_query
 from tests.helpers.test_app import TestInfrahubApp
@@ -7,7 +11,12 @@ from tests.helpers.test_app import TestInfrahubApp
 
 class TestQueryOrder(TestInfrahubApp):
     async def test_query_default_order(
-        self, db: InfrahubDatabase, default_branch: Branch, register_core_models_schema, session_admin, client
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        session_admin: AccountSession,
+        client: InfrahubClient,
     ) -> None:
         for i in range(5, 0, -1):
             node = await Node.init(db=db, schema="BuiltinTag")

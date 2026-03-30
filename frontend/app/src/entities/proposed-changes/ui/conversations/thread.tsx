@@ -8,7 +8,7 @@ import * as R from "remeda";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
-import ModalConfirm from "@/shared/components/modals/modal-confirm";
+import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Card } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
@@ -26,7 +26,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 
-import { Button } from "../../../../shared/components/buttons/button-primitive";
+import { Button } from "../../../../shared/components/ui/button";
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
 
@@ -229,11 +229,10 @@ export const Thread = (props: tThread) => {
 
       <ModalConfirm
         title="Confirm"
-        description={"Are you sure you want to mark this thread as resolved?"}
-        onCancel={() => setConfirmModal(false)}
+        description="Are you sure you want to mark this thread as resolved?"
         onConfirm={handleResolve}
-        open={confirmModal}
-        setOpen={() => setConfirmModal(false)}
+        isOpen={confirmModal}
+        onOpenChange={setConfirmModal}
         isLoading={isLoading}
       />
     </Card>

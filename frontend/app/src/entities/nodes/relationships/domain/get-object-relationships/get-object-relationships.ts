@@ -1,6 +1,6 @@
 import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
-import { DEFAULT_PAGE_SIZE, type PaginatedResponse } from "@/shared/utils/pagination";
+import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
 import { getObjectRelationshipsFromApi } from "@/entities/nodes/relationships/api/get-object-relationships-from-api";
 import type { NodeObject } from "@/entities/nodes/types";
@@ -16,7 +16,7 @@ export interface GetObjectRelationshipsParams extends ContextParams, PaginationP
 
 export type GetObjectRelationships = (
   params: GetObjectRelationshipsParams
-) => Promise<PaginatedResponse<NodeObject>>;
+) => Promise<NodeObject[]>;
 
 export const getObjectRelationships: GetObjectRelationships = async ({
   parentKind,
@@ -33,8 +33,5 @@ export const getObjectRelationships: GetObjectRelationships = async ({
 
   const relationshipData = data[parentKind]?.edges?.[0]?.node?.[relationshipName];
 
-  return {
-    items: relationshipData?.edges?.map(({ node }: { node: NodeObject }) => node) ?? [],
-    count: relationshipData?.count ?? 0,
-  };
+  return relationshipData?.edges?.map(({ node }: { node: NodeObject }) => node) ?? [];
 };

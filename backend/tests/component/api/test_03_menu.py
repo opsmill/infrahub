@@ -1,16 +1,19 @@
+from fastapi.testclient import TestClient
+
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_default_menu
+from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 
 
 async def test_get_menu_not_admin(
     db: InfrahubDatabase,
-    client,
-    client_headers,
+    client: TestClient,
+    client_headers: dict[str, str],
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     await create_default_menu(db=db)
 
@@ -26,12 +29,12 @@ async def test_get_menu_not_admin(
 
 async def test_get_menu_admin(
     db: InfrahubDatabase,
-    client,
-    admin_headers,
-    authentication_base,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    authentication_base: Node,
     default_branch: Branch,
     car_person_schema_generics: SchemaRoot,
-    car_person_data_generic,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     await create_default_menu(db=db)
 

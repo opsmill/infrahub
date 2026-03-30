@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.permissions.constants import PermissionDecisionFlag
-
 from . import Node
 
 if TYPE_CHECKING:
@@ -29,10 +27,8 @@ class CoreGlobalPermission(Node):
             include_properties=include_properties,
         )
 
-        if fields:
-            if "identifier" in fields:
-                decision = PermissionDecisionFlag(value=self.decision.value.value)  # type: ignore[attr-defined]
-                response["identifier"] = {"value": f"global:{self.action.value}:{decision.name.lower()}"}  # type: ignore[attr-defined,union-attr]
+        if fields and "identifier" in fields:
+            response["identifier"] = {"value": await self.get_display_label(db=db)}
 
         return response
 
@@ -56,11 +52,7 @@ class CoreObjectPermission(Node):
             include_properties=include_properties,
         )
 
-        if fields:
-            if "identifier" in fields:
-                decision = PermissionDecisionFlag(value=self.decision.value.value)  # type: ignore[attr-defined]
-                response["identifier"] = {
-                    "value": f"object:{self.namespace.value}:{self.name.value}:{self.action.value.value}:{decision.name.lower()}"  # type: ignore[attr-defined,union-attr]
-                }
+        if fields and "identifier" in fields:
+            response["identifier"] = {"value": await self.get_display_label(db=db)}
 
         return response

@@ -4,7 +4,7 @@ import { useAtom } from "jotai";
 import { CaseSensitiveIcon } from "lucide-react";
 import type * as React from "react";
 
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import { inputStyle } from "@/shared/components/ui/style";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";

@@ -10,6 +10,8 @@ from infrahub.core.query.resource_manager import NumberPoolGetReserved, NumberPo
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
+from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 
 REQUEST = NodeSchema(
     name="Request",
@@ -33,7 +35,7 @@ INCIDENT = NodeSchema(
 
 
 @pytest.fixture
-async def register_test_schema(default_branch: Branch, register_core_models_schema) -> SchemaBranch:
+async def register_test_schema(default_branch: Branch, register_core_models_schema: SchemaBranch) -> SchemaBranch:
     registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
 
     schema = SchemaRoot(
@@ -44,6 +46,17 @@ async def register_test_schema(default_branch: Branch, register_core_models_sche
     default_branch.update_schema_hash()
 
     return schema_branch
+
+
+@pytest.fixture
+async def run_number_pool_validation(db: InfrahubDatabase) -> None:
+    upserter = SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema)
+    snps = SchemaNumberPoolSynchronizer(
+        db=db,
+        schema_manager=registry.schema,
+        upserter=upserter,
+    )
+    await snps.run()
 
 
 async def create_objects(db: InfrahubDatabase, schema: NodeSchema, branch: str, start: int, end: int) -> list[Node]:
@@ -71,7 +84,7 @@ async def get_reservations(db: InfrahubDatabase, pool: CoreNumberPool, branch: B
 
 
 async def test_NumberPoolGetUsed(
-    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch
+    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch, run_number_pool_validation: None
 ) -> None:
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
     request_schema = registry.schema.get_node_schema(name=REQUEST.kind, branch=default_branch)
@@ -116,7 +129,7 @@ async def test_NumberPoolGetUsed(
 
 
 async def test_PoolChangeReserved(
-    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch
+    db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch, run_number_pool_validation: None
 ) -> None:
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
     request_schema = registry.schema.get_node_schema(name=REQUEST.kind, branch=default_branch)

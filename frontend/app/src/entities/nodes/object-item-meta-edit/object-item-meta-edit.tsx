@@ -67,7 +67,8 @@ export default function ObjectItemMetaEdit({
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageOwner" } as any,
             defaultValue: getRelationshipDefaultValue({
-              relationshipData: { node: attributeOrRelationshipToEdit.owner },
+              objectData: { owner: { node: attributeOrRelationshipToEdit.owner } },
+              relationshipName: "owner",
             }),
             parent: attributeOrRelationshipToEdit.owner?.__typename,
           },
@@ -77,7 +78,8 @@ export default function ObjectItemMetaEdit({
             type: "relationship",
             relationship: { cardinality: "one", inherited: true, peer: "LineageSource" } as any,
             defaultValue: getRelationshipDefaultValue({
-              relationshipData: { node: attributeOrRelationshipToEdit.source },
+              objectData: { source: { node: attributeOrRelationshipToEdit.source } },
+              relationshipName: "source",
             }),
             parent: attributeOrRelationshipToEdit.source?.__typename,
           },

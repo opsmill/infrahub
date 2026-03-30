@@ -204,6 +204,24 @@ If you find yourself wanting to mock:
 
 Even in these cases, prefer adapter patterns when the dependency is used widely.
 
+## Exception Testing
+
+When testing that code raises an exception, use the `match` parameter of `pytest.raises` to validate the error message:
+
+```python
+# Good - use match parameter for message validation
+with pytest.raises(PoolExhaustedError, match=r"no more addresses available"):
+    allocate_from_pool(pool_id=exhausted_pool.id)
+
+# Bad - manual assertion on exception message
+with pytest.raises(PoolExhaustedError) as exc_info:
+    allocate_from_pool(pool_id=exhausted_pool.id)
+
+assert "no more addresses available" in exc_info.value.message
+```
+
+The `match` parameter accepts a regular expression pattern and is more concise. Use `r"..."` raw strings to avoid escaping issues.
+
 ## See Also
 
 - [Python Standards](python.md) - General Python coding standards

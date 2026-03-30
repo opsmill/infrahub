@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 
-import ModalDelete from "@/shared/components/modals/modal-delete";
+import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
@@ -9,8 +9,8 @@ export interface DeleteObjectModalProps {
   objectId: string;
   objectKind: string;
   objectLabel: string;
-  open: boolean;
-  setOpen: (b: boolean) => void;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   toastMessage?: string;
 }
 
@@ -18,8 +18,8 @@ export function DeleteObjectModal({
   objectKind,
   objectLabel,
   objectId,
-  open,
-  setOpen,
+  isOpen,
+  onOpenChange,
   toastMessage,
 }: DeleteObjectModalProps) {
   const { mutate, isPending } = useDeleteObjectMutation();
@@ -32,15 +32,14 @@ export function DeleteObjectModal({
           Are you sure you want to remove <span className="mx-1 font-semibold">{objectLabel}</span>?
         </>
       }
-      open={open}
-      setOpen={setOpen}
-      onCancel={() => setOpen(false)}
+      isOpen={isOpen}
+      onOpenChange={onOpenChange}
       onDelete={() =>
         mutate(
           { objectKind, objectId },
           {
             onSuccess: () => {
-              setOpen(false);
+              onOpenChange(false);
               toast(
                 <Alert
                   type={ALERT_TYPES.SUCCESS}

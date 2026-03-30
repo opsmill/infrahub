@@ -65,6 +65,7 @@ from .types import (
     RelatedIPAddressNodeInput,
     RelatedIPPrefixNodeInput,
     RelatedNodeInput,
+    Upload,
 )
 from .types.attribute import BaseAttribute as BaseAttributeType
 from .types.attribute import TextAttributeType
@@ -919,7 +920,10 @@ class GraphQLSchemaManager:
             meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
             main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-            args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
+            args_attrs: dict[str, Any] = {"data": input_type(required=True), "context": ContextInput(required=False)}
+            if schema.is_file_object:
+                args_attrs["file"] = graphene.Argument(Upload, required=True)
+
             main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
             mutation_object = type(name, (base_class,), main_attrs)
             registry.set_mutation_type(
@@ -950,7 +954,10 @@ class GraphQLSchemaManager:
             meta_attrs: dict[str, Any] = {"schema": schema, "name": name, "description": schema.description}
             main_attrs["Meta"] = type("Meta", (object,), meta_attrs)
 
-            args_attrs = {"data": input_type(required=True), "context": ContextInput(required=False)}
+            args_attrs: dict[str, Any] = {"data": input_type(required=True), "context": ContextInput(required=False)}
+            if schema.is_file_object:
+                args_attrs["file"] = graphene.Argument(Upload, required=False)
+
             main_attrs["Arguments"] = type("Arguments", (object,), args_attrs)
 
             mutation_object = type(name, (base_class,), main_attrs)

@@ -189,12 +189,13 @@ const sidebars: SidebarsConfig = {
             },
             {
               type: 'category',
-              label: 'Transforms',
+              label: 'Transforms & Artifacts',
               link: {
                 type: 'generated-index',
               },
               items: [
                 'topics/transformation',
+                'topics/artifact',
               ],
             },
             {
@@ -221,12 +222,12 @@ const sidebars: SidebarsConfig = {
             },
             {
               type: 'category',
-              label: 'Artifacts',
+              label: 'File Storage',
               link: {
                 type: 'generated-index',
               },
               items: [
-                'topics/artifact',
+                'topics/file-object',
                 'topics/object-storage',
               ],
             },
@@ -427,6 +428,9 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_8_2',
+            'release-notes/infrahub/release-1_8_1',
+            'release-notes/infrahub/release-1_8_0',
             'release-notes/infrahub/release-1_7_7',
             'release-notes/infrahub/release-1_7_6',
             'release-notes/infrahub/release-1_7_5',

@@ -584,7 +584,6 @@ export const generateGenericSchema = (overrides?: Partial<GenericSchema>): Gener
     ],
     hierarchical: false,
     generate_profile: true,
-    generate_template: false,
     used_by: ["InfraInterfaceL2", "InfraInterfaceL3", "InfraLagInterfaceL2", "InfraLagInterfaceL3"],
     kind: "InfraInterface",
     hash: "46e4f878e399f34035224421ab419517",

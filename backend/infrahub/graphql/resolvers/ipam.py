@@ -94,7 +94,7 @@ async def _resolve_available_address_nodes(
     ip_range_schema = registry.get_node_schema(name=InfrahubKind.IPRANGEAVAILABLE, branch=branch)
 
     # Make sure nodes are ordered by addresses
-    sorted_nodes = sorted(existing_nodes, key=lambda n: n.address.obj)
+    sorted_nodes = sorted(existing_nodes, key=lambda n: n.address.obj.ip)
     prefix_first_address = (
         ip_prefix.network_address if _include_first_and_last_ips(ip_prefix=prefix) else ip_prefix.network_address + 1
     )

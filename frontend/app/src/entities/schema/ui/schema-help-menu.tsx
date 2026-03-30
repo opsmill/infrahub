@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
 
 import { Menu, MenuItem, MenuPopover, MenuTrigger } from "@/shared/components/aria/menu";
-import { Button } from "@/shared/components/buttons/button-primitive";
+import { Button } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { MENU_EXCLUDELIST } from "@/shared/config/constants";
 

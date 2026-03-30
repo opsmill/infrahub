@@ -225,8 +225,13 @@ class DiffMergeSerializer:
                 property_diff=property_diff, python_value_type=python_type
             )
             for action, value in actions_and_values:
-                # we only delete attributes when the whole attribute is deleted
-                if action is DiffAction.REMOVED and attribute_diff.action is not DiffAction.REMOVED:
+                # we only delete attribute values when the whole attribute is deleted,
+                # but other properties can be removed independently
+                if (
+                    action is DiffAction.REMOVED
+                    and attribute_diff.action is not DiffAction.REMOVED
+                    and property_diff.property_type is DatabaseEdgeType.HAS_VALUE
+                ):
                     continue
                 prop_dicts.append(
                     PropertyMergeDict(
@@ -257,7 +262,9 @@ class DiffMergeSerializer:
         }
 
     def _get_actions_and_peers(self, relationship_diff: EnrichedDiffSingleRelationship) -> list[tuple[DiffAction, str]]:
-        is_related_prop = [p for p in relationship_diff.properties if p.property_type is DatabaseEdgeType.IS_RELATED][0]
+        is_related_prop = next(
+            p for p in relationship_diff.properties if p.property_type is DatabaseEdgeType.IS_RELATED
+        )
         actions_and_values = self._get_property_actions_and_values(property_diff=is_related_prop, python_value_type=str)
         actions_and_peers: list[tuple[DiffAction, str]] = []
         for action, peer_id in actions_and_values:

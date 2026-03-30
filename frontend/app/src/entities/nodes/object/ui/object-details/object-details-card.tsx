@@ -1,4 +1,5 @@
 import { Card, CardWithBorder } from "@/shared/components/ui/card";
+import { classNames } from "@/shared/utils/common";
 
 import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
@@ -19,7 +20,7 @@ export function ObjectDetailsCard({
   className,
 }: ObjectDetailsCardProps) {
   return (
-    <Card className={className} data-testid="object-details">
+    <Card className={classNames("overflow-x-hidden p-0", className)} data-testid="object-details">
       <CardWithBorder.Title className="border-gray-200 border-b">Details</CardWithBorder.Title>
 
       <ObjectDataDisplay

@@ -3,8 +3,8 @@ import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React, { useEffect, useState } from "react";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
-import { Button } from "@/shared/components/buttons/button-primitive";
 import type { PoolValue } from "@/shared/components/form/pool-selector";
+import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,

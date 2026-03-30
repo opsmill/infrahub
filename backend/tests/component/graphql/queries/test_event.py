@@ -1,5 +1,6 @@
 import uuid
-from typing import Any
+from collections.abc import AsyncGenerator
+from typing import Any, Generator
 
 import pytest
 from graphql import ExecutionResult
@@ -141,6 +142,11 @@ query MutatedNodes($id: [String!]) {
 }
 """
 
+_TEST_ID = uuid.uuid4().hex[:8]
+BRANCH1_NAME = f"branch1-{_TEST_ID}"
+BRANCH2_NAME = f"branch2-{_TEST_ID}"
+BRANCH3_NAME = f"branch3-{_TEST_ID}"
+
 ACCOUNT1_ID = "33b15615-649e-4e9e-89b0-85e187251f1f"
 ACCOUNT2_ID = "518b434f-40bf-4b65-b700-04696535ca8e"
 
@@ -222,35 +228,35 @@ async def events_data(
     await group_eu.new(db=db, name="Europe", children=[group_fr])
     await group_eu.save(db=db)
 
-    branch1 = Branch(uuid=branch1_id, name="branch1")
-    branch2 = Branch(uuid=branch2_id, name="branch2")
-    branch3 = Branch(uuid=branch3_id, name="branch3")
+    branch1 = Branch(uuid=branch1_id, name=BRANCH1_NAME)
+    branch2 = Branch(uuid=branch2_id, name=BRANCH2_NAME)
+    branch3 = Branch(uuid=branch3_id, name=BRANCH3_NAME)
 
     items: dict[str, InfrahubEvent] = {
         "branch1_created": BranchCreatedEvent(
-            branch_name="branch1",
+            branch_name=BRANCH1_NAME,
             branch_id=str(branch1_id),
             sync_with_git=True,
             meta=EventMeta.with_dummy_context(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
-            branch_name="branch1",
+            branch_name=BRANCH1_NAME,
             branch_id=str(branch1_id),
             meta=EventMeta.with_dummy_context(branch=branch1),
         ),
         "branch2_created": BranchCreatedEvent(
-            branch_name="branch2",
+            branch_name=BRANCH2_NAME,
             branch_id=str(branch2_id),
             sync_with_git=False,
             meta=EventMeta.with_dummy_context(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
-            branch_name="branch2",
+            branch_name=BRANCH2_NAME,
             branch_id=str(branch2_id),
             meta=EventMeta.with_dummy_context(branch=branch2),
         ),
         "branch3_created": BranchCreatedEvent(
-            branch_name="branch3",
+            branch_name=BRANCH3_NAME,
             branch_id=str(branch3_id),
             sync_with_git=True,
             meta=EventMeta.with_dummy_context(branch=branch3),
@@ -397,7 +403,7 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
     return [str(event.meta.id) for event in events_data.values()]
 
 
-def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):
+def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]) -> dict[str, Any]:
     """
     Because we can't guarantee that Prefect is empty at the start of the test easily
     we need to exclude all events not created by this test suite.
@@ -407,7 +413,7 @@ def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]):
 
 
 @pytest.fixture(scope="module")
-async def prefect_client(prefect_test_fixture):
+async def prefect_client(prefect_test_fixture: Generator[None, None, None]) -> AsyncGenerator[PrefectClient, None]:
     async with get_client(sync_client=False) as client:
         yield client
 
@@ -428,8 +434,8 @@ async def test_event_query_prefect(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: None,
-    events_data,
-    event_ids_inscope,
+    events_data: dict[str, InfrahubEvent],
+    event_ids_inscope: list[str],
 ) -> None:
     result = await run_query(
         db=db,
@@ -456,7 +462,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"branch": "branch1"},
+        variables={"branch": BRANCH1_NAME},
     )
     assert result_branch1.errors is None
     assert result_branch1.data
@@ -468,7 +474,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_SIMPLE_COUNT_EVENT,
-        variables={"branch": "branch1"},
+        variables={"branch": BRANCH1_NAME},
     )
     assert result_count_branch1.errors is None
     assert result_count_branch1.data
@@ -522,7 +528,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"branch": "branch1", "account": ACCOUNT1_ID},
+        variables={"branch": BRANCH1_NAME, "account": ACCOUNT1_ID},
     )
     assert branch1_account1.errors is None
     assert branch1_account1.data
@@ -532,7 +538,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"branch": "branch1", "account": ACCOUNT2_ID},
+        variables={"branch": BRANCH1_NAME, "account": ACCOUNT2_ID},
     )
     assert branch1_account2.errors is None
     assert branch1_account2.data
@@ -542,7 +548,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"branch": "branch2", "account": ACCOUNT1_ID},
+        variables={"branch": BRANCH2_NAME, "account": ACCOUNT1_ID},
     )
     assert branch2_account1.errors is None
     assert branch2_account1.data
@@ -552,7 +558,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"branch": "branch2", "account": ACCOUNT2_ID},
+        variables={"branch": BRANCH2_NAME, "account": ACCOUNT2_ID},
     )
     assert branch2_account2.errors is None
     assert branch2_account2.data
@@ -584,7 +590,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"account": ACCOUNT1_ID, "branch": ["branch1", "branch3"]},
+        variables={"account": ACCOUNT1_ID, "branch": [BRANCH1_NAME, BRANCH3_NAME]},
     )
     assert account1_branch1_branch3.errors is None
     assert account1_branch1_branch3.data
@@ -595,7 +601,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"level": 1, "branch": ["branch3"]},
+        variables={"level": 1, "branch": [BRANCH3_NAME]},
     )
     assert branch3_level_1.errors is None
     assert branch3_level_1.data
@@ -607,7 +613,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"has_children": True, "branch": ["branch3"]},
+        variables={"has_children": True, "branch": [BRANCH3_NAME]},
     )
     assert branch3_has_children_true.errors is None
     assert branch3_has_children_true.data
@@ -631,20 +637,19 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"event_type": ["infrahub.node.created"]},
+        variables={"event_type": ["infrahub.node.created"], "limit": 50},
     )
     assert created_branch1.errors is None
     assert created_branch1.data
-    assert created_branch1.data["InfrahubEvent"]["count"] == 11
-    assert [node["node"]["event"] for node in created_branch1.data["InfrahubEvent"]["edges"]] == [
-        "infrahub.node.created"
-    ] * 10
+    clean_result = filter_outofscope_events(created_branch1.data, event_ids_inscope)
+    assert clean_result["InfrahubEvent"]["count"] == 11
+    assert [node["node"]["event"] for node in clean_result["InfrahubEvent"]["edges"]] == ["infrahub.node.created"] * 11
 
     all_branch1 = await run_query(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"branch": ["branch1"]},
+        variables={"branch": [BRANCH1_NAME]},
     )
     assert all_branch1.errors is None
     assert all_branch1.data
@@ -655,7 +660,7 @@ async def test_event_query_prefect(
         db=db,
         branch=default_branch,
         query=QUERY_EVENT,
-        variables={"branch": ["branch1"], "since": occurred_at},
+        variables={"branch": [BRANCH1_NAME], "since": occurred_at},
     )
     assert since_timestamp.errors is None
     assert since_timestamp.data

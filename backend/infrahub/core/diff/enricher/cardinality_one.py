@@ -111,9 +111,9 @@ class DiffCardinalityOneEnricher(DiffEnricherInterface):
             element_actions = {element.action for element in diff_relationship.relationships}
             # check if this is a simultaneous update
             if len(diff_relationship.relationships) > 1 and {DiffAction.REMOVED, DiffAction.ADDED} <= element_actions:
-                latest_element = [
+                latest_element = next(
                     element for element in diff_relationship.relationships if element.action is DiffAction.ADDED
-                ][0]
+                )
                 consolidated_element_action = DiffAction.UPDATED
             else:
                 latest_element = max(diff_relationship.relationships, key=lambda elem: elem.changed_at)

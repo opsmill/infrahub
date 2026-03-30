@@ -149,6 +149,10 @@ Infrahub follows a structured branching model designed for stable releases and c
 - `stable`: Production-ready code, protected branch, only updated via PRs
 - `develop`: Integration branch for new features, default branch for development
 
+**Release branches**:
+
+- `release-x.y`: Cut from `develop` during release prep, merged into `stable` and then back into `develop`; an automation bot keeps them in sync by continuously PR-ing `stable → release-x.y` and `release-x.y → develop` (or `stable → develop` when no release branch exists)
+
 **Feature branches**:
 
 - `feature/description`: New features or enhancements
@@ -281,6 +285,27 @@ Follow these practices to ensure smooth code review and integration.
    - Rebase on target branch if requested
    - Squash commits if needed
    - Use merge commit for feature branches
+
+## Documentation branching workflow
+
+Use the branch that matches when the change must appear on [docs.infrahub.app](https://docs.infrahub.app):
+
+### Minor fixes to published docs
+
+- Branch directly from `stable` (for example, `docs/stable-doc-workflow`) so the fix deploys as soon as the PR merges
+- If you already authored the fix on `develop`, rebase or cherry-pick it onto a `stable`-based branch before opening the PR
+- Target `stable` in the pull request
+
+### Docs for work on a release branch
+
+- When a feature (or its documentation) lives on an active `release-x.y` branch, create your docs branch from that same release branch (for example, `release-1.5`)
+- Target the release branch in your PR so the docs ship with the release and flow back into `develop` via the automated sync
+- Rebase on the release branch regularly to pick up stabilization commits
+
+### Future or feature documentation
+
+- Branch from `develop` for docs tied to unreleased features
+- This keeps upcoming content out of `stable` until the feature is available
 
 ## Bringing latest changes from stable into develop
 

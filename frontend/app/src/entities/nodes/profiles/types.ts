@@ -1,7 +1,9 @@
-import type { NumberAttribute } from "@/shared/api/graphql/generated/graphql";
+import type { NodeCore } from "@/entities/nodes/types";
 
-import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
-
-export type ProfileData = NodeObjectWithMetadata & {
-  profile_priority: NumberAttribute;
+// ProfileData represents profile data from the API.
+// Dynamic fields (attributes & relationships) are accessed by name and narrowed at the call site,
+// so the index signature uses `unknown` to avoid conflicts with NodeCore properties.
+export type ProfileData = NodeCore & {
+  profile_priority?: { value: number | null };
+  [key: string]: unknown;
 };

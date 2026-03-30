@@ -1,0 +1,64 @@
+{
+  "version": "1.0",
+  "generics": [
+    {
+      "name": "Location",
+      "namespace": "Generic",
+      "hierarchical": true,
+      "attributes": [
+        {
+          "name": "name_location",
+          "unique": true,
+          "optional": false,
+          "kind": "Text"
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "Site",
+      "namespace": "Location",
+      "inherit_from": ["GenericLocation"],
+      "children": "TestingParent",
+      "parent": ""
+    },
+    {
+      "name": "Parent",
+      "namespace": "Testing",
+      "inherit_from": ["GenericLocation"],
+      "children": "",
+      "parent": "LocationSite",
+      "relationships": [
+        {
+          "name": "children",
+          "kind": "Generic",
+          "optional": true,
+          "peer": "TestingChild",
+          "cardinality": "many"
+        }
+      ]
+    },
+    {
+      "name": "Child",
+      "namespace": "Testing",
+      "attributes": [
+        {
+          "name": "name_child",
+          "unique": true,
+          "optional": false,
+          "kind": "Text"
+        }
+      ],
+      "relationships": [
+        {
+          "name": "relationship",
+          "kind": "Attribute",
+          "optional": false,
+          "peer": "TestingParent",
+          "cardinality": "one"
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,11 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.graphql.queries.search import _collapse_ipv6
@@ -116,7 +119,7 @@ async def test_search_anywhere_by_string(
 
 async def test_search_ipv6_address_extended_format(
     db: InfrahubDatabase,
-    ip_dataset_01,
+    ip_dataset_01: dict[str, Any],
     branch: Branch,
 ) -> None:
     branch.update_schema_hash()
@@ -159,7 +162,7 @@ async def test_search_ipv6_address_extended_format(
 
 async def test_search_ipv6_network_extended_format(
     db: InfrahubDatabase,
-    ip_dataset_01,
+    ip_dataset_01: dict[str, Any],
     branch: Branch,
 ) -> None:
     branch.update_schema_hash()
@@ -197,7 +200,7 @@ async def test_search_ipv6_network_extended_format(
 
 async def test_search_ipv6_partial_address(
     db: InfrahubDatabase,
-    ip_dataset_01,
+    ip_dataset_01: dict[str, Any],
     branch: Branch,
 ) -> None:
     branch.update_schema_hash()
@@ -247,7 +250,7 @@ async def test_search_ipv6_partial_address(
 
 async def test_search_ipv4(
     db: InfrahubDatabase,
-    ip_dataset_01,
+    ip_dataset_01: dict[str, Any],
     branch: Branch,
 ) -> None:
     """
@@ -301,7 +304,7 @@ async def test_search_ipv4(
         ("2001:0db8:0001:0000:0002:0000:0003", "2001:db8:1:0:2:0:3"),
     ],
 )
-def test_collapse_ipv6_address_or_network(query, expected) -> None:
+def test_collapse_ipv6_address_or_network(query: str, expected: str) -> None:
     assert _collapse_ipv6(query) == expected
 
 
@@ -309,7 +312,7 @@ def test_collapse_ipv6_address_or_network(query, expected) -> None:
     "query",
     ["invalid", "invalid:case", "2001:invalid", "2001:0db81:0000", "10.0.0.0", "2001:db8:1"],
 )
-def test_collapse_ipv6_address_or_network_invalid_cases(query) -> None:
+def test_collapse_ipv6_address_or_network_invalid_cases(query: str) -> None:
     with pytest.raises(ValueError):
         _collapse_ipv6(query)
 
@@ -317,9 +320,9 @@ def test_collapse_ipv6_address_or_network_invalid_cases(query) -> None:
 async def test_search_groups(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema,
-    register_builtin_models_schema,
-    car_person_data_generic,
+    register_core_models_schema: SchemaBranch,
+    register_builtin_models_schema: SchemaBranch,
+    car_person_data_generic: dict[str, Node],
 ) -> None:
     group1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
     await group1.new(db=db, name="group1", members=[car_person_data_generic["c1"], car_person_data_generic["c2"]])

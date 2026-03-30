@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from prefect import flow
+from prefect import flow, get_run_logger
 
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
@@ -33,6 +33,7 @@ async def update_diff(model: RequestDiffUpdate) -> None:
 
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=diff_branch)
 
+        diff_coordinator.set_logger(get_run_logger())
         await diff_coordinator.run_update(
             base_branch=base_branch,
             diff_branch=diff_branch,
@@ -68,7 +69,7 @@ async def refresh_diff_all(branch_name: str, context: InfrahubContext) -> None:
         diff_roots_to_refresh = await diff_repository.get_roots_metadata(diff_branch_names=[branch_name])
 
         for diff_root in diff_roots_to_refresh:
-            if diff_root.base_branch_name != diff_root.diff_branch_name:
+            if diff_root.base_branch_name != diff_root.diff_branch_name and diff_root.is_frozen is False:
                 await get_workflow().submit_workflow(
                     workflow=DIFF_REFRESH,
                     context=context,

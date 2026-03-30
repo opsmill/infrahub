@@ -1,11 +1,12 @@
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 
-async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema, branch: Branch) -> None:
+async def test_display_label_generic(db: InfrahubDatabase, animal_person_schema: SchemaRoot, branch: Branch) -> None:
     person_schema = animal_person_schema.get(name="TestPerson")
     dog_schema = animal_person_schema.get(name="TestDog")
     cat_schema = animal_person_schema.get(name="TestCat")

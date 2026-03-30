@@ -24,7 +24,7 @@ describe("BulkMutateGroups Component", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getRelationships).mockResolvedValue({ items: mockGroups, count: mockGroups.length });
+    vi.mocked(getRelationships).mockResolvedValue(mockGroups);
     store.set(nodeSchemasAtom, [groupSchema]);
   });
 

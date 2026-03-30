@@ -70,10 +70,10 @@ class TestNodeUpdate:
         self,
         original_node_schema: BaseNodeSchema,
         new_node_schema: BaseNodeSchema,
-        uniqueness_constraints,
-        human_friendly_id,
-        display_labels,
-        order_by,
+        uniqueness_constraints: list[list[str]] | None,
+        human_friendly_id: list[str] | None,
+        display_labels: list[str] | None,
+        order_by: list[str] | None,
     ) -> None:
         original_node_schema.attributes = [AttributeSchema(name="abc", kind="Text")]
         original_node_schema.relationships = [RelationshipSchema(name="xyz", peer="TestingXyz")]

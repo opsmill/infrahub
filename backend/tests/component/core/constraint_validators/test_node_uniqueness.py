@@ -10,7 +10,7 @@ from infrahub.exceptions import ValidationError
 
 
 async def test_node_validate_constraint_node_uniqueness_failure(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
     new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
@@ -23,7 +23,7 @@ async def test_node_validate_constraint_node_uniqueness_failure(
 
 
 async def test_node_validate_constraint_node_uniqueness_success(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
     constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
     alfred = await Node.init(db=db, schema="TestPerson", branch=default_branch)

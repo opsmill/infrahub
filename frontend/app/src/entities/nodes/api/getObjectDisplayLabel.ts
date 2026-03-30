@@ -1,7 +1,7 @@
 import Handlebars from "@/shared/libs/handlebars";
 
 export const getObjectDisplayLabel = Handlebars.compile(`
-query {{kind}}($ids: [ID]) {
+query GetLabel_{{kind}}($ids: [ID]) {
   {{kind}} (ids: $ids) {
     edges{
       node{

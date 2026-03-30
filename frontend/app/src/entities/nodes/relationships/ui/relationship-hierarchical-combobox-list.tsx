@@ -1,4 +1,3 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 import type React from "react";
 import { useState } from "react";
@@ -10,9 +9,8 @@ import { Command, CommandInput, CommandList } from "@/shared/components/ui/comma
 import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getRelationshipsInfiniteQueryOptions } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
+import { useRelationships } from "@/entities/nodes/relationships/domain/get-relationships/get-relationships.query";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import type { NodeSchema } from "@/entities/schema/types";
@@ -74,23 +72,20 @@ const HierarchicalExplorer = ({
 }: HierarchicalExplorerProps) => {
   const peer = topLevelNode ? topLevelSchema.children : topLevelSchema.kind;
   const nodeSchemas = useAtomValue(nodeSchemasAtom);
-  const { currentBranch } = useCurrentBranch();
-  const branchName = currentBranch.name;
   const [search, setSearch] = useState("");
-  const queryOptions = search
-    ? getRelationshipsInfiniteQueryOptions({
-        peer: topLevelSchema.hierarchy as string,
-        search,
-        branchName,
-      })
-    : getRelationshipsInfiniteQueryOptions({
-        peer: peer as string,
-        branchName,
-        ...(topLevelNode ? { filterQuery: { parent__ids: [topLevelNode.id] } } : {}),
-      });
 
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery(queryOptions);
+    useRelationships(
+      search
+        ? {
+            peer: topLevelSchema.hierarchy as string,
+            search,
+          }
+        : {
+            peer: peer as string,
+            ...(topLevelNode ? { filterQuery: { parent__ids: [topLevelNode.id] } } : {}),
+          }
+    );
   const [selectNode, setSelectNode] = useState<RelationshipNode>();
 
   if (selectNode) {
@@ -159,7 +154,7 @@ const HierarchicalExplorer = ({
             <ComboboxEmpty>No results found</ComboboxEmpty>
 
             {data.pages.map((page) => {
-              const filteredNodes = filterItem ? page.items.filter(filterItem) : page.items;
+              const filteredNodes = filterItem ? page.filter(filterItem) : page;
 
               return filteredNodes.map((node) => {
                 const schema = nodeSchemas.find((schema) => schema.kind === node.__typename);

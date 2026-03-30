@@ -20,10 +20,10 @@ from infrahub.api import (
     oidc,
     query,
     schema,
-    storage,
     transformation,
 )
 from infrahub.api.dependencies import get_current_user
+from infrahub.api.storage import storage
 from infrahub.exceptions import ResourceNotFoundError
 
 if TYPE_CHECKING:
