@@ -184,3 +184,98 @@ class TestNullRelationshipRecomputation(TestInfrahubApp):
         # Verify persisted in DB
         reloaded = await NodeManager.get_one(db=db, id=device.id, branch=default_branch)
         assert reloaded.get_attribute("label").value == "None-switch01"
+
+
+class TestEventConsolidation(TestInfrahubApp):
+    """Verify single changelog per mutation contains both original and computed attribute changes.
+
+    The _recompute_local_jinja2() method records computed attribute changes in the same
+    NodeChangelog as the original mutation. generate_node_mutation_events() reads
+    node.node_changelog.updated_fields to emit a single event covering both fields.
+    """
+
+    @pytest.fixture(scope="class")
+    async def schema_loaded(
+        self,
+        db: InfrahubDatabase,
+        initialize_registry: None,
+        default_branch: Branch,
+    ) -> None:
+        await load_schema(db, schema=SchemaRoot(nodes=[COLOR, TSHIRT]), update_db=True)
+
+    @pytest.fixture(scope="class")
+    async def color_node(
+        self,
+        db: InfrahubDatabase,
+        schema_loaded: None,
+        default_branch: Branch,
+    ) -> Node:
+        color = await Node.init(db=db, schema="TestingColor", branch=default_branch)
+        await color.new(db=db, name="Green", description="Forest green")
+        await color.save(db=db)
+        return color
+
+    async def test_single_changelog_contains_both_original_and_computed_fields(
+        self,
+        db: InfrahubDatabase,
+        color_node: Node,
+        default_branch: Branch,
+    ) -> None:
+        """Updating a local attribute that triggers Jinja2 recomputation produces a single
+        NodeChangelog with both the original attribute and the computed attribute in updated_fields."""
+        tshirt = await Node.init(db=db, schema="TestingTShirt", branch=default_branch)
+        await tshirt.new(db=db, name="Classic", color=color_node)
+        await tshirt.save(db=db)
+
+        assert tshirt.get_attribute("description").value == "A Green Classic t-shirt. Forest green"
+
+        # Update the name attribute
+        tshirt.get_attribute("name").value = "Premium"
+        await tshirt.save(db=db)
+
+        # The computed 'description' should have been recomputed inline
+        assert tshirt.get_attribute("description").value == "A Green Premium t-shirt. Forest green"
+
+        # Verify the changelog records BOTH the original and computed attribute changes
+        changelog = tshirt.node_changelog
+        updated = changelog.updated_fields
+        assert "name" in updated, f"Expected 'name' in updated_fields, got {updated}"
+        assert "description" in updated, f"Expected 'description' in updated_fields, got {updated}"
+
+        # Verify there is exactly one changelog containing both changes
+        assert changelog.has_changes
+        assert "name" in changelog.attributes
+        assert "description" in changelog.attributes
+
+        # Verify persisted in DB
+        reloaded = await NodeManager.get_one(db=db, id=tshirt.id, branch=default_branch)
+        assert reloaded.get_attribute("description").value == "A Green Premium t-shirt. Forest green"
+
+    async def test_no_spurious_computed_changelog_when_value_unchanged(
+        self,
+        db: InfrahubDatabase,
+        color_node: Node,
+        default_branch: Branch,
+    ) -> None:
+        """If an update does not change the computed attribute value, it should NOT appear
+        in the changelog (no-op recomputation is filtered out)."""
+        tshirt = await Node.init(db=db, schema="TestingTShirt", branch=default_branch)
+        await tshirt.new(db=db, name="Basic", color=color_node)
+        await tshirt.save(db=db)
+
+        assert tshirt.get_attribute("description").value == "A Green Basic t-shirt. Forest green"
+
+        # Update name to the same value (no change)
+        tshirt.get_attribute("name").value = "Basic"
+        await tshirt.save(db=db)
+
+        # The description should still be the same
+        assert tshirt.get_attribute("description").value == "A Green Basic t-shirt. Forest green"
+
+        # Since neither name nor description actually changed value, the changelog
+        # should NOT contain 'description' (the recomputation produced the same value)
+        changelog = tshirt.node_changelog
+        assert "description" not in changelog.attributes, (
+            f"Computed attribute 'description' should not be in changelog when value is unchanged, "
+            f"got updated_fields={changelog.updated_fields}"
+        )

@@ -96,7 +96,7 @@
 
 ### Implementation for User Story 4
 
-- [ ] T018 [US4] Verify event consolidation works automatically: since `_recompute_local_jinja2()` saves computed attributes within `_update()` and records changes in the same `NodeChangelog`, the single `NodeUpdatedEvent` emitted by `generate_node_mutation_events()` should already include both the original change and the computed attribute update — add a functional test in `backend/tests/functional/computed_attributes/test_local_computation.py` that asserts only one event is emitted and it contains both the original field and the computed attribute field in `updated_fields`
+- [X] T018 [US4] Verify event consolidation works automatically: since `_recompute_local_jinja2()` saves computed attributes within `_update()` and records changes in the same `NodeChangelog`, the single `NodeUpdatedEvent` emitted by `generate_node_mutation_events()` should already include both the original change and the computed attribute update — add a functional test in `backend/tests/functional/computed_attributes/test_local_computation.py` that asserts only one event is emitted and it contains both the original field and the computed attribute field in `updated_fields`
 
 **Checkpoint**: Single consolidated event per mutation confirmed.
 
@@ -110,7 +110,7 @@
 
 ### Implementation for User Story 5
 
-- [ ] T019 [US5] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create 50+ nodes with Jinja2 computed attributes depending on local attributes, then bulk-update a local attribute on each node, verify all computed values are correct post-update (functional tests have no Prefect server, so correct values prove the inline path handled everything)
+- [X] T019 [US5] Add functional test in `backend/tests/functional/computed_attributes/test_local_computation.py`: create 50+ nodes with Jinja2 computed attributes depending on local attributes, then bulk-update a local attribute on each node, verify all computed values are correct post-update (functional tests have no Prefect server, so correct values prove the inline path handled everything)
 
 **Checkpoint**: Bulk update performance validated.
 
