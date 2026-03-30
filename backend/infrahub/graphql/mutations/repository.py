@@ -250,6 +250,12 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
             branch=branch,
         )
 
+        if repo.get_kind() != InfrahubKind.READONLYREPOSITORY:
+            raise ValueError(
+                f"Node {data.id} is a {repo.get_kind()}, not a {InfrahubKind.READONLYREPOSITORY}. "
+                "Import latest commit is only supported for read-only repositories."
+            )
+
         model = GitReadOnlyRepositoryImportCommit(
             repository_id=repository_id,
             repository_name=str(repo.name.value),
