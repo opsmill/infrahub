@@ -13,9 +13,9 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
 import { DeleteObjectModal } from "@/entities/nodes/object/ui/delete-object-modal";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";

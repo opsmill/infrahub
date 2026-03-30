@@ -5,12 +5,12 @@ This is the frontend app for Infrahub. React SPA written in TypeScript with Reac
 ## Commands in Infrahub UI
 
 ```bash
-npm start               # Start dev server
-npm run dev             # Start dev server with devtools
-npm run build           # Production build
-npm run test            # Unit tests (Vitest)
-npm run test:e2e        # E2E tests (Playwright)
-npm run biome:fix       # Format and lint
+pnpm start              # Start dev server
+pnpm dev                # Start dev server with devtools
+pnpm build              # Production build
+pnpm test               # Unit tests (Vitest)
+pnpm test:e2e           # E2E tests (Playwright)
+pnpm biome:fix          # Format and lint
 ```
 
 ## Architecture
@@ -51,4 +51,4 @@ src/
 - `src/shared/api/graphql/generated/` - GraphQL types
 - `src/shared/api/rest/types.generated.ts` - REST types
 
-Regenerate with `npm run codegen:graphql` or `npm run codegen:openapi`.
+Regenerate with `pnpm codegen:graphql` or `pnpm codegen:openapi`.

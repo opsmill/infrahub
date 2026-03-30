@@ -11,8 +11,8 @@ import { DEFAULT_BRANCH_NAME } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import { currentBranchAtom } from "@/entities/branches/stores";
+import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { findSelectedBranch } from "@/entities/branches/utils";
 
 type BranchContext = {
@@ -63,7 +63,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }, [branches, branchInQueryString]);
 
   if (isPending) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   if (error) {
@@ -71,7 +71,7 @@ export const BranchesProvider = ({ children }: { children?: React.ReactNode }) =
   }
 
   if (currentBranch?.name !== (branchInQueryString ?? DEFAULT_BRANCH_NAME)) {
-    return <InfrahubLoading>loading branches...</InfrahubLoading>;
+    return <InfrahubLoading>Loading branches...</InfrahubLoading>;
   }
 
   return <BranchContext value={{ currentBranch, setCurrentBranch }}>{children}</BranchContext>;

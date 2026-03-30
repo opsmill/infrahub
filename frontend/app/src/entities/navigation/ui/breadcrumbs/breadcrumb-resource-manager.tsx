@@ -19,7 +19,7 @@ import { Button } from "@/shared/components/ui/button";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
+import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function BreadcrumbResourceManager() {

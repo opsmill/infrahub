@@ -13,7 +13,7 @@ For conceptual information about artifacts and their architecture, see [artifact
 Before starting this guide, ensure you have:
 
 - A working Infrahub instance
-- An existing transformation (either [Jinja2](./jinja2-transform.mdx) or [Python](./python-transform.mdx))
+- An existing Transformation (either [Jinja2](./jinja2-transform.mdx) or [Python](./python-transform.mdx))
 - Access to create and modify schemas
 - A Git repository connected to Infrahub
 
@@ -81,10 +81,10 @@ This configuration specifies:
 
 - **name**: Machine identifier (no spaces)
 - **artifact_name**: Human-readable label
-- **parameters**: Values passed to the transformation query
+- **parameters**: Values passed to the Transformation query
 - **content_type**: MIME type of the generated artifact
 - **targets**: Group containing target objects
-- **transformation**: Name of the Jinja2 or Python transformation
+- **transformation**: Name of the Jinja2 or Python Transformation
 
 For complete `.infrahub.yml` syntax, see [.infrahub.yml reference](../topics/infrahub-yml.mdx).
 
@@ -118,7 +118,9 @@ Check that your artifacts are being generated correctly.
 ### Through object details
 
 1. Navigate to a specific device (for example, `switch1`)
+<!-- vale off -->
 2. Select the **Artifacts** tab
+<!-- vale on -->
 3. View all artifacts generated for this object
 
 ## Step 6: Access generated artifacts
@@ -138,7 +140,7 @@ curl -H "X-INFRAHUB-KEY: <your-api-token>" \
   http://<INFRAHUB_HOST:INFRAHUB_PORT>/api/storage/object/<storage_identifier>
 ```
 
-Copy the Artifact ID from the artifact menu:
+Copy the artifact ID from the artifact menu:
 
 ![Artifact menu](../media/guides/artifact/artifact_menu.png)
 
@@ -150,22 +152,22 @@ Query artifacts through the GraphQL API for automation workflows.
 
 Confirm your artifact generation is working:
 
-- ✓ Artifact definitions appear in the web interface
-- ✓ Artifacts are generated for all group members
+- ✓ artifact definitions appear in the web interface
+- ✓ artifacts are generated for all group members
 - ✓ Generated content matches your template expectations
-- ✓ Artifacts update when source data changes
+- ✓ artifacts update when source data changes
 
 ## Troubleshooting
 
 If artifacts aren't generating:
 
 1. Check task worker logs for processing errors
-2. Verify the transformation name matches exactly
+2. Verify the Transformation name matches exactly
 3. Ensure group members inherit from `CoreArtifactTarget`
 4. Confirm the Git repository sync is working
 
 ## Next steps
 
-- [Create complex transformations with Python](./python-transform.mdx)
-- [Use GraphQL queries in transformations](../topics/transformation.mdx)
+- [Create complex Transformations with Python](./python-transform.mdx)
+- [Use GraphQL queries in Transformations](../topics/transformation.mdx)
 - [Automate artifact deployment with CI/CD](../topics/repository.mdx)

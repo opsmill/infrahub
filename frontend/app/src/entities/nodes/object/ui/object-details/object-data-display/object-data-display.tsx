@@ -3,6 +3,7 @@ import { useAtom } from "jotai";
 import { useState } from "react";
 
 import SlideOver from "@/shared/components/display/slide-over";
+import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
 import { sortByOrderWeight } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -14,7 +15,11 @@ import { isFromResourcePoolRelationship } from "@/entities/nodes/object/utils/is
 import { resolveRelationshipData } from "@/entities/nodes/object/utils/resolve-relationship-data";
 import ObjectItemMetaEdit from "@/entities/nodes/object-item-meta-edit/object-item-meta-edit";
 import { metaEditFieldDetailsState } from "@/entities/nodes/stores/showMetaEdit.atom";
-import type { NodeAttributeWithMetadata, NodeObjectWithMetadata } from "@/entities/nodes/types";
+import type {
+  NodeAttributeWithMetadata,
+  NodeObjectWithMetadata,
+  NodeRelationshipOneWithMetadata,
+} from "@/entities/nodes/types";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
@@ -22,12 +27,16 @@ interface ObjectDataDisplayProps {
   objectSchema: ModelSchema;
   objectData: NodeObjectWithMetadata;
   permission: Permission;
+  showExtra?: boolean;
+  excludeRelationships?: string[];
 }
 
 export function ObjectDataDisplay({
   objectSchema,
   objectData,
   permission,
+  showExtra = false,
+  excludeRelationships,
 }: ObjectDataDisplayProps) {
   const { currentBranch } = useCurrentBranch();
   const [showMetaEditModal, setShowMetaEditModal] = useState(false);
@@ -54,8 +63,12 @@ export function ObjectDataDisplay({
   };
 
   const attributes = getAttributesVisibleInDetailedView(objectSchema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInDataDisplay(objectSchema.relationships ?? []);
-  const fields = sortByOrderWeight([...attributes, ...relationships]);
+  const relationships = getRelationshipsVisibleInDataDisplay(
+    objectSchema.relationships ?? [],
+    excludeRelationships
+  );
+  const allFields = sortByOrderWeight([...attributes, ...relationships]);
+  const fields = showExtra ? allFields : allFields.filter((field) => field.display !== "extra");
 
   return (
     <div className="divide-y divide-gray-200">
@@ -78,6 +91,27 @@ export function ObjectDataDisplay({
               key={fieldName}
               relationshipSchema={field}
               relationshipData={relationshipData}
+              objectKind={objectKind}
+              permission={permission}
+              onClickMetadata={onClickRelationshipMetadata}
+            />
+          );
+        }
+
+        const fromResourcePoolRelationshipName = fieldName + FROM_RESOURCE_POOL_SUFFIX;
+        const fromResourcePoolRelationship = objectSchema.relationships?.find(
+          (relationship) => relationship.name === fromResourcePoolRelationshipName
+        );
+        const poolRelData = objectData[fromResourcePoolRelationshipName] as
+          | NodeRelationshipOneWithMetadata
+          | undefined;
+
+        if (fromResourcePoolRelationship && poolRelData?.node) {
+          return (
+            <ObjectRelationshipRow
+              key={fieldName}
+              relationshipSchema={{ ...fromResourcePoolRelationship, label: field.label }}
+              relationshipData={poolRelData}
               objectKind={objectKind}
               permission={permission}
               onClickMetadata={onClickRelationshipMetadata}
@@ -132,13 +166,15 @@ export function ObjectDataDisplay({
 }
 
 function getRelationshipsVisibleInDataDisplay(
-  relationships: RelationshipSchema[]
+  relationships: RelationshipSchema[],
+  excludeRelationships?: string[]
 ): RelationshipSchema[] {
   return relationships.filter(
     (rel) =>
       isRelationshipVisibleInDetailedView(rel) &&
       rel.name !== "member_of_groups" &&
       !isFromResourcePoolRelationship(rel.name) &&
-      rel.kind !== "Profile"
+      rel.kind !== "Profile" &&
+      (!excludeRelationships || !excludeRelationships.includes(rel.name))
   );
 }

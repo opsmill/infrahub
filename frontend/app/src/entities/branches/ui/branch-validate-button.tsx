@@ -10,12 +10,11 @@ import { TASK_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
 import { BRANCH_VALIDATE } from "@/entities/branches/api/validateBranch";
 import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
-
-import { GET_BRANCH_ACTION_STATE } from "../api/getBranchActionState";
 
 type BranchValidateButtonProps = {
   branch: BranchDetail;

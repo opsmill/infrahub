@@ -29,6 +29,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
+    SchemaAttributeDisplay,
     UpdateSupport,
 )
 from infrahub.core.schema.attribute_parameters import (
@@ -664,6 +665,19 @@ attribute_schema = SchemaNode(
             max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the attribute is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -881,6 +895,19 @@ relationship_schema = SchemaNode(
             optional=True,
             description="Mark relationship as deprecated and provide a user-friendly message to display",
             max_length=DEFAULT_DESCRIPTION_LENGTH,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the relationship is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
     ],

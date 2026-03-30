@@ -25,12 +25,20 @@ export type PoolValue = {
 
 type PoolSelectorProps = {
   children: React.ReactNode;
-  onChange: (value: PoolValue) => void;
+  onChange: (value: PoolValue | null) => void;
   pools: Array<NumberPool>;
   value: FormFieldValue;
+  className?: string;
 };
 
-export function PoolSelector({ children, onChange, value, pools }: PoolSelectorProps) {
+export function PoolSelector({
+  children,
+  className,
+  onChange,
+  value,
+  pools,
+  ...props
+}: PoolSelectorProps) {
   const [override, setOverride] = React.useState(false);
 
   const displayFromPool =
@@ -40,11 +48,20 @@ export function PoolSelector({ children, onChange, value, pools }: PoolSelectorP
     <Popover>
       <Row className="gap-1">
         {value.source?.type !== "pool" || override || !displayFromPool ? (
-          <Slot autoFocus={override} onBlur={() => setOverride(false)}>
+          <Slot
+            autoFocus={override}
+            onBlur={() => setOverride(false)}
+            className={className}
+            {...props}
+          >
             {children}
           </Slot>
         ) : (
-          <AriaButton onClick={() => setOverride(true)} className={inputStyle}>
+          <AriaButton
+            onClick={() => setOverride(true)}
+            className={classNames(inputStyle, className)}
+            {...props}
+          >
             Allocated by pool
           </AriaButton>
         )}
@@ -61,16 +78,30 @@ export function PoolSelector({ children, onChange, value, pools }: PoolSelectorP
                 key={pool.id}
                 value={pool.id}
                 keywords={[poolLabel, pool.id]}
-                onSelect={() =>
-                  onChange({
-                    from_pool: {
-                      id: pool.id,
-                      name: poolLabel,
-                      kind: pool.__typename,
-                    },
-                  })
-                }
-                selectedValue={value?.source?.id}
+                onSelect={() => {
+                  if (value.source?.type !== "pool") {
+                    onChange({
+                      from_pool: {
+                        id: pool.id,
+                        name: poolLabel,
+                        kind: pool.__typename,
+                      },
+                    });
+                    return;
+                  }
+                  onChange(
+                    value.source.id === pool.id
+                      ? null
+                      : {
+                          from_pool: {
+                            id: pool.id,
+                            name: poolLabel,
+                            kind: pool.__typename,
+                          },
+                        }
+                  );
+                }}
+                selectedValue={value.source?.type === "pool" ? value.source.id : null}
               >
                 {poolLabel}
               </ComboboxItem>

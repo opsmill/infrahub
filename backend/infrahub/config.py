@@ -27,6 +27,7 @@ from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -53,6 +54,7 @@ def default_append_git_suffix_domains() -> list[str]:
 class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
+    LOG_FORWARDING = "log_forwarding"
 
 
 class UserInfoMethod(StrEnum):
@@ -200,6 +202,14 @@ class MainSettings(BaseSettings):
         default=True,
         description="Enable strict schema validation. When set to `False`, "
         "`human_friendly_id` schema fields should not necessarily target a unique combination of peer attributes.",
+    )
+    diff_update_after_merge: bool = Field(
+        default=True,
+        description="When enabled, diff updates are triggered for active branches after a branch merge.",
+    )
+    delete_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the Infrahub branch is automatically deleted after a successful merge.",
     )
 
     @field_validator("docs_index_path", mode="before")
@@ -492,6 +502,11 @@ class GitSettings(BaseSettings):
     use_explicit_merge_commit: bool = Field(
         default=False, description="Whether to allow explicit merge commits when infrahub merges branches"
     )
+    delete_git_branch_after_merge: bool = Field(
+        default=False,
+        description="When enabled, the corresponding Git branch is deleted after the Infrahub branch is deleted. "
+        "Requires delete_branch_after_merge to be enabled.",
+    )
 
     @model_validator(mode="after")
     def validate_sync_branch_names(self) -> Self:
@@ -524,35 +539,13 @@ class HTTPSettings(BaseSettings):
         try:
             # Validate that the context can be created, we want to raise this error during application start
             # instead of running into issues later when we first try to use the tls context.
-            self.get_tls_context()
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
         except ssl.SSLError as exc:
             raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
 
         return self
-
-    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
-        if self.tls_insecure and not force_verify:
-            return ssl._create_unverified_context()
-
-        if not self.tls_ca_bundle:
-            return ssl.create_default_context()
-
-        tls_ca_path = Path(self.tls_ca_bundle)
-
-        try:
-            possibly_file = tls_ca_path.exists()
-        except OSError:
-            # Raised if the filename is too long which can indicate
-            # that the value is a PEM certificate in string form.
-            possibly_file = False
-
-        if possibly_file and tls_ca_path.is_file():
-            context = ssl.create_default_context(cafile=str(tls_ca_path))
-        else:
-            context = ssl.create_default_context()
-            context.load_verify_locations(cadata=self.tls_ca_bundle)
-
-        return context
 
 
 class InitialSettings(BaseSettings):
@@ -863,6 +856,103 @@ class TraceSettings(BaseSettings):
     exporter_endpoint: str | None = Field(default=None, description="OTLP endpoint for exporting traces")
 
 
+class SyslogProtocol(StrEnum):
+    TCP = "tcp"
+    UDP = "udp"
+
+
+class SyslogFormat(StrEnum):
+    RFC5424 = "rfc5424"
+    RFC3164 = "rfc3164"
+
+
+class TcpFraming(StrEnum):
+    NEWLINE = "newline"
+    OCTET_COUNTING = "octet-counting"
+
+
+class LogForwardingDestinationType(StrEnum):
+    SYSLOG = "syslog"
+
+
+class LogForwardingDestination(BaseModel):
+    name: str = Field(description="Unique name for the destination, used in all observability output.")
+    type: LogForwardingDestinationType = Field(
+        default=LogForwardingDestinationType.SYSLOG, description="Destination type."
+    )
+    host: str = Field(description="Destination host or IP address.")
+    port: int | None = Field(
+        default=None, ge=1, le=65535, description="Destination port number. Defaults to 6514 for TLS, 514 otherwise."
+    )
+    protocol: SyslogProtocol = Field(default=SyslogProtocol.UDP, description="Transport protocol (tcp or udp).")
+    format: SyslogFormat = Field(default=SyslogFormat.RFC5424, description="Syslog format standard.")
+    tcp_framing: TcpFraming = Field(
+        default=TcpFraming.NEWLINE, description="TCP framing method (newline or octet-counting)."
+    )
+    tls_enabled: bool = Field(default=False, description="Enable TLS encryption for TCP connections.")
+    tls_ca_bundle: str | None = Field(
+        default=None, description="Path or PEM string for CA bundle to validate syslog server certificate."
+    )
+    queue_size: int = Field(default=10000, ge=1, description="Maximum number of messages in the per-destination queue.")
+    max_reconnect_interval: int = Field(
+        default=60, ge=1, description="Maximum reconnection backoff interval in seconds."
+    )
+    shutdown_drain_timeout: int = Field(
+        default=10, ge=0, description="Seconds to wait for queue drain on graceful shutdown."
+    )
+    forward_application_logs: bool = Field(
+        default=False, description="Forward application log messages to this destination."
+    )
+    min_log_severity: ExtraLogLevel = Field(
+        default=ExtraLogLevel.WARNING,
+        description="Minimum Python log severity to forward when application log forwarding is enabled.",
+    )
+
+    @property
+    def service_port(self) -> int:
+        if self.port:
+            return self.port
+        if self.tls_enabled:
+            return 6514
+        return 514
+
+    @model_validator(mode="after")
+    def validate_tls_protocol(self) -> Self:
+        if self.tls_enabled and self.protocol == SyslogProtocol.UDP:
+            raise ValueError("TLS is only supported with TCP protocol, not UDP.")
+        return self
+
+
+class LogForwardingSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LOG_FORWARDING_")
+    hostname: str | None = Field(
+        default=None,
+        description="Hostname to use in syslog message headers. If not set, defaults to the system FQDN.",
+    )
+    destinations: list[LogForwardingDestination] = Field(
+        default_factory=list,
+        description="List of log forwarding destinations. (Enterprise only: not available in the community version.)",
+    )
+
+    @field_validator("destinations")
+    @classmethod
+    def validate_unique_names(cls, v: list[LogForwardingDestination]) -> list[LogForwardingDestination]:
+        unique_names = {d.name for d in v}
+        if len(unique_names) == len(v):
+            return v
+        all_names = [d.name for d in v]
+        duplicate_names = {name for name in unique_names if all_names.count(name) > 1}
+        sorted_dupes = ", ".join(sorted(duplicate_names))
+        raise ValueError(f"Destination names must be unique; duplicates found: {sorted_dupes}")
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by log forwarding configuration."""
+        if any(d.type == LogForwardingDestinationType.SYSLOG for d in self.destinations):
+            return [EnterpriseFeatures.LOG_FORWARDING]
+        return []
+
+
 class PolicySettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_POLICY_")
     required_proposed_change_approvals: int = Field(
@@ -1025,11 +1115,18 @@ class Settings(BaseSettings):
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
+    log_forwarding: LogForwardingSettings = LogForwardingSettings()
+
+    @model_validator(mode="after")
+    def validate_git_branch_deletion_requires_branch_deletion(self) -> Self:
+        if self.git.delete_git_branch_after_merge and not self.main.delete_branch_after_merge:
+            raise ValueError("'delete_git_branch_after_merge' requires 'delete_branch_after_merge' to be enabled")
+        return self
 
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
-        return self.policy.enterprise_features
+        return self.policy.enterprise_features + self.log_forwarding.enterprise_features
 
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:

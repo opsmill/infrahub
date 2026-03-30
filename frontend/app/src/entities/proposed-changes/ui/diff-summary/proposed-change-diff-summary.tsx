@@ -2,8 +2,8 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { QSP } from "@/shared/config/qsp";
 
-import { useGetDiffSummary } from "@/entities/diff/domain/get-diff-summary.query";
-import { DIFF_STATUS } from "@/entities/diff/node-diff/types";
+import { DIFF_STATUS } from "@/entities/diff/ui/node-diff/types";
+import { useGetDiffSummary } from "@/entities/diff/ui/queries/get-diff-summary.query";
 import { DiffSummarySkeleton } from "@/entities/proposed-changes/ui/diff-summary/diff-summary-skeleton";
 import {
   DiffSummaryTag,
@@ -21,7 +21,7 @@ export function ProposedChangeDiffSummary({
   branchName,
   className,
 }: ProposedChangeDiffSummaryProps) {
-  const { error, data, isPending } = useGetDiffSummary({ branch: branchName });
+  const { error, data, isPending } = useGetDiffSummary({ branch: branchName, proposedChangeId });
 
   if (isPending) {
     return <DiffSummarySkeleton />;

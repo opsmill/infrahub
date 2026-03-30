@@ -3,17 +3,13 @@ import { LockIcon } from "lucide-react";
 
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import { ButtonWithTooltip } from "@/shared/components/ui/button";
-import { Link } from "@/shared/components/ui/link";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
+import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
 import { ObjectDataRow } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-row";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import type { AttributeSchema } from "@/entities/schema/types";
-import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
-import { isPoolSchema } from "@/entities/schema/utils/is-pool-schema";
 
 interface ObjectAttributeRowProps {
   attributeSchema: AttributeSchema;
@@ -30,8 +26,6 @@ export function ObjectAttributeRow({
   onClickMetadata,
   permission,
 }: ObjectAttributeRowProps) {
-  const { isTemplate } = useSchema(objectKind);
-  const { schema: sourceSchema } = useSchema(attributeData.source?.__typename);
   const attributeLabel = attributeSchema.label ?? attributeSchema.name;
 
   return (
@@ -40,15 +34,7 @@ export function ObjectAttributeRow({
       objectKind={objectKind}
       value={
         <>
-          {isTemplate && attributeData.source && isPoolSchema(sourceSchema) ? (
-            <Link
-              to={getObjectDetailsUrl(attributeData.source.__typename, attributeData.source.id)}
-            >
-              {getNodeLabel(attributeData.source)}
-            </Link>
-          ) : (
-            <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
-          )}
+          <ObjectAttributeValue attributeSchema={attributeSchema} attributeData={attributeData} />
 
           <MetaDetailsTooltip
             updatedAt={attributeData.updated_at}
@@ -80,6 +66,8 @@ export function ObjectAttributeRow({
           />
 
           {attributeData.is_protected && <LockIcon className="size-3.5 text-gray-600" />}
+
+          {attributeSchema.display === "extra" && <ExtraFieldIndicator className="ml-auto" />}
         </>
       }
     />

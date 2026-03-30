@@ -7,11 +7,14 @@ from pydantic import ValidationError
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX
 from infrahub.core.schema import (
     AttributeSchema,
     DropdownChoice,
+    NodeExtensionSchema,
     NodeSchema,
     RelationshipSchema,
+    SchemaExtension,
     SchemaRoot,
     SchemaWarning,
     SchemaWarningKind,
@@ -680,3 +683,96 @@ def test_validate_namespaces_and_keyword_separation() -> None:
         schema_branch.process_validate()
 
     assert "Python keyword 'from' cannot be used as an attribute name" in str(exc.value)
+
+
+def test_validate_reserved_suffixes_attribute() -> None:
+    attr_name = f"foo{RESOURCE_POOL_REL_SUFFIX}"
+    schema_root = SchemaRoot(
+        nodes=[
+            {
+                "name": "TestNode",
+                "namespace": "Test",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [{"name": attr_name, "kind": "Text"}],
+            }
+        ]
+    )
+    errors = schema_root.validate_reserved_suffixes()
+    assert len(errors) == 1
+    assert (
+        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr_name}' in 'TestTestNode'" in errors[0]
+    )
+
+
+def test_validate_reserved_suffixes_relationship() -> None:
+    rel_name = f"bar{RESOURCE_POOL_REL_SUFFIX}"
+    schema_root = SchemaRoot(
+        nodes=[
+            {
+                "name": "TestNode",
+                "namespace": "Test",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [{"name": "name", "kind": "Text"}],
+                "relationships": [
+                    {
+                        "name": rel_name,
+                        "peer": "TestOther",
+                        "cardinality": "one",
+                    }
+                ],
+            }
+        ]
+    )
+    errors = schema_root.validate_reserved_suffixes()
+    assert len(errors) == 1
+    assert (
+        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel_name}' in 'TestTestNode'" in errors[0]
+    )
+
+
+def test_validate_reserved_suffixes_valid_schema() -> None:
+    schema_root = SchemaRoot(
+        nodes=[
+            {
+                "name": "TestNode",
+                "namespace": "Test",
+                "branch": BranchSupportType.AWARE.value,
+                "attributes": [{"name": "name", "kind": "Text"}],
+            }
+        ]
+    )
+    errors = schema_root.validate_reserved_suffixes()
+    assert errors == []
+
+
+def test_validate_reserved_suffixes_extension_attribute() -> None:
+    attr_name = f"foo{RESOURCE_POOL_REL_SUFFIX}"
+    schema_root = SchemaRoot(
+        extensions=SchemaExtension(
+            nodes=[NodeExtensionSchema(kind="TestTestNode", attributes=[{"name": attr_name, "kind": "Text"}])]
+        )
+    )
+    errors = schema_root.validate_reserved_suffixes()
+    assert len(errors) == 1
+    assert (
+        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on attribute '{attr_name}' in 'TestTestNode'" in errors[0]
+    )
+
+
+def test_validate_reserved_suffixes_extension_relationship() -> None:
+    rel_name = f"bar{RESOURCE_POOL_REL_SUFFIX}"
+    schema_root = SchemaRoot(
+        extensions=SchemaExtension(
+            nodes=[
+                NodeExtensionSchema(
+                    kind="TestTestNode",
+                    relationships=[{"name": rel_name, "peer": "TestOther", "cardinality": "one"}],
+                )
+            ]
+        )
+    )
+    errors = schema_root.validate_reserved_suffixes()
+    assert len(errors) == 1
+    assert (
+        f"Reserved suffix '{RESOURCE_POOL_REL_SUFFIX}' used on relationship '{rel_name}' in 'TestTestNode'" in errors[0]
+    )

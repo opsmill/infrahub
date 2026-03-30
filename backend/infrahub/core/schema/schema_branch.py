@@ -9,6 +9,7 @@ from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
+from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
@@ -1307,9 +1308,12 @@ class SchemaBranch:
             return
 
         jinja_template = InfrahubJinja2Template(template=node.display_label)
+        context = ExecutionContext.CORE
+        if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+            context |= ExecutionContext.LOCAL
         try:
             variables = jinja_template.get_variables()
-            jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+            jinja_template.validate(context=context)
         except (JinjaTemplateOperationViolationError, JinjaTemplateError) as exc:
             raise ValueError(
                 f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
@@ -1364,9 +1368,12 @@ class SchemaBranch:
             )
 
             jinja_template = InfrahubJinja2Template(template=attribute.computed_attribute.jinja2_template)
+            context = ExecutionContext.CORE
+            if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+                context |= ExecutionContext.LOCAL
             try:
                 variables = jinja_template.get_variables()
-                jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+                jinja_template.validate(context=context)
             except JinjaTemplateOperationViolationError as exc:
                 raise ValueError(
                     f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template: {exc.message}"
@@ -2482,6 +2489,39 @@ class SchemaBranch:
 
                 self.set(name=node_name, schema=node_schema)
 
+    def _create_attribute_resource_pool_relationship(self, attr: AttributeSchema) -> RelationshipSchema | None:
+        """Create a resource pool relationship for a Number attribute on a template.
+
+        When a Number attribute supports templates, this creates a corresponding relationship
+        to CoreNumberPool so the template can reference a pool for allocation.
+
+        Args:
+            attr: The attribute schema from the original node
+
+        Returns:
+            A RelationshipSchema for the resource pool relationship, or None if not applicable
+        """
+        if attr.kind != "Number" or not attr.support_templates:
+            return None
+
+        pool_rel_name = f"{attr.name}{RESOURCE_POOL_REL_SUFFIX}"
+        pool_identifier = f"{attr.name}{RESOURCE_POOL_REL_SUFFIX}".lower()
+        pool_label = attr.name.replace("_", " ").title() + " from Resource Pool"
+
+        return RelationshipSchema(
+            name=pool_rel_name,
+            peer=InfrahubKind.NUMBERPOOL,
+            description=f"Generated relationship for using a resource pool on the '{attr.name}' attribute",
+            kind=RelationshipKind.GENERIC,
+            optional=True,
+            cardinality=RelationshipCardinality.ONE,
+            direction=RelationshipDirection.OUTBOUND,
+            branch=attr.branch,
+            identifier=pool_identifier,
+            label=pool_label,
+            inherited=attr.inherited,
+        )
+
     def _create_resource_pool_relationship(self, relationship: RelationshipSchema) -> RelationshipSchema | None:
         """Create a resource pool relationship for IP address or prefix relationships.
 
@@ -2515,8 +2555,8 @@ class SchemaBranch:
             return None
 
         pool_rel_name = f"{relationship.name}{RESOURCE_POOL_REL_SUFFIX}"
-        pool_identifier = f"{relationship.get_identifier()}{RESOURCE_POOL_REL_SUFFIX}"
-        pool_label = relationship.name.title() + " from Resource Pool"
+        pool_identifier = f"{relationship.get_identifier()}{RESOURCE_POOL_REL_SUFFIX}".lower()
+        pool_label = relationship.name.title().replace("_", " ") + " from Resource Pool"
 
         return RelationshipSchema(
             name=pool_rel_name,
@@ -2602,6 +2642,12 @@ class SchemaBranch:
             ):
                 template_schema.human_friendly_id = [parent_hfid] + template_schema.human_friendly_id
                 template_schema.uniqueness_constraints[0].append(relationship.name)
+
+        # Add resource pool relationships for eligible attributes (e.g., Number → CoreNumberPool)
+        for node_attr in node.attributes:
+            attr_pool_relationship = self._create_attribute_resource_pool_relationship(attr=node_attr)
+            if attr_pool_relationship:
+                template_schema.relationships.append(attr_pool_relationship)
 
         if getattr(node, "generate_profile", False):
             if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:

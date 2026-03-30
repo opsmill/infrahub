@@ -6,19 +6,24 @@ from fast_depends import Provider
 from fastapi.testclient import TestClient
 
 from infrahub import config
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database, build_message_bus, build_workflow
 from infrahub.workflows.initialization import setup_task_manager
+from tests.conftest import TestHelper
 
 
 @pytest.fixture
-def client(dependency_provider: Provider, nats, redis) -> Generator[TestClient, None, None]:
+def client(
+    dependency_provider: Provider, nats: dict[int, int] | None, redis: dict[int, int] | None
+) -> Generator[TestClient, None, None]:
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
     from infrahub.server import app
 
@@ -40,7 +45,7 @@ def admin_headers() -> dict[str, str]:
 
 
 @pytest.fixture
-def rpc_bus(helper, dependency_provider) -> Generator[Any, None, None]:
+def rpc_bus(helper: TestHelper, dependency_provider: Provider) -> Generator[Any, None, None]:
     original = config.OVERRIDE.message_bus
     bus = helper.get_message_bus_rpc()
     config.OVERRIDE.message_bus = bus
@@ -50,7 +55,7 @@ def rpc_bus(helper, dependency_provider) -> Generator[Any, None, None]:
 
 
 @pytest.fixture
-async def workflow_local(dependency_provider) -> AsyncGenerator[WorkflowLocalExecution, None]:
+async def workflow_local(dependency_provider: Provider) -> AsyncGenerator[WorkflowLocalExecution, None]:
     original = config.OVERRIDE.workflow
     workflow = WorkflowLocalExecution()
     await setup_task_manager()
@@ -62,7 +67,10 @@ async def workflow_local(dependency_provider) -> AsyncGenerator[WorkflowLocalExe
 
 @pytest.fixture
 async def car_person_data(
-    db: InfrahubDatabase, register_core_models_schema, car_person_schema, first_account
+    db: InfrahubDatabase,
+    register_core_models_schema: SchemaBranch,
+    car_person_schema: SchemaBranch,
+    first_account: Node,
 ) -> dict[str, Node]:
     p1 = await Node.init(db=db, schema="TestPerson")
     await p1.new(db=db, name="John", height=180)
@@ -148,7 +156,7 @@ async def car_person_data(
 
 @pytest.fixture
 async def car_person_data_generic_diff(
-    db: InfrahubDatabase, default_branch, car_person_data_generic, first_account
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node], first_account: Node
 ) -> dict[str, Any]:
     branch2 = await create_branch(branch_name="branch2", db=db)
 
@@ -239,7 +247,7 @@ async def car_person_data_generic_diff(
 
 @pytest.fixture
 async def car_person_data_artifact_diff(
-    db: InfrahubDatabase, default_branch, car_person_data_generic_diff
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic_diff: dict[str, Any]
 ) -> dict[str, Any]:
     query = """
     query {
@@ -368,7 +376,7 @@ async def car_person_data_artifact_diff(
 
 @pytest.fixture
 async def data_diff_attribute(
-    db: InfrahubDatabase, default_branch, car_person_data_generic, first_account
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node], first_account: Node
 ) -> dict[str, Any]:
     branch2 = await create_branch(branch_name="branch2", db=db)
 

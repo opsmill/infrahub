@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  FROM_RESOURCE_POOL_SUFFIX,
+  RELATIONSHIP_BULK_ADD_PREFIX,
+  RELATIONSHIP_BULK_REMOVE_PREFIX,
+} from "@/shared/components/form/constants";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { store } from "@/shared/stores";
 
@@ -12,11 +17,6 @@ import {
   generateAttributeSchema,
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
-import {
-  FROM_RESOURCE_POOL_SUFFIX,
-  RELATIONSHIP_BULK_ADD_PREFIX,
-  RELATIONSHIP_BULK_REMOVE_PREFIX,
-} from "../constants";
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {

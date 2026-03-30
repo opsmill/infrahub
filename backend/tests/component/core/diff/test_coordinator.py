@@ -7,6 +7,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import DiffAction, InfrahubKind, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
@@ -256,6 +257,21 @@ class TestDiffCoordinator:
         )
         assert no_changes_diff.from_time == no_changes_diff_metadata.from_time == diff_with_data.from_time
         assert no_changes_diff.to_time == no_changes_diff_metadata.to_time
+
+        # mark branch as merged and verify update_branch_diff returns stored diff without recalculating
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=branch.name)])
+        branch.status = BranchStatus.MERGED
+        await branch.save(db=db)
+        registry.branch[branch.name] = branch
+        self.reset_mocks(wrapped_diff_coordinator)
+
+        terminal_diff_metadata = await wrapped_diff_coordinator.update_branch_diff(
+            base_branch=default_branch, diff_branch=branch
+        )
+        assert type(terminal_diff_metadata) is EnrichedDiffRootMetadata
+        assert terminal_diff_metadata.uuid == no_changes_diff_metadata.uuid
+        wrapped_diff_coordinator.diff_calculator.calculate_diff.assert_not_awaited()
+        wrapped_diff_coordinator.diff_repo.save.assert_not_awaited()
 
     async def test_unrelated_changes_skip_some_expensive_operations(
         self, db: InfrahubDatabase, default_branch: Branch, person_john_main: Node

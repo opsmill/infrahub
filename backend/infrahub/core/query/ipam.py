@@ -86,6 +86,12 @@ class IPv6AddressFreeData:
         )
 
 
+@dataclass(frozen=True)
+class IPParentPrefixResult:
+    prefix_id: str
+    prefix_kind: str
+
+
 def _get_namespace_id(
     namespace: Node | str | None = None,
 ) -> str:
@@ -94,6 +100,138 @@ def _get_namespace_id(
     if namespace and hasattr(namespace, "id"):
         return namespace.id
     return registry.default_ipnamespace
+
+
+class IPParentPrefixLookupQuery(Query):
+    name = "ip_parent_prefix_lookup"
+    type = QueryType.READ
+    insert_return = False
+
+    def __init__(
+        self,
+        ip_value: ipaddress.IPv4Address | ipaddress.IPv6Address | ipaddress.IPv4Network | ipaddress.IPv6Network,
+        **kwargs,
+    ) -> None:
+        self.ip_value = ip_value
+        super().__init__(**kwargs)
+
+    def _build_possible_parent_prefixes(self) -> None:
+        """Build the list of possible parent prefix binary addresses and their prefix lengths."""
+        if isinstance(self.ip_value, ipaddress.IPv4Address | ipaddress.IPv6Address):
+            is_address = True
+            ip_as_network = ipaddress.ip_network(self.ip_value)
+            prefixlen = ip_as_network.prefixlen
+        else:
+            is_address = False
+            ip_as_network = self.ip_value
+            prefixlen = ip_as_network.prefixlen
+
+        prefix_bin = convert_ip_to_binary_str(ip_as_network)
+
+        if is_address:
+            start_prefixlen = ip_as_network.max_prefixlen - 1
+        else:
+            start_prefixlen = prefixlen - 1
+
+        possible_prefix_map: dict[str, int] = {}
+        for candidate_len in range(start_prefixlen, -1, -1):
+            candidate_bin = prefix_bin[:candidate_len].ljust(ip_as_network.max_prefixlen, "0")
+            if candidate_bin not in possible_prefix_map:
+                possible_prefix_map[candidate_bin] = candidate_len
+
+        self.params["possible_prefix_and_length_list"] = [
+            [binary, length] for binary, length in possible_prefix_map.items()
+        ]
+        self.params["possible_prefix_list"] = list(possible_prefix_map.keys())
+        self.params["ip_version"] = ip_as_network.version
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
+        self._build_possible_parent_prefixes()
+
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+        self.params["ip_prefix_kind"] = InfrahubKind.IPPREFIX
+        self.params["ip_prefix_attribute_kind"] = PREFIX_ATTRIBUTE_LABEL
+
+        query = """
+        // ------------------
+        // Shortlist candidate AttributeIPNetwork nodes using the binary_address index
+        // ------------------
+        OPTIONAL MATCH (av:%(ip_prefix_attribute_kind)s)
+        WHERE av.version = $ip_version
+        AND av.binary_address IN $possible_prefix_list
+        AND any(
+            prefix_and_length IN $possible_prefix_and_length_list
+            WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
+        )
+        // ------------------
+        // Walk back to BuiltinIPPrefix candidates (unbound from specific av)
+        // ------------------
+        WITH av
+        WHERE av IS NOT NULL
+        OPTIONAL MATCH (maybe_parent:%(ip_prefix_kind)s)
+            -[:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})
+            -[:HAS_VALUE]->(av)
+        WITH DISTINCT maybe_parent
+        WHERE maybe_parent IS NOT NULL
+        // ------------------
+        // Verify the prefix node itself is active on this branch
+        // ------------------
+        CALL (maybe_parent) {
+            OPTIONAL MATCH (maybe_parent)-[r:IS_PART_OF]->(:Root)
+            WHERE %(branch_filter)s
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+            RETURN r IS NOT NULL AND r.status = "active" AS node_is_active
+        }
+        WITH maybe_parent
+        WHERE node_is_active = TRUE
+        // ------------------
+        // Resolve the branch-effective attribute value for each candidate
+        // ------------------
+        CALL (maybe_parent) {
+            OPTIONAL MATCH (maybe_parent)-[r1:HAS_ATTRIBUTE]->(:Attribute {name: "prefix"})-[r2:HAS_VALUE]->(av:AttributeValue)
+            WHERE all(r IN [r1, r2] WHERE (%(branch_filter)s))
+            ORDER BY r1.branch_level DESC, r1.from DESC, r1.status ASC,
+                r2.branch_level DESC, r2.from DESC, r2.status ASC
+            LIMIT 1
+            WITH av, r1, r2
+            WHERE r1.status = "active" AND r2.status = "active"
+            // ------------------
+            // Re-check containment against the resolved branch-effective value
+            // ------------------
+            WITH av, (
+                av.version = $ip_version
+                AND av.binary_address IN $possible_prefix_list
+                AND any(
+                    prefix_and_length IN $possible_prefix_and_length_list
+                    WHERE av.binary_address = prefix_and_length[0] AND av.prefixlen <= prefix_and_length[1]
+                )
+            ) AS is_allowed_value
+            RETURN CASE WHEN is_allowed_value = TRUE THEN av ELSE NULL END AS allowed_av
+        }
+        WITH maybe_parent, allowed_av
+        WHERE allowed_av IS NOT NULL
+        RETURN maybe_parent.uuid AS parent_prefix_uuid,
+            maybe_parent.kind AS parent_prefix_kind,
+            allowed_av.prefixlen AS prefixlen
+        ORDER BY prefixlen DESC
+        """ % {
+            "branch_filter": branch_filter,
+            "ip_prefix_kind": self.params["ip_prefix_kind"],
+            "ip_prefix_attribute_kind": self.params["ip_prefix_attribute_kind"],
+        }
+        self.add_to_query(query)
+        self.return_labels = ["parent_prefix_uuid", "parent_prefix_kind", "prefixlen"]
+
+    def get_data(self) -> list[IPParentPrefixResult]:
+        return [
+            IPParentPrefixResult(
+                prefix_id=result.get_as_type("parent_prefix_uuid", return_type=str),
+                prefix_kind=result.get_as_type("parent_prefix_kind", return_type=str),
+            )
+            for result in self.get_results()
+        ]
 
 
 class IPPrefixSubnetFetch(Query):

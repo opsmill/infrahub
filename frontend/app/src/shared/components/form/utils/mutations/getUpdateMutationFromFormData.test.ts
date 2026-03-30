@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type {
+  AttributeValueFromPool,
   DynamicFieldProps,
   FormAttributeValue,
   FormRelationshipValue,
@@ -284,6 +285,123 @@ describe("getUpdateMutationFromFormData - test", () => {
       expect(mutationData).to.deep.equal({
         ip_address: { id: "new-ip" },
         ip_address_from_resource_pool: null,
+      });
+    });
+
+    it("splits number attribute pool value using { value: null } for the attribute", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "weight",
+          type: "Number",
+          defaultValue: {
+            source: { type: "user" },
+            value: 42,
+          },
+          pool: {
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: "TestTemplate",
+            fromPoolRelationshipName: "weight_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, AttributeValueFromPool> = {
+        weight: {
+          source: {
+            type: "pool",
+            label: "My Pool",
+            id: "pool-id",
+            kind: "CoreNumberPool",
+          },
+          value: { from_pool: { id: "pool-id" } },
+        },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        weight: { value: null },
+        weight_from_resource_pool: { id: "pool-id" },
+      });
+    });
+
+    it("clears pool relationship when user enters a direct number value", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "weight",
+          type: "Number",
+          defaultValue: {
+            source: {
+              type: "pool",
+              label: "My Pool",
+              id: "pool-id",
+              kind: "CoreNumberPool",
+            },
+            value: { from_pool: { id: "pool-id" } },
+          } as unknown as FormAttributeValue,
+          pool: {
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: "TestTemplate",
+            fromPoolRelationshipName: "weight_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        weight: {
+          source: { type: "user" },
+          value: 100,
+        },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        weight: { value: 100 },
+        weight_from_resource_pool: null,
+      });
+    });
+
+    it("clears pool relationship when user sets number attribute to null", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "weight",
+          type: "Number",
+          defaultValue: {
+            source: {
+              type: "pool",
+              label: "My Pool",
+              id: "pool-id",
+              kind: "CoreNumberPool",
+            },
+            value: { from_pool: { id: "pool-id" } },
+          } as unknown as FormAttributeValue,
+          pool: {
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: "TestTemplate",
+            fromPoolRelationshipName: "weight_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        weight: {
+          source: { type: "user" },
+          value: null,
+        },
+      };
+
+      // WHEN
+      const mutationData = getUpdateMutationFromFormData({ fields, formData });
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        weight: { value: null },
+        weight_from_resource_pool: null,
       });
     });
 

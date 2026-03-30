@@ -3,13 +3,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Button } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
-import { useDeleteBranchMutation } from "@/entities/branches/domain/delete-branch.mutation";
+import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
+import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
 
 type BranchDeleteButtonProps = {
   branch: BranchDetail;
@@ -30,15 +30,13 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
         <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
       </Button>
 
-      <ModalDelete
-        title="Delete"
-        description={
-          <>
-            Are you sure you want to remove the branch <b>`{branch.name}`</b>?
-          </>
-        }
-        onDelete={async () => {
-          await deleteBranch({ name: branch.name });
+      <ModalDeleteBranch
+        branches={[branch]}
+        onDelete={async (scope) => {
+          await deleteBranch({
+            name: branch.name,
+            deleteFromGit: scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE,
+          });
 
           const queryStringParams = getCurrentQsp();
           const isDeletedBranchSelected = queryStringParams.get(QSP.BRANCH) === branch.name;

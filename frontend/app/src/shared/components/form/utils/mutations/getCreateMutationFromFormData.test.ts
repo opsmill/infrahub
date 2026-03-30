@@ -244,6 +244,40 @@ describe("getCreateMutationFromFormData", () => {
       });
     });
 
+    it("splits number attribute pool value to from-pool relationship", () => {
+      // GIVEN
+      const fields: Array<DynamicFieldProps> = [
+        buildFormField({
+          name: "weight",
+          type: "Number",
+          pool: {
+            kind: "CoreNumberPool",
+            defaultAllocatedObjectKind: "TestTemplate",
+            fromPoolRelationshipName: "weight_from_resource_pool",
+          },
+        }),
+      ];
+      const formData: Record<string, FormAttributeValue> = {
+        weight: {
+          source: {
+            type: "pool",
+            label: "My Pool",
+            id: "pool-id",
+            kind: "CoreNumberPool",
+          },
+          value: { from_pool: { id: "pool-id" } },
+        } as any,
+      };
+
+      // WHEN
+      const mutationData = getCreateMutationFromFormData(fields, formData);
+
+      // THEN
+      expect(mutationData).to.deep.equal({
+        weight_from_resource_pool: { id: "pool-id" },
+      });
+    });
+
     it("only sends direct value when user selects a direct value", () => {
       // GIVEN
       const fields: Array<DynamicFieldProps> = [

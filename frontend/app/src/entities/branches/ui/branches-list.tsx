@@ -5,10 +5,10 @@ import Content from "@/shared/components/layout/content";
 import useFilters from "@/shared/hooks/useFilters";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { branchesQueryKeys } from "@/entities/branches/domain/branch.query-keys";
-import { useGetBranchesCount } from "@/entities/branches/domain/get-branches-count.query";
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
+import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
+import { useGetBranchesCount } from "@/entities/branches/ui/queries/get-branches-count.query";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 
 function BranchesListHeader() {

@@ -1,5 +1,4 @@
 import { gql, useQuery } from "@apollo/client";
-import { formatISO } from "date-fns";
 import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
@@ -13,9 +12,8 @@ import {
   PROPOSED_CHANGES_THREAD_COMMENT_OBJECT,
 } from "@/shared/config/constants";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetFile } from "@/entities/diff/domain/get-file.query";
 import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
+import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
 import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
@@ -31,9 +29,10 @@ import { diffLines, formatLines } from "unidiff";
 import { Row } from "@/shared/components/container";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { DiffBadge } from "@/entities/diff/node-diff/utils";
-import { useCreateObjectMutation } from "@/entities/nodes/object/domain/create-object.mutation";
-import { useDeleteObjectMutation } from "@/entities/nodes/object/domain/delete-object.mutation";
+import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { DiffBadge } from "@/entities/diff/ui/node-diff/utils";
+import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
+import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
 
 interface FileContentDiffProps {
   repositoryId: string;
@@ -113,7 +112,7 @@ export function FileContentDiff({
   commitTo,
 }: FileContentDiffProps) {
   const { proposedChangeId } = useParams();
-  const auth = useAuth();
+  const { isAuthenticated } = useAuth();
   const [schemaList] = useAtom(nodeSchemasAtom);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
@@ -161,18 +160,15 @@ export function FileContentDiff({
 
   const threads =
     data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
-  const approverId = auth?.data?.sub;
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
   };
 
   const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    if (!comment || !approverId) {
+    if (!comment) {
       return;
     }
-
-    const newDate = formatISO(new Date());
 
     const lineNumber = displayAddComment.isNormal
       ? displayAddComment.side === "new"
@@ -188,12 +184,6 @@ export function FileContentDiff({
       },
       label: {
         value: label,
-      },
-      created_at: {
-        value: newDate,
-      },
-      created_by: {
-        id: approverId,
       },
       resolved: {
         value: false,
@@ -224,12 +214,6 @@ export function FileContentDiff({
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,
@@ -315,7 +299,7 @@ export function FileContentDiff({
 
     const thread = findThreadByChange(threads, change, commitFrom, commitTo);
 
-    if (thread || !auth?.isAuthenticated || !proposedChangeId) {
+    if (thread || !isAuthenticated || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }

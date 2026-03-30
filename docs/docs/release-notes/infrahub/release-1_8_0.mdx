@@ -1,0 +1,280 @@
+---
+title: Release 1.8.0
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.8.0</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>March 22nd, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.8.0](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.8.0)</td>
+    </tr>
+  </tbody>
+</table>
+
+We're excited to announce the release of Infrahub, v1.8.0!
+
+This release introduces a file objects feature, adds stronger branch life-cycle controls with automatic freeze-on-merge, and adds support for resource pools in object templates. The Infrahub Backup tool now fully supports Kubernetes deployments.
+
+## Main changes
+
+### File Object: Upload and attach files to Infrahub objects
+
+Infrahub can now store files -- Text files, PDF, images, spreadsheets, KMZ files, and any other format -- directly as objects in the database. With the new `CoreFileObject` generic, you can define custom file types in your schema. Object files behave as all other objects in Infrahub, you can fully customize the schema and relate (or attach) them to other objects.
+
+The contents of the file will be rendered in Infrahub's web interface, if the file has one of the following file types: 
+
+- application/json
+- application/yaml
+- application/x-yaml
+- application/hcl
+- application/graphql
+- application/pdf
+- image/svg+xml
+- text/plain
+- text/markdown
+- application/xml
+- text/csv;
+- image/png
+- image/jpeg
+- image/gif
+- image/webp
+- image/bmp
+- image/x-icon
+
+To use this feature, create a schema node that inherits from `CoreFileObject`:
+
+```yaml
+nodes:
+  - name: ContractDocument
+    namespace: Custom
+    inherit_from:
+      - CoreFileObject
+    attributes:
+      - name: contract_number
+        kind: Text
+```
+
+The `CoreFileObject` generic automatically provides read-only attributes for file metadata: `file_name`, `checksum` (SHA-1), `file_size`, `file_type` (MIME type), and `storage_id`.
+
+**Upload** files through GraphQL mutations -- a `file` argument is automatically added to Create, Update, and Upsert mutations for any node inheriting from `CoreFileObject`.
+
+**Download** files through the UI or these REST API endpoints:
+- `/api/files/{node_id}` -- by node UUID
+- `/api/files/by-hfid/{kind}` -- by human-friendly ID
+- `/api/files/by-storage-id/{storage_id}` -- by internal storage ID
+
+The maximum file size defaults to 50 MB and is configurable via the `INFRAHUB_STORAGE_MAX_FILE_SIZE` environment variable.
+
+![File Object](../../media/release_notes/infrahub_1_8_0/file_object.png)
+
+### Freeze branch after merge
+
+When a branch is merged -- either through a direct branch merge or via a Proposed Change -- it now transitions to a frozen state where no further mutations are allowed. This prevents a class of data integrity issues that could occur when a branch was modified or merged a second time after its initial merge.
+
+Both the backend API and the frontend UI enforce this freeze:
+- GraphQL mutations (Create, Upsert, Update, Delete) are blocked on merged branches
+- The UI disables editing controls and shows a visual indication that the branch is frozen
+- Creating a new Proposed Change for an already-merged branch is prevented
+
+### Resource pool references in object templates
+
+Object templates can now reference resource pools (IP Address, IP Prefix, and Number pools). Previously, adding a resource pool to a template would allocate a resource to the template itself -- not the intended behavior. In 1.8, pool references on templates are stored as metadata. When an object is created from the template, the resource is allocated from the specified pool at creation time.
+
+This applies to all pool types:
+- IP Address pools
+- IP Prefix pools
+- Number pools
+
+The feature introduces a new `relationship_properties` field in the GraphQL schema for template relationships, which stores the pool source reference alongside the standard `edges` field. Template inheritance (sub templates) correctly propagates pool references.
+
+A database migration is included to convert any existing template-IP relationships that incorrectly have pool sources into the new `_from_resource_pool` relationship format.
+
+### Consult the diff of a proposed change after branch deletion
+
+The data and schema diff of a Proposed Change is now preserved and accessible even after the associated branch has been deleted. This is essential for audit and compliance workflows -- during incident investigation or regulatory review, users need to inspect what changes were made, by whom, and when, regardless of whether the source branch still exists.
+
+The diff data is now tied to the Proposed Change itself rather than solely to the branch. The files and artifacts tabs on a Proposed Change also handle deleted branches gracefully, showing a user-friendly message instead of an error.
+
+This feature is a prerequisite for a future capability to automatically delete branches after merge, which will help prevent stale branches that can cause Git synchronization issues.
+
+### Read-only repository: Update to Latest button
+
+Managing read-only Git repositories is now simpler. A new "Update to Latest" button fetches and imports the latest commit from the tracked branch directly from the UI. Previously, users had to manually copy and paste commit hashes from an external source to update what Infrahub was tracking. The existing reimport action has been renamed to "Reimport Current Commit" to clearly distinguish between re-processing the current commit and pulling the latest.
+
+Repositories now also support providing a Git Tag as the reference (ref) to track for a repository.
+
+### Infrahub Backup: Kubernetes support
+
+The `infrahub-backup` CLI tool now fully supports Kubernetes deployments for both backup and restore operations. The tool automatically detects whether Infrahub is running on Docker Compose or Kubernetes and adjusts its behavior accordingly.
+
+For Kubernetes deployments we can now install `infrahub-backup` using the Infrahub Helm Chart. This is now the recommended installation method for Kubernetes deployments.
+See the [installation instructions](https://docs.infrahub.app/backup/guides/install#enable-via-infrahub-helm-chart-recommended) for more details
+
+Key new capabilities:
+- `infrahub-backup create --k8s-namespace <namespace>` -- creates a backup archive containing Neo4j and PostgreSQL database dumps
+- `infrahub-backup restore <backup_file> --k8s-namespace <namespace>` -- restores from an archive, handling service stop/start, cache/queue cleanup, database restore, and service restart automatically
+- Supports Neo4j Enterprise Edition online backups
+- Backup archives include metadata with Infrahub version, Neo4j edition, components backed up, and timestamps
+
+### Display artifact count in proposed changes
+
+The Proposed Changes detail view now displays item counts on all tabs, giving you immediate visibility into how many changes exist in each category:
+
+- **Data** -- count of added, updated, and removed nodes
+- **Files** -- total count of changed files across repositories
+- **Artifacts** -- count of changed artifacts (excludes unchanged)
+- **Schema** -- count of schema changes
+- **Checks** -- count of validators
+- **Tasks** -- count of related tasks
+
+### Branch list page improvements
+
+The branch list page continues to evolve with richer information and better usability:
+
+- **Created By** column shows who created each branch (available for branches created after 1.7)
+- **Proposed Changes** column links directly to associated proposed changes
+- **Status** column shows branch state with warning indicators (e.g., "Rebase needed")
+- **Schema Changes** indicator shows whether the branch includes schema modifications
+- **Last Rebase** timestamp for sync tracking
+- **Merged badge** clearly identifies branches that have been merged
+- Merged branches are filtered from the proposed change creation form
+
+![Freeze branch](../../media/release_notes/infrahub_1_8_0/branch_freeze.png)
+
+### General UI improvements
+
+Several smaller improvements enhance the day-to-day experience:
+
+- **Schema field shortcuts** -- clicking an attribute or relationship label in the object detail view opens the schema viewer modal, scrolling directly to the relevant field definition
+- **Field type icons** -- icons next to field names indicate the attribute type (text, number, boolean) and relationship schema
+- **Diff status badges** -- file and artifact diffs now show badges indicating the type of change (added, removed, updated)
+- **Branch artifacts tab** -- view artifact changes directly from the branch details view
+- **Refresh button** -- task list and details views now include a manual refresh button with a tooltip showing the last data refresh time
+- **Consistent focus outlines** -- improved visual accessibility across all interactive elements
+
+## Infrahub Python SDK
+
+Infrahub v1.8.0 requires the usage of infrahub-sdk v1.19.0, please update the `infrahub-sdk` package accordingly.
+
+Notable SDK changes in this release:
+- Added support for the File Object feature
+- Fixed an issue where the SDK tracking feature would fail when deleting a parent node with component relationships (e.g., a device with interfaces). The SDK now correctly handles cascade deletions where component nodes are automatically removed when their parent is deleted, preventing "Unable to find the node" errors in Generator workflows.
+
+## Migration of an Infrahub instance
+
+Before you upgrade an instance of Infrahub, we strongly advise you to delete branches that are no longer needed within Infrahub. Deleting old branches helps speeding up the upgrade process and to avoid spending time running migrations for branches that are no longer needed.
+
+**Please** make sure to upgrade any existing installations of the infrahub-sdk to v1.19.0.
+
+**Please** make sure to backup your instance of Infrahub and make sure you are familiar with and have tested the restore procedure. For more information visit https://docs.infrahub.app/backup
+
+**First**, stop the existing Infrahub instance
+
+```shell
+docker compose down
+```
+
+**Second**, update the Infrahub version running in your environment.
+
+Below are some example ways to get the latest version of Infrahub in your environment.
+
+- For deployments via Docker Compose, download the updated Docker Compose file
+  - `curl https://infrahub.opsmill.io -o docker-compose.yml`
+- Set the `VERSION` environment variable and start the environment
+  - `export VERSION="1.8.0"; docker compose pull && docker compose up -d`
+- For deployments via Kubernetes, utilize the latest version of the Helm chart supplied with this release
+
+**Second**, once you have gotten the desired version of Infrahub in your environment, we need to run any needed migrations.
+
+Infrahub provides the `infrahub upgrade` command to start these migrations.
+
+> Note: If you are running Infrahub in Docker/K8s, this command need to run from a container where Infrahub is installed.
+
+```shell
+docker compose exec infrahub-server infrahub upgrade
+```
+
+**Finally**, restart all instances of Infrahub.
+
+```shell
+docker compose restart
+```
+
+## Migration of a dev or demo instance
+
+If you are using the `dev` or `demo` environments, we have provided `invoke` commands to aid in the migration to the latest version.
+The below examples provide the `demo` version of the commands, however similar commands can be used for `dev` as well.
+
+```shell
+git fetch origin
+git checkout infrahub-v1.8.0
+git pull
+invoke demo.stop
+invoke demo.pull
+invoke demo.upgrade --rebase-branches
+invoke demo.start
+```
+
+If you don't want to keep your data, you can start a clean instance with the following command.
+
+> **Warning: All data will be lost, please make sure to backup everything you need before running this command.**
+
+```shell
+git fetch origin
+git checkout infrahub-v1.8.0
+invoke demo.destroy demo.build demo.start demo.load-infra-schema demo.load-infra-data
+```
+
+The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edge) has also been updated, it's recommended to pull the latest changes into your fork.
+
+## Full changelog
+
+### Added
+
+- Added the ability to also fetch tags from git ([#8078](https://github.com/opsmill/infrahub/issues/8078))
+- Added `Builtin` to the list of restricted namespaces
+- Added `CoreFileObject` generic for storing files as node attributes with branch-aware versioning. Nodes inheriting from `CoreFileObject` support file upload via GraphQL mutations and download via REST API endpoints.
+- Added a refresh button to the task list and details view with a tooltip showing the last data refresh time
+- Added a shortcut in the object details view: clicking an attribute or relationship label opens the schema viewer modal, directly showing and scrolling to the relevant field definition
+- Added ability to view artifact changes from the branch details view
+- Added consistent focus outline color across all interactive elements for improved visual accessibility
+- Added counts to proposed change tabs
+- Added icons next to field names in the object details view to indicate field types (e.g., text, number, boolean) and relationship schemas
+- Added status badges to file and artifact diffs showing the type of change (added, removed, updated)
+- Added tooltip over action buttons (download/copy) on artifact details view.
+
+### Changed
+
+- Improved consistency of GraphQL Query details page with other object views
+- Remove "Task Overview" title from embedded task tabs (object that inherit from CoreTaskTarget)
+- Simplified default branch view by hiding inapplicable actions and tabs
+- Use Jinja2 templates to compute display labels of permission objects, also mark `identifier` as deprecated
+
+### Fixed
+
+- Handle schema updates and associated data migrations as a single item so that an unexpected failure during a schema migration does not leave the schema and data in incompatible states. This applies to loading a schema, merging a branch, and rebasing a branch. ([#6948](https://github.com/opsmill/infrahub/issues/6948))
+- Fixed IP addresses disappearing from their parent prefix when the address mask is less specific than the prefix length ([#7267](https://github.com/opsmill/infrahub/issues/7267))
+- Fixed missing changelog events for objects created as side effects during node creation, including pool-allocated resources and template-generated child objects. ([#7268](https://github.com/opsmill/infrahub/issues/7268))
+- Allow List attributes to use the regex parameter for validating list item values ([#7717](https://github.com/opsmill/infrahub/issues/7717))
+- Fixed schema loading crash when a node with `generate_template=True` has a Component relationship to `CoreNumberPool` ([#7903](https://github.com/opsmill/infrahub/issues/7903))
+- Prevent creating multiple number pools for the same schema if it is separately loaded on multiple branches. It is now possible to encounter an error if a user tries to create an instance of a schema immediately after an update to include a NumberPool attribute because the associated CoreNumberPool must be created by an asynchronous task. ([#8222](https://github.com/opsmill/infrahub/issues/8222))
+- Shift-click range selection now anchors to the last clicked row, with added e2e coverage for range toggling. ([#8229](https://github.com/opsmill/infrahub/issues/8229))
+- Fixed display labels showing 'None' for relationship-based fields after upsert.
+  Relationship peer attributes needed by display label and HFID templates are now correctly loaded during node updates. ([#8237](https://github.com/opsmill/infrahub/issues/8237))
+- Fixed error reporting on invalid Jinja2 templates for display_labels ([#8311](https://github.com/opsmill/infrahub/issues/8311))
+- Removed `generate_template` on a GenericSchema, this attribute could lead to an invalid GraphQL schema and breaking both frontend and backend operations ([#8371](https://github.com/opsmill/infrahub/issues/8371))
+- Fix IPAM view failing to load when more than 40 IP namespaces exist. ([#8481](https://github.com/opsmill/infrahub/issues/8481))
+- Fix diff update logic that runs after merge and rebase operations to ignore diffs for merged and deleted branches. Add a new environment variable, "INFRAHUB_DIFF_UPDATE_AFTER_MERGE", that allows skipping the automatic diff updates following a merge. ([#8507](https://github.com/opsmill/infrahub/issues/8507))
+- Fixed incorrect merge behavior where removing the source property from an attribute was silently ignored during branch merge. ([#8583](https://github.com/opsmill/infrahub/issues/8583))
+- Data tables now display error messages when API requests fail due to permission or other errors.
+- Fix false "unsaved changes" warning when editing objects with generic relationships.
+- Fix task view showing "Name not found" for related nodes that exist only on a branch by querying the correct branch and time context.
+- Fixed adding a relationship from a resource pool within relationship tabs in the object detail view
+- Show a user-friendly message in the files and artifacts tabs of a proposed change when the source branch has been deleted.

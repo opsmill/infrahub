@@ -11,7 +11,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.core.timestamp import Timestamp
-from infrahub.exceptions import ValidationError
+from infrahub.exceptions import ResourceNotFoundError, ValidationError
 from infrahub.log import get_logger
 from infrahub.proposed_change.constants import ProposedChangeState
 
@@ -173,6 +173,16 @@ class DiffCoordinator:
     ) -> EnrichedDiffRootMetadata:
         tracking_id = BranchTrackingId(name=diff_branch.name)
         self.logger.info(f"Received request to update branch diff for {base_branch.name} - {diff_branch.name}")
+        if diff_branch.is_terminal:
+            self.logger.info(
+                f"Branch {diff_branch.name} is in terminal state {diff_branch.status.value}, returning latest diff"
+            )
+            diff_roots = await self.diff_repo.get_roots_metadata(
+                diff_branch_names=[diff_branch.name], tracking_id=tracking_id, exclude_merged=False
+            )
+            if not diff_roots:
+                raise ResourceNotFoundError(f"No stored diff found for terminal branch {diff_branch.name}")
+            return diff_roots[0]
         existing_incremental_lock = self.diff_locker.get_existing_lock(
             target_branch_name=base_branch.name, source_branch_name=diff_branch.name, is_incremental=True
         )

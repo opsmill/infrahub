@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { stringifyWithoutQuotes } from "@/shared/utils/string";
-
-import { updateObjectWithId } from "@/entities/nodes/api/updateObjectWithId";
 import getMutationMetaDetailsFromFormData from "@/entities/nodes/object-item-meta-edit/getMutationMetaDetailsFromFormData";
 
 import { generateNodeSchema } from "../../../../tests/fake/schema";
@@ -228,28 +225,5 @@ describe("Mutation details from object data", () => {
         _relation__is_protected: newDataForMetaEdit.is_protected,
       },
     });
-  });
-
-  it("should return a correct mutation from the updated object", () => {
-    const mutationString = updateObjectWithId({
-      kind: nodeSchema.kind,
-      data: stringifyWithoutQuotes(updatedObject),
-    });
-
-    expect(mutationString).toEqual(`
-mutation ${nodeSchema.kind}Update {
-  ${nodeSchema.kind}Update (data: {
-    id: "${nodeData.id}",
-    site: {
-        id: "${nodeData.site.node.id}",
-        _relation__owner: "${newDataForMetaEdit.owner}",
-        _relation__source: "${newDataForMetaEdit.source}",
-        _relation__is_protected: ${newDataForMetaEdit.is_protected}
-    }
-}) {
-      ok
-  }
-}
-`);
   });
 });

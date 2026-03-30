@@ -1,10 +1,6 @@
-import { gql } from "@apollo/client";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
-
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import type { ContextParams } from "@/shared/api/types";
 
+import { getObjectFromApi } from "@/entities/nodes/object/api/get-object-from-api";
 import { getAttributesVisibleInDetailedView } from "@/entities/nodes/object/utils/get-attributes-visible-in-detailed-view";
 import { getRelationshipsVisibleInDetailedView } from "@/entities/nodes/object/utils/get-relationships-visible-in-detailed-view";
 import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
@@ -34,36 +30,14 @@ export const getObject: GetObject = async ({
 
   const schemaKind = objectSchema.kind as string;
 
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      __name: `GetObject${schemaKind}`,
-      [schemaKind]: {
-        __args: {
-          ids: [objectId],
-        },
-        edges: {
-          node: {
-            id: true,
-            display_label: true,
-            hfid: true,
-            ...addAttributesToRequest(attributesVisible, { withMetadata: true }),
-            ...addRelationshipsToRequest(relationshipsVisible, {
-              relationshipFragment,
-              withMetadata: true,
-            }),
-          },
-        },
-      },
-    },
-  });
-
-  const query = gql(queryString);
-  const { data } = await graphqlClient.query({
-    query,
-    context: {
-      branch: branchName,
-      date: atDate,
-    },
+  const { data } = await getObjectFromApi({
+    schemaKind,
+    objectId,
+    attributes: attributesVisible,
+    relationships: relationshipsVisible,
+    relationshipFragment,
+    branchName,
+    atDate,
   });
 
   const result =

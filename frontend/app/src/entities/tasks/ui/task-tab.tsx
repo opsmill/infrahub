@@ -8,7 +8,7 @@ import { TASK_TAB } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { ObjectDetailsTab, type TaskTabProps } from "@/entities/nodes/object/ui/object-tabs";
-import { useGetTaskCount } from "@/entities/tasks/domain/get-node-task-count/get-task-count.query";
+import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 
 export function ObjectTaskTab({ objectId, ...props }: TaskTabProps) {
   const { pathname } = useLocation();

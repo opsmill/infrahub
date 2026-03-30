@@ -40,11 +40,7 @@ from tests.conftest import TestHelper
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
-
-@pytest.fixture(autouse=True)
-def non_mocked_hosts() -> list:
-    """Workaround to tell HTTPX Mock to not mock the requests to prefect targeting 127.0.0.1."""
-    return ["127.0.0.1"]
+pytestmark = pytest.mark.httpx_mock(should_mock=lambda request: request.url.host != "127.0.0.1")
 
 
 async def test_directories_props(git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path) -> None:

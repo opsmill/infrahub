@@ -15,7 +15,7 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 
-import { objectQueryKeys } from "@/entities/nodes/object/domain/object.query-keys";
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
 import { DissociateRelationshipsModal } from "@/entities/nodes/relationships/ui/dissociate-relationships-modal";
 import { RelationshipProperties } from "@/entities/nodes/relationships/ui/relationship-properties";

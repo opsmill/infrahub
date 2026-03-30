@@ -132,6 +132,10 @@ class ObjectAccess:
     attributes: set[str] = field(default_factory=set)
     relationships: set[str] = field(default_factory=set)
 
+    @property
+    def fields(self) -> set[str]:
+        return self.attributes.union(self.relationships)
+
 
 @dataclass
 class GraphQLVariable:

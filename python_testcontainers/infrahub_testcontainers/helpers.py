@@ -47,10 +47,9 @@ class TestInfrahubDocker:
         env["INFRAHUB_API_TOKEN"] = PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN"]
         env["INFRAHUB_MAX_CONCURRENT_EXECUTION"] = f"{concurrent_execution}"
         env["INFRAHUB_PAGINATION_SIZE"] = f"{pagination_size}"
-        result = subprocess.run(  # noqa: S602
+        return subprocess.run(  # noqa: S602
             command, shell=True, capture_output=True, text=True, env=env, check=False
         )
-        return result
 
     @pytest.fixture(scope="class")
     def tmp_directory(self, tmpdir_factory: pytest.TempdirFactory) -> Path:

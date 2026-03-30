@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import pytest
-from infrahub_testcontainers.container import InfrahubDockerCompose
 from testcontainers.core.exceptions import ContainerIsNotRunning
+
+from infrahub_testcontainers.container import InfrahubDockerCompose
 
 
 @pytest.fixture(name="compose_factory")

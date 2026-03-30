@@ -3,7 +3,7 @@ import { useCommandState } from "cmdk";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
-import { useGetSearchDocs } from "@/entities/navigation/domain/search-docs.query";
+import { useGetSearchDocs } from "@/entities/navigation/ui/queries/search-docs.query";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 

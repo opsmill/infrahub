@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
-import { useCheckConnectivityMutation } from "@/entities/repository/domain/check-connectivity.mutation";
+import { useCheckConnectivityMutation } from "@/entities/repository/ui/queries/check-connectivity.mutation";
 
 import { render } from "../../../../tests/components/render";
 import { CheckConnectivityModal } from "./check-connectivity-modal";
 
-vi.mock("@/entities/repository/domain/check-connectivity.mutation");
+vi.mock("@/entities/repository/ui/queries/check-connectivity.mutation");
 
 describe("CheckConnectivityModal", () => {
   const mockMutate = vi.fn();

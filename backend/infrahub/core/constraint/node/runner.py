@@ -32,12 +32,16 @@ class NodeConstraintRunner:
             if not skip_uniqueness_check:
                 await self.uniqueness_constraint.check(node, filters=field_filters)
 
-            for relationship_name in node.get_schema().relationship_names:
-                if field_filters and relationship_name not in field_filters:
+            node_schema = node.get_schema()
+            effective_filters = field_filters
+            if effective_filters:
+                for constraint in self.relationship_manager_constraints:
+                    effective_filters = constraint.expand_filters(effective_filters, node_schema)
+
+            for relationship_name in node_schema.relationship_names:
+                if effective_filters and relationship_name not in effective_filters:
                     continue
                 relationship_manager: RelationshipManager = getattr(node, relationship_name)
                 await relationship_manager.fetch_relationship_ids(db=db, force_refresh=True)
                 for relationship_constraint in self.relationship_manager_constraints:
-                    await relationship_constraint.check(
-                        relm=relationship_manager, node_schema=node.get_schema(), node=node
-                    )
+                    await relationship_constraint.check(relm=relationship_manager, node_schema=node_schema, node=node)

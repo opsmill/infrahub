@@ -5,14 +5,18 @@ const sidebars: SidebarsConfig = {
     "home",
     {
       type: 'category',
-      label: 'Getting Started',
+      label: 'Overview',
       collapsed: false,
       collapsible: false,
+      link: {
+        type: 'doc',
+        id: 'overview/overview',
+      },
       items: [
-        'getting-started/overview',
-        'getting-started/quick-start',
-        'getting-started/next-steps',
-        'getting-started/concepts',
+        'overview/concepts',
+        'overview/explore',
+        'overview/quickstart',
+        'overview/next-steps',
       ],
     },
     {
@@ -424,6 +428,9 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_8_1',
+            'release-notes/infrahub/release-1_8_0',
+            'release-notes/infrahub/release-1_7_7',
             'release-notes/infrahub/release-1_7_6',
             'release-notes/infrahub/release-1_7_5',
             'release-notes/infrahub/release-1_7_4',

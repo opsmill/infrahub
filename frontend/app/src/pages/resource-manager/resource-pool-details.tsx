@@ -17,16 +17,16 @@ import {
   type AttributeType,
   ObjectAttributeValue,
 } from "@/entities/nodes/getObjectItemDisplayValue";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
-import { useGetPoolUtilization } from "@/entities/resource-manager/domain/get-pool-utilization.query";
-import { resourceManagerQueryKeys } from "@/entities/resource-manager/domain/resource-manager.query-keys";
+import { useGetPoolUtilization } from "@/entities/resource-manager/ui/queries/get-pool-utilization.query";
+import { resourceManagerQueryKeys } from "@/entities/resource-manager/ui/queries/resource-manager.query-keys";
 import ResourcePoolUtilization from "@/entities/resource-manager/ui/ResourcePoolUtilization";
 import ResourceSelector from "@/entities/resource-manager/ui/resource-selector";
 import type { ModelSchema } from "@/entities/schema/types";
