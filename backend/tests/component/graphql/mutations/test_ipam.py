@@ -1379,22 +1379,12 @@ async def test_delete_top_level_prefix(
 
 @pytest.fixture
 async def schema_with_ip_address_hfid(
-    db: InfrahubDatabase,
     default_branch: Branch,
-    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
 ) -> SchemaBranch:
-    """Register IPAM schemas with human_friendly_id on IpamIPAddress and a TestDevice with an IP address relationship."""
+    """Extend the base IPAM schema with human_friendly_id on IpamIPAddress and a TestDevice with an IP address relationship."""
     schema: dict[str, Any] = {
         "nodes": [
-            {
-                "name": "IPPrefix",
-                "namespace": "Ipam",
-                "default_filter": "prefix__value",
-                "order_by": ["prefix__value"],
-                "display_labels": ["prefix__value"],
-                "branch": "aware",
-                "inherit_from": [InfrahubKind.IPPREFIX],
-            },
             {
                 "name": "IPAddress",
                 "namespace": "Ipam",
@@ -1481,3 +1471,13 @@ async def test_ipaddress_relationship_with_hfid(
     assert result.data
     assert result.data["TestDeviceCreate"]["ok"]
     assert result.data["TestDeviceCreate"]["object"]["primary_ip"]["node"]["address"]["value"] == "10.0.0.1/32"
+
+    # Verify the relationship is persisted in the database
+    device_id = result.data["TestDeviceCreate"]["object"]["id"]
+    devices = await NodeManager.query(db=db, branch=default_branch, schema="TestDevice", filters={"ids": [device_id]})
+    assert len(devices) == 1
+    device = devices[0]
+    primary_ip = await device.primary_ip.get_peer(db=db)  # type: ignore[union-attr]
+    assert primary_ip
+    address_value = primary_ip.address.value  # type: ignore[union-attr]
+    assert str(address_value) == "10.0.0.1/32"
