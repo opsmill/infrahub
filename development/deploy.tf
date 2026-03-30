@@ -391,18 +391,11 @@ image:
 architecture: replication
 auth:
   enabled: false
-master:
-  podLabels:
-    infrahub/service: cache
-  podAntiAffinityPreset: hard
-  persistence:
-    enabled: true
-  service:
-    ports:
-      redis: 6379
-replicas:
+replica:
   replicaCount: 3
   podAntiAffinityPreset: hard
+  podLabels:
+    infrahub/service: cache
 sentinel:
   enabled: true
   image:
