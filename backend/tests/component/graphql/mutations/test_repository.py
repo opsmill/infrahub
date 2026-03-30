@@ -203,7 +203,7 @@ async def test_import_last_commit_rejects_non_read_only_repository(
     )
 
     assert result.errors
-    assert "not a CoreReadOnlyRepository" in result.errors[0]["message"]
+    assert "not a CoreReadOnlyRepository" in str(result.errors[0].message)
 
 
 async def test_import_read_only_repository_last_commit(
