@@ -113,4 +113,4 @@ class TestRestrictedNamespacesCrossBranch(TestSchemaLifecycleBase):
         # This must detect the violation: CatCat (namespace: Cat)
         # inherits from TestingAnimal which has restricted_namespaces: ["Dog"]
         with pytest.raises(ValueError, match=r"restricted namespaces.*Cat"):
-            candidate_schema.duplicate().process()
+            candidate_schema.process()
