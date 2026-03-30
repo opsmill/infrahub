@@ -802,6 +802,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields: set[str] | None,
         node_changelog: NodeChangelog,
         update_at: Timestamp,
+        user_id: str,
     ) -> None:
         """Recompute the human-friendly ID if one of its variables was updated."""
         if not self._human_friendly_id:
@@ -811,7 +812,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         await self._human_friendly_id.compute(db=db, node=self)
         updated_attribute = await self._human_friendly_id.get_node_attribute(node=self, at=update_at).save(
-            at=update_at, db=db
+            at=update_at, db=db, user_id=user_id
         )
         if updated_attribute:
             node_changelog.add_attribute(attribute=updated_attribute)
@@ -822,6 +823,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         fields: set[str] | None,
         node_changelog: NodeChangelog,
         update_at: Timestamp,
+        user_id: str,
     ) -> None:
         """Recompute the display label if one of its variables was updated."""
         if not self._display_label:
@@ -832,7 +834,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._display_label.compute(db=db, node=self)
         self._display_label.get_node_attribute(node=self, at=update_at).get_create_data(node_schema=self._schema)
         updated_attribute = await self._display_label.get_node_attribute(node=self, at=update_at).save(
-            at=update_at, db=db
+            at=update_at, db=db, user_id=user_id
         )
         if updated_attribute:
             node_changelog.add_attribute(attribute=updated_attribute)
@@ -1063,10 +1065,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if fields is not None:
             updated_fields = set(fields) | set(node_changelog.updated_fields)
         # Recompute the human-friendly ID if one of its variables was updated
-        await self._recompute_hfid(db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at)
+        await self._recompute_hfid(
+            db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
+        )
         # Recompute the display label if one of its variables was updated
         await self._recompute_display_label(
-            db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at
+            db=db, fields=updated_fields, node_changelog=node_changelog, update_at=update_at, user_id=user_id
         )
 
         node_changelog.display_label = await self.get_display_label(db=db)
