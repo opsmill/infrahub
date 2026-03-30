@@ -6,6 +6,7 @@ from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
 
+from infrahub import lock
 from infrahub.services.adapters.http.httpx import HttpxAdapter
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
@@ -28,11 +29,16 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
-        if component_is_primary_server:
-            await setup_task_manager()
-
         if is_initial_setup:
+            await WorkflowWorkerExecution._setup_task_manager()
             await setup_task_manager_identifiers()
+        elif component_is_primary_server:
+            await WorkflowWorkerExecution._setup_task_manager()
+
+    @staticmethod
+    async def _setup_task_manager() -> None:
+        async with lock.registry.get(name="global.worker.taskmgr.init"):
+            await setup_task_manager()
 
     @overload
     async def execute_workflow(
