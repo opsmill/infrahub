@@ -5,7 +5,7 @@ from infrahub_sdk import InfrahubClient
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, RelationshipDeleteBehavior
+from infrahub.core.constants import BranchSupportType, InfrahubKind, RelationshipDeleteBehavior
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -492,3 +492,61 @@ async def test_delete_branch_aware_node_with_agnostic_relationship(
     assert device_ids_on_branch3 == [device_id], (
         "Location's devices relationship SHOULD include the device on branch3 after device deleted on branch2"
     )
+
+
+async def test_delete_cascade_artifacts(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    """Deleting a CoreArtifactTarget node must cascade-delete its associated artifacts."""
+    c1 = car_person_data_generic["c1"]
+    q1 = car_person_data_generic["q1"]
+    r1 = car_person_data_generic["r1"]
+
+    group = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await group.new(db=db, name="artifact-target-group", members=[c1])
+    await group.save(db=db)
+
+    transform = await Node.init(db=db, schema=InfrahubKind.TRANSFORMPYTHON)
+    await transform.new(
+        db=db,
+        name="transform-cascade-test",
+        query=str(q1.id),
+        repository=str(r1.id),
+        file_path="transform.py",
+        class_name="Transform",
+    )
+    await transform.save(db=db)
+
+    definition = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+    await definition.new(
+        db=db,
+        name="artifactdef-cascade-test",
+        targets=group,
+        transformation=transform,
+        content_type="application/json",
+        artifact_name="cascade-artifact",
+        parameters={},
+    )
+    await definition.save(db=db)
+
+    artifact = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+    await artifact.new(
+        db=db,
+        name="cascade-artifact",
+        definition=definition,
+        status="Ready",
+        object=c1,
+        storage_id="00000000-0000-0000-0000-000000000001",
+        checksum="abc123",
+        content_type="application/json",
+    )
+    await artifact.save(db=db)
+
+    deleted = await NodeManager.delete(db=db, branch=default_branch, nodes=[c1])
+
+    assert c1.id in {d.id for d in deleted}
+    assert artifact.id in {d.id for d in deleted}
+    node_map = await NodeManager.get_many(db=db, ids=[c1.id, artifact.id])
+    assert node_map == {}
