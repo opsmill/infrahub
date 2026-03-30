@@ -97,7 +97,10 @@ export function RepositoryMenuSection({
       </MenuItem>
 
       {isReadOnlyRepository && (
-        <MenuItem isDisabled={!isUpdateAllowed} onAction={() => reimportLastCommit({ repositoryId })}>
+        <MenuItem
+          isDisabled={!isUpdateAllowed}
+          onAction={() => reimportLastCommit({ repositoryId })}
+        >
           <Icon icon="mdi:source-commit" />
           Import latest commit
         </MenuItem>
