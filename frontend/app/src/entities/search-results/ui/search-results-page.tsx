@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router";
 
 import Content from "@/shared/components/layout/content";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { Accordion } from "@/shared/components/ui/accordion";
 import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
 
 import { groupSearchResultsByKind } from "@/entities/search-results/domain/group-search-results-by-kind";
@@ -14,10 +15,10 @@ import { SearchResultsHeader } from "@/entities/search-results/ui/search-results
 export function SearchResultsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get("q") ?? "";
-  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set());
+  const [openGroups, setOpenGroups] = useState<string[]>([]);
 
   useEffect(() => {
-    setOpenGroups(new Set());
+    setOpenGroups([]);
   }, [query]);
 
   const {
@@ -41,26 +42,14 @@ export function SearchResultsPage() {
     [setSearchParams]
   );
 
-  const toggleGroup = useCallback((kind: string) => {
-    setOpenGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(kind)) {
-        next.delete(kind);
-      } else {
-        next.add(kind);
-      }
-      return next;
-    });
-  }, []);
-
   const allKinds = groups.map((g) => g.kind);
-  const allExpanded = allKinds.length > 0 && allKinds.every((k) => openGroups.has(k));
+  const allExpanded = allKinds.length > 0 && allKinds.every((k) => openGroups.includes(k));
 
   function toggleAll() {
     if (allExpanded) {
-      setOpenGroups(new Set());
+      setOpenGroups([]);
     } else {
-      setOpenGroups(new Set(allKinds));
+      setOpenGroups(allKinds);
     }
   }
 
@@ -98,15 +87,13 @@ export function SearchResultsPage() {
           </Content.Card>
         )}
 
-        {groups.map((group) => (
-          <SearchResultsGroup
-            key={group.kind}
-            kind={group.kind}
-            results={group.results}
-            isOpen={openGroups.has(group.kind)}
-            onToggle={() => toggleGroup(group.kind)}
-          />
-        ))}
+        {groups.length > 0 && (
+          <Accordion type="multiple" value={openGroups} onValueChange={setOpenGroups} className="flex flex-col gap-2">
+            {groups.map((group) => (
+              <SearchResultsGroup key={group.kind} kind={group.kind} results={group.results} />
+            ))}
+          </Accordion>
+        )}
 
         <InfiniteTrigger
           hasNextPage={hasNextPage}

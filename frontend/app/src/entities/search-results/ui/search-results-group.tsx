@@ -1,10 +1,15 @@
-import { Icon } from "@iconify-icon/react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
 import Content from "@/shared/components/layout/content";
 import { DataTable } from "@/shared/components/table/data-table";
-import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/shared/components/ui/accordion";
+import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { InfiniteTrigger } from "@/shared/components/utils/infinite-trigger";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { DEFAULT_PAGE_SIZE } from "@/shared/utils/pagination";
 
@@ -17,11 +22,9 @@ import type { SearchResultItem } from "@/entities/search-results/types";
 type SearchResultsGroupProps = {
   kind: string;
   results: SearchResultItem[];
-  isOpen: boolean;
-  onToggle: () => void;
 };
 
-export function SearchResultsGroup({ kind, results, isOpen, onToggle }: SearchResultsGroupProps) {
+export function SearchResultsGroup({ kind, results }: SearchResultsGroupProps) {
   const { schema } = useSchema(kind);
   const { currentBranch } = useCurrentBranch();
   const atDate = useAtomValue(datetimeAtom);
@@ -47,7 +50,7 @@ export function SearchResultsGroup({ kind, results, isOpen, onToggle }: SearchRe
       if (nextOffset >= ids.length) return undefined;
       return { offset: nextOffset, limit: DEFAULT_PAGE_SIZE };
     },
-    enabled: !!schema && isOpen,
+    enabled: !!schema,
   });
 
   if (!schema) return null;
@@ -59,31 +62,20 @@ export function SearchResultsGroup({ kind, results, isOpen, onToggle }: SearchRe
   const skeletonRowCount = Math.min(results.length, DEFAULT_PAGE_SIZE);
 
   return (
-    <Content.Card className="flex flex-col">
-      <button
-        type="button"
-        onClick={onToggle}
-        aria-expanded={isOpen}
-        className={`flex w-full items-center gap-2 border-gray-200 px-4 py-3 text-left hover:bg-gray-50 ${isOpen ? "border-b" : ""}`}
-      >
-        <Icon
-          icon={isOpen ? "mdi:chevron-down" : "mdi:chevron-right"}
-          className="text-gray-400 text-sm"
-        />
-        <span className="font-semibold text-sm">{label}</span>
-        <span className="rounded-full bg-custom-blue-700/10 px-1.5 py-0.5 text-custom-blue-700 text-xs">
-          {results.length}
-        </span>
-      </button>
+    <AccordionItem value={kind} asChild>
+      <Content.Card className="flex flex-col">
+        <AccordionTrigger
+          className="sticky top-0 z-10 gap-2 border-gray-200 bg-white px-4 py-3 text-sm hover:bg-gray-50 data-[state=open]:border-b"
+          iconClassName="-order-1 ml-0"
+        >
+          <span className="font-semibold text-sm">{label}</span>
+          <span className="rounded-full bg-custom-blue-700/10 px-1.5 py-0.5 text-custom-blue-700 text-xs">
+            {results.length}
+          </span>
+        </AccordionTrigger>
 
-      {isOpen && (
-        <div className="max-h-[50vh]">
-          <InfiniteScroll
-            scrollX
-            hasNextPage={hasNextPage}
-            onLoadMore={fetchNextPage}
-            className="h-full"
-          >
+        <AccordionContent>
+          <ScrollArea scrollX scrollY className="max-h-[50vh]">
             <DataTable
               columns={columns}
               count={results.length}
@@ -91,9 +83,14 @@ export function SearchResultsGroup({ kind, results, isOpen, onToggle }: SearchRe
               isLoading={isPending || isFetchingNextPage}
               skeletonRowCount={skeletonRowCount}
             />
-          </InfiniteScroll>
-        </div>
-      )}
-    </Content.Card>
+            <InfiniteTrigger
+              hasNextPage={hasNextPage}
+              onLoadMore={fetchNextPage}
+              isFetchingNextPage={isFetchingNextPage}
+            />
+          </ScrollArea>
+        </AccordionContent>
+      </Content.Card>
+    </AccordionItem>
   );
 }
