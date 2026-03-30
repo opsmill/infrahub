@@ -34,7 +34,7 @@ RUN apt-get update && \
 # ****************************************************************
 # STAGE : Frontend
 # ****************************************************************
-FROM docker.io/node:22-slim AS frontend
+FROM docker.io/node:24-slim AS frontend
 ARG CI_ARG
 ENV CI=$CI_ARG
 
