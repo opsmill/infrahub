@@ -38,7 +38,12 @@ def get_component_type() -> ComponentType:
 
 def build_client() -> InfrahubClient:
     client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
-    client_config.set_ssl_context(context=get_http().verify_tls())
+    tls_regsistry = get_tls_registry()
+    tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
+    ssl_context = tls_regsistry.get(
+        insecure=config.SETTINGS.http.tls_insecure, ca_bundle=tls_ca_bundle, force_verify=bool(tls_ca_bundle)
+    )
+    client_config.set_ssl_context(context=ssl_context)
     client = InfrahubClient(config=client_config)
     # Populate client schema cache using our internal schema cache
     if registry.schema:
