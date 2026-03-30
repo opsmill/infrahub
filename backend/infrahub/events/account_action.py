@@ -44,12 +44,22 @@ class AccountLoggedInEvent(InfrahubEvent):
     )
 
     def get_resource(self) -> dict[str, str]:
-        return {
+        resource = {
             "prefect.resource.id": f"infrahub.account.{self.account_id}",
-            "infrahub.account.name": self.account_name,
-            "infrahub.account.auth_method": self.auth_method,
+            "infrahub.account.account_id": self.account_id,
+            "infrahub.account.account_name": self.account_name,
+            "infrahub.account.account_type": self.account_type.value,
+            "infrahub.account.auth_method": self.auth_method.value,
             "infrahub.account.session_id": self.session_id,
+            "infrahub.account.timestamp": self.timestamp.isoformat(),
         }
+        if self.sso_provider:
+            resource["infrahub.account.sso_provider"] = self.sso_provider.value
+        if self.client_ip:
+            resource["infrahub.account.client_ip"] = self.client_ip
+        if self.user_agent:
+            resource["infrahub.account.user_agent"] = self.user_agent
+        return resource
 
 
 class AccountLoggedOutEvent(InfrahubEvent):
@@ -69,9 +79,16 @@ class AccountLoggedOutEvent(InfrahubEvent):
     )
 
     def get_resource(self) -> dict[str, str]:
-        return {
+        resource = {
             "prefect.resource.id": f"infrahub.account.{self.account_id}",
-            "infrahub.account.name": self.account_name,
+            "infrahub.account.account_id": self.account_id,
+            "infrahub.account.account_name": self.account_name,
             "infrahub.account.session_id": self.session_id,
             "infrahub.account.logout_type": self.logout_type,
+            "infrahub.account.timestamp": self.timestamp.isoformat(),
         }
+        if self.client_ip:
+            resource["infrahub.account.client_ip"] = self.client_ip
+        if self.user_agent:
+            resource["infrahub.account.user_agent"] = self.user_agent
+        return resource

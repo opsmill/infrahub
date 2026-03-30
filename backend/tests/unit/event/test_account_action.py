@@ -43,7 +43,7 @@ def test_account_logged_in_get_resource() -> None:
     resource = event.get_resource()
 
     assert resource["prefect.resource.id"] == "infrahub.account.acct-123"
-    assert resource["infrahub.account.name"] == "testuser"
+    assert resource["infrahub.account.account_name"] == "testuser"
     assert resource["infrahub.account.auth_method"] == "password"
     assert resource["infrahub.account.session_id"] == "sess-456"
 
@@ -106,7 +106,7 @@ def test_account_logged_out_get_resource() -> None:
     resource = event.get_resource()
 
     assert resource["prefect.resource.id"] == "infrahub.account.acct-789"
-    assert resource["infrahub.account.name"] == "testuser"
+    assert resource["infrahub.account.account_name"] == "testuser"
     assert resource["infrahub.account.session_id"] == "sess-abc"
     assert resource["infrahub.account.logout_type"] == "user_initiated"
 

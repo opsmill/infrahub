@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Any
 
+from infrahub_sdk.timestamp import Timestamp
 from prefect.client.orchestration import PrefectClient, get_client
 from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.exceptions import PrefectHTTPStatusError
@@ -215,6 +216,30 @@ class PrefectEventData(PrefectEventModel):
     def _return_proposed_change_reviewer_former_decision(self) -> dict[str, Any]:
         return {"reviewer_former_decision": self.resource.get("infrahub.proposed_change.reviewer_former_decision")}
 
+    def _return_account_logged_in(self) -> dict[str, Any]:
+        return {
+            "account_id": self.resource.get("infrahub.account.account_id"),
+            "account_name": self.resource.get("infrahub.account.account_name"),
+            "account_type": self.resource.get("infrahub.account.account_type"),
+            "auth_method": self.resource.get("infrahub.account.auth_method"),
+            "session_id": self.resource.get("infrahub.account.session_id"),
+            "sso_provider": self.resource.get("infrahub.account.sso_provider", ""),
+            "client_ip": self.resource.get("infrahub.account.client_ip", ""),
+            "user_agent": self.resource.get("infrahub.account.user_agent", ""),
+            "timestamp": Timestamp(self.resource.get("infrahub.account.timestamp")).to_datetime(),
+        }
+
+    def _return_account_logged_out(self) -> dict[str, Any]:
+        return {
+            "account_id": self.resource.get("infrahub.account.account_id"),
+            "account_name": self.resource.get("infrahub.account.account_name"),
+            "session_id": self.resource.get("infrahub.account.session_id"),
+            "logout_type": self.resource.get("infrahub.account.logout_type"),
+            "client_ip": self.resource.get("infrahub.account.client_ip", ""),
+            "user_agent": self.resource.get("infrahub.account.user_agent", ""),
+            "timestamp": Timestamp(self.resource.get("infrahub.account.timestamp")).to_datetime(),
+        }
+
     def _return_event_specifics(self) -> dict[str, Any]:
         """Return event specific data based on the type of event being processed"""
 
@@ -253,6 +278,10 @@ class PrefectEventData(PrefectEventModel):
                 | "infrahub.proposed_change.merged"
             ):
                 event_specifics = self._return_proposed_change_event()
+            case "infrahub.account.logged_in":
+                event_specifics = self._return_account_logged_in()
+            case "infrahub.account.logged_out":
+                event_specifics = self._return_account_logged_out()
 
         return event_specifics
 
