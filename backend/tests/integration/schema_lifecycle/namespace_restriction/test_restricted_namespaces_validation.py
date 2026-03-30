@@ -15,9 +15,8 @@ from infrahub.core.schema import SchemaRoot
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-
-from ..shared import load_schema
-from .shared import TestSchemaLifecycleBase
+from tests.integration.schema_lifecycle.shared import TestSchemaLifecycleBase
+from tests.integration.shared import load_schema
 
 
 class TestRestrictedNamespacesValidation(TestSchemaLifecycleBase):

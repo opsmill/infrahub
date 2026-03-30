@@ -16,9 +16,8 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.schema import SchemaRoot
-
-from ..shared import load_schema
-from .shared import TestSchemaLifecycleBase
+from tests.integration.schema_lifecycle.shared import TestSchemaLifecycleBase
+from tests.integration.shared import load_schema
 
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -29,9 +28,9 @@ class TestRestrictedNamespacesCrossBranch(TestSchemaLifecycleBase):
     """Test that merging schemas from two branches detects restricted_namespaces violations.
 
     Scenario:
-    1. Load initial schema: generic Animal (no restriction) + DogDog node
+    1. Load initial schema: generic Animal (no restriction) + Dog node (namespace: Dog, inherits Animal)
     2. On main: add restricted_namespaces: ["Dog"] to Animal
-    3. On branch: add CatCat node (namespace: Cat, inherits Animal)
+    3. On branch: add Cat node (namespace: Cat, inherits Animal)
     4. Build candidate schema (main + branch) and process() -> should raise ValueError
     """
 
