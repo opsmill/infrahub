@@ -19,6 +19,7 @@ from infrahub.services.adapters.workflow import InfrahubWorkflow
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.services.component import InfrahubComponent
+from infrahub.tls.registry import TlsContextRegistry
 
 _singletons: dict[str, Any] = {}
 
@@ -37,7 +38,12 @@ def get_component_type() -> ComponentType:
 
 def build_client() -> InfrahubClient:
     client_config = Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True)
-    client_config.set_ssl_context(context=get_http().verify_tls())
+    tls_regsistry = get_tls_registry()
+    tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
+    ssl_context = tls_regsistry.get(
+        insecure=config.SETTINGS.http.tls_insecure, ca_bundle=tls_ca_bundle, force_verify=bool(tls_ca_bundle)
+    )
+    client_config.set_ssl_context(context=ssl_context)
     client = InfrahubClient(config=client_config)
     # Populate client schema cache using our internal schema cache
     if registry.schema:
@@ -120,7 +126,7 @@ async def get_event_service(event_service: InfrahubEventService = Depends(build_
 def build_workflow() -> InfrahubWorkflow:
     if "workflow" not in _singletons:
         _singletons["workflow"] = config.OVERRIDE.workflow or (
-            WorkflowWorkerExecution()
+            WorkflowWorkerExecution(tls_registry=build_tls_registry())
             if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
             else WorkflowLocalExecution()
         )
@@ -132,9 +138,20 @@ def get_workflow(workflow: InfrahubWorkflow = Depends(build_workflow)) -> Infrah
     return workflow
 
 
+def build_tls_registry() -> TlsContextRegistry:
+    if "tls_registry" not in _singletons:
+        _singletons["tls_registry"] = TlsContextRegistry()
+    return _singletons["tls_registry"]
+
+
+@inject
+def get_tls_registry(tls_registry: TlsContextRegistry = Depends(build_tls_registry)) -> TlsContextRegistry:  # noqa: B008
+    return tls_registry
+
+
 def build_http_service() -> InfrahubHTTP:
     if "http_service" not in _singletons:
-        _singletons["http_service"] = HttpxAdapter()
+        _singletons["http_service"] = HttpxAdapter(tls_registry=build_tls_registry())
     return _singletons["http_service"]
 
 

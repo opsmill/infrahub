@@ -216,6 +216,7 @@ class InfrahubWorkerAsync(BaseWorker):
             workflow=get_workflow(),
             component=await get_component(),
             component_type=self.component_type,
+            http=get_http(),
             log_forwarding=log_forwarding,
         )
         await log_forwarding.start()
