@@ -9,6 +9,7 @@ from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
+from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
@@ -1307,9 +1308,12 @@ class SchemaBranch:
             return
 
         jinja_template = InfrahubJinja2Template(template=node.display_label)
+        context = ExecutionContext.CORE
+        if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+            context |= ExecutionContext.LOCAL
         try:
             variables = jinja_template.get_variables()
-            jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+            jinja_template.validate(context=context)
         except (JinjaTemplateOperationViolationError, JinjaTemplateError) as exc:
             raise ValueError(
                 f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
@@ -1364,9 +1368,12 @@ class SchemaBranch:
             )
 
             jinja_template = InfrahubJinja2Template(template=attribute.computed_attribute.jinja2_template)
+            context = ExecutionContext.CORE
+            if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+                context |= ExecutionContext.LOCAL
             try:
                 variables = jinja_template.get_variables()
-                jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+                jinja_template.validate(context=context)
             except JinjaTemplateOperationViolationError as exc:
                 raise ValueError(
                     f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template: {exc.message}"
