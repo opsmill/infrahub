@@ -38,39 +38,14 @@ class TestNamespaceRestrictionInvalidCases:
         with pytest.raises(ValueError, match="does not comply with this restriction as its namespace"):
             schema.validate_restricted_namespaces_from_generic()
 
-    async def test_restricted_namespaces_enforced_with_multi_generic_inheritance(self) -> None:
+    async def test_restricted_namespaces_enforced_with_multi_generic_inheritance(
+        self,
+        schema_multi_generic_with_one_restricted: SchemaRoot,
+    ) -> None:
         """When a node inherits from multiple generics and only one has restricted_namespaces,
         the restriction from that generic must still be enforced."""
-        schema_data = {
-            "generics": [
-                {
-                    "name": "GenericA",
-                    "namespace": "Core",
-                    "display_labels": ["name__value"],
-                    "order_by": ["name__value"],
-                    "attributes": [{"name": "name", "kind": "Text"}],
-                    "restricted_namespaces": ["Core"],
-                },
-                {
-                    "name": "GenericB",
-                    "namespace": "Animal",
-                    "display_labels": ["name__value"],
-                    "order_by": ["name__value"],
-                    "attributes": [{"name": "color", "kind": "Text"}],
-                },
-            ],
-            "nodes": [
-                {
-                    "name": "NodeC",
-                    "namespace": "Bad",
-                    "attributes": [{"name": "extra", "kind": "Text"}],
-                    "inherit_from": ["CoreGenericA", "AnimalGenericB"],
-                }
-            ],
-        }
-
         schema = SchemaBranch(cache={}, name="test")
-        schema.load_schema(schema=SchemaRoot(**schema_data))
+        schema.load_schema(schema=schema_multi_generic_with_one_restricted)
 
         with pytest.raises(ValueError, match="does not comply with this restriction as its namespace") as error:
             schema.validate_restricted_namespaces_from_generic()
@@ -92,14 +67,15 @@ class TestNamespaceRestrictionInvalidCases:
         with pytest.raises(ValueError, match="Generic node 'CoreGenericRepository' has restricted namespaces"):
             schema.validate_restricted_namespaces_from_generic()
 
-    class TestNamespaceRestrictionValidCases:
-        async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
-            self,
-            correct_schema_generic_with_namespace_restriction: SchemaRoot,
-        ) -> None:
-            schema = SchemaBranch(cache={}, name="test")
-            schema.load_schema(schema=correct_schema_generic_with_namespace_restriction)
 
-            schema.validate_restricted_namespaces_from_generic()
+class TestNamespaceRestrictionValidCases:
+    async def test_generic_schema_with_restricted_namespace_pass_if_same_namespace(
+        self,
+        correct_schema_generic_with_namespace_restriction: SchemaRoot,
+    ) -> None:
+        schema = SchemaBranch(cache={}, name="test")
+        schema.load_schema(schema=correct_schema_generic_with_namespace_restriction)
 
-            assert schema.all_names == ["AnimalDog", "AnimalGeneric"]
+        schema.validate_restricted_namespaces_from_generic()
+
+        assert schema.all_names == ["AnimalDog", "AnimalGeneric"]
