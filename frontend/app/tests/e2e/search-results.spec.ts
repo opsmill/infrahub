@@ -20,7 +20,7 @@ test.describe("search results page", () => {
     });
 
     await test.step("verify search results page loads with results", async () => {
-      await expect(page.getByTestId("search-results-input")).toHaveValue("atl");
+      await expect(page.getByRole("searchbox", { name: "Search query" })).toHaveValue("atl");
       await expect(page.getByText(/\d+ results?/)).toBeVisible();
     });
   });
@@ -29,7 +29,7 @@ test.describe("search results page", () => {
     await page.goto("/search?q=atl");
 
     await test.step("verify search input is pre-filled", async () => {
-      await expect(page.getByTestId("search-results-input")).toHaveValue("atl");
+      await expect(page.getByRole("searchbox", { name: "Search query" })).toHaveValue("atl");
     });
 
     await test.step("verify results are displayed", async () => {
@@ -49,7 +49,7 @@ test.describe("search results page", () => {
     await page.goto("/search?q=atl");
 
     await test.step("change search query", async () => {
-      const input = page.getByTestId("search-results-input");
+      const input = page.getByRole("searchbox", { name: "Search query" });
       await input.clear();
       await input.fill("devi");
       await input.press("Enter");
