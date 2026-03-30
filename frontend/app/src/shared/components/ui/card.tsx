@@ -44,6 +44,7 @@ const CardWithBorderTitle = forwardRef<HTMLElement, HTMLAttributes<HTMLElement>>
   ({ className, ...props }, ref) => (
     <header
       ref={ref}
+      role="heading"
       className={classNames("rounded-t bg-neutral-100 px-3 py-2 font-semibold text-sm", className)}
       {...props}
     />
