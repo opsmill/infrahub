@@ -175,7 +175,7 @@ Since group structure determines execution structure, how you organize your targ
 
 More members in the target group means more parallel runs and better utilization of available workers.
 
-### Example: cascading parallelism
+### Example: modular parallelism
 
 In a modular Generator setup (see [modular Generators](modular-generators)), parallelism increases at each layer:
 
@@ -220,6 +220,76 @@ These two group types serve different purposes and are often confused:
 | `CoreGeneratorGroup`  | Tracks which objects were **created by** a Generator. Managed automatically by the SDK's tracking feature. | No — Infrahub manages this automatically |
 
 The target group (`CoreStandardGroup`) is an input to the Generator — "run against these objects." The Generator group (`CoreGeneratorGroup`) is an output — "these objects were created by this Generator."
+
+## Query response modes
+
+The `convert_query_response` flag in `.infrahub.yml` controls how the GraphQL query results are delivered to your `generate()` method. This affects how you access data and what SDK features are available.
+
+### Raw dict mode (default)
+
+When `convert_query_response` is `false` (the default), the `data` parameter passed to `generate()` is the raw GraphQL response dictionary:
+
+```python
+class DeviceGenerator(InfrahubGenerator):
+    async def generate(self, data: dict) -> None:
+        for edge in data["TestDevice"]["edges"]:
+            device_name = edge["node"]["name"]["value"]
+            device_role = edge["node"]["role"]["value"]
+            # ... create objects using self.client
+```
+
+This is the simpler mode — no conversion overhead, and you work with plain Python dicts. You can also use [Pydantic models](https://docs.pydantic.dev/) to parse the dict into typed objects for better IDE support and validation.
+
+### SDK object mode
+
+When `convert_query_response` is `true`, Infrahub converts the GraphQL response into `InfrahubNode` SDK objects. These are available via `self.nodes` (a list) and `self.store` (indexed by node ID). You do **not** use the `data` parameter in this mode:
+
+```python
+class DeviceGenerator(InfrahubGenerator):
+    async def generate(self, data: dict) -> None:
+        for device in self.nodes:
+            device_name = device.name.value
+            device_role = device.role.value
+            # SDK features available: relationships, .save(), .delete()
+```
+
+### When to use each
+
+| Use raw dict mode (`false`) when | Use SDK object mode (`true`) when |
+|---|---|
+| Dict access is sufficient for your use case | You need SDK features like `.save()`, `.delete()`, or relationship traversal on the queried objects |
+| You want minimal overhead | You prefer cleaner attribute access (`node.name.value` vs `node["name"]["value"]`) |
+| The query returns a simple, flat structure | You want to use `self.store` to look up nodes by ID |
+| You want to use Pydantic models for type-safe parsing | You want the SDK to handle response parsing automatically |
+
+## Execution lifecycle
+
+The `execute_in_proposed_change` and `execute_after_merge` flags in `.infrahub.yml` control **when** a Generator runs in relation to the branch lifecycle.
+
+### `execute_in_proposed_change` (default: `true`)
+
+When `true`, the Generator runs during proposed change CI. Results appear in the **Checks** and **Data** tabs of the proposed change. This is how you preview what the Generator will create before merging.
+
+When `false`, the Generator is skipped entirely in proposed changes. Use this for Generators that are triggered by events (checksum triggers) to avoid double execution — once by CI and once by the trigger.
+
+### `execute_after_merge` (default: `true`)
+
+When `true`, the Generator runs after a merge to apply changes to the target branch.
+
+When `false`, the Generator is skipped after merges. This is rare — mainly useful for Generators that exist solely for preview or validation purposes in proposed changes.
+
+### Common combinations
+
+| `execute_in_proposed_change` | `execute_after_merge` | Use case |
+|---|---|---|
+| `true` | `true` | **Default.** Full lifecycle — preview in proposed changes, apply on merge. |
+| `false` | `true` | Skip preview, only run on merge. Use for Generators with external side effects. |
+| `true` | `false` | Preview only — validate in proposed changes but do not apply on merge. Rare. |
+| `false` | `false` | Never runs automatically. Only manual execution via `infrahubctl` or event triggers. Use this for event-driven Generators in a [modular setup](modular-generators). |
+
+### Implications for modular Generators
+
+In [modular Generator](modular-generators) setups where multiple Generators are connected through triggers, these flags determine which layers run at each lifecycle stage. If you set `execute_in_proposed_change: false` on an upstream Generator, all downstream Generators will also effectively be skipped in proposed changes — since their upstream dependencies will not exist.
 
 ## Video guides
 

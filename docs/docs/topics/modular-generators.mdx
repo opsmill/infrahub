@@ -6,7 +6,7 @@ A [Generator](generator) reads data from Infrahub and creates new objects based 
 
 Real-world automation is rarely that contained. A data center fabric has layers: the fabric itself, then pods, then racks, then devices. An enterprise network has sites, buildings, floors, and closets. Each layer depends on objects created by the previous one. Trying to handle all of this in a single Generator leads to a monolithic Python class that is hard to test, impossible to run partially, and painful to maintain. It can also become slow for large datasets.
 
-**Modular Generators** solve this by splitting generation across multiple focused Generators, each responsible for one layer or domain. Later Generators depend on objects created by earlier ones, forming a cascade.
+**Modular Generators** solve this by splitting generation across multiple focused Generators, each responsible for one layer or domain. Later Generators depend on objects created by earlier ones, connected through an event-driven signaling mechanism.
 
 :::info
 For single-Generator fundamentals, see [Generators](generator). For a step-by-step guide on building your first Generator, see [how to create a Generator](../guides/generator).
@@ -28,7 +28,7 @@ When a change occurs at one layer — say a pod needs an additional spine switch
 
 ### Testability
 
-Smaller Generators with clear inputs and outputs are easier to develop and debug in isolation. You can run `infrahubctl generator` against a single target to verify one layer without needing the full cascade to exist.
+Smaller Generators with clear inputs and outputs are easier to develop and debug in isolation. You can run `infrahubctl generator` against a single target to verify one layer without needing the full modular setup to exist.
 
 ## When to use modular Generators
 
@@ -59,13 +59,13 @@ Since there is no central orchestrator, each Generator must be self-protecting. 
 
 ### Each Generator signals its downstream dependents
 
-When a Generator finishes, it needs a way to tell Infrahub that the next layer should run. This is done through a signaling mechanism, typically by updating an attribute on the downstream target objects. Infrahub's event framework detects the change and triggers the next Generator in the chain. The Generators never call each other directly. They communicate exclusively through the data they create and modify in Infrahub.
+When a Generator finishes, it needs a way to tell Infrahub that the next layer should run. This is done through a signaling mechanism, typically by updating an attribute on the downstream target objects. Infrahub's event framework detects the change and triggers the next Generator. The Generators never call each other directly. They communicate exclusively through the data they create and modify in Infrahub.
 
 :::info
-The specific mechanism for chaining Generators (the checksum and trigger pattern) is covered in a separate how-to document.
+The specific mechanism for connecting Generators (the checksum and trigger pattern) is covered in a separate how-to document.
 :::
 
-### The cascade in practice
+### Modular Generators in practice
 
 ```text
 Generator A (targets: fabrics)
@@ -99,8 +99,8 @@ Modular Generators are not free. Be aware of the costs.
 | Benefit                         | Cost                                                                                                        |
 |---------------------------------|-------------------------------------------------------------------------------------------------------------|
 | Each Generator is simpler       | More Generators to define and manage: more `.infrahub.yml` entries, more Python files, more GraphQL queries |
-| Layers can run independently    | Requires a trigger mechanism to chain execution across layers                                               |
-| Changes are scoped to one layer | Debugging spans multiple Generator runs with no single log showing the full cascade                         |
+| Layers can run independently    | Requires a trigger mechanism to connect execution across layers                                             |
+| Changes are scoped to one layer | Debugging spans multiple Generator runs with no single log showing the full execution                       |
 | Parallel execution per target   | You need to design clear boundaries between layers and think about what each layer owns                     |
 
 The right question is not "should I always use modular Generators?" but "does my automation have natural layers where the benefits outweigh the overhead?" If the answer is yes, the pattern pays for itself quickly, especially as the number of targets grows.
@@ -119,6 +119,8 @@ A fabric with 4 pods and 32 racks per pod runs 4 pod Generators concurrently, th
 
 - [Generators](generator): single-Generator fundamentals, high-level design, and execution methods
 - [How to create a Generator](../guides/generator): step-by-step guide for building a Generator
+- [How to connect modular Generators](../guides/chaining-generators): checksum-based trigger pattern
+- [Best practices for modular Generators](../guides/modular-generator-best-practices): idempotency, pool scoping, debugging, and operational guidance
 - [Groups](groups): Generators use groups to define their targets and track generated objects
 - [GraphQL queries](graphql): each Generator definition includes a query that collects input data
 - [.infrahub.yml](infrahub-yml): configuration file where Generator definitions are declared
