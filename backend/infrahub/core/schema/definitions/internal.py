@@ -963,7 +963,7 @@ generic_schema = SchemaNode(
             name="restricted_namespaces",
             kind="List",
             internal_kind=str,
-            description="Namespaces that Nodes inheriting from this Generic are restricted to",
+            description="Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
