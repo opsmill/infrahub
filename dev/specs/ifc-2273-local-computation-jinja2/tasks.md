@@ -120,9 +120,9 @@
 
 **Purpose**: Documentation, knowledge base updates, and changelog.
 
-- [ ] T020 [P] Update `dev/knowledge/backend/` with computed attribute local computation documentation — add a section to an existing knowledge doc or create `dev/knowledge/backend/computed-attributes.md` covering the dual evaluation path (inline for local, Prefect for remote), the `_recompute_local_jinja2()` method, and the `_collect_extra_filters()` extension
-- [ ] T021 [P] Add towncrier changelog fragment in `changelog/` for the user-facing improvement: computed attributes now update immediately on local changes
-- [ ] T022 Run existing computed attribute test suite to verify no regressions: `uv run invoke backend.test-unit -- -k computed_attribute`
+- [X] T020 [P] Update `dev/knowledge/backend/` with computed attribute local computation documentation — add a section to an existing knowledge doc or create `dev/knowledge/backend/computed-attributes.md` covering the dual evaluation path (inline for local, Prefect for remote), the `_recompute_local_jinja2()` method, and the `_collect_extra_filters()` extension
+- [X] T021 [P] Add towncrier changelog fragment in `changelog/` for the user-facing improvement: computed attributes now update immediately on local changes
+- [X] T022 Run existing computed attribute test suite to verify no regressions: `uv run invoke backend.test-unit -- -k computed_attribute`
 
 ---
 
