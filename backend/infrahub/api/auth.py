@@ -99,7 +99,7 @@ async def logout(
             event = make_logout_event(
                 request=request,
                 event_meta=await make_event_meta(account_session=user_session, branch=branch),
-                kind=account.get_kind() if account else "Unknown",
+                acount_kind=account.get_kind() if account else "Unknown",
                 account_id=user_session.account_id,
                 account_name=account_name,
                 session_id=session_id,

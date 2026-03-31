@@ -39,11 +39,11 @@ def make_login_event(
 
 
 def make_logout_event(
-    account_id: str, request: Request, account_name: str, session_id: str, kind: str, event_meta: EventMeta
+    account_id: str, request: Request, account_name: str, session_id: str, acount_kind: str, event_meta: EventMeta
 ) -> AccountLoggedOutEvent:
     return AccountLoggedOutEvent(
         meta=event_meta,
-        kind=kind,
+        kind=acount_kind,
         account_id=account_id,
         account_name=account_name,
         session_id=session_id,
