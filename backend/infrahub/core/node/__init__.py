@@ -564,15 +564,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
                     )
 
-            if self._schema.is_node_schema:
-                schema_branch = db.schema.get_schema_branch(self._branch.name)
-                local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
-                for target in local_targets:
-                    if (
-                        target.attribute.name not in fields
-                        and target.attribute.name not in self._computed_jinja2_attributes
-                    ):
-                        self._computed_jinja2_attributes.append(target.attribute.name)
+            self._computed_jinja2_attributes.extend(self._get_optional_local_jinja2_attributes(db=db, fields=fields))
 
         if errors:
             raise ValidationError(errors)
