@@ -469,10 +469,6 @@ exports[`fix ts error`] = {
     "src/pages/resource-manager/resource-pool-details.tsx:3316738274": [
       [159, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/pages/role-management/index.tsx:30111790": [
-      [21, 28, 10, "tsc: Property \'statusCode\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'statusCode\' does not exist on type \'Error\'.", "3382497788"],
-      [22, 46, 6, "tsc: Property \'result\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'result\' does not exist on type \'Error\'.", "2123807084"]
-    ],
     "src/shared/api/graphql/graphqlClientApollo.tsx:4179510492": [
       [56, 33, 44, "tsc: Not all code paths return a value.", "2633054574"]
     ],
