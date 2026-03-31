@@ -127,6 +127,7 @@ menu_placement
 metadata
 microservices
 middleware
+mixin
 modeline
 modularization
 namespace

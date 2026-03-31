@@ -109,12 +109,12 @@ For each member of the `widgets` group, Infrahub:
 2. Extracts the value from the target object using the double-underscore path
 3. Passes it as a query variable
 
-Concretely:
+For example:
 
-| Target object | Extraction path       | Extracted value | Query variable         |
-|---------------|-----------------------|-----------------|------------------------|
-| `widget1`     | `widget1.name.value`  | `"widget1"`     | `$name = "widget1"`    |
-| `widget2`     | `widget2.name.value`  | `"widget2"`     | `$name = "widget2"`    |
+| Target object | Extraction path        | Extracted value | Query variable          |
+|---------------|------------------------|-----------------|-------------------------|
+| `widget1`     | `widget1.name.value`   | `"widget1"`     | `$name = "widget1"`     |
+| `widget2`     | `widget2.name.value`   | `"widget2"`     | `$name = "widget2"`     |
 
 Each run's GraphQL query only returns data for its specific target, keeping runs independent.
 
@@ -210,14 +210,14 @@ Adding or removing group members changes what gets targeted on the next Generato
 - **Add an object to the group**: it becomes a target and gets its own Generator run next time the definition executes
 - **Remove an object from the group**: it is no longer targeted (existing generated objects are not automatically cleaned up — see [known limitation #3289](https://github.com/opsmill/infrahub/issues/3289))
 
-### CoreStandardGroup vs. CoreGeneratorGroup
+### Standard groups vs. Generator groups
 
 These two group types serve different purposes and are often confused:
 
 | Group type            | Purpose                                                                                            | You manage it |
 |-----------------------|----------------------------------------------------------------------------------------------------|---------------|
 | `CoreStandardGroup`   | Defines which objects are **targeted by** a Generator. Listed in the `targets` field of the Generator definition. | Yes — you create it and control membership |
-| `CoreGeneratorGroup`  | Tracks which objects were **created by** a Generator. Managed automatically by the SDK's tracking feature. | No — Infrahub manages this automatically |
+| `CoreGeneratorGroup`  | Tracks which objects were **created by** a Generator. Managed automatically by the SDK tracking feature. | No — Infrahub manages this automatically |
 
 The target group (`CoreStandardGroup`) is an input to the Generator — "run against these objects." The Generator group (`CoreGeneratorGroup`) is an output — "these objects were created by this Generator."
 
@@ -238,7 +238,7 @@ class DeviceGenerator(InfrahubGenerator):
             # ... create objects using self.client
 ```
 
-This is the simpler mode — no conversion overhead, and you work with plain Python dicts. You can also use [Pydantic models](https://docs.pydantic.dev/) to parse the dict into typed objects for better IDE support and validation.
+This is the more lightweight mode — no conversion overhead, and you work with plain Python dictionaries. You can also use [Pydantic models](https://docs.pydantic.dev/) to parse the response into typed objects for better IDE support and validation.
 
 ### SDK object mode
 
@@ -259,7 +259,7 @@ class DeviceGenerator(InfrahubGenerator):
 |---|---|
 | Dict access is sufficient for your use case | You need SDK features like `.save()`, `.delete()`, or relationship traversal on the queried objects |
 | You want minimal overhead | You prefer cleaner attribute access (`node.name.value` vs `node["name"]["value"]`) |
-| The query returns a simple, flat structure | You want to use `self.store` to look up nodes by ID |
+| The query returns a flat structure | You want to use `self.store` to look up nodes by ID |
 | You want to use Pydantic models for type-safe parsing | You want the SDK to handle response parsing automatically |
 
 ## Execution lifecycle

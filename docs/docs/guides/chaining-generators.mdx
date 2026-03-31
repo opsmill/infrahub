@@ -50,7 +50,7 @@ generics:
 
 ### Inherit from the generic
 
-Any node that should be triggerable by an upstream Generator inherits from `GeneratorTarget`:
+Any node that an upstream Generator should be able to trigger inherits from `GeneratorTarget`:
 
 ```yaml
 # schemas/logical_design.yml
@@ -71,7 +71,7 @@ After the Generator creates or modifies its objects, it needs to compute a check
 
 ### The checksum mixin
 
-The SDK's tracking context (`self.client.group_context`) automatically collects the IDs of all nodes and groups the Generator interacted with during execution. These make an ideal checksum input.
+The tracking context (`self.client.group_context`) automatically collects the IDs of all nodes and groups the Generator interacted with during execution. These make an ideal checksum input.
 
 ```python
 # src/your_bundle/generator.py

@@ -48,7 +48,7 @@ If you use `await spine.save()` without the flag, the first run works. The secon
 
 ### What makes upsert matching work
 
-Upsert matching relies on the node's [`human_friendly_id`](../topics/schema#human_friendly_id) (HFID). When the server processes an upsert mutation, it checks whether a node with the same HFID already exists. If it finds a match, it updates the existing node. If no match is found, it creates a new node.
+Upsert matching relies on the node's [`human_friendly_id`](../topics/schema#human-friendly-identifier-hfid) (HFID). When the server processes an upsert mutation, it checks whether a node with the same HFID already exists. If it finds a match, it updates the existing node. If no match is found, it creates a new node.
 
 This means two things must be in place:
 
@@ -174,7 +174,7 @@ query {
 
 **Symptom:** Some targets at layer N+1 ran, others did not.
 
-**Cause:** The upstream Generator wrote checksums to some targets but not all — likely because it errored partway through its `update_checksum()` loop, or because it only queries a subset of downstream targets.
+**Cause:** The upstream Generator wrote checksums to some targets but not all — likely because it failed partway through its `update_checksum()` loop, or because it only queries a subset of downstream targets.
 
 **Fix:** Ensure the upstream Generator queries **all** downstream targets, not a subset. Check that the `update_checksum()` method completes for all targets before the Generator finishes.
 
@@ -190,7 +190,7 @@ query {
 
 Generators work best when the schema supports the generation pattern. A few schema design choices make a significant difference.
 
-### Add `GeneratorTarget` to all triggerable nodes
+### Add `GeneratorTarget` to all downstream target nodes
 
 Any node kind that participates in a cascade as a downstream target should inherit from the `GeneratorTarget` generic (see [how to chain Generators](chaining-generators)). This gives it the `checksum` attribute needed for trigger-based chaining.
 
@@ -206,7 +206,7 @@ Do this at schema design time, not as an afterthought. Adding a generic to an ex
 
 ### Define `human_friendly_id` on generated node types
 
-Generators rely on `allow_upsert=True`, which matches objects by their [`human_friendly_id`](../topics/schema#human_friendly_id). Every node type that a Generator creates must have a `human_friendly_id` defined in the schema:
+Generators rely on `allow_upsert=True`, which matches objects by their [`human_friendly_id`](../topics/schema#human-friendly-identifier-hfid). Every node type that a Generator creates must have a `human_friendly_id` defined in the schema:
 
 ```yaml
 nodes:
