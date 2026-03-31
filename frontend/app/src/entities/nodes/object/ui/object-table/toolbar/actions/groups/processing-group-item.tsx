@@ -10,7 +10,7 @@ import type { RelationshipNode } from "@/entities/nodes/relationships/domain/typ
 export interface ProcessingGroupItemProps {
   group: RelationshipNode;
   mutationFn: (group: RelationshipNode) => Promise<void>;
-  onSuccess: () => void;
+  onSuccess: () => Promise<void> | void;
 }
 
 export function ProcessingGroupItem({ group, mutationFn, onSuccess }: ProcessingGroupItemProps) {
