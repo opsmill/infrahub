@@ -109,7 +109,7 @@ class RegisteredNodeComputedAttribute(BaseModel):
 
             for entry in entries:
                 if entry.key_name not in targets:
-                    targets[entry.key_name] = entry
+                    targets[entry.key_name] = entry.model_copy(deep=True)
 
         for relationship_name, dep in self.relationship_dependencies.items():
             for entry in dep.targets:
