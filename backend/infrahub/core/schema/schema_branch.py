@@ -1279,15 +1279,20 @@ class SchemaBranch:
             for attribute in node_schema.attributes:
                 self._validate_computed_attribute(node=node_schema, attribute=attribute)
 
+        defined_from_generic: dict[str, str] = {}
         for name in self.generics.keys():
             generic_schema = self.get_generic(name=name, duplicate=False)
             for attribute in generic_schema.attributes:
                 if attribute.computed_attribute and attribute.computed_attribute.kind != ComputedAttributeKind.USER:
                     for inheriting_node in generic_schema.used_by:
                         node_schema = self.get_node(name=inheriting_node, duplicate=False)
-                        self.computed_attributes.validate_generic_inheritance(
-                            node=node_schema, attribute=attribute, generic=generic_schema
-                        )
+                        attribute_key = f"{node_schema.kind}__{attribute.name}"
+                        if duplicate := defined_from_generic.get(attribute_key):
+                            raise ValueError(
+                                f"{node_schema.kind}: {attribute.name!r} is declared as a computed attribute"
+                                f" from multiple generics {sorted([duplicate, generic_schema.kind])}"
+                            )
+                        defined_from_generic[attribute_key] = generic_schema.kind
 
     def _validate_display_label(self, node: MainSchemaTypes) -> None:
         if not node.display_label:
