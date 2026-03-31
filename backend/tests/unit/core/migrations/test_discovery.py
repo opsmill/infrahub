@@ -39,7 +39,7 @@ class TestDiscoverMigrations:
         migrations = discover_migrations()
         assert migrations[0].__name__ == "Migration001"
         # Last migration class name should match the highest-numbered file
-        last_number = int(migrations[-1].__name__[len("Migration"):])
+        last_number = int(migrations[-1].__name__[len("Migration") :])
         assert last_number == len(migrations)
 
     def test_no_duplicate_numbers(self) -> None:
