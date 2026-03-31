@@ -72,12 +72,12 @@ exports[`fix ts error`] = {
       [49, 22, 17, "tsc: Property \'diff_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'diff_branch_value\'?", "1869793242"],
       [83, 29, 12, "tsc: Cannot find name \'DataConflict\'.", "3642611779"]
     ],
-    "src/entities/diff/node-diff/node.tsx:883795195": [
-      [82, 19, 13, "tsc: Binding element \'property_type\' implicitly has an \'any\' type.", "324947141"],
-      [90, 18, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
-      [94, 18, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
-      [130, 20, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
-      [134, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
+    "src/entities/diff/node-diff/node.tsx:634702037": [
+      [88, 19, 13, "tsc: Binding element \'property_type\' implicitly has an \'any\' type.", "324947141"],
+      [96, 18, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
+      [100, 18, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
+      [136, 20, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
+      [140, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
     ],
     "src/entities/diff/node-diff/thread.tsx:158584114": [
       [27, 10, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
