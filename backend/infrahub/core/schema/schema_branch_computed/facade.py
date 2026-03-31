@@ -17,6 +17,7 @@ from infrahub.core.schema.schema_branch_computed.jinja2 import (
     ComputedAttributeTriggerNode,
     Jinja2ComputedRegistry,
     RegisteredNodeComputedAttribute,
+    ResolvedComputedTarget,
 )
 from infrahub.core.schema.schema_branch_computed.python_transform import PythonDefinition, PythonTransformRegistry
 
@@ -77,7 +78,7 @@ class ComputedAttributes:
             )
         self._defined_from_generic[attribute_key] = generic.kind
 
-    def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+    def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ResolvedComputedTarget]:
         return self._jinja2.get_impacted_targets(kind, updates)
 
     def get_local_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:

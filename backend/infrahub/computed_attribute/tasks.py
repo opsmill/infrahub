@@ -246,25 +246,26 @@ async def process_jinja2(
     )
     schema_branch = registry.schema.get_schema_branch(name=target_branch_schema)
     node_schema = schema_branch.get_node(name=computed_attribute_kind, duplicate=False)
-    computed_macros = [
-        attrib
-        for attrib in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
-        if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
+    resolved_targets = [
+        resolved
+        for resolved in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
+        if resolved.target.kind == computed_attribute_kind and resolved.target.attribute.name == computed_attribute_name
     ]
-    for computed_macro in computed_macros:
+    for resolved in resolved_targets:
         found: list[ComputedAttrJinja2GraphQLResponse] = []
         template_string = "n/a"
-        if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
-            template_string = computed_macro.attribute.computed_attribute.jinja2_template
+        attribute = resolved.target.attribute
+        if attribute.computed_attribute and attribute.computed_attribute.jinja2_template:
+            template_string = attribute.computed_attribute.jinja2_template
 
         jinja_template = InfrahubJinja2Template(template=template_string)
         variables = jinja_template.get_variables()
 
         attribute_graphql = ComputedAttrJinja2GraphQL(
-            node_schema=node_schema, attribute_schema=computed_macro.attribute, variables=variables
+            node_schema=node_schema, attribute_schema=attribute, variables=variables
         )
 
-        for id_filter in computed_macro.node_filters:
+        for id_filter in resolved.node_filters:
             query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
             try:
                 response = await client.execute_graphql(query=query, branch_name=branch_name)
@@ -286,7 +287,7 @@ async def process_jinja2(
                 branch_name=branch_name,
                 obj=node,
                 node_kind=node_schema.kind,
-                attribute_name=computed_macro.attribute.name,
+                attribute_name=attribute.name,
                 template=jinja_template,
                 context=context,
             )

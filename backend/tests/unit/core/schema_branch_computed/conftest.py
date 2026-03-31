@@ -27,8 +27,8 @@ def make_rel() -> Callable[[str, str], RelationshipSchema]:
 
 @pytest.fixture
 def make_target(make_attr: Callable[[str], AttributeSchema]) -> Callable[..., ComputedAttributeTarget]:
-    def _make_target(kind: str, attr_name: str, filter_keys: list[str] | None = None) -> ComputedAttributeTarget:
-        return ComputedAttributeTarget(kind=kind, attribute=make_attr(attr_name), filter_keys=filter_keys or [])
+    def _make_target(kind: str, attr_name: str) -> ComputedAttributeTarget:
+        return ComputedAttributeTarget(kind=kind, attribute=make_attr(attr_name))
 
     return _make_target
 
