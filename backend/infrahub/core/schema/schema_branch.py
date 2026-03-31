@@ -1278,12 +1278,14 @@ class SchemaBranch:
         self._validate_generic_computed_attributes()
 
     def _validate_node_computed_attributes(self) -> None:
+        """Validate and register computed attributes defined directly on nodes."""
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 self._validate_computed_attribute(node=node_schema, attribute=attribute)
 
     def _validate_generic_computed_attributes(self) -> None:
+        """Ensure no node inherits the same computed attribute from multiple generics."""
         defined_from_generic: dict[str, str] = {}
         for name in self.generics.keys():
             generic_schema = self.get_generic(name=name, duplicate=False)
