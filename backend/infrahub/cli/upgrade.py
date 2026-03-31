@@ -182,7 +182,7 @@ async def _upgrade_execute(
             with suppress_internal_logs():
                 await trigger_rebase_branches(db=db, branches=branches_to_rebase)
 
-    console.log(f"\n[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
+    console.log(f"[bold]Upgrade complete[/bold] {SUCCESS_BADGE}")
 
 
 async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> None:
