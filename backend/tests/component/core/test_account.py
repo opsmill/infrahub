@@ -199,8 +199,8 @@ async def test_fetch_account_groups_and_roles(
 
     groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
 
-    assert sorted(groups) == ["admins", "readers"]
-    assert sorted(roles) == ["admin-role", "read-role"]
+    assert groups == [{group2.get_id(): "admins"}, {group1.get_id(): "readers"}]
+    assert roles == [{role2.get_id(): "admin-role"}, {role1.get_id(): "read-role"}]
 
 
 async def test_fetch_account_groups_and_roles_no_groups(
