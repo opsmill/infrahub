@@ -11,6 +11,17 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.8.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.2) - 2026-03-25
+
+### Changed
+
+- This change prevents redundant artifact regenerations by only triggering on node changes that affect fields actually read by the associated GraphQL query, reducing the number of artifacts that need to be regenerated and speeding up the pipeline.
+
+### Fixed
+
+- Fix scheduled reconfiguration of webhooks targeting "all" events ([#8694](https://github.com/opsmill/infrahub/issues/8694))
+- Fixed branch rebase conflicts during 1.7 to 1.8 upgrades caused by migration 056 writing unrelated schema attributes to branch timelines
+
 ## [Infrahub - v1.8.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.1) - 2026-03-19
 
 ### Added
