@@ -191,7 +191,7 @@ The fabric Generator runs once (1 target). It creates pod objects. The pod Gener
 
 A single Generator targeting a group with one member that creates 100 objects runs as one sequential operation. The same work split across 10 targets with 10 objects each runs as 10 concurrent operations — significantly faster on a system with available capacity.
 
-## The relationship between member_of_groups and Generator targeting
+## The relationship between `member_of_groups` and Generator targeting
 
 Objects become Generator targets by being members of the group specified in the Generator definition's `targets` field.
 

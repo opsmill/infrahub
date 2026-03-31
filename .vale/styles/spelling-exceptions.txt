@@ -115,6 +115,7 @@ Kubernetes
 linter
 linting
 livestream
+loopback
 Loopback
 Loopbacks
 markdownlint
@@ -207,6 +208,7 @@ subschema
 subschemas
 substring
 subtyping
+supernet
 template_path
 templated
 Terraform
