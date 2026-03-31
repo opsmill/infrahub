@@ -8,16 +8,6 @@ export interface RoleManagerSearchParams extends PaginationParams {
 
 export const roleManagerQueryKeys = {
   all: ["role-manager"] as const,
-  accounts: (params: RoleManagerSearchParams) =>
-    [
-      ...roleManagerQueryKeys.all,
-      "accounts",
-      params.search,
-      params.offset,
-      params.limit,
-      params.branchName,
-      params.atDate,
-    ] as const,
   groups: (params: RoleManagerSearchParams) =>
     [
       ...roleManagerQueryKeys.all,
