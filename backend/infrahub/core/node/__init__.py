@@ -564,6 +564,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
                     )
 
+            if self._schema.is_node_schema:
+                schema_branch = db.schema.get_schema_branch(self._branch.name)
+                local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
+                for target in local_targets:
+                    if (
+                        target.attribute.name not in fields
+                        and target.attribute.name not in self._computed_jinja2_attributes
+                    ):
+                        self._computed_jinja2_attributes.append(target.attribute.name)
+
         if errors:
             raise ValidationError(errors)
 
@@ -680,8 +690,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def _process_macros(self, db: InfrahubDatabase) -> None:
         schema_branch = db.schema.get_schema_branch(self._branch.name)
+
+        local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
+        ordered_macros = [
+            t.attribute.name for t in local_targets if t.attribute.name in self._computed_jinja2_attributes
+        ]
+
         errors = []
-        for macro in self._computed_jinja2_attributes:
+        for macro in ordered_macros:
             attr_schema = self._schema.get_attribute(name=macro)
             if not attr_schema.computed_attribute:
                 errors.append(
