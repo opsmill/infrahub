@@ -539,13 +539,16 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 self._profile_provided_rels,
             ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
 
-            self._validate_mandatory_relationships(fields=fields, errors=errors)
+            errors.extend(self._validate_mandatory_attributes(fields=fields))
+            errors.extend(self._validate_mandatory_relationships(fields=fields))
 
-            self._computed_jinja2_attributes.extend(self._get_mandatory_jinja2_attributes(fields=fields, errors=errors))
-            self._computed_jinja2_attributes.extend(self._get_optional_local_jinja2_attributes(db=db, fields=fields))
+            if errors:
+                raise ValidationError(errors)
 
-        if errors:
-            raise ValidationError(errors)
+            if self._schema.is_node_schema:
+                schema_branch = db.schema.get_schema_branch(self._branch.name)
+                local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
+                self._computed_jinja2_attributes = [t.attribute.name for t in local_targets]
 
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
@@ -562,10 +565,9 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if hasattr(self, f"process_{name}"):
                 await getattr(self, f"process_{name}")(db=db)
 
-    def _get_mandatory_jinja2_attributes(self, fields: dict, errors: list[ValidationError]) -> list[str]:
-        """Validate that all mandatory attributes are provided and return mandatory Jinja2 computed attribute names."""
-        computed_jinja2: list[str] = []
-
+    def _validate_mandatory_attributes(self, fields: dict) -> list[ValidationError]:
+        """Validate that all mandatory attributes are provided."""
+        errors: list[ValidationError] = []
         for mandatory_attr in self._schema.mandatory_attribute_names:
             if mandatory_attr not in fields.keys() and mandatory_attr not in self._profile_provided_attrs:
                 if self._schema.is_node_schema:
@@ -574,34 +576,21 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                         mandatory_attribute.computed_attribute
                         and mandatory_attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
                     ):
-                        computed_jinja2.append(mandatory_attr)
                         continue
 
                     if mandatory_attribute.kind == "NumberPool":
                         continue
 
                 errors.append(ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"}))
+        return errors
 
-        return computed_jinja2
-
-    def _validate_mandatory_relationships(self, fields: dict, errors: list[ValidationError]) -> None:
+    def _validate_mandatory_relationships(self, fields: dict) -> list[ValidationError]:
         """Validate that all mandatory relationships are provided."""
+        errors: list[ValidationError] = []
         for mandatory_rel in self._schema.mandatory_relationship_names:
             if mandatory_rel not in fields.keys() and mandatory_rel not in self._profile_provided_rels:
                 errors.append(ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"}))
-
-    def _get_optional_local_jinja2_attributes(self, db: InfrahubDatabase, fields: dict) -> list[str]:
-        """Return optional local Jinja2 computed attribute names not already collected."""
-        if not self._schema.is_node_schema:
-            return []
-
-        schema_branch = db.schema.get_schema_branch(self._branch.name)
-        local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
-        return [
-            target.attribute.name
-            for target in local_targets
-            if target.attribute.name not in fields and target.attribute.name not in self._computed_jinja2_attributes
-        ]
+        return errors
 
     async def _process_fields_relationships(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:
         errors: list[ValidationError] = []
@@ -701,14 +690,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def _process_macros(self, db: InfrahubDatabase) -> None:
         schema_branch = db.schema.get_schema_branch(self._branch.name)
-
-        local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
-        ordered_macros = [
-            t.attribute.name for t in local_targets if t.attribute.name in self._computed_jinja2_attributes
-        ]
-
         errors = []
-        for macro in ordered_macros:
+        for macro in self._computed_jinja2_attributes:
             attr_schema = self._schema.get_attribute(name=macro)
             if not attr_schema.computed_attribute:
                 errors.append(
