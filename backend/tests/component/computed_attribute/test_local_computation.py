@@ -120,6 +120,52 @@ async def schema_with_render_test(
     await default_branch.save(db=db)
 
 
+@pytest.fixture
+async def schema_with_optional_local_jinja2(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> None:
+    """Optional computed attribute (label) derived from two local attributes (name, role)."""
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="ComputeGadget",
+                namespace="Test",
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="role", kind="Text"),
+                    AttributeSchema(
+                        name="label",
+                        kind="Text",
+                        optional=True,
+                        read_only=True,
+                        computed_attribute=ComputedAttribute(
+                            kind=ComputedAttributeKind.JINJA2,
+                            jinja2_template="{{ name__value }}-{{ role__value }}",
+                        ),
+                    ),
+                ],
+            ),
+        ]
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    default_branch.update_schema_hash()
+    await default_branch.save(db=db)
+
+
+async def test_optional_local_jinja2_computed_at_creation(
+    db: InfrahubDatabase, default_branch: Branch, schema_with_optional_local_jinja2: None
+) -> None:
+    """An optional local Jinja2 computed attribute is evaluated inline during creation."""
+    gadget = await Node.init(db=db, schema="TestComputeGadget", branch=default_branch)
+    await gadget.new(db=db, name="widget01", role="sensor")
+    await gadget.save(db=db)
+
+    assert gadget.get_attribute("label").value == "widget01-sensor"
+
+    reloaded = await NodeManager.get_one(db=db, id=gadget.id, branch=default_branch)
+    assert reloaded.get_attribute("label").value == "widget01-sensor"
+
+
 async def test_local_attr_change_triggers_recomputation(
     db: InfrahubDatabase, default_branch: Branch, schema_with_local_jinja2: None
 ) -> None:
