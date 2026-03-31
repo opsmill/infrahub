@@ -205,14 +205,14 @@ async def migrate_cmd(
 def display_migration_plan(migrations: Sequence[MigrationTypes]) -> None:
     """Display a migration execution plan without running anything."""
     console = get_migration_console()
-    console.log(f"Migration plan ({len(migrations)} pending):\n")
+    console.log(f"Migration plan ({len(migrations)} pending):")
     for idx, migration in enumerate(migrations, 1):
         migration_type = _get_migration_type_name(migration)
         console.log(f"  {idx}. {_get_migration_display_name(migration):<50s} {migration_type}")
         if isinstance(migration, GraphMigration) and migration.queries:
             query_names = ", ".join(q.__name__ for q in migration.queries)
             console.log(f"         Queries: {query_names}")
-    console.log("\nNo migrations were applied. Run 'infrahub db migrate' to apply.")
+    console.log("No migrations were applied. Run 'infrahub db migrate' to apply.")
 
 
 @app.command(name="showmigrations")
@@ -603,7 +603,7 @@ async def migrate_database(
 
     total_elapsed = time.perf_counter() - total_start
     plural = "s" if applied_count != 1 else ""
-    migration_console.log(f"\nApplied {applied_count} migration{plural} successfully in {total_elapsed:.2f}s")
+    migration_console.log(f"Applied {applied_count} migration{plural} successfully in {total_elapsed:.2f}s")
     return True
 
 
