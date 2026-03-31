@@ -214,6 +214,7 @@ class TestNodeUpdate:
         assert reloaded.get_attribute("local_label").value == "switch02-spine"
         assert reloaded.get_attribute("local_tag").value == "spine:switch02"
         assert reloaded.get_attribute("remote_label").value == "Alice's switch02"
+        assert reloaded.get_attribute("remote_tag").value == "Alice-spine"
 
     async def test_unrelated_attr_change_does_not_trigger_recomputation(
         self, db: InfrahubDatabase, default_branch: Branch, schema_with_jinja2: None
