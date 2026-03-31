@@ -38,7 +38,7 @@ type AccountLoggedInEventType implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The type of object"""
+  """The type of account object"""
   kind: String!
   """
   The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
@@ -80,7 +80,7 @@ type AccountLoggedOutEventType implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
-  """The type of object"""
+  """The type of account object"""
   kind: String!
   """
   The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
