@@ -119,7 +119,7 @@ test.describe("Getting started with Infrahub - Object and branch creation, updat
     });
 
     await test.step("Merge branch cr1234 into main", async () => {
-      await page.getByRole("link", { name: "Details" }).click();
+      await page.getByText("Details", { exact: true }).click();
       const mergeButton = page.getByRole("button", { name: "Merge" });
       await expect(mergeButton).toBeVisible();
       await saveScreenshotForDocs(page, "tutorial_1_branch_details");
