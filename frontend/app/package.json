@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "setup": "git submodule update --init --recursive && pnpm install",
-    "submodule:update": "git submodule update --remote && pnpm install",
+    "submodule:update": "git submodule update --remote ../../frontend/packages/schema-visualizer && pnpm install",
     "start": "vite",
     "dev": "VITE_DEVTOOLS=1 vite",
     "build": "vite build",
