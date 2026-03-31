@@ -9,7 +9,7 @@ from prefect.events.schemas.events import Event as PrefectEventModel
 from prefect.exceptions import PrefectHTTPStatusError
 from pydantic import BaseModel, Field, TypeAdapter
 
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.exceptions import ServiceUnavailableError
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
@@ -217,7 +217,23 @@ class PrefectEventData(PrefectEventModel):
         return {"reviewer_former_decision": self.resource.get("infrahub.proposed_change.reviewer_former_decision")}
 
     def _return_account_logged_in(self) -> dict[str, Any]:
+        roles = []
+        groups = []
+
+        for related in self.related:
+            if (
+                related.role == "infrahub.related.node"
+                and related.get("infrahub.node.kind") == InfrahubKind.ACCOUNTGROUP
+            ):
+                groups.append(related.get("infrahub.node.name"))
+            if (
+                related.role == "infrahub.related.node"
+                and related.get("infrahub.node.kind") == InfrahubKind.ACCOUNTROLE
+            ):
+                roles.append(related.get("infrahub.node.name"))
+
         return {
+            "kind": self.resource.get("infrahub.account.kind"),
             "account_id": self.resource.get("infrahub.account.account_id"),
             "account_name": self.resource.get("infrahub.account.account_name"),
             "account_type": self.resource.get("infrahub.account.account_type"),
@@ -227,10 +243,13 @@ class PrefectEventData(PrefectEventModel):
             "client_ip": self.resource.get("infrahub.account.client_ip", ""),
             "user_agent": self.resource.get("infrahub.account.user_agent", ""),
             "timestamp": Timestamp(self.resource.get("infrahub.account.timestamp")).to_datetime(),
+            "roles": roles,
+            "groups": groups,
         }
 
     def _return_account_logged_out(self) -> dict[str, Any]:
         return {
+            "kind": self.resource.get("infrahub.account.kind"),
             "account_id": self.resource.get("infrahub.account.account_id"),
             "account_name": self.resource.get("infrahub.account.account_name"),
             "session_id": self.resource.get("infrahub.account.session_id"),

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.constants import AccountType
+from infrahub.core.constants import AccountType, InfrahubKind
 from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod
 from infrahub.events.models import EventMeta
 
@@ -36,8 +36,9 @@ def test_account_logged_in_get_resource() -> None:
         account_type=AccountType.USER,
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
-        groups=["admins"],
-        roles=["admin-role"],
+        groups=[{"group-id": "admins"}],
+        roles=[{"role-id": "admin-role"}],
+        kind=InfrahubKind.ACCOUNT,
     )
 
     resource = event.get_resource()
@@ -57,11 +58,12 @@ def test_account_logged_in_get_payload() -> None:
         account_type=AccountType.USER,
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
-        groups=["admins"],
-        roles=["admin-role"],
+        groups=[{"group-id": "admins"}],
+        roles=[{"role-id": "admin-role"}],
         sso_provider=None,
         client_ip="127.0.0.1",
         user_agent="TestBrowser/1.0",
+        kind=InfrahubKind.ACCOUNT,
     )
 
     payload = event.get_payload()
@@ -71,8 +73,8 @@ def test_account_logged_in_get_payload() -> None:
     assert payload["account_type"] == "User"
     assert payload["auth_method"] == "password"
     assert payload["session_id"] == "sess-456"
-    assert payload["groups"] == ["admins"]
-    assert payload["roles"] == ["admin-role"]
+    assert payload["groups"] == [{"group-id": "admins"}]
+    assert payload["roles"] == [{"role-id": "admin-role"}]
     assert payload["sso_provider"] is None
     assert payload["client_ip"] == "127.0.0.1"
     assert payload["user_agent"] == "TestBrowser/1.0"
@@ -88,6 +90,7 @@ def test_account_logged_in_timestamp_is_utc() -> None:
         account_type=AccountType.USER,
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
+        kind=InfrahubKind.ACCOUNT,
     )
 
     assert event.timestamp.tzinfo is not None
@@ -101,6 +104,7 @@ def test_account_logged_out_get_resource() -> None:
         account_id="acct-789",
         account_name="testuser",
         session_id="sess-abc",
+        kind=InfrahubKind.ACCOUNT,
     )
 
     resource = event.get_resource()
@@ -120,6 +124,7 @@ def test_account_logged_out_get_payload() -> None:
         session_id="sess-abc",
         client_ip="10.0.0.1",
         user_agent="TestClient/2.0",
+        kind=InfrahubKind.ACCOUNT,
     )
 
     payload = event.get_payload()
@@ -140,6 +145,7 @@ def test_account_logged_out_timestamp_is_utc() -> None:
         account_id="acct-789",
         account_name="testuser",
         session_id="sess-abc",
+        kind=InfrahubKind.ACCOUNT,
     )
 
     assert event.timestamp.tzinfo is not None
@@ -157,6 +163,7 @@ def test_account_logged_in_custom_timestamp() -> None:
         auth_method=AuthMethod.PASSWORD,
         session_id="sess-456",
         timestamp=custom_ts,
+        kind=InfrahubKind.ACCOUNT,
     )
 
     assert event.timestamp == custom_ts
@@ -173,6 +180,7 @@ def test_account_logged_out_custom_timestamp() -> None:
         account_name="testuser",
         session_id="sess-abc",
         timestamp=custom_ts,
+        kind=InfrahubKind.ACCOUNT,
     )
 
     assert event.timestamp == custom_ts

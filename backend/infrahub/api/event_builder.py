@@ -24,6 +24,7 @@ def make_login_event(
 ) -> AccountLoggedInEvent:
     return AccountLoggedInEvent(
         meta=event_meta,
+        kind=auth_result.kind,
         account_id=auth_result.account_id,
         account_name=auth_result.account_name,
         account_type=auth_result.account_type,
@@ -38,10 +39,11 @@ def make_login_event(
 
 
 def make_logout_event(
-    account_id: str, request: Request, account_name: str, session_id: str, event_meta: EventMeta
+    account_id: str, request: Request, account_name: str, session_id: str, kind: str, event_meta: EventMeta
 ) -> AccountLoggedOutEvent:
     return AccountLoggedOutEvent(
         meta=event_meta,
+        kind=kind,
         account_id=account_id,
         account_name=account_name,
         session_id=session_id,

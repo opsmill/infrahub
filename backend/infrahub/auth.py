@@ -40,12 +40,13 @@ class AuthResult(BaseModel):
     model_config = {"frozen": True}
 
     token: models.UserToken
+    kind: str
     account_id: str
     account_name: str
     account_type: AccountType
     session_id: uuid.UUID
-    groups: list[str]
-    roles: list[str]
+    groups: list[dict[str, str]]
+    roles: list[dict[str, str]]
 
 
 class AuthType(StrEnum):
@@ -76,20 +77,22 @@ class SSOStateCache(BaseModel):
     code_verifier: str | None = None
 
 
-async def fetch_account_groups_and_roles(db: InfrahubDatabase, account_id: str) -> tuple[list[str], list[str]]:
-    """Fetch group and role names for an account. Returns empty lists on any failure."""
-    group_names: list[str] = []
-    role_names: list[str] = []
+async def fetch_account_groups_and_roles(
+    db: InfrahubDatabase, account_id: str
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Fetch group and role {id: name} for an account. Returns empty lists on any failure."""
+    group_names: list[dict[str, str]] = []
+    role_names: list[dict[str, str]] = []
 
     groups = await NodeManager.query(
         schema=CoreAccountGroup,
         db=db,
         filters={"members__ids": [account_id]},
     )
-    group_names.extend(g.name.value for g in groups)
+    group_names.extend({g.get_id(): g.name.value} for g in groups)
     for group in groups:
         roles = await group.roles.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccountRole)
-        role_names.extend(r.name.value for r in roles.values())
+        role_names.extend({r.get_id(): r.name.value} for r in roles.values())
 
     return group_names, role_names
 
@@ -147,6 +150,7 @@ async def authenticate_with_password(
         session_id=session_id,
         groups=groups,
         roles=roles,
+        kind=account.get_kind(),
     )
 
 
@@ -218,6 +222,7 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
         session_id=session_id,
         groups=groups,
         roles=roles,
+        kind=account.get_kind(),
     )
 
 

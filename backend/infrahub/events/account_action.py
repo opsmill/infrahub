@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from pydantic import Field
 
-from infrahub.core.constants import AccountType  # noqa: TC001
+from infrahub.core.constants import AccountType, InfrahubKind
 from infrahub.utils import InfrahubStringEnum
 
 from .constants import EVENT_NAMESPACE
@@ -28,13 +28,14 @@ class AccountLoggedInEvent(InfrahubEvent):
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.account.logged_in"
 
+    kind: str = Field(..., description="The type of object")
     account_id: str = Field(..., description="UUID of the account")
     account_name: str = Field(..., description="Username of the account")
     account_type: AccountType = Field(..., description="USER or SCRIPT")
     auth_method: AuthMethod = Field(..., description="How they authenticated")
     session_id: str = Field(..., description="UUID of the session")
-    groups: list[str] = Field(default_factory=list, description="List of group names/IDs")
-    roles: list[str] = Field(default_factory=list, description="List of role names/IDs")
+    groups: list[dict[str, str]] = Field(default_factory=list, description="List of group names/IDs")
+    roles: list[dict[str, str]] = Field(default_factory=list, description="List of role names/IDs")
     sso_provider: SSOProvider | None = Field(default=None, description="SSO provider name (if applicable)")
     client_ip: str | None = Field(default=None, description="Source IP address")
     user_agent: str | None = Field(default=None, description="Browser/client info")
@@ -46,6 +47,9 @@ class AccountLoggedInEvent(InfrahubEvent):
     def get_resource(self) -> dict[str, str]:
         resource = {
             "prefect.resource.id": f"infrahub.account.{self.account_id}",
+            "infrahub.account.kind": self.kind,
+            "infrahub.node.id": self.account_id,
+            "infrahub.node.kind": self.kind,
             "infrahub.account.account_id": self.account_id,
             "infrahub.account.account_name": self.account_name,
             "infrahub.account.account_type": self.account_type.value,
@@ -61,12 +65,38 @@ class AccountLoggedInEvent(InfrahubEvent):
             resource["infrahub.account.user_agent"] = self.user_agent
         return resource
 
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        for group in self.groups:
+            for group_id, group_name in group.items():
+                related.append(
+                    {
+                        "prefect.resource.id": group_id,
+                        "prefect.resource.role": "infrahub.related.node",
+                        "infrahub.node.kind": InfrahubKind.ACCOUNTGROUP,
+                        "infrahub.node.name": group_name,
+                    }
+                )
+
+        for role in self.roles:
+            for role_id, role_name in role.items():
+                related.append(
+                    {
+                        "prefect.resource.id": role_id,
+                        "prefect.resource.role": "infrahub.related.node",
+                        "infrahub.node.kind": InfrahubKind.ACCOUNTROLE,
+                        "infrahub.node.name": role_name,
+                    }
+                )
+        return related
+
 
 class AccountLoggedOutEvent(InfrahubEvent):
     """Emitted when a user explicitly logs out."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.account.logged_out"
 
+    kind: str = Field(..., description="The type of object modified")
     account_id: str = Field(..., description="UUID of the account")
     account_name: str = Field(..., description="Username of the account")
     session_id: str = Field(..., description="UUID of the session being terminated")
@@ -81,6 +111,9 @@ class AccountLoggedOutEvent(InfrahubEvent):
     def get_resource(self) -> dict[str, str]:
         resource = {
             "prefect.resource.id": f"infrahub.account.{self.account_id}",
+            "infrahub.node.id": self.account_id,
+            "infrahub.node.kind": self.kind,
+            "infrahub.account.kind": self.kind,
             "infrahub.account.account_id": self.account_id,
             "infrahub.account.account_name": self.account_name,
             "infrahub.account.session_id": self.session_id,
