@@ -28,7 +28,7 @@ class AccountLoggedInEvent(InfrahubEvent):
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.account.logged_in"
 
-    kind: str = Field(..., description="The type of object")
+    kind: str = Field(..., description="The type of account object")
     account_id: str = Field(..., description="UUID of the account")
     account_name: str = Field(..., description="Username of the account")
     account_type: AccountType = Field(..., description="USER or SCRIPT")
@@ -96,7 +96,7 @@ class AccountLoggedOutEvent(InfrahubEvent):
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.account.logged_out"
 
-    kind: str = Field(..., description="The type of object modified")
+    kind: str = Field(..., description="The type of account object")
     account_id: str = Field(..., description="UUID of the account")
     account_name: str = Field(..., description="Username of the account")
     session_id: str = Field(..., description="UUID of the session being terminated")

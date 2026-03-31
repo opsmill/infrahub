@@ -179,7 +179,7 @@ class AccountLoggedInEventType(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
-    kind = String(required=True, description="The type of object")
+    kind = String(required=True, description="The type of account object")
     account_name = String(required=True, description="Username of the account")
     account_type = String(required=True, description="USER or SCRIPT")
     auth_method = String(required=True, description="How they authenticated")
@@ -197,7 +197,7 @@ class AccountLoggedOutEventType(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
-    kind = String(required=True, description="The type of object")
+    kind = String(required=True, description="The type of account object")
     account_name = String(required=True, description="Username of the account")
     session_id = String(required=True, description="UUID of the session being terminated")
     logout_type = String(required=True, description="How logout occurred")
