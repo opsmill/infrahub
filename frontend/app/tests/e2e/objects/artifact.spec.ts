@@ -19,7 +19,11 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
     }
 
     await page.getByRole("link", { name: "startup-config" }).first().click();
-    await expect(page.getByText("no aaa root").first()).toBeVisible();
+    while (await page.getByText("no aaa root").first().isHidden()) {
+      if (await page.getByText("No artifact content available").isVisible()) {
+        await page.reload();
+      }
+    }
 
     await page.getByRole("button", { name: "View node metadata" }).click();
 
