@@ -504,6 +504,32 @@ async def detect_migration_to_run(
     return migrations
 
 
+def _validate_migration_sequence(migrations: Sequence[MigrationTypes], current_graph_version: int) -> list[str]:
+    """Run pre-flight checks on the migration sequence before executing.
+
+    Returns a list of error messages. An empty list means all checks passed.
+    """
+    errors: list[str] = []
+
+    if current_graph_version > GRAPH_VERSION:
+        errors.append(
+            f"Database version ({current_graph_version}) is ahead of the application version ({GRAPH_VERSION}). "
+            "This may indicate a downgrade which is not supported."
+        )
+
+    # Check for gaps in the migration sequence
+    expected_version = current_graph_version
+    for migration in migrations:
+        if migration.minimum_version > expected_version:
+            errors.append(
+                f"Migration gap detected: expected minimum_version {expected_version} "
+                f"but migration '{migration.name}' requires {migration.minimum_version}"
+            )
+        expected_version = migration.minimum_version + 1
+
+    return errors
+
+
 async def migrate_database(
     db: InfrahubDatabase,
     migrations: Sequence[MigrationTypes],
@@ -529,8 +555,16 @@ async def migrate_database(
         await initialize_registry(db=db)
 
     migration_console = get_migration_console()
-    inner_console = migration_console if verbose else Console(quiet=True)
     root_node = await get_root_node(db=db)
+
+    # Pre-flight validation
+    preflight_errors = _validate_migration_sequence(migrations, current_graph_version=root_node.graph_version)
+    if preflight_errors:
+        for error in preflight_errors:
+            migration_console.log(f"{ERROR_BADGE} {error}")
+        return False
+
+    inner_console = migration_console if verbose else Console(quiet=True)
     total_start = time.perf_counter()
     applied_count = 0
 
