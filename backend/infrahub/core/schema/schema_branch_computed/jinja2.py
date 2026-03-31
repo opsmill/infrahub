@@ -40,7 +40,7 @@ class ResolvedComputedTarget(BaseModel):
     """
 
     target: ComputedAttributeTarget
-    node_filters: list[str] = Field(default_factory=lambda: ["ids"])
+    node_filters: list[str] = Field(default_factory=list)
 
 
 class ComputedAttributeTriggerNode(BaseModel):
@@ -118,6 +118,11 @@ class RegisteredNodeComputedAttribute(BaseModel):
                 filter_key = f"{relationship_name}__ids"
                 if entry.key_name in resolved and filter_key not in resolved[entry.key_name].node_filters:
                     resolved[entry.key_name].node_filters.append(filter_key)
+
+        # Targets with no relationship filters need the default "ids" filter
+        for target in resolved.values():
+            if not target.node_filters:
+                target.node_filters.append("ids")
 
         return list(resolved.values())
 
