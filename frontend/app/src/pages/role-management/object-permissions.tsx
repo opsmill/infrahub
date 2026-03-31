@@ -1,8 +1,10 @@
+import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
+import { Pill } from "@/shared/components/display/pill";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import UnauthorizedScreen from "@/shared/components/errors/unauthorized-screen";
@@ -10,32 +12,45 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Table, type tRowValue } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
+import { BadgeCopy } from "@/shared/components/ui/badge-copy";
 import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { SearchInput } from "@/shared/components/ui/search-input";
-import { ACCOUNT_GROUP_OBJECT } from "@/shared/config/constants";
+import { OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getPermission } from "@/entities/permission/utils";
-import { useGetRoleManagerGroups } from "@/entities/role-manager/ui/queries/get-groups.query";
+import { objectDecisionOptions } from "@/entities/role-manager/constants";
+import { useGetObjectPermissions } from "@/entities/role-manager/ui/queries/get-object-permissions.query";
 import { roleManagerQueryKeys } from "@/entities/role-manager/ui/queries/role-manager.query-keys";
 import { schemaKindNameState } from "@/entities/schema/stores/schemaKindName.atom";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-import { GroupMembers } from "./group-member";
+const icons: Record<string, ReactNode> = {
+  allow: (
+    <Pill className="flex h-6 w-6 items-center justify-center bg-green-500/40">
+      <Icon icon={"mdi:lock-open-check-outline"} className="text-green-900" />
+    </Pill>
+  ),
+  deny: (
+    <Pill className="flex h-6 w-6 items-center justify-center bg-red-500/40">
+      <Icon icon={"mdi:lock-remove-outline"} className="text-red-900" />
+    </Pill>
+  ),
+};
 
-function Groups() {
+function Permissions() {
   const [search, setSearch] = useState("");
   const searchDebounced = useDebounce(search, 300);
 
-  const { isLoading, isFetching, data, error, refetch } = useGetRoleManagerGroups({
+  const { isLoading, isFetching, data, error, refetch } = useGetObjectPermissions({
     search: searchDebounced,
   });
 
   const schemaKindName = useAtomValue(schemaKindNameState);
-  const { schema } = useSchema(ACCOUNT_GROUP_OBJECT);
+  const { schema } = useSchema(OBJECT_PERMISSION_OBJECT);
   const [rowToDelete, setRowToDelete] = useState<Record<
     string,
     string | number | tRowValue
@@ -46,28 +61,28 @@ function Groups() {
   > | null>(null);
   const [showDrawer, setShowDrawer] = useState(false);
 
-  const permission = getPermission(data?.[ACCOUNT_GROUP_OBJECT]?.permissions?.edges);
+  const permission = getPermission(data?.[OBJECT_PERMISSION_OBJECT]?.permissions?.edges);
 
   const columns = [
+    {
+      name: "identifier",
+      label: "Identifier",
+    },
+    {
+      name: "namespace",
+      label: "Namespace",
+    },
     {
       name: "name",
       label: "Name",
     },
     {
-      name: "description",
-      label: "Description",
+      name: "action",
+      label: "Action",
     },
     {
-      name: "label",
-      label: "Label",
-    },
-    {
-      name: "group_type",
-      label: "Type",
-    },
-    {
-      name: "members",
-      label: "Members",
+      name: "decision",
+      label: "Decision",
     },
     {
       name: "roles",
@@ -77,42 +92,57 @@ function Groups() {
 
   const rows =
     data &&
-    data[ACCOUNT_GROUP_OBJECT]?.edges.map((edge) => ({
-      id: edge?.node?.id,
-      values: {
-        id: edge?.node?.id,
-        display_label: edge?.node?.display_label,
-        hfid: edge?.node?.hfid,
-        name: { value: edge?.node?.name?.value },
-        description: { value: edge?.node?.description?.value },
-        label: { value: edge?.node?.label?.value },
-        group_type: { value: edge?.node?.group_type?.value },
-        members: {
-          value: { edges: edge?.node?.members?.edges },
-          display: (
-            <GroupMembers
-              members={
-                edge?.node?.members?.edges?.map((edge) =>
+    data[OBJECT_PERMISSION_OBJECT]?.edges.map((edge) => {
+      const iconKey = edge?.node?.decision?.value;
+      const icon = icons[iconKey];
+
+      return {
+        values: {
+          id: edge?.node?.id,
+          display_label: edge?.node?.display_label,
+          hfid: edge?.node?.hfid,
+          display: {
+            value: edge?.node ? getNodeLabel(edge.node) : undefined,
+            display: (
+              <div className="flex items-center gap-2">
+                {icon} {edge?.node ? getNodeLabel(edge.node) : ""}
+              </div>
+            ),
+          },
+          namespace: {
+            value: edge?.node?.namespace?.value,
+          },
+          name: {
+            value: edge?.node?.name?.value,
+          },
+          action: {
+            value: edge?.node?.action?.value,
+          },
+          decision: {
+            display: objectDecisionOptions.find(
+              (decision) => decision.value === edge?.node?.decision?.value
+            )?.label,
+            value: edge?.node?.decision?.value,
+          },
+          roles: {
+            value: { edges: edge?.node?.roles?.edges },
+            display: (
+              <InlineDisplay
+                items={edge?.node?.roles?.edges?.map((edge) =>
                   edge?.node ? getNodeLabel(edge.node) : ""
-                ) ?? []
-              }
-            />
-          ),
+                )}
+                render={(item) => <Badge>{item}</Badge>}
+              />
+            ),
+          },
+          identifier: {
+            value: edge?.node?.identifier?.value,
+            display: <BadgeCopy value={edge?.node?.identifier?.value} />,
+          },
+          __typename: edge?.node?.__typename,
         },
-        roles: {
-          value: { edges: edge?.node?.roles?.edges },
-          display: (
-            <InlineDisplay
-              items={edge?.node?.roles?.edges?.map((edge) =>
-                edge?.node ? getNodeLabel(edge.node) : ""
-              )}
-              render={(item) => <Badge>{item}</Badge>}
-            />
-          ),
-        },
-        __typename: edge?.node?.__typename,
-      },
-    }));
+      };
+    });
 
   if (error) {
     if ((error as any).networkError?.statusCode === 403) {
@@ -125,7 +155,12 @@ function Groups() {
   }
 
   if (isLoading) {
-    return <LoadingIndicator message="Retrieving groups..." className="h-[calc(100vh-13rem)]" />;
+    return (
+      <LoadingIndicator
+        message="Retrieving object permissions..."
+        className="h-[calc(100vh-13rem)]"
+      />
+    );
   }
 
   if (!permission?.view.isAllowed) {
@@ -145,7 +180,7 @@ function Groups() {
             loading={isFetching}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search groups"
+            placeholder="Search object permissions"
             className="border-none focus-visible:ring-0"
             containerClassName="grow"
           />
@@ -171,11 +206,11 @@ function Groups() {
           permission={permission}
         />
 
-        <Pagination count={data && data[ACCOUNT_GROUP_OBJECT]?.count} />
+        <Pagination count={data && data[OBJECT_PERMISSION_OBJECT]?.count} />
       </div>
 
       <ModalDeleteObject
-        label={schemaKindName[ACCOUNT_GROUP_OBJECT]}
+        label={schemaKindName[OBJECT_PERMISSION_OBJECT]}
         rowToDelete={rowToDelete}
         isOpen={!!rowToDelete}
         onOpenChange={(open) => !open && setRowToDelete(null)}
@@ -197,7 +232,7 @@ function Groups() {
           onClose={() => setRowToUpdate(null)}
         >
           <ObjectForm
-            kind={ACCOUNT_GROUP_OBJECT}
+            kind={OBJECT_PERMISSION_OBJECT}
             currentObject={rowToUpdate}
             onCancel={() => {
               setRowToUpdate(null);
@@ -216,5 +251,5 @@ function Groups() {
 }
 
 export function Component() {
-  return <Groups />;
+  return <Permissions />;
 }

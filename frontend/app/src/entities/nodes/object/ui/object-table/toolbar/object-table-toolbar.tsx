@@ -3,7 +3,7 @@ import { XIcon } from "lucide-react";
 import { classNames } from "@/shared/utils/common";
 
 import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action";
-import { ToolBarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action";
+import { ToolbarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action";
 import { ToolbarDeleteAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-delete-action";
 import { ToolbarEditAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-edit-action";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
@@ -41,7 +41,7 @@ export function ObjectTableToolbar({
 
       <ToolbarEditAction selectedRows={selectedRows} />
       <ToolbarAddToGroupsAction selectedRows={selectedRows} />
-      <ToolBarRemoveFromGroupsAction selectedRows={selectedRows} />
+      <ToolbarRemoveFromGroupsAction selectedRows={selectedRows} />
       <ToolbarDeleteAction selectedRows={selectedRows} />
 
       {renderMore && (
