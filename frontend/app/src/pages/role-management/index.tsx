@@ -10,7 +10,7 @@ export function Component() {
       <Content.CardTitle
         title="Users & Permissions"
         description="Accounts, groups, roles and permissions management"
-        className="border-none pb-1"
+        className="border-none p-4 pb-0"
       />
 
       <RoleManagementTabs />

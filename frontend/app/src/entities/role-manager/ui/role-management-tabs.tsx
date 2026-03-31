@@ -63,7 +63,7 @@ export function RoleManagementTabs() {
       scrollBarClassName="hidden"
       className="shrink-0 border-gray-200 border-b"
     >
-      <Row className="items-end gap-4 px-3">
+      <Row className="items-end gap-4 px-4">
         {tabs.map((tab) => (
           <RoleManagementTab
             key={tab.path}
