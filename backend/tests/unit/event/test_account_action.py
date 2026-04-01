@@ -60,7 +60,6 @@ def test_account_logged_in_get_payload() -> None:
         session_id="sess-456",
         groups=[{"group-id": "admins"}],
         roles=[{"role-id": "admin-role"}],
-        sso_provider=None,
         client_ip="127.0.0.1",
         user_agent="TestBrowser/1.0",
         kind=InfrahubKind.ACCOUNT,
@@ -75,7 +74,6 @@ def test_account_logged_in_get_payload() -> None:
     assert payload["session_id"] == "sess-456"
     assert payload["groups"] == [{"group-id": "admins"}]
     assert payload["roles"] == [{"role-id": "admin-role"}]
-    assert payload["sso_provider"] is None
     assert payload["client_ip"] == "127.0.0.1"
     assert payload["user_agent"] == "TestBrowser/1.0"
     assert "timestamp" in payload
