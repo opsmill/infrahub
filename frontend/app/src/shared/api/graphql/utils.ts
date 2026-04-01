@@ -129,10 +129,12 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
         return acc;
       }
 
-      const [fieldName, fieldKey] = filter.name.split("__");
-      if (!fieldName || !fieldKey) {
+      const parts = filter.name.split("__");
+      if (parts.length < 2) {
         return acc;
       }
+
+      const fieldKey = parts.at(-1);
 
       switch (fieldKey) {
         case "value":
@@ -147,6 +149,11 @@ export const addFiltersToRequest = (filters: Array<Filter>) => {
         }
         case "ids": {
           acc[filter.name] = filter.value.map(({ id }: { id: string }) => id);
+          break;
+        }
+        case "before":
+        case "after": {
+          acc[filter.name] = filter.value;
           break;
         }
       }
