@@ -17,7 +17,7 @@ def _make_schema(
         name="weight",
         kind="Float",
         optional=optional,
-        **({"parameters": parameters} if parameters is not None else {}),
+        parameters=parameters or FloatAttributeParameters(),
     )
 
 
