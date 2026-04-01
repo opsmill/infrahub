@@ -31,7 +31,7 @@ class AccountLoggedInEvent(InfrahubEvent):
     session_id: str = Field(..., description="UUID of the session")
     groups: list[dict[str, str]] = Field(default_factory=list, description="List of group names/IDs")
     roles: list[dict[str, str]] = Field(default_factory=list, description="List of role names/IDs")
-    sso_provider: str | None = Field(default=None, description="SSO provider name (if applicable)")
+    identity_source: str | None = Field(default=None, description="External identity provider name (if applicable)")
     client_ip: str | None = Field(default=None, description="Source IP address")
     user_agent: str | None = Field(default=None, description="Browser/client info")
     timestamp: datetime = Field(
@@ -52,8 +52,8 @@ class AccountLoggedInEvent(InfrahubEvent):
             "infrahub.account.session_id": self.session_id,
             "infrahub.account.timestamp": self.timestamp.isoformat(),
         }
-        if self.sso_provider:
-            resource["infrahub.account.sso_provider"] = self.sso_provider
+        if self.identity_source:
+            resource["infrahub.account.identity_source"] = self.identity_source
         if self.client_ip:
             resource["infrahub.account.client_ip"] = self.client_ip
         if self.user_agent:

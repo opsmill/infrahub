@@ -239,7 +239,7 @@ class PrefectEventData(PrefectEventModel):
             "account_type": self.resource.get("infrahub.account.account_type"),
             "auth_method": self.resource.get("infrahub.account.auth_method"),
             "session_id": self.resource.get("infrahub.account.session_id"),
-            "sso_provider": self.resource.get("infrahub.account.sso_provider", ""),
+            "identity_source": self.resource.get("infrahub.account.identity_source", ""),
             "client_ip": self.resource.get("infrahub.account.client_ip", ""),
             "user_agent": self.resource.get("infrahub.account.user_agent", ""),
             "timestamp": Timestamp(self.resource.get("infrahub.account.timestamp")).to_datetime(),
