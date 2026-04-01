@@ -105,10 +105,10 @@ All paths relative to `frontend/app/src/` unless otherwise noted.
 
 **Purpose**: Cleanup, edge cases, and cross-cutting improvements.
 
-- [ ] T018 Ensure filter menu is scrollable when many filters exist — add `overflow-y-auto` with a `max-h` constraint to the menu list container in `entities/nodes/object/ui/filters/filter-menu.tsx`. Test with a schema that has 50+ attributes.
-- [ ] T019 Handle edge case: schema with no filterable attributes/relationships — verify the filter menu still renders with metadata and suggested filter sections. Add empty state handling if all sections are empty.
-- [ ] T020 Run `pnpm biome:fix` to format all modified and new files in `frontend/app/`.
-- [ ] T021 Run `pnpm test` to verify no existing unit tests are broken by the refactor.
+- [x] T018 Ensure filter menu is scrollable when many filters exist — add `overflow-y-auto` with a `max-h` constraint to the menu list container in `entities/nodes/object/ui/filters/filter-menu.tsx`. Test with a schema that has 50+ attributes.
+- [x] T019 Handle edge case: schema with no filterable attributes/relationships — verify the filter menu still renders with metadata and suggested filter sections. Add empty state handling if all sections are empty.
+- [x] T020 Run `pnpm biome:fix` to format all modified and new files in `frontend/app/`.
+- [x] T021 Run `pnpm test` to verify no existing unit tests are broken by the refactor.
 
 ---
 
