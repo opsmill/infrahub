@@ -27,6 +27,7 @@ export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Any: "mdi:alert-circle-outline",
   ID: "mdi:card-account-details-outline",
   NodeKind: "mdi:code-json",
+  PSTN: "mdi:phone-outline",
 } as const;
 
 interface FieldSchemaIconProps {

@@ -10732,6 +10732,29 @@ input OrderInput {
   node_metadata: InfrahubNodeMetadataOrder = null
 }
 
+"""Attribute of type PSTN"""
+type PSTN implements AttributeInterface {
+  e123_international: String
+  e123_national: String
+  e164: String
+  id: String
+  is_default: Boolean
+  is_e164: Boolean
+  is_from_profile: Boolean
+  is_inherited: Boolean
+  is_protected: Boolean
+  owner: LineageOwner
+  permissions: PermissionType
+  source: LineageSource
+  tel_uri: String
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  updated_by: CoreGenericAccount
+  value: String
+}
+
 """IPv4 or IPv6 address"""
 type PaginatedBuiltinIPAddress {
   count: Int!
