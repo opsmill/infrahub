@@ -22,7 +22,7 @@ A single daily telemetry data capture persisted to the Neo4j database. Stored as
 | `payload_format` | `str` | yes | Format version string (e.g., `"20250318"`) |
 | `deployment_id` | `str` | yes | Deployment identifier from `registry.id` |
 | `infrahub_version` | `str` | yes | Product version at collection time |
-| `data` | `TelemetryData` | yes | Full telemetry payload (Pydantic model, auto-serialized to JSON) |
+| `data` | `dict[str, Any]` | yes | Full telemetry payload as plain JSON dict (version identified by `payload_format`) |
 | `checksum` | `str` | yes | SHA-256 hash of the JSON-serialized `data` field for integrity verification |
 | `remote_send_status` | `str` | yes | Status of remote transmission: `"pending"`, `"sent"`, `"skipped"`, `"failed"` |
 
@@ -31,7 +31,7 @@ A single daily telemetry data capture persisted to the Neo4j database. Stored as
 - `payload_format` must be a non-empty string
 - `checksum` must be a 64-character hex string (SHA-256)
 - `remote_send_status` must be one of: `"pending"`, `"sent"`, `"skipped"`, `"failed"`
-- `data` must be a valid `TelemetryData` instance
+- `data` must be a non-empty JSON dict
 
 **Neo4j Storage**:
 ```
@@ -42,15 +42,15 @@ A single daily telemetry data capture persisted to the Neo4j database. Stored as
     payload_format: "20250318",
     deployment_id: "...",
     infrahub_version: "1.2.3",
-    data: '{"deployment_id": ..., "infrahub_version": ...}',  // JSON string
+    data: '{"deployment_id": ..., "infrahub_version": ...}',  // JSON string via json.dumps()
     checksum: "abc123...",
     remote_send_status: "sent"
 })-[:IS_PART_OF]->(:Root)
 ```
 
-### TelemetryData (Existing — No Changes)
+### TelemetryData (Existing — Used for Collection Only)
 
-The existing telemetry payload model. Already defined in `backend/infrahub/telemetry/models.py`.
+The existing telemetry payload model used to *gather* data. Already defined in `backend/infrahub/telemetry/models.py`. At storage time, converted to a plain dict via `model.model_dump()`. Not used for deserialization on read — this ensures old snapshots remain readable even when the model evolves.
 
 | Field | Type | Description |
 |-------|------|-------------|

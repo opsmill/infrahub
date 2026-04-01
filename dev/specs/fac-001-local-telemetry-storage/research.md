@@ -40,15 +40,17 @@
 
 ### R-003: Telemetry Payload Serialization
 
-**Decision**: Store the `TelemetryData` payload as a JSON string in a single `data` field on the `TelemetrySnapshot` StandardNode.
+**Decision**: Store the telemetry payload as a plain JSON dict (`dict[str, Any]`) in a single `data` field on the `TelemetrySnapshot` StandardNode. The `TelemetryData` Pydantic model is used at collection time to ensure correct structure, then converted via `model.model_dump()` before storage.
 
 **Rationale**:
-- `StandardNode.to_db()` automatically serializes Pydantic models to JSON via `model_dump_json()` and deserializes them in `from_db()` via `ujson.loads()`. This is proven by existing test fixtures (`PadanticStdNode` in test_node_standard.py).
 - The telemetry payload is ~3-5 KB of JSON. Storing as a single JSON string avoids fragmenting it across multiple Neo4j nodes/relationships.
-- The `TelemetryData` model is already well-typed with nested Pydantic models (`TelemetryWorkerData`, `TelemetryBranchData`, `TelemetrySchemaData`, `TelemetryDatabaseData`, `TelemetryPrefectData`).
-- Using the existing model type in the StandardNode field enables automatic Pydantic validation on read.
+- Storing as plain JSON (not a typed Pydantic model) ensures backward compatibility: old snapshots remain readable even when the `TelemetryData` model evolves over time. The `payload_format` field on the snapshot identifies which version of the schema produced the data.
+- This avoids the need for versioned Pydantic classes (`TelemetryDataV1`, `TelemetryDataV2`, etc.) and version-dispatch deserialization logic.
+- Write path: `TelemetryData` Pydantic model validates structure at collection time, then `model.model_dump()` produces the dict for storage.
+- Read path: `data` is returned as `dict[str, Any]` — no Pydantic deserialization. Consumers use `payload_format` to interpret fields if needed.
 
 **Alternatives considered**:
+- **Typed Pydantic model per version**: Would require maintaining versioned classes and dispatch logic for deserialization. Over-engineering for data that is primarily exported as-is.
 - **Separate Neo4j properties per telemetry field**: Would create dozens of properties on the node. Hard to evolve when the telemetry schema changes. Querying individual fields is not a requirement.
 - **Binary/compressed storage**: Over-engineering. 5 years of data is ~6-9 MB uncompressed. Compression adds complexity without meaningful benefit.
 
