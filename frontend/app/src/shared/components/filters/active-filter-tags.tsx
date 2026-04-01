@@ -1,11 +1,15 @@
+import { useState } from "react";
 import { TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { formatFullDate } from "@/shared/utils/date";
 
+import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
+import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
@@ -47,7 +51,6 @@ export function ActiveFilterTags({
   ...props
 }: ActiveFilterTagsProps) {
   const handleRemoveFilter = (filterName: string) => {
-    // Allow custom handling first
     if (onCustomFilterRemove?.(filterName)) {
       return;
     }
@@ -62,18 +65,15 @@ export function ActiveFilterTags({
     return "peer" in schema;
   };
 
+  if (filters.length === 0 && !additionalTags) {
+    return null;
+  }
+
   return (
-    <>
-      <ScrollArea scrollX>
+    <ScrollArea scrollX>
+      <div className="flex items-center gap-2">
         <TagGroup
-          selectionMode="single"
           aria-label="Active filters"
-          onSelectionChange={(keys) => {
-            const filterName = Array.from(keys)[0]?.toString();
-            if (filterName) {
-              handleRemoveFilter(filterName);
-            }
-          }}
           onRemove={(keys) => {
             const filterName = Array.from(keys)[0]?.toString();
             if (filterName) {
@@ -82,7 +82,7 @@ export function ActiveFilterTags({
           }}
           {...props}
         >
-          <TagList className="flex items-center gap-2 py-3">
+          <TagList className="flex items-center gap-2">
             {additionalTags}
 
             {filters.map((filter) => {
@@ -93,97 +93,146 @@ export function ActiveFilterTags({
 
               const fieldKey = parts.at(-1);
               const fieldName = parts.slice(0, -1).join("__");
-
               const fieldSchema = getFieldSchema(fieldName);
 
               if (!fieldSchema) {
                 return null;
               }
 
-              if (fieldKey === "value" || fieldKey === "values") {
-                if (isRelationshipSchema(fieldSchema)) {
-                  return null;
-                }
-
-                return (
-                  <FilterTag
-                    key={filter.name}
-                    id={filter.name}
-                    label={fieldSchema.label ?? fieldSchema.name}
-                    value={formatAttributeFilterValue({
-                      kind: fieldSchema.kind as AttributeKind,
-                      value: filter.value,
-                    })}
-                  />
-                );
-              }
-
-              if (fieldKey === "ids") {
-                if (!isRelationshipSchema(fieldSchema)) {
-                  return null;
-                }
-
-                if (!Array.isArray(filter.value)) {
-                  return null;
-                }
-
-                const value = filter.value
-                  .map((item: unknown) => {
-                    if (
-                      typeof item === "object" &&
-                      item !== null &&
-                      "display_label" in item &&
-                      typeof item.display_label === "string"
-                    ) {
-                      return item.display_label;
-                    }
-                    return String(item);
-                  })
-                  .join(", ");
-
-                return (
-                  <FilterTag
-                    key={filter.name}
-                    id={filter.name}
-                    label={fieldSchema.label ?? fieldSchema.name}
-                    value={value}
-                  />
-                );
-              }
-
-              if (fieldKey === "isnull") {
-                return (
-                  <FilterTag
-                    key={filter.name}
-                    id={filter.name}
-                    label={fieldSchema.label ?? fieldSchema.name}
-                    value={filter.value ? "empty" : "not empty"}
-                  />
-                );
-              }
-
-              if (fieldKey === "before" || fieldKey === "after") {
-                if (isRelationshipSchema(fieldSchema)) {
-                  return null;
-                }
-
-                return (
-                  <FilterTag
-                    key={filter.name}
-                    id={filter.name}
-                    label={fieldSchema.label ?? fieldSchema.name}
-                    value={`${fieldKey} ${formatFullDate(filter.value as string | number | Date)}`}
-                  />
-                );
-              }
-
-              return null;
+              return (
+                <EditableFilterTag
+                  key={filter.name}
+                  filter={filter}
+                  fieldKey={fieldKey}
+                  fieldSchema={fieldSchema}
+                  isRelationship={isRelationshipSchema(fieldSchema)}
+                />
+              );
             })}
           </TagList>
         </TagGroup>
-      </ScrollArea>
 
-      {filters.length > 0 && <FilterResetButton />}
-    </>
+        {filters.length > 0 && <FilterResetButton />}
+      </div>
+    </ScrollArea>
   );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+interface EditableFilterTagProps {
+  filter: Filter;
+  fieldKey: string | undefined;
+  fieldSchema: FieldSchema;
+  isRelationship: boolean;
+}
+
+function EditableFilterTag({
+  filter,
+  fieldKey,
+  fieldSchema,
+  isRelationship,
+}: EditableFilterTagProps) {
+  const [editOpen, setEditOpen] = useState(false);
+
+  const { label, condition, value } = getFilterTagDisplay({
+    filter,
+    fieldKey,
+    fieldSchema,
+    isRelationship,
+  });
+
+  if (!label) return null;
+
+  return (
+    <Popover open={editOpen} onOpenChange={setEditOpen}>
+      <PopoverTrigger asChild>
+        <FilterTag id={filter.name} label={label} condition={condition} value={value} />
+      </PopoverTrigger>
+
+      <PopoverContent align="start" className="p-0" sideOffset={4}>
+        {isRelationship ? (
+          <RelationshipFilterForm
+            relationshipSchema={fieldSchema as RelationshipSchema}
+            onSuccess={() => setEditOpen(false)}
+          />
+        ) : (
+          <AttributeFilterForm
+            attributeSchema={fieldSchema as AttributeSchema}
+            onSuccess={() => setEditOpen(false)}
+          />
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+function getFilterTagDisplay({
+  filter,
+  fieldKey,
+  fieldSchema,
+  isRelationship,
+}: {
+  filter: Filter;
+  fieldKey: string | undefined;
+  fieldSchema: FieldSchema;
+  isRelationship: boolean;
+}): { label: React.ReactNode; condition: string; value: React.ReactNode } {
+  const name = fieldSchema.label ?? fieldSchema.name;
+
+  if (fieldKey === "value" || fieldKey === "values") {
+    if (isRelationship) return { label: null, condition: "", value: "" };
+
+    return {
+      label: name,
+      condition: "contains",
+      value: formatAttributeFilterValue({
+        kind: (fieldSchema as AttributeSchema).kind as AttributeKind,
+        value: filter.value,
+      }),
+    };
+  }
+
+  if (fieldKey === "ids") {
+    if (!isRelationship) return { label: null, condition: "", value: "" };
+    if (!Array.isArray(filter.value)) return { label: null, condition: "", value: "" };
+
+    const value = filter.value
+      .map((item: unknown) => {
+        if (
+          typeof item === "object" &&
+          item !== null &&
+          "display_label" in item &&
+          typeof item.display_label === "string"
+        ) {
+          return item.display_label;
+        }
+        return String(item);
+      })
+      .join(", ");
+
+    return { label: name, condition: "is any of", value };
+  }
+
+  if (fieldKey === "isnull") {
+    return {
+      label: name,
+      condition: filter.value ? "is empty" : "is not empty",
+      value: "",
+    };
+  }
+
+  if (fieldKey === "before" || fieldKey === "after") {
+    if (isRelationship) return { label: null, condition: "", value: "" };
+
+    return {
+      label: name,
+      condition: fieldKey,
+      value: formatFullDate(filter.value as string | number | Date),
+    };
+  }
+
+  return { label: null, condition: "", value: "" };
 }
