@@ -231,3 +231,82 @@ async def transform_ai(
         workflow=TRANSFORM_AI_RENDER, context=context, parameters={"message": message}
     )
     return JSONResponse(content=response)
+
+
+async def _build_ai_transform_message(
+    request: Request,
+    transform_id: str,
+    db: InfrahubDatabase,
+    branch_params: BranchParams,
+) -> TransformAIData:
+    """Build TransformAIData for a given AI transform, shared by sync and async endpoints."""
+    params = {key: value for key, value in request.query_params.items() if key not in ["branch", "at"]}
+
+    transform = await NodeManager.get_one_by_id_or_default_filter(
+        db=db,
+        id=transform_id,
+        kind=CoreTransformAI,
+        branch=branch_params.branch,
+        at=branch_params.at,
+    )
+
+    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+
+    if repository.commit.value is None:  # type: ignore[attr-defined]
+        raise TransformError(
+            repository_name=repository.name.value,
+            location=repository.location.value,
+            commit="n/a",
+            message="Repository doesn't have a commit",
+        )
+
+    async with db.start_session(read_only=True) as dbs:
+        gql_params = await prepare_graphql_params(
+            db=dbs, branch=branch_params.branch, at=branch_params.at, service=request.app.state.service
+        )
+
+        result = await execute_graphql_query(
+            schema=gql_params.schema,
+            source=query.query.value,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values=params,
+        )
+
+    data = extract_data(query_name=query.name.value, result=result)
+
+    return TransformAIData(
+        repository_id=repository.id,
+        repository_name=repository.name.value,
+        repository_kind=repository.get_kind(),
+        commit=repository.commit.value,  # type: ignore[attr-defined]
+        branch=branch_params.branch.name,
+        prompt_template_path=transform.prompt_template_path.value,
+        model=transform.model.value,
+        temperature=transform.temperature.value / 100,
+        max_tokens=int(transform.max_tokens.value),
+        output_format=transform.output_format.value,
+        timeout=transform.timeout.value,
+        result_kind=transform.result_kind.value or None,
+        data=data,
+    )
+
+
+@router.post("/transform/ai/{transform_id:str}/trigger")
+async def trigger_ai_transform(
+    request: Request,
+    transform_id: str,
+    db: InfrahubDatabase = Depends(get_db),
+    context: InfrahubContext = Depends(get_context),
+    branch_params: BranchParams = Depends(get_branch_params),
+    _: AccountSession = Depends(get_current_user),
+) -> JSONResponse:
+    """Trigger an AI transform asynchronously. Returns immediately while the transform runs in the background."""
+    message = await _build_ai_transform_message(request, transform_id, db, branch_params)
+
+    service: InfrahubServices = request.app.state.service
+    await service.workflow.submit_workflow(
+        workflow=TRANSFORM_AI_RENDER, context=context, parameters={"message": message}
+    )
+    return JSONResponse(content={"status": "submitted"}, status_code=202)

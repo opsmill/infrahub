@@ -16,6 +16,8 @@ import {
 } from "@/entities/generators/constants";
 import { GeneratorDefinitionRunButton } from "@/entities/generators/ui/generator-definition-run-button";
 import { GeneratorRunButton } from "@/entities/generators/ui/generator-run-button";
+import { TRANSFORM_AI_KIND } from "@/entities/transforms/constants";
+import { AITransformRunButton } from "@/entities/transforms/ui/ai-transform-run-button";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-item-edit-paginated";
@@ -63,6 +65,10 @@ export function DetailsButtons({
             targetNodeIds={[objectDetailsData.object.node.id]}
             size="sm"
           />
+        )}
+
+        {isOfKind(TRANSFORM_AI_KIND, schema) && (
+          <AITransformRunButton transformId={objectDetailsData.id} size="sm" />
         )}
 
         <ButtonWithTooltip

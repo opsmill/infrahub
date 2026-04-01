@@ -1,9 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import { Link } from "react-router";
+import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -20,6 +22,8 @@ import ObjectItemEditComponent from "@/entities/nodes/object-item-edit/object-it
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
+import { TRANSFORM_AI_KIND } from "@/entities/transforms/constants";
+import { useTriggerAITransformMutation } from "@/entities/transforms/ui/queries/trigger-ai-transform.mutation";
 
 export interface ActionsCellProps {
   permission: Permission;
@@ -37,9 +41,11 @@ export function ObjectActionsCell({
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
   const { schema } = useSchema(objectKind);
+  const { mutate: triggerAITransform, isPending: isTriggering } = useTriggerAITransformMutation();
 
   const { isAllowed: isEditAllowed, message: editTooltipMessage } = permission.update;
   const { isAllowed: isDeleteAllowed, message: deleteTooltipMessage } = permission.delete;
+  const isAITransform = objectKind === TRANSFORM_AI_KIND;
 
   if (!schema) {
     return <StickyRightCell isMuted />;
@@ -67,6 +73,31 @@ export function ObjectActionsCell({
                 View details
               </Link>
             </DropdownMenuItem>
+
+            {isAITransform && (
+              <DropdownMenuItem
+                disabled={isTriggering}
+                onClick={() =>
+                  triggerAITransform(
+                    { transformId: objectId },
+                    {
+                      onSuccess: () =>
+                        toast(<Alert message="AI report triggered" type={ALERT_TYPES.SUCCESS} />),
+                      onError: () =>
+                        toast(
+                          <Alert
+                            message="Failed to trigger AI report"
+                            type={ALERT_TYPES.ERROR}
+                          />
+                        ),
+                    }
+                  )
+                }
+              >
+                <Icon icon="mdi:play" className="text-base" />
+                Run
+              </DropdownMenuItem>
+            )}
 
             <DropdownMenuItemWithTooltip
               disabled={!isEditAllowed}
