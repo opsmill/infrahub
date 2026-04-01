@@ -23,6 +23,31 @@ test.describe("/profile", () => {
   test.describe("when logged in as admin account", () => {
     test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
+    test("should copy UUID to clipboard and toggle app info line", async ({ page, context }) => {
+      await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+      await page.goto("/");
+      await page.getByTestId("authenticated-menu-trigger").click();
+
+      const appInfoToggle = page.getByTestId("app-info-toggle");
+      await expect(appInfoToggle).toBeVisible();
+
+      // Default state: shows version info line
+      await expect(appInfoToggle).toContainText("Infrahub");
+      await expect(appInfoToggle).toContainText(/v\d/);
+
+      // Click to toggle — should show "Copied!" and copy UUID
+      await appInfoToggle.click();
+      await expect(page.getByTestId("app-info-copied")).toContainText("Copied!");
+
+      // After "Copied!" fades, should show "UUID: <value>"
+      await expect(appInfoToggle).toContainText("UUID:", { timeout: 3000 });
+
+      // Click to toggle back to default
+      await appInfoToggle.click();
+      await expect(appInfoToggle).toContainText("Infrahub");
+      await expect(appInfoToggle).toContainText(/v\d/);
+    });
+
     test("should access the profile page", async ({ page }) => {
       await test.step("go to profile page", async () => {
         await page.goto("/");
