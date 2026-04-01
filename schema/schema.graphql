@@ -38,6 +38,10 @@ type AccountLoggedInEventType implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
+  """External identity provider name (if applicable)"""
+  identity_source: String
+  """The type of account object"""
+  kind: String!
   """
   The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
   """
@@ -55,8 +59,6 @@ type AccountLoggedInEventType implements EventNodeInterface {
   roles: [String!]!
   """UUID of the session"""
   session_id: String!
-  """SSO provider name (if applicable)"""
-  sso_provider: String
   """When the login occurred (UTC)"""
   timestamp: DateTime!
   """Browser/client info"""
@@ -78,6 +80,8 @@ type AccountLoggedOutEventType implements EventNodeInterface {
   has_children: Boolean!
   """The ID of the event."""
   id: String!
+  """The type of account object"""
+  kind: String!
   """
   The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
   """

@@ -179,13 +179,14 @@ class AccountLoggedInEventType(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
+    kind = String(required=True, description="The type of account object")
     account_name = String(required=True, description="Username of the account")
     account_type = String(required=True, description="USER or SCRIPT")
     auth_method = String(required=True, description="How they authenticated")
     session_id = String(required=True, description="UUID of the session")
     groups = List(NonNull(String), required=True, description="List of group names/IDs")
     roles = List(NonNull(String), required=True, description="List of role names/IDs")
-    sso_provider = String(required=False, description="SSO provider name (if applicable)")
+    identity_source = String(required=False, description="External identity provider name (if applicable)")
     client_ip = String(required=False, description="Source IP address")
     user_agent = String(required=False, description="Browser/client info")
     timestamp = DateTime(required=True, description="When the login occurred (UTC)")
@@ -196,6 +197,7 @@ class AccountLoggedOutEventType(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
+    kind = String(required=True, description="The type of account object")
     account_name = String(required=True, description="Username of the account")
     session_id = String(required=True, description="UUID of the session being terminated")
     logout_type = String(required=True, description="How logout occurred")

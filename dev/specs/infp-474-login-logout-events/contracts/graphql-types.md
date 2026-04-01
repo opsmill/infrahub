@@ -22,13 +22,14 @@ type AccountLoggedInEvent implements EventNodeInterface {
   parent_id: String
 
   # --- AccountLoggedInEvent-specific fields ---
+  kind: String!
   account_name: String!
   account_type: String!
   auth_method: String!
   session_id: String!
   groups: [String!]!
   roles: [String!]!
-  sso_provider: String
+  identity_source: String
   client_ip: String
   user_agent: String
   timestamp: DateTime!
@@ -52,6 +53,7 @@ type AccountLoggedOutEvent implements EventNodeInterface {
   parent_id: String
 
   # --- AccountLoggedOutEvent-specific fields ---
+  kind: String!
   account_name: String!
   session_id: String!
   logout_type: String!
@@ -85,6 +87,7 @@ query GetAuthEvents {
         event
         account_id
         ... on AccountLoggedInEvent {
+          kind
           account_name
           auth_method
           session_id
@@ -93,6 +96,7 @@ query GetAuthEvents {
           timestamp
         }
         ... on AccountLoggedOutEvent {
+          kind
           account_name
           session_id
           logout_type

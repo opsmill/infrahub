@@ -38,6 +38,7 @@ query {
         occurred_at
         account_id
         ... on AccountLoggedInEvent {
+          kind
           account_name
           auth_method
           session_id
@@ -75,4 +76,4 @@ No additional configuration is required. Existing webhook triggers can be config
 - **Fire-and-forget**: Event emission is wrapped in `try/except`. A failure to emit an event logs a warning but never blocks login or logout.
 - **API key auth excluded**: Per-request API key authentication does not go through the login endpoint and produces no events (FR-008).
 - **Session correlation**: The `session_id` field in both login and logout events is the same `RefreshToken` UUID, enabling session duration analysis.
-- **SSO provider**: For OAuth2 and OIDC logins, the `sso_provider` field contains the configured provider name.
+- **SSO provider**: For OAuth2 and OIDC logins, the `identity_source` field contains the configured provider name.

@@ -24,7 +24,7 @@ from infrahub.auth import (
 )
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
-from infrahub.events.account_action import AuthMethod, SSOProvider
+from infrahub.events.account_action import AuthMethod
 from infrahub.exceptions import ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -227,7 +227,7 @@ async def token(
             event_meta=await make_event_meta(account_session=session, branch=branch),
             auth_result=auth_result,
             auth_method=AuthMethod.OIDC,
-            sso_provider=SSOProvider.OIDC,
+            identity_source=provider_name,
         )
         await service.event.send(event=event)
     except Exception as ex:

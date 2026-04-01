@@ -32,6 +32,7 @@ class AuthResult:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `kind` | `str` | ✓ | The type of account object |
 | `account_id` | `str` | ✓ | UUID of the account |
 | `account_name` | `str` | ✓ | Username |
 | `account_type` | `str` | ✓ | USER or SCRIPT |
@@ -39,7 +40,7 @@ class AuthResult:
 | `session_id` | `str` | ✓ | UUID of the session |
 | `groups` | `tuple[str]` | ✓ | List of group names/IDs |
 | `roles` | `tuple[str]` | ✓ | 	List of role names/IDs |
-| `sso_provider` | `str \| None` | — | SSO provider name (if applicable) |
+| `identity_source` | `str \| None` | — | External identity provider name (if applicable) |
 | `client_ip` | `str \| None` | — | Source IP address |
 | `user_agent` | `str \| None` | — | Browser/client info |
 | `timestamp` | `datetime` | ✓ | When login occurred |
@@ -62,6 +63,7 @@ class AuthResult:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `kind` | `str` | ✓ | The type of account object |
 | `account_id` | `str` | ✓ | UUID of the account |
 | `account_name` | `str` | ✓ | Username |
 | `session_id` | `str` | ✓ | UUID of the session being terminated |

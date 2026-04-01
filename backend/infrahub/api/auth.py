@@ -18,6 +18,7 @@ from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericAccount
 from infrahub.events.account_action import AuthMethod
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -90,8 +91,15 @@ async def logout(
         invalidated = await invalidate_refresh_token(db=db, token_id=user_session.session_id)
 
     if invalidated:
-        account = await NodeManager.get_one(id=user_session.account_id, db=db, kind=CoreGenericAccount)
-        account_name = account.name.value if account else user_session.account_id
+        try:
+            account = await NodeManager.get_one(
+                id=user_session.account_id, db=db, kind=CoreGenericAccount, raise_on_error=True
+            )
+        except NodeNotFoundError:
+            delete_response_cookies(response=response)
+            raise
+
+        account_name = account.name.value
         session_id = user_session.session_id or ""
         service: InfrahubServices = request.app.state.service
         branch = await registry.get_branch(db=db)
@@ -99,6 +107,7 @@ async def logout(
             event = make_logout_event(
                 request=request,
                 event_meta=await make_event_meta(account_session=user_session, branch=branch),
+                account_kind=account.get_kind(),
                 account_id=user_session.account_id,
                 account_name=account_name,
                 session_id=session_id,
@@ -107,5 +116,9 @@ async def logout(
         except Exception as ex:
             log.warning(f"Failed to emit logout event for account_id={user_session.account_id}: {str(ex)}")
 
+    delete_response_cookies(response=response)
+
+
+def delete_response_cookies(response: Response) -> None:
     response.delete_cookie("access_token")
     response.delete_cookie("refresh_token")

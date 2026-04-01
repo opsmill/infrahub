@@ -37,6 +37,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of account object |
 | **account_id** | UUID of the account |
 | **account_name** | Username of the account |
 | **account_type** | USER or SCRIPT |
@@ -44,7 +45,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **session_id** | UUID of the session |
 | **groups** | List of group names/IDs |
 | **roles** | List of role names/IDs |
-| **sso_provider** | SSO provider name (if applicable) |
+| **identity_source** | External identity provider name (if applicable) |
 | **client_ip** | Source IP address |
 | **user_agent** | Browser/client info |
 | **timestamp** | When the login occurred (UTC) |
@@ -72,6 +73,7 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **meta.id** | UUID of the event |
 | **meta.parent** | The UUID of the parent event if applicable |
 | **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of account object |
 | **account_id** | UUID of the account |
 | **account_name** | Username of the account |
 | **session_id** | UUID of the session being terminated |

@@ -3,7 +3,7 @@ from fastapi import Request
 from infrahub.auth import AccountSession, AuthResult
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.models import Branch
-from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod, SSOProvider
+from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod
 from infrahub.events.models import EventMeta
 
 
@@ -20,14 +20,15 @@ def make_login_event(
     request: Request,
     auth_method: AuthMethod,
     event_meta: EventMeta,
-    sso_provider: SSOProvider | None = None,
+    identity_source: str | None = None,
 ) -> AccountLoggedInEvent:
     return AccountLoggedInEvent(
         meta=event_meta,
+        kind=auth_result.kind,
         account_id=auth_result.account_id,
         account_name=auth_result.account_name,
         account_type=auth_result.account_type,
-        sso_provider=sso_provider,
+        identity_source=identity_source,
         auth_method=auth_method,
         session_id=str(auth_result.session_id),
         groups=auth_result.groups,
@@ -38,10 +39,11 @@ def make_login_event(
 
 
 def make_logout_event(
-    account_id: str, request: Request, account_name: str, session_id: str, event_meta: EventMeta
+    account_id: str, request: Request, account_name: str, session_id: str, account_kind: str, event_meta: EventMeta
 ) -> AccountLoggedOutEvent:
     return AccountLoggedOutEvent(
         meta=event_meta,
+        kind=account_kind,
         account_id=account_id,
         account_name=account_name,
         session_id=session_id,
