@@ -212,6 +212,7 @@ const Properties = ({ schema }: { schema: ModelSchema }) => {
         <div>
           <PropertyRow title="Used by" value={<ModelDisplay kinds={schema.used_by} />} />
           <PropertyRow title="Hierarchical" value={schema.hierarchical} />
+          <PropertyRow title="Restricted namespaces" value={schema.restricted_namespaces} />
         </div>
       )}
 
