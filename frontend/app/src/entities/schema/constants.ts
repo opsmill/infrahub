@@ -22,6 +22,7 @@ export const ATTRIBUTE_KIND = {
   JSON: "JSON",
   ANY: "Any",
   BOOLEAN: "Boolean",
+  PSTN: "PSTN",
   NODE_KIND: "NodeKind",
 } as const;
 
@@ -40,4 +41,5 @@ export const ATTRIBUTE_KINDS_FOR_LIST_VIEW: readonly AttributeKind[] = [
   ATTRIBUTE_KIND.IP_HOST,
   ATTRIBUTE_KIND.IP_NETWORK,
   ATTRIBUTE_KIND.DATETIME,
+  ATTRIBUTE_KIND.PSTN,
 ];

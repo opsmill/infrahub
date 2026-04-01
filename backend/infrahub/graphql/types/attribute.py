@@ -165,6 +165,20 @@ class MacAddressType(BaseAttribute):
         interfaces = {AttributeInterface}
 
 
+class PSTNType(BaseAttribute):
+    value = Field(String)
+    is_e164 = Field(Boolean)
+    e164 = Field(String)
+    e123_international = Field(String)
+    e123_national = Field(String)
+    tel_uri = Field(String)
+
+    class Meta:
+        description = "Attribute of type PSTN"
+        name = "PSTN"
+        interfaces = {AttributeInterface}
+
+
 class NumberAttributeType(BaseAttribute):
     value = Field(BigInt)
 

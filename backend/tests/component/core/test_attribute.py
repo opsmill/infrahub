@@ -7,6 +7,7 @@ from infrahub_sdk.uuidt import UUIDT
 from infrahub import config
 from infrahub.core.attribute import (
     MAX_STRING_LENGTH,
+    PSTN,
     URL,
     DateTime,
     Dropdown,
@@ -15,6 +16,7 @@ from infrahub.core.attribute import (
     IPNetwork,
     ListAttribute,
     MacAddress,
+    PSTNOptional,
     String,
 )
 from infrahub.core.branch import Branch
@@ -1509,3 +1511,175 @@ def test_attribute_list_regex(default_branch: Branch, regex_value: str, input_va
         data=input_value,
     )
     assert list_attrib.value == input_value
+
+
+async def test_validate_pstn_valid_values(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # E.164 format
+    assert PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+15551234567")
+    # DTMF sequence
+    assert PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="*6715551234567")
+    # Short code
+    assert PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="#73")
+    # DTMF tones A-D
+    assert PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="1234ABCD")
+    # Digits only
+    assert PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="5551234567")
+    # Special characters only
+    assert PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="*#")
+
+
+async def test_validate_pstn_optional_none(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # PSTNOptional accepts None without validation
+    attr = PSTNOptional(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=None)
+    assert attr.value is None
+
+
+async def test_validate_pstn_invalid_values(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # Invalid alphabetic characters
+    with pytest.raises(ValidationError, match=r"hello is not a valid"):
+        PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="hello")
+
+    # Misplaced plus sign
+    with pytest.raises(ValidationError, match=r"is not a valid"):
+        PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+1555+1234")
+
+    # Empty string
+    with pytest.raises(ValidationError, match=r"is not a valid"):
+        PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="")
+
+    # Unrecognized separator (underscore)
+    with pytest.raises(ValidationError, match=r"is not a valid"):
+        PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+1_555_1234")
+
+    # Plus sign alone (no digits)
+    with pytest.raises(ValidationError, match=r"is not a valid"):
+        PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+")
+
+
+async def test_validate_pstn_with_separators(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # Dashes stripped
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+1-555-123-4567")
+    assert attr.serialize_value() == "+15551234567"
+
+    # Spaces, parentheses, and dots stripped
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+1 (555) 123.4567")
+    assert attr.serialize_value() == "+15551234567"
+
+
+async def test_validate_pstn_case_normalization(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # Lowercase a-d normalized to uppercase A-D
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="1234abcd")
+    assert attr.serialize_value() == "1234ABCD"
+
+
+async def test_validate_pstn_serialize_value(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # Clean E.164 value passes through unchanged
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+15551234567")
+    assert attr.serialize_value() == "+15551234567"
+
+    # Mixed separators and case are cleaned
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+1-(555).123 abcd")
+    assert attr.serialize_value() == "+1555123ABCD"
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["+12025551234", "+442071234567", "+33123456789", "+31201234567"],
+)
+async def test_pstn_is_e164_valid(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, value: str
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=value)
+    assert attr.is_e164 is True
+    assert attr.parsed is not None
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["*6715551234567", "#73", "5551234567", "1234ABCD", "*#", "0031201234567"],
+)
+async def test_pstn_is_e164_invalid(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, value: str
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=value)
+    assert attr.is_e164 is False
+    assert attr.parsed is None
+    assert attr.e164 is None
+    assert attr.e123_international is None
+    assert attr.e123_national is None
+    assert attr.tel_uri is None
+
+
+async def test_pstn_computed_formats(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+
+    # Valid E.164 number should produce all formats
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+12025551234")
+    assert attr.e164 == "+12025551234"
+    assert attr.e123_international == "+1 202-555-1234"
+    assert attr.e123_national == "(202) 555-1234"
+    assert attr.tel_uri == "tel:+1-202-555-1234"
+
+    # French number
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+33123456789")
+    assert attr.e164 == "+33123456789"
+    assert attr.e123_international == "+33 1 23 45 67 89"
+    assert attr.e123_national == "01 23 45 67 89"
+    assert attr.tel_uri == "tel:+33-1-23-45-67-89"
+
+    # Dutch number
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="+31201234567")
+    assert attr.e164 == "+31201234567"
+    assert attr.e123_international == "+31 20 123 4567"
+    assert attr.e123_national == "020 123 4567"
+    assert attr.tel_uri == "tel:+31-20-123-4567"
+
+    # International dialing format without + (0031...) — valid DTMF but not E.164
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="0031201234567")
+    assert attr.is_e164 is False
+    assert attr.e164 is None
+
+    # DTMF sequence should produce None for all formats
+    attr = PSTN(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="*67")
+    assert attr.e164 is None
+    assert attr.e123_international is None
+    assert attr.e123_national is None
+    assert attr.tel_uri is None
+
+
+async def test_pstn_get_allowed_property_in_path() -> None:
+    allowed = PSTN.get_allowed_property_in_path()
+    assert "value" in allowed
+    assert "is_e164" in allowed
+    assert "e164" in allowed
+    assert "e123_international" in allowed
+    assert "e123_national" in allowed
+    assert "tel_uri" in allowed

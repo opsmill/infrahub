@@ -193,6 +193,7 @@ export const ObjectAttributeValue = ({
     case ATTRIBUTE_KIND.FILE:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.PSTN:
     case ATTRIBUTE_KIND.ANY:
       return <TextDisplay>{getTextValue(attributeData).toString()}</TextDisplay>;
     case ATTRIBUTE_KIND.URL:

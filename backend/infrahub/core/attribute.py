@@ -6,6 +6,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 import netaddr
+import phonenumbers
 import ujson
 from infrahub_sdk.exceptions import TimestampFormatError
 from infrahub_sdk.utils import is_valid_url
@@ -851,6 +852,91 @@ class URL(BaseAttribute):
 
 
 class URLOptional(URL):
+    value: str | None
+
+
+_PSTN_SEPARATORS = str.maketrans("", "", " -.()")
+_PSTN_PATTERN = re.compile(r"^\+?[0-9A-D#*]+$")
+
+
+def _clean_pstn(value: str) -> str:
+    """Strip common separators and normalize case for a PSTN value."""
+    return value.translate(_PSTN_SEPARATORS).upper()
+
+
+def is_valid_pstn(value: str) -> tuple[bool, str]:
+    """Validate a PSTN/DTMF string. Returns (is_valid, cleaned_value)."""
+    cleaned = _clean_pstn(value.strip())
+    if not cleaned:
+        return False, cleaned
+    if not _PSTN_PATTERN.match(cleaned):
+        return False, cleaned
+    return True, cleaned
+
+
+class PSTN(BaseAttribute):
+    type = str
+    value: str
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        super().validate_format(value=value, name=name, schema=schema)
+
+        valid, _ = is_valid_pstn(str(value))
+        if not valid:
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+
+    def serialize_value(self) -> str:
+        _, cleaned = is_valid_pstn(str(self.value))
+        return cleaned
+
+    @staticmethod
+    def get_allowed_property_in_path() -> list[str]:
+        return [
+            "e123_international",
+            "e123_national",
+            "e164",
+            "is_e164",
+            "tel_uri",
+            "value",
+        ]
+
+    @property
+    def parsed(self) -> phonenumbers.PhoneNumber | None:
+        if not self.value or not self.value.startswith("+"):
+            return None
+        try:
+            pn = phonenumbers.parse(self.value, None)
+            return pn if phonenumbers.is_valid_number(pn) else None
+        except phonenumbers.NumberParseException:
+            return None
+
+    @property
+    def is_e164(self) -> bool:
+        return self.parsed is not None
+
+    @property
+    def e164(self) -> str | None:
+        pn = self.parsed
+        return phonenumbers.format_number(pn, phonenumbers.PhoneNumberFormat.E164) if pn else None
+
+    @property
+    def e123_international(self) -> str | None:
+        pn = self.parsed
+        return phonenumbers.format_number(pn, phonenumbers.PhoneNumberFormat.INTERNATIONAL) if pn else None
+
+    @property
+    def e123_national(self) -> str | None:
+        pn = self.parsed
+        return phonenumbers.format_number(pn, phonenumbers.PhoneNumberFormat.NATIONAL) if pn else None
+
+    @property
+    def tel_uri(self) -> str | None:
+        pn = self.parsed
+        return phonenumbers.format_number(pn, phonenumbers.PhoneNumberFormat.RFC3966) if pn else None
+
+
+class PSTNOptional(PSTN):
     value: str | None
 
 

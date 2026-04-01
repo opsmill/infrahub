@@ -185,6 +185,16 @@ class URL(InfrahubDataType):
     infrahub = "URL"
 
 
+class PSTN(InfrahubDataType):
+    label: str = "PSTN"
+    graphql = graphene.String
+    graphql_query = "PSTNType"
+    graphql_create = "TextAttributeCreate"
+    graphql_update = "TextAttributeUpdate"
+    graphql_filter = graphene.String
+    infrahub = "PSTN"
+
+
 class File(InfrahubDataType):
     label: str = "File"
     graphql = graphene.String
@@ -329,6 +339,7 @@ ATTRIBUTE_TYPES: dict[str, type[InfrahubDataType]] = {
     "Password": Password,
     "HashedPassword": HashedPassword,
     "URL": URL,
+    "PSTN": PSTN,
     "File": File,
     "MacAddress": MacAddress,
     "Color": Color,
@@ -354,6 +365,7 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "Password": str,  # Passwords can be any string
     "HashedPassword": str,  # Hashed passwords are also strings
     "URL": HttpUrl,
+    "PSTN": str,  # PSTN/DTMF phone numbers as strings
     "File": str,  # File paths or identifiers as strings
     "MacAddress": str,  # MAC addresses can be straightforward strings
     "Color": str,  # Colors often represented as hex strings

@@ -105,7 +105,8 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.IP_NETWORK:
     case ATTRIBUTE_KIND.MAC_ADDRESS:
     case ATTRIBUTE_KIND.TEXT:
-    case ATTRIBUTE_KIND.URL: {
+    case ATTRIBUTE_KIND.URL:
+    case ATTRIBUTE_KIND.PSTN: {
       const { type, ...otherProps } = props;
       return <InputField {...otherProps} />;
     }

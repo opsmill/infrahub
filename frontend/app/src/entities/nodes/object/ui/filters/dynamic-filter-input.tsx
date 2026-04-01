@@ -105,6 +105,7 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
     case ATTRIBUTE_KIND.PASSWORD:
     case ATTRIBUTE_KIND.HASHED_PASSWORD:
     case ATTRIBUTE_KIND.URL:
+    case ATTRIBUTE_KIND.PSTN:
     case ATTRIBUTE_KIND.ANY: {
       return <Input autoFocus value={value} onChange={onChange} />;
     }

@@ -1,0 +1,1 @@
+Added new `PSTN` attribute kind for storing validated PSTN/DTMF phone numbers and tone sequences. Accepts E.164 format, DTMF characters (0-9, A-D, *, #), and common separators (stripped on storage). Includes computed phone number format properties (`is_e164`, `e164`, `e123_international`, `e123_national`, `tel_uri`) queryable via GraphQL.

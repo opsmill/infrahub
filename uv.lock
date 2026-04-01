@@ -1398,6 +1398,7 @@ dependencies = [
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "opentelemetry-instrumentation-aio-pika" },
     { name = "opentelemetry-instrumentation-fastapi" },
+    { name = "phonenumbers" },
     { name = "prefect" },
     { name = "prefect-redis" },
     { name = "puremagic" },
@@ -1484,6 +1485,7 @@ requires-dist = [
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = "==1.39.0" },
     { name = "opentelemetry-instrumentation-aio-pika", specifier = "==0.60b0" },
     { name = "opentelemetry-instrumentation-fastapi", specifier = "==0.60b0" },
+    { name = "phonenumbers", specifier = ">=9.0,<10" },
     { name = "prefect", specifier = "==3.6.13" },
     { name = "prefect-redis", specifier = "==0.2.8" },
     { name = "puremagic", specifier = ">=1.30,<2" },
@@ -2625,6 +2627,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/42/92/cc564bf6381ff43ce1f4d06852fc19a2f11d180f23dc32d9588bee2f149d/pexpect-4.9.0.tar.gz", hash = "sha256:ee7d41123f3c9911050ea2c2dac107568dc43b2d3b0c7557a33212c398ead30f", size = 166450, upload-time = "2023-11-25T09:07:26.339Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/9e/c3/059298687310d527a58bb01f3b1965787ee3b40dce76752eda8b44e9a2c5/pexpect-4.9.0-py2.py3-none-any.whl", hash = "sha256:7236d1e080e4936be2dc3e326cec0af72acf9212a7e1d060210e70a47e253523", size = 63772, upload-time = "2023-11-25T06:56:14.81Z" },
+]
+
+[[package]]
+name = "phonenumbers"
+version = "9.0.26"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/a3/3720326431a23c8e8944a07cdf51520608f1fded87e32e991116fdb801bd/phonenumbers-9.0.26.tar.gz", hash = "sha256:9e582c827f0f5503cddeebef80099475a52ffa761551d8384099c7ec71298cbf", size = 2298587, upload-time = "2026-03-13T11:34:19.656Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dd/93/8825b3c9c23e595f34aa11735b29550c27a0f57fe4fc8c9ee737390566ca/phonenumbers-9.0.26-py2.py3-none-any.whl", hash = "sha256:ff473da5712965b6c7f7a31cbff8255864df694eb48243771133ecb761e807c1", size = 2584969, upload-time = "2026-03-13T11:34:16.671Z" },
 ]
 
 [[package]]
