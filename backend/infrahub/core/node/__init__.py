@@ -519,8 +519,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         )
 
     async def _process_fields(self, fields: dict, db: InfrahubDatabase, process_pools: bool = True) -> None:
-        errors = []
-
         if "_source" in fields.keys():
             self._source = fields["_source"]
         if "_owner" in fields.keys():
@@ -536,6 +534,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             if field_name not in self._schema.valid_input_names:
                 log.error(f"{field_name} is not a valid input for {self.get_kind()}")
 
+        errors = []
         # Backfill fields with the ones from the template if there's one
         pool_pending_fields = await self.handle_object_template(
             fields=fields, db=db, errors=errors, process_pools=process_pools
@@ -547,40 +546,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 self._profile_provided_rels,
             ) = await self._get_profile_provided_mandatory_fields(db=db, fields=fields)
 
-            for mandatory_attr in self._schema.mandatory_attribute_names:
-                if (
-                    mandatory_attr not in fields.keys()
-                    and mandatory_attr not in self._profile_provided_attrs
-                    and mandatory_attr not in pool_pending_fields
-                ):
-                    if self._schema.is_node_schema:
-                        mandatory_attribute = self._schema.get_attribute(name=mandatory_attr)
-                        if (
-                            mandatory_attribute.computed_attribute
-                            and mandatory_attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
-                        ):
-                            self._computed_jinja2_attributes.append(mandatory_attr)
-                            continue
+            errors.extend(self._validate_mandatory_attributes(fields=fields, pool_pending_fields=pool_pending_fields))
+            errors.extend(
+                self._validate_mandatory_relationships(fields=fields, pool_pending_fields=pool_pending_fields)
+            )
 
-                        if mandatory_attribute.kind == "NumberPool":
-                            continue
+            if errors:
+                raise ValidationError(errors)
 
-                    errors.append(
-                        ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"})
-                    )
-
-            for mandatory_rel in self._schema.mandatory_relationship_names:
-                if (
-                    mandatory_rel not in fields.keys()
-                    and mandatory_rel not in self._profile_provided_rels
-                    and mandatory_rel not in pool_pending_fields
-                ):
-                    errors.append(
-                        ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"})
-                    )
-
-        if errors:
-            raise ValidationError(errors)
+            if self._schema.is_node_schema:
+                schema_branch = db.schema.get_schema_branch(self._branch.name)
+                local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
+                self._computed_jinja2_attributes = [t.attribute.name for t in local_targets]
 
         # -------------------------------------------
         # Generate Attribute and Relationship and assign them
@@ -600,6 +577,41 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         for name in self._attributes + self._relationships:
             if hasattr(self, f"process_{name}"):
                 await getattr(self, f"process_{name}")(db=db)
+
+    def _validate_mandatory_attributes(self, fields: dict, pool_pending_fields: set[str]) -> list[ValidationError]:
+        """Validate that all mandatory attributes are provided."""
+        errors: list[ValidationError] = []
+        for mandatory_attr in self._schema.mandatory_attribute_names:
+            if (
+                mandatory_attr not in fields.keys()
+                and mandatory_attr not in self._profile_provided_attrs
+                and mandatory_attr not in pool_pending_fields
+            ):
+                if self._schema.is_node_schema:
+                    mandatory_attribute = self._schema.get_attribute(name=mandatory_attr)
+                    if (
+                        mandatory_attribute.computed_attribute
+                        and mandatory_attribute.computed_attribute.kind == ComputedAttributeKind.JINJA2
+                    ):
+                        continue
+
+                    if mandatory_attribute.kind == "NumberPool":
+                        continue
+
+                errors.append(ValidationError({mandatory_attr: f"{mandatory_attr} is mandatory for {self.get_kind()}"}))
+        return errors
+
+    def _validate_mandatory_relationships(self, fields: dict, pool_pending_fields: set[str]) -> list[ValidationError]:
+        """Validate that all mandatory relationships are provided."""
+        errors: list[ValidationError] = []
+        for mandatory_rel in self._schema.mandatory_relationship_names:
+            if (
+                mandatory_rel not in fields.keys()
+                and mandatory_rel not in self._profile_provided_rels
+                and mandatory_rel not in pool_pending_fields
+            ):
+                errors.append(ValidationError({mandatory_rel: f"{mandatory_rel} is mandatory for {self.get_kind()}"}))
+        return errors
 
     async def _process_fields_relationships(self, fields: dict, db: InfrahubDatabase) -> list[ValidationError]:
         errors: list[ValidationError] = []
