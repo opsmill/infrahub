@@ -8,9 +8,10 @@ import { classNames } from "@/shared/utils/common";
 interface FilterTagProps extends TagProps {
   label: React.ReactNode;
   value: React.ReactNode;
+  condition?: string;
 }
 
-export function FilterTag({ label, value, ...props }: FilterTagProps) {
+export function FilterTag({ label, value, condition, ...props }: FilterTagProps) {
   return (
     <Tag
       className={classNames(
@@ -18,10 +19,11 @@ export function FilterTag({ label, value, ...props }: FilterTagProps) {
         "group inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 bg-neutral-100 px-1 text-gray-600 text-sm",
         "data-hovered:border-custom-blue-700 data-hovered:bg-gray-100"
       )}
-      textValue={`${label} contains ${value}`}
+      textValue={`${label} ${condition ?? "contains"} ${value}`}
       {...props}
     >
       <span className="ml-1.5">{label}</span>
+      {condition && <span className="text-gray-400">{condition}</span>}
       <div className="h-6 w-px self-stretch bg-gray-300" />
       <span className="inline-flex items-center font-medium text-custom-blue-700">{value}</span>
       <Icon
