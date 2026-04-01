@@ -20,7 +20,7 @@ test.describe("/objects/CoreArtifact - Artifact page", () => {
 
     await page.getByRole("link", { name: "startup-config" }).first().click();
     while (await page.getByText("no aaa root").first().isHidden()) {
-      await expect(page.getByRole("link", { name: "Openconfig Interface for" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "startup-config" })).toBeVisible();
       if (await page.getByText("No artifact content available").isVisible()) {
         await page.reload();
       }
