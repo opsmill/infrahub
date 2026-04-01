@@ -38,6 +38,7 @@ query {
         occurred_at
         account_id
         ... on AccountLoggedInEvent {
+          kind
           account_name
           auth_method
           session_id

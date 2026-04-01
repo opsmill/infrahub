@@ -32,6 +32,7 @@ class AuthResult:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `kind` | `str` | ✓ | The type of account object |
 | `account_id` | `str` | ✓ | UUID of the account |
 | `account_name` | `str` | ✓ | Username |
 | `account_type` | `str` | ✓ | USER or SCRIPT |
@@ -62,6 +63,7 @@ class AuthResult:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `kind` | `str` | ✓ | The type of account object |
 | `account_id` | `str` | ✓ | UUID of the account |
 | `account_name` | `str` | ✓ | Username |
 | `session_id` | `str` | ✓ | UUID of the session being terminated |
