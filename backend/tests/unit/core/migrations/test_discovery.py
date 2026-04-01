@@ -4,18 +4,19 @@ from infrahub.core.migrations.graph.discovery import MIGRATION_FILE_PATTERN, dis
 
 
 class TestMigrationFilePattern:
-    def test_valid_pattern(self) -> None:
+    def test_valid_migration_files(self) -> None:
         assert MIGRATION_FILE_PATTERN.match("m001_add_version.py")
         assert MIGRATION_FILE_PATTERN.match("m067_freeze_orphaned.py")
         assert MIGRATION_FILE_PATTERN.match("m123_some_migration.py")
 
-    def test_invalid_pattern(self) -> None:
+    def test_rejects_non_migration_files(self) -> None:
         assert not MIGRATION_FILE_PATTERN.match("m01_too_short.py")
         assert not MIGRATION_FILE_PATTERN.match("m1234_too_long.py")
         assert not MIGRATION_FILE_PATTERN.match("migration_001.py")
         assert not MIGRATION_FILE_PATTERN.match("m001_example.txt")
         assert not MIGRATION_FILE_PATTERN.match("__init__.py")
         assert not MIGRATION_FILE_PATTERN.match("discovery.py")
+        assert not MIGRATION_FILE_PATTERN.match("load_schema_branch.py")
 
 
 class TestDiscoverMigrations:

@@ -14,13 +14,14 @@ MIGRATION_FILE_PATTERN = re.compile(r"^m(\d{3})_.+\.py$")
 def discover_migrations() -> list[type[MigrationTypes]]:
     """Scan the graph migrations directory for migration files and return sorted migration classes.
 
-    Discovers files matching `m{NNN}_{name}.py`, imports each module, extracts the `Migration{NNN}` class, validates there are no duplicate numbers,
-    and returns the list sorted by migration number.
+    Discovers files matching ``m{NNN}_{name}.py``, imports each module, extracts
+    the ``Migration{NNN}`` class, validates there are no duplicate numbers, and
+    returns the list sorted by migration number.
     """
     migration_dir = Path(__file__).parent
     migrations: list[tuple[int, type[MigrationTypes]]] = []
 
-    for path in sorted(migration_dir.glob("m[0-9][0-9][0-9]_*.py")):
+    for path in sorted(migration_dir.iterdir()):
         match = MIGRATION_FILE_PATTERN.match(path.name)
         if not match:
             continue
