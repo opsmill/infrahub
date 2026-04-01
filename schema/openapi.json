@@ -3723,6 +3723,9 @@
                                 "$ref": "#/components/schemas/AttributeParameters"
                             },
                             {
+                                "$ref": "#/components/schemas/FloatAttributeParameters"
+                            },
+                            {
                                 "$ref": "#/components/schemas/ListAttributeParameters"
                             },
                             {
@@ -3987,6 +3990,9 @@
                         "anyOf": [
                             {
                                 "$ref": "#/components/schemas/AttributeParameters"
+                            },
+                            {
+                                "$ref": "#/components/schemas/FloatAttributeParameters"
                             },
                             {
                                 "$ref": "#/components/schemas/ListAttributeParameters"
@@ -4439,6 +4445,54 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "ExperimentalFeaturesSettings"
+            },
+            "FloatAttributeParameters": {
+                "properties": {
+                    "id": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Id"
+                    },
+                    "state": {
+                        "$ref": "#/components/schemas/HashableModelState",
+                        "default": "present"
+                    },
+                    "min_value": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Min Value",
+                        "description": "Set a minimum value allowed.",
+                        "update": "validate_constraint"
+                    },
+                    "max_value": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Max Value",
+                        "description": "Set a maximum value allowed.",
+                        "update": "validate_constraint"
+                    }
+                },
+                "additionalProperties": false,
+                "type": "object",
+                "title": "FloatAttributeParameters"
             },
             "GenericSchema": {
                 "properties": {

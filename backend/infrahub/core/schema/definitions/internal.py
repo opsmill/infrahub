@@ -34,6 +34,7 @@ from infrahub.core.constants import (
 )
 from infrahub.core.schema.attribute_parameters import (
     AttributeParameters,
+    FloatAttributeParameters,
     ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -647,6 +648,7 @@ attribute_schema = SchemaNode(
             kind="JSON",
             internal_kind=[
                 AttributeParameters,
+                FloatAttributeParameters,
                 ListAttributeParameters,
                 TextAttributeParameters,
                 NumberAttributeParameters,

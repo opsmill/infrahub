@@ -10,6 +10,7 @@ from infrahub.core.constants import AllowOverrideType, BranchSupportType, Hashab
 from infrahub.core.models import HashableModel
 from infrahub.core.schema.attribute_parameters import (
     AttributeParameters,
+    FloatAttributeParameters,
     ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -121,6 +122,7 @@ class GeneratedAttributeSchema(HashableModel):
     )
     parameters: (
         AttributeParameters
+        | FloatAttributeParameters
         | ListAttributeParameters
         | TextAttributeParameters
         | NumberAttributeParameters
