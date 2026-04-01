@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from infrahub.core import registry
@@ -8,11 +10,9 @@ from infrahub.core.node import Node
 from infrahub.core.path import DataPath, SchemaPath
 from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.validators.attribute.kind import AttributeKindChecker, AttributeKindUpdateValidatorQuery
-from infrahub.core.validators.model import SchemaConstraintValidatorRequest
+from infrahub.core.validators.attribute.kind import AttributeKindUpdateValidatorQuery
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -188,9 +188,7 @@ class TestFloatValueRoundTrip:
         refreshed = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
         assert refreshed.weight.value == 8.0
 
-    async def test_store_zero(
-        self, db: InfrahubDatabase, default_branch: Branch, float_schema: SchemaBranch
-    ) -> None:
+    async def test_store_zero(self, db: InfrahubDatabase, default_branch: Branch, float_schema: SchemaBranch) -> None:
         node = await Node.init(db=db, schema="TestMeasurement", branch=default_branch)
         await node.new(db=db, label="widget-d", weight=0.0)
         await node.save(db=db)
@@ -202,11 +200,11 @@ class TestFloatValueRoundTrip:
         self, db: InfrahubDatabase, default_branch: Branch, float_schema: SchemaBranch
     ) -> None:
         node = await Node.init(db=db, schema="TestMeasurement", branch=default_branch)
-        await node.new(db=db, label="widget-e", weight=-3.14)
+        await node.new(db=db, label="widget-e", weight=-math.pi)
         await node.save(db=db)
 
         refreshed = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
-        assert refreshed.weight.value == -3.14
+        assert refreshed.weight.value == -math.pi
 
     async def test_store_default_value(
         self, db: InfrahubDatabase, default_branch: Branch, default_float_schema: SchemaBranch
@@ -415,9 +413,7 @@ class TestNumberFloatMigration:
         weight_attr.kind = "Number"
         registry.schema.set(name="TestMeasurement", schema=meas_schema, branch=default_branch.name)
 
-        schema_path = SchemaPath(
-            path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestMeasurement", field_name="weight"
-        )
+        schema_path = SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestMeasurement", field_name="weight")
 
         query = await AttributeKindUpdateValidatorQuery.init(
             db=db, branch=default_branch, node_schema=meas_schema, schema_path=schema_path

@@ -178,7 +178,7 @@ def build_regex_attrs(values: list[str | int | float | bool]) -> str:
     return ".*(" + "|".join([build_regex_attr(value=value) for value in values]) + ").*"
 
 
-def build_regex_attr(value: str | int | float | bool) -> str:
+def build_regex_attr(value: str | float | bool) -> str:
     """Build a single regex to match a value in a JSON string
     For a string, it must have quotes
     For int, float and bool, it must not have quotes

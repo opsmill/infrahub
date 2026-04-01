@@ -7,7 +7,7 @@ import { Input, type InputProps } from "@/shared/components/ui/input";
 
 export interface FloatFieldProps
   extends Omit<DynamicFloatFieldProps, "type" | "onChange">,
-    Omit<InputProps, "defaultValue" | "name"> {}
+    Omit<InputProps, "defaultValue" | "name" | "onChange"> {}
 
 const FloatField = ({
   defaultValue,

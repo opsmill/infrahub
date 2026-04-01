@@ -385,7 +385,7 @@ async def default_attribute_query_filter(
     name: str,
     filter_name: str,
     branch: Branch | None = None,  # noqa: ARG001
-    filter_value: str | int | float | bool | list | None = None,
+    filter_value: str | float | bool | list | None = None,
     attribute_kind: str | None = None,
     include_match: bool = True,
     param_prefix: str | None = None,
@@ -404,7 +404,9 @@ async def default_attribute_query_filter(
     if filter_value and not isinstance(filter_value, str | bool | int | float | list):
         raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
 
-    if isinstance(filter_value, list) and not all(isinstance(value, str | bool | int | float) for value in filter_value):
+    if isinstance(filter_value, list) and not all(
+        isinstance(value, str | bool | int | float) for value in filter_value
+    ):
         raise TypeError(f"filter {filter_name}: {filter_value} (list) contains unsupported item")
 
     param_prefix = param_prefix or f"attr_{name}"
