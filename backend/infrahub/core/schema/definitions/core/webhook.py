@@ -26,6 +26,7 @@ core_webhook = GenericSchema(
     include_in_menu=False,
     icon="mdi:webhook",
     branch=BranchSupportType.AGNOSTIC,
+    restricted_namespaces=["Core"],
     uniqueness_constraints=[["name__value"]],
     attributes=[
         Attr(name="name", kind="Text", unique=True, order_weight=1000),
