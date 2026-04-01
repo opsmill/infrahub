@@ -1,0 +1,32 @@
+---
+title: Release 1.8.3
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.8.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>March 31st, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.8.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.8.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Corrected data diff view within a proposed change or branch view so that changes to Profiles show up. ([#8529](https://github.com/opsmill/infrahub/issues/8529))
+- Fixed hard failures on GraphQL queries that would exhaust Neo4j's server thread pool by implementing back off retry. ([#8696](https://github.com/opsmill/infrahub/issues/8696))
+- Fix object creation from a template when a resource pool is assigned to a required relationship or attribute field. ([#8701](https://github.com/opsmill/infrahub/issues/8701))
+- Deleting a node that inherits from `CoreArtifactTarget` now automatically deletes its associated artifacts. ([#8735](https://github.com/opsmill/infrahub/issues/8735))
+- Add missing `hfid` field to `RelatedIPAddressNodeInput` GraphQL type, allowing IP address relationships to be referenced by human-friendly ID
+- Fixed "Import latest commit" action crashing with `'Node' object has no attribute 'ref'` when used on a regular Repository instead of a Read-Only Repository.
+
+### Housekeeping
+
+- Migrated Node.js from version 22 to 24 LTS across CI workflows, Docker build, and package engine constraints.

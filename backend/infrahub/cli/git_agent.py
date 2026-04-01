@@ -24,6 +24,7 @@ from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.trace import configure_trace
+from infrahub.workers.dependencies import build_tls_registry, get_http
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -112,7 +113,7 @@ async def start(
     database = await context.init_db(retry=1)
 
     workflow = config.OVERRIDE.workflow or (
-        WorkflowWorkerExecution()
+        WorkflowWorkerExecution(tls_registry=build_tls_registry())
         if config.SETTINGS.workflow.driver == config.WorkflowDriver.WORKER
         else WorkflowLocalExecution()
     )
@@ -130,6 +131,7 @@ async def start(
         workflow=workflow,
         message_bus=message_bus,
         component_type=component_type,
+        http=get_http(),
     )
 
     # Initialize the lock

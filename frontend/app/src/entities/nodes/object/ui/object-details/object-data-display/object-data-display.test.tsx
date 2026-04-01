@@ -490,6 +490,84 @@ describe("ObjectDataDisplay - showExtra filtering", () => {
     expect(component.getByTestId("extra-field-indicator").query()).toBeNull();
   });
 
+  it("excludes relationships listed in excludeRelationships", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      attributes: [
+        generateAttributeSchema({
+          name: "name",
+          label: "Name",
+          display: "default",
+          order_weight: 1000,
+        }),
+      ],
+      relationships: [
+        generateRelationshipSchema({
+          name: "device",
+          label: "Device",
+          peer: "InfraDevice",
+          kind: "Parent",
+          cardinality: "one",
+          display: "default",
+          order_weight: 2000,
+        }),
+        generateRelationshipSchema({
+          name: "children",
+          label: "Children",
+          peer: "BuiltinIPPrefix",
+          kind: "Attribute",
+          cardinality: "many",
+          display: "default",
+          order_weight: 3000,
+        }),
+      ],
+    });
+
+    const objectData: NodeObjectWithMetadata = {
+      id: "test-1",
+      display_label: "Test",
+      __typename: "BuiltinTag",
+      name: generateNodeAttributeWithMetadata({ value: "test" }),
+      device: generateRelationshipNodeWithMetadata({
+        node: { id: "dev-1", display_label: "Device 1", __typename: "InfraDevice" },
+      }),
+      children: {
+        edges: [
+          {
+            node: { id: "child-1", display_label: "Child 1", __typename: "BuiltinIPPrefix" },
+            properties: {
+              updated_at: "2024-01-01",
+              is_protected: false,
+              source: null,
+              owner: null,
+            },
+          },
+        ],
+        properties: {
+          updated_at: "2024-01-01",
+          is_protected: false,
+          source: null,
+          owner: null,
+        },
+      },
+    };
+
+    // WHEN
+    const component = await render(
+      <ObjectDataDisplay
+        objectSchema={schema}
+        objectData={objectData}
+        permission={permission}
+        excludeRelationships={["children"]}
+      />
+    );
+
+    // THEN
+    await expect.element(component.getByText("Name")).toBeVisible();
+    await expect.element(component.getByText("Device")).toBeVisible();
+    await expect.element(component.baseElement).not.toHaveTextContent("Children");
+  });
+
   it("skips fields that have no corresponding data in objectData", async () => {
     // GIVEN
     const schema = generateNodeSchema({

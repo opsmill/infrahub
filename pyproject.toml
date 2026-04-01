@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.8.1"
+version = "1.8.3"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -626,10 +626,6 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/config.py" = [
-    "S323", # Allow users to create an SSL context that doesn't validate certificates
-]
-
 "backend/infrahub/core/branch/models.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
@@ -712,6 +708,10 @@ allow-dunder-method-names = [
 
 "backend/infrahub/serve/log.py" = [
     "LOG004",  # `.exception()` call outside exception handlers
+]
+
+"backend/infrahub/tls/context_builder.py" = [
+    "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
 "tasks/__init__.py" = [

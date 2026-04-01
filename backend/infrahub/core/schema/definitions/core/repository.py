@@ -106,6 +106,7 @@ core_generic_repository = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"], ["location__value"]],
     documentation="/topics/repository",
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(
             name="name",

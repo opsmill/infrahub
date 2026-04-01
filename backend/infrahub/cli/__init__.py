@@ -62,6 +62,7 @@ def shell() -> None:
         get_cache,
         get_component,
         get_database,
+        get_http,
         get_workflow,
         set_component_type,
     )
@@ -87,6 +88,7 @@ def shell() -> None:
             workflow=workflow,
             component=component,
             component_type=component_type,
+            http=get_http(),
         )
         initialize_lock(service=service)
 

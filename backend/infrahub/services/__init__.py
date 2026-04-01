@@ -6,6 +6,7 @@ from infrahub.components import ComponentType
 from infrahub.exceptions import InitializationError
 from infrahub.log import get_logger
 from infrahub.message_bus.messages import ROUTING_KEY_MAP
+from infrahub.tls.registry import TlsContextRegistry
 
 from .adapters.event import InfrahubEventService
 from .adapters.http.httpx import HttpxAdapter
@@ -109,7 +110,7 @@ class InfrahubServices:
             component_type=component_type,
             scheduler=scheduler,
             event=event or InfrahubEventService(message_bus, log_forwarding=log_forwarding),
-            http=http or HttpxAdapter(),
+            http=http or HttpxAdapter(tls_registry=TlsContextRegistry()),
             log_forwarding=log_forwarding,
         )
 

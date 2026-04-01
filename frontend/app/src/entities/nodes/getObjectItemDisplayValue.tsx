@@ -19,6 +19,7 @@ import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
+import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
@@ -181,6 +182,10 @@ export const ObjectAttributeValue = ({
 }) => {
   if (!attributeData.value && attributeData.value !== 0 && attributeData.value !== false) {
     return "-";
+  }
+
+  if (attributeSchema.name === "utilization" && typeof attributeData.value === "number") {
+    return <ProgressBarChart value={attributeData.value} />;
   }
 
   switch (attributeSchema.kind as AttributeKind) {

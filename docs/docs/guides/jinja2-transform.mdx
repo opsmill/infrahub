@@ -130,6 +130,50 @@ Response to the tags query:
 
 While it would be possible to create a Transformation that targets all of these devices, for example if you want to create a report, the goal for us is to be able to focus on one of these objects. For this reason we need to modify the query from above to take an input parameter so that we can filter the result to what we want.
 
+:::warning Single-target query requirement
+For proper artifact detection, your query must target a **unique node** using a unique attribute or ID. This ensures Infrahub only regenerates the necessary artifacts instead of regenerating all artifacts unnecessarily.
+
+**Requirements for a valid single-target query:**
+
+- Must filter on a unique identifier (ID or unique attribute like `name`)
+- Must use a required variable, for example, `$name: String!`
+- Must use exact match filters, for example, `name__value: $name`, not list filters, for example, `name__values: $name`
+
+**Valid example:**
+
+```graphql
+query BuiltinTag($name: String!) {
+  BuiltinTag(name__value: $name) {
+    edges { node { id } }
+  }
+}
+```
+
+**Invalid examples (will cause excessive artifact generation):**
+
+No filter at all:
+
+```graphql
+query BuiltinTag {
+  BuiltinTag {
+    edges { node { id } }
+  }
+}
+```
+
+Filtering on a non-unique attribute:
+
+```graphql
+query BuiltinTag($description: String!) {
+  BuiltinTag(description__value: $description) {
+    edges { node { id } }
+  }
+}
+```
+
+To learn more about single-target queries and why they are important, see the [GraphQL topic](../topics/graphql.mdx#single-target-query-pattern).
+:::
+
 Create a local directory on your computer.
 
 ```shell
@@ -214,9 +258,9 @@ Three parts here are required, first the `name` of the Transformation which shou
 
 Within the `device_config_render` folder you should now have three files:
 
-* device_config.gql: Contains the GraphQL query
-* device_config.j2: Contains the Jinja2 Template
-* .infrahub.yml: Contains the definition for the Transformation
+- device_config.gql: Contains the GraphQL query
+- device_config.j2: Contains the Jinja2 Template
+- .infrahub.yml: Contains the definition for the Transformation
 
 Before we can test our Transformation we must add the files to a local Git repository.
 
@@ -272,8 +316,8 @@ A Transformation can be rendered on demand via the REST API with the endpoint: `
 
 This endpoint is branch-aware and it accepts the name of the branch and/or the time as URL parameters.
 
-* `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main`
-* `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&at=<time of your choice>`
+- `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main`
+- `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&at=<time of your choice>`
 
 :::info
 
