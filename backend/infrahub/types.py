@@ -239,6 +239,16 @@ class NumberPool(Number):
     label: str = "Number Pool"
 
 
+class Float(InfrahubDataType):
+    label: str = "Float"
+    graphql = graphene.Float
+    graphql_query = "FloatAttributeType"
+    graphql_create = "FloatAttributeCreate"
+    graphql_update = "FloatAttributeUpdate"
+    graphql_filter = graphene.Float
+    infrahub = "Float"
+
+
 class Bandwidth(InfrahubDataType):
     label: str = "Bandwidth"
     graphql = graphene.Int
@@ -334,6 +344,7 @@ ATTRIBUTE_TYPES: dict[str, type[InfrahubDataType]] = {
     "Color": Color,
     "Number": Number,
     "NumberPool": NumberPool,
+    "Float": Float,
     "Bandwidth": Bandwidth,
     "IPHost": IPHost,
     "IPNetwork": IPNetwork,
@@ -359,6 +370,7 @@ ATTRIBUTE_PYTHON_TYPES: dict[str, type] = {
     "Color": str,  # Colors often represented as hex strings
     "Number": float,  # Numbers can be floats for general use
     "NumberPool": float,  # Numbers can be floats for general use
+    "Float": float,
     "Bandwidth": float,  # Bandwidth in some units, represented as a float
     "IPHost": IPvAnyAddress,  # type: ignore[dict-item]
     "IPNetwork": str,

@@ -15,6 +15,7 @@ from infrahub.types import ATTRIBUTE_KIND_LABELS, ATTRIBUTE_TYPES
 
 from .attribute_parameters import (
     AttributeParameters,
+    FloatAttributeParameters,
     ListAttributeParameters,
     NumberAttributeParameters,
     NumberPoolParameters,
@@ -157,6 +158,9 @@ class AttributeSchema(GeneratedAttributeSchema):
         if isinstance(self.parameters, ListAttributeParameters) and self.kind != "List":
             raise ValueError(f"ListAttributeParameters can't be used as parameters for {self.kind}")
 
+        if isinstance(self.parameters, FloatAttributeParameters) and self.kind != "Float":
+            raise ValueError(f"FloatAttributeParameters can't be used as parameters for {self.kind}")
+
         return self
 
     def get_class(self) -> type[BaseAttribute]:
@@ -282,6 +286,14 @@ class NumberAttributeSchema(AttributeSchema):
     )
 
 
+class FloatAttributeSchema(AttributeSchema):
+    parameters: FloatAttributeParameters = Field(
+        default_factory=FloatAttributeParameters,
+        description="Extra parameters specific to float attributes",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+
 class ListAttributeSchema(AttributeSchema):
     """Schema for List attributes with regex validation support.
 
@@ -305,4 +317,5 @@ attribute_schema_class_by_kind: dict[str, type[AttributeSchema]] = {
     "TextArea": TextAttributeSchema,
     "List": ListAttributeSchema,
     "Number": NumberAttributeSchema,
+    "Float": FloatAttributeSchema,
 }

@@ -8,6 +8,7 @@ export const ATTRIBUTE_ICONS: Record<AttributeKind, string> = {
   Text: "mdi:text",
   TextArea: "mdi:text-box-outline",
   Number: "mdi:numeric",
+  Float: "mdi:decimal",
   Boolean: "mdi:checkbox-marked-circle-outline",
   Dropdown: "mdi:format-list-bulleted-square",
   DateTime: "mdi:calendar-clock",

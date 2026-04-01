@@ -109,10 +109,12 @@ export function DynamicFilterInput({ fieldSchema, value, onChange }: DynamicFilt
       return <Input autoFocus value={value} onChange={onChange} />;
     }
     case ATTRIBUTE_KIND.BANDWIDTH:
-    case ATTRIBUTE_KIND.NUMBER: {
+    case ATTRIBUTE_KIND.NUMBER:
+    case ATTRIBUTE_KIND.FLOAT: {
       return (
         <Input
           type="number"
+          step={fieldKind === ATTRIBUTE_KIND.FLOAT ? "any" : undefined}
           autoFocus
           value={value}
           onChange={(e) => onChange(e.target.valueAsNumber)}

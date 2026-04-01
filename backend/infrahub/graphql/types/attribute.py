@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+import graphene
 from graphene import BigInt, Boolean, DateTime, Field, InputObjectType, Int, List, ObjectType, String
 from graphene.types.generic import GenericScalar
 
@@ -171,6 +172,15 @@ class NumberAttributeType(BaseAttribute):
     class Meta:
         description = "Attribute of type Number"
         name = "NumberAttribute"
+        interfaces = {AttributeInterface}
+
+
+class FloatAttributeType(BaseAttribute):
+    value = Field(graphene.Float)
+
+    class Meta:
+        description = "Attribute of type Float"
+        name = "FloatAttribute"
         interfaces = {AttributeInterface}
 
 

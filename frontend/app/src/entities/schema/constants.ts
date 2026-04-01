@@ -14,6 +14,7 @@ export const ATTRIBUTE_KIND = {
   MAC_ADDRESS: "MacAddress",
   COLOR: "Color",
   NUMBER: "Number",
+  FLOAT: "Float",
   BANDWIDTH: "Bandwidth",
   IP_HOST: "IPHost",
   IP_NETWORK: "IPNetwork",
@@ -29,6 +30,7 @@ export const ATTRIBUTE_KIND = {
 export const ATTRIBUTE_KINDS_FOR_LIST_VIEW: readonly AttributeKind[] = [
   ATTRIBUTE_KIND.TEXT,
   ATTRIBUTE_KIND.NUMBER,
+  ATTRIBUTE_KIND.FLOAT,
   ATTRIBUTE_KIND.BOOLEAN,
   ATTRIBUTE_KIND.DROPDOWN,
   ATTRIBUTE_KIND.EMAIL,

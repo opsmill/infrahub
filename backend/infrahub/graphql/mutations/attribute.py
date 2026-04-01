@@ -1,5 +1,6 @@
 from typing import Any
 
+import graphene
 from graphene import BigInt, Boolean, Field, InputObjectType, Int, String
 from graphene.types.generic import GenericScalar
 
@@ -54,6 +55,14 @@ class NumberAttributeCreate(BaseAttributeCreate):
 class NumberAttributeUpdate(BaseAttributeUpdate):
     value = BigInt(required=False)
     from_pool = Field(GenericPoolInput, required=False)
+
+
+class FloatAttributeCreate(BaseAttributeCreate):
+    value = graphene.Float(required=False)
+
+
+class FloatAttributeUpdate(BaseAttributeUpdate):
+    value = graphene.Float(required=False)
 
 
 class IntAttributeCreate(BaseAttributeCreate):

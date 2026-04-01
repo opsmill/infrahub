@@ -17,6 +17,7 @@ export type AttributeKind = (typeof ATTRIBUTE_KIND)[keyof typeof ATTRIBUTE_KIND]
 
 export type TextAttributeParameters = components["schemas"]["TextAttributeParameters"];
 export type NumberAttributeParameters = components["schemas"]["NumberAttributeParameters"];
+export type FloatAttributeParameters = components["schemas"]["FloatAttributeParameters"];
 
 export type Namespace = {
   name: string;

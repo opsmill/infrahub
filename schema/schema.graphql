@@ -8111,6 +8111,24 @@ type FieldsMapping {
   mapping: GenericScalar!
 }
 
+"""Attribute of type Float"""
+type FloatAttribute implements AttributeInterface {
+  id: String
+  is_default: Boolean
+  is_from_profile: Boolean
+  is_inherited: Boolean
+  is_protected: Boolean
+  owner: LineageOwner
+  permissions: PermissionType
+  source: LineageSource
+  """
+  Date/Time when the attribute was last modified by a user or a system task
+  """
+  updated_at: DateTime
+  updated_by: CoreGenericAccount
+  value: Float
+}
+
 type GeneratorDefinitionRequestRun {
   ok: Boolean
   task: TaskInfo
