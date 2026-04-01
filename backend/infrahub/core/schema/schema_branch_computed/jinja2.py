@@ -17,28 +17,30 @@ class ComputedAttributeTarget(BaseModel):
     """Identifies a computed attribute that needs recomputation.
 
     Points to a specific (kind, attribute) pair — e.g. InfraDevice.computed_name — that should
-    be re-evaluated when a dependency changes. The ``filter_keys`` field carries relationship-based
-    query filters (e.g. ``site__ids``) used to locate affected nodes when the trigger comes from
-    a peer node rather than the owner itself.
+    be re-evaluated when a dependency changes.
     """
 
     kind: str
     attribute: AttributeSchema
-    filter_keys: list[str] = Field(default_factory=list)
 
     @property
     def key_name(self) -> str:
         return f"{self.kind}_{self.attribute.name}"
 
-    @property
-    def node_filters(self) -> list[str]:
-        if self.filter_keys:
-            return self.filter_keys
-
-        return ["ids"]
-
     def __hash__(self) -> int:
-        return hash((self.kind, self.attribute, tuple(self.filter_keys)))
+        return hash((self.kind, self.attribute))
+
+
+class ResolvedComputedTarget(BaseModel):
+    """A ComputedAttributeTarget paired with the query filters needed to locate affected nodes.
+
+    The ``node_filters`` carry relationship-based query filters (e.g. ``site__ids``) built at
+    resolution time by :meth:`RegisteredNodeComputedAttribute.get_targets`. When the trigger comes
+    from the owner itself, the default ``["ids"]`` filter is used.
+    """
+
+    target: ComputedAttributeTarget
+    node_filters: list[str] = Field(default_factory=list)
 
 
 class ComputedAttributeTriggerNode(BaseModel):
@@ -73,7 +75,7 @@ class RegisteredNodeComputedAttribute(BaseModel):
     - **"InfraSite"** (the peer): ``local_fields = {"name": [target]}``,
       ``relationships = {"site": [target]}``
       A change to the site's ``name`` triggers recomputation of devices linked via ``site``.
-      The ``relationships`` dict provides ``filter_keys`` (e.g. ``site__ids``) so the system
+      The ``relationships`` dict provides query filters (e.g. ``site__ids``) so the system
       can locate which devices are affected.
     """
 
@@ -91,7 +93,7 @@ class RegisteredNodeComputedAttribute(BaseModel):
         """Return mapping of relationship names to peer attribute names needed for computed attribute templates."""
         return {rel: dep.peer_attributes for rel, dep in self.relationship_dependencies.items()}
 
-    def get_targets(self, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+    def get_targets(self, updates: list[str] | None = None) -> list[ResolvedComputedTarget]:
         """Resolve which ComputedAttributeTargets are affected by changes to this node.
 
         Args:
@@ -99,25 +101,30 @@ class RegisteredNodeComputedAttribute(BaseModel):
                      registered local_fields are included.
 
         Returns:
-            Deduplicated list of ComputedAttributeTarget, each enriched with any applicable
-            relationship-based filter_keys.
+            Deduplicated list of ResolvedComputedTarget, each pairing a target with the
+            query filters needed to locate affected nodes.
         """
-        targets: dict[str, ComputedAttributeTarget] = {}
+        resolved: dict[str, ResolvedComputedTarget] = {}
         for attribute, entries in self.local_fields.items():
             if updates and attribute not in updates:
                 continue
 
             for entry in entries:
-                if entry.key_name not in targets:
-                    targets[entry.key_name] = entry.model_copy(deep=True)
+                if entry.key_name not in resolved:
+                    resolved[entry.key_name] = ResolvedComputedTarget(target=entry)
 
         for relationship_name, dep in self.relationship_dependencies.items():
             for entry in dep.targets:
                 filter_key = f"{relationship_name}__ids"
-                if entry.key_name in targets and filter_key not in targets[entry.key_name].filter_keys:
-                    targets[entry.key_name].filter_keys.append(filter_key)
+                if entry.key_name in resolved and filter_key not in resolved[entry.key_name].node_filters:
+                    resolved[entry.key_name].node_filters.append(filter_key)
 
-        return list(targets.values())
+        # Targets with no relationship filters need the default "ids" filter
+        for target in resolved.values():
+            if not target.node_filters:
+                target.node_filters.append("ids")
+
+        return list(resolved.values())
 
     def get_local_targets_in_dependency_order(self, kind: str, updates: list[str]) -> list[ComputedAttributeTarget]:
         """Walk local_fields wave by wave, returning self-targeting targets in dependency order.
@@ -249,7 +256,7 @@ class Jinja2ComputedRegistry:
             owner_dep = owner_entry.relationship_dependencies.setdefault(rel_name, RelationshipDependency())
             owner_dep.peer_attributes.add(schema_path.active_attribute_schema.name)
 
-    def get_impacted_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+    def get_impacted_targets(self, kind: str, updates: list[str] | None = None) -> list[ResolvedComputedTarget]:
         """Return computed Jinja2 attribute targets that need re-evaluation when a node of the given kind is modified.
 
         Args:
@@ -259,9 +266,9 @@ class Jinja2ComputedRegistry:
                      When None, all registered targets for this kind are returned.
 
         Returns:
-            List of ComputedAttributeTarget entries, each identifying a (kind, attribute) pair whose
-            computed value depends on the modified node and may need recomputation. The target kind
-            can differ from the input kind when the dependency crosses a relationship.
+            List of ResolvedComputedTarget entries, each pairing a (kind, attribute) identity with the
+            query filters needed to locate affected nodes. The target kind can differ from the input
+            kind when the dependency crosses a relationship.
         """
         if mapping := self._map.get(kind):
             return mapping.get_targets(updates=updates)

@@ -17,11 +17,12 @@ from infrahub.core.schema.schema_branch_computed.jinja2 import (
     ComputedAttributeTriggerNode,
     Jinja2ComputedRegistry,
     RegisteredNodeComputedAttribute,
+    ResolvedComputedTarget,
 )
 from infrahub.core.schema.schema_branch_computed.python_transform import PythonDefinition, PythonTransformRegistry
 
 if TYPE_CHECKING:
-    from infrahub.core.schema import GenericSchema, NodeSchema, SchemaAttributePath
+    from infrahub.core.schema import NodeSchema, SchemaAttributePath
 
 
 class ComputedAttributes:
@@ -32,7 +33,6 @@ class ComputedAttributes:
     ) -> None:
         self._python = PythonTransformRegistry(transform_attribute_map=transform_attribute_map)
         self._jinja2 = Jinja2ComputedRegistry(jinja2_attribute_map=jinja2_attribute_map)
-        self._defined_from_generic: dict[str, str] = {}
 
     def duplicate(self) -> ComputedAttributes:
         return self.__class__(
@@ -63,21 +63,7 @@ class ComputedAttributes:
     ) -> None:
         self._jinja2.register(node, attribute, schema_path)
 
-    def validate_generic_inheritance(
-        self, node: NodeSchema, attribute: AttributeSchema, generic: GenericSchema
-    ) -> None:
-        """Ensure a computed attribute is not inherited from multiple generics.
-
-        This validation applies to all computed attribute kinds.
-        """
-        attribute_key = f"{node.kind}__{attribute.name}"
-        if duplicate := self._defined_from_generic.get(attribute_key):
-            raise ValueError(
-                f"{node.kind}: {attribute.name!r} is declared as a computed attribute from multiple generics {sorted([duplicate, generic.kind])}"
-            )
-        self._defined_from_generic[attribute_key] = generic.kind
-
-    def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:
+    def get_impacted_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ResolvedComputedTarget]:
         return self._jinja2.get_impacted_targets(kind, updates)
 
     def get_local_jinja2_targets(self, kind: str, updates: list[str] | None = None) -> list[ComputedAttributeTarget]:

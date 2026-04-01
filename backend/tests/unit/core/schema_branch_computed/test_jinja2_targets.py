@@ -3,7 +3,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.core.schema.schema_branch_computed import ComputedAttributes
-from infrahub.core.schema.schema_branch_computed.jinja2 import RegisteredNodeComputedAttribute, RelationshipDependency
+from infrahub.core.schema.schema_branch_computed.jinja2 import (
+    RegisteredNodeComputedAttribute,
+    RelationshipDependency,
+    ResolvedComputedTarget,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -74,6 +78,57 @@ class TestComputedAttributesGetLocalJinja2Targets:
 
         results = ca.get_local_jinja2_targets(kind=LOCAL_KIND)
         assert results == []
+
+
+class TestGetTargetsNodeFilters:
+    """Verify that node_filters on ResolvedComputedTarget are set correctly."""
+
+    def test_self_target_gets_ids_filter(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """A target triggered only by local fields should get the default ["ids"] filter."""
+        target = make_target(kind=LOCAL_KIND, attr_name="computed_name")
+        registered = RegisteredNodeComputedAttribute(
+            local_fields={"name": [target]},
+        )
+
+        results = registered.get_targets(updates=["name"])
+        assert len(results) == 1
+        assert results[0].node_filters == ["ids"]
+
+    def test_peer_target_gets_only_relationship_filter(
+        self, make_target: Callable[..., ComputedAttributeTarget]
+    ) -> None:
+        """A peer-triggered target should only have relationship filters, not the spurious "ids" filter."""
+        target = make_target(kind=LOCAL_KIND, attr_name="computed_name")
+        registered = RegisteredNodeComputedAttribute(
+            local_fields={"name": [target]},
+            relationship_dependencies={
+                "site": RelationshipDependency(targets=[target]),
+            },
+        )
+
+        results = registered.get_targets(updates=["name"])
+        assert len(results) == 1
+        assert results[0].node_filters == ["site__ids"]
+
+    def test_multiple_relationship_filters(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """A target reachable via multiple relationships gets all relationship filters but no "ids"."""
+        target = make_target(kind=LOCAL_KIND, attr_name="computed_name")
+        registered = RegisteredNodeComputedAttribute(
+            local_fields={"name": [target]},
+            relationship_dependencies={
+                "site": RelationshipDependency(targets=[target]),
+                "region": RelationshipDependency(targets=[target]),
+            },
+        )
+
+        results = registered.get_targets(updates=["name"])
+        assert len(results) == 1
+        assert sorted(results[0].node_filters) == ["region__ids", "site__ids"]
+
+    def test_default_node_filters_is_empty(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """ResolvedComputedTarget should default to an empty node_filters list."""
+        resolved = ResolvedComputedTarget(target=make_target(kind=LOCAL_KIND, attr_name="some_attr"))
+        assert resolved.node_filters == []
 
 
 class TestComputedAttributesGetRegisteredJinja2Node:
