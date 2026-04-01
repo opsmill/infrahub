@@ -18,11 +18,6 @@ class AuthMethod(InfrahubStringEnum):
     OIDC = "oidc"
 
 
-class SSOProvider(InfrahubStringEnum):
-    OAUTH2 = "oauth2"
-    OIDC = "oidc"
-
-
 class AccountLoggedInEvent(InfrahubEvent):
     """Emitted when a user successfully authenticates."""
 
@@ -36,7 +31,7 @@ class AccountLoggedInEvent(InfrahubEvent):
     session_id: str = Field(..., description="UUID of the session")
     groups: list[dict[str, str]] = Field(default_factory=list, description="List of group names/IDs")
     roles: list[dict[str, str]] = Field(default_factory=list, description="List of role names/IDs")
-    sso_provider: SSOProvider | None = Field(default=None, description="SSO provider name (if applicable)")
+    sso_provider: str | None = Field(default=None, description="SSO provider name (if applicable)")
     client_ip: str | None = Field(default=None, description="Source IP address")
     user_agent: str | None = Field(default=None, description="Browser/client info")
     timestamp: datetime = Field(
@@ -58,7 +53,7 @@ class AccountLoggedInEvent(InfrahubEvent):
             "infrahub.account.timestamp": self.timestamp.isoformat(),
         }
         if self.sso_provider:
-            resource["infrahub.account.sso_provider"] = self.sso_provider.value
+            resource["infrahub.account.sso_provider"] = self.sso_provider
         if self.client_ip:
             resource["infrahub.account.client_ip"] = self.client_ip
         if self.user_agent:

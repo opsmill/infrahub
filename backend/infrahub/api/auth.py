@@ -90,7 +90,9 @@ async def logout(
         invalidated = await invalidate_refresh_token(db=db, token_id=user_session.session_id)
 
     if invalidated:
-        account = await NodeManager.get_one(id=user_session.account_id, db=db, kind=CoreGenericAccount)
+        account = await NodeManager.get_one(
+            id=user_session.account_id, db=db, kind=CoreGenericAccount, raise_on_error=True
+        )
         account_name = account.name.value if account else user_session.account_id
         session_id = user_session.session_id or ""
         service: InfrahubServices = request.app.state.service
@@ -99,7 +101,7 @@ async def logout(
             event = make_logout_event(
                 request=request,
                 event_meta=await make_event_meta(account_session=user_session, branch=branch),
-                account_kind=account.get_kind() if account else "Unknown",
+                account_kind=account.get_kind(),
                 account_id=user_session.account_id,
                 account_name=account_name,
                 session_id=session_id,
