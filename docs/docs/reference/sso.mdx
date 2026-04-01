@@ -78,14 +78,13 @@ https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback
 
 ## User attributes mapping
 
-Infrahub maps standard profile attributes from identity providers to its internal user model:
+Infrahub maps the following claims from identity providers to its internal user model:
 
-| Infrahub User Field | OIDC Claim | OAuth 2.0 Field |
-|---------------------|------------|-----------------|
-| Username | `preferred_username` or `email` | `preferred_username` or `email` |
-| Email | `email` | `email` |
-| First Name | `given_name` | `given_name` |
-| Last Name | `family_name` | `family_name` |
+| Infrahub Field | OIDC Claim | OAuth 2.0 Field | Notes |
+|----------------|------------|-----------------|-------|
+| Identity anchor | `sub` | `sub` | Provider-issued subject identifier; used to resolve accounts across logins. Requires the `openid` scope. |
+| Account name | `name` | `name` | Used as the account name on creation. If `name` is already claimed by another SSO user, `email` is used instead. |
+| Display label | `name` | `name` | Synced on every login. |
 
 ## Examples
 
