@@ -3,6 +3,7 @@ import { DataTable } from "@/shared/components/table/data-table";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object-table-empty";
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
@@ -43,6 +44,7 @@ export function GroupTable() {
         data={rows}
         count={count}
         isLoading={isPending || isFetchingNextPage}
+        renderEmpty={() => <ObjectTableEmpty schema={selectedSchema} />}
       />
     </InfiniteScroll>
   );
