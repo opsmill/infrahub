@@ -97,7 +97,7 @@ async def logout(
             )
         except NodeNotFoundError as err:
             delete_response_cookies(response=response)
-            raise err
+            raise
 
         account_name = account.name.value
         session_id = user_session.session_id or ""
