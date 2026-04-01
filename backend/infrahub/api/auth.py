@@ -95,7 +95,7 @@ async def logout(
             account = await NodeManager.get_one(
                 id=user_session.account_id, db=db, kind=CoreGenericAccount, raise_on_error=True
             )
-        except NodeNotFoundError as err:
+        except NodeNotFoundError:
             delete_response_cookies(response=response)
             raise
 
