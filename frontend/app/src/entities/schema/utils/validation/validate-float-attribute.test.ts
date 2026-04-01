@@ -30,7 +30,7 @@ describe("validateFloatAttribute", () => {
 
   it("accepts null when optional", () => {
     const result = validateFloatAttribute({ isRequired: false }, null);
-    expect(result).toEqual({ success: true, data: 0 });
+    expect(result).toEqual({ success: true, data: null });
   });
 
   it("rejects value below min", () => {
@@ -60,6 +60,6 @@ describe("validateFloatAttribute", () => {
 
   it("accepts undefined when optional", () => {
     const result = validateFloatAttribute({ isRequired: false }, undefined);
-    expect(result).toEqual({ success: true, data: 0 });
+    expect(result).toEqual({ success: true, data: null });
   });
 });

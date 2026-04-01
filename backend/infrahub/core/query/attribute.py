@@ -385,7 +385,7 @@ async def default_attribute_query_filter(
     name: str,
     filter_name: str,
     branch: Branch | None = None,  # noqa: ARG001
-    filter_value: str | int | bool | list | None = None,
+    filter_value: str | int | float | bool | list | None = None,
     attribute_kind: str | None = None,
     include_match: bool = True,
     param_prefix: str | None = None,
