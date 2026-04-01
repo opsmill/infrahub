@@ -674,6 +674,11 @@ export interface components {
              * @description List of Nodes that are referencing this Generic
              */
             used_by?: string[];
+            /**
+             * Restricted Namespaces
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
+             */
+            restricted_namespaces?: string[] | null;
             /** Kind */
             kind?: string | null;
             /** Hash */
@@ -1549,6 +1554,11 @@ export interface components {
              * @description List of Nodes that are referencing this Generic
              */
             used_by?: string[];
+            /**
+             * Restricted Namespaces
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
+             */
+            restricted_namespaces?: string[] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {

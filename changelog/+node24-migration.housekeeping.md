@@ -1,1 +1,0 @@
-Migrated Node.js from version 22 to 24 LTS across CI workflows, Docker build, and package engine constraints.

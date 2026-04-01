@@ -20,7 +20,7 @@ def get_exposed_port(container: DockerContainer, port: int) -> int:
     return int(container.get_docker_client().port(container.get_wrapped_container().id, port))
 
 
-def start_neo4j_container(neo4j_image: str) -> DockerContainer:
+def start_neo4j_container(neo4j_image: str, extra_env: dict[str, str] | None = None) -> DockerContainer:
     container = (
         DockerContainer(image=neo4j_image)
         .with_env("NEO4J_AUTH", "neo4j/admin")
@@ -30,6 +30,9 @@ def start_neo4j_container(neo4j_image: str) -> DockerContainer:
         .with_exposed_ports(PORT_BOLT_NEO4J)
         .with_exposed_ports(PORT_HTTP_NEO4J)
     )
+
+    for key, value in (extra_env or {}).items():
+        container = container.with_env(key, value)
 
     container.start()
     wait_for_logs(container, "Started.")  # wait_container_is_ready does not seem to be enough

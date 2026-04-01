@@ -312,6 +312,15 @@ class DatabaseSettings(BaseSettings):
     retry_limit: int = Field(
         default=3, description="Maximum number of times a transient issue in a transaction should be retried."
     )
+    retry_base_delay: float = Field(
+        default=0.1, ge=0, description="Base delay in seconds for exponential backoff on transaction retries."
+    )
+    retry_max_delay: float = Field(
+        default=2.0, ge=0, description="Maximum delay in seconds for exponential backoff on transaction retries."
+    )
+    retry_jitter_max: float = Field(
+        default=0.1, ge=0, description="Maximum jitter in seconds added to retry delay to avoid thundering herd."
+    )
     max_concurrent_queries: int = Field(
         default=0, ge=0, description="Maximum number of concurrent queries that can run (0 means unlimited)."
     )

@@ -15,6 +15,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import BuiltinIPNamespace, BuiltinIPPrefix
 from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.database import retry_db_transaction
 from infrahub.exceptions import ValidationError
 from infrahub.graphql.parser import extract_selection
 from infrahub.graphql.permissions import get_permissions
@@ -305,6 +306,7 @@ async def _annotate_result(
 
 
 @trace.get_tracer(__name__).start_as_current_span("ipam_paginated_list_resolver")
+@retry_db_transaction(name="ipam_paginated_list_resolver")
 async def ipam_paginated_list_resolver(  # noqa: PLR0915
     root: dict,  # noqa: ARG001
     info: GraphQLResolveInfo,

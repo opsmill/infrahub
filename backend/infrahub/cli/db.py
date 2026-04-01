@@ -49,6 +49,7 @@ from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.database import DatabaseType
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
+from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import ValidationError
 
 from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
@@ -443,6 +444,7 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
     if initialize:
         await initialize_registry(db=db)
         await initialize_internal_schema()
+        build_component_registry()
 
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
 
