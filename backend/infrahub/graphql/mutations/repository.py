@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreReadOnlyRepository
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema
+from infrahub.exceptions import ValidationError
 from infrahub.git.models import (
     GitReadOnlyRepositoryImportCommit,
     GitRepositoryImportObjects,
@@ -249,6 +250,12 @@ class ReadOnlyRepositoryImportLastCommit(Mutation):
             id=str(data.id),
             branch=branch,
         )
+
+        if repo.get_kind() != InfrahubKind.READONLYREPOSITORY:
+            raise ValidationError(
+                f"Node {data.id} is a {repo.get_kind()}, not a {InfrahubKind.READONLYREPOSITORY}. "
+                "Import latest commit is only supported for read-only repositories."
+            )
 
         model = GitReadOnlyRepositoryImportCommit(
             repository_id=repository_id,

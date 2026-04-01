@@ -3,6 +3,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ContentType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -28,6 +29,7 @@ core_artifact_target = GenericSchema(
             cardinality=Cardinality.MANY,
             kind=RelKind.GENERIC,
             identifier="artifact__node",
+            on_delete=RelationshipDeleteBehavior.CASCADE,
         ),
     ],
 )

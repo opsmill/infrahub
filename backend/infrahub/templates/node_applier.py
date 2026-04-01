@@ -25,6 +25,7 @@ class NodeTemplateApplier:
         self.db = db
         self.branch = branch
         self.pool_allocator = pool_allocator
+        self.pool_pending_fields: set[str] = set()
 
     async def apply(
         self,
@@ -116,6 +117,8 @@ class NodeTemplateApplier:
             if allocated_value is not None:
                 pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
                 fields[original_name] = {"value": allocated_value, "source": pool_node.id}
+            elif await pool_relationship.get_peer(db=self.db):
+                self.pool_pending_fields.add(original_name)
             return
         # IP pool: allocate a node for the relationship
         allocated = await self.pool_allocator.allocate_for_relationship(
@@ -124,3 +127,5 @@ class NodeTemplateApplier:
         if allocated:
             pool_node = await pool_relationship.get_peer(db=self.db, raise_on_error=True)
             fields[original_name] = {"peer": allocated, "_relation__source": pool_node.id}
+        elif await pool_relationship.get_peer(db=self.db):
+            self.pool_pending_fields.add(original_name)

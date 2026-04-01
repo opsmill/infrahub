@@ -30,6 +30,7 @@ Below is the list of all available options to define a Generic in the schema
 | [**name**](#name) | Attribute | Node name, must be unique within a namespace and must start with an uppercase letter. | True |
 | [**namespace**](#namespace) | Attribute | Node Namespace, Namespaces are used to organize models into logical groups and to prevent name collisions. | True |
 | [**order_by**](#order_by) | Attribute | List of attributes to use to order the results by default | False |
+| [**restricted_namespaces**](#restricted_namespaces) | Attribute | Nodes inheriting from this Generic schema must belong to one of the listed namespaces | False |
 | [**state**](#state) | Attribute | Expected state of the node/generic after loading the schema | False |
 | [**uniqueness_constraints**](#uniqueness_constraints) | Attribute | List of multi-element uniqueness constraints that can combine relationships and attributes | False |
 | [**used_by**](#used_by) | Attribute | List of Nodes that are referencing this Generic | False |
@@ -211,6 +212,17 @@ Below is the list of all available options to define a Generic in the schema
 | **Name** | order_by |
 | **Kind** | `List` |
 | **Description** | List of attributes to use to order the results by default |
+| **Optional** | True |
+| **Default Value** |  |
+| **Constraints** |  |
+
+### restricted_namespaces
+
+| Key | Value |
+| ---- | --------------- |
+| **Name** | restricted_namespaces |
+| **Kind** | `List` |
+| **Description** | Nodes inheriting from this Generic schema must belong to one of the listed namespaces |
 | **Optional** | True |
 | **Default Value** |  |
 | **Constraints** |  |

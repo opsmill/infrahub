@@ -49,9 +49,9 @@ class SetThreadCreatedByOnNodeQuery(Query):
         self.add_to_query(query)
 
 
-class Migration068(GraphMigration):
-    name: str = "068_set_comment_thread_created_by_on_node"
-    minimum_version: int = 67
+class Migration069(GraphMigration):
+    name: str = "069_set_comment_thread_created_by_on_node"
+    minimum_version: int = 68
     queries: Sequence[type[Query]] = [SetCommentCreatedByOnNodeQuery, SetThreadCreatedByOnNodeQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
