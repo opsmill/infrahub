@@ -20,7 +20,7 @@ def make_login_event(
     request: Request,
     auth_method: AuthMethod,
     event_meta: EventMeta,
-    sso_provider: str | None = None,
+    identity_source: str | None = None,
 ) -> AccountLoggedInEvent:
     return AccountLoggedInEvent(
         meta=event_meta,
@@ -28,7 +28,7 @@ def make_login_event(
         account_id=auth_result.account_id,
         account_name=auth_result.account_name,
         account_type=auth_result.account_type,
-        sso_provider=sso_provider,
+        identity_source=identity_source,
         auth_method=auth_method,
         session_id=str(auth_result.session_id),
         groups=auth_result.groups,
