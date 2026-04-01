@@ -1182,7 +1182,7 @@ export interface components {
              * Parameters
              * @description Extra parameters specific to this kind of attribute
              */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["FloatAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1298,7 +1298,7 @@ export interface components {
              * Parameters
              * @description Extra parameters specific to this kind of attribute
              */
-            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["FloatAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
+            parameters?: components["schemas"]["AttributeParameters"] | components["schemas"]["ListAttributeParameters"] | components["schemas"]["TextAttributeParameters"] | components["schemas"]["NumberAttributeParameters"] | components["schemas"]["NumberPoolParameters"];
             /**
              * Deprecation
              * @description Mark attribute as deprecated and provide a user-friendly message to display
@@ -1975,23 +1975,6 @@ export interface components {
              * @description List of values or range of values not allowed for the attribute, format is: '100,150-200,280,300-400'
              */
             excluded_values?: string | null;
-        };
-        /** FloatAttributeParameters */
-        FloatAttributeParameters: {
-            /** Id */
-            id?: string | null;
-            /** @default present */
-            state: components["schemas"]["HashableModelState"];
-            /**
-             * Min Value
-             * @description Set a minimum value allowed.
-             */
-            min_value?: number | null;
-            /**
-             * Max Value
-             * @description Set a maximum value allowed.
-             */
-            max_value?: number | null;
         };
         /** NumberPoolParameters */
         NumberPoolParameters: {
