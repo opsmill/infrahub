@@ -28,7 +28,7 @@ type AccountLoggedInEvent implements EventNodeInterface {
   session_id: String!
   groups: [String!]!
   roles: [String!]!
-  sso_provider: String
+  identity_source: String
   client_ip: String
   user_agent: String
   timestamp: DateTime!
