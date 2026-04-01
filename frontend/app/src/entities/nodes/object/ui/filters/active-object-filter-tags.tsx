@@ -19,6 +19,7 @@ import {
   InternalGroupsFilterTag,
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
@@ -30,7 +31,7 @@ export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
 export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilterTagsProps) {
   const { filters, setFilters } = useObjectTableContext();
 
-  // Build field schemas map from model schema
+  // Build field schemas map from model schema + metadata definitions
   const fieldSchemas = useMemo(() => {
     const schemas: Record<string, AttributeSchema | RelationshipSchema> = {};
     for (const attr of schema?.attributes ?? []) {
@@ -38,6 +39,9 @@ export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilter
     }
     for (const rel of schema?.relationships ?? []) {
       schemas[rel.name] = rel;
+    }
+    for (const meta of ALL_METADATA_FILTERS) {
+      schemas[meta.name] = meta;
     }
     return schemas;
   }, [schema]);
