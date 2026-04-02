@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import type { TagGroupProps } from "react-aria-components";
 
 import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
@@ -31,29 +30,21 @@ export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
 export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilterTagsProps) {
   const { filters, setFilters } = useObjectTableContext();
 
-  // Build field schemas map from model schema + metadata definitions
-  const fieldSchemas = useMemo(() => {
-    const schemas: Record<string, AttributeSchema | RelationshipSchema> = {};
-    for (const attr of schema?.attributes ?? []) {
-      schemas[attr.name] = attr;
-    }
-    for (const rel of schema?.relationships ?? []) {
-      schemas[rel.name] = rel;
-    }
-    for (const meta of ALL_METADATA_FILTERS) {
-      schemas[meta.name] = meta;
-    }
-    return schemas;
-  }, [schema]);
+  const fieldSchemas: Record<string, AttributeSchema | RelationshipSchema> = {};
+  for (const attr of schema?.attributes ?? []) {
+    fieldSchemas[attr.name] = attr;
+  }
+  for (const rel of schema?.relationships ?? []) {
+    fieldSchemas[rel.name] = rel;
+  }
+  for (const meta of ALL_METADATA_FILTERS) {
+    fieldSchemas[meta.name] = meta;
+  }
 
-  // Filter out special filters that are handled separately
-  const displayFilters = useMemo(() => {
-    return filters.filter(
-      (f) => f.name !== HIDE_INTERNAL_GROUPS_FILTER.name && f.name !== AVAILABLE_IP_FILTER_NAME
-    );
-  }, [filters]);
+  const displayFilters = filters.filter(
+    (f) => f.name !== HIDE_INTERNAL_GROUPS_FILTER.name && f.name !== AVAILABLE_IP_FILTER_NAME
+  );
 
-  // Handle custom filter removal for special cases
   const handleCustomFilterRemove = (filterName: string): boolean => {
     switch (filterName) {
       case HIDE_INTERNAL_GROUPS_ID: {
