@@ -1017,8 +1017,6 @@ allow-dunder-method-names = [
 "backend/tests/component/core/migrations/graph/test_032.py" = ["ANN001"]       # 1 violation
 "backend/tests/component/core/migrations/graph/test_027.py" = ["ANN001"]       # 1 violation
 "backend/tests/component/core/schema_manager/test_manager_schema.py" = ["ANN001"]                # 100 violations
-"backend/tests/component/core/test_node_get_list_query.py" = ["ANN001"]        # 96 violations
-"backend/tests/component/core/test_relationship_query.py" = ["ANN001"]        # 59 violations
 
 "backend/tests/query_benchmark/**.py" = [
     ##################################################################################################
