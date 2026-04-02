@@ -176,7 +176,7 @@ function getFilterTagDisplay({
       label: name,
       condition: "contains",
       value: formatAttributeFilterValue({
-        kind: fieldSchema.kind,
+        kind: fieldSchema.kind as AttributeKind,
         value: filter.value,
       }),
     };
