@@ -23,7 +23,7 @@ export function FilterSuggestionTag({ label, className, ...props }: FilterSugges
     >
       <Button
         slot="remove"
-        className="inline-flex items-center gap-1.5 cursor-pointer bg-transparent p-0"
+        className="inline-flex cursor-pointer items-center gap-1.5 bg-transparent p-0"
       >
         <span className="ml-1.5">{label}</span>
         <div className="h-6 border-gray-300 border-r border-dashed" />
