@@ -110,7 +110,11 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
 
         {hoveredSchema && (
           <div className="min-w-64 p-0">
-            <FilterFormDispatch fieldSchema={hoveredSchema} onSuccess={closeMenu} />
+            <FilterFormDispatch
+              key={hoveredSchema.name}
+              fieldSchema={hoveredSchema}
+              onSuccess={closeMenu}
+            />
           </div>
         )}
       </PopoverContent>
