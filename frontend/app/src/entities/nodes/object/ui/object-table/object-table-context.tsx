@@ -2,7 +2,8 @@ import { parseAsJson, parseAsString, useQueryStates } from "nuqs";
 import React from "react";
 
 import { QSP } from "@/shared/config/qsp";
-import useFilters, { type Filter, FilterSchema } from "@/shared/hooks/useFilters";
+import { type Filter, FilterSchema } from "@/shared/hooks/useFilters";
+import { uniqueItemsArray } from "@/shared/utils/array";
 
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
@@ -27,13 +28,22 @@ export const ObjectTableProvider = ({
   children?: React.ReactNode;
   schema: ModelSchema;
 }) => {
-  const [, setFilters] = useFilters();
   const [{ filters, kind: kindInQsp }, setObjectTableQueryParams] = useQueryStates(
     {
       [QSP.KIND]: parseAsString,
       [QSP.FILTER]: parseAsJson(FilterSchema).withDefault([]),
     },
     { history: "push" }
+  );
+
+  const setFilters = React.useCallback(
+    (newFilters: Filter[]) => {
+      const cleanedFilters = uniqueItemsArray(newFilters, "name");
+      setObjectTableQueryParams({
+        filters: cleanedFilters.length ? cleanedFilters : null,
+      });
+    },
+    [setObjectTableQueryParams]
   );
 
   React.useEffect(() => {
