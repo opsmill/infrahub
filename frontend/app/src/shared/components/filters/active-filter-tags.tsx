@@ -14,8 +14,6 @@ import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entit
 
 type FieldSchema = AttributeSchema | RelationshipSchema;
 
-const EMPTY_DISPLAY = { label: null, condition: "", value: "" } as const;
-
 function isRelationshipSchema(schema: FieldSchema): schema is RelationshipSchema {
   return "peer" in schema;
 }
@@ -41,9 +39,7 @@ export interface ActiveFilterTagsProps extends Omit<TagGroupProps, "children"> {
   filters: Filter[];
   setFilters: (filters: Filter[]) => void;
   fieldSchemas: Record<string, FieldSchema>;
-  /** Optional slot for additional custom filter tags (e.g., InternalGroupsFilterTag) */
   additionalTags?: React.ReactNode;
-  /** Optional handler for custom filter removal logic */
   onCustomFilterRemove?: (filterName: string) => boolean;
 }
 
@@ -84,11 +80,11 @@ export function ActiveFilterTags({
 
             {filters.map((filter) => {
               const parts = filter.name.split("__");
-              if (parts.length < 2) {
+              const fieldKey = parts.at(-1);
+              if (!fieldKey || parts.length < 2) {
                 return null;
               }
 
-              const fieldKey = parts.at(-1);
               const fieldName = parts.slice(0, -1).join("__");
               const fieldSchema = fieldSchemas[fieldName];
 
@@ -116,7 +112,7 @@ export function ActiveFilterTags({
 
 interface EditableFilterTagProps {
   filter: Filter;
-  fieldKey: string | undefined;
+  fieldKey: string;
   fieldSchema: FieldSchema;
 }
 
@@ -124,14 +120,16 @@ function EditableFilterTag({ filter, fieldKey, fieldSchema }: EditableFilterTagP
   const isRelationship = isRelationshipSchema(fieldSchema);
   const [editOpen, setEditOpen] = useState(false);
 
-  const { label, condition, value } = getFilterTagDisplay({
+  const display = getFilterTagDisplay({
     filter,
     fieldKey,
     fieldSchema,
     isRelationship,
   });
 
-  if (!label) return null;
+  if (!display) return null;
+
+  const { label, condition, value } = display;
 
   return (
     <Popover open={editOpen} onOpenChange={setEditOpen}>
@@ -152,6 +150,8 @@ function EditableFilterTag({ filter, fieldKey, fieldSchema }: EditableFilterTagP
   );
 }
 
+type FilterTagDisplay = { label: React.ReactNode; condition: string; value: React.ReactNode };
+
 function getFilterTagDisplay({
   filter,
   fieldKey,
@@ -159,14 +159,14 @@ function getFilterTagDisplay({
   isRelationship,
 }: {
   filter: Filter;
-  fieldKey: string | undefined;
+  fieldKey: string;
   fieldSchema: FieldSchema;
   isRelationship: boolean;
-}): { label: React.ReactNode; condition: string; value: React.ReactNode } {
+}): FilterTagDisplay | null {
   const name = fieldSchema.label ?? fieldSchema.name;
 
   if (fieldKey === "value" || fieldKey === "values") {
-    if (isRelationship) return EMPTY_DISPLAY;
+    if (isRelationship) return null;
 
     return {
       label: name,
@@ -179,8 +179,8 @@ function getFilterTagDisplay({
   }
 
   if (fieldKey === "ids") {
-    if (!isRelationship) return EMPTY_DISPLAY;
-    if (!Array.isArray(filter.value)) return EMPTY_DISPLAY;
+    if (!isRelationship) return null;
+    if (!Array.isArray(filter.value)) return null;
 
     const value = filter.value
       .map((item: unknown) => {
@@ -208,7 +208,7 @@ function getFilterTagDisplay({
   }
 
   if (fieldKey === "before" || fieldKey === "after") {
-    if (isRelationship) return EMPTY_DISPLAY;
+    if (isRelationship) return null;
 
     return {
       label: name,
@@ -217,5 +217,5 @@ function getFilterTagDisplay({
     };
   }
 
-  return EMPTY_DISPLAY;
+  return null;
 }

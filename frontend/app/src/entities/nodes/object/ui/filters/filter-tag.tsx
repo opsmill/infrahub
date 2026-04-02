@@ -21,7 +21,7 @@ export function FilterTag({ label, value, condition, onEdit, ...props }: FilterT
         "cursor-default",
         "data-hovered:border-custom-blue-700 data-hovered:bg-gray-100"
       )}
-      textValue={`${label} ${condition ?? "contains"} ${value}`}
+      textValue={`${label} ${condition || "contains"} ${value}`}
       {...props}
     >
       <button
