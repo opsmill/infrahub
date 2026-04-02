@@ -18,6 +18,10 @@ function isRelationshipSchema(schema: FieldSchema): schema is RelationshipSchema
   return "peer" in schema;
 }
 
+function isAttributeSchema(schema: FieldSchema): schema is AttributeSchema {
+  return "kind" in schema;
+}
+
 export function formatAttributeFilterValue({
   kind,
   value,
@@ -166,13 +170,13 @@ function getFilterTagDisplay({
   const name = fieldSchema.label ?? fieldSchema.name;
 
   if (fieldKey === "value" || fieldKey === "values") {
-    if (isRelationship) return null;
+    if (!isAttributeSchema(fieldSchema)) return null;
 
     return {
       label: name,
       condition: "contains",
       value: formatAttributeFilterValue({
-        kind: (fieldSchema as AttributeSchema).kind as AttributeKind,
+        kind: fieldSchema.kind,
         value: filter.value,
       }),
     };
