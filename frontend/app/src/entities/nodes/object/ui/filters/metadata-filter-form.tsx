@@ -3,14 +3,12 @@ import { Icon } from "@iconify-icon/react";
 import { Col } from "@/shared/components/container";
 
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
-import {
-  isMetadataDatetimeFilter,
-  type MetadataFilterDefinition,
-} from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
+import { isMetadataDatetimeFilter } from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface MetadataFilterFormProps {
-  metadataFilter: MetadataFilterDefinition;
+  metadataFilter: AttributeSchema | RelationshipSchema;
   onSuccess?: () => void;
 }
 
