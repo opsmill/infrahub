@@ -41,6 +41,7 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.ID:
     case ATTRIBUTE_KIND.TEXT:
     case ATTRIBUTE_KIND.NUMBER:
+    case ATTRIBUTE_KIND.FLOAT:
     case ATTRIBUTE_KIND.BANDWIDTH:
     case ATTRIBUTE_KIND.EMAIL:
     case ATTRIBUTE_KIND.MAC_ADDRESS:

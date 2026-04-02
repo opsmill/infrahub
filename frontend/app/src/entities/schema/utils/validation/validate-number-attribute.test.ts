@@ -33,7 +33,7 @@ describe("validateNumberAttribute", () => {
     });
   });
 
-  it("should return success true with 0 when value is null and isRequired is false", () => {
+  it("should return success true with null when value is null and isRequired is false", () => {
     // GIVEN
     const params = { isRequired: false };
     const value = null;
@@ -44,7 +44,7 @@ describe("validateNumberAttribute", () => {
     // THEN
     expect(result).toEqual({
       success: true,
-      data: 0,
+      data: null,
     });
   });
 
@@ -238,12 +238,12 @@ describe("validateNumberAttribute", () => {
 
     expect(resultNull).toEqual({
       success: true,
-      data: 0,
+      data: null,
     });
 
     expect(resultUndefined).toEqual({
       success: true,
-      data: 0,
+      data: null,
     });
   });
 });

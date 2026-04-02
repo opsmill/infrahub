@@ -173,23 +173,23 @@ def convert_ip_to_binary_str(
     return ip_bin.zfill(obj.max_prefixlen)
 
 
-def build_regex_attrs(values: list[str | int | bool]) -> str:
+def build_regex_attrs(values: list[str | int | float | bool]) -> str:
     """Build a regex to match one or multiple values in a JSON string, mainly used to match on an attribute of type List"""
     return ".*(" + "|".join([build_regex_attr(value=value) for value in values]) + ").*"
 
 
-def build_regex_attr(value: str | int | bool) -> str:
+def build_regex_attr(value: str | float | bool) -> str:
     """Build a single regex to match a value in a JSON string
     For a string, it must have quotes
-    For int and bool, it must not have quotes
+    For int, float and bool, it must not have quotes
     """
     if isinstance(value, str):
         return f'"{value}"'
-    if isinstance(value, bool | int):
+    if isinstance(value, bool | int | float):
         value_str = str(value).lower()
         return rf'(?<=[^\w"\d]){value_str}(?=[^\w"\d])'
 
-    raise ValueError("value was neither a string, an int or a boolean")
+    raise ValueError("value was neither a string, an int, a float or a boolean")
 
 
 # --------------------------------------------------------------------------------

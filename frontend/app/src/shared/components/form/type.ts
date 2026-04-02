@@ -168,6 +168,10 @@ export type DynamicNumberFieldProps = FormFieldProps & {
   pools?: Array<NumberPool>;
 };
 
+export type DynamicFloatFieldProps = FormFieldProps & {
+  type: "Float";
+};
+
 export type DynamicDropdownFieldProps = FormFieldProps & {
   type: "Dropdown";
   items: Array<DropdownOption>;
@@ -192,6 +196,7 @@ export type DynamicKindFieldProps = FormFieldProps & {
 export type DynamicAttributeFieldProps =
   | DynamicInputFieldProps
   | DynamicNumberFieldProps
+  | DynamicFloatFieldProps
   | DynamicDropdownFieldProps
   | DynamicEnumFieldProps
   | DynamicSelectFieldProps

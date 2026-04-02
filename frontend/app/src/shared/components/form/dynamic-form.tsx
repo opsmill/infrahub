@@ -5,6 +5,7 @@ import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import EnumField from "@/shared/components/form/fields/enum.field";
+import FloatField from "@/shared/components/form/fields/float.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import JsonField from "@/shared/components/form/fields/json.field";
 import ListField from "@/shared/components/form/fields/list.field";
@@ -91,6 +92,10 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.NUMBER: {
       const { type, ...otherProps } = props;
       return <NumberField {...otherProps} />;
+    }
+    case ATTRIBUTE_KIND.FLOAT: {
+      const { type, ...otherProps } = props;
+      return <FloatField {...otherProps} />;
     }
     case ATTRIBUTE_KIND.PASSWORD:
     case ATTRIBUTE_KIND.HASHED_PASSWORD: {

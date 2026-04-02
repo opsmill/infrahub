@@ -6,6 +6,7 @@ import type {
   DynamicDropdownFieldProps,
   DynamicEnumFieldProps,
   DynamicFieldProps,
+  DynamicFloatFieldProps,
   DynamicNumberFieldProps,
   FormFieldValue,
 } from "@/shared/components/form/type";
@@ -23,10 +24,12 @@ import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type {
   AttributeKind,
   AttributeSchema,
+  FloatAttributeParameters,
   ModelSchema,
   NumberAttributeParameters,
   TextAttributeParameters,
 } from "@/entities/schema/types";
+import { validateFloatAttribute } from "@/entities/schema/utils/validation/validate-float-attribute";
 import { validateNumberAttribute } from "@/entities/schema/utils/validation/validate-number-attribute";
 import { validateTextAttribute } from "@/entities/schema/utils/validation/validate-text-attribute";
 
@@ -114,6 +117,19 @@ export const getFormFieldFromAttribute = ({
             );
             return validation.success || validation.error;
           }
+
+          if (attributeKind === ATTRIBUTE_KIND.FLOAT) {
+            const attributeParameters = attributeSchema.parameters as FloatAttributeParameters;
+            const validation = validateFloatAttribute(
+              {
+                isRequired: !attributeSchema.optional,
+                min: attributeParameters.min_value,
+                max: attributeParameters.max_value,
+              },
+              formFieldValue.value as number | null
+            );
+            return validation.success || validation.error;
+          }
         }
 
         if (attributeSchema.optional) return true;
@@ -171,6 +187,15 @@ export const getFormFieldFromAttribute = ({
     };
 
     return dropdownField;
+  }
+
+  if (attributeSchema.kind === ATTRIBUTE_KIND.FLOAT) {
+    const floatField: DynamicFloatFieldProps = {
+      ...basicFormFieldProps,
+      type: "Float",
+    };
+
+    return floatField;
   }
 
   if (isUpdate) {

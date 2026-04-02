@@ -18,6 +18,7 @@ def get_attribute_parameters_class_for_kind(kind: str) -> type[AttributeParamete
         "TextArea": TextAttributeParameters,
         "List": ListAttributeParameters,
         "Number": NumberAttributeParameters,
+        "Float": FloatAttributeParameters,
     }
     return param_classes.get(kind, AttributeParameters)
 
@@ -179,6 +180,47 @@ class NumberAttributeParameters(AttributeParameters):
         for start, end in self.get_excluded_ranges():
             if start <= value <= end:
                 raise ValidationError({name: f"{value} is in an the excluded range {start}-{end}"})
+
+
+class FloatAttributeParameters(AttributeParameters):
+    min_value: float | None = Field(
+        default=None,
+        description="Set a minimum value allowed.",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+    max_value: float | None = Field(
+        default=None,
+        description="Set a maximum value allowed.",
+        json_schema_extra={"update": UpdateSupport.VALIDATE_CONSTRAINT.value},
+    )
+
+    @model_validator(mode="after")
+    def validate_min_max(self) -> Self:
+        if (
+            config.SETTINGS.initialized
+            and config.SETTINGS.main.schema_strict_mode
+            and self.min_value is not None
+            and self.max_value is not None
+        ):
+            if self.min_value > self.max_value:
+                raise ValueError(
+                    "`max_value` can't be less than `min_value` when the schema is configured with strict mode"
+                )
+
+        return self
+
+    def is_valid_value(self, value: float) -> bool:
+        try:
+            self.check_valid_value(value=value, name="UNUSED")
+        except ValidationError:
+            return False
+        return True
+
+    def check_valid_value(self, value: float, name: str) -> None:
+        if self.min_value is not None and value < self.min_value:
+            raise ValidationError({name: f"{value} is lower than the minimum allowed value {self.min_value!r}"})
+        if self.max_value is not None and value > self.max_value:
+            raise ValidationError({name: f"{value} is higher than the maximum allowed value {self.max_value!r}"})
 
 
 class NumberPoolParameters(AttributeParameters):

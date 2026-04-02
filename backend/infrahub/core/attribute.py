@@ -41,7 +41,7 @@ from infrahub.helpers import hash_password
 
 from ..types import is_large_attribute_type
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
-from .schema.attribute_parameters import NumberAttributeParameters
+from .schema.attribute_parameters import FloatAttributeParameters, NumberAttributeParameters
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -755,6 +755,41 @@ class Integer(BaseAttribute):
 
 class IntegerOptional(Integer):
     value: int | None
+
+
+class Float(BaseAttribute):
+    type = float
+    value: float
+
+    @classmethod
+    def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        import math
+
+        value_to_check = value
+        if schema.enum and isinstance(value, Enum):
+            value_to_check = value.value
+
+        # Accept int and coerce to float, but reject bool (bool is subclass of int)
+        if isinstance(value_to_check, bool):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+        if isinstance(value_to_check, int):
+            value_to_check = float(value_to_check)
+        if not isinstance(value_to_check, float):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+        if not math.isfinite(value_to_check):
+            raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
+
+    @classmethod
+    def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
+        if isinstance(value, int) and not isinstance(value, bool):
+            value = float(value)
+        super().validate_content(value=value, name=name, schema=schema)
+        if config.SETTINGS.main.schema_strict_mode and isinstance(schema.parameters, FloatAttributeParameters):
+            schema.parameters.check_valid_value(value=value, name=name)
+
+
+class FloatOptional(Float):
+    value: float | None
 
 
 class Boolean(BaseAttribute):

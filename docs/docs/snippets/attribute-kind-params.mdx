@@ -12,6 +12,16 @@ import TabItem from '@theme/TabItem';
 | max_value | None |
 | excluded_values | None |
 </TabItem>
+<TabItem value="Float">
+| Parameter | Default |
+| --------- | ------- |
+| min_value | None |
+| max_value | None |
+
+:::note
+`Float` does not support `excluded_values`. Unlike `Number` (integer), exact value exclusion is not reliable for floating-point numbers.
+:::
+</TabItem>
 <TabItem value="NumberPool">
 | Parameter | Default |
 | --------- | ------- |
