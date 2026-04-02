@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Tag, type TagProps } from "react-aria-components";
+import { Button, Tag, type TagProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
@@ -21,9 +21,14 @@ export function FilterSuggestionTag({ label, className, ...props }: FilterSugges
       textValue={label}
       {...props}
     >
-      <span className="ml-1.5">{label}</span>
-      <div className="h-6 border-gray-300 border-r border-dashed" />
-      <Icon icon="mdi:plus" className="text-base text-gray-400 group-hover:text-indigo-700" />
+      <Button
+        slot="remove"
+        className="inline-flex items-center gap-1.5 cursor-pointer bg-transparent p-0"
+      >
+        <span className="ml-1.5">{label}</span>
+        <div className="h-6 border-gray-300 border-r border-dashed" />
+        <Icon icon="mdi:plus" className="text-base" />
+      </Button>
     </Tag>
   );
 }
