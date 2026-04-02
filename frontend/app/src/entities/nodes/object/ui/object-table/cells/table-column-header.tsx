@@ -1,8 +1,8 @@
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
-
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { classNames } from "@/shared/utils/common";
+
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 export interface TableColumnHeaderProps {
   columnSchema: AttributeSchema | RelationshipSchema;
