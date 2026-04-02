@@ -223,7 +223,7 @@ class TestMigration039(TestInfrahubApp):
     async def test_migration_039(
         self,
         db: InfrahubDatabase,
-        initial_dataset,
+        initial_dataset: dict[str, Node],
         branch_prefix_updates: dict[str, IpPrefixDetails],
         branch_address_updates: dict[str, IpAddressDetails],
     ) -> None:

@@ -3,17 +3,21 @@ import uuid
 from infrahub_sdk.schema.main import RelationshipDirection
 
 from infrahub.core import registry
+from infrahub.core.branch.models import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m023_deduplicate_cardinality_one_relationships import Migration023
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 # redis is required as we will call `initialization` later
 
 
-async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, redis) -> None:
+async def test_migration_023(
+    db: InfrahubDatabase, branch: Branch, car_person_schema: SchemaBranch, redis: dict[int, int] | None
+) -> None:
     """
     Reproduce corrupted state where two nodes would be connected by multiple relationships while relationship
     cardinality is one.
@@ -120,7 +124,9 @@ async def test_migration_023(db: InfrahubDatabase, branch, car_person_schema, re
     assert len(rels) == 0
 
 
-async def add_extra_relationship(db, node_1_id, node_2_id, before_time, branch, rel_name) -> None:
+async def add_extra_relationship(
+    db: InfrahubDatabase, node_1_id: str, node_2_id: str, before_time: str, branch: Branch, rel_name: str
+) -> None:
     add_extra_relationship_query = """
     MATCH (node_1: Node {uuid: $node_1_id})
     MATCH (node_2: Node {uuid: $node_2_id})
@@ -145,7 +151,9 @@ async def add_extra_relationship(db, node_1_id, node_2_id, before_time, branch, 
     )
 
 
-async def check_number_path_between_nodes(db, node_id_1, node_id_2, expected_path_number) -> None:
+async def check_number_path_between_nodes(
+    db: InfrahubDatabase, node_id_1: str, node_id_2: str, expected_path_number: int
+) -> None:
     check_single_relationship_query = """
         MATCH path = (car:Node {uuid: $node_id_1})-[:IS_RELATED]-(rel: Relationship)-[:IS_RELATED]-(maria:Node {uuid: $node_id_2})
         RETURN COUNT(path) AS pathCount
