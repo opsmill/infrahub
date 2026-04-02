@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import type React from "react";
-import { Tag, type TagProps } from "react-aria-components";
+import { Button, Tag, type TagProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { classNames } from "@/shared/utils/common";
@@ -9,27 +9,42 @@ interface FilterTagProps extends TagProps {
   label: React.ReactNode;
   value: React.ReactNode;
   condition?: string;
+  onEdit?: () => void;
 }
 
-export function FilterTag({ label, value, condition, ...props }: FilterTagProps) {
+export function FilterTag({ label, value, condition, onEdit, ...props }: FilterTagProps) {
   return (
     <Tag
       className={classNames(
         focusVisibleStyle,
-        "group inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 bg-neutral-100 px-1 text-gray-600 text-sm",
+        "group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 bg-neutral-100 px-1 text-gray-600 text-sm",
+        onEdit ? "cursor-pointer" : "cursor-default",
         "data-hovered:border-custom-blue-700 data-hovered:bg-gray-100"
       )}
       textValue={`${label} ${condition ?? "contains"} ${value}`}
       {...props}
     >
-      <span className="ml-1.5">{label}</span>
-      {condition && <span className="text-gray-400">{condition}</span>}
-      <div className="h-6 w-px self-stretch bg-gray-300" />
-      <span className="inline-flex items-center font-medium text-custom-blue-700">{value}</span>
-      <Icon
-        icon="mdi:close-circle-outline"
-        className="text-base text-gray-400 group-hover:text-custom-blue-700"
-      />
+      <button
+        type="button"
+        className="ml-1.5 inline-flex items-center gap-1.5 bg-transparent"
+        onClick={(e) => {
+          if (onEdit) {
+            e.stopPropagation();
+            onEdit();
+          }
+        }}
+      >
+        <span>{label}</span>
+        {condition && <span className="text-gray-400">{condition}</span>}
+        <div className="h-6 w-px self-stretch bg-gray-300" />
+        <span className="inline-flex items-center font-medium text-custom-blue-700">{value}</span>
+      </button>
+      <Button slot="remove" className="inline-flex items-center cursor-pointer bg-transparent p-0">
+        <Icon
+          icon="mdi:close-circle-outline"
+          className="text-base text-gray-400 hover:text-custom-blue-700"
+        />
+      </Button>
     </Tag>
   );
 }
