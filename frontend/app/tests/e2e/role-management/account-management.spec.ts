@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { generateRandomBranchName } from "../../utils";
+import { generateRandomBranchName, getDataTableRow } from "../../utils";
 import { createBranchAPI, deleteBranchAPI } from "../utils/graphql";
 
 test.describe("/role-management - Account CRUD", () => {
@@ -39,7 +39,7 @@ test.describe("/role-management - Account CRUD", () => {
       await page.getByRole("textbox", { name: "Description" }).fill("test edit");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Account updated!")).toBeVisible();
-      await expect(page.getByText("test edit")).toBeVisible();
+      await expect(getDataTableRow(page, "Account Test").getByText("test edit")).toBeVisible();
     });
 
     await test.step("create a second account", async () => {
@@ -47,27 +47,21 @@ test.describe("/role-management - Account CRUD", () => {
       await page.getByRole("textbox", { name: "Name *" }).fill("Account test 2");
       await page.getByRole("textbox", { name: "Password *" }).fill("123");
       await page.getByRole("button", { name: "Save" }).click();
-      await expect(page.getByRole("link", { name: "Account Test 2" })).toBeVisible();
+      await expect(getDataTableRow(page, "Account Test 2")).toBeVisible();
     });
 
     await test.step("bulk edit both accounts", async () => {
-      await page
-        .getByRole("link", { name: "Account Test", exact: true })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
-      await page
-        .getByRole("link", { name: "Account Test 2" })
-        .locator("..")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
+      await getDataTableRow(page, "Account Test").getByTestId("identifier-checkbox-cell").click();
+      await getDataTableRow(page, "Account Test 2").getByTestId("identifier-checkbox-cell").click();
       await page.getByRole("button", { name: "Edit" }).click();
       await page.getByRole("textbox", { name: "Description" }).fill("test bulk edit");
       await page.getByRole("button", { name: "Save" }).click();
       await page.getByRole("heading", { name: "2 / 2 objects updated" }).click();
       await page.keyboard.press("Escape");
-      await expect(page.getByText("test bulk edit").first()).toBeVisible();
-      await expect(page.getByText("test bulk edit").nth(1)).toBeVisible();
+      await expect(getDataTableRow(page, "Account Test").getByText("test bulk edit")).toBeVisible();
+      await expect(
+        getDataTableRow(page, "Account Test 2").getByText("test bulk edit")
+      ).toBeVisible();
     });
 
     await test.step("bulk add accounts to a group", async () => {
@@ -78,8 +72,12 @@ test.describe("/role-management - Account CRUD", () => {
         page.getByRole("heading", { name: "1 / 1 group updated successfully" })
       ).toBeVisible();
       await page.getByRole("button", { name: "Close" }).click();
-      await expect(page.getByRole("link", { name: "Infrahub Users" }).first()).toBeVisible();
-      await expect(page.getByRole("link", { name: "Infrahub Users" }).nth(1)).toBeVisible();
+      await expect(
+        getDataTableRow(page, "Account Test").getByRole("link", { name: "Infrahub Users" })
+      ).toBeVisible();
+      await expect(
+        getDataTableRow(page, "Account Test 2").getByRole("link", { name: "Infrahub Users" })
+      ).toBeVisible();
     });
 
     await test.step("bulk remove accounts from a group", async () => {
@@ -90,24 +88,28 @@ test.describe("/role-management - Account CRUD", () => {
         page.getByRole("heading", { name: "1 / 1 group updated successfully" })
       ).toBeVisible();
       await page.getByRole("button", { name: "Close" }).click();
+      await expect(
+        getDataTableRow(page, "Account Test").getByRole("link", { name: "Infrahub Users" })
+      ).not.toBeVisible();
+      await expect(
+        getDataTableRow(page, "Account Test 2").getByRole("link", { name: "Infrahub Users" })
+      ).not.toBeVisible();
     });
 
     await test.step("delete the first account", async () => {
-      await expect(page.getByTestId("actions-cell-Account Test")).toBeVisible();
-      await page.getByTestId("actions-cell-Account Test").click();
+      await page.getByTestId("actions-cell-Account Test 2").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
-      await expect(page.getByText("Object Account Test deleted")).toBeVisible();
-      await expect(page.getByRole("link", { name: "Account Test 2" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "Account Test", exact: true })).not.toBeVisible();
+      await expect(page.getByText("Object Account Test 2 deleted")).toBeVisible();
+      await expect(getDataTableRow(page, "Account Test")).toBeVisible();
+      await expect(getDataTableRow(page, "Account Test 2")).not.toBeVisible();
     });
 
     await test.step("bulk delete the remaining account", async () => {
-      await expect(page.getByRole("link", { name: "Account Test" })).toBeVisible();
       await page.getByRole("button", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(page.getByText("Objects deleted!")).toBeVisible();
-      await expect(page.getByRole("link", { name: "Account Test 2" })).not.toBeVisible();
+      await expect(page.getByRole("link", { name: "Account Test" })).not.toBeVisible();
     });
   });
 });
