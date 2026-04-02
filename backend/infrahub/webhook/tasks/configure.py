@@ -3,21 +3,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.protocols import CoreWebhook
 from prefect import flow
 from prefect.automations import AutomationCore
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 from prefect.runtime import flow_run
 
+from infrahub.core import registry
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreWebhook as CoreWebhookNode
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import ExecuteWorkflow, TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import gather_all_automations, setup_triggers_specific
-from infrahub.workers.dependencies import get_client, get_database
+from infrahub.workers.dependencies import get_database
 
 from ..constants import EVENT_TO_ACTION, WebhookAction
 from ..gather import gather_trigger_webhook
-from ..models import WebhookTriggerDefinition
+from ..models import WebhookTriggerDefinition, generate_webhook_automation_name, webhook_to_trigger
 from .cache import invalidate_webhook_cache
 
 if TYPE_CHECKING:
@@ -117,8 +119,9 @@ async def _configure_one(
     """
     log = get_run_logger()
 
-    webhook = await get_client().get(kind=CoreWebhook, id=webhook_id)
-    trigger = WebhookTriggerDefinition.from_object(webhook)
+    database = await get_database()
+    webhook_node = await NodeManager.get_one(id=webhook_id, db=database, kind=CoreWebhookNode, raise_on_error=True)
+    trigger = webhook_to_trigger(webhook_node, registry.default_branch)
 
     async with get_prefect_client(sync_client=False) as prefect_client:
         all_automations = await gather_all_automations(client=prefect_client)
@@ -128,14 +131,14 @@ async def _configure_one(
         existing_automation = existing_automations[0] if existing_automations else None
 
         # If webhook is inactive, delete the automation if it exists
-        if not webhook.active.value:
+        if not webhook_node.active.value:
             if existing_automation:
                 await prefect_client.delete_automation(automation_id=existing_automation.id)
                 log.info(f"Automation {trigger.generate_name()} deleted (webhook disabled)")
             else:
                 log.info(f"Webhook {webhook_name} is disabled, no automation to delete")
 
-            await invalidate_webhook_cache(webhook_ids={webhook.id})
+            await invalidate_webhook_cache(webhook_ids={webhook_node.id})
             return
 
         # Query the deployment associated with the trigger to have its ID
@@ -157,7 +160,7 @@ async def _configure_one(
             await prefect_client.create_automation(automation=automation)
             log.info(f"Automation {trigger.generate_name()} created")
 
-        await invalidate_webhook_cache(webhook_ids={webhook.id})
+        await invalidate_webhook_cache(webhook_ids={webhook_node.id})
 
 
 async def _delete_automation(
@@ -167,7 +170,7 @@ async def _delete_automation(
     log = get_run_logger()
 
     async with get_prefect_client(sync_client=False) as prefect_client:
-        automation_name = WebhookTriggerDefinition.generate_name_from_id(id=webhook_id)
+        automation_name = generate_webhook_automation_name(webhook_id)
 
         all_automations = await gather_all_automations(client=prefect_client)
         existing_automations = [automation for automation in all_automations if automation.name == automation_name]
