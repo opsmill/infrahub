@@ -27,3 +27,9 @@ export const deleteBranch = async (page: Page, branchName: string) => {
 export const generateRandomBranchName = (prefix?: string) => {
   return `${prefix ?? ""}${Math.random().toString(36).substring(2, 15)}`;
 };
+
+export function getDataTableRow(page: Page, name: string) {
+  return page
+    .getByTestId("data-table-row")
+    .filter({ has: page.getByRole("link", { name, exact: true }) });
+}
