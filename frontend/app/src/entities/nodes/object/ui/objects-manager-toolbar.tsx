@@ -1,4 +1,5 @@
 import { queryClient } from "@/shared/api/rest/client";
+import { Col, Row } from "@/shared/components/container";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
@@ -13,8 +14,8 @@ export function ObjectsManagerToolbar() {
   const { selectedSchema, baseSchema, filters, permission } = useObjectTableContext();
 
   return (
-    <div className="shrink-0 space-y-3 p-3">
-      <div className="flex items-center gap-2">
+    <Col className="shrink-0 gap-3 p-3">
+      <Row>
         {isGenericSchema(baseSchema) && (baseSchema.used_by ?? []).length > 1 && (
           <ObjectTableSchemaSelector />
         )}
@@ -33,9 +34,9 @@ export function ObjectsManagerToolbar() {
           permission={permission}
           className="ml-auto"
         />
-      </div>
+      </Row>
 
       <ActiveObjectFilterTags schema={selectedSchema} />
-    </div>
+    </Col>
   );
 }
