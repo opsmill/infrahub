@@ -118,7 +118,6 @@ Options:
   --output PATH          Output file path [default: telemetry-export.json]
   --start-date TEXT      Start date filter (ISO 8601, e.g. 2025-01-01)
   --end-date TEXT        End date filter (ISO 8601, e.g. 2026-02-16)
-  --branch TEXT          Branch context (not used for filtering, required by SDK)
   --config-file TEXT     Path to infrahubctl config file
 
 Output: JSON file containing array of snapshot objects
@@ -153,7 +152,6 @@ Options:
   --start-date TEXT      Start date filter (ISO 8601)
   --end-date TEXT        End date filter (ISO 8601)
   --limit INTEGER        Maximum number of results [default: 50]
-  --branch TEXT          Branch context
   --config-file TEXT     Path to infrahubctl config file
 
 Output: Rich table with columns: Date, Version, Type, Deployment ID, Remote Status

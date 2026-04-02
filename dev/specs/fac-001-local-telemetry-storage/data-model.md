@@ -95,24 +95,16 @@ WHERE elementId(n) = $node_id OR n.uuid = $node_id
 RETURN n
 ```
 
-### List Snapshots (with date-range filter)
+### List Snapshots (with optional date-range filter)
 
-Custom filter via `TelemetrySnapshotGetListQuery`:
+Custom filter via `TelemetrySnapshotGetListQuery`. Supports open-ended ranges — either or both date params can be null:
 ```cypher
 MATCH (n:TelemetrySnapshot)
-WHERE n.created_at >= $start_date AND n.created_at <= $end_date
+WHERE ($start_date IS NULL OR n.created_at >= $start_date)
+  AND ($end_date IS NULL OR n.created_at <= $end_date)
 RETURN n
 ORDER BY n.created_at DESC
 LIMIT $limit
-```
-
-### List All Snapshots (no filter)
-
-Uses `StandardNodeGetListQuery` (inherited):
-```cypher
-MATCH (n:TelemetrySnapshot)
-RETURN n
-ORDER BY n.created_at DESC
 ```
 
 ## State Transitions
