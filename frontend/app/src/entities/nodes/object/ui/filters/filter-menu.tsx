@@ -94,7 +94,7 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
                       schema={fieldSchema}
                       filters={filters}
                       onHover={setHoveredSchema}
-                      isHovered={hoveredSchema?.name === schema.name}
+                      isHovered={hoveredSchema?.name === fieldSchema.name}
                     />
                   ))}
                 </FilterMenuSection>
