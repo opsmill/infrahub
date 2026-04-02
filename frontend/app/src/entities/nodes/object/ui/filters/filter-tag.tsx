@@ -18,7 +18,7 @@ export function FilterTag({ label, value, condition, onEdit, ...props }: FilterT
       className={classNames(
         focusVisibleStyle,
         "group inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-gray-300 bg-neutral-100 px-1 text-gray-600 text-sm",
-        onEdit ? "cursor-pointer" : "cursor-default",
+        "cursor-default",
         "data-hovered:border-custom-blue-700 data-hovered:bg-gray-100"
       )}
       textValue={`${label} ${condition ?? "contains"} ${value}`}
@@ -26,7 +26,10 @@ export function FilterTag({ label, value, condition, onEdit, ...props }: FilterT
     >
       <button
         type="button"
-        className="ml-1.5 inline-flex items-center gap-1.5 bg-transparent"
+        className={classNames(
+          "ml-1.5 inline-flex items-center gap-1.5 bg-transparent",
+          onEdit ? "cursor-pointer" : "cursor-default"
+        )}
         onClick={(e) => {
           if (onEdit) {
             e.stopPropagation();
