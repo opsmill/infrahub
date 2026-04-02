@@ -97,9 +97,7 @@ test.describe("/role-management - Account CRUD", () => {
     });
 
     await test.step("delete the first account", async () => {
-      await getDataTableRow(page, "Account Test")
-        .getByTestId("actions-cell-Account Test")
-        .click();
+      await getDataTableRow(page, "Account Test").getByTestId("actions-cell-Account Test").click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(page.getByText("Object Account Test deleted")).toBeVisible();
@@ -108,9 +106,7 @@ test.describe("/role-management - Account CRUD", () => {
     });
 
     await test.step("bulk delete the remaining account", async () => {
-      await getDataTableRow(page, "Account Test 2")
-        .getByTestId("identifier-checkbox-cell")
-        .click();
+      await getDataTableRow(page, "Account Test 2").getByTestId("identifier-checkbox-cell").click();
       await page.getByRole("button", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(page.getByText("Objects deleted!")).toBeVisible();
