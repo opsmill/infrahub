@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
+import { Row } from "@/shared/components/container";
 import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Filter } from "@/shared/hooks/useFilters";
@@ -68,7 +69,7 @@ export function ActiveFilterTags({
 
   return (
     <ScrollArea scrollX>
-      <div className="flex items-center gap-2">
+      <Row>
         <TagGroup
           aria-label="Active filters"
           onRemove={(keys) => {
@@ -109,7 +110,7 @@ export function ActiveFilterTags({
         </TagGroup>
 
         {filters.length > 0 && <FilterResetButton />}
-      </div>
+      </Row>
     </ScrollArea>
   );
 }
