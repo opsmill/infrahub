@@ -20,13 +20,13 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
-from infrahub.api.exception_handlers import generic_api_exception_handler
+from infrahub.api.exception_handlers import generic_api_exception_handler, permission_denied_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
-from infrahub.exceptions import Error, ValidationError
+from infrahub.exceptions import Error, PermissionDeniedError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
@@ -210,6 +210,7 @@ app.add_middleware(
     ),
 )
 
+app.add_exception_handler(PermissionDeniedError, permission_denied_exception_handler)
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
 app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))

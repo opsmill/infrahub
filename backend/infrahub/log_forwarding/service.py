@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.events import InfrahubEvent
-    from infrahub.log_forwarding.models import SyslogMessage
+    from infrahub.exceptions import PermissionDeniedError
+    from infrahub.log_forwarding.models import LogForwardingContext, SyslogMessage
 
 
 class LogForwardingService(ABC):
@@ -24,6 +25,10 @@ class LogForwardingService(ABC):
         """Convert an InfrahubEvent to a syslog message and enqueue it. Should not block."""
 
     @abstractmethod
+    def forward_exception(self, exception: PermissionDeniedError, context: LogForwardingContext) -> None:
+        """Convert a PermissionDeniedError to a syslog message and enqueue it. Should not block."""
+
+    @abstractmethod
     async def shutdown(self) -> None:
         """Signal consumers to drain queues, then force close."""
 
@@ -38,6 +43,9 @@ class LogForwardingServiceCommunity(LogForwardingService):
         pass
 
     def forward_event(self, event: InfrahubEvent) -> None:
+        pass
+
+    def forward_exception(self, exception: PermissionDeniedError, context: LogForwardingContext) -> None:
         pass
 
     async def shutdown(self) -> None:

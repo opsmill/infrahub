@@ -3,6 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime  # noqa: TC003
 from enum import IntEnum, StrEnum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from infrahub.auth import AccountSession
 
 LOG_AUTH = 4
 LOG_LOCAL0 = 16
@@ -42,3 +46,14 @@ class SyslogMessage:
             MessageType.AUDIT_EVENT: LOG_AUTH,
             MessageType.APPLICATION_LOG: LOG_LOCAL0,
         }.get(self.message_type, LOG_LOCAL0)
+
+
+@dataclass(slots=True)
+class LogForwardingContext:
+    account_session: AccountSession | None
+    branch_name: str
+    operation_name: str
+    query_type: str
+    ip_address: str
+    graphql_operations: list[str]
+    request_path: str
