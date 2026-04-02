@@ -11,13 +11,18 @@ from opentelemetry import trace
 
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
+from infrahub.api.event_builder import make_event_meta, make_login_event
 from infrahub.auth import (
+    AccountSession,
+    AuthType,
     SSOStateCache,
     get_groups_from_provider,
     signin_sso_account,
     validate_auth_response,
 )
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
+from infrahub.core import registry
+from infrahub.events.account_action import AuthMethod
 from infrahub.exceptions import ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -153,18 +158,36 @@ async def token(
     with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
         span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
         span.set_attribute("sso_groups", sso_groups)
-        user_token = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
+        auth_result = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
 
     response.set_cookie(
-        "access_token", user_token.access_token, httponly=True, max_age=config.SETTINGS.security.access_token_lifetime
+        "access_token",
+        auth_result.token.access_token,
+        httponly=True,
+        max_age=config.SETTINGS.security.access_token_lifetime,
     )
     response.set_cookie(
         "refresh_token",
-        user_token.refresh_token,
+        auth_result.token.refresh_token,
         httponly=True,
         max_age=config.SETTINGS.security.refresh_token_lifetime,
     )
+    session = AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=auth_result.account_id)
+    branch = await registry.get_branch(db=db)
+    try:
+        event = make_login_event(
+            request=request,
+            event_meta=await make_event_meta(account_session=session, branch=branch),
+            auth_result=auth_result,
+            auth_method=AuthMethod.OAUTH2,
+            identity_source=provider_name,
+        )
+        await service.event.send(event=event)
+    except Exception as ex:
+        log.warning(f"Failed to emit OAuth2 login event for account_id={auth_result.account_id}: {str(ex)}")
 
     return models.UserTokenWithUrl(
-        access_token=user_token.access_token, refresh_token=user_token.refresh_token, final_url=sso_state.final_url
+        access_token=auth_result.token.access_token,
+        refresh_token=auth_result.token.refresh_token,
+        final_url=sso_state.final_url,
     )
