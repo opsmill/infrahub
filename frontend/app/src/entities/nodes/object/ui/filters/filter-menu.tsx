@@ -12,10 +12,10 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import { FilterFormDispatch } from "@/entities/nodes/object/ui/filters/filter-form-dispatch";
 import { FilterMenuItem } from "@/entities/nodes/object/ui/filters/filter-menu-item";
 import { FilterMenuSection } from "@/entities/nodes/object/ui/filters/filter-menu-section";
-import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -69,7 +69,13 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(isOpen) => {
+        setOpen(isOpen);
+        if (!isOpen) setHoveredSchema(null);
+      }}
+    >
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="shrink-0 gap-1">
           <Icon icon="mdi:filter-variant" className="text-base" />
