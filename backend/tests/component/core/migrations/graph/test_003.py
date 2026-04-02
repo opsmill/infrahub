@@ -1,5 +1,6 @@
 import pytest
 
+from infrahub.core.branch.models import Branch
 from infrahub.core.migrations.graph.m003_relationship_parent_optional import Migration003, Migration003Query01
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -11,9 +12,9 @@ from infrahub.database import InfrahubDatabase
 @pytest.fixture
 async def migration_003_data(
     db: InfrahubDatabase,
-    reset_registry,
-    default_branch,
-    delete_all_nodes_in_db,
+    reset_registry: None,
+    default_branch: Branch,
+    delete_all_nodes_in_db: None,
     register_core_models_schema: SchemaBranch,
 ) -> None:
     node_schema = register_core_models_schema.get(name="SchemaNode")
@@ -33,7 +34,11 @@ async def migration_003_data(
 
 
 async def test_migration_003_query1(
-    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
+    db: InfrahubDatabase,
+    reset_registry: None,
+    default_branch: Branch,
+    delete_all_nodes_in_db: None,
+    migration_003_data: None,
 ) -> None:
     nbr_rels_before = await count_relationships(db=db)
     query = await Migration003Query01.init(db=db)
@@ -49,7 +54,11 @@ async def test_migration_003_query1(
 
 
 async def test_migration_003(
-    db: InfrahubDatabase, reset_registry, default_branch, delete_all_nodes_in_db, migration_003_data
+    db: InfrahubDatabase,
+    reset_registry: None,
+    default_branch: Branch,
+    delete_all_nodes_in_db: None,
+    migration_003_data: None,
 ) -> None:
     nbr_rels_before = await count_relationships(db=db)
 
