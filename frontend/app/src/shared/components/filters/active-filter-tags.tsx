@@ -19,7 +19,7 @@ function isRelationshipSchema(schema: FieldSchema): schema is RelationshipSchema
 }
 
 function isAttributeSchema(schema: FieldSchema): schema is AttributeSchema {
-  return "kind" in schema;
+  return !("peer" in schema);
 }
 
 export function formatAttributeFilterValue({
@@ -156,7 +156,7 @@ function EditableFilterTag({ filter, fieldKey, fieldSchema }: EditableFilterTagP
 
 type FilterTagDisplay = { label: React.ReactNode; condition: string; value: React.ReactNode };
 
-function getFilterTagDisplay({
+export function getFilterTagDisplay({
   filter,
   fieldKey,
   fieldSchema,

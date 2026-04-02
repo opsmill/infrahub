@@ -21,7 +21,7 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
-function getFilterCount(schema: ModelSchema, filters: Filter[]): number {
+export function getFilterCount(schema: ModelSchema, filters: Filter[]): number {
   const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
 
   if (!isIpamSchema || hasIncompatibleFiltersForIpAvailability(filters)) {
