@@ -12,13 +12,13 @@ import {
 } from "@/entities/ipam/constants";
 import { IpAddressAvailabilityFilterTag } from "@/entities/ipam/ip-addresses/ui/ip-address-availability-filter-tag";
 import { IpPrefixAvailabilityFilterTag } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-availability-filter-tag";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import {
   HIDE_INTERNAL_GROUPS_FILTER,
   HIDE_INTERNAL_GROUPS_ID,
   InternalGroupsFilterTag,
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
-import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
