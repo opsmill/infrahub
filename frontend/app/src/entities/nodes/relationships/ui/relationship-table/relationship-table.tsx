@@ -50,7 +50,7 @@ export function RelationshipTable({
 
   const flatData = data?.pages?.flat() ?? [];
   const columns = [
-    ...getObjectTableColumns(relationshipSchema),
+    ...getObjectTableColumns(relationshipSchema, { disabled: true }),
     getRelationshipActionsColumn({
       parentId,
       parentKind,
