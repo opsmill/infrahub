@@ -11,6 +11,7 @@ from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.schema import NodeSchemaAPI
 from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
@@ -801,7 +802,8 @@ async def schema_02(client: InfrahubClient, helper: TestHelper, car_data_01: dic
 
 @pytest.fixture
 async def gql_query_node_03(client: InfrahubClient, gql_query_data_03: dict[str, Any]) -> InfrahubNode:
-    schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
+    backend_schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
+    schema = NodeSchemaAPI(**backend_schema.model_dump())
     node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
     return node
 
