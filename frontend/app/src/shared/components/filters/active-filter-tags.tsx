@@ -6,16 +6,19 @@ import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { formatFullDate } from "@/shared/utils/date";
 
-import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
+import { FilterFormDispatch } from "@/entities/nodes/object/ui/filters/filter-form-dispatch";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
-import { isMetadataFilter } from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
-import { MetadataFilterForm } from "@/entities/nodes/object/ui/filters/metadata-filter-form";
-import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 type FieldSchema = AttributeSchema | RelationshipSchema;
+
+const EMPTY_DISPLAY = { label: null, condition: "", value: "" } as const;
+
+function isRelationshipSchema(schema: FieldSchema): schema is RelationshipSchema {
+  return "peer" in schema;
+}
 
 export function formatAttributeFilterValue({
   kind,
@@ -59,14 +62,6 @@ export function ActiveFilterTags({
     setFilters(filters.filter((f) => f.name !== filterName));
   };
 
-  const getFieldSchema = (fieldName: string): FieldSchema | undefined => {
-    return fieldSchemas[fieldName];
-  };
-
-  const isRelationshipSchema = (schema: FieldSchema): schema is RelationshipSchema => {
-    return "peer" in schema;
-  };
-
   if (filters.length === 0 && !additionalTags) {
     return null;
   }
@@ -95,7 +90,7 @@ export function ActiveFilterTags({
 
               const fieldKey = parts.at(-1);
               const fieldName = parts.slice(0, -1).join("__");
-              const fieldSchema = getFieldSchema(fieldName);
+              const fieldSchema = fieldSchemas[fieldName];
 
               if (!fieldSchema) {
                 return null;
@@ -119,8 +114,6 @@ export function ActiveFilterTags({
     </ScrollArea>
   );
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 interface EditableFilterTagProps {
   filter: Filter;
@@ -159,25 +152,11 @@ function EditableFilterTag({
       </PopoverAnchor>
 
       <PopoverContent align="start" className="p-0" sideOffset={4}>
-        {isMetadataFilter(fieldSchema.name) ? (
-          <MetadataFilterForm metadataFilter={fieldSchema} onSuccess={() => setEditOpen(false)} />
-        ) : isRelationship ? (
-          <RelationshipFilterForm
-            relationshipSchema={fieldSchema as RelationshipSchema}
-            onSuccess={() => setEditOpen(false)}
-          />
-        ) : (
-          <AttributeFilterForm
-            attributeSchema={fieldSchema as AttributeSchema}
-            onSuccess={() => setEditOpen(false)}
-          />
-        )}
+        <FilterFormDispatch fieldSchema={fieldSchema} onSuccess={() => setEditOpen(false)} />
       </PopoverContent>
     </Popover>
   );
 }
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
 
 function getFilterTagDisplay({
   filter,
@@ -193,7 +172,7 @@ function getFilterTagDisplay({
   const name = fieldSchema.label ?? fieldSchema.name;
 
   if (fieldKey === "value" || fieldKey === "values") {
-    if (isRelationship) return { label: null, condition: "", value: "" };
+    if (isRelationship) return EMPTY_DISPLAY;
 
     return {
       label: name,
@@ -206,8 +185,8 @@ function getFilterTagDisplay({
   }
 
   if (fieldKey === "ids") {
-    if (!isRelationship) return { label: null, condition: "", value: "" };
-    if (!Array.isArray(filter.value)) return { label: null, condition: "", value: "" };
+    if (!isRelationship) return EMPTY_DISPLAY;
+    if (!Array.isArray(filter.value)) return EMPTY_DISPLAY;
 
     const value = filter.value
       .map((item: unknown) => {
@@ -235,7 +214,7 @@ function getFilterTagDisplay({
   }
 
   if (fieldKey === "before" || fieldKey === "after") {
-    if (isRelationship) return { label: null, condition: "", value: "" };
+    if (isRelationship) return EMPTY_DISPLAY;
 
     return {
       label: name,
@@ -244,5 +223,5 @@ function getFilterTagDisplay({
     };
   }
 
-  return { label: null, condition: "", value: "" };
+  return EMPTY_DISPLAY;
 }

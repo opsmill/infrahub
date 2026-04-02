@@ -12,15 +12,10 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
 import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
-import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
+import { FilterFormDispatch } from "@/entities/nodes/object/ui/filters/filter-form-dispatch";
 import { FilterMenuItem } from "@/entities/nodes/object/ui/filters/filter-menu-item";
 import { FilterMenuSection } from "@/entities/nodes/object/ui/filters/filter-menu-section";
-import {
-  ALL_METADATA_FILTERS,
-  isMetadataFilter,
-} from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
-import { MetadataFilterForm } from "@/entities/nodes/object/ui/filters/metadata-filter-form";
-import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
 import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
 import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -37,8 +32,14 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
     null
   );
 
-  const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
-  const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []);
+  const sections: Array<{ title: string; items: Array<AttributeSchema | RelationshipSchema> }> = [
+    { title: "Metadata", items: ALL_METADATA_FILTERS },
+    { title: "Attributes", items: getAttributesVisibleInListView(schema.attributes ?? []) },
+    {
+      title: "Relationships",
+      items: getRelationshipsVisibleInListView(schema.relationships ?? []),
+    },
+  ];
 
   // Adjust filter count for IPAM suggested filters that are enabled by default (not in URL)
   // +1 when the availability filter is implicitly active (not in URL)
@@ -87,58 +88,27 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
 
       <PopoverContent align="start" className="flex gap-0 p-0" sideOffset={8}>
         <Col className="max-h-80 w-52 gap-1 overflow-y-auto border-gray-200 border-r p-2">
-          {ALL_METADATA_FILTERS.length > 0 && (
-            <FilterMenuSection title="Metadata">
-              {ALL_METADATA_FILTERS.map((metaSchema) => (
-                <FilterMenuItem
-                  key={metaSchema.name}
-                  schema={metaSchema}
-                  filters={filters}
-                  onHover={setHoveredSchema}
-                  isHovered={hoveredSchema?.name === metaSchema.name}
-                />
-              ))}
-            </FilterMenuSection>
-          )}
-
-          {attributes.length > 0 && (
-            <FilterMenuSection title="Attributes">
-              {attributes.map((attr) => (
-                <FilterMenuItem
-                  key={attr.name}
-                  schema={attr}
-                  filters={filters}
-                  onHover={setHoveredSchema}
-                  isHovered={hoveredSchema?.name === attr.name}
-                />
-              ))}
-            </FilterMenuSection>
-          )}
-
-          {relationships.length > 0 && (
-            <FilterMenuSection title="Relationships">
-              {relationships.map((rel) => (
-                <FilterMenuItem
-                  key={rel.name}
-                  schema={rel}
-                  filters={filters}
-                  onHover={setHoveredSchema}
-                  isHovered={hoveredSchema?.name === rel.name}
-                />
-              ))}
-            </FilterMenuSection>
+          {sections.map(
+            ({ title, items }) =>
+              items.length > 0 && (
+                <FilterMenuSection key={title} title={title}>
+                  {items.map((schema) => (
+                    <FilterMenuItem
+                      key={schema.name}
+                      schema={schema}
+                      filters={filters}
+                      onHover={setHoveredSchema}
+                      isHovered={hoveredSchema?.name === schema.name}
+                    />
+                  ))}
+                </FilterMenuSection>
+              )
           )}
         </Col>
 
         {hoveredSchema && (
           <div className="min-w-64 p-0">
-            {isMetadataFilter(hoveredSchema.name) ? (
-              <MetadataFilterForm metadataFilter={hoveredSchema} onSuccess={closeMenu} />
-            ) : "peer" in hoveredSchema ? (
-              <RelationshipFilterForm relationshipSchema={hoveredSchema} onSuccess={closeMenu} />
-            ) : (
-              <AttributeFilterForm attributeSchema={hoveredSchema} onSuccess={closeMenu} />
-            )}
+            <FilterFormDispatch fieldSchema={hoveredSchema} onSuccess={closeMenu} />
           </div>
         )}
       </PopoverContent>
