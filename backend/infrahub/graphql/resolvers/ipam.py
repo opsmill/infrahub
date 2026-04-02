@@ -305,6 +305,23 @@ async def _annotate_result(
     return _filter_kinds(nodes=nodes, kinds=kinds_to_filter, limit=limit) if kinds_to_filter else nodes
 
 
+def _find_permission_set(permissions: dict[str, Any] | None, schema_kind: str) -> dict[str, Any] | None:
+    if not permissions:
+        return None
+    for edge in permissions["edges"]:
+        if edge["node"]["kind"] == schema_kind:
+            return edge["node"]
+    return None
+
+
+def _resolve_parent_prefix_id(schema: GenericSchema, filters: dict[str, Any]) -> str:
+    if schema.is_ip_address and "ip_prefix__ids" in filters:
+        return next(iter(filters["ip_prefix__ids"]))
+    if schema.is_ip_prefix and "parent__ids" in filters:
+        return next(iter(filters["parent__ids"]))
+    return ""
+
+
 @trace.get_tracer(__name__).start_as_current_span("ipam_paginated_list_resolver")
 @retry_db_transaction(name="ipam_paginated_list_resolver")
 async def ipam_paginated_list_resolver(  # noqa: PLR0915
@@ -355,16 +372,9 @@ async def ipam_paginated_list_resolver(  # noqa: PLR0915
         if fields.get("permissions"):
             response["permissions"] = permissions
 
-        if permissions:
-            for edge in permissions["edges"]:
-                if edge["node"]["kind"] == schema.kind:
-                    permission_set = edge["node"]
+        permission_set = _find_permission_set(permissions, schema.kind)
 
-        parent_prefix_id = ""
-        if schema.is_ip_address and "ip_prefix__ids" in filters:
-            parent_prefix_id = next(iter(filters["ip_prefix__ids"]))
-        if schema.is_ip_prefix and "parent__ids" in filters:
-            parent_prefix_id = next(iter(filters["parent__ids"]))
+        parent_prefix_id = _resolve_parent_prefix_id(schema=schema, filters=filters)
 
         parent_prefix: BuiltinIPPrefix | None = None
         if parent_prefix_id:

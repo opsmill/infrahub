@@ -3308,6 +3308,22 @@ async def test_diff_relationship_property_update_on_main(
     assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}
 
 
+def _assert_added_property_diffs(props_by_type: dict, expected: tuple) -> None:
+    for prop_type, new_value in expected:
+        prop_diff = props_by_type[prop_type]
+        assert prop_diff.action is DiffAction.ADDED
+        assert prop_diff.previous_value is None
+        assert prop_diff.new_value == new_value
+
+
+def _assert_removed_property_diffs(props_by_type: dict, expected: tuple) -> None:
+    for prop_type, previous_value in expected:
+        prop_diff = props_by_type[prop_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.previous_value == previous_value
+        assert prop_diff.new_value is None
+
+
 async def test_calculate_with_migrated_kind_node(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -3405,14 +3421,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for prop_type, prop_value in [
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ]:
-        prop_diff = props_by_type[prop_type]
-        assert prop_diff.action is DiffAction.REMOVED
-        assert prop_diff.previous_value == prop_value
-        assert prop_diff.new_value is None
+    _assert_removed_property_diffs(
+        props_by_type,
+        [
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ],
+    )
 
     # validate that camry has color, nbr_seats, owner, driver changes on main
     camry_base_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
@@ -3449,14 +3464,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for property_type, previous_prop_value in (
-        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.REMOVED
-        assert property_diff.previous_value == previous_prop_value
-        assert property_diff.new_value is None
+    _assert_removed_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
     alfred_element = elements_by_peer_id[person_alfred_main.id]
     assert alfred_element.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in alfred_element.properties}
@@ -3464,14 +3478,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for property_type, new_prop_value in (
-        (DatabaseEdgeType.IS_RELATED, person_alfred_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.previous_value is None
-        assert property_diff.new_value == new_prop_value
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, person_alfred_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
     driver_rel_diff = rel_diffs_by_name["driver"]
     assert driver_rel_diff.action is DiffAction.ADDED
     elements_by_peer_id = {e.peer_id: e for e in driver_rel_diff.relationships}
@@ -3483,14 +3496,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for property_type, new_prop_value in (
-        (DatabaseEdgeType.IS_RELATED, new_main_camry_driver_id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.previous_value is None
-        assert property_diff.new_value == new_prop_value
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, new_main_camry_driver_id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     branch_diff = calculated_diffs.diff_branch_diff
     assert len(branch_diff.nodes) == 8
@@ -3519,25 +3531,23 @@ async def test_calculate_with_migrated_kind_node(
     branch_car_element_diff = elements_by_peer_id[branch_car.id]
     assert branch_car_element_diff.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in branch_car_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, branch_car.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.new_value == value
-        assert property_diff.previous_value is None
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, branch_car.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
     camry_element_diff = elements_by_peer_id[car_camry_main.id]
     assert camry_element_diff.action is DiffAction.REMOVED
     props_by_type = {p.property_type: p for p in camry_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.REMOVED
-        assert property_diff.new_value is None
-        assert property_diff.previous_value == value
+    _assert_removed_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     # validate relationship on albert is correct
     albert_diff = nodes_by_id_and_kind[person_albert_main.id, person_albert_main.get_kind()]
@@ -3553,14 +3563,13 @@ async def test_calculate_with_migrated_kind_node(
     camry_element_diff = elements_by_peer_id[car_camry_main.id]
     assert camry_element_diff.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in camry_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.new_value == value
-        assert property_diff.previous_value is None
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     # validate relationship on john is correct
     john_diff = nodes_by_id_and_kind[person_john_main.id, person_john_main.get_kind()]
@@ -3576,14 +3585,13 @@ async def test_calculate_with_migrated_kind_node(
     camry_element_diff = elements_by_peer_id[car_camry_main.id]
     assert camry_element_diff.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in camry_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.new_value == value
-        assert property_diff.previous_value is None
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     # test new car that was migrated on the branch
     branch_car_diff = nodes_by_id_and_kind[branch_car.id, "Test2NewCar"]
@@ -3613,14 +3621,13 @@ async def test_calculate_with_migrated_kind_node(
             DatabaseEdgeType.HAS_VALUE,
             DatabaseEdgeType.IS_PROTECTED,
         }
-        for prop_type, prop_value in [
-            (DatabaseEdgeType.HAS_VALUE, expected_value),
-            (DatabaseEdgeType.IS_PROTECTED, False),
-        ]:
-            prop_diff = props_by_type[prop_type]
-            assert prop_diff.action is DiffAction.ADDED
-            assert prop_diff.previous_value is None
-            assert prop_diff.new_value == prop_value
+        _assert_added_property_diffs(
+            props_by_type,
+            [
+                (DatabaseEdgeType.HAS_VALUE, expected_value),
+                (DatabaseEdgeType.IS_PROTECTED, False),
+            ],
+        )
     rel_diffs_by_name = {r.name: r for r in branch_car_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"owner"}
     rel_diff = rel_diffs_by_name["owner"]
@@ -3634,14 +3641,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, new_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.ADDED
-        assert diff_prop.previous_value is None
-        assert diff_prop.new_value == new_value
+    _assert_added_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        ),
+    )
 
     # check that old version of migrated node is removed
     old_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
@@ -3660,14 +3666,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, previous_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.REMOVED
-        assert diff_prop.previous_value == previous_value
-        assert diff_prop.new_value is None
+    _assert_removed_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        ),
+    )
 
     # validate new camry that was updated on branch before migration
     new_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "Test2NewCar"]
@@ -3705,14 +3710,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, new_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, new_branch_camry_owner_id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.ADDED
-        assert diff_prop.previous_value is None
-        assert diff_prop.new_value == new_value
+    _assert_added_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, new_branch_camry_owner_id),
+        ),
+    )
     new_driver_rel_diff = rel_diffs_by_name["driver"]
     assert new_driver_rel_diff.action is DiffAction.ADDED
     elements_by_peer_id = {e.peer_id: e for e in new_driver_rel_diff.relationships}
@@ -3724,14 +3728,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, new_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, new_branch_camry_driver_id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.ADDED
-        assert diff_prop.previous_value is None
-        assert diff_prop.new_value == new_value
+    _assert_added_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, new_branch_camry_driver_id),
+        ),
+    )
 
     # validate unchanged migrated node is correct
     old_accord_diff = nodes_by_id_and_kind[car_accord_main.id, "TestCar"]
