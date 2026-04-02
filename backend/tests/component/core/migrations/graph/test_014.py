@@ -1,4 +1,5 @@
 from infrahub.constants.database import IndexType
+from infrahub.core.branch.models import Branch
 from infrahub.core.migrations.graph.m014_remove_index_attr_value import (
     Migration014,
 )
@@ -11,9 +12,9 @@ from infrahub.database.neo4j import IndexManagerNeo4j
 
 async def test_migration_014(
     db: InfrahubDatabase,
-    reset_registry,
-    default_branch,
-    delete_all_nodes_in_db,
+    reset_registry: None,
+    default_branch: Branch,
+    delete_all_nodes_in_db: None,
 ) -> None:
     indexes = [
         IndexItem(name="node_uuid", label="Node", properties=["uuid"], type=IndexType.RANGE),
