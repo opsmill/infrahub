@@ -144,6 +144,11 @@ class RegisteredNodeComputedAttribute(BaseModel):
                 break
 
             ready, deferred = self._partition_wave(wave, kind)
+            if not ready and deferred:
+                # All targets in this wave form a cycle — no clear ordering is
+                # possible, so emit them all to avoid silently dropping them.
+                ready = deferred
+                deferred = []
             result.extend(ready)
             pending_fields = {t.attribute.name for t in ready}
             processed.difference_update(target.key_name for target in deferred)

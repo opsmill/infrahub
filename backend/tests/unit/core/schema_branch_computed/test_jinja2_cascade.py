@@ -76,6 +76,31 @@ class TestCascadeWithExplicitUpdates:
         assert len(names) == 2
         assert set(names) == {"alpha", "beta"}
 
+    def test_same_wave_cycle_not_silently_dropped(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
+        """Cyclic targets triggered by the same field must not be silently dropped.
+
+        Regression: name -> [alpha, beta] with alpha -> beta and beta -> alpha.
+        Both land in the same wave, _partition_wave marks all as deferred (ready=[]),
+        pending_fields becomes empty, and the loop exits dropping both targets.
+        """
+        target_alpha = make_target(kind=LOCAL_KIND, attr_name="alpha")
+        target_beta = make_target(kind=LOCAL_KIND, attr_name="beta")
+        ca = ComputedAttributes(
+            jinja2_attribute_map={
+                LOCAL_KIND: RegisteredNodeComputedAttribute(
+                    local_fields={
+                        "name": [target_alpha, target_beta],
+                        "alpha": [target_beta],
+                        "beta": [target_alpha],
+                    },
+                ),
+            },
+        )
+        results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
+        names = [r.attribute.name for r in results]
+        assert len(names) == 2
+        assert set(names) == {"alpha", "beta"}
+
     def test_cascade_diamond(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """Diamond: name -> label, name -> desc, label -> summary, desc -> summary."""
         label_target = make_target(kind=LOCAL_KIND, attr_name="label")
