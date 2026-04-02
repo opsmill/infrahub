@@ -24,25 +24,20 @@ export function FilterTag({ label, value, condition, onEdit, ...props }: FilterT
       textValue={`${label} ${condition ?? "contains"} ${value}`}
       {...props}
     >
-      <button
-        type="button"
+      <Button
         className={classNames(
-          "ml-1.5 inline-flex items-center gap-1.5 bg-transparent",
+          "ml-1.5 inline-flex items-center gap-1.5 bg-transparent p-0",
           onEdit ? "cursor-pointer" : "cursor-default"
         )}
-        onClick={(e) => {
-          if (onEdit) {
-            e.stopPropagation();
-            onEdit();
-          }
-        }}
+        onPress={() => onEdit?.()}
+        isDisabled={!onEdit}
       >
         <span>{label}</span>
         {condition && <span className="text-gray-400">{condition}</span>}
         <div className="h-6 w-px self-stretch bg-gray-300" />
         <span className="inline-flex items-center font-medium text-custom-blue-700">{value}</span>
-      </button>
-      <Button slot="remove" className="inline-flex items-center cursor-pointer bg-transparent p-0">
+      </Button>
+      <Button slot="remove" className="inline-flex cursor-pointer items-center bg-transparent p-0">
         <Icon
           icon="mdi:close-circle-outline"
           className="text-base text-gray-400 hover:text-custom-blue-700"
