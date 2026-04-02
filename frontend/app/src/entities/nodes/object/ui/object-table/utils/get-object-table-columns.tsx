@@ -1,4 +1,3 @@
-import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import { type ColumnDef, createColumnHelper } from "@tanstack/react-table";
 
 import { FROM_RESOURCE_POOL_SUFFIX } from "@/shared/components/form/constants";
@@ -87,8 +86,7 @@ export function getObjectGenericColumns(schema: ModelSchema): Array<ColumnDef<No
 }
 
 export function getObjectFieldsColumns(
-  schema: ModelSchema,
-  headerProps?: PopoverTriggerProps
+  schema: ModelSchema
 ): Array<ColumnDef<NodeObject, NodeAttribute | NodeRelationship>> {
   const attributes = getAttributesVisibleInListView(schema.attributes ?? []);
   const relationships = getRelationshipsVisibleInListView(schema.relationships ?? []).filter(
@@ -99,7 +97,7 @@ export function getObjectFieldsColumns(
   return sortedColumns.map((columnSchema) => {
     return columnHelper.accessor(columnSchema.name, {
       header: () => {
-        return <TableColumnHeader columnSchema={columnSchema} {...headerProps} />;
+        return <TableColumnHeader columnSchema={columnSchema} />;
       },
       cell: ({ cell, row }) => {
         const value = cell.getValue();
@@ -143,13 +141,10 @@ export function getObjectFieldsColumns(
   });
 }
 
-export const getObjectTableColumns = (
-  schema: ModelSchema,
-  headerProps?: PopoverTriggerProps
-): Array<ColumnDef<NodeObject>> => {
+export const getObjectTableColumns = (schema: ModelSchema): Array<ColumnDef<NodeObject>> => {
   return [
     ...getObjectIdentifierColumns(schema),
     ...getObjectGenericColumns(schema),
-    ...getObjectFieldsColumns(schema, headerProps),
+    ...getObjectFieldsColumns(schema),
   ] as Array<ColumnDef<NodeObject>>;
 };
