@@ -17,7 +17,9 @@ export function TableIdentifierHeader({ schema, className, ...props }: TableIden
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10", className)}>
+    <div
+      className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white", className)}
+    >
       {isAuthenticated && <Checkbox {...props} data-testid="select-all-rows" />}
 
       <Row className="mx-2 gap-1.5">
