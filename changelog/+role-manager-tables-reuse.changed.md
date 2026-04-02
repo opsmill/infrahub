@@ -1,1 +1,1 @@
-Accounts, Groups, and Roles tables in Role Manager now use the same updated design and features as other object tables across the application
+Accounts, Groups, Roles, and Global Permissions tables in Role Manager now use the same updated design and features as other object tables across the application
