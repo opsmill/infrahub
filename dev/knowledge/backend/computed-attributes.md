@@ -12,9 +12,9 @@ There are three distinct paths for evaluating computed attributes, depending on 
 
 **When**: A new node is created (`Node.new()` → `_process_fields()` → `_process_macros()`)
 
-All mandatory Jinja2 computed attributes are evaluated synchronously during node creation. The method iterates over `_computed_jinja2_attributes`, renders each template with resolved variables, and sets the attribute value via a generator method (`_generate_attribute_default` or a custom `generate_<name>`).
+All self-targeting Jinja2 computed attributes (both mandatory and optional) are evaluated synchronously during node creation. The method iterates over `_computed_jinja2_attributes`, renders each template with resolved variables, and sets the attribute value via a generator method (`_generate_attribute_default` or a custom `generate_<name>`).
 
-Optional computed attributes are **not** evaluated inline at creation — they are handled asynchronously via Prefect (path 3).
+Optional **cross-node** computed attributes (those referencing peer relationships) are handled asynchronously via Prefect (path 3), since the async trigger for optional attrs includes `NodeCreatedEvent`.
 
 ### 2. Local Update — Inline via `_recompute_local_jinja2()`
 
@@ -39,7 +39,7 @@ These changes are handled by Prefect background tasks triggered by `NodeCreatedE
 
 `ComputedAttrJinja2TriggerDefinition` has a `targets_self` property that returns `True` when `trigger_kind == computed_attribute.kind` — meaning the trigger node kind is the same as the node kind owning the computed attribute.
 
-The async Prefect path **skips** triggers where `targets_self is True`, because those are already handled synchronously by `_recompute_local_jinja2()` during the update mutation. This prevents duplicate computation.
+The async Prefect path **neutralizes** self-targeting triggers by replacing their field matchers with placeholder fields that never match real `NodeUpdatedEvent`s, because those are already handled synchronously by `_recompute_local_jinja2()` during the update mutation. The trigger definitions are kept (rather than removed entirely) so they remain available for schema-change detection in the setup flow. This prevents duplicate computation while preserving bulk-recomputation capability.
 
 ## Extra Filters for Relationship Peers
 
@@ -80,8 +80,8 @@ Key methods:
 
 | Event | Path | Method | Scope |
 |-------|------|--------|-------|
-| Node creation (mandatory attrs) | Inline | `_process_macros()` | All mandatory computed attrs |
-| Node creation (optional attrs) | Async | Prefect task | Optional computed attrs |
+| Node creation (self-targeting attrs) | Inline | `_process_macros()` | All self-targeting computed attrs (mandatory and optional) |
+| Node creation (cross-node optional attrs) | Async | Prefect task | Optional cross-node computed attrs (via `NodeCreatedEvent`) |
 | Local attribute/relationship change | Inline | `_recompute_local_jinja2()` | Self-targeting computed attrs |
 | Remote peer attribute change | Async | Prefect task | Cross-node computed attrs |
 
