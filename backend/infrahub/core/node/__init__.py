@@ -555,7 +555,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 raise ValidationError(errors)
 
             if self._schema.is_node_schema:
-                schema_branch = db.schema.get_schema_branch(self._branch.name)
+                schema_branch = db.schema.get_schema_branch(self.get_branch_based_on_support_type().name)
                 local_targets = schema_branch.computed_attributes.get_local_jinja2_targets(kind=self._schema.kind)
                 self._computed_jinja2_attributes = [t.attribute.name for t in local_targets]
 
