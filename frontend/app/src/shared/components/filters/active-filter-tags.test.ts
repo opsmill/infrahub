@@ -5,10 +5,7 @@ import {
   getFilterTagDisplay,
 } from "@/shared/components/filters/active-filter-tags";
 
-import {
-  generateAttributeSchema,
-  generateRelationshipSchema,
-} from "../../../../tests/fake/schema";
+import { generateAttributeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";
 
 describe("formatAttributeFilterValue", () => {
   it("returns string representation for boolean kind", () => {
@@ -39,7 +36,11 @@ describe("formatAttributeFilterValue", () => {
 describe("getFilterTagDisplay", () => {
   it("returns label and value for attribute value filter", () => {
     // GIVEN
-    const fieldSchema = generateAttributeSchema({ name: "hostname", label: "Hostname", kind: "Text" });
+    const fieldSchema = generateAttributeSchema({
+      name: "hostname",
+      label: "Hostname",
+      kind: "Text",
+    });
     const filter = { name: "hostname__value", value: "server01" };
 
     // WHEN
