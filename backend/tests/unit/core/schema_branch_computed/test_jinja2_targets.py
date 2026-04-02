@@ -125,6 +125,28 @@ class TestGetTargetsNodeFilters:
         assert len(results) == 1
         assert sorted(results[0].node_filters) == ["region__ids", "site__ids"]
 
+    def test_self_referential_relationship_gets_both_ids_and_rel_filter(
+        self, make_target: Callable[..., ComputedAttributeTarget]
+    ) -> None:
+        """A self-referential relationship (peer kind == target kind) needs both ids and rel__ids.
+
+        When InfraDevice has computed_name = "{{ name__value }}-{{ parent__name__value }}"
+        and parent points to another InfraDevice, changing a device's name should:
+        - recompute the device itself (ids filter)
+        - recompute other devices pointing to it via parent (parent__ids filter)
+        """
+        target = make_target(kind=LOCAL_KIND, attr_name="computed_name")
+        registered = RegisteredNodeComputedAttribute(
+            local_fields={"name": [target], "parent": [target]},
+            relationship_dependencies={
+                "parent": RelationshipDependency(targets=[target], peer_attributes={"name"}),
+            },
+        )
+
+        results = registered.get_targets(updates=["name"], trigger_kind=LOCAL_KIND)
+        assert len(results) == 1
+        assert sorted(results[0].node_filters) == ["ids", "parent__ids"]
+
     def test_default_node_filters_is_empty(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """ResolvedComputedTarget should default to an empty node_filters list."""
         resolved = ResolvedComputedTarget(target=make_target(kind=LOCAL_KIND, attr_name="some_attr"))

@@ -93,12 +93,17 @@ class RegisteredNodeComputedAttribute(BaseModel):
         """Return mapping of relationship names to peer attribute names needed for computed attribute templates."""
         return {rel: dep.peer_attributes for rel, dep in self.relationship_dependencies.items()}
 
-    def get_targets(self, updates: list[str] | None = None) -> list[ResolvedComputedTarget]:
+    def get_targets(
+        self, updates: list[str] | None = None, trigger_kind: str | None = None
+    ) -> list[ResolvedComputedTarget]:
         """Resolve which ComputedAttributeTargets are affected by changes to this node.
 
         Args:
             updates: Field names (attributes or relationships) that changed. When None, all
                      registered local_fields are included.
+            trigger_kind: The schema kind of the node that was modified. Used to detect
+                          self-referential relationships where a target needs both direct
+                          (``ids``) and relationship-based (``rel__ids``) filters.
 
         Returns:
             Deduplicated list of ResolvedComputedTarget, each pairing a target with the
@@ -119,8 +124,12 @@ class RegisteredNodeComputedAttribute(BaseModel):
                 if entry.key_name in resolved and filter_key not in resolved[entry.key_name].node_filters:
                     resolved[entry.key_name].node_filters.append(filter_key)
 
-        # Targets with no relationship filters need the default "ids" filter
         for target in resolved.values():
+            # Self-referential targets need direct ID lookup in addition to any
+            # relationship filters, because the changed node itself must also recompute.
+            if trigger_kind and target.target.kind == trigger_kind and "ids" not in target.node_filters:
+                target.node_filters.append("ids")
+            # Targets with no filters need the default "ids" filter
             if not target.node_filters:
                 target.node_filters.append("ids")
 
@@ -276,7 +285,7 @@ class Jinja2ComputedRegistry:
             kind when the dependency crosses a relationship.
         """
         if mapping := self._map.get(kind):
-            return mapping.get_targets(updates=updates)
+            return mapping.get_targets(updates=updates, trigger_kind=kind)
 
         return []
 
