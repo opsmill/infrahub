@@ -88,10 +88,10 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
             ({ title, items }) =>
               items.length > 0 && (
                 <FilterMenuSection key={title} title={title}>
-                  {items.map((schema) => (
+                  {items.map((fieldSchema) => (
                     <FilterMenuItem
-                      key={schema.name}
-                      schema={schema}
+                      key={fieldSchema.name}
+                      schema={fieldSchema}
                       filters={filters}
                       onHover={setHoveredSchema}
                       isHovered={hoveredSchema?.name === schema.name}
