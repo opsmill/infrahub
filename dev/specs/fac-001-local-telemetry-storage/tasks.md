@@ -15,7 +15,7 @@
 
 **Purpose**: Add constants and configuration shared across all user stories
 
-- [ ] T001 Add telemetry snapshot constants (REMOTE_SEND_STATUS values: pending/sent/skipped/failed, default PAYLOAD_FORMAT version string) to backend/infrahub/telemetry/constants.py
+- [X] T001 Add telemetry snapshot constants (REMOTE_SEND_STATUS values: pending/sent/skipped/failed, default PAYLOAD_FORMAT version string) to backend/infrahub/telemetry/constants.py
 
 ---
 
@@ -25,9 +25,9 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T002 Create TelemetrySnapshot StandardNode model with fields (kind, payload_format, deployment_id, infrahub_version, data, checksum, remote_send_status) and validation rules in backend/infrahub/telemetry/snapshot.py
-- [ ] T003 [P] Add READ_TELEMETRY to GlobalPermissions enum in backend/infrahub/core/constants/__init__.py
-- [ ] T004 [P] Add READ_TELEMETRY denial message and permission description to backend/infrahub/permissions/constants.py
+- [X] T002 Create TelemetrySnapshot StandardNode model with fields (kind, payload_format, deployment_id, infrahub_version, data, checksum, remote_send_status) and validation rules in backend/infrahub/telemetry/snapshot.py
+- [X] T003 [P] Add READ_TELEMETRY to GlobalPermissions enum in backend/infrahub/core/constants/__init__.py
+- [X] T004 [P] Add READ_TELEMETRY denial message and permission description to backend/infrahub/permissions/constants.py
 
 **Checkpoint**: TelemetrySnapshot model and permissions exist — user story implementation can begin
 
@@ -41,13 +41,13 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Create unit tests for TelemetrySnapshot model serialization, checksum computation (SHA-256 of JSON-serialized data), and field validation in backend/tests/unit/telemetry/test_snapshot.py
-- [ ] T006 [P] [US1] Create component tests for TelemetrySnapshot StandardNode CRUD (create, get by UUID, get_list, update remote_send_status) using TestContainers in backend/tests/component/telemetry/test_snapshot_db.py
+- [X] T005 [P] [US1] Create unit tests for TelemetrySnapshot model serialization, checksum computation (SHA-256 of JSON-serialized data), and field validation in backend/tests/unit/telemetry/test_snapshot.py
+- [X] T006 [P] [US1] Create component tests for TelemetrySnapshot StandardNode CRUD (create, get by UUID, get_list, update remote_send_status) using TestContainers in backend/tests/component/telemetry/test_snapshot_db.py
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Modify send_telemetry_push flow in backend/infrahub/telemetry/tasks.py to: (1) always gather telemetry data, (2) compute checksum and create TelemetrySnapshot with remote_send_status="pending", (3) save to DB, (4) check opt-out flag — if opted out update status to "skipped", (5) if opted in POST to remote and update status to "sent" or "failed", (6) ensure local storage failure does not block remote send and vice versa
-- [ ] T008 [US1] Create functional tests for modified workflow covering: opted-out stores locally with status "skipped", opted-in stores locally and sends with status "sent"/"failed", air-gapped handles network failure gracefully in backend/tests/functional/telemetry/test_workflow.py
+- [X] T007 [US1] Modify send_telemetry_push flow in backend/infrahub/telemetry/tasks.py to: (1) always gather telemetry data, (2) compute checksum and create TelemetrySnapshot with remote_send_status="pending", (3) save to DB, (4) check opt-out flag — if opted out update status to "skipped", (5) if opted in POST to remote and update status to "sent" or "failed", (6) ensure local storage failure does not block remote send and vice versa
+- [X] T008 [US1] Create functional tests for modified workflow covering: opted-out stores locally with status "skipped", opted-in stores locally and sends with status "sent"/"failed", air-gapped handles network failure gracefully in backend/tests/functional/telemetry/test_workflow.py
 
 **Checkpoint**: Daily telemetry always persists locally. US1 is fully functional and independently testable.
 
@@ -61,17 +61,17 @@
 
 ### Tests for User Story 2
 
-- [ ] T017 [P] [US2] Create component tests for TelemetrySnapshotGetListQuery date-range filtering (no dates, start only, end only, both, empty result) in backend/tests/component/telemetry/test_snapshot_db.py (extend T006 file)
-- [ ] T018 [P] [US2] Create unit tests for REST API endpoint (permission enforcement, query parameter validation, response serialization) in backend/tests/unit/api/test_telemetry.py
-- [ ] T019 [P] [US2] Create functional tests for CLI export and list commands (output format, date filtering, no-data exit code) in backend/tests/functional/telemetry/test_cli.py
+- [X] T017 [P] [US2] Create component tests for TelemetrySnapshotGetListQuery date-range filtering (no dates, start only, end only, both, empty result) in backend/tests/component/telemetry/test_snapshot_db.py (extend T006 file)
+- [X] T018 [P] [US2] Create unit tests for REST API endpoint (permission enforcement, query parameter validation, response serialization) in backend/tests/unit/api/test_telemetry.py
+- [X] T019 [P] [US2] Create functional tests for CLI export and list commands (output format, date filtering, no-data exit code) in backend/tests/functional/telemetry/test_cli.py
 
 ### Implementation for User Story 2
 
-- [ ] T009 [P] [US2] Add TelemetrySnapshotGetListQuery subclass with created_at date-range filtering (start_date, end_date) via raw_filter WHERE clauses and parameterized Cypher in backend/infrahub/telemetry/snapshot.py
-- [ ] T010 [P] [US2] Create CLI telemetry sub-app with export command (--output, --start-date, --end-date, --config-file) and list command (--start-date, --end-date, --limit, --config-file) using AsyncTyper, Rich table output, and initialize_client() for authenticated API access in python_sdk/infrahub_sdk/ctl/telemetry.py
-- [ ] T011 [US2] Implement GET /api/telemetry/snapshots REST endpoint with Pydantic response models (TelemetrySnapshotResponse, TelemetrySnapshotListResponse), query parameters (start_date, end_date, limit, offset), get_current_user + get_permission_manager dependency injection, and READ_TELEMETRY permission check in backend/infrahub/api/telemetry.py
-- [ ] T012 [US2] Register telemetry API router in backend/infrahub/api/__init__.py
-- [ ] T013 [US2] Register telemetry CLI sub-app via app.add_typer() in python_sdk/infrahub_sdk/ctl/cli_commands.py
+- [X] T009 [P] [US2] Add TelemetrySnapshotGetListQuery subclass with created_at date-range filtering (start_date, end_date) via raw_filter WHERE clauses and parameterized Cypher in backend/infrahub/telemetry/snapshot.py
+- [X] T010 [P] [US2] Create CLI telemetry sub-app with export command (--output, --start-date, --end-date, --config-file) and list command (--start-date, --end-date, --limit, --config-file) using AsyncTyper, Rich table output, and initialize_client() for authenticated API access in python_sdk/infrahub_sdk/ctl/telemetry.py
+- [X] T011 [US2] Implement GET /api/telemetry/snapshots REST endpoint with Pydantic response models (TelemetrySnapshotResponse, TelemetrySnapshotListResponse), query parameters (start_date, end_date, limit, offset), get_current_user + get_permission_manager dependency injection, and READ_TELEMETRY permission check in backend/infrahub/api/telemetry.py
+- [X] T012 [US2] Register telemetry API router in backend/infrahub/api/__init__.py
+- [X] T013 [US2] Register telemetry CLI sub-app via app.add_typer() in python_sdk/infrahub_sdk/ctl/cli_commands.py
 
 **Checkpoint**: REST API and CLI export/list commands are fully functional. US2 is independently testable.
 
@@ -85,7 +85,7 @@
 
 ### Implementation for User Story 3
 
-- [ ] T014 [US3] Validate that TelemetrySnapshot nodes (StandardNode with IS_PART_OF relationship to Root) are included in neo4j-admin backup and survive restore cycle — no code changes expected, document verification results as a test or in quickstart.md
+- [X] T014 [US3] Validate that TelemetrySnapshot nodes (StandardNode with IS_PART_OF relationship to Root) are included in neo4j-admin backup and survive restore cycle — no code changes expected, document verification results as a test or in quickstart.md
 
 **Checkpoint**: Backup/restore verified. All three user stories are independently functional.
 
@@ -95,10 +95,10 @@
 
 **Purpose**: End-to-end validation and code quality checks
 
-- [ ] T015 [P] Run quickstart.md end-to-end validation scenarios (verify storage, export, list, permission enforcement, backup inclusion)
-- [ ] T016 Run formatting (uv run invoke format) and linting (uv run invoke lint) checks across all modified and new files
-- [ ] T020 [P] Create Towncrier changelog fragment in changelog/ describing the new local telemetry storage feature (changed behavior: telemetry now always stored locally regardless of opt-out setting, new CLI commands: infrahubctl telemetry export/list)
-- [ ] T021 Create user-facing documentation in docs/ covering: feature overview, CLI command usage (infrahubctl telemetry export, infrahubctl telemetry list), REST API endpoint, permission setup (telemetry:read), and backup inclusion behavior
+- [X] T015 [P] Run quickstart.md end-to-end validation scenarios (verify storage, export, list, permission enforcement, backup inclusion)
+- [X] T016 Run formatting (uv run invoke format) and linting (uv run invoke lint) checks across all modified and new files
+- [X] T020 [P] Create Towncrier changelog fragment in changelog/ describing the new local telemetry storage feature (changed behavior: telemetry now always stored locally regardless of opt-out setting, new CLI commands: infrahubctl telemetry export/list)
+- [X] T021 Create user-facing documentation in docs/ covering: feature overview, CLI command usage (infrahubctl telemetry export, infrahubctl telemetry list), REST API endpoint, permission setup (telemetry:read), and backup inclusion behavior
 
 ---
 

@@ -1978,6 +1978,142 @@
                 ]
             }
         },
+        "/api/telemetry/snapshots": {
+            "get": {
+                "summary": "Get Telemetry Snapshots",
+                "operationId": "get_telemetry_snapshots_api_telemetry_snapshots_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Include snapshots created on or after this date (ISO 8601)",
+                            "title": "Start Date"
+                        },
+                        "description": "Include snapshots created on or after this date (ISO 8601)"
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Include snapshots created on or before this date (ISO 8601)",
+                            "title": "End Date"
+                        },
+                        "description": "Include snapshots created on or before this date (ISO 8601)"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Maximum number of snapshots to return",
+                            "default": 1000,
+                            "title": "Limit"
+                        },
+                        "description": "Maximum number of snapshots to return"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Number of snapshots to skip",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "Number of snapshots to skip"
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TelemetrySnapshotListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/transform/python/{transform_id}": {
             "get": {
                 "summary": "Transform Python",
@@ -6410,6 +6546,81 @@
                     "schemas"
                 ],
                 "title": "SchemasLoadAPI"
+            },
+            "TelemetrySnapshotListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count"
+                    },
+                    "snapshots": {
+                        "items": {
+                            "$ref": "#/components/schemas/TelemetrySnapshotResponse"
+                        },
+                        "type": "array",
+                        "title": "Snapshots"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "snapshots"
+                ],
+                "title": "TelemetrySnapshotListResponse"
+            },
+            "TelemetrySnapshotResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "title": "Kind"
+                    },
+                    "payload_format": {
+                        "type": "string",
+                        "title": "Payload Format"
+                    },
+                    "deployment_id": {
+                        "type": "string",
+                        "title": "Deployment Id"
+                    },
+                    "infrahub_version": {
+                        "type": "string",
+                        "title": "Infrahub Version"
+                    },
+                    "data": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Data"
+                    },
+                    "checksum": {
+                        "type": "string",
+                        "title": "Checksum"
+                    },
+                    "remote_send_status": {
+                        "type": "string",
+                        "title": "Remote Send Status"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "created_at",
+                    "kind",
+                    "payload_format",
+                    "deployment_id",
+                    "infrahub_version",
+                    "data",
+                    "checksum",
+                    "remote_send_status"
+                ],
+                "title": "TelemetrySnapshotResponse"
             },
             "TextAttributeParameters": {
                 "properties": {
