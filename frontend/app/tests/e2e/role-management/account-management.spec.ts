@@ -34,7 +34,7 @@ test.describe("/role-management - Account CRUD", () => {
     });
 
     await test.step("edit the account description", async () => {
-      await page.getByTestId("actions-cell-Account Test").click();
+      await getDataTableRow(page, "Account Test").getByTestId("actions-cell-Account Test").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
       await page.getByRole("textbox", { name: "Description" }).fill("test edit");
       await page.getByRole("button", { name: "Save" }).click();
@@ -97,19 +97,24 @@ test.describe("/role-management - Account CRUD", () => {
     });
 
     await test.step("delete the first account", async () => {
-      await page.getByTestId("actions-cell-Account Test 2").click();
+      await getDataTableRow(page, "Account Test")
+        .getByTestId("actions-cell-Account Test")
+        .click();
       await page.getByRole("menuitem", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
-      await expect(page.getByText("Object Account Test 2 deleted")).toBeVisible();
-      await expect(getDataTableRow(page, "Account Test")).toBeVisible();
-      await expect(getDataTableRow(page, "Account Test 2")).not.toBeVisible();
+      await expect(page.getByText("Object Account Test deleted")).toBeVisible();
+      await expect(getDataTableRow(page, "Account Test 2")).toBeVisible();
+      await expect(getDataTableRow(page, "Account Test")).not.toBeVisible();
     });
 
     await test.step("bulk delete the remaining account", async () => {
+      await getDataTableRow(page, "Account Test 2")
+        .getByTestId("identifier-checkbox-cell")
+        .click();
       await page.getByRole("button", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(page.getByText("Objects deleted!")).toBeVisible();
-      await expect(page.getByRole("link", { name: "Account Test" })).not.toBeVisible();
+      await expect(getDataTableRow(page, "Account Test 2")).not.toBeVisible();
     });
   });
 });
