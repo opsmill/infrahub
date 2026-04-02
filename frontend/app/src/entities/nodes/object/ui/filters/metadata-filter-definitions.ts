@@ -78,7 +78,19 @@ export const METADATA_USER_FILTERS: RelationshipSchema[] = [
   METADATA_UPDATED_BY,
 ];
 
-export const ALL_METADATA_FILTERS: (AttributeSchema | RelationshipSchema)[] = [
+export type MetadataFilterDefinition = AttributeSchema | RelationshipSchema;
+
+export const ALL_METADATA_FILTERS: MetadataFilterDefinition[] = [
   ...METADATA_DATETIME_FILTERS,
   ...METADATA_USER_FILTERS,
 ];
+
+export function isMetadataDatetimeFilter(
+  filter: MetadataFilterDefinition
+): filter is AttributeSchema {
+  return !("peer" in filter);
+}
+
+export function isMetadataFilter(name: string): boolean {
+  return name.startsWith(NODE_METADATA_PREFIX);
+}
