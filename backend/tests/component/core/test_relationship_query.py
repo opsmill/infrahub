@@ -475,7 +475,7 @@ async def test_query_RelationshipDeleteQuery(
                 )
                 assert active_on_main or deleted_on_branch or active_on_branch
 
-    def get_active_path_and_rel(all_paths, previous_rel: str):
+    def get_active_path_and_rel(all_paths: list[Any], previous_rel: str):
         for path in all_paths:
             for node in path[0]._nodes:
                 if "Relationship" in node.labels and node.get("uuid") != previous_rel:
@@ -710,7 +710,7 @@ async def test_query_RelationshipUpdatePropertyQuery_updates_node_metadata(
     assert dest_node._get_updated_at() == update_time
 
 
-async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch, tag_blue_main: Node) -> None:
+async def test_relationship_delete_peer(db: InfrahubDatabase, default_branch: Branch, tag_blue_main: Node) -> None:
     person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
     await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
     create_before = Timestamp()
@@ -845,7 +845,7 @@ async def test_main_delete_with_updated_branch_relationship(
 
 
 async def test_relationship_update_with_delete_peer(
-    db: InfrahubDatabase, default_branch, tag_blue_main: Node, tag_red_main: Node
+    db: InfrahubDatabase, default_branch: Branch, tag_blue_main: Node, tag_red_main: Node
 ) -> None:
     person = await Node.init(db=db, branch=default_branch, schema="TestPerson")
     await person.new(db=db, firstname="Kara", lastname="Thrace", tags=[tag_blue_main])
@@ -907,12 +907,12 @@ async def test_query_RelationshipGetPeerQuery(
 
 async def test_query_RelationshipGetPeerQuery_with_filter(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
@@ -935,12 +935,12 @@ async def test_query_RelationshipGetPeerQuery_with_filter(
 
 async def test_query_RelationshipGetPeerQuery_with_id(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
@@ -962,12 +962,12 @@ async def test_query_RelationshipGetPeerQuery_with_id(
 
 async def test_query_RelationshipGetPeerQuery_with_ids(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
@@ -989,12 +989,12 @@ async def test_query_RelationshipGetPeerQuery_with_ids(
 
 async def test_query_RelationshipGetPeerQuery_with_sort(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     car_schema = registry.schema.get(name="TestCar", branch=branch)
@@ -1020,12 +1020,12 @@ async def test_query_RelationshipGetPeerQuery_with_sort(
 
 async def test_query_RelationshipGetPeerQuery_deleted_node(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     node = await NodeManager.get_one(id=car_volt_main.id, db=db, branch=branch)
@@ -1049,12 +1049,12 @@ async def test_query_RelationshipGetPeerQuery_deleted_node(
 
 async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
@@ -1077,12 +1077,12 @@ async def test_query_RelationshipGetPeerQuery_with_multiple_filter(
 
 async def test_query_RelationshipGetPeerQuery_with_migrated_kind(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get_node_schema(name="TestPerson")
@@ -1213,13 +1213,13 @@ async def test_query_RelationshipDeleteQuery_on_migrated_kind_node_2(
 
 async def test_query_RelationshipCountPerNodeQuery(
     db: InfrahubDatabase,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson")
@@ -1267,13 +1267,13 @@ async def test_query_RelationshipCountPerNodeQuery(
 
 async def test_query_RelationshipGetByIdentifierQuery(
     db: InfrahubDatabase,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_prius_main,
-    car_yaris_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_prius_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     with pytest.raises(ValueError) as exc:
