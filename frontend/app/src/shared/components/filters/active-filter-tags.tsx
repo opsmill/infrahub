@@ -102,7 +102,6 @@ export function ActiveFilterTags({
                   filter={filter}
                   fieldKey={fieldKey}
                   fieldSchema={fieldSchema}
-                  isRelationship={isRelationshipSchema(fieldSchema)}
                 />
               );
             })}
@@ -119,15 +118,10 @@ interface EditableFilterTagProps {
   filter: Filter;
   fieldKey: string | undefined;
   fieldSchema: FieldSchema;
-  isRelationship: boolean;
 }
 
-function EditableFilterTag({
-  filter,
-  fieldKey,
-  fieldSchema,
-  isRelationship,
-}: EditableFilterTagProps) {
+function EditableFilterTag({ filter, fieldKey, fieldSchema }: EditableFilterTagProps) {
+  const isRelationship = isRelationshipSchema(fieldSchema);
   const [editOpen, setEditOpen] = useState(false);
 
   const { label, condition, value } = getFilterTagDisplay({
