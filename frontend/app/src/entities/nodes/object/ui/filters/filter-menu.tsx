@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import { Col } from "@/shared/components/container";
 import { Button } from "@/shared/components/ui/button";
@@ -21,6 +21,26 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
+function getFilterCount(schema: ModelSchema, filters: Filter[]): number {
+  const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
+
+  if (!isIpamSchema || hasIncompatibleFiltersForIpAvailability(filters)) {
+    return filters.length;
+  }
+
+  const availabilityFilter = filters.find((f) => f.name === AVAILABLE_IP_FILTER_NAME);
+
+  if (!availabilityFilter) {
+    return filters.length + 1;
+  }
+
+  if (!availabilityFilter.value) {
+    return filters.length - 1;
+  }
+
+  return filters.length;
+}
+
 interface FilterMenuProps {
   schema: ModelSchema;
   filters: Filter[];
@@ -41,31 +61,7 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
     },
   ];
 
-  // Adjust filter count for IPAM suggested filters that are enabled by default (not in URL)
-  // +1 when the availability filter is implicitly active (not in URL)
-  // -1 when it's explicitly disabled (in URL as false)
-  const filterCount = useMemo(() => {
-    const isIpamSchema =
-      isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
-
-    if (!isIpamSchema || hasIncompatibleFiltersForIpAvailability(filters)) {
-      return filters.length;
-    }
-
-    const availabilityFilter = filters.find((f) => f.name === AVAILABLE_IP_FILTER_NAME);
-
-    if (!availabilityFilter) {
-      // Implicitly active (default state) — not in URL but effectively filtering
-      return filters.length + 1;
-    }
-
-    if (!availabilityFilter.value) {
-      // Explicitly disabled — in URL but not an active filter
-      return filters.length - 1;
-    }
-
-    return filters.length;
-  }, [filters, schema]);
+  const filterCount = getFilterCount(schema, filters);
 
   const closeMenu = () => {
     setOpen(false);
@@ -79,7 +75,7 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
           {filterCount > 0 && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-200 px-1 text-xs text-gray-600">
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-200 px-1 text-gray-600 text-xs">
               {filterCount}
             </span>
           )}
