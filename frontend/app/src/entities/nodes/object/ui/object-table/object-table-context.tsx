@@ -36,15 +36,12 @@ export const ObjectTableProvider = ({
     { history: "push" }
   );
 
-  const setFilters = React.useCallback(
-    (newFilters: Filter[]) => {
-      const cleanedFilters = uniqueItemsArray(newFilters, "name");
-      setObjectTableQueryParams({
-        filters: cleanedFilters.length ? cleanedFilters : null,
-      });
-    },
-    [setObjectTableQueryParams]
-  );
+  const setFilters = (newFilters: Filter[]) => {
+    const cleanedFilters = uniqueItemsArray(newFilters, "name");
+    setObjectTableQueryParams({
+      filters: cleanedFilters.length ? cleanedFilters : null,
+    });
+  };
 
   React.useEffect(() => {
     if (!kindInQsp) return;
