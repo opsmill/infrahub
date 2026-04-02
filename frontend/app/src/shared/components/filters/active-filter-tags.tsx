@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { formatFullDate } from "@/shared/utils/date";
@@ -9,6 +9,8 @@ import { formatFullDate } from "@/shared/utils/date";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
+import { isMetadataFilter } from "@/entities/nodes/object/ui/filters/metadata-filter-definitions";
+import { MetadataFilterForm } from "@/entities/nodes/object/ui/filters/metadata-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
@@ -146,12 +148,20 @@ function EditableFilterTag({
 
   return (
     <Popover open={editOpen} onOpenChange={setEditOpen}>
-      <PopoverTrigger asChild>
-        <FilterTag id={filter.name} label={label} condition={condition} value={value} />
-      </PopoverTrigger>
+      <PopoverAnchor asChild>
+        <FilterTag
+          id={filter.name}
+          label={label}
+          condition={condition}
+          value={value}
+          onEdit={() => setEditOpen(true)}
+        />
+      </PopoverAnchor>
 
       <PopoverContent align="start" className="p-0" sideOffset={4}>
-        {isRelationship ? (
+        {isMetadataFilter(fieldSchema.name) ? (
+          <MetadataFilterForm metadataFilter={fieldSchema} onSuccess={() => setEditOpen(false)} />
+        ) : isRelationship ? (
           <RelationshipFilterForm
             relationshipSchema={fieldSchema as RelationshipSchema}
             onSuccess={() => setEditOpen(false)}
