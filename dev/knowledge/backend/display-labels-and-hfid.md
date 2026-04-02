@@ -89,7 +89,7 @@ if self._existing:
 ### Update
 
 1. `Node.load()` receives `human_friendly_id` and `display_label` kwargs, wraps them in property objects
-2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label`)
+2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label` for those sources, plus always-on computed attribute extra filters via `computed_attributes.get_registered_jinja2_node`)
 3. `_update()` checks `needs_update(fields)` for each property; recomputes and persists if needed
 
 ### Manual Override
