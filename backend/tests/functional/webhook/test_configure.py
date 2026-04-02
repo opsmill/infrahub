@@ -7,11 +7,16 @@ from infrahub_sdk.exceptions import NodeNotFoundError
 from infrahub_sdk.protocols import CoreStandardWebhook
 from prefect.events.actions import RunDeployment
 
+from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
+from infrahub.core.protocols import CoreWebhook as CoreWebhookNode
+from infrahub.trigger.models import ExecuteWorkflow, TriggerType
 from infrahub.trigger.setup import gather_all_automations
 from infrahub.webhook.constants import CACHE_KEY_PREFIX
 from infrahub.webhook.gather import gather_trigger_webhook
 from infrahub.webhook.models import WebhookTriggerDefinition
 from infrahub.webhook.tasks import configure_webhook
+from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -186,4 +191,40 @@ class TestWebhookConfigure(TestInfrahubApp):
     ) -> None:
         webhook = await client.get(kind=CoreStandardWebhook, id=webhook4.id)
         trigger_definition = WebhookTriggerDefinition.from_object(obj=webhook)
+
+        assert trigger_definition.id == webhook4.id
+        assert trigger_definition.name == "Webhook4"
+        assert trigger_definition.type == TriggerType.WEBHOOK
+        assert trigger_definition.trigger.events == {"infrahub.node.created"}
         assert trigger_definition.trigger.match == {"infrahub.node.kind": "BuiltinTag"}
+        assert trigger_definition.trigger.match_related == {}
+        assert len(trigger_definition.actions) == 1
+        action = trigger_definition.actions[0]
+        assert isinstance(action, ExecuteWorkflow)
+        assert action.workflow == WEBHOOK_PROCESS
+        assert action.parameters["webhook_id"] == webhook4.id
+        assert action.parameters["webhook_name"] == "Webhook4"
+        assert action.parameters["webhook_kind"] == "CoreStandardWebhook"
+
+    async def test_trigger_definition_node_kind_match_via_node_manager(
+        self,
+        db: InfrahubDatabase,
+        webhook4: Node,
+    ) -> None:
+        webhooks = await NodeManager.query(db=db, schema=CoreWebhookNode)
+        webhook = next(w for w in webhooks if w.id == webhook4.id)
+        trigger_definition = WebhookTriggerDefinition.from_object(obj=webhook)
+
+        assert trigger_definition.id == webhook4.id
+        assert trigger_definition.name == "Webhook4"
+        assert trigger_definition.type == TriggerType.WEBHOOK
+        assert trigger_definition.trigger.events == {"infrahub.node.created"}
+        assert trigger_definition.trigger.match == {"infrahub.node.kind": "BuiltinTag"}
+        assert trigger_definition.trigger.match_related == {}
+        assert len(trigger_definition.actions) == 1
+        action = trigger_definition.actions[0]
+        assert isinstance(action, ExecuteWorkflow)
+        assert action.workflow == WEBHOOK_PROCESS
+        assert action.parameters["webhook_id"] == webhook4.id
+        assert action.parameters["webhook_name"] == "Webhook4"
+        assert action.parameters["webhook_kind"] == "CoreStandardWebhook"
