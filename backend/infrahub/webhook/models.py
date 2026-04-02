@@ -48,7 +48,7 @@ class WebhookTriggerDefinition(TriggerDefinition):
     def from_object(cls, obj: CoreWebhook | CoreWebhookNode) -> Self:
         event_trigger = EventTrigger()
         event_type = obj.event_type.value
-        if isinstance(obj.event_type.value, Enum):
+        if isinstance(event_type, Enum):
             event_type = obj.event_type.value.value
         if event_type == "all":
             event_trigger.events.add("infrahub.*")
@@ -66,7 +66,7 @@ class WebhookTriggerDefinition(TriggerDefinition):
                 "infrahub.resource.label": f"!{registry.default_branch}",
             }
 
-        if obj.node_kind.value and obj.event_type.value in get_all_infrahub_node_kind_events():
+        if obj.node_kind.value and event_type in get_all_infrahub_node_kind_events():
             event_trigger.match = {"infrahub.node.kind": obj.node_kind.value}
 
         definition = cls(
