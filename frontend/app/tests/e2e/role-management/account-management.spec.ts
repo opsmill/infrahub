@@ -106,7 +106,6 @@ test.describe("/role-management - Account CRUD", () => {
     });
 
     await test.step("bulk delete the remaining account", async () => {
-      await getDataTableRow(page, "Account Test 2").getByTestId("identifier-checkbox-cell").click();
       await page.getByRole("button", { name: "Delete" }).click();
       await page.getByTestId("modal-delete-confirm").click();
       await expect(page.getByText("Objects deleted!")).toBeVisible();
