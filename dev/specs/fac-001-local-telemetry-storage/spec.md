@@ -110,7 +110,7 @@ As an infrastructure operator, when I perform a database backup, the stored tele
 ## Out of Scope
 
 - Automatic data retention cleanup (auto-deleting snapshots older than a threshold). To be addressed as a separate future enhancement.
-- Telemetry status dashboard or listing CLI commands (operational convenience, not core data retention).
+- Telemetry status dashboard in the UI (operational convenience, not core data retention).
 
 ## Dependencies
 
