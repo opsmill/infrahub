@@ -550,7 +550,7 @@ max-line-length = 150
 
 [tool.ruff.lint.mccabe]
 # Target max-complexity=10
-max-complexity = 30
+max-complexity = 20
 
 [tool.ruff.lint.pylint]
 
