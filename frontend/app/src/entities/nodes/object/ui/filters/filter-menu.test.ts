@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+import type { Filter } from "@/shared/hooks/useFilters";
+
 import { AVAILABLE_IP_FILTER_NAME } from "@/entities/ipam/constants";
 import { getFilterCount } from "@/entities/nodes/object/ui/filters/filter-menu";
-import type { Filter } from "@/shared/hooks/useFilters";
 
 import { generateNodeSchema } from "../../../../../../tests/fake/schema";
 
