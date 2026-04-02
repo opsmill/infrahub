@@ -18,7 +18,7 @@ export function TableIdentifierHeader({ schema, className, ...props }: TableIden
 
   return (
     <div
-      className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10 hover:bg-white", className)}
+      className={classNames(cellsStyle, cellHeaderStyle, "left-0 z-10", className)}
     >
       {isAuthenticated && <Checkbox {...props} data-testid="select-all-rows" />}
 
