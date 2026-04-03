@@ -29,7 +29,11 @@ export function getFilterCount(
 ): number {
   const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
 
-  if (!isIpamSchema || !hasIpAvailabilityFilter || hasIncompatibleFiltersForIpAvailability(filters)) {
+  if (
+    !isIpamSchema ||
+    !hasIpAvailabilityFilter ||
+    hasIncompatibleFiltersForIpAvailability(filters)
+  ) {
     return filters.length;
   }
 
