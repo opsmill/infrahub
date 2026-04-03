@@ -1,30 +1,38 @@
 ---
 services:
   # --------------------------------------------------------------------------------
-  #  - Prometheus to collect all metrics endpoints
+  #  - Alloy to collect logs and scrape metrics (replaces Promtail + Prometheus scraper)
+  #  - Prometheus to store metrics (TSDB + remote write receiver)
   #  - Tempo to receive traces
-  #  - Grafana to visualize these metrics
-  #  - Loki to receive logs from promtail
-  #  - Promtail to parse logs from different source
+  #  - Grafana to visualize metrics, logs, and traces
+  #  - Loki to receive and store logs
   # --------------------------------------------------------------------------------
-  promtail:
+  alloy:
     profiles: [debug]
-    image: grafana/promtail:2.8.4
+    image: grafana/alloy:v1.15.0
     volumes:
-      - ./promtail/config.yml:/etc/promtail/config.yml
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /var/lib/docker/containers:/var/lib/docker/containers
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME}
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/config.alloy
     logging:
       driver: "json-file"
       options:
         max-size: "20m"
         max-file: "3"
+    ports:
+      - "12345:12345"
     depends_on:
       - loki
+      - prometheus
 
   loki:
     profiles: [debug]
-    image: grafana/loki:3.3.2
+    image: grafana/loki:3.7.1
     command:
       - '-config.file=/etc/loki/config.yml'
       - '-config.expand-env=true'
@@ -50,7 +58,7 @@ services:
 
   tempo:
     profiles: [trace]
-    image: grafana/tempo:2.6.1
+    image: grafana/tempo:2.10.3
     volumes:
       - type: bind
         source: ./tempo/config.yml
@@ -66,7 +74,7 @@ services:
 
   task-manager-exporter:
     profiles: [debug]
-    image: prefecthq/prometheus-prefect-exporter:latest
+    image: prefecthq/prometheus-prefect-exporter:3.3.0
     environment:
       PREFECT_API_URL: http://task-manager:4200/api
       LOG_LEVEL: WARNING
@@ -81,17 +89,11 @@ services:
 
   prometheus:
     profiles: [debug]
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.11.0
     volumes:
-      - type: bind
-        source: ./prometheus/config.yml
-        target: /etc/prometheus/prometheus.yml
-        read_only: true
       - prometheus_data:/prometheus
     command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--config.file=/dev/null'
       - '--storage.tsdb.path=/prometheus'
       - '--storage.tsdb.retention.time=4d'
       - '--storage.tsdb.retention.size=20GB'
@@ -111,7 +113,7 @@ services:
 
   node-exporter:
     profiles: [debug]
-    image: prom/node-exporter:latest
+    image: prom/node-exporter:v1.10.2
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -131,7 +133,7 @@ services:
 
   cadvisor:
     profiles: [debug]
-    image: gcr.io/cadvisor/cadvisor:latest
+    image: gcr.io/cadvisor/cadvisor:v0.55.1
     privileged: true
     volumes:
       - /:/rootfs:ro
