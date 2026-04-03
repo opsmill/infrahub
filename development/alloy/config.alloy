@@ -1,0 +1,383 @@
+// ============================================================================
+// Grafana Alloy Configuration
+// Replaces: Promtail (log collection) + Prometheus scraper (metrics collection)
+// ============================================================================
+
+logging {
+	level = "error"
+}
+
+
+// ----------------------------
+// Log Pipeline (replaces Promtail)
+// ----------------------------
+
+loki.write "loki" {
+	endpoint {
+		url = "http://loki:3100/loki/api/v1/push"
+	}
+}
+
+discovery.docker "containers" {
+	host             = "unix:///var/run/docker.sock"
+	refresh_interval = "15s"
+
+	filter {
+		name   = "label"
+		values = ["com.docker.compose.project=" + env("COMPOSE_PROJECT_NAME")]
+	}
+}
+
+discovery.relabel "containers" {
+	targets = discovery.docker.containers.targets
+
+	rule {
+		source_labels = ["__meta_docker_container_name"]
+		regex         = "/(.*)"
+		target_label  = "container"
+	}
+	rule {
+		source_labels = ["__meta_docker_container_label_namespace"]
+		target_label  = "namespace"
+	}
+	rule {
+		source_labels = ["__meta_docker_container_label_pod"]
+		target_label  = "pod"
+	}
+	rule {
+		source_labels = ["__meta_docker_container_env_INFRAHUB_PRODUCTION"]
+		target_label  = "json_mode"
+	}
+}
+
+loki.source.docker "containers" {
+	host       = "unix:///var/run/docker.sock"
+	targets    = discovery.relabel.containers.output
+	forward_to = [loki.process.pipeline.receiver]
+}
+
+loki.process "pipeline" {
+	forward_to = [loki.write.loki.receiver]
+
+	stage.decolorize {}
+
+	// --- Database container logs ---
+	stage.match {
+		selector = `{container=~".*database.*"}`
+
+		stage.regex {
+			expression = `(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+[+-]\d{4})\s+(?P<level>\w+)\s+(?P<message>.*)`
+		}
+		stage.labels {
+			values = {
+				level     = "",
+				timestamp = "",
+				component = "database",
+			}
+		}
+	}
+
+	// --- Cache container logs ---
+	stage.match {
+		selector = `{container=~".*cache.*"}`
+
+		stage.regex {
+			expression = `(?P<timestamp>\d{2}\s+\w{3}\s+\d{4}\s+\d{2}:\d{2}:\d{2}\.\d+)\s+(?P<level>[.#*-])\s+(?P<message>.*)`
+		}
+		stage.template {
+			source   = "level"
+			template = `{{ if eq .Value "." }}DEBUG{{ else if eq .Value "-" }}VERBOSE{{ else if eq .Value "*" }}NOTICE{{ else if eq .Value "#" }}WARNING{{ end }}`
+		}
+		stage.labels {
+			values = {
+				level     = "",
+				timestamp = "",
+				message   = "",
+				component = "cache",
+			}
+		}
+	}
+
+	// --- Server container logs (non-JSON mode) ---
+	stage.match {
+		selector = `{container=~".*server.*", json_mode!="true"}`
+
+		stage.regex {
+			expression = `(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+\[(?P<level>\w+)\s*\]\s+(?P<message>.*?)\s+\[(?P<logger>[^\]]+)\](?P<additional_info>.*)`
+		}
+		stage.template {
+			source   = "message"
+			template = "{{ .message }} {{ .additional_info }}"
+		}
+		stage.labels {
+			values = {
+				level     = "",
+				timestamp = "",
+				logger    = "",
+				component = "server",
+			}
+		}
+	}
+
+	// --- Task worker container logs ---
+	stage.match {
+		selector = `{container=~".*task-worker.*"}`
+
+		stage.regex {
+			expression = `(?P<timestamp>\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d+Z)\s+\[(?P<level>\w+)\s*\]\s+(?P<message>.*?)\s+\[(?P<logger>[^\]]+)\]`
+		}
+		stage.labels {
+			values = {
+				level     = "",
+				timestamp = "",
+				logger    = "",
+				component = "task-worker",
+			}
+		}
+	}
+
+	// --- Task manager DB container logs ---
+	stage.match {
+		selector = `{container=~".*task-manager-db.*"}`
+
+		stage.regex {
+			expression = `(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+) UTC \[(?P<pid>\d+)\] (?P<level>\w+):\s+(?P<message>.*)`
+		}
+		stage.labels {
+			values = {
+				level     = "",
+				timestamp = "",
+				component = "task-manager-db",
+			}
+		}
+	}
+
+	// --- Message queue container logs ---
+	stage.match {
+		selector = `{container=~".*message-queue.*"}`
+
+		stage.regex {
+			expression = `(?P<timestamp>\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d+\+\d{2}:\d{2})\s+\[(?P<level>\w+)\]\s+(?P<process>[^>]+>)\s+(?P<message>.*)`
+		}
+		stage.labels {
+			values = {
+				level     = "",
+				timestamp = "",
+				component = "message-queue",
+			}
+		}
+	}
+
+	// Parse logfmt fields from extracted data
+	stage.logfmt {
+		mapping = {
+			app        = "",
+			request_id = "",
+			branch     = "",
+			trace_id   = "",
+		}
+		source = "tmp_msg"
+	}
+
+	// --- Server container logs (JSON/production mode) ---
+	stage.match {
+		selector = `{container=~".*server.*", json_mode="true"}`
+
+		stage.json {
+			expressions = {
+				level          = "level",
+				msg            = "msg",
+				time           = "time",
+				timestamp      = "timestamp",
+				domain         = "domain",
+				event          = "event",
+				stream         = "stream",
+				request_id     = "request_id",
+				trace_id       = "trace_id",
+				app            = "app",
+				logger         = "logger",
+				branch         = "branch",
+				schema_request = "schema_request",
+				output         = "log",
+			}
+		}
+		stage.template {
+			source   = "message"
+			template = `{{ if .msg }}{{ .msg }}{{ else if .event }}{{ .event }}{{ if .request_id }}RequestID={{ .request_id }} {{ end }}{{ if .trace_id }}TraceID={{ .trace_id }} {{ end }}{{ if .branch }}branch ({{ .branch }}){{ end }}{{ end }}`
+		}
+		stage.template {
+			source   = "timestamp"
+			template = `{{ if .time }}{{ .time }}{{ else if .timestamp }}{{ .Value }}{{ end }}`
+		}
+	}
+
+	// Normalize level to lowercase
+	stage.template {
+		source   = "level"
+		template = "{{ ToLower .Value }}"
+	}
+
+	// Format output line
+	stage.template {
+		source   = "output"
+		template = "{{.timestamp}} {{.component}} [{{.level}}] {{.message}}"
+	}
+
+	// Normalize logger field
+	stage.template {
+		source   = "logger"
+		template = `{{ if .domain }}{{ .domain }}{{ else if .app }}{{ .app }}{{ else if .logger }}{{ .Value }}{{ else }}none{{ end }}`
+	}
+
+	// Promote extracted data to labels
+	stage.labels {
+		values = {
+			level     = "",
+			logger    = "",
+			message   = "",
+			timestamp = "",
+			namespace = "",
+			pod       = "",
+		}
+	}
+
+	stage.static_labels {
+		values = {
+			job = "infrahub-alloy",
+		}
+	}
+}
+
+// ----------------------------
+// Metrics Pipeline (replaces Prometheus scraper)
+// ----------------------------
+
+prometheus.remote_write "prometheus" {
+	endpoint {
+		url = "http://prometheus:9090/api/v1/write"
+	}
+}
+
+// --- Prometheus self-monitoring ---
+prometheus.scrape "prometheus" {
+	targets = [
+		{"__address__" = "prometheus:9090"},
+	]
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "prometheus"
+	scrape_interval = "15s"
+}
+
+// --- Infrahub server (DNS discovery) ---
+discovery.dns "infrahub_server" {
+	names = ["server"]
+	type  = "A"
+	port  = 8000
+}
+
+prometheus.scrape "infrahub_server" {
+	targets         = discovery.dns.infrahub_server.targets
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "infrahub-server"
+	scrape_interval = "15s"
+}
+
+// --- Infrahub worker (DNS discovery) ---
+discovery.dns "infrahub_worker" {
+	names = ["task-worker"]
+	type  = "A"
+	port  = 8000
+}
+
+prometheus.scrape "infrahub_worker" {
+	targets         = discovery.dns.infrahub_worker.targets
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "infrahub-worker"
+	scrape_interval = "15s"
+}
+
+// --- Message queue ---
+prometheus.scrape "message_queue" {
+	targets = [
+		{"__address__" = "message-queue:15692"},
+	]
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "message-queue"
+	scrape_interval = "15s"
+}
+
+// --- Database ---
+prometheus.scrape "database" {
+	targets = [
+		{"__address__" = "database:2004"},
+	]
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "database"
+	scrape_interval = "15s"
+}
+
+// --- Task manager exporter ---
+prometheus.scrape "task_manager" {
+	targets = [
+		{"__address__" = "task-manager-exporter:8000"},
+	]
+	honor_timestamps = false
+	forward_to       = [prometheus.remote_write.prometheus.receiver]
+	job_name         = "task-manager"
+	scrape_interval  = "15s"
+}
+
+// --- Logs infrastructure (Loki + Alloy self-monitoring) ---
+prometheus.scrape "logs" {
+	targets = [
+		{"__address__" = "loki:3100"},
+		{"__address__" = "alloy:12345"},
+	]
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "logs"
+	scrape_interval = "15s"
+}
+
+// --- Node exporter ---
+prometheus.scrape "node_exporter" {
+	targets = [
+		{"__address__" = "node-exporter:9100"},
+	]
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "node-exporter"
+	scrape_interval = "15s"
+}
+
+// --- cAdvisor (with metric relabeling) ---
+prometheus.relabel "cadvisor" {
+	forward_to = [prometheus.remote_write.prometheus.receiver]
+
+	rule {
+		source_labels = ["container_label_namespace"]
+		target_label  = "namespace"
+	}
+	rule {
+		source_labels = ["container_label_pod"]
+		target_label  = "pod"
+	}
+}
+
+prometheus.scrape "cadvisor" {
+	targets = [
+		{"__address__" = "cadvisor:8080"},
+	]
+	forward_to      = [prometheus.relabel.cadvisor.receiver]
+	job_name        = "cadvisor"
+	scrape_interval = "15s"
+}
+
+// --- Prefect task worker ---
+prometheus.scrape "prefect" {
+	targets = [
+		{"__address__" = "prefect-server:4200"},
+	]
+	forward_to      = [prometheus.remote_write.prometheus.receiver]
+	job_name        = "task-worker"
+	metrics_path    = "/api/metrics"
+	scrape_interval = "15s"
+}

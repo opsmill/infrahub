@@ -32,12 +32,7 @@ def _config_key(path: str) -> str:
     './grafana/provisioning/dashboards/neo4j_monitoring.json'
       -> 'grafana_provisioning_dashboards_neo4j_monitoring_json'
     """
-    return (
-        path.lstrip("./")
-        .replace("/", "_")
-        .replace(".", "_")
-        .replace("-", "_")
-    )
+    return path.lstrip("./").replace("/", "_").replace(".", "_").replace("-", "_")
 
 
 def _read_content(base_dir: Path, host_path: str) -> str:
@@ -112,6 +107,9 @@ def convert(input_path: Path, output_path: Path) -> None:  # noqa: PLR0912, PLR0
                 parsed = json.loads(content)
                 content = json.dumps(parsed, indent=2) + "\n"
 
+            # In the standalone compose, the service name is "infrahub-server" not "server"
+            content = content.replace('names = ["server"]', 'names = ["infrahub-server"]')
+
             # Escape $ as $$ so Docker Compose doesn't interpret
             # Grafana template variables like ${datasource_prometheus} as env vars
             content = content.replace("$", "$$")
@@ -151,7 +149,9 @@ def convert(input_path: Path, output_path: Path) -> None:  # noqa: PLR0912, PLR0
     compose["configs"] = top_configs
 
     yaml.explicit_start = True
-    yaml.dump(compose, output_path)
+    with Path(output_path).open("w", encoding="utf-8") as fh:
+        fh.write("# yamllint disable rule:line-length rule:indentation\n")
+        yaml.dump(compose, fh)
     print(f"Wrote standalone compose file to {output_path}")
     print(f"  - Embedded {len(top_configs)} config files")
     print("  - Removed all profile assignments")
@@ -160,8 +160,10 @@ def convert(input_path: Path, output_path: Path) -> None:  # noqa: PLR0912, PLR0
 
 def main() -> None:
     input_path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("docker-compose-observability.yml")
-    output_path = Path(sys.argv[2]) if len(sys.argv) > 2 else input_path.with_name(  # noqa: PLR2004
-        input_path.stem + "-standalone" + input_path.suffix
+    output_path = (
+        Path(sys.argv[2])
+        if len(sys.argv) > 2  # noqa: PLR2004
+        else input_path.with_name(input_path.stem + "-standalone" + input_path.suffix)
     )
     if not input_path.exists():
         print(f"Error: {input_path} not found", file=sys.stderr)
