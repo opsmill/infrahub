@@ -11,6 +11,13 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.8.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.4) - 2026-04-02
+
+### Fixed
+
+- Link a merging proposed change to its diff during the merge operation if it has not been linked yet ([#8769](https://github.com/opsmill/infrahub/issues/8769))
+- Fixed an issue where webhook match statements (node kind filters) were lost during scheduled reconfiguration. ([#8772](https://github.com/opsmill/infrahub/issues/8772))
+
 ## [Infrahub - v1.8.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.3) - 2026-03-31
 
 ### Fixed
