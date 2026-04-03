@@ -7,7 +7,8 @@ name: "Bug reviewer agent"
 
 "on":
   pull_request:
-    types: [opened, ready_for_review]
+    types: [opened]
+    branches: [stable]
 
 jobs:
   review:
@@ -18,7 +19,7 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -29,7 +30,7 @@ jobs:
           cat .github/bug-agent-pipeline/reviewer.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - uses: anthropics/claude-code-action@main
+      - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # model: claude-opus-4-6

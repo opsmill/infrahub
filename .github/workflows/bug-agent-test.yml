@@ -13,14 +13,20 @@ jobs:
   write-test:
     if: |
       contains(github.event.comment.body, 'AGENT_ANALYSIS_COMPLETE') &&
-      contains(github.event.issue.labels.*.name, 'type/bug')
+      contains(github.event.issue.labels.*.name, 'type/bug') &&
+      (
+        github.actor == 'claude[bot]' ||
+        github.event.comment.author_association == 'OWNER' ||
+        github.event.comment.author_association == 'MEMBER' ||
+        github.event.comment.author_association == 'COLLABORATOR'
+      )
     runs-on: ubuntu-latest
     permissions:
       issues: write
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -31,7 +37,7 @@ jobs:
           cat .github/bug-agent-pipeline/test-writer.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - uses: anthropics/claude-code-action@6062f3709600659be5e47fcddf2cf76993c235c2 # main 2026-03-23
+      - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # model: claude-opus-4-6

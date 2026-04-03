@@ -26,7 +26,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -37,7 +37,7 @@ jobs:
           cat .github/bug-agent-pipeline/analyst.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - uses: anthropics/claude-code-action@6062f3709600659be5e47fcddf2cf76993c235c2 # main 2026-03-23
+      - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # model: claude-opus-4-6
