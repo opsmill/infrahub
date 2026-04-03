@@ -25,6 +25,11 @@ on:
         default: ''
         required: false
 
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
 jobs:
   meta_data:
     runs-on: ubuntu-24.04

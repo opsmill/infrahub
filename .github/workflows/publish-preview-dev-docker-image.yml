@@ -8,6 +8,11 @@ on:
       - labeled
       - synchronize
 
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
 jobs:
   meta_data:
     if: contains(github.event.pull_request.labels.*.name, 'cd/preview')

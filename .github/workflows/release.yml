@@ -7,6 +7,11 @@ on:
     types:
       - published
 
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
 jobs:
   prepare-environment:
     uses: ./.github/workflows/define-versions.yml
