@@ -20,9 +20,6 @@ const useConfigMock = vi.mocked(useConfig);
 function setupMocks() {
   useConfigMock.mockReturnValue({
     installation_type: "community",
-    main_menu_mode: "default",
-    main_menu_size: 14,
-    experimental_features: {},
   } as any);
 
   useGetAppInfoMock.mockReturnValue({
@@ -33,7 +30,7 @@ function setupMocks() {
 }
 
 describe("AboutModal", () => {
-  test("should display version, installation type, and deployment ID when open", async () => {
+  test("should display version, edition, and deployment ID when open", async () => {
     // GIVEN
     setupMocks();
 
@@ -42,7 +39,7 @@ describe("AboutModal", () => {
 
     // THEN
     await expect.element(component.getByText("v1.8.4")).toBeVisible();
-    await expect.element(component.getByText("Community Edition")).toBeVisible();
+    await expect.element(component.getByText("community")).toBeVisible();
     await expect.element(component.getByText("abc-123-def")).toBeVisible();
   });
 
@@ -50,9 +47,6 @@ describe("AboutModal", () => {
     // GIVEN
     useConfigMock.mockReturnValue({
       installation_type: "community",
-      main_menu_mode: "default",
-      main_menu_size: 14,
-      experimental_features: {},
     } as any);
 
     useGetAppInfoMock.mockReturnValue({
@@ -65,7 +59,7 @@ describe("AboutModal", () => {
     const component = await render(<AboutModal isOpen={true} onOpenChange={() => {}} />);
 
     // THEN
-    await expect.element(component.getByText("Community Edition")).toBeVisible();
+    await expect.element(component.getByText("community")).toBeVisible();
     // Version and deployment ID show N/A on error
     const naElements = component.getByText("N/A");
     expect(naElements.elements().length).toBe(2);
