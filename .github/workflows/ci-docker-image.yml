@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:truthy
+# yamllint disable rule:truthy rule:line-length
 name: Build And Push Docker image
 
 # When calling this workflow, ensure you use
@@ -35,6 +35,11 @@ on:
         required: false
         description: Comma separated platform list to build the image for
         default: "linux/amd64,linux/arm64"
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.ref }}
@@ -125,6 +130,8 @@ jobs:
     needs: build
     if: inputs.publish
     runs-on: ubuntu-24.04
+    outputs:
+      digest: ${{ steps.inspect.outputs.digest }}
     steps:
       - name: Download digests
         uses: actions/download-artifact@v8
@@ -153,3 +160,89 @@ jobs:
             TAGS="$TAGS --tag $tag"
           done <<< "${{ inputs.tags }}"
           docker buildx imagetools create $TAGS $SOURCES
+
+      - name: Inspect manifest
+        id: inspect
+        run: |
+          FIRST_TAG=""
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            FIRST_TAG="$tag"
+            break
+          done <<< "${{ inputs.tags }}"
+          digest=$(docker buildx imagetools inspect "$FIRST_TAG" \
+            --format '{{json .Manifest}}' | jq -r '.digest')
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  sign:
+    needs: merge
+    if: inputs.publish
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.1
+
+      - name: Login to Harbor
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Sign manifest
+        run: |
+          cosign sign --yes --recursive --new-bundle-format=false --use-signing-config=false \
+            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
+
+  sbom:
+    needs: merge
+    if: inputs.publish
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v4.1.1
+
+      - name: Install Syft
+        uses: anchore/sbom-action/download-syft@v0.24.0
+
+      - name: Login to Harbor
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Generate SBOM (SPDX)
+        run: |
+          syft \
+            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}" \
+            --output spdx-json=infrahub-sbom.spdx.json
+
+      - name: Generate SBOM (CycloneDX)
+        run: |
+          syft \
+            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}" \
+            --output cyclonedx-json=infrahub-sbom.cdx.json
+
+      - name: Attest SBOM (SPDX)
+        run: |
+          cosign attest --yes \
+            --type spdxjson \
+            --predicate infrahub-sbom.spdx.json \
+            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
+
+      - name: Attest SBOM (CycloneDX)
+        run: |
+          cosign attest --yes \
+            --type cyclonedx \
+            --predicate infrahub-sbom.cdx.json \
+            "${{ vars.HARBOR_HOST }}/${{ github.repository }}@${{ needs.merge.outputs.digest }}"
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: sbom-${{ inputs.version }}
+          path: |
+            infrahub-sbom.spdx.json
+            infrahub-sbom.cdx.json
+          retention-days: 90
