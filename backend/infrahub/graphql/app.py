@@ -364,22 +364,19 @@ class InfrahubGraphQLApp:
         request: Request,
         graphql_params: GraphqlParams,
     ) -> None:
-        try:
-            service = graphql_params.context.service
-            if not service or not service.log_forwarding:
-                return
-            context = LogForwardingContext(
-                account_session=account_session,
-                branch_name=branch.name,
-                operation_name=analyzed_query.operation_name or "",
-                query_type="mutation" if analyzed_query.contains_mutation else "query",
-                ip_address=request.client.host if request.client else "",
-                graphql_operations=[op.name for op in analyzed_query.operations if op.name],
-                request_path=request.url.path,
-            )
-            service.log_forwarding.forward_exception(exception=exception, context=context)
-        except Exception:
-            self.logger.debug("Failed to forward exception to syslog", exc_info=True)
+        service = graphql_params.context.service
+        if not service or not service.log_forwarding:
+            return
+        context = LogForwardingContext(
+            account_session=account_session,
+            branch_name=branch.name,
+            operation_name=analyzed_query.operation_name or "",
+            query_type="mutation" if analyzed_query.contains_mutation else "query",
+            ip_address=request.client.host if request.client else "",
+            graphql_operations=[op.name for op in analyzed_query.operations if op.name],
+            request_path=request.url.path,
+        )
+        service.log_forwarding.forward_exception(exception=exception, context=context)
 
     def _log_error(self, error: Exception) -> None:
         if isinstance(error, Error):

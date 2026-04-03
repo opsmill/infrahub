@@ -193,13 +193,6 @@ class TestPermissionDeniedForwarding:
 
         assert response.status_code == 403
 
-    async def test_forwarding_failure_does_not_affect_response(self, request_fixture: RequestFixture) -> None:
-        request_fixture.mock_log_forwarding.forward_exception.side_effect = RuntimeError("boom")
-
-        response = await permission_denied_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
-
-        assert response.status_code == 403
-
     async def test_missing_account_session_on_state(self, request_fixture: RequestFixture) -> None:
         del request_fixture.request.state.account_session
 
