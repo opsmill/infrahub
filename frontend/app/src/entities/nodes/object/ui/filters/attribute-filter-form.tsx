@@ -127,7 +127,11 @@ function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterForm
   const afterFilter = filters.find((f) => f.name === afterFilterName);
   const beforeFilter = filters.find((f) => f.name === beforeFilterName);
 
-  const handleSubmit = (formData: Record<string, string | null>) => {
+  const toISOString = (value: unknown): string => {
+    return value instanceof Date ? value.toISOString() : String(value);
+  };
+
+  const handleSubmit = (formData: Record<string, unknown>) => {
     const { afterDate, beforeDate } = formData;
 
     // Remove existing date filters for this field
@@ -135,12 +139,12 @@ function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterForm
       (f) => f.name !== afterFilterName && f.name !== beforeFilterName
     );
 
-    // Add new filters
+    // Add new filters - convert Date objects to ISO strings for GraphQL DateTime scalar
     if (afterDate) {
-      newFilters = [...newFilters, { name: afterFilterName, value: afterDate }];
+      newFilters = [...newFilters, { name: afterFilterName, value: toISOString(afterDate) }];
     }
     if (beforeDate) {
-      newFilters = [...newFilters, { name: beforeFilterName, value: beforeDate }];
+      newFilters = [...newFilters, { name: beforeFilterName, value: toISOString(beforeDate) }];
     }
 
     setFilters(newFilters);
@@ -150,7 +154,7 @@ function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterForm
   return (
     <Form
       className="flex items-end gap-2 space-y-0 p-2"
-      onSubmit={(formData) => handleSubmit(formData as Record<string, string | null>)}
+      onSubmit={(formData) => handleSubmit(formData as Record<string, unknown>)}
       data-testid="date-range-filter-form"
     >
       <div className="flex flex-col gap-2">
