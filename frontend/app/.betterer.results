@@ -137,9 +137,9 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object-template/object-template-form.tsx:481961693": [
       [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
-    "src/entities/nodes/object/ui/filters/attribute-filter-form.tsx:1859802933": [
-      [163, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
-      [178, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"]
+    "src/entities/nodes/object/ui/filters/attribute-filter-form.tsx:443739569": [
+      [167, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
+      [182, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"]
     ],
     "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:3447457876": [
       [40, 29, 2, "tsc: Binding element \'id\' implicitly has an \'any\' type.", "5861160"],
