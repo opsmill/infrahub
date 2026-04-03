@@ -93,7 +93,7 @@ def build_changelog(context: Context) -> None:
 
 @task
 def ship(context: Context) -> None:
-    """Lint and validate release notes, then prepare to ship the release."""
+    """Lint and validate release notes before shipping."""
     lint(context)
 
 
