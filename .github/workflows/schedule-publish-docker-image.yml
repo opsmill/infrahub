@@ -8,7 +8,7 @@ on:
 
 jobs:
   meta_data:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
@@ -57,7 +57,7 @@ jobs:
       labels: ${{needs.meta_data.outputs.labels}}
 
   meta_data_stable:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
