@@ -119,6 +119,8 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'guides/generator',
+            'guides/chaining-generators',
+            'guides/modular-generator-best-practices',
           ],
         },
         {
@@ -206,6 +208,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/generator',
+                'topics/modular-generators',
               ],
             },
             {
