@@ -438,7 +438,10 @@ async def test_rabbitmq_on_message(rabbitmq_api: RabbitMQManager, fake_log: Fake
 
     with patch("infrahub.message_bus.operations.send.echo.get_logger", return_value=fake_log):
         await bus.send(message=messages.SendEchoRequest(message="Hello there"))
-        await asyncio.sleep(delay=1)
+        for _ in range(50):
+            if fake_log.info_logs:
+                break
+            await asyncio.sleep(delay=0.2)
         await bus.shutdown()
 
     assert fake_log.info_logs == ["Received message: Hello there"]
@@ -457,7 +460,10 @@ async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQMan
         await bus.publish(
             routing_key="request.something.invalid", message=messages.SendEchoRequest(message="Hello there")
         )
-        await asyncio.sleep(delay=1)
+        for _ in range(50):
+            if fake_log.error_logs:
+                break
+            await asyncio.sleep(delay=0.2)
         await bus.shutdown()
 
     assert fake_log.info_logs == []
