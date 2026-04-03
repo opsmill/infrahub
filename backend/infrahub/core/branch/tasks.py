@@ -503,6 +503,14 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             raise ValidationError("\n".join(error_msgs)) from exc
 
         async with lock.registry.local_schema_lock():
+            # Re-check existence inside the lock to prevent TOCTOU race conditions.
+            # The check above is a fast-fail optimization; this is the authoritative check.
+            try:
+                await Branch.get_by_name(db=db, name=model.name)
+                raise ValidationError(f"The branch {model.name} already exists")
+            except BranchNotFoundError:
+                pass
+
             # Copy the schema from the origin branch and set the hash and the schema_changed_at value
             origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
             new_schema = origin_schema.duplicate(name=obj.name)
