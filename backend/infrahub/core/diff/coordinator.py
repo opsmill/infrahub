@@ -129,17 +129,17 @@ class DiffCoordinator:
         )
 
     async def _get_proposed_change_id_for_branch(self, branch_name: str) -> str | None:
-        """Look up the ID of an OPEN CoreProposedChange for the given source branch."""
-        open_proposed_changes = await NodeManager.query(
+        """Look up the ID of an active CoreProposedChange for the given source branch."""
+        active_proposed_changes = await NodeManager.query(
             db=self.db,
             schema=CoreProposedChange,
             filters={
                 "source_branch__value": branch_name,
-                "state__value": ProposedChangeState.OPEN.value,
+                "state__values": [ProposedChangeState.OPEN.value, ProposedChangeState.MERGING.value],
             },
         )
-        if open_proposed_changes:
-            return open_proposed_changes[0].id
+        if active_proposed_changes:
+            return active_proposed_changes[0].id
         return None
 
     async def _link_diff_to_proposed_change(
@@ -150,8 +150,8 @@ class DiffCoordinator:
     ) -> str | None:
         """Link a diff root to a proposed change if needed.
 
-        If proposed_change_id is not provided, attempts to find an OPEN
-        CoreProposedChange for the given diff_branch_name.
+        If proposed_change_id is not provided, attempts to find an active
+        (OPEN or MERGING) CoreProposedChange for the given diff_branch_name.
 
         Updates the database link and the in-memory object's proposed_change_id.
         Returns the resolved proposed_change_id (may be None).
