@@ -13,6 +13,7 @@ from infrahub.core.models import SchemaBranchHash  # noqa: TC001
 from infrahub.core.node.standard import StandardNode, StandardNodeOrdering
 from infrahub.core.query import Query, QueryType
 from infrahub.core.query.branch import (
+    BranchNodeCreateQuery,
     BranchNodeGetListQuery,
     DeleteBranchRelationshipsQuery,
     RebaseBranchQuery,
@@ -48,6 +49,7 @@ class Branch(StandardNode):
     schema_hash: Optional[SchemaBranchHash] = None
     graph_version: int | None = None
 
+    _query: type[BranchNodeCreateQuery] = BranchNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
 
     @field_validator("name", mode="before")

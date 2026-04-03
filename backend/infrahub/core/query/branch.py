@@ -6,11 +6,43 @@ from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.standard_node import StandardNodeGetListQuery
+from infrahub.core.query.standard_node import StandardNodeGetListQuery, StandardNodeQuery
 from infrahub.core.timestamp import Timestamp
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+
+
+class BranchNodeCreateQuery(StandardNodeQuery):
+    """Create a Branch node atomically, rejecting duplicates by name.
+
+    Uses an atomic Cypher pattern: check for an existing Branch with the same
+    name and only CREATE when none is found. If a branch with that name already
+    exists, the query returns no rows, which causes ``StandardNode.create()``
+    to raise an error.
+    """
+
+    name = "branch_node_create"
+    type = QueryType.WRITE
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        node_type = self.node.get_type()
+        self.params["node_prop"] = self.node.to_db()
+        self.params["branch_name"] = self.node.to_db()["name"]
+
+        # Atomically ensure no Branch with this name exists before creating.
+        # If a concurrent transaction already inserted one, this query returns
+        # zero rows and the caller treats it as a creation failure.
+        query = """
+        OPTIONAL MATCH (existing:%(node_type)s {name: $branch_name})
+        WITH existing
+        WHERE existing IS NULL
+        MATCH (root:Root)
+        CREATE (n:%(node_type)s $node_prop)-[r:IS_PART_OF]->(root)
+        """ % {"node_type": node_type}
+
+        self.add_to_query(query=query)
+        self.return_labels = ["n"]
 
 
 class DeleteBranchRelationshipsQuery(Query):
