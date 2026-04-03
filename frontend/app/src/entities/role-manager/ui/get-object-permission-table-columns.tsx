@@ -11,20 +11,18 @@ import { TableRelationshipCell } from "@/entities/nodes/object/ui/object-table/c
 import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-table/utils/get-toggle-selected-row-handler";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
-import { globalDecisionOptions } from "@/entities/role-manager/constants";
+import { objectDecisionOptions } from "@/entities/role-manager/constants";
 import { getDecisionColumn } from "@/entities/role-manager/ui/get-decision-column";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
-export const GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES = ["action", "decision"];
-export const GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS = ["roles"];
+export const OBJECT_PERMISSION_TABLE_ATTRIBUTES = ["name", "action", "decision"];
+export const OBJECT_PERMISSION_TABLE_RELATIONSHIPS = ["roles"];
 
 const columnHelper = createColumnHelper<NodeObject>();
 
-export function getGlobalPermissionsTableColumns(
-  schema: ModelSchema
-): Array<ColumnDef<NodeObject>> {
+export function getObjectPermissionTableColumns(schema: ModelSchema): Array<ColumnDef<NodeObject>> {
   const allAttributesVisible = (schema.attributes ?? []).filter(
-    ({ name }) => GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES.includes(name) && name !== "name"
+    ({ name }) => OBJECT_PERMISSION_TABLE_ATTRIBUTES.includes(name) && name !== "name"
   );
   const [decisionAttributes, attributesVisible] = partition(
     allAttributesVisible,
@@ -32,7 +30,7 @@ export function getGlobalPermissionsTableColumns(
   );
   const decisionAttribute = decisionAttributes[0];
   const relationshipsVisible = (schema.relationships ?? []).filter(({ name }) =>
-    GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS.includes(name)
+    OBJECT_PERMISSION_TABLE_RELATIONSHIPS.includes(name)
   );
 
   return [
@@ -72,7 +70,7 @@ export function getGlobalPermissionsTableColumns(
         },
       })
     ),
-    ...(decisionAttribute ? [getDecisionColumn(decisionAttribute, globalDecisionOptions)] : []),
+    ...(decisionAttribute ? [getDecisionColumn(decisionAttribute, objectDecisionOptions)] : []),
     ...relationshipsVisible.map((relationship) =>
       columnHelper.accessor(relationship.name, {
         header: () => <TableColumnHeader columnSchema={relationship} />,
