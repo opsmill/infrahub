@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
+import { useParams } from "react-router";
 
 import { Col } from "@/shared/components/container";
 import { Button } from "@/shared/components/ui/button";
@@ -21,10 +22,14 @@ import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
-export function getFilterCount(schema: ModelSchema, filters: Filter[]): number {
+export function getFilterCount(
+  schema: ModelSchema,
+  filters: Filter[],
+  { hasIpAvailabilityFilter = true }: { hasIpAvailabilityFilter?: boolean } = {}
+): number {
   const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
 
-  if (!isIpamSchema || hasIncompatibleFiltersForIpAvailability(filters)) {
+  if (!isIpamSchema || !hasIpAvailabilityFilter || hasIncompatibleFiltersForIpAvailability(filters)) {
     return filters.length;
   }
 
@@ -61,7 +66,8 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
     },
   ];
 
-  const filterCount = getFilterCount(schema, filters);
+  const { objectId } = useParams();
+  const filterCount = getFilterCount(schema, filters, { hasIpAvailabilityFilter: !!objectId });
 
   const closeMenu = () => {
     setOpen(false);

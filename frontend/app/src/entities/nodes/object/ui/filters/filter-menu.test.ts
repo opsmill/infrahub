@@ -68,6 +68,21 @@ describe("getFilterCount", () => {
     expect(result).toBe(1);
   });
 
+  it("returns regular count for an IPAM schema when IP availability filter is disabled", () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      kind: "IpamIPPrefix",
+      inherit_from: ["BuiltinIPPrefix"],
+    });
+    const filters: Filter[] = [{ name: "parent__ids", value: ["some-id"] }];
+
+    // WHEN
+    const result = getFilterCount(schema, filters, { hasIpAvailabilityFilter: false });
+
+    // THEN
+    expect(result).toBe(1);
+  });
+
   it("returns regular count for an IPAM schema with incompatible filters", () => {
     // GIVEN
     const schema = generateNodeSchema({
