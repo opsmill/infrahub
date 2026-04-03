@@ -1,24 +1,23 @@
 ---
-# .github/workflows/bug-agent-fix.yml
-# Triggered when the test-writer agent posts its comment (detected via the AGENT_TEST_COMPLETE marker).
-# Responsibility: implement the fix and open a draft PR.
+# .github/workflows/bug-agent-test.yml
+# Triggered when the bug analyst agent posts its analysis (AGENT_ANALYSIS_COMPLETE marker).
+# Responsibility: write a failing test that reproduces the bug.
 
-name: "Bug fixer agent"
+name: "Bug test-writer agent"
 
 "on":
   issue_comment:
     types: [created]
 
 jobs:
-  fix:
+  write-test:
     if: |
-      contains(github.event.comment.body, 'AGENT_TEST_COMPLETE') &&
+      contains(github.event.comment.body, 'AGENT_ANALYSIS_COMPLETE') &&
       contains(github.event.issue.labels.*.name, 'type/bug')
     runs-on: ubuntu-latest
     permissions:
       issues: write
       contents: write
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -29,10 +28,10 @@ jobs:
         id: prompt
         run: |
           echo "PROMPT<<EOF" >> $GITHUB_OUTPUT
-          cat .github/bug-agent-pipeline/fixer.md >> $GITHUB_OUTPUT
+          cat .github/bug-agent-pipeline/test-writer.md >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - uses: anthropics/claude-code-action@main
+      - uses: anthropics/claude-code-action@6062f3709600659be5e47fcddf2cf76993c235c2 # main 2026-03-23
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # model: claude-opus-4-6
@@ -44,5 +43,5 @@ jobs:
             URL: ${{ github.event.issue.html_url }}
             Issue number: ${{ github.event.issue.number }}
 
-            ## Analysis and test from preceding agents
+            ## Analysis from the bug analyst agent
             ${{ github.event.comment.body }}

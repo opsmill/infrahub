@@ -1,8 +1,8 @@
 ---
 # .github/workflows/bug-agent-analyst.yml
 # Triggered when someone posts "/bug-analyze" on a bug issue.
-# Responsibility: root cause analysis + failing replication test.
-# Outputs a structured comment that the bug fixer agent will read.
+# Responsibility: root cause analysis only.
+# Outputs a structured comment that the test-writer agent will read.
 
 name: "Bug analyst agent"
 
