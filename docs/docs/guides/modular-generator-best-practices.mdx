@@ -1,0 +1,301 @@
+---
+title: Best practices for modular Generators
+---
+
+This page collects practical guidance for building and operating modular Generator cascades in Infrahub. These patterns come from real-world experience — they address problems that are not obvious until you have built a multi-layer cascade and run it in production.
+
+For foundational concepts, see [modular Generators](../topics/modular-generators). For the chaining mechanism, see [how to chain Generators](chaining-generators).
+
+## 1. One Generator, one layer
+
+Each Generator should own exactly one layer of your hierarchy. A fabric Generator creates fabric-level objects (super spines, top-level IP pools). A pod Generator creates pod-level objects (spines, pod-level IP allocations). A rack Generator creates rack-level objects (leafs, rack-level cabling).
+
+**The temptation:** "The pod Generator already knows about the fabric, so I'll have it create the rack objects too — saves writing a third Generator."
+
+**Why to resist it:**
+
+- **Parallelism breaks down.** If the pod Generator also creates rack objects, those rack objects are created sequentially within one pod run. With a separate rack Generator, each rack gets its own run and all racks in a pod are created concurrently.
+- **Day-two scope increases.** If a rack needs to change, you would re-run the entire pod Generator — which also recreates all spine objects and other pod-level resources unnecessarily.
+- **Testing is harder.** You cannot test rack generation in isolation if it is embedded in the pod Generator.
+
+**The rule:** if you are creating objects that belong to a different level of the hierarchy, that is a signal you need a separate Generator.
+
+## 2. Use `allow_upsert=True` for idempotent generation
+
+Generators must be safely re-runnable. In a cascade, a Generator may be triggered multiple times — by a checksum change, a user edit, or a manual `infrahubctl` run. If re-running a Generator duplicates objects instead of updating them, your data quickly becomes inconsistent.
+
+### The pattern
+
+Use `allow_upsert=True` when saving objects. This tells the SDK to update the object if it already exists (matched by unique attributes) rather than creating a duplicate:
+
+```python
+async def generate(self, data: dict) -> None:
+    spine = await self.client.create(
+        kind="NetworkDevice",
+        data={
+            "name": f"{self.pod_name}-spine-1",
+            "role": "spine",
+            "status": "provisioning",
+            "location": self.pod_id,
+        },
+    )
+    await spine.save(allow_upsert=True)
+```
+
+### Without `allow_upsert`
+
+If you use `await spine.save()` without the flag, the first run works. The second run fails with a uniqueness constraint error or — worse — creates a duplicate if the unique constraint is not strict enough. Either outcome requires manual cleanup.
+
+### What makes upsert matching work
+
+Upsert matching relies on the node's [`human_friendly_id`](../topics/schema#human-friendly-identifier-hfid) (HFID). When the server processes an upsert mutation, it checks whether a node with the same HFID already exists. If it finds a match, it updates the existing node. If no match is found, it creates a new node.
+
+This means two things must be in place:
+
+1. **The schema must define `human_friendly_id` on the node type.** Without it, the server has no way to match an incoming upsert against an existing object.
+
+   ```yaml
+   nodes:
+     - name: Device
+       namespace: Network
+       human_friendly_id:
+         - hostname__value
+       # ...
+   ```
+
+2. **The Generator must provide values for all attributes and relationships that compose the HFID.** If any component is missing, the HFID cannot be computed and the match will not work.
+
+Beyond the HFID, follow these naming practices to keep matching deterministic:
+
+- The HFID attribute values must be deterministic — the same Generator inputs must produce the same values
+- Use naming conventions that encode the hierarchy: `{fabric}-{pod}-spine-{n}` rather than generic names
+
+### Apply everywhere
+
+Use `allow_upsert=True` on **every** `.save()` call in your Generators, not some of them. Partial idempotency is worse than none — it creates a false sense of re-run safety.
+
+## 3. Make re-runs safe by design
+
+Generators in a cascade will re-run. Upstream changes trigger downstream Generators. Users re-run Generators during debugging. Day-two operations re-trigger parts of the cascade. Your Generators need to handle all of this gracefully.
+
+### The three pillars of re-run safety
+
+| Pillar | Mechanism | What it prevents |
+|--------|-----------|-----------------|
+| **Idempotent saves** | `allow_upsert=True` on every `.save()` | Duplicate objects on re-run |
+| **Checksum guards** | `if pod.checksum.value != new_checksum` before writing | Unnecessary downstream triggers |
+| **Upstream validation** | Count checks at the top of `generate()` | Running against incomplete upstream data |
+
+These three mechanisms work together. Idempotency handles the object layer. Checksum guards handle the trigger layer. Upstream validation handles the ordering layer.
+
+### Deterministic output
+
+For re-runs to be truly safe, the same inputs must produce the same outputs. This means:
+
+- **Deterministic naming:** Device names should be derived from their position in the hierarchy (`{pod}-spine-{index}`), not from timestamps or random values.
+- **Deterministic ordering:** When iterating over objects to create children, use a stable sort (for example, by name or ID) so that index-based naming is consistent across runs.
+- **No external state dependency:** A Generator should produce the same output from the same Infrahub data, regardless of when it runs. Avoid depending on wall-clock time, external API state, or random values.
+
+### What happens on re-run
+
+When a Generator re-runs with the same inputs:
+
+1. It creates objects with the same names → `allow_upsert=True` updates instead of duplicating
+2. It computes the same checksum → the checksum guard prevents writing → no downstream trigger fires
+3. The cascade stops naturally — no unnecessary work propagates
+
+When inputs change (for example, a new rack is added to a pod):
+
+1. The Generator creates the new objects and updates existing ones
+2. The checksum changes → writes to downstream targets → cascade continues
+3. Only the affected branch of the cascade re-runs
+
+## 4. Debugging cascades
+
+A cascade has no single log showing the full chain. Each Generator runs independently, possibly on different workers, with its own log output. When a cascade stops mid-way or produces unexpected results, here is how to diagnose the problem.
+
+### Start from the symptom
+
+| Symptom                            | Where to look first                                                                                                              |
+|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| Expected objects were not created  | Check whether the Generator for that layer ran at all ([Generator instances](../topics/generator#generator-instances) in the UI) |
+| Generator ran but created nothing  | Check the Generator's task log — likely an upstream validation failure                                                           |
+| Cascade stopped after layer N      | Check whether layer N wrote checksums to layer N+1 targets                                                                       |
+| Objects were created but are wrong | Check the query results — the query may be returning unexpected data                                                             |
+| Generator runs repeatedly          | Check trigger rules — a trigger may be firing on an attribute the Generator itself modifies                                      |
+
+### Check Generator instances
+
+The Infrahub UI shows [Generator instances](../topics/generator#generator-instances) per definition. Each instance corresponds to one target and shows its status:
+
+- `ready` — the Generator ran successfully for this target
+- `error` — the Generator failed for this target (check the task log for details)
+- `pending` — the Generator has not run yet for this target
+
+If a downstream Generator shows no instances at all, the trigger did not fire — check the trigger rule configuration and verify that the upstream Generator wrote the checksum.
+
+### Follow the checksum trail
+
+The checksum attribute on target objects is the cascade's breadcrumb trail:
+
+1. **Check the upstream Generator's target objects** — does each one have a `ready` instance?
+2. **Check the downstream target objects** — do they have a checksum value? If not, the upstream Generator did not write it.
+3. **Compare checksums** — if the checksum has not changed since the last run, the trigger correctly did not fire.
+
+You can query checksums via GraphQL:
+
+```graphql
+query {
+  NetworkPod {
+    edges {
+      node {
+        name { value }
+        checksum { value }
+      }
+    }
+  }
+}
+```
+
+### Common cascade failure patterns
+
+#### The "stale checksum" problem
+
+**Symptom:** You changed the upstream Generator's logic, but downstream Generators do not re-run.
+
+**Cause:** The upstream Generator produces the same objects (same node IDs) as before, so the checksum is identical. The new logic changed _how_ objects are configured, not _which_ objects exist.
+
+**Fix:** The checksum is based on node IDs, not object contents. If you need downstream re-triggers after logic changes, either:
+
+- Temporarily clear the checksum on downstream targets to force a re-trigger
+- Include a version string in the checksum calculation that you bump when logic changes
+
+#### The "partial cascade" problem
+
+**Symptom:** Some targets at layer N+1 ran, others did not.
+
+**Cause:** The upstream Generator wrote checksums to some targets but not all — likely because it failed partway through its `update_checksum()` loop, or because it only queries a subset of downstream targets.
+
+**Fix:** Ensure the upstream Generator queries **all** downstream targets, not a subset. Check that the `update_checksum()` method completes for all targets before the Generator finishes.
+
+#### The "trigger loop" problem
+
+**Symptom:** A Generator runs repeatedly, creating duplicate work or errors.
+
+**Cause:** The Generator modifies an attribute on its own target (or an upstream target) that has a trigger rule. This creates a feedback loop: Generator runs → modifies attribute → trigger fires → Generator runs again.
+
+**Fix:** Generators should only write checksums to **downstream** targets, never to their own targets or upstream objects. The checksum guard (`if checksum != old`) should also prevent repeated triggers for the same output.
+
+## 5. Design your schema for Generators
+
+Generators work best when the schema supports the generation pattern. A few schema design choices make a significant difference.
+
+### Add `GeneratorTarget` to all downstream target nodes
+
+Any node kind that participates in a cascade as a downstream target should inherit from the `GeneratorTarget` generic (see [how to chain Generators](chaining-generators)). This gives it the `checksum` attribute needed for trigger-based chaining.
+
+```yaml
+nodes:
+  - name: Pod
+    namespace: Network
+    inherit_from:
+      - GeneratorTarget
+```
+
+Do this at schema design time, not as an afterthought. Adding a generic to an existing node kind in production requires a schema migration.
+
+### Define `human_friendly_id` on generated node types
+
+Generators rely on `allow_upsert=True`, which matches objects by their [`human_friendly_id`](../topics/schema#human-friendly-identifier-hfid). Every node type that a Generator creates must have a `human_friendly_id` defined in the schema:
+
+```yaml
+nodes:
+  - name: Device
+    namespace: Network
+    human_friendly_id:
+      - hostname__value
+```
+
+Choose HFID components that are deterministic and scoped to the correct level of the hierarchy — for example, `hostname__value` where the hostname encodes the device's position (`{pod}-spine-{index}`).
+
+### Store expected counts in the schema
+
+Upstream validation compares actual object counts against expected values. Store these expectations as attributes on the parent object:
+
+```yaml
+attributes:
+  - name: amount_of_spines
+    kind: Number
+    description: "Expected number of spine switches in this pod"
+```
+
+This makes the Generator self-documenting and allows users to change expectations via the UI without modifying Generator code.
+
+## 6. Operational practices
+
+### Test each layer independently first
+
+Before running the full cascade, test each Generator in isolation with `infrahubctl generator`:
+
+```bash
+# Test the fabric layer
+infrahubctl generator generate-fabric --branch=test fabric_name=my-fabric
+
+# Manually verify fabric objects, then test the pod layer
+infrahubctl generator generate-pod --branch=test pod_name=pod-1
+```
+
+This catches issues in individual Generators before the complexity of the cascade adds noise.
+
+### Use branches for cascade testing
+
+Always test cascades in a branch, not on the default branch. This lets you:
+
+- Inspect generated objects without affecting production
+- Delete the branch and start over if something goes wrong
+- Review the cascade output in a proposed change before merging
+
+The `branch_scope: "other_branches"` trigger configuration (from the [chaining guide](chaining-generators)) ensures triggers only fire in branches, giving you a controlled testing environment.
+
+### Monitor Generator instances after changes
+
+After modifying a Generator or its schema, run the cascade in a test branch and check:
+
+
+1. All Generator instances show `ready` status
+2. Object counts match expectations at each layer
+3. Checksums were written to all downstream targets
+4. No unexpected trigger loops occurred
+
+### Version your checksum when logic changes
+
+If you change what a Generator creates (not how it configures objects), the checksum — which is based on node IDs — may not change. Downstream Generators will not re-trigger.
+
+To force a full re-cascade after significant logic changes, consider adding a version component to the checksum:
+
+```python
+GENERATOR_VERSION = "2"  # Bump when logic changes require re-cascade
+
+def calculate_checksum(self) -> str:
+    related_ids = (
+        self.client.group_context.related_group_ids
+        + self.client.group_context.related_node_ids
+    )
+    sorted_ids = sorted(related_ids)
+    joined = f"v{GENERATOR_VERSION}:" + ",".join(sorted_ids)
+    return hashlib.sha256(joined.encode("utf-8")).hexdigest()
+```
+
+## Quick reference checklist
+
+Use this checklist when building a new modular Generator cascade:
+
+- [ ] **Each Generator owns one layer** — no cross-layer object creation
+- [ ] **Every** `.save()` uses `allow_upsert=True` — no exceptions
+- [ ] **Naming is deterministic** — same inputs produce same names
+- [ ] **Upstream validation at the top of** `generate()` — fail fast if dependencies are missing
+- [ ] **Checksums written only to downstream targets** — never to own or upstream targets
+- [ ] **Checksum guard before writing** — skip if unchanged to prevent unnecessary triggers
+- [ ] **Trigger rules use** `branch_scope: "other_branches"` — test in branches before production
+- [ ] **Each layer tested independently** — before running the full cascade
+- [ ] **Generator instances checked after runs** — verify `ready` status across all targets
