@@ -18,11 +18,6 @@ import { globalDecisionOptions } from "@/entities/role-manager/constants";
 import type { AttributeSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
-const DECISION_OPTIONS = globalDecisionOptions.map((option) => ({
-  key: option.label,
-  label: option.label,
-}));
-
 export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: AttributeSchema }) {
   const [filters, setFilters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
@@ -37,7 +32,7 @@ export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: Att
     return null;
   });
 
-  const handleApply = () => {
+  const handleSubmit = () => {
     const cleanedFilters = filters.filter((f) => !f.name.startsWith(attributeSchema.name));
 
     if (condition === FILTER_CONDITION.CONTAINS && selectedValue) {
@@ -49,6 +44,8 @@ export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: Att
       setFilters([...cleanedFilters, { name: `${attributeSchema.name}__isnull`, value: true }]);
     } else if (condition === FILTER_CONDITION.IS_NOT_EMPTY) {
       setFilters([...cleanedFilters, { name: `${attributeSchema.name}__isnull`, value: false }]);
+    } else {
+      setFilters(cleanedFilters);
     }
 
     setShowFilters(false);
@@ -88,13 +85,13 @@ export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: Att
               onChange={(key) => setSelectedValue(key as string)}
             >
               <SelectTrigger className="w-33" />
-              <SelectList items={DECISION_OPTIONS}>
-                {(item) => <SelectItem id={item.key}>{item.label}</SelectItem>}
+              <SelectList items={globalDecisionOptions}>
+                {(item) => <SelectItem id={item.label}>{item.label}</SelectItem>}
               </SelectList>
             </Select>
           )}
 
-          <Button onClick={handleApply}>Apply</Button>
+          <Button onClick={handleSubmit}>Apply</Button>
         </div>
       </PopoverContent>
     </Popover>

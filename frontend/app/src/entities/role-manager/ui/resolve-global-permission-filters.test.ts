@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveDecisionFilters } from "./global-permissions-table";
+import { resolveGlobalPermissionFilters } from "./global-permissions-table";
 
-describe("resolveDecisionFilters", () => {
+describe("resolveGlobalPermissionFilters", () => {
   it("maps Allow label to numeric value 6", () => {
     // GIVEN
     const filters = [{ name: "decision__value", value: "Allow" }];
 
     // WHEN
-    const result = resolveDecisionFilters(filters);
+    const result = resolveGlobalPermissionFilters(filters);
 
     // THEN
     expect(result).toEqual([{ name: "decision__value", value: 6 }]);
@@ -19,7 +19,7 @@ describe("resolveDecisionFilters", () => {
     const filters = [{ name: "decision__value", value: "Deny" }];
 
     // WHEN
-    const result = resolveDecisionFilters(filters);
+    const result = resolveGlobalPermissionFilters(filters);
 
     // THEN
     expect(result).toEqual([{ name: "decision__value", value: 1 }]);
@@ -33,7 +33,7 @@ describe("resolveDecisionFilters", () => {
     ];
 
     // WHEN
-    const result = resolveDecisionFilters(filters);
+    const result = resolveGlobalPermissionFilters(filters);
 
     // THEN
     expect(result).toEqual(filters);
@@ -47,7 +47,7 @@ describe("resolveDecisionFilters", () => {
     ];
 
     // WHEN
-    const result = resolveDecisionFilters(filters);
+    const result = resolveGlobalPermissionFilters(filters);
 
     // THEN
     expect(result).toEqual([
@@ -61,7 +61,7 @@ describe("resolveDecisionFilters", () => {
     const filters: { name: string; value: unknown }[] = [];
 
     // WHEN
-    const result = resolveDecisionFilters(filters);
+    const result = resolveGlobalPermissionFilters(filters);
 
     // THEN
     expect(result).toEqual([]);

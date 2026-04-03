@@ -8,34 +8,35 @@ import { ObjectTableEmpty } from "@/entities/nodes/object/ui/object-table/object
 import { getObjectActionsColumn } from "@/entities/nodes/object/ui/object-table/utils/get-object-actions-column";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
-import { getDecisionNumericValue } from "@/entities/role-manager/constants";
+import { globalDecisionOptions } from "@/entities/role-manager/constants";
 import {
   GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES,
   GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS,
   getGlobalPermissionsTableColumns,
 } from "@/entities/role-manager/ui/get-global-permissions-table-columns";
 
-export function resolveDecisionFilters(filters: Filter[]): Filter[] {
+export function resolveGlobalPermissionFilters(filters: Filter[]): Filter[] {
   return filters.map((filter) => {
     if (filter.name === "decision__value") {
-      return { ...filter, value: getDecisionNumericValue(filter.value) };
+      const numericValue = globalDecisionOptions.find((o) => o.label === filter.value)?.value;
+      return { ...filter, value: numericValue };
     }
     return filter;
   });
 }
 
 export function GlobalPermissionsTable() {
-  const { filters, selectedSchema, permission } = useObjectTableContext();
-  const queryFilters = resolveDecisionFilters(filters);
+  const { filters: rawFilters, selectedSchema, permission } = useObjectTableContext();
+  const filters = resolveGlobalPermissionFilters(rawFilters);
 
   const { data: count } = useObjectsCount({
     objectKind: selectedSchema.kind!,
-    filters: queryFilters,
+    filters,
   });
 
   const { data, fetchNextPage, hasNextPage, isPending, isFetchingNextPage, error } = useObjects({
     schema: selectedSchema,
-    filters: queryFilters,
+    filters,
     getAttributesVisible: (attributes) =>
       attributes.filter((a) => GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES.includes(a.name)),
     getRelationshipsVisible: (relationships) =>

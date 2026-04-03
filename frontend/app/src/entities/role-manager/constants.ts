@@ -27,7 +27,3 @@ export const globalDecisionOptions = [
     label: "Allow",
   },
 ];
-
-export function getDecisionNumericValue(label: string): number | undefined {
-  return globalDecisionOptions.find((option) => option.label === label)?.value;
-}
