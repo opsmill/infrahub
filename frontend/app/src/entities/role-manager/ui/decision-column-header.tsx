@@ -19,9 +19,8 @@ import type { AttributeSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 const DECISION_OPTIONS = globalDecisionOptions.map((option) => ({
-  key: option.value.toString(),
+  key: option.label,
   label: option.label,
-  numericValue: option.value,
 }));
 
 export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: AttributeSchema }) {
@@ -42,13 +41,10 @@ export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: Att
     const cleanedFilters = filters.filter((f) => !f.name.startsWith(attributeSchema.name));
 
     if (condition === FILTER_CONDITION.CONTAINS && selectedValue) {
-      const option = DECISION_OPTIONS.find((o) => o.key === selectedValue);
-      if (option) {
-        setFilters([
-          ...cleanedFilters,
-          { name: `${attributeSchema.name}__value`, value: option.numericValue },
-        ]);
-      }
+      setFilters([
+        ...cleanedFilters,
+        { name: `${attributeSchema.name}__value`, value: selectedValue },
+      ]);
     } else if (condition === FILTER_CONDITION.IS_EMPTY) {
       setFilters([...cleanedFilters, { name: `${attributeSchema.name}__isnull`, value: true }]);
     } else if (condition === FILTER_CONDITION.IS_NOT_EMPTY) {
