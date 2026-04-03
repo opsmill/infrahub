@@ -4,10 +4,7 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import pytest
-
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.account import ObjectPermission
 from infrahub.core.constants import (
     GlobalPermissions,
     InfrahubKind,
@@ -15,7 +12,6 @@ from infrahub.core.constants import (
     PermissionDecision,
 )
 from infrahub.core.node import Node
-from infrahub.exceptions import PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution

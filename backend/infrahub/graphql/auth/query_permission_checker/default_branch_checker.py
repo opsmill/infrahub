@@ -23,6 +23,8 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
         "InfrahubAccountSelfUpdate",
         "InfrahubAccountTokenCreate",
         "InfrahubAccountTokenDelete",
+        "ProposedChangeCreate",
+        "ProposedChangeUpdate",
     ]
 
     async def supports(self, db: InfrahubDatabase, account_session: AccountSession, branch: Branch) -> bool:  # noqa: ARG002
