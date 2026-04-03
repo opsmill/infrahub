@@ -58,10 +58,7 @@ def _forward_permission_denied(request: Request, exc: PermissionDeniedError) -> 
     context = LogForwardingContext(
         account_session=account_session,
         branch_name=branch_name,
-        operation_name="",
-        query_type="",
         ip_address=request.client.host if request.client else "",
-        graphql_operations=[],
         request_path=request.url.path,
     )
     log_forwarding.forward_exception(exception=exc, context=context)

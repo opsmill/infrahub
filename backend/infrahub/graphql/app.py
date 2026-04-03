@@ -370,11 +370,11 @@ class InfrahubGraphQLApp:
         context = LogForwardingContext(
             account_session=account_session,
             branch_name=branch.name,
-            operation_name=analyzed_query.operation_name or "",
-            query_type="mutation" if analyzed_query.contains_mutation else "query",
             ip_address=request.client.host if request.client else "",
-            graphql_operations=[op.name for op in analyzed_query.operations if op.name],
             request_path=request.url.path,
+            operation_name=analyzed_query.operation_name,
+            query_type="mutation" if analyzed_query.contains_mutation else "query",
+            graphql_operations=[op.name for op in analyzed_query.operations if op.name],
         )
         service.log_forwarding.forward_exception(exception=exception, context=context)
 

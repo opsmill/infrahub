@@ -52,8 +52,22 @@ class SyslogMessage:
 class LogForwardingContext:
     account_session: AccountSession | None
     branch_name: str
-    operation_name: str
-    query_type: str
     ip_address: str
-    graphql_operations: list[str]
     request_path: str
+    operation_name: str | None = None
+    query_type: str | None = None
+    graphql_operations: list[str] | None = None
+
+
+@dataclass(slots=True)
+class PermissionDeniedPayload:
+    event: str
+    message: str
+    account_id: str
+    auth_type: str
+    branch: str
+    ip_address: str
+    request_path: str
+    operation: str | None = None
+    query_type: str | None = None
+    graphql_operations: list[str] | None = None
