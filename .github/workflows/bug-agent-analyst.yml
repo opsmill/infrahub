@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       issues: write
-      contents: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v6
@@ -33,9 +33,26 @@ jobs:
       - name: Read prompt
         id: prompt
         run: |
-          echo "PROMPT<<EOF" >> $GITHUB_OUTPUT
+          echo "PROMPT<<INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
           cat .github/bug-agent-pipeline/analyst.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+
+      - name: Read issue metadata
+        id: issue
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_BODY: ${{ github.event.issue.body }}
+          ISSUE_REPORTER: ${{ github.event.issue.user.login }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+        run: |
+          echo "META<<INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+          echo "## Bug report" >> $GITHUB_OUTPUT
+          echo "Title: ${ISSUE_TITLE}" >> $GITHUB_OUTPUT
+          echo "Body:" >> $GITHUB_OUTPUT
+          echo "${ISSUE_BODY}" >> $GITHUB_OUTPUT
+          echo "Reporter: ${ISSUE_REPORTER}" >> $GITHUB_OUTPUT
+          echo "URL: ${ISSUE_URL}" >> $GITHUB_OUTPUT
+          echo "INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
 
       - uses: anthropics/claude-code-action@v1
         with:
@@ -44,9 +61,4 @@ jobs:
           prompt: |
             ${{ steps.prompt.outputs.PROMPT }}
 
-            ## Bug report
-            Title: ${{ github.event.issue.title }}
-            Body:
-            ${{ github.event.issue.body }}
-            Reporter: ${{ github.event.issue.user.login }}
-            URL: ${{ github.event.issue.html_url }}
+            ${{ steps.issue.outputs.META }}

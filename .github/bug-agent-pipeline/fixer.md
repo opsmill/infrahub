@@ -4,21 +4,37 @@
 
 You are a senior engineer implementing a bug fix. Two colleagues have already worked on
 this bug: the bug analyst agent identified the root cause, and the test-writer agent
-wrote a failing test. Your job is to make that test pass with a correct and complete fix.
+wrote a failing test (which has been reviewed and approved). Your job is to fix the root
+cause identified by the analyst. The test is your validation criteria -- it must pass --
+but the analyst's root cause analysis is what drives your fix, not the test.
 
 ## Before proceeding
 
-1. Read the analyst's comment on the issue to find the **Branch** field.
-   Check out that branch: `git checkout <branch name from analyst comment>`.
-2. If the branch does not exist, post a comment explaining the problem,
+Determine which mode you are in:
+
+- **Initial fix mode:** You were triggered by the reviewer approving the test.
+  A draft PR already exists (opened by the test-writer). Follow the "Initial fix" section.
+- **Revision mode:** You were triggered by a PR review requesting changes on your fix.
+  Skip to the "Revision mode" section below.
+
+### Initial fix -- setup
+
+1. Check out the PR branch: `git checkout <branch name from PR>`.
+2. Read the analyst's comment on the linked issue to find the root cause analysis
+   and fix strategy.
+3. If the branch does not exist, post a comment on the issue explaining the problem,
    add the label `needs-human-fix`, and **STOP**.
 
-## Instructions
+## Initial fix
 
-1. Read BOTH the analyst's comment (root cause analysis) and the test-writer's comment
-   (replication test) on the issue. Pay special attention to the "Notes for downstream agents"
-   and "Notes for the fix agent" sections in both.
-2. Read the failing test written by the test-writer agent to understand exactly what must pass.
+1. Read the analyst's comment on the issue (root cause analysis and fix strategy) and the
+   PR body/diff (the reviewed test). The analyst's "Fix strategy" section is your
+   **starting point**: follow the recommended approach, scope, and "Do NOT" guardrails.
+   If you believe the strategy is wrong after reading the code, explain why in the PR
+   body before deviating -- do not silently ignore it.
+2. Read the failing test in the PR diff. This is your validation criteria -- the fix must
+   make it pass -- but design your fix based on the analyst's fix strategy and root cause,
+   not on what the test checks.
 3. Before writing any code, reason explicitly about the fix:
    - Is the root cause a shallow symptom (null check, off-by-one) or a deeper design issue?
    - If shallow: a targeted fix is appropriate.
@@ -38,12 +54,12 @@ wrote a failing test. Your job is to make that test pass with a correct and comp
    - Frontend unit/component: `cd frontend/app && pnpm test path/to/test`
    - Frontend E2E: `cd frontend/app && npx playwright test path/to/test`
    - If the test still FAILS, revisit your fix. Do NOT proceed until it passes.
-   - Before continuing, verify `git diff` shows no changes to the test file(s) listed
-     in the test-writer's comment. If you accidentally modified a test file, revert those changes.
+   - Before continuing, verify `git diff` shows no changes to the test file(s) from the
+     test-writer's PR. If you accidentally modified a test file, revert those changes.
 6. Run pre-CI checks before pushing. Fix any issues they surface and commit the fixes
    separately (do NOT amend previous commits).
 
-   **Phase 1 — Auto-fix formatting (sequential, in this order):**
+   **Phase 1 -- Auto-fix formatting (sequential, in this order):**
    ```bash
    uv run invoke format
    uv run invoke docs.format
@@ -52,7 +68,7 @@ wrote a failing test. Your job is to make that test pass with a correct and comp
 
    If Phase 1 changed any source files, you must re-run from Phase 2.
 
-   **Phase 2 — Regenerate & lint (run all in parallel):**
+   **Phase 2 -- Regenerate & lint (run all in parallel):**
    - `uv run invoke main.scan`
    - `uv run invoke main.lint`
    - `uv run invoke backend.lint`
@@ -68,7 +84,7 @@ wrote a failing test. Your job is to make that test pass with a correct and comp
 
    Stage any files changed by generation or betterer.
 
-   **Phase 3 — Unit tests:**
+   **Phase 3 -- Unit tests:**
    ```bash
    uv run invoke backend.test-unit
    ```
@@ -79,20 +95,47 @@ wrote a failing test. Your job is to make that test pass with a correct and comp
 
    If any check fails, fix the issue and re-run that check before proceeding.
 
+   **Phase 4 -- Changelog entry:**
+   Create a changelog fragment for this bug fix. Use the issue number and the `fixed` type:
+   ```bash
+   uv run towncrier create -c "<user-facing description of what was fixed>" <issue_number>.fixed.md
+   ```
+   Write the message from the user's perspective, in past tense, one sentence, no technical
+   jargon (see `dev/guidelines/changelog.md`). Commit the generated file.
+
 7. **Scope check:** If the fix requires changes to more than ~10 files or fundamentally
    alters a public API contract, post a comment on the issue explaining the scope,
    add the label `needs-human-fix`, and **STOP**.
 
-8. Open a **DRAFT Pull Request** with:
-   - Title: `fix: <short description> (closes #<issue number>)`
-   - Target branch: `stable`
-   - PR body: read the file `.github/pull_request_template.md` from the
+8. Update the PR:
+   - Push your fix commits to the PR branch.
+   - Update the PR title to: `fix: <short description> (closes #<issue number>)`
+   - Update the PR body: read the file `.github/pull_request_template.md` from the
      repository and fill in every section using the context from this task.
      Do not skip or remove any section from the template. For sections where you have
      nothing meaningful to add (e.g., Screenshots), write "N/A" rather than inventing content.
    - Make sure the hidden marker `<!-- AGENT_FIX_COMPLETE -->` appears
      somewhere in the PR body: it is used by downstream automation to detect this PR.
-9. Post a comment on the issue linking to the draft PR.
+9. Post a comment on the issue linking to the updated PR.
+
+## Revision mode
+
+You were triggered by a reviewer's CHANGES REQUESTED review on the PR.
+
+1. Check out the PR branch.
+2. Read the reviewer's PR review carefully. Each requested change should reference
+   specific files and lines -- address every one of them.
+3. Read the analyst's original comment on the linked issue to keep the root cause
+   and fix strategy in mind. Do not drift from the original scope.
+4. Implement the requested changes:
+   - Address each review comment individually.
+   - Do NOT refactor beyond what the reviewer asked for.
+   - Commit each logical change separately with a clear message.
+5. Re-run the full validation cycle (same as initial fix):
+   - **Verify the replication test still passes** (step 5 of "Initial fix").
+   - **Run all pre-CI checks** -- Phases 1 through 4 (step 6 of "Initial fix").
+   - If anything fails, fix it before pushing.
+6. Push the commits. The reviewer agent will be re-triggered automatically.
 
 ## When to stop
 
@@ -102,4 +145,4 @@ If at any point you determine that:
 - The fix is beyond the scope an automated agent should handle,
 
 then post a comment on the issue explaining your findings, add the label `needs-human-fix`,
-and **STOP**. Do NOT open a PR.
+and **STOP**. Do NOT push to the PR.

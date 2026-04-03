@@ -34,40 +34,49 @@ Verify the issue has enough information to work with. Check for:
 
 3. Read the relevant source files in the affected area to understand the current behavior.
 
-4. Identify the most likely root cause(s) — point to specific files and lines.
+4. Identify the most likely root cause(s) -- point to specific files and lines.
    - If you **cannot** identify a root cause after exploration, post a comment asking the
      reporter for more details, add the label `needs-more-info`, and **STOP**.
      Do NOT create a branch, push, or include the `AGENT_ANALYSIS_COMPLETE` marker.
 
-5. Create a working branch from `origin/stable`.
-   - Name: `AI-bug-pipeline-<issue_number>-<short-slug>` (lowercase, hyphens only, max 50 chars total).
+5. Formulate a fix strategy. This is NOT the exact code -- it is the recommended approach:
+   - **Approach:** What should the fixer do and where? Reference existing functions/methods
+     that should be reused rather than reimplemented.
+   - **Scope:** Which files/functions need changes? How large should the change be?
+   - **Do NOT:** List common wrong approaches (e.g., adding a guard clause when the real
+     fix is a missing validation, creating new abstractions when an existing one should be reused).
+
+6. Create a working branch from `origin/stable`.
+   - Name: `ai-bug-pipeline-<issue_number>-<short-slug>` (lowercase, hyphens only, max 50 chars total).
    - If the branch already exists, check it out instead of creating a new one.
 
-6. Push the working branch to origin so the test-writer agent can use it.
+7. Push the working branch to origin so the test-writer agent can use it.
 
-7. Post a GitHub comment on the issue with this exact structure (choose one value for Bug clarity):
+8. Post a comment on the issue with this exact structure:
 
 ```markdown
 ## Root cause analysis
 
-**Branch:** `AI-bug-pipeline-<issue_number>-<short-slug>`
-**Bug clarity:** CLEAR | UNCLEAR
+**Branch:** `ai-bug-pipeline-<issue_number>-<short-slug>`
+**Bug clarity:** CLEAR
 **Code identification:** RESOLVED | EXPLORATION REQUIRED
 
 **Root cause:** <one-sentence summary>
 
 **Affected files:**
-- `path/to/file.ext` — line X: <why this is the culprit>
+- `path/to/file.ext` -- line X: <why this is the culprit>
 
 **Explanation:** <detailed reasoning>
 
-## Suggested test direction
+## Fix strategy
 
-These suggestions are advisory — the test-writer agent should use their own judgment.
+**Approach:** <recommended fix approach -- explain WHAT to do and WHERE, not the exact code>
 
-**Test type:** <unit | component | functional | integration | e2e>
-**Target area:** <which module/component to test>
-**What to assert:** <the observable bug behavior to reproduce>
+**Scope:** <which files/functions should need changes, and roughly how large the change should be>
+
+**Do NOT:**
+- <guardrail 1 -- common wrong approach to avoid>
+- <guardrail 2 -- unnecessary refactoring to avoid>
 
 ## Notes for downstream agents
 
@@ -76,4 +85,7 @@ These suggestions are advisory — the test-writer agent should use their own ju
 <!-- AGENT_ANALYSIS_COMPLETE -->
 ```
 
-Use the **exact branch name** in the comment — the test-writer agent will check it out by name.
+Use the **exact branch name** in the comment -- the test-writer agent will check it out by name.
+
+9. After posting the comment, dispatch the `bug-agent-test` workflow to continue the pipeline.
+   Pass the issue number so the test-writer agent knows which issue to work on.

@@ -1,17 +1,22 @@
 ---
 # .github/workflows/bug-agent-test.yml
 # Triggered when the bug analyst agent posts its analysis (AGENT_ANALYSIS_COMPLETE marker).
-# Responsibility: write a failing test that reproduces the bug.
+# Also re-triggered when the reviewer requests changes on the test PR.
+# Responsibility: write a failing test that reproduces the bug and open a draft PR.
 
 name: "Bug test-writer agent"
 
 "on":
   issue_comment:
     types: [created]
+  pull_request_review:
+    types: [submitted]
 
 jobs:
+  # Initial test: triggered by analyst comment on the issue
   write-test:
     if: |
+      github.event_name == 'issue_comment' &&
       contains(github.event.comment.body, 'AGENT_ANALYSIS_COMPLETE') &&
       contains(github.event.issue.labels.*.name, 'type/bug') &&
       (
@@ -24,6 +29,7 @@ jobs:
     permissions:
       issues: write
       contents: write
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v6
@@ -33,9 +39,29 @@ jobs:
       - name: Read prompt
         id: prompt
         run: |
-          echo "PROMPT<<EOF" >> $GITHUB_OUTPUT
+          echo "PROMPT<<INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
           cat .github/bug-agent-pipeline/test-writer.md >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+
+      - name: Read issue metadata
+        id: issue
+        env:
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          echo "META<<INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+          echo "## Mode: Initial test" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## Original bug report" >> $GITHUB_OUTPUT
+          echo "Title: ${ISSUE_TITLE}" >> $GITHUB_OUTPUT
+          echo "URL: ${ISSUE_URL}" >> $GITHUB_OUTPUT
+          echo "Issue number: ${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## Analysis from the bug analyst agent" >> $GITHUB_OUTPUT
+          echo "${COMMENT_BODY}" >> $GITHUB_OUTPUT
+          echo "INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
 
       - uses: anthropics/claude-code-action@v1
         with:
@@ -44,10 +70,61 @@ jobs:
           prompt: |
             ${{ steps.prompt.outputs.PROMPT }}
 
-            ## Original bug report
-            Title: ${{ github.event.issue.title }}
-            URL: ${{ github.event.issue.html_url }}
-            Issue number: ${{ github.event.issue.number }}
+            ${{ steps.issue.outputs.META }}
 
-            ## Analysis from the bug analyst agent
-            ${{ github.event.comment.body }}
+  # Revision: triggered by reviewer requesting changes on the test PR
+  revise-test:
+    if: |
+      github.event_name == 'pull_request_review' &&
+      github.event.review.state == 'changes_requested' &&
+      contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') &&
+      !contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Read prompt
+        id: prompt
+        run: |
+          echo "PROMPT<<INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+          cat .github/bug-agent-pipeline/test-writer.md >> $GITHUB_OUTPUT
+          echo "INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+
+      - name: Read PR metadata
+        id: pr
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REVIEW_BODY: ${{ github.event.review.body }}
+        run: |
+          echo "META<<INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+          echo "## Mode: Revision" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## PR details" >> $GITHUB_OUTPUT
+          echo "Title: ${PR_TITLE}" >> $GITHUB_OUTPUT
+          echo "Branch: ${PR_BRANCH}" >> $GITHUB_OUTPUT
+          echo "PR URL: ${PR_URL}" >> $GITHUB_OUTPUT
+          echo "PR number: ${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "## Reviewer's feedback" >> $GITHUB_OUTPUT
+          echo "${REVIEW_BODY}" >> $GITHUB_OUTPUT
+          echo "INFRAHUB_DELIM_7f3a9b" >> $GITHUB_OUTPUT
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # model: claude-opus-4-6
+          prompt: |
+            ${{ steps.prompt.outputs.PROMPT }}
+
+            ${{ steps.pr.outputs.META }}
