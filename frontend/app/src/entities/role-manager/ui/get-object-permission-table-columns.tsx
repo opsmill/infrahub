@@ -12,7 +12,7 @@ import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-t
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { objectDecisionOptions } from "@/entities/role-manager/constants";
-import { DecisionColumnHeader } from "@/entities/role-manager/ui/decision-column-header";
+import { getDecisionColumn } from "@/entities/role-manager/ui/get-decision-column";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export const OBJECT_PERMISSION_TABLE_ATTRIBUTES = ["name", "action", "decision"];
@@ -70,23 +70,7 @@ export function getObjectPermissionTableColumns(schema: ModelSchema): Array<Colu
         },
       })
     ),
-    columnHelper.accessor("decision", {
-      header: () =>
-        decisionAttribute ? (
-          <DecisionColumnHeader
-            attributeSchema={decisionAttribute}
-            options={objectDecisionOptions}
-          />
-        ) : (
-          "Decision"
-        ),
-      cell: ({ cell }) => {
-        const attributeData = cell.getValue() as NodeAttribute | undefined;
-        const value = attributeData?.value;
-        const option = objectDecisionOptions.find((o) => o.value === value);
-        return <TableCell>{option?.label}</TableCell>;
-      },
-    }),
+    ...(decisionAttribute ? [getDecisionColumn(decisionAttribute, objectDecisionOptions)] : []),
     ...relationshipsVisible.map((relationship) =>
       columnHelper.accessor(relationship.name, {
         header: () => <TableColumnHeader columnSchema={relationship} />,

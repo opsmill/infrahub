@@ -12,7 +12,7 @@ import { getToggleSelectedRowHandler } from "@/entities/nodes/object/ui/object-t
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import { globalDecisionOptions } from "@/entities/role-manager/constants";
-import { DecisionColumnHeader } from "@/entities/role-manager/ui/decision-column-header";
+import { getDecisionColumn } from "@/entities/role-manager/ui/get-decision-column";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export const GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES = ["action", "decision"];
@@ -72,29 +72,7 @@ export function getGlobalPermissionsTableColumns(
         },
       })
     ),
-    ...(decisionAttribute
-      ? [
-          columnHelper.accessor("decision", {
-            header: () => (
-              <DecisionColumnHeader
-                attributeSchema={decisionAttribute}
-                options={globalDecisionOptions}
-              />
-            ),
-            cell: ({ cell }) => {
-              const attributeData = cell.getValue() as NodeAttribute | undefined;
-              const label = globalDecisionOptions.find(
-                (option) => option.value === attributeData?.value
-              )?.label;
-              return (
-                <TableCell>
-                  <span className="truncate">{label ?? attributeData?.value}</span>
-                </TableCell>
-              );
-            },
-          }),
-        ]
-      : []),
+    ...(decisionAttribute ? [getDecisionColumn(decisionAttribute, globalDecisionOptions)] : []),
     ...relationshipsVisible.map((relationship) =>
       columnHelper.accessor(relationship.name, {
         header: () => <TableColumnHeader columnSchema={relationship} />,
