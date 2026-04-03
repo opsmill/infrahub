@@ -1,41 +1,51 @@
-import { describe, expect, test, vi } from "vitest";
+import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { queryClient } from "@/shared/api/rest/client";
 
 import { render } from "../../../../tests/components/render";
+import { ConfigContext } from "./config-provider";
 import { AboutModal } from "./about-modal";
 
-vi.mock("@/entities/config/ui/queries/get-app-info.query", () => ({
-  useGetAppInfo: vi.fn(),
+vi.mock("@/entities/config/domain/get-app-info", () => ({
+  getAppInfo: vi.fn(),
 }));
 
-vi.mock("@/entities/config/ui/config-provider", () => ({
-  useConfig: vi.fn(),
-}));
+import { getAppInfo } from "@/entities/config/domain/get-app-info";
 
-import { useConfig } from "@/entities/config/ui/config-provider";
-import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
+const getAppInfoMock = vi.mocked(getAppInfo);
 
-const useGetAppInfoMock = vi.mocked(useGetAppInfo);
-const useConfigMock = vi.mocked(useConfig);
+function setupMocks({ isError = false } = {}) {
+  if (isError) {
+    getAppInfoMock.mockRejectedValue(new Error("Failed to fetch"));
+  } else {
+    getAppInfoMock.mockResolvedValue({
+      version: "1.8.4",
+      deployment_id: "abc-123-def",
+    });
+  }
+}
 
-function setupMocks() {
-  useConfigMock.mockReturnValue({
-    installation_type: "community",
-  } as any);
+const configValue = {
+  installation_type: "community",
+} as any;
 
-  useGetAppInfoMock.mockReturnValue({
-    data: { version: "1.8.4", deployment_id: "abc-123-def" },
-    isPending: false,
-    isError: false,
-  } as any);
+function renderWithConfig(ui: React.ReactElement) {
+  return render(<ConfigContext value={configValue}>{ui}</ConfigContext>);
 }
 
 describe("AboutModal", () => {
+  beforeEach(() => {
+    queryClient.clear();
+  });
+
   test("should display version, edition, and deployment ID when open", async () => {
     // GIVEN
     setupMocks();
 
     // WHEN
-    const component = await render(<AboutModal isOpen={true} onOpenChange={() => {}} />);
+    const component = await renderWithConfig(
+      <AboutModal isOpen={true} onOpenChange={() => {}} />
+    );
 
     // THEN
     await expect.element(component.getByText("v1.8.4")).toBeVisible();
@@ -45,24 +55,18 @@ describe("AboutModal", () => {
 
   test("should display N/A when app info fails to load", async () => {
     // GIVEN
-    useConfigMock.mockReturnValue({
-      installation_type: "community",
-    } as any);
-
-    useGetAppInfoMock.mockReturnValue({
-      data: undefined,
-      isPending: false,
-      isError: true,
-    } as any);
+    setupMocks({ isError: true });
 
     // WHEN
-    const component = await render(<AboutModal isOpen={true} onOpenChange={() => {}} />);
+    const component = await renderWithConfig(
+      <AboutModal isOpen={true} onOpenChange={() => {}} />
+    );
 
     // THEN
     await expect.element(component.getByText("community")).toBeVisible();
-    // Version and deployment ID show N/A on error
-    const naElements = component.getByText("N/A");
-    expect(naElements.elements().length).toBe(2);
+    // Wait for error state to resolve, then check both N/A values
+    await expect.element(component.getByText("N/A").first()).toBeVisible();
+    expect(component.getByText("N/A").elements().length).toBe(2);
   });
 
   test("should render the Infrahub logo", async () => {
@@ -70,7 +74,9 @@ describe("AboutModal", () => {
     setupMocks();
 
     // WHEN
-    const component = await render(<AboutModal isOpen={true} onOpenChange={() => {}} />);
+    const component = await renderWithConfig(
+      <AboutModal isOpen={true} onOpenChange={() => {}} />
+    );
 
     // THEN
     await expect.element(component.getByRole("img", { name: "Infrahub logo" })).toBeVisible();
@@ -81,9 +87,12 @@ describe("AboutModal", () => {
     setupMocks();
 
     // WHEN
-    const component = await render(<AboutModal isOpen={true} onOpenChange={() => {}} />);
+    const component = await renderWithConfig(
+      <AboutModal isOpen={true} onOpenChange={() => {}} />
+    );
 
-    // THEN
+    // THEN — wait for data to load before counting buttons
+    await expect.element(component.getByText("v1.8.4")).toBeVisible();
     const copyButtons = component.getByRole("button", { name: /copy/i });
     expect(copyButtons.elements().length).toBe(3);
   });
@@ -94,7 +103,9 @@ describe("AboutModal", () => {
     const onOpenChange = vi.fn();
 
     // WHEN
-    const component = await render(<AboutModal isOpen={true} onOpenChange={onOpenChange} />);
+    const component = await renderWithConfig(
+      <AboutModal isOpen={true} onOpenChange={onOpenChange} />
+    );
     await component.getByRole("button", { name: "Close" }).click();
 
     // THEN
