@@ -56,6 +56,17 @@ describe("resolveGlobalPermissionFilters", () => {
     ]);
   });
 
+  it("preserves original value when label is unknown", () => {
+    // GIVEN
+    const filters = [{ name: "decision__value", value: "Unknown" }];
+
+    // WHEN
+    const result = resolveGlobalPermissionFilters(filters);
+
+    // THEN
+    expect(result).toEqual([{ name: "decision__value", value: "Unknown" }]);
+  });
+
   it("returns empty array for empty input", () => {
     // GIVEN
     const filters: { name: string; value: unknown }[] = [];

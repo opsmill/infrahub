@@ -19,7 +19,7 @@ export function resolveGlobalPermissionFilters(filters: Filter[]): Filter[] {
   return filters.map((filter) => {
     if (filter.name === "decision__value") {
       const numericValue = globalDecisionOptions.find((o) => o.label === filter.value)?.value;
-      return { ...filter, value: numericValue };
+      return { ...filter, value: numericValue ?? filter.value };
     }
     return filter;
   });
