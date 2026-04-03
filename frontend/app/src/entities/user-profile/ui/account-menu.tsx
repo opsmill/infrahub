@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import React from "react";
 import { Link, useLocation } from "react-router";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -24,21 +25,33 @@ import {
 
 import { useLogoutMutation } from "@/entities/authentication/ui/queries/logout.mutation";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { AboutModal } from "@/entities/config/ui/about-modal";
 import { AppInfo } from "@/entities/config/ui/app-info";
 import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
 
 export const AccountMenu = () => {
   const { isAuthenticated } = useAuth();
+  const [isAboutOpen, setIsAboutOpen] = React.useState(false);
 
-  if (!isAuthenticated) {
-    return <UnauthenticatedAccountMenu />;
-  }
-
-  return <AuthenticatedAccountMenu />;
+  return (
+    <>
+      {isAuthenticated ? (
+        <AuthenticatedAccountMenu onAboutClick={() => setIsAboutOpen(true)} />
+      ) : (
+        <UnauthenticatedAccountMenu onAboutClick={() => setIsAboutOpen(true)} />
+      )}
+      <AboutModal isOpen={isAboutOpen} onOpenChange={setIsAboutOpen} />
+    </>
+  );
 };
 
-const CommonMenuItems = () => (
+const CommonMenuItems = ({ onAboutClick }: { onAboutClick: () => void }) => (
   <>
+    <DropdownMenuItem onSelect={onAboutClick}>
+      <Icon icon="mdi:information-outline" className="text-base" />
+      About Infrahub
+    </DropdownMenuItem>
+
     <DropdownMenuItem asChild>
       <Link to={INFRAHUB_DOC_LOCAL} target="_blank" rel="noreferrer">
         <Icon icon="mdi:file-document" className="text-base" />
@@ -78,7 +91,7 @@ const CommonMenuItems = () => (
   </>
 );
 
-const UnauthenticatedAccountMenu = () => {
+const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }) => {
   const location = useLocation();
 
   return (
@@ -116,7 +129,7 @@ const UnauthenticatedAccountMenu = () => {
       </LinkButton>
 
       <DropdownMenuContent align="end" side="right">
-        <CommonMenuItems />
+        <CommonMenuItems onAboutClick={onAboutClick} />
         <DropdownMenuDivider />
         <DropdownMenuItem asChild>
           <Link to="/login" state={{ from: location }}>
@@ -131,7 +144,7 @@ const UnauthenticatedAccountMenu = () => {
   );
 };
 
-const AuthenticatedAccountMenu = () => {
+const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }) => {
   const { setToken } = useAuth();
   const { data: profile, isPending } = useGetAccountProfile();
   const { mutateAsync: logout, isPending: isLoggingOut } = useLogoutMutation();
@@ -181,7 +194,7 @@ const AuthenticatedAccountMenu = () => {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuDivider />
-        <CommonMenuItems />
+        <CommonMenuItems onAboutClick={onAboutClick} />
         <DropdownMenuDivider />
         <DropdownMenuItem onClick={handleSignOut} disabled={isLoggingOut}>
           {isLoggingOut ? <Spinner /> : <Icon icon="mdi:logout" className="text-base" />}
