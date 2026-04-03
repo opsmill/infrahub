@@ -502,18 +502,31 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValidationError("\n".join(error_msgs)) from exc
 
-        async with lock.registry.local_schema_lock():
-            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-            new_schema = origin_schema.duplicate(name=obj.name)
-            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-            obj.update_schema_hash()
-            await obj.save(db=db, user_id=context.account.account_id)
+        # Use a distributed lock to prevent TOCTOU race conditions when creating branches.
+        # The lock is scoped to the branch name so different branches can be created concurrently.
+        # The existence check above is a fast-fail optimization; the authoritative check is
+        # inside the lock to prevent the race where two callers both pass the check above
+        # before either creates the branch.
+        async with lock.registry.get(name=model.name, namespace="branch_create", local=False):
+            # Re-check existence under the lock to prevent TOCTOU race
+            try:
+                await Branch.get_by_name(db=db, name=model.name)
+                raise ValidationError(f"The branch {model.name} already exists")
+            except BranchNotFoundError:
+                pass
 
-            # Add Branch to registry
-            registry.branch[obj.name] = obj
-            component = await get_component()
-            await component.refresh_schema_hash(branches=[obj.name])
+            async with lock.registry.local_schema_lock():
+                # Copy the schema from the origin branch and set the hash and the schema_changed_at value
+                origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
+                new_schema = origin_schema.duplicate(name=obj.name)
+                registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
+                obj.update_schema_hash()
+                await obj.save(db=db, user_id=context.account.account_id)
+
+                # Add Branch to registry
+                registry.branch[obj.name] = obj
+                component = await get_component()
+                await component.refresh_schema_hash(branches=[obj.name])
 
         event = BranchCreatedEvent(
             branch_name=obj.name,
