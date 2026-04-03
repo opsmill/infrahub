@@ -14,11 +14,16 @@ import {
   type FilterCondition,
   FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
-import { globalDecisionOptions } from "@/entities/role-manager/constants";
 import type { AttributeSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
-export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: AttributeSchema }) {
+export function DecisionColumnHeader({
+  attributeSchema,
+  options,
+}: {
+  attributeSchema: AttributeSchema;
+  options: Array<{ value: number; label: string }>;
+}) {
   const [filters, setFilters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
   const currentFilter = filters.find((f) => f.name.startsWith(attributeSchema.name));
@@ -85,7 +90,7 @@ export function DecisionColumnHeader({ attributeSchema }: { attributeSchema: Att
               onChange={(key) => setSelectedValue(key as string)}
             >
               <SelectTrigger className="w-33" />
-              <SelectList items={globalDecisionOptions}>
+              <SelectList items={options}>
                 {(item) => <SelectItem id={item.label}>{item.label}</SelectItem>}
               </SelectList>
             </Select>
