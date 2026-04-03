@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.8.2"
+version = "1.8.4"
 requires-python = ">=3.10"
 
 description = "Testcontainers instance for Infrahub to easily build integration tests"
@@ -58,10 +58,14 @@ ignore = [
     "ISC",      # flake8-implicit-str-concat
     "COM812",   # missing-trailing-comma
     "S101",     # Use of assert allowed as the producation code is used within tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+
+"infrahub_testcontainers/**.py" = [
     ##################################################################################################
     # Rules below needs to be Investigated                                                           #
     ##################################################################################################
-    "A001",     # Variable `format` is shadowing a Python builtin
     "BLE001",   # Do not catch blind exception: `Exception`
     "C901",     # `database_restore_backup` is too complex (22 > 10)
     "E501",     # Line too long
@@ -71,7 +75,6 @@ ignore = [
     "FBT002",   # Boolean default positional argument in function definition
     "FIX002",   # Line contains TODO, consider resolving the issue
     "PERF203",  # `try`-`except` within a loop incurs performance overhead
-    "PGH003",   # Use specific rule codes when ignoring type issues
     "PLR0912",  # Too many branches
     "PLR0914",  # Too many local variables
     "PLR6301",  # Method `infrahub_app` could be a function, class method, or static method
@@ -87,6 +90,17 @@ ignore = [
     "TRY002",   # Create your own exception
     "TRY003",   # Avoid specifying long messages outside the exception class
 ]
+
+"tests/**.py" = [
+    ##################################################################################################
+    # Rules below needs to be Investigated                                                           #
+    ##################################################################################################
+    "EM101",    # Exception must not use a string literal, assign to variable first
+    "PGH003",   # Use specific rule codes when ignoring type issues
+    "RUF067",   # `__init__` module should only contain docstrings and re-exports
+    "TC003",    # Move standard library import into a type-checking block
+]
+
 
 [tool.hatch.build.targets.sdist]
 include = [

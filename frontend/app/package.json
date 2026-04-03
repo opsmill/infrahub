@@ -139,6 +139,9 @@
       "prismjs": "^1.30.0"
     }
   },
+  "engines": {
+    "node": ">=24.0"
+  },
   "browserslist": {
     "production": [
       ">0.2%",

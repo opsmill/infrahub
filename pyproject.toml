@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.8.2"
+version = "1.8.4"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -550,7 +550,7 @@ max-line-length = 150
 
 [tool.ruff.lint.mccabe]
 # Target max-complexity=10
-max-complexity = 30
+max-complexity = 20
 
 [tool.ruff.lint.pylint]
 
@@ -981,11 +981,8 @@ allow-dunder-method-names = [
 # backend/tests/component/. Split from the broad section above to allow incremental fixes.       #
 # Remove each entry below once all ANN001 violations in that path have been resolved.            #
 ##################################################################################################
-# backend/tests/component/core/diff/ (236 violations)
 "backend/tests/component/core/diff/query/**.py" = ["ANN001"]                   # 6 violations
 "backend/tests/component/core/diff/repository/**.py" = ["ANN001"]              # 26 violations
-"backend/tests/component/core/diff/test_diff_calculator.py" = ["ANN001"]       # 114 violations
-"backend/tests/component/core/diff/test_diff_and_merge.py" = ["ANN001"]        # 22 violations
 "backend/tests/component/core/diff/test_diff_merger.py" = ["ANN001"]           # 18 violations
 "backend/tests/component/core/diff/test_diff_combiner.py" = ["ANN001"]         # 17 violations
 "backend/tests/component/core/diff/test_conflicts_enricher.py" = ["ANN001"]    # 11 violations
@@ -996,34 +993,8 @@ allow-dunder-method-names = [
 "backend/tests/component/core/diff/test_diff_init.py" = ["ANN001"]             # 1 violation
 "backend/tests/component/core/diff/test_coordinator.py" = ["ANN001"]           # 1 violation
 "backend/tests/component/core/ipam/**.py" = ["ANN001"]                         # 42 violations
-# backend/tests/component/core/migrations/ (174 violations)
 "backend/tests/component/core/migrations/schema/**.py" = ["ANN001"]            # 33 violations
-"backend/tests/component/core/migrations/graph/test_012.py" = ["ANN001"]       # 32 violations
-"backend/tests/component/core/migrations/graph/test_013.py" = ["ANN001"]       # 29 violations
-"backend/tests/component/core/migrations/graph/test_023.py" = ["ANN001"]       # 13 violations
-"backend/tests/component/core/migrations/graph/test_018_025.py" = ["ANN001"]   # 12 violations
-"backend/tests/component/core/migrations/graph/test_003.py" = ["ANN001"]       # 11 violations
-"backend/tests/component/core/migrations/graph/test_019.py" = ["ANN001"]       # 7 violations
-"backend/tests/component/core/migrations/graph/test_047.py" = ["ANN001"]       # 6 violations
-"backend/tests/component/core/migrations/graph/test_001.py" = ["ANN001"]       # 6 violations
-"backend/tests/component/core/migrations/graph/test_042.py" = ["ANN001"]       # 4 violations
-"backend/tests/component/core/migrations/graph/test_049.py" = ["ANN001"]       # 3 violations
-"backend/tests/component/core/migrations/graph/test_031.py" = ["ANN001"]       # 3 violations
-"backend/tests/component/core/migrations/graph/test_014.py" = ["ANN001"]       # 3 violations
-"backend/tests/component/core/migrations/graph/test_033.py" = ["ANN001"]       # 2 violations
-"backend/tests/component/core/migrations/graph/test_030.py" = ["ANN001"]       # 2 violations
-"backend/tests/component/core/migrations/graph/test_017.py" = ["ANN001"]       # 2 violations
-"backend/tests/component/core/migrations/graph/test_057_set_coreproposedchange_created_by_on_node.py" = ["ANN001"] # 1 violation
-"backend/tests/component/core/migrations/graph/test_048.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_041/test_041.py" = ["ANN001"] # 1 violation
-"backend/tests/component/core/migrations/graph/test_039.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_034.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_032.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_027.py" = ["ANN001"]       # 1 violation
-# backend/tests/component/core/schema_manager/ (114 violations)
 "backend/tests/component/core/schema_manager/test_manager_schema.py" = ["ANN001"]                # 100 violations
-"backend/tests/component/core/test_node_get_list_query.py" = ["ANN001"]        # 96 violations
-"backend/tests/component/core/test_relationship_query.py" = ["ANN001"]        # 59 violations
 
 "backend/tests/query_benchmark/**.py" = [
     ##################################################################################################

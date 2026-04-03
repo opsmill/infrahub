@@ -115,6 +115,7 @@ Kubernetes
 linter
 linting
 livestream
+loopback
 Loopback
 Loopbacks
 markdownlint
@@ -127,6 +128,7 @@ menu_placement
 metadata
 microservices
 middleware
+mixin
 modeline
 modularization
 namespace
@@ -206,6 +208,7 @@ subschema
 subschemas
 substring
 subtyping
+supernet
 template_path
 templated
 Terraform

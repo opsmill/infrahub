@@ -89,7 +89,9 @@ DETACH DELETE r
         """
         await db.execute_query(query=query)
 
-    async def test_migration_041(self, db: InfrahubDatabase, load_bad_data, car_person_schema: SchemaBranch) -> None:
+    async def test_migration_041(
+        self, db: InfrahubDatabase, load_bad_data: None, car_person_schema: SchemaBranch
+    ) -> None:
         for schema_name in car_person_schema.node_names:
             if schema_name == "TestCar":
                 car_schema = car_person_schema.get(name=schema_name, duplicate=False)
