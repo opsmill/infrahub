@@ -20,6 +20,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import get_migration_console, suppress_internal_logs
 from infrahub.core.protocols import CoreAccount, CoreObjectPermission
 from infrahub.dependencies.registry import build_component_registry
+from infrahub.exceptions import DatabaseError
 from infrahub.lock import initialize_lock
 from infrahub.menu.menu import default_menu
 from infrahub.menu.models import MenuDict
@@ -54,10 +55,13 @@ console = get_migration_console()
 
 
 async def validate_prerequisites(db: InfrahubDatabase) -> bool:
-    """Validate that the database is reachable before starting upgrade."""
+    """Validate that the database is reachable and initialized before starting upgrade."""
     try:
         await get_root_node(db=db)
         return True
+    except DatabaseError as exc:
+        console.log(f"{ERROR_BADGE} Database prerequisite check failed: {exc}")
+        return False
     except Exception as exc:
         console.log(f"{ERROR_BADGE} Database is unreachable: {exc}")
         console.log(
@@ -213,8 +217,9 @@ async def _upgrade_check(db: InfrahubDatabase, root_node_graph_version: int) -> 
     branches = await get_branches_needing_rebase(db=db)
     if branches:
         branch_names = ", ".join(b.name for b in branches)
-        plural = "es" if len(branches) != 1 else ""
-        console.log(f"  {len(branches)} branch{plural} need rebase: {branch_names}")
+        noun = "branches" if len(branches) != 1 else "branch"
+        verb = "need" if len(branches) != 1 else "needs"
+        console.log(f"  {len(branches)} {noun} {verb} rebase: {branch_names}")
     else:
         console.log("  No branches need rebase")
 
