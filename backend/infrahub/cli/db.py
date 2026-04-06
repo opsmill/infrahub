@@ -238,12 +238,12 @@ async def showmigrations_cmd(
 
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
-        migration_number = migration.minimum_version + 1
+        num = migration.number
         migration_type = _get_migration_type_name(migration)
-        applied = graph_version > migration.minimum_version
+        applied = graph_version >= num
         status = "[green]\\[X][/green]" if applied else "[ ]"
         display_name = _get_migration_display_name(migration)
-        console.print(f" {status} {migration_number:03d}  {display_name:<50s} {migration_type}")
+        console.print(f" {status} {num:03d}  {display_name:<50s} {migration_type}")
 
     await dbdriver.close()
 
@@ -492,11 +492,9 @@ async def detect_migration_to_run(
     console.log(f"Target version:   {GRAPH_VERSION}")
     console.log(f"Pending: {len(migrations)} migration{plural}")
     for migration in migrations:
-        migration_number_display = migration.minimum_version + 1
+        num = migration.number
         migration_type = _get_migration_type_name(migration)
-        console.log(
-            f"  {migration_number_display:03d}  {_get_migration_display_name(migration):<50s} ({migration_type})"
-        )
+        console.log(f"  {num:03d}  {_get_migration_display_name(migration):<50s} ({migration_type})")
     return migrations
 
 
@@ -585,7 +583,7 @@ async def migrate_database(
                 root_node.graph_version = migration.minimum_version + 1
                 await root_node.save(db=db)
         else:
-            migration_num = migration.minimum_version + 1
+            migration_num = migration.number
             migration_console.log(f"  Applying {migration.name}... {FAILED_BADGE} ({elapsed:.2f}s)")
             for error in execution_result.errors:
                 migration_console.log(f"    Error: {error}")
