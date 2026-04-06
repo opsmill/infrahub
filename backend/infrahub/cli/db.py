@@ -273,7 +273,7 @@ async def showmigration_cmd(
 
     root_node = await get_root_node(db=dbdriver)
     graph_version = root_node.graph_version
-    applied = graph_version > migration.minimum_version
+    applied = graph_version >= migration_number
     status = "Applied" if applied else "Pending"
     migration_type = _get_migration_type_name(migration)
 
@@ -578,7 +578,7 @@ async def migrate_database(
 
         elapsed = time.perf_counter() - start
 
-        if execution_result.success and (validation_result and validation_result.success):
+        if execution_result.success and validation_result and validation_result.success:
             migration_console.log(f"  Applying {migration.name}... {APPLIED_BADGE} ({elapsed:.2f}s)")
             applied_count += 1
             if update_graph_version:
