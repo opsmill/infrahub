@@ -199,6 +199,11 @@ class GraphMigration(BaseModel):
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
+    @property
+    def number(self) -> int:
+        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
+        return int(type(self).__name__[len("Migration") :])
+
     @classmethod
     def init(cls, **kwargs: dict[str, Any]) -> Self:
         return cls(**kwargs)  # type: ignore[arg-type]
@@ -230,6 +235,11 @@ class InternalSchemaMigration(BaseModel):
     description: str = Field(default="", description="Human-readable description of what this migration does")
     migrations: Sequence[SchemaMigration] = Field(..., description="")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @property
+    def number(self) -> int:
+        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
+        return int(type(self).__name__[len("Migration") :])
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
@@ -271,6 +281,11 @@ class ArbitraryMigration(BaseModel):
     description: str = Field(default="", description="Human-readable description of what this migration does")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
+    @property
+    def number(self) -> int:
+        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
+        return int(type(self).__name__[len("Migration") :])
+
     @classmethod
     def init(cls, **kwargs: dict[str, Any]) -> Self:
         return cls(**kwargs)  # type: ignore[arg-type]
@@ -287,6 +302,11 @@ class MigrationRequiringRebase(BaseModel):
     name: str = Field(..., description="Name of the migration")
     description: str = Field(default="", description="Human-readable description of what this migration does")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
+
+    @property
+    def number(self) -> int:
+        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
+        return int(type(self).__name__[len("Migration") :])
 
     @classmethod
     def init(cls, **kwargs: dict[str, Any]) -> Self:
