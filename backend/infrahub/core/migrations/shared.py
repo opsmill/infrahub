@@ -66,6 +66,18 @@ class MigrationResult(BaseModel):
         return False
 
 
+class MigrationNumberMixin:
+    """Mixin that derives the migration number from the class name (e.g. 67 from Migration067)."""
+
+    @property
+    def number(self) -> int:
+        name = type(self).__name__
+        prefix = "Migration"
+        if not name.startswith(prefix):
+            raise ValueError(f"Class {name!r} does not follow the Migration{{NNN}} naming convention")
+        return int(name[len(prefix) :])
+
+
 @dataclass
 class MigrationInput:
     db: InfrahubDatabase
@@ -192,17 +204,12 @@ class RelationshipSchemaMigration(SchemaMigration):
         return self.previous_schema.get_relationship(name=self.schema_path.field_name)
 
 
-class GraphMigration(BaseModel):
+class GraphMigration(MigrationNumberMixin, BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
     description: str = Field(default="", description="Human-readable description of what this migration does")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @property
-    def number(self) -> int:
-        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
-        return int(type(self).__name__[len("Migration") :])
 
     @classmethod
     def init(cls, **kwargs: dict[str, Any]) -> Self:
@@ -229,17 +236,12 @@ class GraphMigration(BaseModel):
         return result
 
 
-class InternalSchemaMigration(BaseModel):
+class InternalSchemaMigration(MigrationNumberMixin, BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
     description: str = Field(default="", description="Human-readable description of what this migration does")
     migrations: Sequence[SchemaMigration] = Field(..., description="")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @property
-    def number(self) -> int:
-        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
-        return int(type(self).__name__[len("Migration") :])
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
@@ -276,15 +278,10 @@ class InternalSchemaMigration(BaseModel):
         return result
 
 
-class ArbitraryMigration(BaseModel):
+class ArbitraryMigration(MigrationNumberMixin, BaseModel):
     name: str = Field(..., description="Name of the migration")
     description: str = Field(default="", description="Human-readable description of what this migration does")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @property
-    def number(self) -> int:
-        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
-        return int(type(self).__name__[len("Migration") :])
 
     @classmethod
     def init(cls, **kwargs: dict[str, Any]) -> Self:
@@ -297,16 +294,11 @@ class ArbitraryMigration(BaseModel):
         raise NotImplementedError()
 
 
-class MigrationRequiringRebase(BaseModel):
+class MigrationRequiringRebase(MigrationNumberMixin, BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(..., description="Name of the migration")
     description: str = Field(default="", description="Human-readable description of what this migration does")
     minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @property
-    def number(self) -> int:
-        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
-        return int(type(self).__name__[len("Migration") :])
 
     @classmethod
     def init(cls, **kwargs: dict[str, Any]) -> Self:
