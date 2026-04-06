@@ -302,10 +302,6 @@ async def showmigration_cmd(
                 if cypher:
                     for line in cypher.strip().splitlines():
                         console.print(f"       {line}")
-    elif not migration.description:
-        docstring = inspect.getdoc(migration)
-        if docstring:
-            console.print(f"  Description:     {docstring}")
 
     await dbdriver.close()
 
