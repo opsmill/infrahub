@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime  # noqa: TC003
 from enum import IntEnum, StrEnum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth import AccountSession, AuthType
 
 LOG_AUTH = 4
 LOG_LOCAL0 = 16
@@ -59,15 +59,29 @@ class LogForwardingContext:
     graphql_operations: list[str] | None = None
 
 
+class ExceptionLogType(StrEnum):
+    PERMISSION_DENIED = "infrahub.permission.denied"
+
+
 @dataclass(slots=True)
-class PermissionDeniedPayload:
-    event: str
-    message: str
-    account_id: str
-    auth_type: str
-    branch: str
-    ip_address: str
-    request_path: str
-    operation: str | None = None
-    query_type: str | None = None
-    graphql_operations: list[str] | None = None
+class ExceptionLogPayload:
+    event: ExceptionLogType = field(metadata={"doc": "Event name for the specific exception type"})
+    message: str = field(metadata={"doc": "Detailed message describing the exception"})
+    branch: str = field(metadata={"doc": "Branch on which the operation was attempted"})
+
+
+@dataclass(slots=True)
+class PermissionDeniedPayload(ExceptionLogPayload):
+    account_id: str = field(metadata={"doc": "ID of the account associated with the request"})
+    auth_type: AuthType = field(metadata={"doc": "Authentication type used for the request"})
+    ip_address: str = field(metadata={"doc": "IP address from which the request originated"})
+    request_path: str = field(metadata={"doc": "API endpoint or path for the request"})
+    operation: str | None = field(
+        default=None, metadata={"doc": "Name of the operation being performed, GraphQL requests only"}
+    )
+    query_type: str | None = field(
+        default=None, metadata={"doc": "Type of the query being executed: mutation or query, GraphQL requests only"}
+    )
+    graphql_operations: list[str] | None = field(
+        default=None, metadata={"doc": "List of GraphQL operations requested, GraphQL requests only"}
+    )
