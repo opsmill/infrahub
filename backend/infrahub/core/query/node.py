@@ -1454,34 +1454,59 @@ class NodeGetByHFIDQuery(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
         self.params.update(branch_params)
+
         # The list is stored as a string in the database
         self.params["hfid_values"] = [ujson.dumps(hfid) for hfid in self.hfids]
 
         query = """
-        MATCH (n:%(node_kind)s)
+        // --------------------------
+        // Start from matching HFID values and traverse back to nodes
+        // --------------------------
+        MATCH (av:AttributeValue)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
+        WHERE av.value IN $hfid_values
+        WITH DISTINCT n, attr, av
+        // --------------------------
+        // Filter IS_PART_OF edges to ensure node is active
+        // --------------------------
         CALL (n) {
             MATCH (n)-[r:IS_PART_OF]->(:Root)
             WHERE %(branch_filter)s
-            RETURN r AS r_part_of
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, r_part_of
-        WHERE r_part_of.status = "active"
-        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "human_friendly_id"})
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av)
+        WITH n, attr, av
+        WHERE r.status = "active"
+        // --------------------------
+        // Filter HAS_VALUE edges to resolve the active value
+        // on the correct branch at the requested point in time
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
             WHERE %(branch_filter)s
-            RETURN av, r AS r_attr
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, av, r_attr
-        WHERE r_attr.status = "active" AND av.value IN $hfid_values
+        WITH n, attr, av
+        WHERE r.status = "active"
+        // --------------------------
+        // Filter HAS_ATTRIBUTE edges to confirm the attribute
+        // is actively linked to the node on the correct branch
+        // --------------------------
+        CALL (n, attr) {
+            MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        With n, av, r
+        WHERE r.status = "active"
         """ % {"branch_filter": branch_filter, "node_kind": self.node_kind}
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid AS node_uuid", "av.value AS hfid"]
+        self.return_labels = ["DISTINCT n.uuid AS node_uuid", "av.value AS hfid"]
 
     def get_node_uuids(self) -> list[str]:
         """Get the list of node UUIDs from the query results."""
