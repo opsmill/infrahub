@@ -214,7 +214,8 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
         for path in self.template:
             path_value = await node.get_path_value(db=db, path=path)
             # Use .value for enum to be consistent with display label
-            value.append(path_value if not isinstance(path_value, Enum) else path_value.value)
+            raw_value = path_value.value if isinstance(path_value, Enum) else path_value
+            value.append(str(raw_value))
 
         self.set_value(value=value)
 
