@@ -26,6 +26,7 @@ export interface ActionsCellProps {
   objectId: string;
   objectKind: string;
   objectLabel: string;
+  extraRelationshipNames?: string[];
 }
 
 export function ObjectActionsCell({
@@ -33,6 +34,7 @@ export function ObjectActionsCell({
   objectId,
   objectLabel,
   permission,
+  extraRelationshipNames,
 }: ActionsCellProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
@@ -111,6 +113,7 @@ export function ObjectActionsCell({
             }}
             objectId={objectId}
             objectname={objectKind}
+            extraRelationshipNames={extraRelationshipNames}
           />
         </SlideOver>
       )}

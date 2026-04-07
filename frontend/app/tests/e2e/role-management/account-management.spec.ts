@@ -33,9 +33,14 @@ test.describe("/role-management - Account CRUD", () => {
       await expect(page.getByRole("link", { name: "Account Test" })).toBeVisible();
     });
 
-    await test.step("edit the account description", async () => {
+    await test.step("open edit form and verify field values", async () => {
       await getDataTableRow(page, "Account Test").getByTestId("actions-cell-Account Test").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
+      await expect(page.getByRole("textbox", { name: "Name *" })).toHaveValue("account test");
+      await expect(page.getByRole("textbox", { name: "Description" })).toHaveValue("");
+    });
+
+    await test.step("update the account description and save", async () => {
       await page.getByRole("textbox", { name: "Description" }).fill("test edit");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Account updated!")).toBeVisible();

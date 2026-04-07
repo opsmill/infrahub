@@ -32,13 +32,13 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
   const updateObject = useUpdateObjectMutation();
 
   const groups = getRelationshipDefaultValue({
-    objectData: { groups: currentObject?.groups?.value },
+    objectData: currentObject,
     relationshipName: "groups",
   });
 
   const permissions = getRelationshipDefaultValue({
-    objectData: { identifier: currentObject?.permissions?.value },
-    relationshipName: "identifier",
+    objectData: currentObject,
+    relationshipName: "permissions",
   });
 
   const defaultValues = {
