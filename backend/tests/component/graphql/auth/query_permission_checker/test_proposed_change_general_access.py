@@ -16,6 +16,7 @@ from infrahub.core.constants import (
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.auth.query_permission_checker.checker import GraphQLQueryPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.object_permission_checker import ObjectPermissionChecker
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
 
 
 MUTATION_PROPOSED_CHANGE_CREATE = """
-mutation ProposedChangeCreate {
+mutation CoreProposedChangeCreate {
   CoreProposedChangeCreate(data: {
     name: {value: "test-pc"}
     source_branch: {value: "feature-branch"}
@@ -48,9 +49,9 @@ mutation ProposedChangeCreate {
 class TestProposedChangeGeneralAccessPermissions:
     """Test that a user with General Access role permissions can create a ProposedChange.
 
-    The General Access role has:
+    The General Access role has (after fix):
     - Global: MANAGE_REPOSITORIES, MANAGE_SCHEMA, MERGE_PROPOSED_CHANGE
-    - Object: VIEW */* ALLOW_ALL, ANY */* ALLOW_OTHER
+    - Object: VIEW */* ALLOW_ALL, ANY */* ALLOW_OTHER, Core/ProposedChange/create ALLOW_DEFAULT
     - Notably does NOT have EDIT_DEFAULT_BRANCH
 
     ProposedChange creation targets the default branch but is a workflow operation
@@ -100,11 +101,23 @@ class TestProposedChangeGeneralAccessPermissions:
         )
         await modify_permission.save(db=db)
 
+        # The fix will add this permission to General Access in initialization.py:
+        # CoreProposedChange-specific ALLOW_DEFAULT for create action
+        proposed_change_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+        await proposed_change_permission.new(
+            db=db,
+            namespace="Core",
+            name="ProposedChange",
+            action=PermissionAction.CREATE.value,
+            decision=PermissionDecision.ALLOW_DEFAULT.value,
+        )
+        await proposed_change_permission.save(db=db)
+
         role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
         await role.new(
             db=db,
             name="General Access",
-            permissions=[*global_permissions, view_permission, modify_permission],
+            permissions=[*global_permissions, view_permission, modify_permission, proposed_change_permission],
         )
         await role.save(db=db)
 
@@ -141,7 +154,7 @@ class TestProposedChangeGeneralAccessPermissions:
         graphql_query.branch = MagicMock()
         graphql_query.branch.name = "main"
         graphql_query.contains_mutation = True
-        graphql_query.operation_names = ["ProposedChangeCreate"]
+        graphql_query.operation_names = ["CoreProposedChangeCreate"]
 
         graphql_context = GraphqlContext(
             db=MagicMock(),
@@ -166,21 +179,23 @@ class TestProposedChangeGeneralAccessPermissions:
         )
         assert resolution == CheckerResolution.NEXT_CHECKER
 
-    async def test_proposed_change_create_not_blocked_by_object_permission_checker(
+    async def test_proposed_change_create_allowed_by_full_permission_chain(
         self,
         db: InfrahubDatabase,
         default_permission_backend: None,
         permissions_helper: PermissionsHelper,
     ) -> None:
-        """ObjectPermissionChecker should allow ProposedChange creation with General Access role.
+        """The full permission checker chain should allow ProposedChange creation for General Access.
 
-        The General Access role only grants ANY */* -> ALLOW_OTHER (decision=4).
-        For mutations on the default branch, ObjectPermissionChecker requires ALLOW_DEFAULT
-        (decision=2). ALLOW_OTHER alone does not satisfy ALLOW_DEFAULT.
-        Without a fix, this raises PermissionDeniedError for the create action on
-        CoreProposedChange because the role lacks ALLOW_DEFAULT for that kind.
+        The test setup includes a CoreProposedChange-specific ALLOW_DEFAULT object permission
+        (which the fix will add to initialization.py). Even with this permission present,
+        the DefaultBranchPermissionChecker still blocks the operation because
+        CoreProposedChangeCreate is not in its exempt_operations list.
+
+        After both fixes are applied (exempt_operations + object permission), the full chain
+        should pass: DefaultBranchPermissionChecker exempts the operation, and
+        ObjectPermissionChecker finds the ALLOW_DEFAULT permission for CoreProposedChange.
         """
-        checker = ObjectPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
@@ -196,13 +211,15 @@ class TestProposedChangeGeneralAccessPermissions:
             schema_branch=schema_branch,
         )
 
-        # Expected: checker allows the create (TERMINATE with no error)
-        # Bug: raises PermissionDeniedError because ALLOW_OTHER doesn't include ALLOW_DEFAULT
-        resolution = await checker.check(
+        checker_chain = GraphQLQueryPermissionChecker([DefaultBranchPermissionChecker(), ObjectPermissionChecker()])
+
+        # Expected: full chain allows the operation (no error raised)
+        # Bug: DefaultBranchPermissionChecker raises PermissionDeniedError because
+        # CoreProposedChangeCreate is not in exempt_operations
+        await checker_chain.check(
             db=db,
             account_session=session,
             analyzed_query=analyzed_query,
             branch=permissions_helper.default_branch,
             query_parameters=gql_params,
         )
-        assert resolution == CheckerResolution.TERMINATE
