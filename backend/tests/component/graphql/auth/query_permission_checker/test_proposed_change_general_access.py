@@ -4,8 +4,6 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 from uuid import uuid4
 
-import pytest
-
 from infrahub.auth import AccountSession, AuthType
 from infrahub.core.constants import (
     GlobalPermissions,
