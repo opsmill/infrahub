@@ -405,6 +405,17 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
     )
     await modify_permission.save(db=db)
 
+    proposed_change_object_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
+    await proposed_change_object_permission.new(
+        db=db,
+        namespace="Core",
+        name="ProposedChange",
+        action=PermissionAction.CREATE.value,
+        decision=PermissionDecision.ALLOW_DEFAULT.value,
+        description="Allow a user to create proposed changes on the default branch",
+    )
+    await proposed_change_object_permission.save(db=db)
+
     role_name = "General Access"
     role = await Node.init(db=db, schema=CoreAccountRole)
     await role.new(
@@ -416,6 +427,7 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
             proposed_change_permission,
             view_permission,
             modify_permission,
+            proposed_change_object_permission,
         ],
     )
     await role.save(db=db)

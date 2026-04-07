@@ -19,6 +19,8 @@ class DefaultBranchPermissionChecker(GraphQLQueryPermissionCheckerInterface):
     )
     exempt_operations = [
         "BranchCreate",
+        "CoreProposedChangeCreate",
+        "CoreProposedChangeUpdate",
         "DiffUpdate",
         "InfrahubAccountSelfUpdate",
         "InfrahubAccountTokenCreate",
