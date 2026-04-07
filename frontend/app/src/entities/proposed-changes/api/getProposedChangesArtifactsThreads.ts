@@ -9,7 +9,6 @@ query {
         id
         display_label
         __typename
-        _updated_at
 
         {{#each attributes}}
           {{this.name}} {

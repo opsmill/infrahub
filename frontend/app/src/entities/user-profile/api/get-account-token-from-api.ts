@@ -11,6 +11,7 @@ const query = graphql(`
           id
           name
           expiration
+          __typename
         }
       }
     }

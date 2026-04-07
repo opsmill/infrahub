@@ -645,7 +645,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 response[f"{PREFIX_PROPERTY}{field_name}"] = await created_at.to_graphql() if created_at else None
             elif field_name == "created_by":
                 response[f"{PREFIX_PROPERTY}{field_name}"] = self._get_created_by()
-            elif field_name in ["_updated_at", "updated_at"]:
+            elif field_name == "updated_at":
                 updated_at = self._get_updated_at()
                 response[f"{PREFIX_PROPERTY}{field_name}"] = await updated_at.to_graphql() if updated_at else None
             elif field_name == "updated_by":

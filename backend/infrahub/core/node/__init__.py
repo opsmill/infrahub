@@ -1232,13 +1232,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
                 response[field_name] = await self.get_hfid(db=db)
                 continue
 
-            if field_name == "_updated_at":
-                if updated_at := self._get_updated_at():
-                    response[field_name] = await updated_at.to_graphql()
-                else:
-                    response[field_name] = None
-                continue
-
             field: BaseAttribute | None = getattr(self, field_name, None)
 
             if not field:

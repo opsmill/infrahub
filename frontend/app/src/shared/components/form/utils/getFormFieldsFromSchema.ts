@@ -112,7 +112,7 @@ export const getFormFieldsFromSchema = ({
       getFormFieldFromAttribute({
         auth,
         attributeSchema: field,
-        currentObject: initialObject as Record<string, AttributeType>,
+        currentObject: initialObject as Record<string, AttributeType> | undefined,
         objectTemplate,
         isFilterForm: !!isFilterForm,
         isBulkUpdate: !!isBulkUpdate,

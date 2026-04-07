@@ -1,16 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { format } from "date-fns";
 
-import type {
-  ArtifactEvent,
-  GroupEvent,
-  StandardEvent,
-} from "@/shared/api/graphql/generated/graphql";
 import { Link } from "@/shared/components/ui/link";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
-import type { BranchEvent, EventType } from "@/entities/events/types";
+import type { EventType } from "@/entities/events/types";
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
 import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
 import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
@@ -19,18 +14,19 @@ import { ProposedChangeEventTitle } from "@/entities/events/ui/proposed-change-e
 import { StandardEventTitle } from "@/entities/events/ui/standard-events/standard-event-title";
 import { PROPOSED_CHANGE_EVENTS } from "@/entities/proposed-changes/constants";
 
-const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
+const GlobalEventDisplay = (props: EventType) => {
   if ("attributes" in props) {
     return <NodeEventTitle {...props} />;
   }
 
+  const { __typename } = props;
   if (
     __typename === "BranchCreatedEvent" ||
     __typename === "BranchDeletedEvent" ||
     __typename === "BranchMergedEvent" ||
     __typename === "BranchRebasedEvent"
   ) {
-    return <BranchEventTitle {...(props as BranchEvent)} />;
+    return <BranchEventTitle {...props} />;
   }
 
   if (__typename === "StandardEvent" && PROPOSED_CHANGE_EVENTS.includes(props.event)) {
@@ -38,18 +34,20 @@ const GlobalEventDisplay = ({ __typename, ...props }: EventType) => {
   }
 
   if (__typename === "StandardEvent") {
-    return <StandardEventTitle {...(props as StandardEvent)} />;
+    return <StandardEventTitle {...props} />;
   }
 
   if (__typename === "GroupEvent") {
-    return <GroupEventTitle {...(props as GroupEvent)} />;
+    return <GroupEventTitle {...props} />;
   }
 
   if (__typename === "ArtifactEvent") {
-    return <ArtifactEventTitle {...(props as ArtifactEvent)} />;
+    return <ArtifactEventTitle {...props} />;
   }
 
-  return <span className="flex items-center text-gray-500 text-sm">{props.event}</span>;
+  return (
+    <span className="flex items-center text-gray-500 text-sm">{(props as EventType).event}</span>
+  );
 };
 
 export const Event = (props: EventType) => {

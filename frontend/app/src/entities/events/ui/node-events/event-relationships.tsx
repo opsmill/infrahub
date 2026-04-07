@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 
-import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/types";
 import { Card } from "@/shared/components/ui/card";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
