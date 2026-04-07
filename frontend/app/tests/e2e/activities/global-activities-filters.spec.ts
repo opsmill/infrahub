@@ -59,6 +59,6 @@ test.describe("Global Activities - List view and filter usage", () => {
     await page.getByRole("button", { name: "Account" }).click();
     await page.getByRole("option", { name: "Jack Bauer" }).click();
     await page.getByRole("button", { name: "Apply" }).click();
-    await expect(page.getByText("infrahub.account.logged_in").first()).toBeVisible();
+    await expect(page.getByText("logged in via password").first()).toBeVisible();
   });
 });

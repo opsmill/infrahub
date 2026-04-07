@@ -87,12 +87,6 @@ exports[`fix ts error`] = {
     "src/entities/diff/utils/build-diff-tree-items.ts:3247801260": [
       [73, 66, 24, "tsc: Not all code paths return a value.", "3673565821"]
     ],
-    "src/entities/events/ui/event-details.tsx:470502214": [
-      [22, 2, 9, "tsc: Property \'ancestors\' does not exist on type \'EventType\'.", "881849061"],
-      [23, 2, 7, "tsc: Property \'members\' does not exist on type \'EventType\'.", "1205904422"],
-      [100, 30, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"],
-      [122, 28, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"]
-    ],
     "src/entities/events/ui/filters/global-branch-filter.tsx:4154549494": [
       [82, 14, 7, "tsc: Type \'{ label: string; name: string; }[]\' is not assignable to type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; }[] | { id?: string\'.\\n  Property \'state\' is missing in type \'{ label: string; name: string; }\' but required in type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; } | { id?: string\'.", "3821181085"]
     ],
