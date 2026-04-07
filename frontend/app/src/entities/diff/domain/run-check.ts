@@ -1,4 +1,4 @@
-import type { CheckType } from "@/shared/api/graphql/generated/graphql";
+import type { CheckType } from "@/shared/api/graphql/generated/types";
 
 import { runCheckFromApi } from "@/entities/diff/api/run-check-from-api";
 

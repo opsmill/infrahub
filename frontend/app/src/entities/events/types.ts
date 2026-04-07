@@ -7,17 +7,9 @@ import type {
   GroupEvent,
   NodeMutatedEvent,
   StandardEvent,
-} from "@/shared/api/graphql/generated/graphql";
+} from "@/shared/api/graphql/generated/types";
 
-export type EventType =
-  | ArtifactEvent
-  | NodeMutatedEvent
-  | BranchCreatedEvent
-  | BranchMergedEvent
-  | BranchRebasedEvent
-  | BranchDeletedEvent
-  | GroupEvent
-  | StandardEvent;
+export type EventType = ArtifactEvent | NodeMutatedEvent | BranchEvent | GroupEvent | StandardEvent;
 
 export type BranchEvent =
   | BranchCreatedEvent

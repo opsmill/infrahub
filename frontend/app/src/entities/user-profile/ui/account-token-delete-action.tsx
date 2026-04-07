@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import type { AccountTokenNode } from "@/shared/api/graphql/generated/graphql";
+import type { AccountTokenNode } from "@/shared/api/graphql/generated/types";
 import { queryClient } from "@/shared/api/rest/client";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 

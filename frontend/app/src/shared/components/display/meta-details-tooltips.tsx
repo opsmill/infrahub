@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { FileBoxIcon } from "lucide-react";
 import type React from "react";
 
-import type { AnyAttribute } from "@/shared/api/graphql/generated/graphql";
+import type { AnyAttribute } from "@/shared/api/graphql/generated/types";
 import { PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";

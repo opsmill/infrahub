@@ -1,18 +1,18 @@
-import type { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
+import type { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/types";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
-import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ColorCell } from "@/entities/nodes/object/ui/object-table/cells/color-cell";
 import { DropdownCell } from "@/entities/nodes/object/ui/object-table/cells/dropdown-cell";
 import { NodeKindCell } from "@/entities/nodes/object/ui/object-table/cells/node-kind-cell";
 import { UrlCell } from "@/entities/nodes/object/ui/object-table/cells/url-cell";
+import type { NodeAttribute } from "@/entities/nodes/types";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeKind, AttributeSchema } from "@/entities/schema/types";
 
 export interface TableAttributeCellProps {
   attributeSchema: AttributeSchema;
-  attributeData: AttributeType;
+  attributeData?: NodeAttribute;
 }
 
 export function TableAttributeCell({ attributeSchema, attributeData }: TableAttributeCellProps) {
@@ -30,7 +30,7 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.DATETIME: {
       return (
         <span className="truncate">
-          <DateDisplay date={attributeData.value} />
+          <DateDisplay date={attributeData.value as string | null} />
         </span>
       );
     }
@@ -47,9 +47,10 @@ export function TableAttributeCell({ attributeSchema, attributeData }: TableAttr
     case ATTRIBUTE_KIND.FILE:
     case ATTRIBUTE_KIND.IP_HOST:
     case ATTRIBUTE_KIND.IP_NETWORK:
+    case ATTRIBUTE_KIND.NODE_KIND:
     case ATTRIBUTE_KIND.TEXTAREA: {
       if (attributeSchema.name === "node_kind") {
-        return <NodeKindCell kind={attributeData.value} />;
+        return <NodeKindCell kind={attributeData.value as string} />;
       }
 
       return <span className="truncate">{attributeData.value}</span>;
