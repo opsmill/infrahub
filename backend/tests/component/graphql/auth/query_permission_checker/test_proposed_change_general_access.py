@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
@@ -16,9 +15,9 @@ from infrahub.graphql.auth.query_permission_checker.checker import GraphQLQueryP
 from infrahub.graphql.auth.query_permission_checker.default_branch_checker import DefaultBranchPermissionChecker
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.object_permission_checker import ObjectPermissionChecker
-from infrahub.graphql.initialization import GraphqlContext, GraphqlParams, prepare_graphql_params
-from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
+from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.permissions import PermissionManager
+from tests.component.graphql.auth.query_permission_checker.conftest import build_graphql_query_mock, build_query_params
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -97,26 +96,11 @@ class TestProposedChangeGeneralAccessPermissions:
         permission_manager = PermissionManager(account_session=session)
         await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
 
-        graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
-        graphql_query.branch = MagicMock()
-        graphql_query.branch.name = "main"
-        graphql_query.contains_mutation = True
-        graphql_query.operation_names = ["CoreProposedChangeCreate"]
-
-        graphql_context = GraphqlContext(
-            db=MagicMock(),
-            branch=MagicMock(),
-            types=MagicMock(),
-            single_relationship_resolver=MagicMock(),
-            many_relationship_resolver=MagicMock(),
-            account_metadata_resolver=AccountMetadataResolver(),
-            account_session=session,
-            permissions=permission_manager,
+        graphql_query = build_graphql_query_mock(
+            branch_name="main", contains_mutation=True, operation_names=["CoreProposedChangeCreate"]
         )
-        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
+        query_parameters = build_query_params(session, permission_manager)
 
-        # Expected: checker lets ProposedChangeCreate through (NEXT_CHECKER)
-        # Bug: raises PermissionDeniedError because ProposedChangeCreate is not in exempt_operations
         resolution = await checker.check(
             db=db,
             account_session=session,

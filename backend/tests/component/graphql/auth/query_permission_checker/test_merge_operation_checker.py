@@ -14,8 +14,8 @@ from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
 from infrahub.graphql.auth.query_permission_checker.interface import CheckerResolution
 from infrahub.graphql.auth.query_permission_checker.merge_operation_checker import MergeBranchPermissionChecker
 from infrahub.graphql.initialization import GraphqlContext, GraphqlParams
-from infrahub.graphql.resolvers.account_metadata import AccountMetadataResolver
 from infrahub.permissions import PermissionManager
+from tests.component.graphql.auth.query_permission_checker.conftest import build_query_params
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -133,17 +133,7 @@ class TestMergeBranchPermission:
         graphql_query.operations = [MagicMock()]
         graphql_query.operations[0].name = operation_name
 
-        graphql_context = GraphqlContext(
-            db=MagicMock(),
-            branch=MagicMock(),
-            types=MagicMock(),
-            single_relationship_resolver=MagicMock(),
-            many_relationship_resolver=MagicMock(),
-            account_metadata_resolver=AccountMetadataResolver(),
-            account_session=session,
-            permissions=permission_manager,
-        )
-        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
+        query_parameters = build_query_params(session, permission_manager)
 
         if checker_resolution is None:
             with pytest.raises(PermissionDeniedError, match=r"You are not allowed to merge a branch"):
