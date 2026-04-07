@@ -115,12 +115,7 @@ class TestProposedChangeGeneralAccessPermissions:
         db: InfrahubDatabase,
         permissions_helper: PermissionsHelper,
     ) -> None:
-        """The full permission checker chain should allow ProposedChange creation for General Access.
-
-        The test setup includes a CoreProposedChange-specific ALLOW_DEFAULT object permission. Even with this permission present,
-        the DefaultBranchPermissionChecker still blocks the operation because
-        CoreProposedChangeCreate is not in its exempt_operations list.
-        """
+        """The full permission checker chain should allow ProposedChange creation for General Access."""
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
