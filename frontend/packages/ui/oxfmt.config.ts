@@ -13,4 +13,7 @@ export default defineConfig({
       "unknown",
     ],
   },
+  sortPackageJson: {
+    sortScripts: true,
+  },
 });
