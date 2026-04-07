@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import time
 from pathlib import Path
 
@@ -106,12 +107,10 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
         """
         deadline = time.monotonic() + wait_for_seconds
         while True:
-            try:
+            with contextlib.suppress(GraphQLError):
                 response = await client.execute_graphql(query=SCHEMA_HASH_SYNC_STATUS, branch_name=branch)
                 if response["InfrahubStatus"]["summary"]["schema_hash_synced"]:
                     return True
-            except GraphQLError:
-                pass
 
             if time.monotonic() >= deadline:
                 return False
