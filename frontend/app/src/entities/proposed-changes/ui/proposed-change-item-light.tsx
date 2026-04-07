@@ -18,7 +18,7 @@ type ProposedChangesItemLightProps = {
 };
 
 export const ProposedChangesItemLight = ({ proposedChange }: ProposedChangesItemLightProps) => {
-  const { node } = proposedChange;
+  const { node, metadata } = proposedChange;
 
   return (
     <ListBoxItem className="flex items-center p-4">
@@ -35,7 +35,7 @@ export const ProposedChangesItemLight = ({ proposedChange }: ProposedChangesItem
           branchName={node.source_branch?.value}
           comments={node.total_comments.value ?? 0}
           validations={node.validations.count}
-          updatedAt={node._updated_at}
+          updatedAt={metadata.updated_at}
         />
       </div>
     </ListBoxItem>
@@ -72,7 +72,7 @@ type ProposedChangesDataProps = {
   branchName: string;
   comments: number;
   validations: number;
-  updatedAt: string;
+  updatedAt: string | null;
 };
 
 const ProposedChangesData = ({

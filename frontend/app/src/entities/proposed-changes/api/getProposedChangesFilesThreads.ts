@@ -12,7 +12,6 @@ query {
           value
         }
         __typename
-        _updated_at
 
         {{#each attributes}}
           {{this.name}} {
