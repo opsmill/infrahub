@@ -4,13 +4,11 @@ from typing import TYPE_CHECKING
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import pytest
+
 from infrahub.auth import AccountSession, AuthType
-from infrahub.core.constants import (
-    GlobalPermissions,
-    InfrahubKind,
-    PermissionAction,
-    PermissionDecision,
-)
+from infrahub.core.constants import InfrahubKind
+from infrahub.core.initialization import create_default_role
 from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
@@ -57,7 +55,8 @@ class TestProposedChangeGeneralAccessPermissions:
     DefaultBranchPermissionChecker and ObjectPermissionChecker must allow it.
     """
 
-    async def test_setup(
+    @pytest.fixture(autouse=True)
+    async def setup(
         self,
         db: InfrahubDatabase,
         default_permission_backend: None,
@@ -82,7 +81,6 @@ class TestProposedChangeGeneralAccessPermissions:
     async def test_proposed_change_create_not_blocked_by_default_branch_checker(
         self,
         db: InfrahubDatabase,
-        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
     ) -> None:
         """ProposedChangeCreate should be exempt from EDIT_DEFAULT_BRANCH requirement.
@@ -131,7 +129,6 @@ class TestProposedChangeGeneralAccessPermissions:
     async def test_proposed_change_create_allowed_by_full_permission_chain(
         self,
         db: InfrahubDatabase,
-        default_permission_backend: None,
         permissions_helper: PermissionsHelper,
     ) -> None:
         """The full permission checker chain should allow ProposedChange creation for General Access.
