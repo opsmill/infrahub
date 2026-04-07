@@ -8,7 +8,7 @@ from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 
-from ..attribute import BaseAttribute, ListAttributeOptional, StringOptional
+from ..attribute import BaseAttribute, IndexedListAttribute, StringOptional
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -218,9 +218,9 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
 
         self.set_value(value=value)
 
-    def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttributeOptional:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> IndexedListAttribute:
         """Return a node attribute that can be stored in the database for this HFID and node."""
-        return ListAttributeOptional(
+        return IndexedListAttribute(
             name="human_friendly_id",
             schema=self.schema,
             branch=node.get_branch(),

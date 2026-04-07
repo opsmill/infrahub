@@ -172,11 +172,12 @@ class NodeCreateAllQuery(NodeQuery):
                 )
             )
         if self.node.has_human_friendly_id():
-            attributes_indexed.append(
-                self.node._human_friendly_id.get_node_attribute(node=self.node, at=at).get_create_data(
-                    node_schema=self.node.get_schema()
-                )
-            )
+            hfid_attr = self.node._human_friendly_id.get_node_attribute(node=self.node, at=at)
+            hfid_data = hfid_attr.get_create_data(node_schema=self.node.get_schema())
+            if AttributeDBNodeType.INDEXED in hfid_attr.get_db_node_type():
+                attributes_indexed.append(hfid_data)
+            else:
+                attributes.append(hfid_data)
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
