@@ -1,3 +1,4 @@
+import operator
 import time
 from asyncio import gather, sleep
 
@@ -35,7 +36,7 @@ async def test_simple_infrahub_lock() -> None:
         )
     )
 
-    results.sort(key=lambda x: x[1])
+    results.sort(key=operator.itemgetter(1))
     assert results[0][2] <= results[1][1]
 
 

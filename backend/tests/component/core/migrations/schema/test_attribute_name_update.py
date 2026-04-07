@@ -38,7 +38,7 @@ async def car_person_schema(
 
 
 async def test_query_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, car_profile1_main: Node
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
@@ -77,7 +77,7 @@ async def test_query_default_branch(
 
 
 async def test_query_branch1(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, car_profile1_main: Node
 ) -> None:
     branch1 = await create_branch(db=db, branch_name="branch1", isolated=True)
 
@@ -118,7 +118,7 @@ async def test_query_branch1(
 
 
 async def test_migration(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, car_profile1_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, car_profile1_main: Node
 ) -> None:
     # Create TemplateTestPerson nodes to use as owners for TemplateTestCar
     template_person1 = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)

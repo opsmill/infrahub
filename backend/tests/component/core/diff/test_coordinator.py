@@ -400,7 +400,7 @@ class TestDiffCoordinator:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_john_main,
+        person_john_main: Node,
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch1")
         component_registry = get_component_registry()

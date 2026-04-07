@@ -78,7 +78,6 @@ ignore = [
     "PLR0912",  # Too many branches
     "PLR0914",  # Too many local variables
     "PLR6301",  # Method `infrahub_app` could be a function, class method, or static method
-    "PT021",    # Use `yield` instead of `request.addfinalizer`
     "RUF067",   # `__init__` module should only contain docstrings and re-exports
     "SLF001",   # Private member accessed: `_session`
     "TC001",    # Move application import `.helpers.InfrahubDockerCompose` into a type-checking block

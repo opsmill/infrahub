@@ -1,8 +1,12 @@
+import asyncio
+import contextlib
+import time
 from pathlib import Path
 
 import pytest
 import yaml
 from infrahub_sdk import InfrahubClient
+from infrahub_sdk.exceptions import GraphQLError
 from infrahub_sdk.schema.main import AttributeKind, AttributeSchema, NodeSchema, SchemaRoot
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.schemas.car_person import (
@@ -91,7 +95,7 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
         assert await self.schema_in_sync(client=client, branch=device_branch.name)
 
     @staticmethod
-    async def schema_in_sync(client: InfrahubClient, branch: str | None) -> bool:
+    async def schema_in_sync(client: InfrahubClient, branch: str | None, wait_for_seconds: int = 30) -> bool:
         SCHEMA_HASH_SYNC_STATUS = """
         query {
         InfrahubStatus {
@@ -101,5 +105,14 @@ class TestSchemaMigrations(TestInfrahubDockerClient, SchemaCarPerson):
         }
         }
         """
-        response = await client.execute_graphql(query=SCHEMA_HASH_SYNC_STATUS, branch_name=branch)
-        return response["InfrahubStatus"]["summary"]["schema_hash_synced"]
+        deadline = time.monotonic() + wait_for_seconds
+        while True:
+            with contextlib.suppress(GraphQLError):
+                response = await client.execute_graphql(query=SCHEMA_HASH_SYNC_STATUS, branch_name=branch)
+                if response["InfrahubStatus"]["summary"]["schema_hash_synced"]:
+                    return True
+
+            if time.monotonic() >= deadline:
+                return False
+
+            await asyncio.sleep(1)

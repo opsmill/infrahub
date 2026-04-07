@@ -1,4 +1,5 @@
 import ipaddress
+from ipaddress import IPv4Network, IPv6Network
 
 import pytest
 
@@ -55,7 +56,13 @@ async def test_ipaddress_creation(
         (ipaddress.ip_network("2001:db8::/32"), ["2001:db8::/48"]),
     ],
 )
-async def test_ipprefix_subnets(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01, input, response) -> None:
+async def test_ipprefix_subnets(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    ip_dataset_01: dict[str, Node],
+    input: IPv4Network | IPv6Network,
+    response: list[str],
+) -> None:
     ns1_id = ip_dataset_01["ns1"].id
     query = await IPPrefixSubnetFetch.init(db=db, branch=default_branch, obj=input, namespace=ns1_id)
     await query.execute(db=db)
@@ -120,7 +127,9 @@ async def test_ipaddress_is_within_ipprefix(
     assert ip_addresses[0].address == address_ip_address
 
 
-async def test_query_by_parent_ids(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
+async def test_query_by_parent_ids(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
     prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
     reconciler = IpamReconciler(db=db, branch=default_branch)
     ns1 = ip_dataset_01["ns1"]
