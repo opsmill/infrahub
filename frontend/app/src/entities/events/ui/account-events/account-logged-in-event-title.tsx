@@ -3,9 +3,9 @@ import type { AccountLoggedInEventType } from "@/shared/api/graphql/generated/ty
 import { AccountEventLayout } from "@/entities/events/ui/account-events/account-event-layout";
 
 const AUTH_METHOD_LABELS: Record<string, string> = {
-  PASSWORD: "password",
-  OAUTH2: "OAuth2",
-  OIDC: "OIDC",
+  password: "password",
+  oauth2: "OAuth2",
+  oidc: "OIDC",
 };
 
 export const AccountLoggedInEventTitle = (props: AccountLoggedInEventType) => {

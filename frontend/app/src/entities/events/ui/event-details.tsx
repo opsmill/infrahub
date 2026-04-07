@@ -45,9 +45,16 @@ const AccountLoggedOutEventDetails = ({ event }: { event: AccountLoggedOutEventT
   );
 };
 
-export const EventDetails = (props: EventType) => {
-  const { id, event, branch, occurred_at, account_id, primary_node, related_nodes } = props;
-
+export const EventDetails = ({
+  id,
+  event,
+  branch,
+  occurred_at,
+  account_id,
+  primary_node,
+  related_nodes,
+  ...props
+}: EventType) => {
   return (
     <div className="divide-y divide-gray-200">
       <PropertyRow

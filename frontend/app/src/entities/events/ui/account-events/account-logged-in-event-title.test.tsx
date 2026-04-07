@@ -58,7 +58,7 @@ describe("AccountLoggedInEventTitle", () => {
   test("renders login with OAuth2 auth method", async () => {
     // GIVEN
     const component = await render(
-      <AccountLoggedInEventTitle {...loginEvent} auth_method="OAUTH2" />
+      <AccountLoggedInEventTitle {...loginEvent} auth_method="oauth2" />
     );
 
     // THEN
