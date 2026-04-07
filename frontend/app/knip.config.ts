@@ -5,9 +5,8 @@ const config: KnipConfig = {
 
   ignore: [
     // Generated files
-    "src/shared/api/graphql/generated/graphql-cache.d.ts",
+    "src/shared/api/graphql/generated/**",
     "src/shared/api/rest/types.generated.ts",
-    "src/shared/api/graphql/generated/types.ts",
   ],
 
   ignoreDependencies: [
