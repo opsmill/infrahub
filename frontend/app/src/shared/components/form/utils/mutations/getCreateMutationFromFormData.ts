@@ -75,7 +75,7 @@ export const getCreateMutationFromFormData = (
 
 export const getCreateMutationFromFormDataOnly = (
   formData: Record<string, FormFieldValue>,
-  currentObject?: Record<string, AttributeType>,
+  currentObject?: Record<string, Pick<AttributeType, "value">>,
   objectTemplateId?: string
 ) => {
   const initialMutation = objectTemplateId ? { object_template: { id: objectTemplateId } } : {};

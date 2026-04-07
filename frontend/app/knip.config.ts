@@ -7,6 +7,7 @@ const config: KnipConfig = {
     // Generated files
     "src/shared/api/graphql/graphql-cache.d.ts",
     "src/shared/api/rest/types.generated.ts",
+    "src/shared/api/graphql/generated/types.ts",
   ],
 
   ignoreDependencies: [

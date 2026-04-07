@@ -16,13 +16,13 @@ import { Button } from "@/shared/components/ui/button";
 import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
 
 interface AccountRoleFormProps {
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   onCancel?: () => void;
   onSuccess?: NodeFormProps["onSuccess"];
 }

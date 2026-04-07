@@ -4,7 +4,7 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-const getNodeLabelQuery = ({ objectId, kind }: { objectId?: string; kind: string }) => {
+const getNodeLabelQuery = ({ objectId, kind }: { objectId?: string | null; kind: string }) => {
   const request = {
     query: {
       __name: "GET_DISPLAY_LABEL",
@@ -30,7 +30,7 @@ export function getNodeLabelFromApi({
   branchName,
   atDate,
 }: {
-  objectId?: string;
+  objectId?: string | null;
   kind: string;
 } & ContextParams) {
   return graphqlClient.query({

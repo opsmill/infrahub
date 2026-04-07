@@ -6,7 +6,7 @@ import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-lab
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 type NodeLabelProps = {
-  id?: string;
+  id?: string | null;
   kind?: string;
   branch?: string | null;
   className?: string;
