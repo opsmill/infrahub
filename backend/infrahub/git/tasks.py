@@ -361,7 +361,6 @@ async def git_branch_delete(
         message_bus = await get_message_bus()
         message = messages.RefreshGitRepositoryBranchDeleted(
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-            location=repo.get_location(),
             repository_id=str(repo.id),
             repository_name=repo.name,
             repository_kind=InfrahubKind.REPOSITORY,

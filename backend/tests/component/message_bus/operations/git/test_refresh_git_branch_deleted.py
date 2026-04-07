@@ -23,7 +23,6 @@ async def test_branch_deleted(
         repository_id=str(git_fixture_repo.id),
         repository_name=git_fixture_repo.name,
         repository_kind=InfrahubKind.REPOSITORY,
-        location=git_fixture_repo.get_location(),
         branch_name=branch_name,
     )
 
