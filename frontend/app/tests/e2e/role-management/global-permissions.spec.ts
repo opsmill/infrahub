@@ -40,7 +40,7 @@ test.describe("/role-management/global-permissions - Global Permissions CRUD", (
     await test.step("verify new permission in table", async () => {
       const row = getDataTableRow(page, "global:update_object_hfid_display_label:deny");
       await expect(row.getByText("Update Object Hfid Display")).toBeVisible();
-      await expect(row.getByText("Deny")).toBeVisible();
+      await expect(row.getByText("Deny", { exact: true })).toBeVisible();
       await expect(row.getByText("Anonymous User")).toBeVisible();
     });
 
@@ -48,13 +48,13 @@ test.describe("/role-management/global-permissions - Global Permissions CRUD", (
       await page.getByTestId("actions-cell-global:update_object_hfid_display_label:deny").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
       await expect(page.getByLabel("Action *")).toContainText("Update Object Hfid Display");
-      await expect(page.getByLabel("Decision")).toContainText("Deny everywhere");
-      await expect(page.getByLabel("Roles")).toContainText("Anonymous User");
+      await expect(page.getByLabel("Decision")).toContainText("Deny");
+      await expect(page.getByLabel("Roles").locator("..")).toContainText("Anonymous User");
     });
 
     await test.step("change decision to Allow and save", async () => {
       await page.getByLabel("Decision").click();
-      await page.getByRole("option", { name: "Allow in all branches" }).click();
+      await page.getByRole("option", { name: "Allow" }).click();
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Global permission updated!")).toBeVisible();
     });
@@ -62,7 +62,7 @@ test.describe("/role-management/global-permissions - Global Permissions CRUD", (
     await test.step("verify updated permission in table", async () => {
       const row = getDataTableRow(page, "global:update_object_hfid_display_label:allow_all");
       await expect(row.getByText("Update Object Hfid Display")).toBeVisible();
-      await expect(row.getByText("Allow in all branches")).toBeVisible();
+      await expect(row.getByText("Allow", { exact: true })).toBeVisible();
       await expect(row.getByText("Anonymous User")).toBeVisible();
     });
 
