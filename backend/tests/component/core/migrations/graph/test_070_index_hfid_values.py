@@ -6,14 +6,14 @@ from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_migration_070_indexes_hfid_values(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """HFID AttributeValue nodes without AttributeValueIndexed label should get it after migration."""
+async def test_migration_070_normalizes_and_indexes(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """HFID values with non-string elements should be normalized to all-strings and indexed."""
     at = current_timestamp()
 
     create_test_data_query = """
     CREATE (n1:Node {uuid: "node-1"})
     CREATE (attr1:Attribute {name: "human_friendly_id", uuid: "attr-1"})
-    CREATE (av1:AttributeValue {value: '["ns1","name1"]', is_default: false})
+    CREATE (av1:AttributeValue {value: '["*","*","view","4"]', is_default: false})
     CREATE (n1)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(attr1)
     CREATE (attr1)-[:HAS_VALUE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(av1)
 
@@ -25,30 +25,36 @@ async def test_migration_070_indexes_hfid_values(db: InfrahubDatabase, default_b
     """
     await db.execute_query(query=create_test_data_query, params={"branch": default_branch.name, "at": at})
 
-    # Verify initial state: av1 is NOT indexed, av2 IS indexed
+    migration = Migration070()
+    result = await migration.execute(MigrationInput(db=db))
+    assert not result.errors
+
     check_query = """
     MATCH (attr:Attribute {name: "human_friendly_id"})-[:HAS_VALUE]->(av)
-    RETURN attr.uuid AS attr_uuid, av:AttributeValueIndexed AS is_indexed
+    RETURN attr.uuid AS attr_uuid, av.value AS value, av:AttributeValueIndexed AS is_indexed
     ORDER BY attr.uuid
     """
     results = await db.execute_query(query=check_query)
     assert len(results) == 2
+
     assert results[0].get("attr_uuid") == "attr-1"
-    assert results[0].get("is_indexed") is False
-    assert results[1].get("attr_uuid") == "attr-2"
-    assert results[1].get("is_indexed") is True
-
-    # Run migration
-    migration = Migration070()
-    await migration.execute(MigrationInput(db=db))
-    result = await migration.validate_migration(db=db)
-    assert result.success
-
-    # Verify: both should now be indexed
-    results = await db.execute_query(query=check_query)
-    assert len(results) == 2
+    assert results[0].get("value") == '["*","*","view","4"]'
     assert results[0].get("is_indexed") is True
+
+    assert results[1].get("attr_uuid") == "attr-2"
+    assert results[1].get("value") == '["ns2","name2"]'
     assert results[1].get("is_indexed") is True
+
+    # Run migration a second time to verify idempotency
+    result2 = await migration.execute(MigrationInput(db=db))
+    assert not result2.errors
+
+    results2 = await db.execute_query(query=check_query)
+    assert len(results2) == 2
+    assert results2[0].get("value") == '["*","*","view","4"]'
+    assert results2[0].get("is_indexed") is True
+    assert results2[1].get("value") == '["ns2","name2"]'
+    assert results2[1].get("is_indexed") is True
 
 
 async def test_migration_070_skips_oversized_values(db: InfrahubDatabase, default_branch: Branch) -> None:
