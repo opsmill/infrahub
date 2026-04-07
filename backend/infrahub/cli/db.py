@@ -296,12 +296,6 @@ async def showmigration_cmd(
             query_type = getattr(query_class, "type", None)
             type_label = f" ({query_type.name})" if query_type else ""
             console.print(f"    {idx}. {query_class.__name__}{type_label}")
-            with contextlib.suppress(Exception):
-                query = await query_class.init(db=dbdriver, at=Timestamp())
-                cypher = query.get_query()
-                if cypher:
-                    for line in cypher.strip().splitlines():
-                        console.print(f"       {line}")
 
     await dbdriver.close()
 
