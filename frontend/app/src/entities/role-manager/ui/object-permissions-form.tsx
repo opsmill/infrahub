@@ -37,7 +37,7 @@ export const ObjectPermissionForm = ({
   const updateObject = useUpdateObjectMutation();
 
   const roles = getRelationshipDefaultValue({
-    objectData: { roles: currentObject?.roles?.value },
+    objectData: currentObject,
     relationshipName: "roles",
   });
 

@@ -37,12 +37,12 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
   const updateObject = useUpdateObjectMutation();
 
   const roles = getRelationshipDefaultValue({
-    objectData: { roles: currentObject?.roles?.value },
+    objectData: currentObject,
     relationshipName: "roles",
   });
 
   const members = getRelationshipDefaultValue({
-    objectData: { members: currentObject?.members?.value },
+    objectData: currentObject,
     relationshipName: "members",
   });
 

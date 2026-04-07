@@ -34,7 +34,10 @@ export function AccountTable() {
     return <ErrorScreen message={error.message} />;
   }
 
-  const columns = [...getAccountTableColumns(selectedSchema), getObjectActionsColumn(permission)];
+  const columns = [
+    ...getAccountTableColumns(selectedSchema),
+    getObjectActionsColumn(permission, { extraRelationshipNames: ["member_of_groups"] }),
+  ];
   const rows = data?.pages.flat() ?? [];
 
   return (
