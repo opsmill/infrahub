@@ -12,7 +12,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import create_branch
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import BranchNotFoundError
+from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
@@ -84,9 +84,10 @@ class TestBranchCreateRaceCondition:
             )
 
         successes = [r for r in results if r is None]
-        failures = [r for r in results if isinstance(r, Exception)]
+        failures = [r for r in results if isinstance(r, ValidationError)]
 
         assert len(successes) == 1, (
             f"Expected exactly 1 successful branch creation, got {len(successes)}. Results: {results}"
         )
         assert len(failures) == 1, f"Expected exactly 1 failure, got {len(failures)}. Results: {results}"
+        assert "already exists" in str(failures[0])
