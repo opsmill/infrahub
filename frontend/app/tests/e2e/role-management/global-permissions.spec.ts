@@ -40,7 +40,7 @@ test.describe("/role-management/global-permissions - Global Permissions CRUD", (
     await test.step("verify new permission in table", async () => {
       const row = getDataTableRow(page, "global:update_object_hfid_display_label:deny");
       await expect(row.getByText("Update Object Hfid Display")).toBeVisible();
-      await expect(row.getByText("Deny everywhere")).toBeVisible();
+      await expect(row.getByText("Deny")).toBeVisible();
       await expect(row.getByText("Anonymous User")).toBeVisible();
     });
 

@@ -50,8 +50,10 @@ test.describe("/role-management/roles - Roles CRUD", () => {
       await page.getByTestId("actions-cell-test role").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
       await expect(page.getByRole("textbox", { name: "Name *" })).toHaveValue("test role");
-      await expect(page.getByLabel("Groups")).toContainText("Infrahub Users");
-      await expect(page.getByLabel("Permissions")).toContainText("global:super_admin:allow_all");
+      await expect(page.getByLabel("Groups").locator("..")).toContainText("Infrahub Users");
+      await expect(page.getByLabel("Permissions").locator("..")).toContainText(
+        "global:super_admin:allow_all"
+      );
     });
 
     await test.step("update the role name and save", async () => {
