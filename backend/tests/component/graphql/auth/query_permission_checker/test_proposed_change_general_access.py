@@ -88,7 +88,7 @@ class TestProposedChangeGeneralAccessPermissions:
         The DefaultBranchPermissionChecker blocks mutations on the default branch unless
         the user has EDIT_DEFAULT_BRANCH or the operation is in exempt_operations.
         ProposedChange creation is a workflow operation (like BranchCreate) and should
-        be exempt. Without the fix, this raises PermissionDeniedError.
+        be exempt.
         """
         checker = DefaultBranchPermissionChecker()
         session = AccountSession(
@@ -133,14 +133,9 @@ class TestProposedChangeGeneralAccessPermissions:
     ) -> None:
         """The full permission checker chain should allow ProposedChange creation for General Access.
 
-        The test setup includes a CoreProposedChange-specific ALLOW_DEFAULT object permission
-        (which the fix will add to initialization.py). Even with this permission present,
+        The test setup includes a CoreProposedChange-specific ALLOW_DEFAULT object permission. Even with this permission present,
         the DefaultBranchPermissionChecker still blocks the operation because
         CoreProposedChangeCreate is not in its exempt_operations list.
-
-        After both fixes are applied (exempt_operations + object permission), the full chain
-        should pass: DefaultBranchPermissionChecker exempts the operation, and
-        ObjectPermissionChecker finds the ALLOW_DEFAULT permission for CoreProposedChange.
         """
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
@@ -160,8 +155,6 @@ class TestProposedChangeGeneralAccessPermissions:
         checker_chain = GraphQLQueryPermissionChecker([DefaultBranchPermissionChecker(), ObjectPermissionChecker()])
 
         # Expected: full chain allows the operation (no error raised)
-        # Bug: DefaultBranchPermissionChecker raises PermissionDeniedError because
-        # CoreProposedChangeCreate is not in exempt_operations
         await checker_chain.check(
             db=db,
             account_session=session,
