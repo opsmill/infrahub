@@ -4,6 +4,7 @@ import os
 import subprocess  # noqa: S404
 import uuid
 import warnings
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -94,20 +95,10 @@ class TestInfrahubDocker:
         )
 
     @pytest.fixture(scope="class")
-    def infrahub_app(self, request: pytest.FixtureRequest, infrahub_compose: InfrahubDockerCompose) -> dict[str, int]:
+    def infrahub_app(
+        self, request: pytest.FixtureRequest, infrahub_compose: InfrahubDockerCompose
+    ) -> Generator[dict[str, int], None, None]:
         tests_failed_before_class = request.session.testsfailed
-
-        def cleanup() -> None:
-            tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
-            if tests_failed_during_class > 0:
-                stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
-                warnings.warn(
-                    f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}",
-                    stacklevel=2,
-                )
-            infrahub_compose.stop()
-
-        request.addfinalizer(cleanup)
 
         try:
             infrahub_compose.start()
@@ -115,7 +106,16 @@ class TestInfrahubDocker:
             stdout, stderr = infrahub_compose.get_logs()
             raise Exception(f"Failed to start docker compose:\nStdout:\n{stdout}\nStderr:\n{stderr}") from exc
 
-        return infrahub_compose.get_services_port()
+        yield infrahub_compose.get_services_port()
+
+        tests_failed_during_class = request.session.testsfailed - tests_failed_before_class
+        if tests_failed_during_class > 0:
+            stdout, stderr = infrahub_compose.get_logs("infrahub-server", "task-worker")
+            warnings.warn(
+                f"Container logs:\nStdout:\n{stdout}\nStderr:\n{stderr}",
+                stacklevel=2,
+            )
+        infrahub_compose.stop()
 
     @pytest.fixture(scope="class")
     def infrahub_port(self, infrahub_app: dict[str, int]) -> int:

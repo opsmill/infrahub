@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Coroutine, TypeVar
@@ -519,6 +520,7 @@ def retry_db_transaction(
     name: str,
 ) -> Callable[[Callable[..., Coroutine[Any, Any, R]]], Callable[..., Coroutine[Any, Any, R]]]:
     def func_wrapper(func: Callable[..., Coroutine[Any, Any, R]]) -> Callable[..., Coroutine[Any, Any, R]]:
+        @functools.wraps(func)
         async def wrapper(*args: Any, **kwargs: Any) -> R:
             error = Exception()
             for attempt in range(1, config.SETTINGS.database.retry_limit + 1):
@@ -528,7 +530,10 @@ def retry_db_transaction(
                     if isinstance(exc, ClientError):
                         if exc.code != "Neo.ClientError.Statement.EntityNotFound":
                             raise exc
-                    retry_time: float = random.randrange(100, 500) / 1000
+                    base_delay = config.SETTINGS.database.retry_base_delay
+                    max_delay = config.SETTINGS.database.retry_max_delay
+                    jitter = random.uniform(0, config.SETTINGS.database.retry_jitter_max)
+                    retry_time = min(base_delay * (2 ** (attempt - 1)) + jitter, max_delay)
                     log.exception("Retry handler caught database error")
                     log.info(
                         f"Retrying database transaction, attempt {attempt}/{config.SETTINGS.database.retry_limit}",

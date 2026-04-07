@@ -10,7 +10,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 import ujson
-from whenever import ZonedDateTime
 
 from infrahub import config
 from infrahub.constants.enums import OrderDirection
@@ -1994,8 +1993,7 @@ WITH %(tracked_vars)s,
     ) -> FieldAttributeRequirement:
         """Build a FieldAttributeRequirement for a metadata filter."""
         if isinstance(value, datetime):
-            timestamp = Timestamp(ZonedDateTime.from_py_datetime(value))
-            value = timestamp.to_string()
+            value = Timestamp(value.isoformat()).to_string()
         return FieldAttributeRequirement(
             field_name=field_name,
             field=None,

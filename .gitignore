@@ -13,7 +13,6 @@ development/docker-compose.dev-override.yml
 .DS_Store
 .python-version
 .venv/*
-.ruff_cache
 **/.ruff_cache
 **/.idea/**
 dist/*
@@ -38,7 +37,6 @@ python_sdk/dist/*
 !backend/tests/unit/**/data_export/*.csv
 
 # Generated files
-generated/
 query_performance_results/
 sync/dist/
 helm/charts/
@@ -49,8 +47,5 @@ python_testcontainers/infrahub_testcontainers.egg-info/*
 
 schema/node_modules/*
 
-# Spec-kitty
-dev/spec-kitty/.worktrees/
-
-# Worktrees
-.worktrees/
+# AI and SDD
+**/.worktrees/

@@ -7,8 +7,9 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, RelationshipCardinality
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.conflicts_enricher import ConflictsEnricher
-from infrahub.core.diff.model.path import EnrichedDiffConflict
+from infrahub.core.diff.model.path import EnrichedDiffConflict, EnrichedDiffRoot
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -30,7 +31,9 @@ class TestConflictsEnricher:
         self.from_time = Timestamp("2024-07-28T13:45:22Z")
         self.to_time = Timestamp()
 
-    async def __call_system_under_test(self, db: InfrahubDatabase, base_enriched_diff, branch_enriched_diff) -> None:
+    async def __call_system_under_test(
+        self, db: InfrahubDatabase, base_enriched_diff: EnrichedDiffRoot, branch_enriched_diff: EnrichedDiffRoot
+    ) -> None:
         conflicts_enricher = ConflictsEnricher()
         return await conflicts_enricher.add_conflicts_to_branch_diff(
             base_diff_root=base_enriched_diff, branch_diff_root=branch_enriched_diff
@@ -168,7 +171,7 @@ class TestConflictsEnricher:
                     else:
                         assert prop.conflict is None
 
-    async def test_cardinality_one_conflicts(self, db: InfrahubDatabase, car_person_schema) -> None:
+    async def test_cardinality_one_conflicts(self, db: InfrahubDatabase, car_person_schema: SchemaBranch) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         property_type = DatabaseEdgeType.IS_RELATED
         relationship_name = "owner"
@@ -262,7 +265,7 @@ class TestConflictsEnricher:
                             selected_branch=None,
                         )
 
-    async def test_cardinality_many_conflicts(self, db: InfrahubDatabase, car_person_schema) -> None:
+    async def test_cardinality_many_conflicts(self, db: InfrahubDatabase, car_person_schema: SchemaBranch) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         peer_id_1 = str(uuid4())
         peer_id_2 = str(uuid4())
@@ -541,7 +544,7 @@ class TestConflictsEnricher:
                     assert prop.conflict is None
 
     async def test_manually_fixed_cardinality_one_conflict_cleared(
-        self, db: InfrahubDatabase, car_person_schema
+        self, db: InfrahubDatabase, car_person_schema: SchemaBranch
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         property_type = DatabaseEdgeType.IS_RELATED
@@ -623,7 +626,7 @@ class TestConflictsEnricher:
         [(DiffAction.UNCHANGED, DiffAction.ADDED), (DiffAction.REMOVED, DiffAction.UNCHANGED)],
     )
     async def test_unchanged_cardinality_one_clears_conflicts(
-        self, db: InfrahubDatabase, car_person_schema, base_action, branch_action
+        self, db: InfrahubDatabase, car_person_schema: SchemaBranch, base_action: DiffAction, branch_action: DiffAction
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         property_type = DatabaseEdgeType.IS_RELATED
@@ -705,7 +708,7 @@ class TestConflictsEnricher:
                         assert prop.conflict is None
 
     async def test_unchanged_cardinality_many_rel_clears_conflict(
-        self, db: InfrahubDatabase, car_person_schema
+        self, db: InfrahubDatabase, car_person_schema: SchemaBranch
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         peer_id_1 = str(uuid4())
@@ -818,7 +821,9 @@ class TestConflictsEnricher:
         "base_action,branch_action",
         [(DiffAction.UNCHANGED, DiffAction.UPDATED), (DiffAction.ADDED, DiffAction.UNCHANGED)],
     )
-    async def test_unchanged_node_clears_conflict(self, db: InfrahubDatabase, base_action, branch_action) -> None:
+    async def test_unchanged_node_clears_conflict(
+        self, db: InfrahubDatabase, base_action: DiffAction, branch_action: DiffAction
+    ) -> None:
         node_uuid = str(uuid4())
         node_kind = "SomethingSmelly"
         base_node = EnrichedNodeFactory.build(uuid=node_uuid, kind=node_kind, action=base_action, relationships=set())

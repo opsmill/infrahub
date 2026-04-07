@@ -9,6 +9,7 @@ from itertools import chain, combinations
 from typing import TYPE_CHECKING, Any
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
+from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.topological_sort import DependencyCycleExistsError, topological_sort
 from infrahub_sdk.utils import compare_lists, deep_merge_dict, duplicates, intersection
 from typing_extensions import Self
@@ -652,6 +653,7 @@ class SchemaBranch:
         self.validate_names()
         self.validate_python_keywords()
         self.validate_kinds()
+        self.validate_restricted_namespaces_from_generic()
         self.validate_computed_attributes()
         self.validate_attribute_parameters()
         self.validate_default_values()
@@ -1160,6 +1162,24 @@ class SchemaBranch:
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
+    def validate_restricted_namespaces_from_generic(self) -> None:
+        """Ensure that every node which inherit from a generic node containing restricted namespaces are following on
+        the rules"""
+        for name in self.nodes:
+            node = self.get_node(name=name, duplicate=False)
+
+            for generic_name in node.inherit_from:
+                generic_name_node = self.get_generic(name=generic_name, duplicate=False)
+                if (
+                    generic_name_node.restricted_namespaces is not None
+                    and node.namespace not in generic_name_node.restricted_namespaces
+                ):
+                    raise ValueError(
+                        f"Generic node '{generic_name}' has restricted namespaces: "
+                        f"{generic_name_node.restricted_namespaces}. The node '{name}' does not comply "
+                        f"with this restriction as its namespace is '{node.namespace}'."
+                    )
+
     def validate_python_keywords(self) -> None:
         """Validate that attribute and relationship names don't use Python keywords."""
         for name in self.all_names:
@@ -1274,20 +1294,32 @@ class SchemaBranch:
 
     def validate_computed_attributes(self) -> None:
         self.computed_attributes = ComputedAttributes()
+        self._validate_node_computed_attributes()
+        self._validate_generic_computed_attributes()
+
+    def _validate_node_computed_attributes(self) -> None:
+        """Validate and register computed attributes defined directly on nodes."""
         for name in self.nodes.keys():
             node_schema = self.get_node(name=name, duplicate=False)
             for attribute in node_schema.attributes:
                 self._validate_computed_attribute(node=node_schema, attribute=attribute)
 
+    def _validate_generic_computed_attributes(self) -> None:
+        """Ensure no node inherits the same computed attribute from multiple generics."""
+        defined_from_generic: dict[str, str] = {}
         for name in self.generics.keys():
             generic_schema = self.get_generic(name=name, duplicate=False)
             for attribute in generic_schema.attributes:
                 if attribute.computed_attribute and attribute.computed_attribute.kind != ComputedAttributeKind.USER:
                     for inheriting_node in generic_schema.used_by:
                         node_schema = self.get_node(name=inheriting_node, duplicate=False)
-                        self.computed_attributes.validate_generic_inheritance(
-                            node=node_schema, attribute=attribute, generic=generic_schema
-                        )
+                        attribute_key = f"{node_schema.kind}__{attribute.name}"
+                        if duplicate := defined_from_generic.get(attribute_key):
+                            raise ValueError(
+                                f"{node_schema.kind}: {attribute.name!r} is declared as a computed attribute"
+                                f" from multiple generics {sorted([duplicate, generic_schema.kind])}"
+                            )
+                        defined_from_generic[attribute_key] = generic_schema.kind
 
     def _validate_display_label(self, node: MainSchemaTypes) -> None:
         if not node.display_label:
@@ -1307,9 +1339,12 @@ class SchemaBranch:
             return
 
         jinja_template = InfrahubJinja2Template(template=node.display_label)
+        context = ExecutionContext.CORE
+        if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+            context |= ExecutionContext.LOCAL
         try:
             variables = jinja_template.get_variables()
-            jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+            jinja_template.validate(context=context)
         except (JinjaTemplateOperationViolationError, JinjaTemplateError) as exc:
             raise ValueError(
                 f"{node.kind}: display_label is set to a jinja2 template, but has an invalid template: {exc.message}"
@@ -1364,9 +1399,12 @@ class SchemaBranch:
             )
 
             jinja_template = InfrahubJinja2Template(template=attribute.computed_attribute.jinja2_template)
+            context = ExecutionContext.CORE
+            if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+                context |= ExecutionContext.LOCAL
             try:
                 variables = jinja_template.get_variables()
-                jinja_template.validate(restricted=config.SETTINGS.security.restrict_untrusted_jinja2_filters)
+                jinja_template.validate(context=context)
             except JinjaTemplateOperationViolationError as exc:
                 raise ValueError(
                     f"{node.kind}: Attribute {attribute.name!r} is assigned by a jinja2 template, but has an invalid template: {exc.message}"

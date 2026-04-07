@@ -19,7 +19,7 @@ def test_attribute_types_allowed_property_path(test_case: str) -> None:
     attribute_type = ATTRIBUTE_TYPES[test_case]
 
     graphql_query_type = getattr(types, attribute_type.graphql_query)
-    include_binary_address = test_case in ["IPHost", "IPNetwork"]
+    include_binary_address = test_case in {"IPHost", "IPNetwork"}
     path_list = _get_path_field_list(
         include_binary_address=include_binary_address, fields=graphql_query_type._meta.fields
     )
@@ -42,8 +42,6 @@ def _get_path_field_list(include_binary_address: bool, fields: dict[str, Field])
         "updated_by",
     ]
     included = ["binary_address"] if include_binary_address else []
-    for name in fields:
-        if name not in excluded_fields:
-            included.append(name)
+    included.extend(name for name in fields if name not in excluded_fields)
 
     return sorted(included)

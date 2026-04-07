@@ -2,6 +2,7 @@ import random
 
 import pytest
 
+from infrahub.core.branch import Branch
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.model.path import (
     EnrichedDiffNode,
@@ -32,10 +33,10 @@ class DiffRepositoryTestBase:
         await initialize_registry(db=db, initialize=True)
 
     @pytest.fixture
-    async def reset_database(self, db: InfrahubDatabase, default_branch) -> None:
+    async def reset_database(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         await delete_all_nodes(db=db)
 
-    def build_diff_node(self, num_sub_fields=2, no_recurse=False) -> EnrichedDiffNode:
+    def build_diff_node(self, num_sub_fields: int = 2, no_recurse: bool = False) -> EnrichedDiffNode:
         enriched_node = EnrichedNodeFactory.build(
             attributes={
                 EnrichedAttributeFactory.build(

@@ -111,12 +111,12 @@ To help with the development process of a repository configuration file, you can
 | name | string | The name of the Generator Definition | True |
 | file_path | string | The file within the repository with the generator code. | True |
 | query | string | The GraphQL query to use as input. | True |
-| parameters | object | The input parameters required to run this check | False |
-| targets | string | The group to target when running this generator | True |
-| class_name | string | The name of the generator class to run. | False |
-| convert_query_response | boolean | Decide if the generator should convert the result of the GraphQL query to SDK InfrahubNode objects. | False |
-| execute_in_proposed_change | boolean | Decide if the generator should execute in a proposed change. | False |
-| execute_after_merge | boolean | Decide if the generator should execute after a merge. | False |
+| parameters | object | Maps GraphQL query variable names to target object attribute paths using double-underscore notation. | False |
+| targets | string | Name of the CoreStandardGroup whose members become individual Generator targets. One run is created per group member. | True |
+| class_name | string | The name of the Python class within file_path that extends InfrahubGenerator. | False |
+| convert_query_response | boolean | When true, converts the raw GraphQL dict into SDK InfrahubNode objects accessible via self.nodes and self.store. | False |
+| execute_in_proposed_change | boolean | When true (default), the Generator runs as a CI check during proposed changes. | False |
+| execute_after_merge | boolean | When true (default), the Generator runs after a branch merge. Set to false for Generators that only run via event triggers. | False |
 
 <!-- vale off -->
 ## Queries

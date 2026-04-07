@@ -28,15 +28,12 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("check diff data", async () => {
-      await expect(page.getByText("UpdatedInterfaceL3Ethernet1")).toBeVisible();
+      await expect(page.getByText("Infra ›Interface L3")).toBeVisible();
       await expect(page.getByRole("link", { name: "Ethernet1" })).toBeVisible();
-      await expect(page.getByText("UpdatedDeviceden1-edge1")).toBeVisible();
+      await expect(page.getByText("Infra ›Deviceden1-edge1")).toBeVisible();
       await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
       await saveScreenshotForDocs(page, "topics/proposed_change/pc_tab_data");
-      await page.getByText("UpdatedInterfaceL3Ethernet1").click();
-      await expect(
-        page.getByText("UpdatedInterfaceL3Ethernet1 main den1-maintenance-")
-      ).toBeVisible();
+      await page.getByText("Infra ›Interface L3").click();
       await page.getByLabel("diff tree").getByText("den1-edge1").click();
       await page
         .getByText(
@@ -69,10 +66,10 @@ test.describe("/proposed-changes diff data", () => {
     });
 
     await test.step("comment proposed changes", async () => {
-      await page.locator("span").filter({ hasText: "UpdatedDeviceden1-edge1" }).hover();
+      await page.locator("span").filter({ hasText: "Infra ›Deviceden1-edge1" }).hover();
       await page
         .locator("span")
-        .filter({ hasText: "UpdatedDeviceden1-edge1" })
+        .filter({ hasText: "Infra ›Deviceden1-edge1" })
         .getByTestId("data-diff-add-comment")
         .click();
       await expect(page.getByText("Add a comment")).toBeVisible();

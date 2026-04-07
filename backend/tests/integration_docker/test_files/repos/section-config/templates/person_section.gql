@@ -1,0 +1,11 @@
+query PersonSection($name: String!) {
+  TestingPerson(name__value: $name) {
+    edges {
+      node {
+        name {
+          value
+        }
+      }
+    }
+  }
+}

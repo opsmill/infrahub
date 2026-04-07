@@ -27,6 +27,7 @@ from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache
@@ -311,6 +312,15 @@ class DatabaseSettings(BaseSettings):
     retry_limit: int = Field(
         default=3, description="Maximum number of times a transient issue in a transaction should be retried."
     )
+    retry_base_delay: float = Field(
+        default=0.1, ge=0, description="Base delay in seconds for exponential backoff on transaction retries."
+    )
+    retry_max_delay: float = Field(
+        default=2.0, ge=0, description="Maximum delay in seconds for exponential backoff on transaction retries."
+    )
+    retry_jitter_max: float = Field(
+        default=0.1, ge=0, description="Maximum jitter in seconds added to retry delay to avoid thundering herd."
+    )
     max_concurrent_queries: int = Field(
         default=0, ge=0, description="Maximum number of concurrent queries that can run (0 means unlimited)."
     )
@@ -545,35 +555,13 @@ class HTTPSettings(BaseSettings):
         try:
             # Validate that the context can be created, we want to raise this error during application start
             # instead of running into issues later when we first try to use the tls context.
-            self.get_tls_context()
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
         except ssl.SSLError as exc:
             raise ValueError(f"Unable load CA bundle from {self.tls_ca_bundle}: {exc}") from exc
 
         return self
-
-    def get_tls_context(self, force_verify: bool = False) -> ssl.SSLContext:
-        if self.tls_insecure and not force_verify:
-            return ssl._create_unverified_context()
-
-        if not self.tls_ca_bundle:
-            return ssl.create_default_context()
-
-        tls_ca_path = Path(self.tls_ca_bundle)
-
-        try:
-            possibly_file = tls_ca_path.exists()
-        except OSError:
-            # Raised if the filename is too long which can indicate
-            # that the value is a PEM certificate in string form.
-            possibly_file = False
-
-        if possibly_file and tls_ca_path.is_file():
-            context = ssl.create_default_context(cafile=str(tls_ca_path))
-        else:
-            context = ssl.create_default_context()
-            context.load_verify_locations(cadata=self.tls_ca_bundle)
-
-        return context
 
 
 class InitialSettings(BaseSettings):

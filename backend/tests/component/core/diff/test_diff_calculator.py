@@ -21,6 +21,7 @@ from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigra
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -50,7 +51,11 @@ def low_query_size_limit() -> Generator[None, None, None]:
 
 
 async def test_diff_attribute_branch_update(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -137,7 +142,11 @@ async def test_diff_attribute_branch_update(
 
 
 async def test_attribute_property_main_update(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     from_time = Timestamp()
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
@@ -179,7 +188,7 @@ async def test_attribute_property_main_update(
     assert before_change < property_diff.changed_at < after_change
 
 
-async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: Branch, car_accord_main) -> None:
+async def test_attribute_branch_set_null(db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     car_branch = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
@@ -268,7 +277,7 @@ async def test_attribute_branch_update_from_null(
 
 @pytest.mark.parametrize("use_branch", [True, False])
 async def test_node_delete(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main, use_branch
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, person_john_main: Node, use_branch: bool
 ) -> None:
     if use_branch:
         branch = await create_branch(db=db, branch_name="branch")
@@ -348,7 +357,7 @@ async def test_node_delete(
 
 
 async def test_node_base_delete_branch_update(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, person_john_main: Node
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
@@ -398,7 +407,7 @@ async def test_node_base_delete_branch_update(
     assert diff_property.new_value == 10
 
 
-async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main) -> None:
+async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
     new_person = await Node.init(db=db, schema="TestPerson", branch=branch)
@@ -440,7 +449,11 @@ async def test_node_branch_add(db: InfrahubDatabase, default_branch: Branch, car
 
 
 async def test_attribute_property_multiple_branch_updates(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -496,7 +509,11 @@ async def test_attribute_property_multiple_branch_updates(
 
 
 async def test_attribute_property_branch_create_multiple_updates(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -576,10 +593,10 @@ async def test_attribute_property_branch_create_multiple_updates(
 async def test_relationship_one_peer_branch_and_main_update(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_alfred_main,
-    person_jane_main,
-    person_john_main,
-    car_accord_main,
+    person_alfred_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -782,10 +799,10 @@ async def test_relationship_one_peer_branch_and_main_update(
 async def test_relationship_one_property_branch_update(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_alfred_main,
-    person_jane_main,
-    person_john_main,
-    car_accord_main,
+    person_alfred_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -943,10 +960,10 @@ async def test_relationship_one_property_branch_update(
 async def test_add_node_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_alfred_main,
-    person_jane_main,
-    person_john_main,
-    car_accord_main,
+    person_alfred_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -1039,9 +1056,9 @@ async def test_add_node_branch(
 async def test_many_relationship_property_update(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -1112,10 +1129,10 @@ async def test_many_relationship_property_update(
 async def test_cardinality_one_peer_conflicting_updates(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_john_main,
-    person_jane_main,
-    person_albert_main,
-    car_accord_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_albert_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -1335,8 +1352,8 @@ async def test_cardinality_one_peer_conflicting_updates(
 async def test_relationship_property_owner_conflicting_updates(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_john_main,
-    car_accord_main,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -1464,7 +1481,7 @@ async def test_relationship_property_owner_conflicting_updates(
 async def test_agnostic_source_relationship_update(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema_global,
+    car_person_schema_global: None,
 ) -> None:
     person_1 = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person_1.new(db=db, name="Herb", height=165)
@@ -1520,7 +1537,7 @@ async def test_agnostic_source_relationship_update(
 async def test_agnostic_owner_relationship_added(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema_global,
+    car_person_schema_global: None,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -1613,7 +1630,7 @@ async def test_agnostic_owner_relationship_added(
 async def test_update_attribute_under_agnostic_node(
     db: InfrahubDatabase,
     default_branch: Branch,
-    fruit_tag_schema_global,
+    fruit_tag_schema_global: SchemaRoot,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -1660,7 +1677,11 @@ async def test_update_attribute_under_agnostic_node(
 
 
 async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     # change that will be ignored
@@ -1725,7 +1746,11 @@ async def test_diff_attribute_branch_update_with_previous_base_update_ignored(
 
 
 async def test_diff_attribute_branch_update_with_concurrent_base_update_captured(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
@@ -1819,7 +1844,11 @@ async def test_diff_attribute_branch_update_with_concurrent_base_update_captured
 
 
 async def test_diff_attribute_branch_update_with_previous_base_update_captured(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     # change that will be ignored
@@ -1910,7 +1939,11 @@ async def test_diff_attribute_branch_update_with_previous_base_update_captured(
 
 
 async def test_diff_attribute_branch_update_with_separate_previous_base_update_captured(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
@@ -2025,7 +2058,7 @@ async def test_diff_attribute_branch_update_with_separate_previous_base_update_c
 
 
 async def test_branch_node_delete_with_base_updates(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, person_john_main, person_jane_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, person_john_main: Node, person_jane_main: Node
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
@@ -2309,7 +2342,11 @@ async def test_branch_relationship_delete_with_property_update(
 
 
 async def test_node_deleted_on_base_update_on_branch(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -2379,7 +2416,11 @@ async def test_node_deleted_on_base_update_on_branch(
 
 
 async def test_node_deleted_on_both(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -2420,11 +2461,11 @@ async def test_node_deleted_on_both(
 async def test_relationship_updated_then_node_deleted(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_alfred_main,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_camry_main,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -2605,11 +2646,11 @@ async def test_relationship_updated_then_node_deleted(
 async def test_node_added_and_deleted_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_alfred_main,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_camry_main,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -2637,11 +2678,11 @@ async def test_node_added_and_deleted_on_branch(
 async def test_property_update_then_relationship_deleted(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_alfred_main,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_camry_main,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp(branch.created_at)
@@ -2903,7 +2944,11 @@ async def test_hierarchy_with_same_kind_parent_and_child(
 
 
 async def test_diff_unchanged_included_when_not_first_diff(
-    db: InfrahubDatabase, default_branch: Branch, person_alfred_main, person_john_main, car_accord_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_alfred_main: Node,
+    person_john_main: Node,
+    car_accord_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     alfred_main = await NodeManager.get_one(db=db, branch=default_branch, id=person_alfred_main.id)
@@ -3050,7 +3095,7 @@ async def test_create_local_and_aware_nodes_on_branch(
 
 
 async def test_create_aware_and_agnostic_nodes_on_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_global
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_global: None
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     from_time = Timestamp()
@@ -3263,15 +3308,31 @@ async def test_diff_relationship_property_update_on_main(
     assert {elem.action for elem in diff_rel.relationships} == {DiffAction.ADDED, DiffAction.REMOVED}
 
 
+def _assert_added_property_diffs(props_by_type: dict, expected: tuple) -> None:
+    for prop_type, new_value in expected:
+        prop_diff = props_by_type[prop_type]
+        assert prop_diff.action is DiffAction.ADDED
+        assert prop_diff.previous_value is None
+        assert prop_diff.new_value == new_value
+
+
+def _assert_removed_property_diffs(props_by_type: dict, expected: tuple) -> None:
+    for prop_type, previous_value in expected:
+        prop_diff = props_by_type[prop_type]
+        assert prop_diff.action is DiffAction.REMOVED
+        assert prop_diff.previous_value == previous_value
+        assert prop_diff.new_value is None
+
+
 async def test_calculate_with_migrated_kind_node(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    person_john_main,
-    person_jane_main,
-    person_alfred_main,
-    person_albert_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_alfred_main: Node,
+    person_albert_main: Node,
 ) -> None:
     """Test that the diff can correctly handle a schema kind migration, which results in 2 nodes with the same UUID"""
     branch = await create_branch(db=db, branch_name="branch-migrated-kind")
@@ -3360,14 +3421,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for prop_type, prop_value in [
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ]:
-        prop_diff = props_by_type[prop_type]
-        assert prop_diff.action is DiffAction.REMOVED
-        assert prop_diff.previous_value == prop_value
-        assert prop_diff.new_value is None
+    _assert_removed_property_diffs(
+        props_by_type,
+        [
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ],
+    )
 
     # validate that camry has color, nbr_seats, owner, driver changes on main
     camry_base_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
@@ -3404,14 +3464,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for property_type, previous_prop_value in (
-        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.REMOVED
-        assert property_diff.previous_value == previous_prop_value
-        assert property_diff.new_value is None
+    _assert_removed_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
     alfred_element = elements_by_peer_id[person_alfred_main.id]
     assert alfred_element.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in alfred_element.properties}
@@ -3419,14 +3478,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for property_type, new_prop_value in (
-        (DatabaseEdgeType.IS_RELATED, person_alfred_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.previous_value is None
-        assert property_diff.new_value == new_prop_value
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, person_alfred_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
     driver_rel_diff = rel_diffs_by_name["driver"]
     assert driver_rel_diff.action is DiffAction.ADDED
     elements_by_peer_id = {e.peer_id: e for e in driver_rel_diff.relationships}
@@ -3438,14 +3496,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_RELATED,
         DatabaseEdgeType.IS_PROTECTED,
     }
-    for property_type, new_prop_value in (
-        (DatabaseEdgeType.IS_RELATED, new_main_camry_driver_id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.previous_value is None
-        assert property_diff.new_value == new_prop_value
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, new_main_camry_driver_id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     branch_diff = calculated_diffs.diff_branch_diff
     assert len(branch_diff.nodes) == 8
@@ -3474,25 +3531,23 @@ async def test_calculate_with_migrated_kind_node(
     branch_car_element_diff = elements_by_peer_id[branch_car.id]
     assert branch_car_element_diff.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in branch_car_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, branch_car.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.new_value == value
-        assert property_diff.previous_value is None
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, branch_car.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
     camry_element_diff = elements_by_peer_id[car_camry_main.id]
     assert camry_element_diff.action is DiffAction.REMOVED
     props_by_type = {p.property_type: p for p in camry_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.REMOVED
-        assert property_diff.new_value is None
-        assert property_diff.previous_value == value
+    _assert_removed_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     # validate relationship on albert is correct
     albert_diff = nodes_by_id_and_kind[person_albert_main.id, person_albert_main.get_kind()]
@@ -3508,14 +3563,13 @@ async def test_calculate_with_migrated_kind_node(
     camry_element_diff = elements_by_peer_id[car_camry_main.id]
     assert camry_element_diff.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in camry_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.new_value == value
-        assert property_diff.previous_value is None
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     # validate relationship on john is correct
     john_diff = nodes_by_id_and_kind[person_john_main.id, person_john_main.get_kind()]
@@ -3531,14 +3585,13 @@ async def test_calculate_with_migrated_kind_node(
     camry_element_diff = elements_by_peer_id[car_camry_main.id]
     assert camry_element_diff.action is DiffAction.ADDED
     props_by_type = {p.property_type: p for p in camry_element_diff.properties}
-    for property_type, value in (
-        (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
-        (DatabaseEdgeType.IS_PROTECTED, False),
-    ):
-        property_diff = props_by_type[property_type]
-        assert property_diff.action is DiffAction.ADDED
-        assert property_diff.new_value == value
-        assert property_diff.previous_value is None
+    _assert_added_property_diffs(
+        props_by_type,
+        (
+            (DatabaseEdgeType.IS_RELATED, car_camry_main.id),
+            (DatabaseEdgeType.IS_PROTECTED, False),
+        ),
+    )
 
     # test new car that was migrated on the branch
     branch_car_diff = nodes_by_id_and_kind[branch_car.id, "Test2NewCar"]
@@ -3568,14 +3621,13 @@ async def test_calculate_with_migrated_kind_node(
             DatabaseEdgeType.HAS_VALUE,
             DatabaseEdgeType.IS_PROTECTED,
         }
-        for prop_type, prop_value in [
-            (DatabaseEdgeType.HAS_VALUE, expected_value),
-            (DatabaseEdgeType.IS_PROTECTED, False),
-        ]:
-            prop_diff = props_by_type[prop_type]
-            assert prop_diff.action is DiffAction.ADDED
-            assert prop_diff.previous_value is None
-            assert prop_diff.new_value == prop_value
+        _assert_added_property_diffs(
+            props_by_type,
+            [
+                (DatabaseEdgeType.HAS_VALUE, expected_value),
+                (DatabaseEdgeType.IS_PROTECTED, False),
+            ],
+        )
     rel_diffs_by_name = {r.name: r for r in branch_car_diff.relationships}
     assert set(rel_diffs_by_name.keys()) == {"owner"}
     rel_diff = rel_diffs_by_name["owner"]
@@ -3589,14 +3641,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, new_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.ADDED
-        assert diff_prop.previous_value is None
-        assert diff_prop.new_value == new_value
+    _assert_added_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        ),
+    )
 
     # check that old version of migrated node is removed
     old_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "TestCar"]
@@ -3615,14 +3666,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, previous_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.REMOVED
-        assert diff_prop.previous_value == previous_value
-        assert diff_prop.new_value is None
+    _assert_removed_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, person_jane_main.id),
+        ),
+    )
 
     # validate new camry that was updated on branch before migration
     new_camry_diff = nodes_by_id_and_kind[car_camry_main.id, "Test2NewCar"]
@@ -3660,14 +3710,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, new_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, new_branch_camry_owner_id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.ADDED
-        assert diff_prop.previous_value is None
-        assert diff_prop.new_value == new_value
+    _assert_added_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, new_branch_camry_owner_id),
+        ),
+    )
     new_driver_rel_diff = rel_diffs_by_name["driver"]
     assert new_driver_rel_diff.action is DiffAction.ADDED
     elements_by_peer_id = {e.peer_id: e for e in new_driver_rel_diff.relationships}
@@ -3679,14 +3728,13 @@ async def test_calculate_with_migrated_kind_node(
         DatabaseEdgeType.IS_PROTECTED,
         DatabaseEdgeType.IS_RELATED,
     }
-    for prop_type, new_value in (
-        (DatabaseEdgeType.IS_PROTECTED, False),
-        (DatabaseEdgeType.IS_RELATED, new_branch_camry_driver_id),
-    ):
-        diff_prop = properties_by_type[prop_type]
-        assert diff_prop.action is DiffAction.ADDED
-        assert diff_prop.previous_value is None
-        assert diff_prop.new_value == new_value
+    _assert_added_property_diffs(
+        properties_by_type,
+        (
+            (DatabaseEdgeType.IS_PROTECTED, False),
+            (DatabaseEdgeType.IS_RELATED, new_branch_camry_driver_id),
+        ),
+    )
 
     # validate unchanged migrated node is correct
     old_accord_diff = nodes_by_id_and_kind[car_accord_main.id, "TestCar"]
@@ -3863,7 +3911,12 @@ async def test_calculate_with_migrated_kind_node(
 
 
 async def test_calculate_with_migrated_attr_name(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main, person_jane_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     """Test that the diff can correctly handle an attribute name migration"""
     branch = await create_branch(db=db, branch_name="branch")
@@ -3944,7 +3997,12 @@ async def test_calculate_with_migrated_attr_name(
 
 
 async def test_calculate_with_renamed_relationships(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_john_main, person_jane_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
 ) -> None:
     """Test that the diff can correctly handle an attribute name migration"""
     branch = await create_branch(db=db, branch_name="branch")
@@ -4101,12 +4159,12 @@ async def test_calculate_with_renamed_relationships(
 async def test_migrated_kind_node_then_peer_delete(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    person_john_main,
-    person_jane_main,
-    person_alfred_main,
-    person_albert_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_alfred_main: Node,
+    person_albert_main: Node,
 ) -> None:
     # migrate TestPerson kind on main
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -4186,11 +4244,11 @@ async def test_migrated_kind_node_then_peer_delete(
 async def test_migrated_kind_with_property_level_changes(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    person_john_main,
-    person_jane_main,
-    person_alfred_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_alfred_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="lets-migrate")
 
@@ -4380,12 +4438,12 @@ async def test_migrated_kind_with_property_level_changes(
 async def test_migrated_kind_on_main_then_relationship_update_on_branch(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_accord_main,
-    car_camry_main,
-    person_john_main,
-    person_jane_main,
-    person_alfred_main,
-    person_albert_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    person_john_main: Node,
+    person_jane_main: Node,
+    person_alfred_main: Node,
+    person_albert_main: Node,
 ) -> None:
     """Test that when a schema kind is migrated on the default branch, relationships to instances
     of the migrated node can be updated on a branch before the diff is calculated."""
@@ -4535,9 +4593,9 @@ async def test_migrated_kind_on_main_then_relationship_update_on_branch(
 async def test_diff_attribute_single_source_property_change(
     db: InfrahubDatabase,
     default_branch: Branch,
-    person_john_main,
-    person_alfred_main,
-    person_jane_main,
+    person_john_main: Node,
+    person_alfred_main: Node,
+    person_jane_main: Node,
     new_source: bool,
     expected_action: DiffAction,
 ) -> None:

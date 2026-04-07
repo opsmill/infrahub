@@ -33,8 +33,8 @@ type Event = keyof typeof PROPOSED_CHANGE_EVENTS_MAPPING | typeof PROPOSED_CHANG
 
 interface ProposedChangeEventTitleProps {
   event: Event;
-  account_id: string;
-  branch: string;
+  account_id?: string | null;
+  branch?: string | null;
   related_nodes?: Array<{ id: string }>;
 }
 

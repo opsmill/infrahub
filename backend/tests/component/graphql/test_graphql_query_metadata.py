@@ -8,6 +8,7 @@ This module contains tests for:
 """
 
 from dataclasses import dataclass, field
+from datetime import timedelta, timezone
 from typing import Any
 
 import pytest
@@ -1236,3 +1237,46 @@ class TestMetadataFilters:
         # node2 was updated on the branch after branch-node5 was created
         assert names == ["node2", "branch-node5"]
         assert timestamps == sorted(timestamps, reverse=True)
+
+
+async def test_graphql_metadata_filter_with_non_utc_timezone_offset(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    """Test that metadata datetime filters work when the client sends a non-UTC timezone offset."""
+    obj1 = await Node.init(db=db, schema=criticality_schema)
+    await obj1.new(db=db, name="tz-first", level=1)
+    await obj1.save(db=db)
+
+    cutoff_ts = Timestamp()
+
+    obj2 = await Node.init(db=db, schema=criticality_schema)
+    await obj2.new(db=db, name="tz-second", level=2)
+    await obj2.save(db=db)
+
+    # Convert the UTC cutoff to an equivalent -05:00 offset string.
+    eastern = timezone(timedelta(hours=-5))
+    cutoff_str = cutoff_ts.to_datetime().astimezone(eastern).isoformat()
+
+    query = """
+    query($cutoff: DateTime!) {
+        TestCriticality(node_metadata__created_at__after: $cutoff) {
+            count
+            edges { node { name { value } } }
+        }
+    }
+    """
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"cutoff": cutoff_str},
+    )
+
+    assert result.errors is None, f"GraphQL errors: {result.errors}"
+    assert result.data
+    assert result.data["TestCriticality"]["count"] == 1
+    names = {e["node"]["name"]["value"] for e in result.data["TestCriticality"]["edges"]}
+    assert names == {"tz-second"}

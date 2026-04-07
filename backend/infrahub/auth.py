@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import bcrypt
 import jwt
@@ -17,10 +17,10 @@ from infrahub.config import (
     SecurityOIDCSettings,
 )
 from infrahub.core.account import validate_token
-from infrahub.core.constants import AccountStatus, InfrahubKind
+from infrahub.core.constants import AccountStatus, AccountType, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreGenericAccount
+from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole, CoreGenericAccount
 from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError
 from infrahub.log import get_logger
@@ -32,6 +32,21 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 log = get_logger()
+
+
+class AuthResult(BaseModel):
+    """Rich result returned from successful authentication, combining token with account metadata."""
+
+    model_config = {"frozen": True}
+
+    token: models.UserToken
+    kind: str
+    account_id: str
+    account_name: str
+    account_type: AccountType
+    session_id: uuid.UUID
+    groups: list[dict[str, str]]
+    roles: list[dict[str, str]]
 
 
 class AuthType(StrEnum):
@@ -62,6 +77,26 @@ class SSOStateCache(BaseModel):
     code_verifier: str | None = None
 
 
+async def fetch_account_groups_and_roles(
+    db: InfrahubDatabase, account_id: str
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Fetch group and role {id: name} for an account. Returns empty lists on any failure."""
+    group_names: list[dict[str, str]] = []
+    role_names: list[dict[str, str]] = []
+
+    groups = await NodeManager.query(
+        schema=CoreAccountGroup,
+        db=db,
+        filters={"members__ids": [account_id]},
+    )
+    group_names.extend({g.get_id(): g.name.value} for g in groups)
+    for group in groups:
+        roles = await group.roles.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccountRole)
+        role_names.extend({r.get_id(): r.name.value} for r in roles.values())
+
+    return group_names, role_names
+
+
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
     account = await NodeManager.get_one(db=db, kind=CoreGenericAccount, id=account_id, raise_on_error=True)
     if account.status.value != AccountStatus.ACTIVE.value:
@@ -70,7 +105,7 @@ async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None
 
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: str | None = None
-) -> models.UserToken:
+) -> AuthResult:
     selected_branch = await registry.get_branch(db=db, branch=branch)
 
     response = await NodeManager.query(
@@ -105,7 +140,18 @@ async def authenticate_with_password(
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
-    return models.UserToken(access_token=access_token, refresh_token=refresh_token)
+    groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
+
+    return AuthResult(
+        token=models.UserToken(access_token=access_token, refresh_token=refresh_token),
+        account_id=account.id,
+        account_name=account.name.value,
+        account_type=account.account_type.value,
+        session_id=session_id,
+        groups=groups,
+        roles=roles,
+        kind=account.get_kind(),
+    )
 
 
 async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expiration: datetime) -> uuid.UUID:
@@ -138,7 +184,7 @@ async def create_fresh_access_token(
     return models.AccessTokenResponse(access_token=access_token)
 
 
-async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups: list[str]) -> models.UserToken:
+async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups: list[str]) -> AuthResult:
     account = await NodeManager.get_one_by_default_filter(db=db, id=account_name, kind=InfrahubKind.ACCOUNT)
 
     if not account:
@@ -164,7 +210,20 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
-    return models.UserToken(access_token=access_token, refresh_token=refresh_token)
+
+    groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
+    typed_account = cast("CoreAccount", account)
+
+    return AuthResult(
+        token=models.UserToken(access_token=access_token, refresh_token=refresh_token),
+        account_id=account.id,
+        account_name=typed_account.name.value,
+        account_type=typed_account.account_type.value,
+        session_id=session_id,
+        groups=groups,
+        roles=roles,
+        kind=account.get_kind(),
+    )
 
 
 def generate_access_token(account_id: str, session_id: uuid.UUID) -> str:
@@ -255,10 +314,12 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
     return AccountSession(account_id=account_id, auth_type=AuthType.API)
 
 
-async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
+async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> bool:
     refresh_token = await NodeManager.get_one(id=token_id, db=db)
     if refresh_token:
         await refresh_token.delete(db=db)
+        return True
+    return False
 
 
 async def get_groups_from_provider(

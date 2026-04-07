@@ -220,6 +220,21 @@ async def process_jinja2(
     context: InfrahubContext,
     updated_fields: list[str] | None = None,
 ) -> None:
+    """Recompute a single Jinja2 computed attribute in response to a node mutation.
+
+    Args:
+        branch_name: Branch on which the triggering mutation occurred.
+        node_kind: Schema kind of the node that was modified (the trigger node).
+        object_id: ID of the modified node, used to scope GraphQL queries.
+        computed_attribute_name: Name of the computed attribute to recompute.
+        computed_attribute_kind: Schema kind that owns the computed attribute (may differ from
+                                node_kind when the dependency crosses a relationship).
+        context: Infrahub execution context.
+        updated_fields: Field names that changed on the trigger node.
+
+    Returns:
+        None
+    """
     log = get_run_logger()
     client = get_client()
 
@@ -231,25 +246,26 @@ async def process_jinja2(
     )
     schema_branch = registry.schema.get_schema_branch(name=target_branch_schema)
     node_schema = schema_branch.get_node(name=computed_attribute_kind, duplicate=False)
-    computed_macros = [
-        attrib
-        for attrib in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
-        if attrib.kind == computed_attribute_kind and attrib.attribute.name == computed_attribute_name
+    resolved_targets = [
+        resolved
+        for resolved in schema_branch.computed_attributes.get_impacted_jinja2_targets(kind=node_kind, updates=updates)
+        if resolved.target.kind == computed_attribute_kind and resolved.target.attribute.name == computed_attribute_name
     ]
-    for computed_macro in computed_macros:
+    for resolved in resolved_targets:
         found: list[ComputedAttrJinja2GraphQLResponse] = []
         template_string = "n/a"
-        if computed_macro.attribute.computed_attribute and computed_macro.attribute.computed_attribute.jinja2_template:
-            template_string = computed_macro.attribute.computed_attribute.jinja2_template
+        attribute = resolved.target.attribute
+        if attribute.computed_attribute and attribute.computed_attribute.jinja2_template:
+            template_string = attribute.computed_attribute.jinja2_template
 
         jinja_template = InfrahubJinja2Template(template=template_string)
         variables = jinja_template.get_variables()
 
         attribute_graphql = ComputedAttrJinja2GraphQL(
-            node_schema=node_schema, attribute_schema=computed_macro.attribute, variables=variables
+            node_schema=node_schema, attribute_schema=attribute, variables=variables
         )
 
-        for id_filter in computed_macro.node_filters:
+        for id_filter in resolved.node_filters:
             query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
             try:
                 response = await client.execute_graphql(query=query, branch_name=branch_name)
@@ -271,7 +287,7 @@ async def process_jinja2(
                 branch_name=branch_name,
                 obj=node,
                 node_kind=node_schema.kind,
-                attribute_name=computed_macro.attribute.name,
+                attribute_name=attribute.name,
                 template=jinja_template,
                 context=context,
             )
@@ -326,7 +342,7 @@ async def computed_attribute_setup_jinja2(
 
         report: TriggerSetupReport = await setup_triggers_specific(
             gatherer=gather_trigger_computed_attribute_jinja2, trigger_type=TriggerType.COMPUTED_ATTR_JINJA2
-        )  # type: ignore[misc]
+        )
         # Configure all ComputedAttrJinja2Trigger in Prefect
 
         all_triggers = report.triggers_with_type(trigger_type=ComputedAttrJinja2TriggerDefinition)

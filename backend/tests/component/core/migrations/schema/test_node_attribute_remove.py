@@ -35,7 +35,7 @@ async def car_person_schema(
 
 
 async def test_query_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
