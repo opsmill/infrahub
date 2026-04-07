@@ -10,7 +10,7 @@ const getNodeLabelQuery = ({ objectId, kind }: { objectId?: string | null; kind:
       __name: "GET_DISPLAY_LABEL",
       [kind]: {
         __args: {
-          ids: [objectId],
+          ...(objectId ? { ids: [objectId] } : {}),
         },
         edges: {
           node: {
