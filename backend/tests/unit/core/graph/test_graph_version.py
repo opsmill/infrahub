@@ -14,3 +14,9 @@ def test_last_migration_minimum_version() -> None:
     assert last.minimum_version == GRAPH_VERSION - 1, (
         f"Last migration minimum_version ({last.minimum_version}) must be GRAPH_VERSION - 1 ({GRAPH_VERSION - 1})."
     )
+
+
+def test_no_duplicate_migration_minimum_versions() -> None:
+    minimum_versions = [m.init().minimum_version for m in MIGRATIONS]
+    duplicate_versions = [v for v in minimum_versions if minimum_versions.count(v) > 1]
+    assert not duplicate_versions, f"Duplicate minimum_version values found: {sorted(set(duplicate_versions))}"
