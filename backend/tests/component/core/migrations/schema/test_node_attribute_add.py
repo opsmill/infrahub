@@ -90,7 +90,9 @@ async def init_database(db: InfrahubDatabase) -> None:
     await db.execute_query(query=query_init_root, params=params)
 
 
-async def test_query01(db: InfrahubDatabase, default_branch, init_database, schema_aware) -> None:
+async def test_query01(
+    db: InfrahubDatabase, default_branch: Branch, init_database: None, schema_aware: NodeSchema
+) -> None:
     node = schema_aware
 
     assert await count_nodes(db=db, label="TestCar") == 5
@@ -117,7 +119,9 @@ async def test_query01(db: InfrahubDatabase, default_branch, init_database, sche
     assert await count_nodes(db=db, label="Attribute") == 5
 
 
-async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
+async def test_query01_re_add(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
 
     assert await count_nodes(db=db, label="TestCar") == 2
@@ -166,7 +170,7 @@ async def test_query01_re_add(db: InfrahubDatabase, default_branch: Branch, car_
 
 
 async def test_migration(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, schema_aware
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, schema_aware: NodeSchema
 ) -> None:
     # Create TemplateTestPerson nodes to use as owners for TemplateTestCar
     template_person1 = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)

@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
@@ -20,7 +22,7 @@ from tests.helpers.schema import load_schema
 
 
 async def test_query_out_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
@@ -54,7 +56,7 @@ async def test_query_out_default_branch(
 
 
 async def test_query_in_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     """This test is a bit silly for now because there is nothing to migrate but it least we validate that the generated query is valid"""
 
@@ -88,7 +90,9 @@ async def test_query_in_default_branch(
     assert await count_nodes(db=db, label="TestCar") == 2
 
 
-async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
+async def test_migration_aware(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
@@ -129,7 +133,7 @@ async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car
 
 
 async def test_migration_agnostic_relationship(
-    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema: dict[str, Any]
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
 

@@ -63,7 +63,9 @@ class TestMergeDiff:
         )
 
     @pytest.fixture
-    async def person_node_branch(self, db: InfrahubDatabase, source_branch: Branch, car_person_schema) -> Node:
+    async def person_node_branch(
+        self, db: InfrahubDatabase, source_branch: Branch, car_person_schema: SchemaBranch
+    ) -> Node:
         new_node = await Node.init(db=db, schema="TestPerson", branch=source_branch)
         await new_node.new(db=db, name="Albert", height=172)
         new_node.height.is_protected = True
@@ -72,7 +74,7 @@ class TestMergeDiff:
 
     @pytest.fixture
     async def car_node_branch(
-        self, db: InfrahubDatabase, source_branch: Branch, person_node_branch: Node, car_person_schema
+        self, db: InfrahubDatabase, source_branch: Branch, person_node_branch: Node, car_person_schema: SchemaBranch
     ) -> Node:
         new_node = await Node.init(db=db, schema="TestCar", branch=source_branch)
         await new_node.new(db=db, name="El Camino", color="black", nbr_seats=5, owner=person_node_branch)
@@ -80,14 +82,18 @@ class TestMergeDiff:
         return new_node
 
     @pytest.fixture
-    async def person_node_main(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    async def person_node_main(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+    ) -> Node:
         new_node = await Node.init(db=db, schema="TestPerson", branch=default_branch)
         await new_node.new(db=db, name="Albert", height=172)
         await new_node.save(db=db)
         return new_node
 
     @pytest.fixture
-    async def person_node_main2(self, db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+    async def person_node_main2(
+        self, db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+    ) -> Node:
         new_node = await Node.init(db=db, schema="TestPerson", branch=default_branch)
         await new_node.new(db=db, name="Jermaine", height=165)
         await new_node.save(db=db)
@@ -95,7 +101,7 @@ class TestMergeDiff:
 
     @pytest.fixture
     async def car_node_main(
-        self, db: InfrahubDatabase, default_branch: Branch, person_node_main: Node, car_person_schema
+        self, db: InfrahubDatabase, default_branch: Branch, person_node_main: Node, car_person_schema: SchemaBranch
     ) -> Node:
         new_node = await Node.init(db=db, schema="TestCar", branch=default_branch)
         await new_node.new(db=db, name="El Camino", color="black", nbr_seats=5, owner=person_node_main)
@@ -104,7 +110,7 @@ class TestMergeDiff:
 
     @pytest.fixture
     async def car_node_main2(
-        self, db: InfrahubDatabase, default_branch: Branch, person_node_main2: Node, car_person_schema
+        self, db: InfrahubDatabase, default_branch: Branch, person_node_main2: Node, car_person_schema: SchemaBranch
     ) -> Node:
         new_node = await Node.init(db=db, schema="TestCar", branch=default_branch)
         await new_node.new(db=db, name="Civic", color="purple", nbr_seats=5, owner=person_node_main2)
@@ -125,7 +131,7 @@ class TestMergeDiff:
         )
 
     @pytest.fixture
-    def deleted_person_node_diff(self, person_node_main, car_node_main) -> EnrichedDiffNode:
+    def deleted_person_node_diff(self, person_node_main: Node, car_node_main: Node) -> EnrichedDiffNode:
         deleted_node_diff = self._get_empty_node_diff(node=person_node_main, action=DiffAction.REMOVED)
         # attributes
         deleted_height_value_property = EnrichedPropertyFactory.build(
@@ -201,7 +207,7 @@ class TestMergeDiff:
         return deleted_node_diff
 
     @pytest.fixture
-    def added_person_node_diff(self, person_node_branch, car_node_branch) -> EnrichedDiffNode:
+    def added_person_node_diff(self, person_node_branch: Node, car_node_branch: Node) -> EnrichedDiffNode:
         added_node_diff = self._get_empty_node_diff(node=person_node_branch, action=DiffAction.ADDED)
         # attributes
         added_height_value_property = EnrichedPropertyFactory.build(
@@ -437,7 +443,7 @@ class TestMergeDiff:
 
     @pytest.fixture
     def updated_person_node_diff(
-        self, person_node_main, car_node_main, person_node_main2, car_node_main2
+        self, person_node_main: Node, car_node_main: Node, person_node_main2: Node, car_node_main2: Node
     ) -> EnrichedDiffNode:
         updated_node_diff = self._get_empty_node_diff(node=person_node_main, action=DiffAction.UPDATED)
         # attributes
@@ -529,7 +535,9 @@ class TestMergeDiff:
         return updated_node_diff
 
     @pytest.fixture
-    def updated_car_diff(self, person_node_main, car_node_main, person_node_main2, car_node_main2) -> EnrichedDiffNode:
+    def updated_car_diff(
+        self, person_node_main: Node, car_node_main: Node, person_node_main2: Node, car_node_main2: Node
+    ) -> EnrichedDiffNode:
         updated_node_diff = self._get_empty_node_diff(node=car_node_main, action=DiffAction.UPDATED)
         # relationships
         updated_is_related_property = EnrichedPropertyFactory.build(
