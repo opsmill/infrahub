@@ -68,56 +68,7 @@ class TestProposedChangeGeneralAccessPermissions:
     ) -> None:
         permissions_helper._default_branch = default_branch
 
-        global_permissions = []
-        for action in (
-            GlobalPermissions.MANAGE_REPOSITORIES,
-            GlobalPermissions.MANAGE_SCHEMA,
-            GlobalPermissions.MERGE_PROPOSED_CHANGE,
-        ):
-            perm = await Node.init(db=db, schema=InfrahubKind.GLOBALPERMISSION)
-            await perm.new(db=db, action=action.value, decision=PermissionDecision.ALLOW_ALL.value)
-            await perm.save(db=db)
-            global_permissions.append(perm)
-
-        view_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-        await view_permission.new(
-            db=db,
-            namespace="*",
-            name="*",
-            action=PermissionAction.VIEW.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
-        )
-        await view_permission.save(db=db)
-
-        modify_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-        await modify_permission.new(
-            db=db,
-            namespace="*",
-            name="*",
-            action=PermissionAction.ANY.value,
-            decision=PermissionDecision.ALLOW_OTHER.value,
-        )
-        await modify_permission.save(db=db)
-
-        # The fix will add this permission to General Access in initialization.py:
-        # CoreProposedChange-specific ALLOW_DEFAULT for create action
-        proposed_change_permission = await Node.init(db=db, schema=InfrahubKind.OBJECTPERMISSION)
-        await proposed_change_permission.new(
-            db=db,
-            namespace="Core",
-            name="ProposedChange",
-            action=PermissionAction.CREATE.value,
-            decision=PermissionDecision.ALLOW_DEFAULT.value,
-        )
-        await proposed_change_permission.save(db=db)
-
-        role = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
-        await role.new(
-            db=db,
-            name="General Access",
-            permissions=[*global_permissions, view_permission, modify_permission, proposed_change_permission],
-        )
-        await role.save(db=db)
+        role = await create_default_role(db=db)
 
         group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await group.new(db=db, name="general_access_group", roles=[role])
