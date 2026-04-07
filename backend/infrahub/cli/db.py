@@ -99,6 +99,7 @@ class IndexAction(StrEnum):
     DROP = "drop"
 
 
+# Base migration classes used for MRO lookup in _get_migration_type_name().
 _MIGRATION_BASE_TYPES = (GraphMigration, InternalSchemaMigration, ArbitraryMigration, MigrationRequiringRebase)
 
 
@@ -664,9 +665,9 @@ async def trigger_rebase_branches(db: InfrahubDatabase, branches: Sequence[Branc
                 send_events=False,
             )
         except (ValidationError, MigrationFailureError):
-            console.log(f"Rebased branch '{branch.name}' {FAILED_BADGE}")
+            console.log(f"Rebased branch '{branch.name}' (ID: {branch.uuid}) {FAILED_BADGE}")
         else:
-            console.log(f"Rebased branch '{branch.name}' {SUCCESS_BADGE}")
+            console.log(f"Rebased branch '{branch.name}' (ID: {branch.uuid}) {SUCCESS_BADGE}")
 
 
 async def initialize_internal_schema() -> None:
