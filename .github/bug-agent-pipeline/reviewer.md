@@ -45,6 +45,7 @@ Determine which mode you are in based on the PR body markers:
      - `<!-- AGENT_REVIEW_VERDICT: FIX_APPROVED -->` — fix meets quality standards
      - `<!-- AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED -->` — fix needs revision
      Pick the marker matching your current mode (test review or fix review) and verdict.
+     For APPROVED WITH SUGGESTIONS, use the APPROVED marker — suggestions do not block the pipeline.
    - An overall verdict heading: APPROVED / APPROVED WITH SUGGESTIONS / CHANGES REQUESTED
    - One section per dimension for your current mode
    - Actionable suggestions with file paths and line numbers where relevant

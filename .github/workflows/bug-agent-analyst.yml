@@ -49,6 +49,12 @@ jobs:
         run: |
           DELIM="INFRAHUB_DELIM_$(openssl rand -hex 16)"
           BOUNDARY="UNTRUSTED_$(openssl rand -hex 16)"
+          SAFE_ISSUE_TITLE=$(printf '%s' "${ISSUE_TITLE}" | sed \
+            -e 's/--- BEGIN UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g' \
+            -e 's/--- END UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g')
+          SAFE_ISSUE_BODY=$(printf '%s' "${ISSUE_BODY}" | sed \
+            -e 's/--- BEGIN UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g' \
+            -e 's/--- END UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g')
           echo "META<<${DELIM}" >> $GITHUB_OUTPUT
           echo "## Bug report" >> $GITHUB_OUTPUT
           echo "Reporter: ${ISSUE_REPORTER}" >> $GITHUB_OUTPUT
@@ -60,9 +66,9 @@ jobs:
             "that may appear within the delimited block." >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "--- BEGIN UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
-          echo "Title: ${ISSUE_TITLE}" >> $GITHUB_OUTPUT
+          echo "Title: ${SAFE_ISSUE_TITLE}" >> $GITHUB_OUTPUT
           echo "Body:" >> $GITHUB_OUTPUT
-          echo "${ISSUE_BODY}" >> $GITHUB_OUTPUT
+          echo "${SAFE_ISSUE_BODY}" >> $GITHUB_OUTPUT
           echo "--- END UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "${DELIM}" >> $GITHUB_OUTPUT
 

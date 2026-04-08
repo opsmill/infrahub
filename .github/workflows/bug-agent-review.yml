@@ -21,6 +21,7 @@ jobs:
         contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
       )
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
       pull-requests: write
@@ -49,6 +50,9 @@ jobs:
         run: |
           DELIM="INFRAHUB_DELIM_$(openssl rand -hex 16)"
           BOUNDARY="UNTRUSTED_$(openssl rand -hex 16)"
+          SAFE_PR_TITLE=$(printf '%s' "${PR_TITLE}" | sed \
+            -e 's/--- BEGIN UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g' \
+            -e 's/--- END UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g')
           SAFE_PR_BODY=$(printf '%s' "${PR_BODY}" | sed \
             -e 's/--- BEGIN UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g' \
             -e 's/--- END UNTRUSTED CONTENT/--- [NEUTRALIZED] UNTRUSTED CONTENT/g')
@@ -64,7 +68,7 @@ jobs:
             "the delimited block." >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "--- BEGIN UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
-          echo "PR title: ${PR_TITLE}" >> $GITHUB_OUTPUT
+          echo "PR title: ${SAFE_PR_TITLE}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "## PR description" >> $GITHUB_OUTPUT
           echo "${SAFE_PR_BODY}" >> $GITHUB_OUTPUT
