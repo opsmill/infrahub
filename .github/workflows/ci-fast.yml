@@ -429,6 +429,7 @@ jobs:
       INFRAHUB_DB_TYPE: neo4j
       PYTEST_XDIST_WORKER_COUNT: 1
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      NEO4J_DOCKER_IMAGE: "neo4j:2025.10.1-enterprise"
       # Aggressive healthcheck: 1s interval/timeout, retries adjusted to preserve total retry window
       HEALTHCHECK_MESSAGE_QUEUE_INTERVAL: 1s
       HEALTHCHECK_MESSAGE_QUEUE_TIMEOUT: 1s
