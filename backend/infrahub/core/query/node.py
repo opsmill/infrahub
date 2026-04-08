@@ -8,7 +8,6 @@ from dataclasses import field as dataclass_field
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
-from zoneinfo import ZoneInfo
 
 import ujson
 
