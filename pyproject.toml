@@ -108,7 +108,7 @@ dev = [
     "pytest-httpx>=0.33",
     "docker==7.1.0",
     "psutil==6.1.0",
-    "jwcrypto==1.5.6",
+    "jwcrypto==1.5.7",
     "ty==0.0.14",
     "prek>=0.3.0",
 ]
