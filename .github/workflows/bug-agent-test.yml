@@ -10,6 +10,10 @@ name: "Bug test-writer agent"
   issue_comment:
     types: [created]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   # Initial test: triggered by /bug-test command on the issue
   write-test:
@@ -106,7 +110,7 @@ jobs:
           echo "Issue title: ${SAFE_ISSUE_TITLE}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "## Analysis from the bug analyst agent" >> $GITHUB_OUTPUT
-          echo "${SAFE_COMMENT}" >> $GITHUB_OUTPUT
+          printf '%s\n' "${SAFE_COMMENT}" >> $GITHUB_OUTPUT
           echo "--- END UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "${DELIM}" >> $GITHUB_OUTPUT
 
@@ -213,7 +217,7 @@ jobs:
           echo "Branch: ${PR_BRANCH}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "## Reviewer's feedback" >> $GITHUB_OUTPUT
-          echo "${SAFE_REVIEW}" >> $GITHUB_OUTPUT
+          printf '%s\n' "${SAFE_REVIEW}" >> $GITHUB_OUTPUT
           echo "--- END UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "${DELIM}" >> $GITHUB_OUTPUT
 

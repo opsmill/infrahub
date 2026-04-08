@@ -11,6 +11,10 @@ name: "Bug reviewer agent"
     types: [opened, synchronize]
     branches: [stable]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   review:
     if: |
@@ -71,7 +75,7 @@ jobs:
           echo "PR title: ${SAFE_PR_TITLE}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "## PR description" >> $GITHUB_OUTPUT
-          echo "${SAFE_PR_BODY}" >> $GITHUB_OUTPUT
+          printf '%s\n' "${SAFE_PR_BODY}" >> $GITHUB_OUTPUT
           echo "--- END UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "${DELIM}" >> $GITHUB_OUTPUT
 

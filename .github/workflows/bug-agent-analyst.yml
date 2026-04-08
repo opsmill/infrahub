@@ -10,6 +10,10 @@ name: "Bug analyst agent"
   issue_comment:
     types: [created]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   analyse:
     if: |
@@ -68,7 +72,7 @@ jobs:
           echo "--- BEGIN UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "Title: ${SAFE_ISSUE_TITLE}" >> $GITHUB_OUTPUT
           echo "Body:" >> $GITHUB_OUTPUT
-          echo "${SAFE_ISSUE_BODY}" >> $GITHUB_OUTPUT
+          printf '%s\n' "${SAFE_ISSUE_BODY}" >> $GITHUB_OUTPUT
           echo "--- END UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "${DELIM}" >> $GITHUB_OUTPUT
 

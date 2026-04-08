@@ -63,7 +63,7 @@ Determine which mode you are in:
 5. **Verify the replication test passes.** Run the specific test the test-writer wrote
    using the same runner they used:
    - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
-   - Frontend unit/component: `cd frontend/app && pnpm test path/to/test`
+   - Frontend unit/component: `cd frontend/app && npm run test path/to/test`
    - Frontend E2E: `cd frontend/app && npx playwright test path/to/test`
    - If the test still FAILS, revisit your fix. Do NOT proceed until it passes.
    - Before continuing, verify `git diff` shows no changes to the test file(s) from the
@@ -90,8 +90,8 @@ Determine which mode you are in:
    - `uv run invoke docs.generate`
    - `uv run invoke docs.lint`
    - `uv lock --check` (if it fails, run `uv lock` and commit the updated lockfile)
-   - `(cd frontend/app && pnpm codegen:graphql)`
-   - `(cd frontend/app && pnpm codegen:openapi)`
+   - `(cd frontend/app && npm run codegen:graphql)`
+   - `(cd frontend/app && npm run codegen:openapi)`
    - `(cd frontend/app && npx betterer --update)`
 
    Stage any files changed by generation or betterer by name (`git add path/to/file`)
@@ -103,7 +103,7 @@ Determine which mode you are in:
    ```
    If the fix touches frontend code, also run:
    ```bash
-   cd frontend/app && pnpm test
+   cd frontend/app && npm run test
    ```
 
    If any check fails, fix the issue and re-run that check before proceeding.

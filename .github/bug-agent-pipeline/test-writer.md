@@ -94,7 +94,7 @@ Determine which mode you are in:
 
 7. **CRITICAL: Verify the test FAILS on the current code.** Run it:
    - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
-   - Frontend unit/component: `cd frontend/app && pnpm test path/to/test`
+   - Frontend unit/component: `cd frontend/app && npm run test path/to/test`
    - Frontend E2E: `cd frontend/app && npx playwright test path/to/test`
    - If a test run takes more than 5 minutes, kill it and investigate why.
    - The test must fail with an **assertion error that directly relates to the root cause**

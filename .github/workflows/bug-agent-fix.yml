@@ -10,6 +10,10 @@ name: "Bug fixer agent"
   issue_comment:
     types: [created]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   # Initial fix: triggered by /bug-fix command on the PR
   fix:
@@ -126,7 +130,7 @@ jobs:
           echo "PR title: ${SAFE_PR_TITLE}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "## PR body (contains test details and analyst summary)" >> $GITHUB_OUTPUT
-          echo "${SAFE_PR_BODY}" >> $GITHUB_OUTPUT
+          printf '%s\n' "${SAFE_PR_BODY}" >> $GITHUB_OUTPUT
           echo "--- END UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "${DELIM}" >> $GITHUB_OUTPUT
 
@@ -233,7 +237,7 @@ jobs:
           echo "PR title: ${SAFE_PR_TITLE}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "## Reviewer's feedback" >> $GITHUB_OUTPUT
-          echo "${SAFE_REVIEW}" >> $GITHUB_OUTPUT
+          printf '%s\n' "${SAFE_REVIEW}" >> $GITHUB_OUTPUT
           echo "--- END UNTRUSTED CONTENT ${BOUNDARY} ---" >> $GITHUB_OUTPUT
           echo "${DELIM}" >> $GITHUB_OUTPUT
 
