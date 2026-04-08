@@ -12,10 +12,10 @@ services:
       RABBITMQ_DEFAULT_PASS: infrahub
     healthcheck:
       test: rabbitmq-diagnostics -q check_port_connectivity
-      interval: 5s
-      timeout: 30s
-      retries: 10
-      start_period: 3s
+      interval: ${HEALTHCHECK_MESSAGE_QUEUE_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_MESSAGE_QUEUE_TIMEOUT:-30s}
+      retries: ${HEALTHCHECK_MESSAGE_QUEUE_RETRIES:-10}
+      start_period: ${HEALTHCHECK_MESSAGE_QUEUE_START_PERIOD:-3s}
     ports:
       - ${INFRAHUB_TESTING_MESSAGE_QUEUE_PORT:-0}:15692
 
@@ -24,9 +24,9 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
-      interval: 5s
-      timeout: 5s
-      retries: 3
+      interval: ${HEALTHCHECK_CACHE_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_CACHE_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_CACHE_RETRIES:-3}
 
   infrahub-server-lb:
     image: haproxy:3.1-alpine
@@ -37,10 +37,10 @@ services:
         condition: service_started
     healthcheck:
       test: wget -O /dev/null http://127.0.0.1:8000/api/config || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: ${HEALTHCHECK_SERVER_LB_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_SERVER_LB_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_SERVER_LB_RETRIES:-20}
+      start_period: ${HEALTHCHECK_SERVER_LB_START_PERIOD:-10s}
     ports:
       - ${INFRAHUB_TESTING_SERVER_PORT:-0}:8000
 
@@ -66,10 +66,10 @@ services:
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: wget -O /dev/null http://localhost:7474 || exit 1
-      interval: 2s
-      timeout: 10s
-      retries: 20
-      start_period: 3s
+      interval: ${HEALTHCHECK_DATABASE_INTERVAL:-2s}
+      timeout: ${HEALTHCHECK_DATABASE_TIMEOUT:-10s}
+      retries: ${HEALTHCHECK_DATABASE_RETRIES:-20}
+      start_period: ${HEALTHCHECK_DATABASE_START_PERIOD:-3s}
     ports:
       - ${INFRAHUB_TESTING_DATABASE_PORT:-0}:6362
       - ${INFRAHUB_TESTING_DATABASE_BOLT_PORT:-0}:7687
@@ -108,10 +108,10 @@ services:
       WEB_CONCURRENCY: ${INFRAHUB_TESTING_TASKMGR_API_WORKERS:-1}
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: ${HEALTHCHECK_TASK_MANAGER_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_TASK_MANAGER_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_TASK_MANAGER_RETRIES:-20}
+      start_period: ${HEALTHCHECK_TASK_MANAGER_START_PERIOD:-10s}
     ports:
       - ${INFRAHUB_TESTING_TASK_MANAGER_PORT:-0}:4200
 
@@ -171,9 +171,9 @@ services:
       - "./${INFRAHUB_TESTING_LOCAL_DB_BACKUP_DIRECTORY}:${INFRAHUB_TESTING_INTERNAL_DB_BACKUP_DIRECTORY}"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: ${HEALTHCHECK_TASK_MANAGER_DB_INTERVAL:-10s}
+      timeout: ${HEALTHCHECK_TASK_MANAGER_DB_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_TASK_MANAGER_DB_RETRIES:-5}
 
   infrahub-server:
     deploy:
@@ -216,10 +216,10 @@ services:
     tty: true
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:8000/api/config || exit 1
-      interval: 5s
-      timeout: 5s
-      retries: 20
-      start_period: 10s
+      interval: ${HEALTHCHECK_SERVER_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_SERVER_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_SERVER_RETRIES:-20}
+      start_period: ${HEALTHCHECK_SERVER_START_PERIOD:-10s}
 
   task-worker:
     deploy:
@@ -285,10 +285,10 @@ services:
       - ${INFRAHUB_TESTING_SCRAPER_PORT:-0}:8428
     healthcheck:
       test: wget -qO- http://127.0.0.1:8428/-/healthy
-      start_period: 10s
-      interval: 5s
-      timeout: 5s
-      retries: 10
+      interval: ${HEALTHCHECK_SCRAPER_INTERVAL:-5s}
+      timeout: ${HEALTHCHECK_SCRAPER_TIMEOUT:-5s}
+      retries: ${HEALTHCHECK_SCRAPER_RETRIES:-10}
+      start_period: ${HEALTHCHECK_SCRAPER_START_PERIOD:-10s}
 
 volumes:
   database_data:
