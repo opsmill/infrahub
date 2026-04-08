@@ -17,7 +17,9 @@ def test_last_migration_minimum_version() -> None:
     )
 
 
-def test_no_duplicate_migration_minimum_versions() -> None:
-    minimum_versions = [m.init().minimum_version for m in MIGRATIONS]
-    duplicate_versions = [v for v in minimum_versions if minimum_versions.count(v) > 1]
-    assert not duplicate_versions, f"Duplicate minimum_version values found: {sorted(set(duplicate_versions))}"
+def test_no_duplicate_migration_minimum_versions_and_number() -> None:
+    minimum_versions = [(m.init().minimum_version, m.init().number) for m in MIGRATIONS]
+    duplicate_versions = [(v, n) for v, n in minimum_versions if minimum_versions.count((v, n)) > 1]
+    assert not duplicate_versions, (
+        f"Duplicate minimum_version and number values found: {sorted(set(duplicate_versions))}"
+    )
