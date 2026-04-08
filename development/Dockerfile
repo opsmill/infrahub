@@ -77,6 +77,9 @@ RUN npm run build && npm cache clean --force
 # ****************************************************************
 FROM base AS backend
 
+COPY --from=registry.opsmill.io/opsmill/infrahub-git-credential-helper:latest /usr/bin/infrahub-git-credential /usr/bin/infrahub-git-credential
+COPY --from=registry.opsmill.io/opsmill/infrahub-git-credential-helper:latest /usr/bin/infrahub-git-askpass /usr/bin/infrahub-git-askpass
+
 # --------------------------------------------
 # Configure Git & Environment
 # --------------------------------------------
