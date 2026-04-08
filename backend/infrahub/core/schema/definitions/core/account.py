@@ -78,7 +78,6 @@ core_refresh_token = NodeSchema(
     description="Refresh Token",
     include_in_menu=False,
     label="Refresh Token",
-    display_labels=[],
     generate_profile=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
