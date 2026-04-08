@@ -55,16 +55,19 @@ class AttributeChangelog(BaseModel):
         default_factory=dict, description="The properties that were updated during this update"
     )
     kind: str = Field(..., description="The attribute kind")
+    _sensitive_value_changed: bool = PrivateAttr(default=False)
 
     @computed_field
     def value_update_status(self) -> DiffAction:
         """Indicate how the peer was changed during this update"""
-        if self.value == self.value_previous:
-            return DiffAction.UNCHANGED
         if self.value_previous is not None and self.value is None:
             return DiffAction.REMOVED
         if self.value_previous is None and self.value is not None:
             return DiffAction.ADDED
+        if self.kind in ["HashedPassword", "Password"] and self._sensitive_value_changed:
+            return DiffAction.UPDATED
+        if self.value == self.value_previous:
+            return DiffAction.UNCHANGED
 
         return DiffAction.UPDATED
 
@@ -99,6 +102,7 @@ class AttributeChangelog(BaseModel):
     @model_validator(mode="after")
     def filter_sensitive(self) -> Self:
         if self.kind in ["HashedPassword", "Password"]:
+            self._sensitive_value_changed = self.value != self.value_previous
             if self.value is not None:
                 self.value = "***"
             if self.value_previous is not None:
