@@ -502,11 +502,7 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
             raise ValidationError("\n".join(error_msgs)) from exc
 
-        # Use a distributed lock to prevent TOCTOU race conditions when creating branches.
-        # The lock is scoped to the branch name so different branches can be created concurrently.
-        # The existence check above is a fast-fail optimization; the authoritative check is
-        # inside the lock to prevent the race where two callers both pass the check above
-        # before either creates the branch.
+        # distributed lock to prevent creating multiple branches with the same name
         async with lock.registry.get(name=model.name, namespace="branch_create", local=False):
             # Re-check existence under the lock to prevent TOCTOU race
             try:
