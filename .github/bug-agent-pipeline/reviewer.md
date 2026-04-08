@@ -29,9 +29,9 @@ Determine which mode you are in based on the PR body markers:
 2. Read the internal documentation in the repository (look for docs/, CONTRIBUTING.md,
    ADRs, architecture docs, coding standards, etc.).
 3. Evaluate according to the review dimensions for your mode (see below).
-4. **Check the iteration count.** Look for `<!-- AGENT_REVIEW_ITERATION: N -->` markers in
-   previous PR review comments. Count them **for the current mode only** (test review
-   iterations and fix review iterations are tracked separately).
+4. **Check the iteration count.** Look for `<!-- AGENT_REVIEW_ITERATION: test-N -->` or
+   `<!-- AGENT_REVIEW_ITERATION: fix-N -->` markers in previous PR review comments
+   (matching the current mode). Count only the markers for your current mode.
    - If there are already **3 or more** previous iterations for the current mode, add the
      label `needs-human-fix` to the PR and post a comment explaining that automated review
      has reached its limit. **STOP** -- do not post another review.
