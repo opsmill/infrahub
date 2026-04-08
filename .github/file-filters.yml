@@ -1,6 +1,7 @@
 ---
 ci_config: &ci_config
   - ".github/workflows/ci.yml"
+  - ".github/workflows/ci-fast.yml"
   - ".github/file-filters.yml"
 
 github_workflows: &github_workflows

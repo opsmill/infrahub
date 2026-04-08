@@ -1,0 +1,1355 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: "CI Fast"
+on:
+  pull_request:
+  push:
+    branches:
+      - develop
+      - stable
+      - release-*
+  workflow_dispatch:
+    inputs:
+      pytest_filter:
+        type: string
+        description: "Pytest -k filter expression for docker integration tests"
+        required: false
+        default: ""
+      skip_regression:
+        type: boolean
+        description: "Skip Stage 3 regression tests entirely"
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  INFRAHUB_DB_USERNAME: neo4j
+  INFRAHUB_DB_PASSWORD: admin
+  INFRAHUB_DB_PROTOCOL: bolt
+  INFRAHUB_LOG_LEVEL: CRITICAL
+  INFRAHUB_IMAGE_NAME: "opsmill/infrahub"
+  INFRAHUB_IMAGE_VER: "local"
+  INFRAHUB_SERVER_PORT: 0
+  INFRAHUB_DB_BACKUP_PORT: 0
+  VMAGENT_PORT: 0
+  PYTEST_XDIST_WORKER_COUNT: 4
+  INFRAHUB_USE_TEST_CONTAINERS: 1
+  VALE_VERSION: "3.12.0"
+  GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+  METRICS_ENDPOINT: ${{ secrets.METRICS_ENDPOINT }}
+
+jobs:
+  # ====================================================================================
+  # FOUNDATION
+  # ====================================================================================
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
+
+  files-changed:
+    name: Detect which file has changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      backend: ${{ steps.changes.outputs.backend_all }}
+      documentation: ${{ steps.changes.outputs.documentation_all }}
+      documentation_generated: ${{ steps.changes.outputs.documentation_generated_all }}
+      release: ${{ steps.changes.outputs.release_all }}
+      frontend: ${{ steps.changes.outputs.frontend_all }}
+      e2e: ${{ steps.changes.outputs.e2e_all }}
+      python: ${{ steps.changes.outputs.python_all }}
+      javascript: ${{ steps.changes.outputs.javascript_all }}
+      yaml: ${{ steps.changes.outputs.yaml_all }}
+      infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
+      github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
+      testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
+      openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
+      graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
+      dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Check for file changes
+        uses: opsmill/paths-filter@v3.0.2
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-filters.yml
+
+  resolve-inputs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      skip_regression: ${{ steps.resolve.outputs.skip_regression }}
+      pytest_filter: ${{ steps.resolve.outputs.pytest_filter }}
+    steps:
+      - name: Resolve inputs from dispatch or labels
+        id: resolve
+        run: |
+          SKIP_REG="${{ inputs.skip_regression }}"
+          if [[ -z "$SKIP_REG" ]]; then
+            SKIP_REG="false"
+          fi
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'ci/skip-regression') }}" == "true" ]]; then
+            SKIP_REG="true"
+          fi
+          echo "skip_regression=${SKIP_REG}" >> "$GITHUB_OUTPUT"
+          echo "pytest_filter=${{ inputs.pytest_filter }}" >> "$GITHUB_OUTPUT"
+
+  # ====================================================================================
+  # STAGE 1: Quick Checks (linters, formatters, static analysis)
+  # ====================================================================================
+  yaml-lint:
+    if: |
+      needs.files-changed.outputs.yaml == 'true' ||
+      needs.files-changed.outputs.infrahub_uv_files == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Linting: yamllint"
+        run: "uv run yamllint -s ."
+
+  frontend-lint:
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting and linting (Biome)
+        run: pnpm exec biome ci .
+      - name: Check unused exports (Knip)
+        run: pnpm knip
+      - name: Check TypeScript regressions (Betterer)
+        run: pnpm exec betterer ci
+
+  python-lint:
+    if: |
+      needs.files-changed.outputs.backend == 'true' ||
+      needs.files-changed.outputs.python == 'true'
+    needs:
+      - files-changed
+      - prepare-environment
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Linting: ruff check"
+        run: "uv run ruff check . --exclude python_sdk"
+      - name: "Linting: ruff format"
+        run: "uv run ruff format --check --diff --exclude python_sdk ."
+      - name: "Linting: ty check"
+        run: "uv run ty check ."
+
+  markdown-lint:
+    if: |
+      needs.files-changed.outputs.documentation == 'true' ||
+      needs.files-changed.outputs.release == 'true' ||
+      needs.files-changed.outputs.github_workflows
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: "Linting: markdownlint"
+        uses: DavidAnson/markdownlint-cli2-action@v23
+        with:
+          globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
+
+  action-lint:
+    if: needs.files-changed.outputs.github_workflows == 'true'
+    needs: ["files-changed"]
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Check workflow files
+        run: |
+          bash <(curl https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
+        shell: bash
+        env:
+          SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004 --exclude=SC2129
+
+  infrahub-uv-check:
+    if: |
+      needs.files-changed.outputs.infrahub_uv_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    uses: "./.github/workflows/uv-check.yml"
+    with:
+      directory: "./"
+
+  infrahub-testcontainers-uv-check:
+    if: |
+      needs.files-changed.outputs.infrahub_uv_files == 'true' ||
+      github.ref_name == 'stable' ||
+      github.ref_name == 'develop'
+    needs:
+      - "files-changed"
+    uses: "./.github/workflows/uv-check.yml"
+    with:
+      directory: "./python_testcontainers"
+
+  infrahub-testcontainers-check:
+    if: needs.files-changed.outputs.infrahub_uv_files == 'true'
+    needs: ["prepare-environment", "files-changed"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Compare package versions
+        run: |
+          INFRAHUB_VERSION=$(uv version --short)
+          echo "Infrahub version: $INFRAHUB_VERSION"
+
+          cd python_testcontainers
+          TESTCONTAINERS_VERSION=$(uv version --short)
+          echo "Testcontainers version: $TESTCONTAINERS_VERSION"
+
+          if [[ "$INFRAHUB_VERSION" != "$TESTCONTAINERS_VERSION" ]]; then
+            echo "infrahub version: $INFRAHUB_VERSION"
+            echo "infrahub-testcontainers version: $TESTCONTAINERS_VERSION"
+            echo "The version of infrahub-testcontainers must match the version of infrahub"
+            exit 1
+          fi
+
+  frontend-validate-openapi-types:
+    if: |
+      needs.files-changed.outputs.openapi_schema == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate OpenAPI types
+        run: pnpm codegen:openapi
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code src/shared/api/rest/types.generated.ts; then
+            echo "Error: Generated OpenAPI types are out of sync with schema/openapi.json"
+            echo ""
+            echo "The OpenAPI schema has been updated, but the generated TypeScript types haven't been regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd frontend/app"
+            echo "  pnpm codegen:openapi"
+            echo "  git add src/shared/api/rest/types.generated.ts"
+            echo "  git commit -m 'chore: regenerate OpenAPI types'"
+            exit 1
+          fi
+
+  frontend-validate-graphql-types:
+    if: |
+      needs.files-changed.outputs.graphql_schema == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate GraphQL types
+        run: pnpm codegen:graphql
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts; then
+            echo "Error: Generated GraphQL types are out of sync"
+            echo ""
+            echo "The gql.tada generated files need to be regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd frontend/app"
+            echo "  pnpm codegen:graphql"
+            echo "  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts"
+            echo "  git commit -m 'chore: regenerate GraphQL types'"
+            exit 1
+          fi
+
+  # ====================================================================================
+  # STAGE 1 GATE
+  # ====================================================================================
+  stage-1-gate:
+    if: always() && !cancelled()
+    needs:
+      - yaml-lint
+      - python-lint
+      - frontend-lint
+      - markdown-lint
+      - action-lint
+      - infrahub-uv-check
+      - infrahub-testcontainers-uv-check
+      - infrahub-testcontainers-check
+      - frontend-validate-openapi-types
+      - frontend-validate-graphql-types
+      - files-changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check Stage 1 results
+        run: |
+          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+            echo "Stage 1 failed: one or more lint/check jobs failed"
+            exit 1
+          fi
+          if [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+            echo "Stage 1 cancelled"
+            exit 1
+          fi
+          echo "Stage 1 passed (all jobs succeeded or were skipped)"
+
+  # ====================================================================================
+  # STAGE 2: Docker Integration Tests (THE GATE)
+  # ====================================================================================
+  backend-docker-integration:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-1-gate.result == 'success' &&
+      (needs.files-changed.outputs.backend == 'true' ||
+       needs.files-changed.outputs.testcontainers == 'true')
+    needs:
+      - stage-1-gate
+      - prepare-environment
+      - files-changed
+      - resolve-inputs
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 45
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+      PYTEST_XDIST_WORKER_COUNT: 1
+      UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install tini
+        run: "apt-get update && apt-get install -y tini"
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }}>> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: |
+          RUNNER_NAME=$(echo "${{ runner.name }}" | grep -o 'ghrunner[0-9]\+' | sed 's/ghrunner\([0-9]\+\)/ghrunner_\1/')
+          echo "PYTEST_DEBUG_TEMPROOT=/var/lib/github/${RUNNER_NAME}/_temp" >> $GITHUB_ENV
+          echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+          echo INFRAHUB_TESTING_DOCKER_IMAGE="opsmill/infrahub" >> $GITHUB_ENV
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Build container"
+        run: "uv run invoke dev.build"
+      - name: "Run tests"
+        run: |
+          PYTEST_ARGS="backend/tests/integration_docker/"
+          FILTER="${{ needs.resolve-inputs.outputs.pytest_filter }}"
+          if [[ -n "$FILTER" ]]; then
+            PYTEST_ARGS="$PYTEST_ARGS -k $FILTER"
+          fi
+          exec tini -s -g -- uv run pytest $PYTEST_ARGS
+
+  # ====================================================================================
+  # STAGE 2 GATE
+  # ====================================================================================
+  stage-2-gate:
+    if: always() && !cancelled()
+    needs:
+      - backend-docker-integration
+      - resolve-inputs
+      - files-changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      run_regression: ${{ steps.check.outputs.run_regression }}
+    steps:
+      - name: Check Stage 2 results and regression eligibility
+        id: check
+        run: |
+          DOCKER_RESULT="${{ needs.backend-docker-integration.result }}"
+          SKIP_REGRESSION="${{ needs.resolve-inputs.outputs.skip_regression }}"
+
+          # If docker integration failed, block everything
+          if [[ "$DOCKER_RESULT" == "failure" ]]; then
+            echo "Stage 2 failed: Docker integration tests failed"
+            exit 1
+          fi
+
+          if [[ "$DOCKER_RESULT" == "cancelled" ]]; then
+            echo "Stage 2 cancelled"
+            exit 1
+          fi
+
+          # Docker tests may have been skipped (no backend changes) - that's OK
+          if [[ "$DOCKER_RESULT" == "skipped" ]]; then
+            echo "Docker integration tests were skipped (no relevant file changes)"
+          fi
+
+          # Determine if regression tests should run
+          if [[ "$SKIP_REGRESSION" == "true" ]]; then
+            echo "Regression tests skipped by input/label"
+            echo "run_regression=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Regression tests will run"
+            echo "run_regression=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # ====================================================================================
+  # STAGE 3: Regression Tests
+  # ====================================================================================
+  backend-tests-unit:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python ${{ matrix.python-version }}
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Unit Tests"
+        run: "uv run invoke backend.test-unit"
+      - name: "Coveralls : Unit Tests"
+        if: matrix.python-version == '3.13'
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-unit
+          parallel: true
+
+  backend-tests-component:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 45
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Component Tests"
+        run: "uv run invoke backend.test-component"
+      - name: "Coveralls : Component Tests"
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-component
+          parallel: true
+
+  backend-tests-integration:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on:
+      group: "huge-runners"
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Mypy Tests"
+        run: "uv run invoke backend.mypy"
+      - name: "Integration Tests"
+        run: "uv run invoke backend.test-integration"
+      - name: "Coveralls : Integration Tests"
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-integration
+          parallel: true
+
+  backend-tests-functional:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on:
+      group: "huge-runners"
+    timeout-minutes: 30
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Mypy Tests"
+        run: "uv run invoke backend.mypy"
+      - name: "Functional Tests"
+        run: "uv run invoke backend.test-functional"
+      - name: "Coveralls : Functional Tests"
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: backend-functional
+          parallel: true
+
+  backend-testcontainers-unit:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      (
+        needs.files-changed.outputs.testcontainers == 'true' ||
+        needs.files-changed.outputs.github_workflows == 'true'
+      )
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+          - "3.13"
+          - "3.14"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ./python_testcontainers
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Unit Tests"
+        run: "uv run pytest --rootdir=. -c pyproject.toml -vs tests"
+
+  frontend-tests:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.frontend == 'true'
+    needs: ["stage-2-gate", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 30
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: "Install frontend"
+        working-directory: ./frontend/app
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright Browsers
+        working-directory: ./frontend/app
+        run: pnpm exec playwright install chromium
+      - name: "Run unit tests"
+        working-directory: ./frontend/app
+        run: "pnpm test:coverage"
+      - name: "Coveralls : Unit Tests"
+        uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          flag-name: frontend-unit
+          parallel: true
+          file: frontend/app/coverage/lcov.info
+
+  graphql-schema:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: Check out repository code
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Run validation
+        run: uv run invoke schema.validate-graphqlschema
+
+  json-schema:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: Check out repository code
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Run validation
+        run: uv run invoke schema.validate-jsonschema
+
+  backend-validate-generated:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      (needs.files-changed.outputs.backend == 'true' ||
+       needs.files-changed.outputs.documentation == 'true')
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Run validator"
+        run: "uv run invoke backend.validate-generated"
+
+  documentation:
+    defaults:
+      run:
+        working-directory: ./docs
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      (needs.files-changed.outputs.release == 'true' || needs.files-changed.outputs.documentation == 'true')
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: docs/package-lock.json
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Install npm dependencies"
+        working-directory: ./docs
+        run: npm install
+      - name: "Build docs"
+        run: "uv run invoke docs.build"
+
+  validate-generated-documentation:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      (needs.files-changed.outputs.python == 'true' ||
+       needs.files-changed.outputs.documentation == 'true')
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: docs/package-lock.json
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Validate generated documentation"
+        run: "uv run invoke docs.validate"
+
+  validate-documentation-style:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      (needs.files-changed.outputs.release == 'true' ||
+       needs.files-changed.outputs.documentation == 'true')
+    needs: ["stage-2-gate", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Download Vale
+        run: |
+          curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
+          tar -xzf vale.tar.gz
+        env:
+          VALE_VERSION: ${{ env.VALE_VERSION }}
+      - name: "Validate documentation style"
+        run: ./vale --config=./.vale.ini $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
+
+  validate-release-notes-style:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.release == 'true'
+    needs: ["stage-2-gate", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Download Vale
+        run: |
+          curl -sL "https://github.com/errata-ai/vale/releases/download/v${VALE_VERSION}/vale_${VALE_VERSION}_Linux_64-bit.tar.gz" -o vale.tar.gz
+          tar -xzf vale.tar.gz
+        env:
+          VALE_VERSION: ${{ env.VALE_VERSION }}
+      - name: "Validate release notes style"
+        run: ./vale --config=./.vale.ini $(find ./changelog ./docs/docs/release-notes/infrahub -type f \( -name '*.mdx' -o -name '*.md' \)) CHANGELOG.md
+
+  validate-dev-guideline-links:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      (needs.files-changed.outputs.python == 'true' ||
+       needs.files-changed.outputs.dev_guidelines == 'true' ||
+       needs.files-changed.outputs.javascript == 'true')
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on: "ubuntu-22.04"
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: |
+            --no-progress
+            --config dev/lychee.toml
+            --files-from dev/lychee-files.txt
+          fail: true
+
+  E2E-testing-playwright:
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.e2e == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: E2E-testing-playwright
+            env:
+              INFRAHUB_DB_TYPE: neo4j
+              UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+    name: ${{ matrix.name }}
+    env: ${{ matrix.env }}
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+
+      - name: Enable tracing
+        if: github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
+        run: echo "INFRAHUB_TRACE_ENABLE=true" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_INSECURE=false" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_EXPORTER_TYPE=otlp" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "INFRAHUB_TRACE_EXPORTER_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
+      - name: Set tracing configuration
+        run: echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
+
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Set environment variables"
+        run: echo INFRAHUB_IMAGE_VER=local-${{ runner.name }}-${{ github.sha }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: Build Demo
+        run: |
+          echo "::group::Build infrahub container"
+          uv run invoke dev.build
+          echo "::endgroup::"
+
+      - name: Initialize Demo
+        id: init-demo
+        run: uv run invoke dev.start dev.load-infra-schema
+
+      - name: Check Demo Status
+        run: uv run invoke dev.status
+
+      - name: Load Data
+        run: uv run invoke dev.load-infra-data
+
+      - name: Git Repository
+        run: uv run invoke dev.infra-git-import dev.infra-git-create
+
+      - name: Set infrahub address
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: pnpm exec playwright install chromium --no-shell
+
+      # Make chromium ignore netlink messages by returning ReadMessages early
+      - name: Chrome path
+        run: echo CHROME_BIN_PATH="$(pnpm exec playwright install chromium --no-shell --dry-run | grep Install | grep chromium- | awk '{print $3}')/chrome-linux/chrome" >> $GITHUB_ENV
+      - name: Chrome func offset
+        run: echo FUNC_OFFSET="$(objdump -C --file-offsets --disassemble='net::internal::AddressTrackerLinux::ReadMessages(bool*, bool*, bool*)' $CHROME_BIN_PATH | grep 'File Offset' | sed -n 1p | sed -E 's/.*File Offset. (.*)\).*/\1/')" >> $GITHUB_ENV
+      - name: Patch chromium
+        run: printf '\xc3' | dd of=$CHROME_BIN_PATH bs=1 seek=$(($FUNC_OFFSET)) conv=notrunc
+
+      - name: Wait for artifacts to be generated before restarting infrahub
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: pnpm exec playwright test artifact
+
+      - name: Add response delay if required
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: echo "INFRAHUB_MISC_RESPONSE_DELAY=1" >> $GITHUB_ENV && uv run invoke dev.start
+        env:
+          INFRAHUB_MISC_RESPONSE_DELAY: 1
+
+      - name: Set infrahub address
+        if: needs.files-changed.outputs.e2e_tests == 'true'
+        run: |
+          PORT=$(docker compose -p $INFRAHUB_BUILD_NAME port server 8000 | cut -d: -f2)
+          echo "INFRAHUB_ADDRESS=http://localhost:${PORT}" >> $GITHUB_ENV
+
+      - name: Run Playwright tests
+        run: pnpm ci:test:e2e
+
+      - name: playwright-report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.name }}
+          path: frontend/app/playwright-report/
+
+      - name: Containers after tests
+        if: always()
+        run: docker ps -a
+
+      - name: Display server logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1" || true
+
+      - name: Display task worker 1 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1" || true
+
+      - name: Display task worker 2 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2" || true
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1" || true
+
+      - name: Display database logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1" || true
+
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1" || true
+
+      - name: Display server status
+        if: always()
+        run: uv run invoke demo.status
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Wait for vmagent to push metrics"
+        if: always()
+        run: "sleep 10"
+      - name: "Show graph URL"
+        if: always()
+        run: 'echo "https://grafana-prod.tailc018d.ts.net/d/a4461039-bb27-4f57-9b2a-2c7f4e0a3459/e2e-tests?orgId=1&var-pr=$GITHUB_PR_NUMBER&var-job=$JOB_NAME&var-runner=$INFRAHUB_BUILD_NAME&from=$TEST_START_TIME&to=$(date +%s)000"'
+
+  E2E-testing-invoke-demo-start:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      github.base_ref == 'stable' &&
+      needs.files-changed.outputs.e2e == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+
+      - name: Set job name
+        run: echo JOB_NAME="$GITHUB_JOB" >> $GITHUB_ENV
+
+      - name: "Set environment variables"
+        run: |
+          echo INFRAHUB_BUILD_NAME=infrahub-${{ runner.name }} >> $GITHUB_ENV
+      - name: "Clear docker environment"
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+      - name: "Store start time"
+        run: echo TEST_START_TIME=$(date +%s)000 >> $GITHUB_ENV
+
+      - name: Run 'invoke demo'
+        run: |
+          unset INFRAHUB_IMAGE_VER
+          uv run invoke demo.start demo.load-infra-schema demo.load-infra-data
+
+      - name: Display server logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-server-1"
+
+      - name: Display task worker 1 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-1"
+
+      - name: Display task worker 2 logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-worker-2"
+
+      - name: Display task manager logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-task-manager-1"
+
+      - name: Display database logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-database-1"
+
+      - name: Display message-queue logs
+        if: always()
+        run: docker logs "${INFRAHUB_BUILD_NAME}-message-queue-1"
+
+      - name: "Clear docker environment and force vmagent to stop"
+        if: always()
+        run: docker compose -p $INFRAHUB_BUILD_NAME down -v --remove-orphans --rmi local
+
+  E2E-testing-version-upgrade:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.e2e == 'true'
+    needs: ["stage-2-gate", "files-changed"]
+    uses: ./.github/workflows/version-upgrade.yml
+
+  backend-benchmark:
+    if: |
+      always() && !cancelled() &&
+      needs.stage-2-gate.result == 'success' &&
+      needs.stage-2-gate.outputs.run_regression == 'true' &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["stage-2-gate", "prepare-environment", "files-changed"]
+    runs-on:
+      group: huge-runners
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v6
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Update PATH
+        run: "echo ~/.cargo/bin >> $GITHUB_PATH"
+
+      - name: Run all benchmarks
+        if: contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
+        uses: CodSpeedHQ/action@v4
+        with:
+          token: ${{ secrets.CODSPEED_TOKEN }}
+          mode: instrumentation
+          run: "uv run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed"
+
+      - name: Run non-intensive benchmarks
+        if: |
+          !contains(github.event.pull_request.labels.*.name, 'ci/run-intensive-benchmarks')
+        uses: CodSpeedHQ/action@v4
+        with:
+          token: ${{ secrets.CODSPEED_TOKEN }}
+          mode: instrumentation
+          run: "uv run pytest -vvv backend/tests/benchmark/ --benchmark-verbose --codspeed --ignore=backend/tests/benchmark/intensive"
+
+  # ====================================================================================
+  # COVERAGE REPORT
+  # ====================================================================================
+  coverall-report:
+    needs:
+      - backend-tests-component
+      - backend-tests-integration
+      - backend-tests-unit
+      - frontend-tests
+    if: |
+      always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: coverallsapp/github-action@v2
+        continue-on-error: true
+        env:
+          COVERALLS_SERVICE_NUMBER: ${{ github.sha }}
+        with:
+          carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
+          parallel-finished: true

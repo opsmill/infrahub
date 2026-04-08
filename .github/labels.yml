@@ -183,6 +183,10 @@
   description: "Run intensive CodSpeed benchmarks, usually excluded."
   color: "73FA20"
 
+- name: "ci/skip-regression"
+  description: "Skip Stage 3 regression tests in ci-fast workflow"
+  color: "FFA500"
+
 - name: "cd/preview"
   description: "Deploy preview branch"
   color: "d77e96"
