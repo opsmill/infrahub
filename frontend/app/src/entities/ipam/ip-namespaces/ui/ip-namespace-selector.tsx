@@ -49,7 +49,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
         </Row>
       </AriaButton>
 
-      <Popover placement="bottom start" className="w-(--trigger-width)">
+      <Popover placement="bottom start" className="w-(--trigger-width) bg-white">
         <IpNamespaceComboboxList
           onNamespaceSelection={(value) => {
             setCurrentIpNamespace(value);

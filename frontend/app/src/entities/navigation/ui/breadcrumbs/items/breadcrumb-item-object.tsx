@@ -83,7 +83,7 @@ export function BreadcrumbItemObject({
             </Button>
           </Pressable>
 
-          <Popover className="bg-stone-100/50 backdrop-blur">
+          <Popover>
             {parentRelationshipSchema &&
             parentId &&
             parentToChildRelationshipSchema?.kind === "Hierarchy" &&

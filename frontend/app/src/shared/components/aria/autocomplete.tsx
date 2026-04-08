@@ -29,7 +29,7 @@ export interface SearchInputProps extends AriaSearchFieldProps {
 export function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
   return (
     <AriaSearchField
-      className="group sticky flex items-center border-neutral-200 border-b px-2 text-sm"
+      className="group sticky flex items-center border-neutral-300 border-b px-2 text-sm"
       aria-label="Search"
       autoFocus
       {...props}

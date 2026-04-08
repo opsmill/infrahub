@@ -36,7 +36,7 @@ export function BreadcrumbBranchSelector({ currentBranchName }: BreadcrumbBranch
       <MenuTrigger>
         <BreadcrumbSelectorTrigger>{currentBranchName}</BreadcrumbSelectorTrigger>
 
-        <Popover className="bg-stone-100/50 backdrop-blur">
+        <Popover>
           <PopoverDialog aria-label="Branch selector">
             {({ close }) => (
               <Autocomplete filter={contains}>
