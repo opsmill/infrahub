@@ -3,6 +3,7 @@ from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from .git_file_get import GitFileGet, GitFileGetResponse
 from .git_repository_connectivity import GitRepositoryConnectivity
 from .refresh_git_fetch import RefreshGitFetch
+from .refresh_git_repository_branch_deleted import RefreshGitRepositoryBranchDeleted
 from .refresh_registry_branches import RefreshRegistryBranches
 from .refresh_registry_rebasedbranch import RefreshRegistryRebasedBranch
 from .send_echo_request import SendEchoRequest, SendEchoRequestResponse
@@ -11,6 +12,7 @@ MESSAGE_MAP: dict[str, type[InfrahubMessage]] = {
     "git.file.get": GitFileGet,
     "git.repository.connectivity": GitRepositoryConnectivity,
     "refresh.git.fetch": RefreshGitFetch,
+    "refresh.git.branch_deleted": RefreshGitRepositoryBranchDeleted,
     "refresh.registry.branches": RefreshRegistryBranches,
     "refresh.registry.rebased_branch": RefreshRegistryRebasedBranch,
     "send.echo.request": SendEchoRequest,
