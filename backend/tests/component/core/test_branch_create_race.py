@@ -1,4 +1,6 @@
 import asyncio
+from contextlib import contextmanager
+from typing import Any, Generator
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
@@ -16,6 +18,17 @@ from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_database
+
+
+@contextmanager
+def stub_branch_task_infrastructure() -> Generator[None, Any, None]:
+    """Stub out infrastructure services (event bus, tags, components) not available in component tests."""
+    with (
+        patch("infrahub.core.branch.tasks.add_tags", new_callable=AsyncMock),
+        patch("infrahub.core.branch.tasks.get_event_service", new_callable=AsyncMock),
+        patch("infrahub.core.branch.tasks.get_component", new_callable=AsyncMock),
+    ):
+        yield
 
 
 class TestBranchCreateRaceCondition:
@@ -48,34 +61,35 @@ class TestBranchCreateRaceCondition:
         branch_model: BranchCreateModel,
     ) -> None:
         """Simulate a TOCTOU race: both coroutines see 'branch not found' before either creates it.
+        Exactly one should succeed and the other should fail."""
+        real_get_by_name_method = Branch.get_by_name
+        both_saw_not_found = asyncio.Barrier(2)
+        race_triggered = False
 
-        With the distributed lock in place, exactly one should succeed and the other should fail.
-        """
-        real_get_by_name = Branch.get_by_name
-        barrier = asyncio.Barrier(2)
-        synchronized = False
+        async def get_by_name_with_forced_race(**kwargs):
+            """Force both coroutines to see 'branch not found' before either proceeds."""
+            nonlocal race_triggered
+            if classic_method_call_required(kwargs, race_triggered):
+                return await real_get_by_name_method(**kwargs)
 
-        async def interleaved_get_by_name(**kwargs):
-            nonlocal synchronized
-            # Classic behavior case
-            if kwargs.get("name") != branch_model.name or synchronized:
-                return await real_get_by_name(**kwargs)
-
-            # Both coroutines must see "not found" before either proceeds.
-            # After synchronization, all subsequent calls go to the real implementation.
+            # We want to make the two methods wait one another after they have checked that the branch
+            # was not existing in the database
             try:
-                return await real_get_by_name(**kwargs)
+                return await real_get_by_name_method(**kwargs)
             except BranchNotFoundError:
-                await barrier.wait()
-                synchronized = True
+                await both_saw_not_found.wait()
+                race_triggered = True
                 raise
+
+        def classic_method_call_required(kwargs: dict[str, Any], race_triggered: bool) -> bool | Any:
+            # If the branch is not the branch of the test, or if the race situation has already been triggered,
+            # we do not need to fake the behavior
+            return kwargs.get("name") != branch_model.name or race_triggered
 
         with (
             dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-            patch("infrahub.core.branch.tasks.add_tags", new_callable=AsyncMock),
-            patch("infrahub.core.branch.tasks.get_event_service", new_callable=AsyncMock),
-            patch("infrahub.core.branch.tasks.get_component", new_callable=AsyncMock),
-            patch.object(Branch, "get_by_name", side_effect=interleaved_get_by_name),
+            stub_branch_task_infrastructure(),
+            patch.object(Branch, "get_by_name", side_effect=get_by_name_with_forced_race),
         ):
             results = await asyncio.gather(
                 create_branch(model=branch_model, context=context),
