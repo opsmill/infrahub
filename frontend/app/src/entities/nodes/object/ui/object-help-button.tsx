@@ -2,7 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import { Pressable } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Menu, MenuItem, MenuPopover, MenuTrigger } from "@/shared/components/aria/menu";
+import { Menu, MenuItem, MenuTrigger } from "@/shared/components/aria/menu";
+import { Popover } from "@/shared/components/aria/popover";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { QSP } from "@/shared/config/qsp";
@@ -28,7 +29,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
         </Button>
       </Pressable>
 
-      <MenuPopover placement="bottom end">
+      <Popover placement="bottom end">
         <Menu>
           <MenuItem
             isDisabled={!documentationUrl}
@@ -49,7 +50,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
             Schema
           </MenuItem>
         </Menu>
-      </MenuPopover>
+      </Popover>
     </MenuTrigger>
   );
 };

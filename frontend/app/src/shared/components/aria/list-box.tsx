@@ -32,7 +32,7 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
 }
 
 const listBoxItemBaseStyle =
-  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden transition-colors";
+  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden";
 export function ListBoxItem<T extends object>({
   children,
   className,
@@ -46,7 +46,7 @@ export function ListBoxItem<T extends object>({
         classNames(
           disabledStyle,
           listBoxItemBaseStyle,
-          "data-focused:border-stone-100 data-focused:bg-white data-focused:shadow-sm",
+          "data-focused:bg-stone-700/10 data-focused:text-stone-800",
           className
         )
       )}

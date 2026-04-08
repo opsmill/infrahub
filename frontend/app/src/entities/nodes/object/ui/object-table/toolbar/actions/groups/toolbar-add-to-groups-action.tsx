@@ -32,7 +32,7 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
     <DialogTrigger>
       <ToolbarButtonWithTooltip>Add to groups</ToolbarButtonWithTooltip>
 
-      <Popover placement="top start">
+      <Popover placement="top start" className="bg-white">
         <PopoverDialog>
           {({ close }) => {
             return (

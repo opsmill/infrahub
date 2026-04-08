@@ -15,10 +15,10 @@ import {
   Menu,
   MenuItem,
   MenuItemWithTooltip,
-  MenuPopover,
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
+import { Popover } from "@/shared/components/aria/popover";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
@@ -73,7 +73,7 @@ export function ObjectDetailsMenu({
           </Button>
         </Pressable>
 
-        <MenuPopover placement="bottom end">
+        <Popover placement="bottom end">
           <Menu>
             <MenuSection title="Actions">
               <CopyToClipboardMenuItem textToCopy={objectData.id}>Copy ID</CopyToClipboardMenuItem>
@@ -194,7 +194,7 @@ export function ObjectDetailsMenu({
               </MenuItemWithTooltip>
             </MenuSection>
           </Menu>
-        </MenuPopover>
+        </Popover>
       </MenuTrigger>
 
       <SlideOver
