@@ -36,19 +36,27 @@ Determine which mode you are in based on the PR body markers:
      label `needs-human-fix` to the PR and post a comment explaining that automated review
      has reached its limit. **STOP** -- do not post another review.
 
-5. Post a **GitHub PR review** (not a plain comment) with:
-   - An overall verdict: APPROVED / APPROVED WITH SUGGESTIONS / CHANGES REQUESTED
+5. Post a **GitHub PR comment** (do NOT submit a PR review — no approve, no request-changes).
+   Downstream pipeline agents trigger on the verdict marker in your comment.
+   Your comment must contain:
+   - A verdict marker as the **very first line**, exactly one of these HTML comments:
+     - `<!-- AGENT_REVIEW_VERDICT: TEST_APPROVED -->` — test meets quality standards
+     - `<!-- AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED -->` — test needs revision
+     - `<!-- AGENT_REVIEW_VERDICT: FIX_APPROVED -->` — fix meets quality standards
+     - `<!-- AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED -->` — fix needs revision
+     Pick the marker matching your current mode (test review or fix review) and verdict.
+   - An overall verdict heading: APPROVED / APPROVED WITH SUGGESTIONS / CHANGES REQUESTED
    - One section per dimension for your current mode
-   - Actionable inline suggestions where relevant (use the PR review inline comment feature)
+   - Actionable suggestions with file paths and line numbers where relevant
    - A final "Recommended next steps" section
    - The hidden marker `<!-- AGENT_REVIEW_ITERATION: test-N -->` or
      `<!-- AGENT_REVIEW_ITERATION: fix-N -->` where N is the current iteration number
      for this mode (1 for first review, 2 for second, etc.)
 
-   When posting CHANGES REQUESTED:
+   When your verdict is CHANGES REQUESTED:
    - Be specific: each requested change must reference a file, line, and what to do.
      Vague feedback like "improve error handling" wastes an iteration.
-   - Prioritize: only request changes for issues that would block merge. Minor style
+   - Prioritize: only flag issues that would block merge. Minor style
      suggestions should go under APPROVED WITH SUGGESTIONS instead.
 
 Be direct. The human reviewer will use your output to decide whether to merge,

@@ -21,8 +21,9 @@ described in the sections below.
 
 Determine which mode you are in:
 
-- **Initial fix mode:** You were triggered by the reviewer approving the test.
-  A draft PR already exists (opened by the test-writer). Follow the "Initial fix" section.
+- **Initial fix mode:** You were triggered by a `/bug-fix` command. The reviewer has already
+  approved the test (validated by the workflow). A draft PR already exists (opened by the
+  test-writer). Follow the "Initial fix" section.
 - **Revision mode:** You were triggered by a PR review requesting changes on your fix.
   Skip to the "Revision mode" section below.
 

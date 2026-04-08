@@ -95,5 +95,3 @@ Verify the issue has enough information to work with. Check for:
 
 Use the **exact branch name** in the comment -- the test-writer agent will check it out by name.
 
-9. After posting the comment, dispatch the `bug-agent-test` workflow to continue the pipeline.
-   Pass the issue number so the test-writer agent knows which issue to work on.

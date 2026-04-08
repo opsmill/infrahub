@@ -20,14 +20,15 @@ described in the sections below.
 
 Determine which mode you are in:
 
-- **Initial test mode:** You were triggered by an analyst comment (`AGENT_ANALYSIS_COMPLETE`).
-  No PR exists yet. Follow the "Initial test" section below.
+- **Initial test mode:** You were triggered by a `/bug-test` command. The analyst's comment
+  (containing `AGENT_ANALYSIS_COMPLETE`) is provided in the metadata below. No PR exists yet.
+  Follow the "Initial test" section below.
 - **Revision mode:** You were triggered by a PR review requesting changes. A draft PR
   already exists. Skip to the "Revision mode" section below.
 
 ### Initial test -- setup
 
-1. The analyst's comment contains a **Branch** field. Check out that branch:
+1. The analyst's comment (provided in the metadata below) contains a **Branch** field. Check out that branch:
    `git checkout <branch name from analyst comment>`
 2. Read the analyst's full comment to understand the root cause and affected files.
 3. If the branch does not exist or the analyst's comment is missing required fields
