@@ -696,13 +696,25 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                     return True
         return False
 
+    def check_attr_in_single_uniqueness_constraint(self, attr: str) -> bool:
+        """Return True only if the attribute appears in a single-attribute uniqueness constraint."""
+        if not self.uniqueness_constraints:
+            return False
+        for constraint_paths in self.uniqueness_constraints:
+            if len(constraint_paths) > 1:
+                continue
+            for constraint_path in constraint_paths:
+                if constraint_path.startswith(f"{attr}__") or constraint_path == attr:
+                    return True
+        return False
+
     def check_if_attr_supports_profiles(self, attribute_schema: AttributeSchema) -> bool:
         return attribute_schema.support_profiles and not self.check_attr_in_uniqueness_constraint(
             attr=attribute_schema.name
         )
 
     def check_if_attr_supports_templates(self, attribute_schema: AttributeSchema) -> bool:
-        return attribute_schema.support_templates and not self.check_attr_in_uniqueness_constraint(
+        return attribute_schema.support_templates and not self.check_attr_in_single_uniqueness_constraint(
             attr=attribute_schema.name
         )
 

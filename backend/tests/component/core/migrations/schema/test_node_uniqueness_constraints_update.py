@@ -289,10 +289,10 @@ async def car_person_schema_with_template(
 async def car_person_schema_nbr_seats_in_constraint_with_template(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> SchemaBranch:
-    """Schema where nbr_seats IS in a uniqueness constraint — templates exclude nbr_seats."""
+    """Schema where nbr_seats IS in a single-attr uniqueness constraint — templates exclude nbr_seats."""
     registry.schema.register_schema(schema=SchemaRoot(generics=[core_object_template]), branch=default_branch.name)
     car_node = next(n for n in car_person_schema_unregistered.nodes if n.name == "Car")
-    car_node.uniqueness_constraints = [["name__value", "nbr_seats__value"]]
+    car_node.uniqueness_constraints = [["name__value"], ["nbr_seats__value"]]
     for node in car_person_schema_unregistered.nodes:
         node.generate_template = True
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
@@ -355,7 +355,7 @@ async def test_migration_attribute_added_to_uniqueness_constraint_for_template(
 
     candidate_schema = schema.duplicate()
     new_car_schema = candidate_schema.get(name="TestCar")
-    new_car_schema.uniqueness_constraints = [["name__value", "nbr_seats__value"]]
+    new_car_schema.uniqueness_constraints = [["name__value"], ["nbr_seats__value"]]
 
     migration = NodeUniquenessConstraintsUpdateMigration(
         previous_node_schema=prev_car_schema,
@@ -389,6 +389,7 @@ async def test_migration_attribute_removed_from_uniqueness_constraint_for_templa
     candidate_schema = schema.duplicate()
     new_car_schema = candidate_schema.get(name="TestCar")
     new_car_schema.uniqueness_constraints = [["name__value"]]
+    new_car_schema.get_attribute("nbr_seats").unique = False
 
     migration = NodeUniquenessConstraintsUpdateMigration(
         previous_node_schema=prev_car_schema,

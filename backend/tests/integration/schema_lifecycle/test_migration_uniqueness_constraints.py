@@ -310,9 +310,9 @@ class TestUniquenessConstraintMigrationAddToConstraintTemplate(TestSchemaLifecyc
 
     @pytest.fixture(scope="class")
     def schema_car_nbr_seats_in_constraint(self, schema_car_nbr_seats_no_constraint: dict[str, Any]) -> dict[str, Any]:
-        """Car schema — nbr_seats in a uniqueness constraint. Templates should exclude nbr_seats."""
+        """Car schema — nbr_seats in a single-attr uniqueness constraint. Templates should exclude nbr_seats."""
         schema = copy.deepcopy(schema_car_nbr_seats_no_constraint)
-        schema["uniqueness_constraints"] = [["name__value", "nbr_seats__value"]]
+        schema["uniqueness_constraints"] = [["name__value"], ["nbr_seats__value"]]
         return schema
 
     @pytest.fixture(scope="class")
@@ -389,31 +389,30 @@ class TestUniquenessConstraintMigrationAddToConstraintTemplate(TestSchemaLifecyc
 
 
 class TestUniquenessConstraintMigrationRemoveFromConstraintTemplate(TestSchemaLifecycleBase):
-    """Verify that removing an attribute from a uniqueness constraint triggers the migration
-    that adds that attribute back to existing template nodes."""
+    """Verify that removing an attribute from a single-attr uniqueness constraint triggers the migration
+    that adds that attribute back to existing template nodes.
+    """
 
     @pytest.fixture(scope="class")
-    def schema_car_compound_constraint_only(self) -> dict[str, Any]:
-        """Car schema — only a compound uniqueness constraint on (name, nbr_seats).
-        name has no individual unique flag, so nbr_seats is excluded from templates."""
+    def schema_car_single_nbr_seats_constraint(self) -> dict[str, Any]:
+        """Car schema — nbr_seats in a single-attr uniqueness constraint, so it is excluded from templates."""
         return {
             "name": "Car",
             "namespace": "Testing",
             "include_in_menu": True,
             "label": "Car",
             "generate_template": True,
-            "uniqueness_constraints": [["name__value", "nbr_seats__value"]],
+            "uniqueness_constraints": [["nbr_seats__value"]],
             "attributes": [
-                {"name": "name", "kind": "Text"},
+                {"name": "name", "kind": "Text", "unique": True},
                 {"name": "nbr_seats", "kind": "Number", "optional": True},
                 {"name": "color", "kind": "Text", "optional": True},
             ],
         }
 
     @pytest.fixture(scope="class")
-    def schema_car_name_unique_no_compound(self) -> dict[str, Any]:
-        """Car schema — name is individually unique, no compound constraint.
-        nbr_seats is free to be included in templates."""
+    def schema_car_no_nbr_seats_constraint(self) -> dict[str, Any]:
+        """Car schema — nbr_seats has no uniqueness constraint, so it is included in templates."""
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -429,14 +428,14 @@ class TestUniquenessConstraintMigrationRemoveFromConstraintTemplate(TestSchemaLi
         }
 
     @pytest.fixture(scope="class")
-    def schema_step_01(self, schema_car_compound_constraint_only: dict[str, Any]) -> dict[str, Any]:
-        """Initial schema: nbr_seats IS in the uniqueness constraint (templates exclude it)."""
-        return {"version": "1.0", "nodes": [schema_car_compound_constraint_only]}
+    def schema_step_01(self, schema_car_single_nbr_seats_constraint: dict[str, Any]) -> dict[str, Any]:
+        """Initial schema: nbr_seats in a single-attr constraint (templates exclude it)."""
+        return {"version": "1.0", "nodes": [schema_car_single_nbr_seats_constraint]}
 
     @pytest.fixture(scope="class")
-    def schema_step_02(self, schema_car_name_unique_no_compound: dict[str, Any]) -> dict[str, Any]:
-        """Updated schema: nbr_seats removed from the compound constraint (templates should include it)."""
-        return {"version": "1.0", "nodes": [schema_car_name_unique_no_compound]}
+    def schema_step_02(self, schema_car_no_nbr_seats_constraint: dict[str, Any]) -> dict[str, Any]:
+        """Updated schema: nbr_seats constraint removed (templates should include it)."""
+        return {"version": "1.0", "nodes": [schema_car_no_nbr_seats_constraint]}
 
     @pytest.fixture(scope="class")
     async def initial_dataset(
@@ -446,7 +445,7 @@ class TestUniquenessConstraintMigrationRemoveFromConstraintTemplate(TestSchemaLi
         schema_step_01: dict[str, Any],
     ) -> None:
         await load_schema(db=db, schema=schema_step_01)
-        # nbr_seats is excluded from templates because it is in the uniqueness constraint
+        # nbr_seats is excluded from templates because it is in a single-attr uniqueness constraint
         template = await Node.init(schema=TEMPLATE_CAR_KIND, db=db)
         await template.new(db=db, template_name="car-template-1")
         await template.save(db=db)
@@ -457,7 +456,7 @@ class TestUniquenessConstraintMigrationRemoveFromConstraintTemplate(TestSchemaLi
         default_branch: Branch,
         initial_dataset: None,
     ) -> None:
-        """Baseline: template has no nbr_seats attribute because it is in the uniqueness constraint."""
+        """Baseline: template has no nbr_seats attribute because it is in a single-attr uniqueness constraint."""
         await assert_attribute_absent(
             db=db,
             node_label=TEMPLATE_CAR_KIND,
@@ -484,8 +483,8 @@ class TestUniquenessConstraintMigrationRemoveFromConstraintTemplate(TestSchemaLi
         initial_dataset: None,
         schema_step_02: dict[str, Any],
     ) -> None:
-        """Loading a schema that removes nbr_seats from a uniqueness constraint triggers the migration
-        that adds nbr_seats to existing template nodes."""
+        """Loading a schema that removes nbr_seats from a single-attr uniqueness constraint triggers the
+        migration that adds nbr_seats to existing template nodes."""
         response = await client.schema.load(schemas=[schema_step_02])
         assert not response.errors
 

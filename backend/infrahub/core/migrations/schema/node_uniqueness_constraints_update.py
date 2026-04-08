@@ -36,9 +36,14 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
             return result
 
         for attr in self.new_schema.attributes:
-            previous_supports_profiles = self.previous_schema.check_if_attr_supports_profiles(attribute_schema=attr)
+            prev_attr = self.previous_schema.get_attribute_or_none(name=attr.name) or attr
+            previous_supports_profiles = self.previous_schema.check_if_attr_supports_profiles(
+                attribute_schema=prev_attr
+            )
             new_supports_profiles = self.new_schema.check_if_attr_supports_profiles(attribute_schema=attr)
-            previous_supports_templates = self.previous_schema.check_if_attr_supports_templates(attribute_schema=attr)
+            previous_supports_templates = self.previous_schema.check_if_attr_supports_templates(
+                attribute_schema=prev_attr
+            )
             new_supports_templates = self.new_schema.check_if_attr_supports_templates(attribute_schema=attr)
 
             queries_to_run: list[type[MigrationBaseQuery]] = []
