@@ -110,7 +110,7 @@ async def graph_generator() -> GraphProfileGenerator:
     return GraphProfileGenerator()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def increase_query_size_limit() -> None:
     original_query_size_limit = config.SETTINGS.database.query_size_limit
     config.SETTINGS.database.query_size_limit = 1_000_000

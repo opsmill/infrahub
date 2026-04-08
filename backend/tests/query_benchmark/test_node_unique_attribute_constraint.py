@@ -51,7 +51,7 @@ async def benchmark_uniqueness_query(
     registry.schema.register_schema(schema=car_person_schema_root, branch=default_branch.name)
 
     # Build function to profile
-    async def init_and_execute():
+    async def init_and_execute() -> None:
         # Need this function to avoid loading data between `init` and `execute` methods.
         query = await NodeUniqueAttributeConstraintQuery.init(
             db=db_profiling_queries,
