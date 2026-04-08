@@ -585,9 +585,10 @@ async def migrate_database(
             if validation_result and not validation_result.success:
                 for error in validation_result.errors:
                     migration_console.log(f"    Error: {error}")
-            migration_console.log(
-                f"    Hint: Re-run this specific migration with: infrahub db migrate --migration-number {migration_num}"
-            )
+            if not verbose:
+                migration_console.log(
+                    f"    Hint: Use --verbose for detailed output, or re-run with: infrahub db migrate --migration-number {migration_num} --verbose"
+                )
             return False
 
     total_elapsed = time.perf_counter() - total_start
