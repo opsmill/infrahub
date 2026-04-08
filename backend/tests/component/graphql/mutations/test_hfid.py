@@ -10,6 +10,7 @@ from infrahub.core.node import Node
 from infrahub.core.registry import registry
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.database import InfrahubDatabase
+from infrahub.events.node_action import NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
 from infrahub.services import InfrahubServices
 from tests.adapters.event import MemoryInfrahubEvent
@@ -175,6 +176,77 @@ query MyTShirt($id: ID!) {
     }
 }
 """
+
+
+async def test_update_hfid_sends_node_updated_event(
+    db: InfrahubDatabase,
+    register_core_models_schema: None,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_first_account: AccountSession,
+    first_account: Node,
+) -> None:
+    """UpdateHFID emits a NodeUpdatedEvent whose changelog contains the correct display label,
+    even when the display label template references attributes on the far side of a relationship."""
+    schema_root = SchemaRoot(nodes=[COLOR, TSHIRT])
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    await define_permissions(
+        account=first_account,
+        db=db,
+        global_permissions=[
+            GlobalPermission(
+                action=GlobalPermissions.UPDATE_OBJECT_HFID_DISPLAY_LABEL.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            )
+        ],
+        object_permissions=[
+            ObjectPermission(
+                namespace=TSHIRT.namespace,
+                name=TSHIRT.name,
+                action=PermissionAction.UPDATE.value,
+                decision=PermissionDecision.ALLOW_ALL.value,
+            ),
+        ],
+    )
+
+    color = await Node.init(db=db, schema=COLOR.kind)
+    await color.new(db=db, name="Blue", description="A vibrant blue")
+    await color.save(db=db)
+
+    tshirt = await Node.init(db=db, schema=TSHIRT.kind)
+    await tshirt.new(db=db, name="Ocean", color=color)
+    await tshirt.save(db=db)
+
+    # TSHIRT.display_label is "{{ name__value }} {{ color__name__value }}"
+    # so display_label traverses the relationship to the color node
+    memory_event = MemoryInfrahubEvent()
+    service = await InfrahubServices.new(event=memory_event)
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db, branch=default_branch, account_session=session_first_account, service=service
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=UPDATE_HFID,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": tshirt.get_id(), "kind": TSHIRT.kind, "value": ["Space"]},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubUpdateHFID"]["ok"] is True
+
+    assert len(memory_event.events) == 1
+    event = memory_event.events[0]
+    assert isinstance(event, NodeUpdatedEvent)
+    assert event.node_id == tshirt.id
+    assert event.kind == TSHIRT.kind
+    assert "human_friendly_id" in event.fields
+    # The display label in the changelog must reflect the relationship traversal
+    assert event.changelog.display_label == "Ocean Blue"
 
 
 async def test_create_nodes_with_relational_hfids(
