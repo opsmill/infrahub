@@ -20,6 +20,6 @@ jobs:
         with:
           python-version: 3.13
       - name: "Setup Python environment"
-        run: "pip install invoke toml pydantic-settings"
+        run: "pip install invoke toml pydantic-settings httpx"
       - name: Scan for prohibited keywords
         run: "invoke main.scan"
