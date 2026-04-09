@@ -13,16 +13,16 @@ class TestHealthEndpoint(TestInfrahubApp):
         self,
         test_client: InfrahubTestClient,
     ) -> None:
-        response = await test_client.get("/health")
+        response = await test_client.get("/api/health")
         assert response.status_code == 200
 
         data = response.json()
         assert data["status"] == "healthy"
-        assert len(data["checks"]) == 3
+        assert len(data["checks"]) == 4
         assert "timestamp" in data
 
         check_names = {check["name"] for check in data["checks"]}
-        assert check_names == {"database", "message_bus", "cache"}
+        assert check_names == {"database", "message_bus", "cache", "task_manager"}
 
         for check in data["checks"]:
             assert check["status"] == "up"
@@ -33,21 +33,21 @@ class TestHealthEndpoint(TestInfrahubApp):
         test_client: InfrahubTestClient,
     ) -> None:
         """Verify the health endpoint works without any authentication headers."""
-        response = await test_client.get("/health", headers={})
+        response = await test_client.get("/api/health", headers={})
         assert response.status_code == 200
 
     async def test_health_response_content_type(
         self,
         test_client: InfrahubTestClient,
     ) -> None:
-        response = await test_client.get("/health")
+        response = await test_client.get("/api/health")
         assert response.headers["content-type"] == "application/json"
 
     async def test_health_response_structure(
         self,
         test_client: InfrahubTestClient,
     ) -> None:
-        response = await test_client.get("/health")
+        response = await test_client.get("/api/health")
         data = response.json()
 
         assert "status" in data
@@ -67,7 +67,7 @@ class TestHealthEndpoint(TestInfrahubApp):
         test_client: InfrahubTestClient,
     ) -> None:
         """Verify no hostnames, ports, or connection strings appear in the response."""
-        response = await test_client.get("/health")
+        response = await test_client.get("/api/health")
         body = response.text
 
         assert "localhost" not in body

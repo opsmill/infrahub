@@ -536,6 +536,34 @@
                 }
             }
         },
+        "/api/health": {
+            "get": {
+                "summary": "Health",
+                "operationId": "health_api_health_get",
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HealthResponse"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/config": {
             "get": {
                 "summary": "Get Config",
@@ -2137,34 +2165,6 @@
                             "application/json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/health": {
-            "get": {
-                "summary": "Health",
-                "operationId": "health_health_get",
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HealthResponse"
-                                }
-                            }
-                        }
-                    },
-                    "503": {
-                        "description": "Service Unavailable",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HealthResponse"
                                 }
                             }
                         }
@@ -4384,8 +4384,7 @@
                         "$ref": "#/components/schemas/DependencyName"
                     },
                     "status": {
-                        "type": "string",
-                        "title": "Status"
+                        "$ref": "#/components/schemas/DependencyStatus"
                     },
                     "error": {
                         "anyOf": [
@@ -4410,9 +4409,18 @@
                 "enum": [
                     "database",
                     "message_bus",
-                    "cache"
+                    "cache",
+                    "task_manager"
                 ],
                 "title": "DependencyName"
+            },
+            "DependencyStatus": {
+                "type": "string",
+                "enum": [
+                    "up",
+                    "down"
+                ],
+                "title": "DependencyStatus"
             },
             "DiffAction": {
                 "type": "string",
@@ -4875,8 +4883,7 @@
             "HealthResponse": {
                 "properties": {
                     "status": {
-                        "type": "string",
-                        "title": "Status"
+                        "$ref": "#/components/schemas/OverallStatus"
                     },
                     "checks": {
                         "items": {
@@ -5751,6 +5758,14 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "NumberPoolParameters"
+            },
+            "OverallStatus": {
+                "type": "string",
+                "enum": [
+                    "healthy",
+                    "unhealthy"
+                ],
+                "title": "OverallStatus"
             },
             "PasswordCredential": {
                 "properties": {
