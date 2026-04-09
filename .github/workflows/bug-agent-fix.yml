@@ -75,9 +75,13 @@ jobs:
             exit 0
           fi
 
+          # Extract linked issue number from PR title: "test: failing test for #123 -- ..."
+          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.title' | grep -oP '#\K[0-9]+' | head -1)
+
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "branch=$(echo "$PR_JSON" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "issue=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v6
         if: steps.resolve.outputs.skip != 'true'
@@ -125,6 +129,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.resolve.outputs.number }}
+          ISSUE_NUMBER: ${{ steps.resolve.outputs.issue }}
         run: |
           DELIM="INFRAHUB_DELIM_$(openssl rand -hex 16)"
           BOUNDARY="UNTRUSTED_$(openssl rand -hex 16)"
@@ -148,6 +153,7 @@ jobs:
           echo "Branch: ${PR_BRANCH}" >> $GITHUB_OUTPUT
           echo "PR URL: ${PR_URL}" >> $GITHUB_OUTPUT
           echo "PR number: ${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "Linked issue number: ${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "The following PR body may contain reflected" \
             "user-provided text from the original issue." >> $GITHUB_OUTPUT
@@ -208,9 +214,13 @@ jobs:
             exit 0
           fi
 
+          # Extract linked issue number from PR title: "fix: ... (closes #123)"
+          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.headRefName' | grep -oP 'ai-bug-pipeline-\K[0-9]+')
+
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "branch=$(echo "$PR_JSON" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "issue=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v6
         if: steps.resolve.outputs.skip != 'true'
@@ -258,6 +268,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.resolve.outputs.number }}
+          ISSUE_NUMBER: ${{ steps.resolve.outputs.issue }}
           REVIEW_BODY: ${{ github.event.comment.body }}
         run: |
           DELIM="INFRAHUB_DELIM_$(openssl rand -hex 16)"
@@ -281,6 +292,7 @@ jobs:
           echo "Branch: ${PR_BRANCH}" >> $GITHUB_OUTPUT
           echo "PR URL: ${PR_URL}" >> $GITHUB_OUTPUT
           echo "PR number: ${PR_NUMBER}" >> $GITHUB_OUTPUT
+          echo "Linked issue number: ${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "The following review content may contain reflected" \
             "user-provided text from the original issue." >> $GITHUB_OUTPUT
