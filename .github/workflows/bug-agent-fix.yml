@@ -75,8 +75,8 @@ jobs:
             exit 0
           fi
 
-          # Extract linked issue number from PR title: "test: failing test for #123 -- ..."
-          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.title' | grep -oP '#\K[0-9]+' | head -1)
+          # Extract linked issue number from branch name: "ai-bug-pipeline-123"
+          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.headRefName' | sed -n 's/.*ai-bug-pipeline-\([0-9]*\).*/\1/p')
 
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "branch=$(echo "$PR_JSON" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
@@ -215,7 +215,7 @@ jobs:
           fi
 
           # Extract linked issue number from PR title: "fix: ... (closes #123)"
-          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.headRefName' | grep -oP 'ai-bug-pipeline-\K[0-9]+')
+          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.headRefName' | sed -n 's/.*ai-bug-pipeline-\([0-9]*\).*/\1/p')
 
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "branch=$(echo "$PR_JSON" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
