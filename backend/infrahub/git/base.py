@@ -562,34 +562,49 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         raise NotImplementedError()
 
     def has_conflicting_changes(self, target_branch: str, source_branch: str) -> bool:
-        """Use merge tree to spot conflicts and tell if there is any."""
+        """Check if merging source_branch into target_branch would produce conflicts.
+
+        Uses the modern ``git merge-tree --write-tree`` form (git 2.38+) which
+        returns exit code 0 for a clean merge and exit code 1 for conflicts,
+        avoiding false positives from naive string matching of conflict markers
+        in file content.
+        """
         repo = self.get_git_repo_main()
 
         if repo.remotes:
-            # Ensure we have the latest changes from the remote
-            info = repo.remotes.origin.fetch(source_branch)
-
-            target = repo.branches[target_branch]
-            source = repo.commit(info[0].ref)
-
-            merge_base = repo.merge_base(target.commit, source)[0]
-            merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.hexsha)
+            repo.remotes.origin.fetch(source_branch)
+            source_ref = f"origin/{source_branch}"
         else:
-            target = repo.branches[target_branch]
-            source = repo.branches[source_branch]
+            source_ref = source_branch
 
-            merge_base = repo.merge_base(target.commit, source)[0]
-            merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.commit.hexsha)
+        target_ref = target_branch
 
-        log.debug(
-            f"Merging {source_branch} into {target_branch} will bring changes",
-            repository=self.name,
-            source=source_branch,
-            target=target_branch,
-            merge_structure=merge_tree_output,
-        )
-
-        return any(marker in merge_tree_output for marker in ("<<<<<<<", "=======", ">>>>>>>"))
+        try:
+            repo.git.merge_tree("--write-tree", target_ref, source_ref)
+            log.debug(
+                f"Merging {source_branch} into {target_branch} has no conflicts",
+                repository=self.name,
+                source=source_branch,
+                target=target_branch,
+            )
+            return False
+        except GitCommandError as exc:
+            if exc.status == 1:
+                log.debug(
+                    f"Merging {source_branch} into {target_branch} would produce conflicts",
+                    repository=self.name,
+                    source=source_branch,
+                    target=target_branch,
+                )
+                return True
+            log.error(
+                f"Unexpected error running git merge-tree for {source_branch} into {target_branch}",
+                repository=self.name,
+                source=source_branch,
+                target=target_branch,
+                error=str(exc),
+            )
+            raise
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
@@ -849,7 +864,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             return False
 
         # Make sure the branch won't conflict on merge
-        if self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name):
+        try:
+            has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
+        except GitCommandError as exc:
+            log.error(
+                "Unable to determine merge conflicts for branch",
+                branch=branch_name,
+                repository=self.name,
+                error=str(exc),
+            )
+            return False
+
+        if has_conflicts:
             get_run_logger().warning(
                 f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing the branch into Infrahub"
             )
