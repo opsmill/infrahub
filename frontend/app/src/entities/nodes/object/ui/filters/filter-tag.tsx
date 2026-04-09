@@ -33,10 +33,12 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
           <span>{condition}</span>
         </>
       )}
-      {(value || value === 0) && (
+      {(value || value === 0 || value === false) && (
         <>
           <Separator orientation="vertical" className="h-6 bg-stone-300" />
-          <span className="max-w-xs truncate font-medium text-custom-blue-700">{value}</span>
+          <span className="max-w-xs truncate font-medium text-custom-blue-700">
+            {typeof value === "boolean" ? String(value) : value}
+          </span>
         </>
       )}
       <Button
