@@ -889,6 +889,7 @@ class SchemaBranch:
 
     def validate_display_label(self) -> None:
         self.display_labels = DisplayLabels()
+        inherited_display_label_nodes: set[str] = set()
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
@@ -910,9 +911,27 @@ class SchemaBranch:
                         ]
                     )
                 self.set(name=name, schema=update_candidate)
+            elif (
+                node_schema.display_label is None
+                and not node_schema.display_labels
+                and isinstance(node_schema, NodeSchema)
+            ):
+                # Inherit display_label from a parent generic if exactly one defines it.
+                # Validation is skipped for inherited nodes because the generic's display_label
+                # is already validated on the generic itself.
+                inherited = [
+                    self.get(name=generic, duplicate=False).display_label
+                    for generic in node_schema.inherit_from
+                    if self.get(name=generic, duplicate=False).display_label
+                ]
+                if len(inherited) == 1:
+                    update_candidate = self.get(name=name, duplicate=True)
+                    update_candidate.display_label = inherited[0]
+                    self.set(name=name, schema=update_candidate)
+                    inherited_display_label_nodes.add(name)
 
             node_schema = self.get(name=name, duplicate=False)
-            if not node_schema.display_label:
+            if not node_schema.display_label or name in inherited_display_label_nodes:
                 continue
 
             self._validate_display_label(node=node_schema)

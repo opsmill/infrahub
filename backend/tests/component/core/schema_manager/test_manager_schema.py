@@ -1884,6 +1884,20 @@ async def test_validate_display_label_success(schema_all_in_one: dict[str, Any],
     schema.validate_display_label()
 
 
+async def test_validate_display_label_inherited_from_generic(schema_all_in_one: dict[str, Any]) -> None:
+    """Node schemas with no display_label should inherit display_label from a parent generic."""
+    schema_dict = _get_schema_by_kind(schema_all_in_one, "InfraGenericInterface")
+    schema_dict["display_label"] = "my_generic_name__value"
+
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
+
+    schema.validate_display_label()
+
+    node = schema.get(name="TestingCriticality", duplicate=False)
+    assert node.display_label == "my_generic_name__value"
+
+
 @pytest.mark.parametrize(
     "display_labels,expected_error",
     [
