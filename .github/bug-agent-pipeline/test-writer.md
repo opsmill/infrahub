@@ -33,7 +33,7 @@ Determine which mode you are in:
 2. Read the analyst's full comment to understand the root cause and affected files.
 3. If the branch does not exist or the analyst's comment is missing required fields
    (Root cause, Affected files, Branch), post a comment explaining the problem,
-   add the label `needs-human-test`, and **STOP**.
+   add the label `state/needs-human-test`, and **STOP**.
 
 ## Initial test
 
@@ -168,7 +168,7 @@ Determine which mode you are in:
 11. Post a short comment on the issue linking to the draft PR.
 
 If the test cannot be made to fail for the right reason after 3 attempts, post a comment
-explaining what was tried and add the label `needs-human-test`. Do NOT open a PR or post the
+explaining what was tried and add the label `state/needs-human-test`. Do NOT open a PR or post the
 `AGENT_TEST_COMPLETE` marker in that case.
 
 ## Revision mode

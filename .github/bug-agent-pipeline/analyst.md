@@ -33,7 +33,7 @@ Verify the issue has enough information to work with. Check for:
      - CLEAR: intent, reproduction scenario, and expected behavior are understandable (even if some details like affected release are missing).
      - UNCLEAR: the intent and reproduction scenario are not understandable.
    - If the bug is UNCLEAR, post a comment asking the reporter for clarification,
-     add the label `needs-more-info`, and **STOP**. Do NOT create a branch, push,
+     add the label `state/need-more-info`, and **STOP**. Do NOT create a branch, push,
      or include the `AGENT_ANALYSIS_COMPLETE` marker.
 
 2. Read root `AGENTS.md` and `dev/documentation-architecture.md` in order to determine which code packages are related to the issue. Then:
@@ -44,7 +44,7 @@ Verify the issue has enough information to work with. Check for:
 
 4. Identify the most likely root cause(s) -- point to specific files and lines.
    - If you **cannot** identify a root cause after exploration, post a comment asking the
-     reporter for more details, add the label `needs-more-info`, and **STOP**.
+     reporter for more details, add the label `state/need-more-info`, and **STOP**.
      Do NOT create a branch, push, or include the `AGENT_ANALYSIS_COMPLETE` marker.
 
 5. Formulate a fix strategy. This is NOT the exact code -- it is the recommended approach:

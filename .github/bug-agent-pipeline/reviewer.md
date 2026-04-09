@@ -33,7 +33,7 @@ Determine which mode you are in based on the PR body markers:
    `<!-- AGENT_REVIEW_ITERATION: fix-N -->` markers in previous PR review comments
    (matching the current mode). Count only the markers for your current mode.
    - If there are already **3 or more** previous iterations for the current mode, add the
-     label `needs-human-fix` to the PR and post a comment explaining that automated review
+     label `state/needs-human-fix` to the PR and post a comment explaining that automated review
      has reached its limit. **STOP** -- do not post another review.
 
 5. Post a **GitHub PR comment** (do NOT submit a PR review — no approve, no request-changes).

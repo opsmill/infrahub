@@ -33,7 +33,7 @@ Determine which mode you are in:
 2. Read the analyst's comment on the linked issue to find the root cause analysis
    and fix strategy.
 3. If the branch does not exist, post a comment on the issue explaining the problem,
-   add the label `needs-human-fix`, and **STOP**.
+   add the label `state/needs-human-fix`, and **STOP**.
 
 ## Initial fix
 
@@ -118,7 +118,7 @@ Determine which mode you are in:
 
 7. **Scope check:** If the fix requires changes to more than ~10 files or fundamentally
    alters a public API contract, post a comment on the issue explaining the scope,
-   add the label `needs-human-fix`, and **STOP**.
+   add the label `state/needs-human-fix`, and **STOP**.
 
 8. Update the PR:
    - Push your fix commits to the PR branch.
@@ -158,5 +158,5 @@ If at any point you determine that:
 - The test cannot be made to pass with a correct fix (i.e., it tests the wrong behavior),
 - The fix is beyond the scope an automated agent should handle,
 
-then post a comment on the issue explaining your findings, add the label `needs-human-fix`,
+then post a comment on the issue explaining your findings, add the label `state/needs-human-fix`,
 and **STOP**. Do NOT push to the PR.
