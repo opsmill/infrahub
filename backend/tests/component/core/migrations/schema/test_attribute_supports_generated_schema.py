@@ -17,26 +17,8 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.db_validation import LATEST_ATTRIBUTE_PATH_STATUS_QUERY
 from tests.helpers.edge_timestamps import assert_edge_timestamps
-
-LATEST_ATTRIBUTE_PATH_STATUS_QUERY = """
-MATCH (node:%(label)s)
-CALL (node) {
-    MATCH (node)-[r1:HAS_ATTRIBUTE]->(attr:Attribute {name: $attr_name})
-    WHERE r1.branch = $branch_name
-    RETURN r1, attr
-    ORDER BY r1.branch_level DESC, r1.from DESC
-    LIMIT 1
-}
-CALL (attr) {
-    MATCH (attr)-[r2:HAS_VALUE]->(av)
-    WHERE r2.branch = $branch_name
-    RETURN r2
-    ORDER BY r2.branch_level DESC, r2.from DESC
-    LIMIT 1
-}
-RETURN node.uuid AS node_id, r1.status AS has_attr_status, r2.status AS has_val_status
-"""
 
 
 async def assert_attribute_path_status(

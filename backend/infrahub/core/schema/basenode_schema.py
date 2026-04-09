@@ -687,21 +687,18 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         return self
 
-    def check_attr_in_uniqueness_constraint(self, attr: str) -> bool:
-        if not self.uniqueness_constraints:
-            return False
-        for constraint_paths in self.uniqueness_constraints:
-            for constraint_path in constraint_paths:
-                if constraint_path.startswith(f"{attr}__") or constraint_path == attr:
-                    return True
-        return False
+    def _check_attr_in_uniqueness_constraint(self, attr: str, max_fields_in_constraint: int | None = None) -> bool:
+        """Return True if ``attr`` appears in a uniqueness constraint of at most
+        ``max_fields_in_constraint`` fields.
 
-    def check_attr_in_single_uniqueness_constraint(self, attr: str) -> bool:
-        """Return True only if the attribute appears in a single-attribute uniqueness constraint."""
+        Example — templates pass ``max_fields_in_constraint=1``, so only single-attr
+        constraints like ``[["nbr_seats__value"]]`` exclude the attribute; a compound
+        constraint like ``[["name__value", "nbr_seats__value"]]`` does not.
+        """
         if not self.uniqueness_constraints:
             return False
         for constraint_paths in self.uniqueness_constraints:
-            if len(constraint_paths) > 1:
+            if max_fields_in_constraint and len(constraint_paths) > max_fields_in_constraint:
                 continue
             for constraint_path in constraint_paths:
                 if constraint_path.startswith(f"{attr}__") or constraint_path == attr:
@@ -709,13 +706,13 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return False
 
     def check_if_attr_supports_profiles(self, attribute_schema: AttributeSchema) -> bool:
-        return attribute_schema.support_profiles and not self.check_attr_in_uniqueness_constraint(
+        return attribute_schema.support_profiles and not self._check_attr_in_uniqueness_constraint(
             attr=attribute_schema.name
         )
 
     def check_if_attr_supports_templates(self, attribute_schema: AttributeSchema) -> bool:
-        return attribute_schema.support_templates and not self.check_attr_in_single_uniqueness_constraint(
-            attr=attribute_schema.name
+        return attribute_schema.support_templates and not self._check_attr_in_uniqueness_constraint(
+            attr=attribute_schema.name, max_fields_in_constraint=1
         )
 
 
