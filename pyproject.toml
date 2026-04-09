@@ -108,7 +108,7 @@ dev = [
     "pytest-httpx>=0.33",
     "docker==7.1.0",
     "psutil==6.1.0",
-    "jwcrypto==1.5.6",
+    "jwcrypto==1.5.7",
     "ty==0.0.14",
     "prek>=0.3.0",
 ]
@@ -980,13 +980,8 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN202",   # Missing return type annotation for private function
     "PLR0913",  # Too many arguments in function definition
     "PLR0917",  # Too many positional arguments
-    "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
-    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`
-    "RET504",   # Unnecessary assignment before `return` statement
-    "RUF029",   # Function is declared `async`, but doesn't `await`
 ]
 
 "backend/tests/integration_docker/**.py" = [

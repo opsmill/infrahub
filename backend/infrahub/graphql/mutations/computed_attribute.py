@@ -83,7 +83,7 @@ class UpdateComputedAttribute(Mutation):
                 kind=node_schema.kind,
                 id=str(data.id),
                 branch=graphql_context.branch,
-                fields={target_attribute.name: None},
+                fields={target_attribute.name: None, "display_label": None},
             )
         ):
             raise NodeNotFoundError(
