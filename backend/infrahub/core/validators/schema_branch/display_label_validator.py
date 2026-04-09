@@ -109,11 +109,9 @@ class DisplayLabelValidator(SchemaBranchValidator):
         # is already validated on the generic itself.
         for name in schema_branch.all_names:
             node_schema = schema_branch.get(name=name, duplicate=False)
-            if (
-                node_schema.display_label is not None
-                or node_schema.display_labels
-                or not isinstance(node_schema, NodeSchema)
-            ):
+            if not isinstance(node_schema, NodeSchema):
+                continue
+            if node_schema.display_label is not None or node_schema.display_labels:
                 continue
             inherited = [
                 schema_branch.get(name=generic, duplicate=False).display_label
