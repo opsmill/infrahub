@@ -15,8 +15,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare-environment:
+    uses: ./.github/workflows/define-versions.yml
+
   # Initial fix: triggered by /bug-fix command on the PR
   fix:
+    needs: prepare-environment
     if: |
       github.event.issue.pull_request &&
       startsWith(github.event.comment.body, '/bug-fix') &&
@@ -80,6 +84,31 @@ jobs:
         with:
           ref: ${{ steps.resolve.outputs.branch }}
           fetch-depth: 0
+          submodules: true
+
+      - name: Set up Python
+        if: steps.resolve.outputs.skip != 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        if: steps.resolve.outputs.skip != 'true'
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install Python dependencies
+        if: steps.resolve.outputs.skip != 'true'
+        run: uv sync --all-groups
+      - name: Set up Node.js
+        if: steps.resolve.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install frontend dependencies
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && npm ci
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -146,6 +175,7 @@ jobs:
 
   # Revision: triggered by reviewer requesting changes on the fix
   revise:
+    needs: prepare-environment
     if: |
       github.event.issue.pull_request &&
       contains(github.event.comment.body, 'AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED') &&
@@ -187,6 +217,31 @@ jobs:
         with:
           ref: ${{ steps.resolve.outputs.branch }}
           fetch-depth: 0
+          submodules: true
+
+      - name: Set up Python
+        if: steps.resolve.outputs.skip != 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        if: steps.resolve.outputs.skip != 'true'
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install Python dependencies
+        if: steps.resolve.outputs.skip != 'true'
+        run: uv sync --all-groups
+      - name: Set up Node.js
+        if: steps.resolve.outputs.skip != 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: frontend/app/package-lock.json
+      - name: Install frontend dependencies
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && npm ci
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
