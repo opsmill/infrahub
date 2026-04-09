@@ -17,6 +17,7 @@ from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from tests.adapters.message_bus import BusSimulator
 from tests.constants import TestKind
+from tests.helpers.db_validation import verify_graph_after_merge
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -150,6 +151,8 @@ class TestDiffMerge(TestInfrahubApp):
         owner_peer = await delorean_main.owner.get_peer(db=db)
         assert owner_peer.get_id() == marty_id
 
+        await verify_graph_after_merge(db=db)
+
     @pytest.mark.parametrize("delete_on_branch", (True, False))
     async def test_node_delete_conflict(
         self,
@@ -234,3 +237,5 @@ class TestDiffMerge(TestInfrahubApp):
         car_main = await NodeManager.get_one(db=db, id=new_car.id)
         owner_peer = await car_main.owner.get_peer(db=db)
         assert owner_peer.id == initial_dataset["biff"].id
+
+        await verify_graph_after_merge(db=db)
