@@ -1,26 +1,18 @@
-import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 import DateTimePicker from "react-datepicker";
 
-import { Col, Row } from "@/shared/components/container";
-import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
-import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
-import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
-import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { inputStyle } from "@/shared/components/ui/style";
+import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
-import { classNames } from "@/shared/utils/common";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";
 
 import { isMetadataDatetimeFilter } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import {
   FILTER_CONDITION,
   type FilterCondition,
-  FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
+import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
+import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export interface MetadataFilterFormProps {
@@ -33,15 +25,8 @@ export function MetadataFilterForm({ metadataFilter, onSuccess }: MetadataFilter
     return <MetadataDateFilterForm attributeSchema={metadataFilter} onSuccess={onSuccess} />;
   }
 
-  return (
-    <MetadataUserFilterForm
-      relationshipSchema={metadataFilter as RelationshipSchema}
-      onSuccess={onSuccess}
-    />
-  );
+  return <MetadataUserFilterForm relationshipSchema={metadataFilter} onSuccess={onSuccess} />;
 }
-
-// ─── Date Filter ─────────────────────────────────────────────────────────────
 
 interface MetadataDateFilterFormProps {
   attributeSchema: AttributeSchema;
@@ -104,74 +89,61 @@ function MetadataDateFilterForm({ attributeSchema, onSuccess }: MetadataDateFilt
   const showBefore = condition === FILTER_CONDITION.BEFORE || isBetween;
 
   return (
-    <Col className="p-2">
-      <Row className="gap-0">
-        <span className="font-semibold text-sm">Where</span>
-        <FilterConditionSelect
-          filterType="metadata-date"
-          value={condition}
-          onChange={(key) => setCondition(key as FilterCondition)}
-        />
-      </Row>
+    <FilterFormLayout
+      filterType="metadata-date"
+      condition={condition}
+      onConditionChange={setCondition}
+      testId="metadata-date-filter-form"
+      onSubmit={handleSubmit}
+    >
+      <div className={isBetween ? "flex flex-row gap-4" : "flex flex-col gap-0"}>
+        {showAfter && (
+          <FormField
+            name="afterDate"
+            defaultValue={afterFilter?.value ?? undefined}
+            render={({ field }) => (
+              <div className="flex flex-col gap-1">
+                {isBetween && <span className="text-gray-600 text-xs">After</span>}
+                <DateTimePicker
+                  selected={field.value ? new Date(field.value as string) : null}
+                  onChange={field.onChange}
+                  inline
+                  showTimeSelect
+                  timeIntervals={1}
+                  calendarStartDay={1}
+                  dateFormat={DATE_TIME_FORMAT}
+                  calendarClassName="flex!"
+                />
+              </div>
+            )}
+          />
+        )}
 
-      <Form
-        className="inline-flex flex-col gap-0 space-y-2"
-        onSubmit={(formData) => handleSubmit(formData as Record<string, unknown>)}
-        data-testid="metadata-date-filter-form"
-      >
-        <div className={isBetween ? "flex flex-row gap-4" : "flex flex-col gap-0"}>
-          {showAfter && (
-            <FormField
-              name="afterDate"
-              defaultValue={afterFilter?.value ?? undefined}
-              render={({ field }) => (
-                <div className="flex flex-col gap-1">
-                  {isBetween && <span className="text-gray-600 text-xs">After</span>}
-                  <DateTimePicker
-                    selected={field.value ? new Date(field.value as string) : null}
-                    onChange={field.onChange}
-                    inline
-                    showTimeSelect
-                    timeIntervals={1}
-                    calendarStartDay={1}
-                    dateFormat={DATE_TIME_FORMAT}
-                    calendarClassName="flex!"
-                  />
-                </div>
-              )}
-            />
-          )}
-
-          {showBefore && (
-            <FormField
-              name="beforeDate"
-              defaultValue={beforeFilter?.value ?? undefined}
-              render={({ field }) => (
-                <div className="flex flex-col gap-1">
-                  {isBetween && <span className="text-gray-600 text-xs">Before</span>}
-                  <DateTimePicker
-                    selected={field.value ? new Date(field.value as string) : null}
-                    onChange={field.onChange}
-                    inline
-                    showTimeSelect
-                    timeIntervals={1}
-                    calendarStartDay={1}
-                    dateFormat={DATE_TIME_FORMAT}
-                    calendarClassName="flex!"
-                  />
-                </div>
-              )}
-            />
-          )}
-        </div>
-
-        <FormSubmit className="self-end">Apply</FormSubmit>
-      </Form>
-    </Col>
+        {showBefore && (
+          <FormField
+            name="beforeDate"
+            defaultValue={beforeFilter?.value ?? undefined}
+            render={({ field }) => (
+              <div className="flex flex-col gap-1">
+                {isBetween && <span className="text-gray-600 text-xs">Before</span>}
+                <DateTimePicker
+                  selected={field.value ? new Date(field.value as string) : null}
+                  onChange={field.onChange}
+                  inline
+                  showTimeSelect
+                  timeIntervals={1}
+                  calendarStartDay={1}
+                  dateFormat={DATE_TIME_FORMAT}
+                  calendarClassName="flex!"
+                />
+              </div>
+            )}
+          />
+        )}
+      </div>
+    </FilterFormLayout>
   );
 }
-
-// ─── User Filter ─────────────────────────────────────────────────────────────
 
 interface MetadataUserFilterFormProps {
   relationshipSchema: RelationshipSchema;
@@ -207,84 +179,27 @@ function MetadataUserFilterForm({ relationshipSchema, onSuccess }: MetadataUserF
   };
 
   return (
-    <Col className="p-2">
-      <Row className="gap-0">
-        <span className="font-semibold text-sm">Where</span>
-        <FilterConditionSelect
-          filterType="metadata-relationship"
-          value={FILTER_CONDITION.IS_ANY_OF}
-          onChange={() => {}}
-        />
-      </Row>
-
-      <Form
-        className="inline-flex flex-col gap-0 space-y-2"
-        onSubmit={(formData) => {
-          handleSubmit(formData as UserFormData);
-          onSuccess?.();
-        }}
-        data-testid="metadata-user-filter-form"
-      >
-        <FormField
-          name="relationships"
-          defaultValue={currentFilter?.value ?? undefined}
-          render={({ field }) => {
-            const value = field.value as RelationshipNode[] | undefined;
-
-            return (
-              <Combobox defaultOpen>
-                <PopoverTrigger asChild>
-                  <div
-                    className={classNames(
-                      inputStyle,
-                      "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
-                      "min-w-[132px] max-w-[300px] cursor-pointer"
-                    )}
-                  >
-                    <div className="flex grow flex-wrap gap-2">
-                      {value?.map(({ id, display_label }) => (
-                        <Badge key={id} className="flex items-center gap-1 pr-0.5">
-                          {display_label}
-
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              field.onChange(value.filter((item) => item.id !== id));
-                            }}
-                            className="h-4 w-4 text-gray-500 hover:text-gray-800"
-                            aria-label="Remove"
-                            data-testid="remove-option"
-                          >
-                            &times;
-                          </Button>
-                        </Badge>
-                      ))}
-                    </div>
-
-                    <button type="button" className="h-3.5 w-3.5 text-gray-600 outline-hidden">
-                      <Icon icon="mdi:unfold-more-horizontal" />
-                    </button>
-                  </div>
-                </PopoverTrigger>
-
-                <ComboboxContent fitTriggerWidth={false}>
-                  <RelationshipComboboxList
-                    peer={relationshipSchema.peer}
-                    onSelect={(relationship) => {
-                      field.onChange(value ? [...value, relationship] : [relationship]);
-                    }}
-                    filterItem={(node) => !value?.some((v) => v.id === node.id)}
-                  />
-                </ComboboxContent>
-              </Combobox>
-            );
-          }}
-        />
-
-        <FormSubmit className="self-end">Apply</FormSubmit>
-      </Form>
-    </Col>
+    <FilterFormLayout
+      filterType="metadata-relationship"
+      condition={FILTER_CONDITION.IS_ANY_OF}
+      onConditionChange={() => {}}
+      testId="metadata-user-filter-form"
+      onSubmit={(formData) => {
+        handleSubmit(formData as UserFormData);
+        onSuccess?.();
+      }}
+    >
+      <FormField
+        name="relationships"
+        defaultValue={currentFilter?.value ?? undefined}
+        render={({ field }) => (
+          <RelationshipFilterCombobox
+            peer={relationshipSchema.peer}
+            value={field.value as RelationshipNode[] | undefined}
+            onChange={field.onChange}
+          />
+        )}
+      />
+    </FilterFormLayout>
   );
 }

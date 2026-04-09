@@ -1,17 +1,16 @@
 import { useState } from "react";
 
-import { Col, Row } from "@/shared/components/container";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import type { FormAttributeValue } from "@/shared/components/form/type";
-import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
+import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
 import { DynamicFilterInput } from "@/entities/nodes/object/ui/filters/dynamic-filter-input";
 import {
   FILTER_CONDITION,
   type FilterCondition,
-  FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
+import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeSchema } from "@/entities/schema/types";
 
@@ -76,40 +75,29 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
   const showInput = condition === FILTER_CONDITION.CONTAINS;
 
   return (
-    <Col className="p-2">
-      <Row className="gap-0">
-        <span className="font-semibold text-sm">Where</span>
-        <FilterConditionSelect
-          filterType={isDatetime ? "datetime" : "attribute"}
-          value={condition}
-          onChange={(key) => setCondition(key as FilterCondition)}
+    <FilterFormLayout
+      filterType={isDatetime ? "datetime" : "attribute"}
+      condition={condition}
+      onConditionChange={setCondition}
+      testId="attribute-filter-form"
+      onSubmit={(formData) => {
+        handleSubmit(formData as Record<string, FormAttributeValue["value"]>);
+        onSuccess?.();
+      }}
+    >
+      {showInput && (
+        <FormField
+          name="attribute"
+          defaultValue={
+            currentFilter && getCurrentFilterCondition(currentFilter) === condition
+              ? currentFilter.value
+              : undefined
+          }
+          render={({ field }) => {
+            return <DynamicFilterInput {...field} fieldSchema={attributeSchema} />;
+          }}
         />
-      </Row>
-
-      <Form
-        onSubmit={(formData) => {
-          handleSubmit(formData);
-          onSuccess?.();
-        }}
-        data-testid="attribute-filter-form"
-        className="inline-flex flex-col gap-0 space-y-2"
-      >
-        {showInput && (
-          <FormField
-            name="attribute"
-            defaultValue={
-              currentFilter && getCurrentFilterCondition(currentFilter) === condition
-                ? currentFilter.value
-                : undefined
-            }
-            render={({ field }) => {
-              return <DynamicFilterInput {...field} fieldSchema={attributeSchema} />;
-            }}
-          />
-        )}
-
-        <FormSubmit className="self-end">Apply</FormSubmit>
-      </Form>
-    </Col>
+      )}
+    </FilterFormLayout>
   );
 }

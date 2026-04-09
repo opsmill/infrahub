@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
-import { Button as AriaButton, type Selection } from "react-aria-components";
+import { Button as AriaButton, type Key } from "react-aria-components";
 
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
@@ -34,9 +34,9 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
   const filterCount = getFilterPickerCount(schema, filters);
 
   const itemElements = useRef(new Map<string, Element>());
-  const activeItemRef = useRef<Element | null>(null);
+  const triggerRef = useRef<Element | null>(null);
 
-  const closeMenu = () => {
+  const closePicker = () => {
     setOpen(false);
     setSelectedField(null);
   };
@@ -47,11 +47,9 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
   ];
   const activeFieldSchema = fields.find((f) => f.name === selectedField);
 
-  const handleSelectionChange = (keys: Selection) => {
-    if (keys === "all") return;
-    const key = [...keys][0];
-    const fieldName = key ? String(key) : null;
-    activeItemRef.current = fieldName ? (itemElements.current.get(fieldName) ?? null) : null;
+  const handleAction = (key: Key) => {
+    const fieldName = String(key);
+    triggerRef.current = itemElements.current.get(fieldName) ?? null;
     setSelectedField(fieldName);
   };
 
@@ -88,7 +86,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
               aria-label="Filter fields"
               selectionMode="single"
               selectedKeys={selectedField ? [selectedField] : []}
-              onSelectionChange={handleSelectionChange}
+              onAction={handleAction}
               className="max-h-72 p-1"
             >
               {fields.map((field) => (
@@ -109,7 +107,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
       {selectedField && activeFieldSchema && (
         <Popover
           className="filter-form-popover"
-          triggerRef={activeItemRef}
+          triggerRef={triggerRef}
           offset={8}
           isOpen
           onOpenChange={(isOpen) => {
@@ -118,9 +116,9 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
           placement="end top"
         >
           {isMetadataFilter(activeFieldSchema.name) ? (
-            <MetadataFilterForm metadataFilter={activeFieldSchema} onSuccess={closeMenu} />
+            <MetadataFilterForm metadataFilter={activeFieldSchema} onSuccess={closePicker} />
           ) : (
-            <FieldFilterForm fieldSchema={activeFieldSchema} onSuccess={closeMenu} />
+            <FieldFilterForm fieldSchema={activeFieldSchema} onSuccess={closePicker} />
           )}
         </Popover>
       )}
