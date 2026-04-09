@@ -1,3 +1,4 @@
+import os
 import random
 
 from fast_depends import Depends, inject
@@ -55,7 +56,7 @@ TRANSFORM_PYTHON_RENDER = WorkflowDefinition(
 ANONYMOUS_TELEMETRY_SEND = WorkflowDefinition(
     name="anonymous_telemetry_send",
     type=WorkflowType.INTERNAL,
-    cron=f"{random.randint(0, 59)} 2 * * *",
+    cron=os.getenv("INFRAHUB_TELEMETRY_CRON") or f"{random.randint(0, 59)} 2 * * *",
     module="infrahub.telemetry.tasks",
     function="send_telemetry_push",
 )

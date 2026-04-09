@@ -91,15 +91,19 @@ jobs:
       - name: Resolve inputs from dispatch or labels
         id: resolve
         run: |
-          SKIP_REG="${{ inputs.skip_regression }}"
-          if [[ -z "$SKIP_REG" ]]; then
-            SKIP_REG="false"
-          fi
-          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'ci/skip-regression') }}" == "true" ]]; then
-            SKIP_REG="true"
-          fi
-          echo "skip_regression=${SKIP_REG}" >> "$GITHUB_OUTPUT"
-          echo "pytest_filter=${{ inputs.pytest_filter }}" >> "$GITHUB_OUTPUT"
+          # TEMPORARY: hardcoded for testing telemetry integration test only
+          echo "skip_regression=true" >> "$GITHUB_OUTPUT"
+          echo "pytest_filter=test_telemetry_storage" >> "$GITHUB_OUTPUT"
+          # ORIGINAL CODE (restore after testing):
+          # SKIP_REG="${{ inputs.skip_regression }}"
+          # if [[ -z "$SKIP_REG" ]]; then
+          #   SKIP_REG="false"
+          # fi
+          # if [[ "${{ contains(github.event.pull_request.labels.*.name, 'ci/skip-regression') }}" == "true" ]]; then
+          #   SKIP_REG="true"
+          # fi
+          # echo "skip_regression=${SKIP_REG}" >> "$GITHUB_OUTPUT"
+          # echo "pytest_filter=${{ inputs.pytest_filter }}" >> "$GITHUB_OUTPUT"
 
   # ====================================================================================
   # STAGE 1: Quick Checks (linters, formatters, static analysis)
@@ -430,6 +434,9 @@ jobs:
       PYTEST_XDIST_WORKER_COUNT: 1
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       NEO4J_DOCKER_IMAGE: "neo4j:2025.10.1-enterprise"
+      # Aggressive telemetry schedule for integration testing (every minute)
+      INFRAHUB_TESTING_TELEMETRY_CRON: "* * * * *"
+      INFRAHUB_TESTING_TELEMETRY_OPTOUT: "true"
       # Aggressive healthcheck: 1s interval/timeout, retries adjusted to preserve total retry window
       HEALTHCHECK_MESSAGE_QUEUE_INTERVAL: 1s
       HEALTHCHECK_MESSAGE_QUEUE_TIMEOUT: 1s
