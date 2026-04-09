@@ -115,6 +115,27 @@ describe("removeFiltersNotInSchema", () => {
     expect(result).toEqual(expectedFilters);
   });
 
+  it("should allow node_metadata prefixed filters through", () => {
+    // GIVEN
+    const filters: Filter[] = [
+      { name: "node_metadata__created_at__after", value: "2025-01-01T00:00:00Z" },
+      { name: "node_metadata__created_by__ids", value: ["user-1"] },
+      { name: "attr1__value", value: "test" },
+      { name: "nonexistent__value", value: "test" },
+    ];
+    const expectedFilters: Filter[] = [
+      { name: "node_metadata__created_at__after", value: "2025-01-01T00:00:00Z" },
+      { name: "node_metadata__created_by__ids", value: ["user-1"] },
+      { name: "attr1__value", value: "test" },
+    ];
+
+    // WHEN
+    const result = removeFiltersNotInSchema(filters, mockSchema);
+
+    // THEN
+    expect(result).toEqual(expectedFilters);
+  });
+
   it("should handle schema with only relationships", () => {
     // GIVEN
     const schemaWithOnlyRels = generateGenericSchema({

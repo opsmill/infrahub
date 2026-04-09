@@ -137,17 +137,8 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object-template/object-template-form.tsx:481961693": [
       [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
-    "src/entities/nodes/object/ui/filters/attribute-filter-form.tsx:1859802933": [
-      [163, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
-      [178, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"]
-    ],
-    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:3447457876": [
-      [40, 29, 2, "tsc: Binding element \'id\' implicitly has an \'any\' type.", "5861160"],
-      [40, 33, 13, "tsc: Binding element \'display_label\' implicitly has an \'any\' type.", "1907695430"],
-      [49, 45, 4, "tsc: Parameter \'item\' implicitly has an \'any\' type.", "2087854480"],
-      [73, 48, 1, "tsc: Parameter \'v\' implicitly has an \'any\' type.", "177619"],
-      [163, 25, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
-      [169, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
+    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:266512825": [
+      [114, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
     ],
     "src/entities/nodes/object/ui/filters/kind-combobox-list.tsx:2093276488": [
       [19, 10, 8, "tsc: Type \'(null | string | undefined)[]\' is not assignable to type \'string[]\'.\\n  Type \'string | null | undefined\' is not assignable to type \'string\'.\\n    Type \'undefined\' is not assignable to type \'string\'.", "3441362927"]
@@ -254,7 +245,7 @@ exports[`fix ts error`] = {
       [138, 10, 12, "tsc: Type \'{ name: string; peer: string; cardinality: \\"many\\"; }\' is missing 10 properties from type \'\\"Attribute\\" | \\"Component\\" | \\"Group\\" | \\"Hierarchy\\" | \\"Parent\\" | \\"Profile\\" | \\"Template\\"; label?: string | \\"absent\\"; name: string; peer: string; kind: \\"Generic\\" | \\"agnostic\\" | \\"any\\"; read_only: boolean; deprecation?: string | \\"cascade\\" | \\"extra\\"; } | \\"inbound\\"; hierarchical?: string | \\"local\\" | \\"many\\"; min_count: number; max_count: number; common_parent?: string | \\"outbound\\" | null | null | null | null | null | null | null | null | null | null | null | undefined; allow_override: \\"none\\" | undefined; cardinality: \\"one\\" | undefined; common_relatives?: string[] | undefined; description?: string | undefined; display: \\"default\\" | undefined; identifier?: string | undefined; inherited: boolean; direction: \\"bidirectional\\" | undefined; on_delete?: \\"no-action\\" | undefined; optional: boolean; branch?: \\"aware\\" | undefined; order_weight?: number | undefined; state: \\"present\\" | { id?: string\'", "2930100897"],
       [149, 10, 12, "tsc: Type \'{ name: string; peer: string; cardinality: \\"many\\"; }\' is missing 10 properties from type \'\\"Attribute\\" | \\"Component\\" | \\"Group\\" | \\"Hierarchy\\" | \\"Parent\\" | \\"Profile\\" | \\"Template\\"; label?: string | \\"absent\\"; name: string; peer: string; kind: \\"Generic\\" | \\"agnostic\\" | \\"any\\"; read_only: boolean; deprecation?: string | \\"cascade\\" | \\"extra\\"; } | \\"inbound\\"; hierarchical?: string | \\"local\\" | \\"many\\"; min_count: number; max_count: number; common_parent?: string | \\"outbound\\" | null | null | null | null | null | null | null | null | null | null | null | undefined; allow_override: \\"none\\" | undefined; cardinality: \\"one\\" | undefined; common_relatives?: string[] | undefined; description?: string | undefined; display: \\"default\\" | undefined; identifier?: string | undefined; inherited: boolean; direction: \\"bidirectional\\" | undefined; on_delete?: \\"no-action\\" | undefined; optional: boolean; branch?: \\"aware\\" | undefined; order_weight?: number | undefined; state: \\"present\\" | { id?: string\'", "2930100897"]
     ],
-    "src/entities/role-manager/ui/account-role-form.tsx:2047621891": [
+    "src/entities/role-manager/ui/account-role-form.tsx:2022791635": [
       [44, 39, 13, "tsc: Argument of type \'NodeFieldsWithMetadata | undefined\' is not assignable to parameter of type \'Record<string, NodeAttributeWithMetadata> | undefined\'.\\n  Type \'NodeFieldsWithMetadata\' is not assignable to type \'Record<string, NodeAttributeWithMetadata>\'.\\n    \'string\' index signatures are incompatible.\\n      Type \'NodeAttributeWithMetadata | NodeCorePropertyValue | NodeRelationshipWithMetadata\' is not assignable to type \'NodeAttributeWithMetadata\'.\\n        Type \'undefined\' is not assignable to type \'NodeAttributeWithMetadata\'.", "3940586649"],
       [54, 62, 13, "tsc: Argument of type \'NodeFieldsWithMetadata | undefined\' is not assignable to parameter of type \'Record<string, Pick<AttributeType, \\"value\\">> | undefined\'.\\n  Type \'NodeFieldsWithMetadata\' is not assignable to type \'Record<string, Pick<AttributeType, \\"value\\">>\'.\\n    \'string\' index signatures are incompatible.\\n      Type \'NodeAttributeWithMetadata | NodeCorePropertyValue | NodeRelationshipWithMetadata\' is not assignable to type \'Pick<AttributeType, \\"value\\">\'.\\n        Type \'undefined\' is not assignable to type \'Pick<AttributeType, \\"value\\">\'.", "3940586649"],
       [105, 9, 10, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; } | { name: string; label: string; rules: { required: true; validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'InputFieldProps\'.", "1610618705"],
@@ -379,8 +370,8 @@ exports[`fix ts error`] = {
     "src/shared/components/display/pill.tsx:2158550065": [
       [14, 12, 10, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2879755880"]
     ],
-    "src/shared/components/editor/json/json-editor.tsx:1870997317": [
-      [42, 51, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
+    "src/shared/components/editor/json/json-editor.tsx:3217614771": [
+      [48, 51, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
     ],
     "src/shared/components/errors/error-boundary-app.tsx:3236611445": [
       [5, 24, 5, "tsc: Type \'unknown\' is not assignable to type \'Error\'.", "165548477"]
@@ -401,7 +392,6 @@ exports[`fix ts error`] = {
     ],
     "src/shared/components/form/fields/datetime.field.tsx:3007448038": [
       [11, 17, 18, "tsc: Interface \'DatetimeFieldProps\' cannot simultaneously extend types \'FormFieldProps\' and \'\\"defaultValue\\"> | Omit<DatePickerProps, \\"name\\"\'.\\n  Named property \'onChange\' of types \'FormFieldProps\' and \'\\"defaultValue\\"> | Omit<DatePickerProps, \\"name\\"\' are not identical.", "1345300392"],
-      [55, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
       [56, 16, 8, "tsc: Type \'((newDate: Date | ((value: FormFieldValue) => void) | null) => void)\' is not assignable to type \'(date: Date | null) => void\'.\\n  Type \'(value: FormFieldValue) => void\' is not assignable to type \'(date: Date | null) => void\'.\\n    Types of parameters \'value\' and \'date\' are incompatible.\\n      Type \'Date | null\' is not assignable to type \'FormFieldValue\'.\\n        Type \'null\' is not assignable to type \'FormFieldValue\'.", "707514658"]
     ],
     "src/shared/components/form/fields/json.field.tsx:3267393203": [

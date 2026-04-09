@@ -4,10 +4,16 @@ import Prism from "prismjs";
 import "prismjs/components/prism-json";
 
 import { type ElementRef, forwardRef } from "react";
-import Editor from "react-simple-code-editor";
+import EditorImport from "react-simple-code-editor";
 
 import { focusWithinStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
+
+// Handle CJS/ESM interop — Vite may double-wrap the default export
+const Editor =
+  "default" in EditorImport
+    ? (EditorImport as unknown as { default: typeof EditorImport }).default
+    : EditorImport;
 
 type JsonEditorProps = {
   onChange: (value: string) => void;
