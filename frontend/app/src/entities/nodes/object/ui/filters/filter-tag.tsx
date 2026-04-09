@@ -1,4 +1,4 @@
-import { Icon } from "@iconify-icon/react";
+import { CircleXIcon } from "lucide-react";
 import type React from "react";
 import { Button, Tag, type TagProps } from "react-aria-components";
 
@@ -42,10 +42,7 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
           "inline-flex cursor-pointer rounded-full border border-transparent"
         )}
       >
-        <Icon
-          icon="mdi:close-circle-outline"
-          className="text-base text-stone-400 hover:text-custom-blue-700"
-        />
+        <CircleXIcon className="size-3.5 text-stone-400 hover:text-custom-blue-700" />
       </Button>
     </Tag>
   );

@@ -13,7 +13,7 @@ import {
   HIDE_AVAILABLE_IP_FILTER,
   SHOW_AVAILABLE_IP,
 } from "@/entities/ipam/constants";
-import { FilterForm } from "@/entities/nodes/object/ui/filters/filter-form";
+import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
 import {
@@ -186,7 +186,7 @@ export function ActiveFilterTags({
           }}
           placement="bottom start"
         >
-          <FilterForm
+          <FieldFilterForm
             fieldSchema={editingFilter.fieldSchema}
             onSuccess={() => setEditingFilter(null)}
           />

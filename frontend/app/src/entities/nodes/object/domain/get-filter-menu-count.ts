@@ -1,3 +1,4 @@
+import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
@@ -11,8 +12,6 @@ export function getFilterMenuCount(schema: ModelSchema, filters: Filter[]): numb
   ].map((f) => f.name);
 
   return filters.filter((filter) =>
-    fieldNames.some(
-      (fieldName) => filter.name === fieldName || filter.name.startsWith(fieldName + "__")
-    )
+    fieldNames.some((fieldName) => isFieldFiltered(filter, fieldName))
   ).length;
 }

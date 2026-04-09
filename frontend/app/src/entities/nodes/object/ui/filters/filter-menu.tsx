@@ -7,12 +7,13 @@ import { Autocomplete } from "@/shared/components/aria/autocomplete";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
+import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
 import { getFilterMenuCount } from "@/entities/nodes/object/domain/get-filter-menu-count";
 import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
-import { FilterForm } from "@/entities/nodes/object/ui/filters/filter-form";
+import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import type { ModelSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
@@ -86,9 +87,7 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
               className="max-h-72 p-1"
             >
               {fields.map((field) => {
-                const hasActiveFilter = filters.some(
-                  (f) => f.name === field.name || f.name.startsWith(field.name + "__")
-                );
+                const hasActiveFilter = filters.some((f) => isFieldFiltered(f, field.name));
 
                 return (
                   <ListBoxItem
@@ -137,7 +136,7 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
           }}
           placement="end top"
         >
-          <FilterForm fieldSchema={activeFieldSchema} onSuccess={closeMenu} />
+          <FieldFilterForm fieldSchema={activeFieldSchema} onSuccess={closeMenu} />
         </Popover>
       )}
     </>

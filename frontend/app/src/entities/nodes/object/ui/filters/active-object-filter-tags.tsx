@@ -1,5 +1,4 @@
 import type { TagGroupProps } from "react-aria-components";
-import { useParams } from "react-router";
 
 import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
 
@@ -30,7 +29,6 @@ export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
 
 export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilterTagsProps) {
   const { filters, setFilters } = useObjectTableContext();
-  const { objectId } = useParams();
 
   const fieldSchemas: Record<string, AttributeSchema | RelationshipSchema> = {};
   for (const attr of schema?.attributes ?? []) {
@@ -70,17 +68,13 @@ export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilter
     }
   };
 
-  const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
-
-  const hasAdditionalTags = isOfKind("CoreGroup", schema) || (isIpamSchema && !!objectId);
-
-  const additionalTags = hasAdditionalTags ? (
+  const additionalTags = (
     <>
       {isOfKind("CoreGroup", schema) && <InternalGroupsFilterTag />}
       {isOfKind(IP_PREFIX_GENERIC, schema) && <IpPrefixAvailabilityFilterTag />}
       {isOfKind(IP_ADDRESS_GENERIC, schema) && <IpAddressAvailabilityFilterTag />}
     </>
-  ) : undefined;
+  );
 
   return (
     <ActiveFilterTags

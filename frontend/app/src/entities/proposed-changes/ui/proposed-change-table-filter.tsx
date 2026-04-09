@@ -7,8 +7,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
-import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
-import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
+import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
@@ -56,11 +55,7 @@ export function ProposedChangeTableFilter({
         <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
-        {"peer" in columnSchema ? (
-          <RelationshipFilterForm relationshipSchema={columnSchema} onSuccess={closePopover} />
-        ) : (
-          <AttributeFilterForm attributeSchema={columnSchema} onSuccess={closePopover} />
-        )}
+        <FieldFilterForm fieldSchema={columnSchema} onSuccess={closePopover} />
       </PopoverContent>
     </Popover>
   );
