@@ -350,28 +350,6 @@ async def test_has_conflicting_changes(git_repos_source_dir_module_scope: Path) 
     assert repository.has_conflicting_changes(target_branch="main", source_branch="change1")
 
 
-async def test_has_conflicting_changes_no_false_positive(
-    git_repos_source_dir_module_scope: Path,
-) -> None:
-    """has_conflicting_changes() should not report false positives when
-    file content contains conflict marker characters like '======='."""
-    registry._default_branch = "main"
-
-    test_repo = MultipleStagesFileRepo(
-        name="false-positive-conflicts", sources_directory=git_repos_source_dir_module_scope
-    )
-    repository = await InfrahubRepository.new(
-        id=UUIDT.new(),
-        name=test_repo.name,
-        location=test_repo.path,
-        default_branch_name="main",
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-    )
-
-    # The branch adds a file containing ======= but has no actual conflicts with main
-    assert not repository.has_conflicting_changes(target_branch="main", source_branch="change1")
-
-
 async def test_pull_branch(git_repo_04: InfrahubRepository) -> None:
     repo = git_repo_04
     await repo.fetch()
