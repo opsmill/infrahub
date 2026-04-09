@@ -857,6 +857,39 @@ async def test_upsert_preserves_relationship_display_label_and_hfid(
     assert result_upsert.data["TestingTShirtUpsert"]["object"]["hfid"] == ["Classic", "Red"]
 
 
+async def test_upsert_null_value_rejected_for_attribute_with_default(
+    db: InfrahubDatabase, person_john_main: Node, car_accord_main: Node, branch: Branch
+) -> None:
+    """Setting an attribute with a default_value to null via upsert (update path) must be rejected."""
+    query = """
+    mutation {
+        TestCarUpsert(data: {id: "%s", name: { value: "accord" }, color: { value: null }}) {
+            ok
+            object {
+                color {
+                    value
+                }
+            }
+        }
+    }
+    """ % (car_accord_main.id)
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors
+    assert any("has a default value and cannot be set to null" in e.message for e in result.errors)
+
+    car = await NodeManager.get_one(db=db, id=car_accord_main.id, branch=branch)
+    assert car.color.value == "#444444"
+
+
 def _basic_asserts(result_upsert: ExecutionResult) -> None:
     assert result_upsert.errors is None
     assert result_upsert.data

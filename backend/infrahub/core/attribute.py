@@ -617,6 +617,8 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 value_to_set = self.schema.convert_value_to_enum(data["value"])
             else:
                 value_to_set = data["value"]
+            if value_to_set is None and self.schema.default_value is not None:
+                raise ValidationError({self.name: f"'{self.name}' has a default value and cannot be set to null"})
             if value_to_set != self.value:
                 self.value = value_to_set
                 changed = True
