@@ -21,7 +21,6 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 from infrahub import __version__, config
 from infrahub.api import router as api
 from infrahub.api.exception_handlers import generic_api_exception_handler
-from infrahub.api.health import router as health_router
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
@@ -148,7 +147,6 @@ gunicorn_logger = logging.getLogger("gunicorn.error")
 logger.handlers = gunicorn_logger.handlers
 
 app.include_router(api)
-app.include_router(health_router)
 
 templates = Jinja2Templates(directory=FRONTEND_DIRECTORY / "dist")
 
@@ -197,7 +195,7 @@ app.add_middleware(
     group_paths=True,
     prefix="infrahub",
     buckets=[0.1, 0.25, 0.5],
-    skip_paths=["/health"],
+    skip_paths=["/api/health"],
 )
 app.add_middleware(InfrahubCORSMiddleware)
 app.add_middleware(
