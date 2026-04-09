@@ -182,7 +182,7 @@ class SchemaNode(BaseModel):
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_label: str | None = None
-    display_labels: list[str] = Field(default_factory=list)
+    display_labels: list[str] | None = None
     uniqueness_constraints: list[list[str]] | None = None
     human_friendly_id: list[str] | None = None
 
