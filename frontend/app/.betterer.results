@@ -137,16 +137,11 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object-template/object-template-form.tsx:481961693": [
       [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
-    "src/entities/nodes/object/ui/filters/attribute-filter-form.tsx:2234996150": [
-      [169, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
-      [184, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"]
-    ],
     "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:3447457876": [
       [40, 29, 2, "tsc: Binding element \'id\' implicitly has an \'any\' type.", "5861160"],
       [40, 33, 13, "tsc: Binding element \'display_label\' implicitly has an \'any\' type.", "1907695430"],
       [49, 45, 4, "tsc: Parameter \'item\' implicitly has an \'any\' type.", "2087854480"],
       [73, 48, 1, "tsc: Parameter \'v\' implicitly has an \'any\' type.", "177619"],
-      [163, 25, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
       [169, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
     ],
     "src/entities/nodes/object/ui/filters/kind-combobox-list.tsx:2093276488": [
@@ -401,7 +396,6 @@ exports[`fix ts error`] = {
     ],
     "src/shared/components/form/fields/datetime.field.tsx:3007448038": [
       [11, 17, 18, "tsc: Interface \'DatetimeFieldProps\' cannot simultaneously extend types \'FormFieldProps\' and \'\\"defaultValue\\"> | Omit<DatePickerProps, \\"name\\"\'.\\n  Named property \'onChange\' of types \'FormFieldProps\' and \'\\"defaultValue\\"> | Omit<DatePickerProps, \\"name\\"\' are not identical.", "1345300392"],
-      [55, 16, 4, "tsc: Type \'Date | null\' is not assignable to type \'Date | undefined\'.\\n  Type \'null\' is not assignable to type \'Date | undefined\'.", "2087377937"],
       [56, 16, 8, "tsc: Type \'((newDate: Date | ((value: FormFieldValue) => void) | null) => void)\' is not assignable to type \'(date: Date | null) => void\'.\\n  Type \'(value: FormFieldValue) => void\' is not assignable to type \'(date: Date | null) => void\'.\\n    Types of parameters \'value\' and \'date\' are incompatible.\\n      Type \'Date | null\' is not assignable to type \'FormFieldValue\'.\\n        Type \'null\' is not assignable to type \'FormFieldValue\'.", "707514658"]
     ],
     "src/shared/components/form/fields/json.field.tsx:3267393203": [
