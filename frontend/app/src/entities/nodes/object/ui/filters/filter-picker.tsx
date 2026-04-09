@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { ChevronRightIcon } from "lucide-react";
+import type React from "react";
 import { useRef, useState } from "react";
 import { Button as AriaButton, type Selection } from "react-aria-components";
 
@@ -11,22 +12,26 @@ import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
-import { getFilterMenuCount } from "@/entities/nodes/object/domain/get-filter-menu-count";
-import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
+import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
+import {
+  ALL_METADATA_FILTERS,
+  isMetadataFilter,
+} from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
-import type { ModelSchema } from "@/entities/schema/types";
+import { MetadataFilterForm } from "@/entities/nodes/object/ui/filters/metadata-filter-form";
+import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
-interface FilterMenuProps {
+interface FilterPickerProps {
   schema: ModelSchema;
   filters: Filter[];
 }
 
-export function FilterMenu({ schema, filters }: FilterMenuProps) {
+export function FilterPicker({ schema, filters }: FilterPickerProps) {
   const [open, setOpen] = useState(false);
   const [selectedField, setSelectedField] = useState<string | null>(null);
 
-  const filterCount = getFilterMenuCount(schema, filters);
+  const filterCount = getFilterPickerCount(schema, filters);
 
   const itemElements = useRef(new Map<string, Element>());
   const activeItemRef = useRef<Element | null>(null);
@@ -86,40 +91,16 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
               onSelectionChange={handleSelectionChange}
               className="max-h-72 p-1"
             >
-              {fields.map((field) => {
-                const hasActiveFilter = filters.some((f) => isFieldFiltered(f, field.name));
-
-                return (
-                  <ListBoxItem
-                    key={field.name}
-                    id={field.name}
-                    textValue={field.label ?? field.name}
-                    className={({ isSelected }) =>
-                      classNames(isSelected && "bg-stone-700/10 text-stone-800")
-                    }
-                    ref={(el: HTMLDivElement | null) => {
-                      if (el) itemElements.current.set(field.name, el);
-                    }}
-                  >
-                    {({ isSelected }) => (
-                      <>
-                        <FieldSchemaIcon fieldSchema={field} />
-                        {field.label}
-                        {hasActiveFilter && (
-                          <span className="ml-auto size-1 rounded-full bg-custom-blue-700" />
-                        )}
-                        <ChevronRightIcon
-                          className={classNames(
-                            "size-3.5",
-                            !hasActiveFilter && "ml-auto",
-                            isSelected && "opacity-0"
-                          )}
-                        />
-                      </>
-                    )}
-                  </ListBoxItem>
-                );
-              })}
+              {fields.map((field) => (
+                <FilterPickerItem
+                  key={field.name}
+                  field={field}
+                  hasActiveFilter={filters.some((f) => isFieldFiltered(f, field.name))}
+                  ref={(el: HTMLDivElement | null) => {
+                    if (el) itemElements.current.set(field.name, el);
+                  }}
+                />
+              ))}
             </ListBox>
           </Autocomplete>
         </Popover>
@@ -136,9 +117,43 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
           }}
           placement="end top"
         >
-          <FieldFilterForm fieldSchema={activeFieldSchema} onSuccess={closeMenu} />
+          {isMetadataFilter(activeFieldSchema.name) ? (
+            <MetadataFilterForm metadataFilter={activeFieldSchema} onSuccess={closeMenu} />
+          ) : (
+            <FieldFilterForm fieldSchema={activeFieldSchema} onSuccess={closeMenu} />
+          )}
         </Popover>
       )}
     </>
   );
+}
+
+interface FilterPickerItemProps {
+  field: AttributeSchema | RelationshipSchema;
+  hasActiveFilter: boolean;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+function FilterPickerItem({ field, hasActiveFilter, ref }: FilterPickerItemProps) {
+  return (
+    <ListBoxItem
+      id={field.name}
+      textValue={field.label ?? field.name}
+      className={({ isSelected }) => classNames(isSelected && "bg-stone-700/10 text-stone-800")}
+      ref={ref}
+    >
+      {({ isSelected }) => (
+        <>
+          <FieldSchemaIcon fieldSchema={field} />
+          <span className="mr-auto">{field.label}</span>
+          {hasActiveFilter && <ActiveFilterIndicator />}
+          <ChevronRightIcon className={classNames("size-3.5", isSelected && "opacity-0")} />
+        </>
+      )}
+    </ListBoxItem>
+  );
+}
+
+function ActiveFilterIndicator() {
+  return <span className="size-1 rounded-full bg-custom-blue-700" />;
 }

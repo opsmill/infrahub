@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import { getFilterMenuCount } from "@/entities/nodes/object/domain/get-filter-menu-count";
+import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
 
 import {
   generateAttributeSchema,
@@ -10,7 +10,7 @@ import {
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
 
-describe("getFilterMenuCount", () => {
+describe("getFilterPickerCount", () => {
   it("counts filters matching schema attributes", () => {
     // GIVEN
     const schema = generateNodeSchema({
@@ -25,7 +25,7 @@ describe("getFilterMenuCount", () => {
     ];
 
     // WHEN
-    const result = getFilterMenuCount(schema, filters);
+    const result = getFilterPickerCount(schema, filters);
 
     // THEN
     expect(result).toBe(2);
@@ -39,7 +39,7 @@ describe("getFilterMenuCount", () => {
     const filters: Filter[] = [{ name: "parent__ids", value: ["some-id"] }];
 
     // WHEN
-    const result = getFilterMenuCount(schema, filters);
+    const result = getFilterPickerCount(schema, filters);
 
     // THEN
     expect(result).toBe(1);
@@ -54,7 +54,7 @@ describe("getFilterMenuCount", () => {
     ];
 
     // WHEN
-    const result = getFilterMenuCount(schema, filters);
+    const result = getFilterPickerCount(schema, filters);
 
     // THEN
     expect(result).toBe(2);
@@ -73,7 +73,7 @@ describe("getFilterMenuCount", () => {
     ];
 
     // WHEN
-    const result = getFilterMenuCount(schema, filters);
+    const result = getFilterPickerCount(schema, filters);
 
     // THEN
     expect(result).toBe(1);
@@ -87,7 +87,7 @@ describe("getFilterMenuCount", () => {
     const filters: Filter[] = [{ name: "namespace__value", value: "test" }];
 
     // WHEN
-    const result = getFilterMenuCount(schema, filters);
+    const result = getFilterPickerCount(schema, filters);
 
     // THEN
     expect(result).toBe(0);
@@ -102,7 +102,7 @@ describe("getFilterMenuCount", () => {
     ];
 
     // WHEN
-    const result = getFilterMenuCount(schema, filters);
+    const result = getFilterPickerCount(schema, filters);
 
     // THEN
     expect(result).toBe(0);

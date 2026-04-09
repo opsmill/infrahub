@@ -3,7 +3,7 @@ import { Col, Row } from "@/shared/components/container";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 
 import { ActiveObjectFilterTags } from "@/entities/nodes/object/ui/filters/active-object-filter-tags";
-import { FilterMenu } from "@/entities/nodes/object/ui/filters/filter-menu";
+import { FilterPicker } from "@/entities/nodes/object/ui/filters/filter-picker";
 import { FilterSearchInput } from "@/entities/nodes/object/ui/filters/filter-search-input";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { ObjectTableSchemaSelector } from "@/entities/nodes/object/ui/object-table/object-table-schema-selector";
@@ -22,7 +22,7 @@ export function ObjectsManagerToolbar() {
 
         <FilterSearchInput schema={selectedSchema} />
 
-        <FilterMenu schema={selectedSchema} filters={filters} />
+        <FilterPicker schema={selectedSchema} filters={filters} />
 
         <ObjectCreateFormTrigger
           schema={selectedSchema}
