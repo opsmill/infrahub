@@ -19,7 +19,7 @@ from prefect.events.schemas.events import ResourceSpecification
 from pydantic import BaseModel, Field
 
 from infrahub.core.timestamp import Timestamp
-from infrahub.events.constants import EventSortOrder
+from infrahub.events.constants import EVENT_NAMESPACE, EventSortOrder
 
 from .constants import LOG_LEVEL_MAPPING
 
@@ -161,7 +161,7 @@ class InfrahubEventFilter(EventFilter):
         if event_type:
             self.event = EventNameFilter(name=event_type)
         elif not event_type and exclude_prefixes:
-            self.event = EventNameFilter(exclude_prefix=exclude_prefixes)
+            self.event = EventNameFilter(prefix=[f"{EVENT_NAMESPACE}."], exclude_prefix=exclude_prefixes)
 
     def add_primary_node_filter(self, primary_node__ids: list[str] | None) -> None:
         if primary_node__ids:
