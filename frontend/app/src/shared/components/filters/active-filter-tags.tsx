@@ -48,7 +48,6 @@ export interface ActiveFilterTagsProps extends Omit<TagGroupProps, "children"> {
   setFilters: (filters: Filter[]) => void;
   filterDefinitions: Record<string, FilterDefinition>;
   additionalTags?: React.ReactNode;
-  onCustomFilterRemove?: (filterName: string) => boolean;
 }
 
 export function ActiveFilterTags({
@@ -56,20 +55,35 @@ export function ActiveFilterTags({
   setFilters,
   filterDefinitions,
   additionalTags,
-  onCustomFilterRemove,
   ...props
 }: ActiveFilterTagsProps) {
-  const [editingFilter, setEditingFilter] = useState<{
-    definition: FilterDefinition;
-  } | null>(null);
+  const [editingFilter, setEditingFilter] = useState<FilterDefinition | null>(null);
   const tagElements = useRef(new Map<string, Element>());
   const editTriggerRef = useRef<Element | null>(null);
 
   const handleRemoveFilter = (filterName: string) => {
-    if (onCustomFilterRemove?.(filterName)) {
-      return;
+    switch (filterName) {
+      case HIDE_INTERNAL_GROUPS_ID: {
+        setFilters([HIDE_INTERNAL_GROUPS_FILTER, ...filters]);
+        return;
+      }
+      case SHOW_INTERNAL_GROUPS_ID: {
+        setFilters(filters.filter((filter) => filter.name !== HIDE_INTERNAL_GROUPS_FILTER.name));
+        return;
+      }
+      case SHOW_AVAILABLE_IP: {
+        setFilters(filters.filter((filter) => filter.name !== AVAILABLE_IP_FILTER_NAME));
+        return;
+      }
+      case HIDE_AVAILABLE_IP: {
+        setFilters([HIDE_AVAILABLE_IP_FILTER, ...filters]);
+        return;
+      }
+      default: {
+        setFilters(filters.filter((f) => f.name !== filterName));
+        return;
+      }
     }
-    setFilters(filters.filter((f) => f.name !== filterName));
   };
 
   const handleSelectionChange = (keys: Selection) => {
@@ -108,7 +122,7 @@ export function ActiveFilterTags({
 
     if (definition) {
       editTriggerRef.current = tagElements.current.get(filterName) ?? null;
-      setEditingFilter({ definition });
+      setEditingFilter(definition);
       return;
     }
     return;
@@ -178,10 +192,7 @@ export function ActiveFilterTags({
           }}
           placement="bottom start"
         >
-          <FieldFilterForm
-            definition={editingFilter.definition}
-            onSuccess={() => setEditingFilter(null)}
-          />
+          <FieldFilterForm definition={editingFilter} onSuccess={() => setEditingFilter(null)} />
         </Popover>
       )}
     </ScrollArea>

@@ -1,14 +1,12 @@
 import type { TagGroupProps } from "react-aria-components";
 
 import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import {
   AVAILABLE_IP_FILTER_NAME,
-  HIDE_AVAILABLE_IP,
-  HIDE_AVAILABLE_IP_FILTER,
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
-  SHOW_AVAILABLE_IP,
 } from "@/entities/ipam/constants";
 import { IpAddressAvailabilityFilterTag } from "@/entities/ipam/ip-addresses/ui/ip-address-availability-filter-tag";
 import { IpPrefixAvailabilityFilterTag } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-availability-filter-tag";
@@ -17,9 +15,7 @@ import { getFilterDefinitionName } from "@/entities/nodes/object/domain/filter-d
 import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import {
   HIDE_INTERNAL_GROUPS_FILTER,
-  HIDE_INTERNAL_GROUPS_ID,
   InternalGroupsFilterTag,
-  SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -29,46 +25,30 @@ export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
   schema: ModelSchema;
 }
 
-export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilterTagsProps) {
-  const { filters, setFilters } = useObjectTableContext();
+function buildFilterDefinitions(schema: ModelSchema): Record<string, FilterDefinition> {
+  const definitions: Record<string, FilterDefinition> = {};
 
-  const filterDefinitions: Record<string, FilterDefinition> = {};
   for (const attr of schema?.attributes ?? []) {
-    filterDefinitions[attr.name] = { type: "attribute", schema: attr };
+    definitions[attr.name] = { type: "attribute", schema: attr };
   }
   for (const rel of schema?.relationships ?? []) {
-    filterDefinitions[rel.name] = { type: "relationship", schema: rel };
+    definitions[rel.name] = { type: "relationship", schema: rel };
   }
   for (const meta of ALL_METADATA_FILTERS) {
-    filterDefinitions[getFilterDefinitionName(meta)] = meta;
+    definitions[getFilterDefinitionName(meta)] = meta;
   }
 
-  const displayFilters = filters.filter(
-    (f) => f.name !== HIDE_INTERNAL_GROUPS_FILTER.name && f.name !== AVAILABLE_IP_FILTER_NAME
-  );
+  return definitions;
+}
 
-  const handleCustomFilterRemove = (filterName: string): boolean => {
-    switch (filterName) {
-      case HIDE_INTERNAL_GROUPS_ID: {
-        setFilters([HIDE_INTERNAL_GROUPS_FILTER, ...filters]);
-        return true;
-      }
-      case SHOW_INTERNAL_GROUPS_ID: {
-        setFilters(filters.filter((filter) => filter.name !== HIDE_INTERNAL_GROUPS_FILTER.name));
-        return true;
-      }
-      case SHOW_AVAILABLE_IP: {
-        setFilters(filters.filter((filter) => filter.name !== AVAILABLE_IP_FILTER_NAME));
-        return true;
-      }
-      case HIDE_AVAILABLE_IP: {
-        setFilters([HIDE_AVAILABLE_IP_FILTER, ...filters]);
-        return true;
-      }
-      default:
-        return false;
-    }
-  };
+const HIDDEN_FILTER_NAMES = new Set([HIDE_INTERNAL_GROUPS_FILTER.name, AVAILABLE_IP_FILTER_NAME]);
+
+function excludeHiddenFilters(filters: Filter[]): Filter[] {
+  return filters.filter((f) => !HIDDEN_FILTER_NAMES.has(f.name));
+}
+
+export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilterTagsProps) {
+  const { filters, setFilters } = useObjectTableContext();
 
   const hasAdditionalTags =
     isOfKind("CoreGroup", schema) ||
@@ -85,11 +65,10 @@ export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilter
 
   return (
     <ActiveFilterTags
-      filters={displayFilters}
+      filters={excludeHiddenFilters(filters)}
       setFilters={setFilters}
-      filterDefinitions={filterDefinitions}
+      filterDefinitions={buildFilterDefinitions(schema)}
       additionalTags={additionalTags}
-      onCustomFilterRemove={handleCustomFilterRemove}
       {...props}
     />
   );
