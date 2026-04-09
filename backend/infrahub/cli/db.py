@@ -42,11 +42,9 @@ from infrahub.core.initialization import get_root_node, initialize_registry
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import MIGRATIONS, get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.shared import (
-    ArbitraryMigration,
+    BaseMigration,
     GraphMigration,
-    InternalSchemaMigration,
     MigrationInput,
-    MigrationRequiringRebase,
     get_migration_console,
     suppress_internal_logs,
 )
@@ -76,7 +74,6 @@ def get_timestamp_string() -> str:
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
-    from infrahub.core.migrations.shared import MigrationTypes
     from infrahub.core.root import Root
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
@@ -99,19 +96,15 @@ class IndexAction(StrEnum):
     DROP = "drop"
 
 
-# Base migration classes used for MRO lookup in _get_migration_type_name().
-_MIGRATION_BASE_TYPES = (GraphMigration, InternalSchemaMigration, ArbitraryMigration, MigrationRequiringRebase)
-
-
-def _get_migration_type_name(migration: MigrationTypes) -> str:
+def _get_migration_type_name(migration: BaseMigration) -> str:
     """Return the base migration type name (e.g. 'GraphMigration') instead of the concrete class name."""
     for base in type(migration).__mro__:
-        if base in _MIGRATION_BASE_TYPES:
+        if base is not BaseMigration and BaseMigration in base.__bases__:
             return base.__name__
     return type(migration).__name__
 
 
-def _get_migration_display_name(migration: MigrationTypes) -> str:
+def _get_migration_display_name(migration: BaseMigration) -> str:
     """Return the migration name without the numeric prefix (e.g. 'add_version_to_graph' from '001_add_version_to_graph')."""
     parts = migration.name.split("_", 1)
     return parts[1] if len(parts) > 1 and parts[0].isdigit() else migration.name
@@ -203,7 +196,7 @@ async def migrate_cmd(
     await dbdriver.close()
 
 
-def display_migration_plan(migrations: Sequence[MigrationTypes]) -> None:
+def display_migration_plan(migrations: Sequence[BaseMigration]) -> None:
     """Display a migration execution plan without running anything."""
     console = get_migration_console()
     console.log(f"Migration plan ({len(migrations)} pending):")
@@ -461,10 +454,10 @@ async def index(
 
 async def detect_migration_to_run(
     current_graph_version: int, migration_number: int | str | None = None
-) -> Sequence[MigrationTypes]:
+) -> Sequence[BaseMigration]:
     """Return a sequence of migrations to apply to upgrade the database."""
     console = get_migration_console()
-    migrations: list[MigrationTypes] = []
+    migrations: list[BaseMigration] = []
 
     if migration_number:
         migration = get_migration_by_number(migration_number)
@@ -493,7 +486,7 @@ async def detect_migration_to_run(
     return migrations
 
 
-def _validate_migration_sequence(migrations: Sequence[MigrationTypes], current_graph_version: int) -> list[str]:
+def _validate_migration_sequence(migrations: Sequence[BaseMigration], current_graph_version: int) -> list[str]:
     """Run pre-flight checks on the migration sequence before executing.
 
     Returns a list of error messages. An empty list means all checks passed.
@@ -521,7 +514,7 @@ def _validate_migration_sequence(migrations: Sequence[MigrationTypes], current_g
 
 async def migrate_database(
     db: InfrahubDatabase,
-    migrations: Sequence[MigrationTypes],
+    migrations: Sequence[BaseMigration],
     initialize: bool = False,
     update_graph_version: bool = True,
     verbose: bool = False,

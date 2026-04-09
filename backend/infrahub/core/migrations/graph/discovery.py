@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from infrahub.core.migrations.shared import MigrationTypes
+    from infrahub.core.migrations.shared import BaseMigration
 
 MIGRATION_FILE_PATTERN = re.compile(r"^m(\d{3})_.+\.py$")
 
 
-def discover_migrations() -> list[type[MigrationTypes]]:
+def discover_migrations() -> list[type[BaseMigration]]:
     """Scan the graph migrations directory for migration files and return sorted migration classes.
 
     Discovers files matching ``m{NNN}_{name}.py``, imports each module, extracts
@@ -19,7 +19,7 @@ def discover_migrations() -> list[type[MigrationTypes]]:
     returns the list sorted by migration number.
     """
     migration_dir = Path(__file__).parent
-    migrations: list[tuple[int, type[MigrationTypes]]] = []
+    migrations: list[tuple[int, type[BaseMigration]]] = []
 
     for path in sorted(migration_dir.iterdir()):
         match = MIGRATION_FILE_PATTERN.match(path.name)
@@ -34,7 +34,7 @@ def discover_migrations() -> list[type[MigrationTypes]]:
         migrations.append((number, migration_class))
 
     # Validate no duplicate numbers
-    seen: dict[int, type[MigrationTypes]] = {}
+    seen: dict[int, type[BaseMigration]] = {}
     for num, cls in migrations:
         if num in seen:
             raise ImportError(f"Duplicate migration number {num:03d}: {seen[num].__name__} and {cls.__name__}")

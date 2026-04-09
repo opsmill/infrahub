@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING, Sequence
 from .discovery import discover_migrations
 
 if TYPE_CHECKING:
-    from ..shared import MigrationTypes
+    from ..shared import BaseMigration
 
 
-MIGRATIONS: list[type[MigrationTypes]] = discover_migrations()
+MIGRATIONS: list[type[BaseMigration]] = discover_migrations()
 
 
-async def get_graph_migrations(current_graph_version: int) -> Sequence[MigrationTypes]:
+async def get_graph_migrations(current_graph_version: int) -> Sequence[BaseMigration]:
     applicable_migrations = []
     for migration_class in MIGRATIONS:
         migration = migration_class.init()
@@ -22,7 +22,7 @@ async def get_graph_migrations(current_graph_version: int) -> Sequence[Migration
     return applicable_migrations
 
 
-def get_migration_by_number(migration_number: int | str) -> MigrationTypes:
+def get_migration_by_number(migration_number: int | str) -> BaseMigration:
     # Convert to string and pad with zeros if needed
     try:
         num = int(migration_number)

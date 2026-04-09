@@ -66,16 +66,31 @@ class MigrationResult(BaseModel):
         return False
 
 
-class MigrationNumberMixin:
-    """Mixin that derives the migration number from the class name (e.g. 67 from Migration067)."""
+class BaseMigration(BaseModel):
+    """Common base for all graph migration types."""
+
+    name: str = Field(..., description="Name of the migration")
+    description: str = Field(default="", description="Human-readable description of what this migration does")
+    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @property
     def number(self) -> int:
-        name = type(self).__name__
+        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
+        cls_name = type(self).__name__
         prefix = "Migration"
-        if not name.startswith(prefix):
-            raise ValueError(f"Class {name!r} does not follow the Migration{{NNN}} naming convention")
-        return int(name[len(prefix) :])
+        if not cls_name.startswith(prefix):
+            raise ValueError(f"Class {cls_name!r} does not follow the Migration{{NNN}} naming convention")
+        return int(cls_name[len(prefix) :])
+
+    @classmethod
+    def init(cls, **kwargs: dict[str, Any]) -> Self:
+        return cls(**kwargs)  # type: ignore[arg-type]
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        raise NotImplementedError
+
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        raise NotImplementedError
 
 
 @dataclass
@@ -204,19 +219,9 @@ class RelationshipSchemaMigration(SchemaMigration):
         return self.previous_schema.get_relationship(name=self.schema_path.field_name)
 
 
-class GraphMigration(MigrationNumberMixin, BaseModel):
+class GraphMigration(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str = Field(..., description="Name of the migration")
-    description: str = Field(default="", description="Human-readable description of what this migration does")
     queries: Sequence[type[Query]] = Field(..., description="List of queries to execute for this migration")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         async with migration_input.db.start_transaction() as ts:
@@ -236,12 +241,9 @@ class GraphMigration(MigrationNumberMixin, BaseModel):
         return result
 
 
-class InternalSchemaMigration(MigrationNumberMixin, BaseModel):
+class InternalSchemaMigration(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str = Field(..., description="Name of the migration")
-    description: str = Field(default="", description="Human-readable description of what this migration does")
     migrations: Sequence[SchemaMigration] = Field(..., description="")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
 
     @staticmethod
     def get_internal_schema() -> SchemaBranch:
@@ -254,13 +256,6 @@ class InternalSchemaMigration(MigrationNumberMixin, BaseModel):
         schema_branch.process()
 
         return schema_branch
-
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         result = MigrationResult()
@@ -278,34 +273,13 @@ class InternalSchemaMigration(MigrationNumberMixin, BaseModel):
         return result
 
 
-class ArbitraryMigration(MigrationNumberMixin, BaseModel):
-    name: str = Field(..., description="Name of the migration")
-    description: str = Field(default="", description="Human-readable description of what this migration does")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError()
-
+class ArbitraryMigration(BaseMigration):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         raise NotImplementedError()
 
 
-class MigrationRequiringRebase(MigrationNumberMixin, BaseModel):
+class MigrationRequiringRebase(BaseMigration):
     model_config = ConfigDict(arbitrary_types_allowed=True)
-    name: str = Field(..., description="Name of the migration")
-    description: str = Field(default="", description="Human-readable description of what this migration does")
-    minimum_version: int = Field(..., description="Minimum version of the graph to execute this migration")
-
-    @classmethod
-    def init(cls, **kwargs: dict[str, Any]) -> Self:
-        return cls(**kwargs)  # type: ignore[arg-type]
-
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError()
 
     async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
         """Method that will be run against non-default branches, it assumes that the branches have been rebased."""
@@ -314,6 +288,3 @@ class MigrationRequiringRebase(MigrationNumberMixin, BaseModel):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         """Method that will be run against the default branch."""
         raise NotImplementedError()
-
-
-type MigrationTypes = GraphMigration | InternalSchemaMigration | ArbitraryMigration | MigrationRequiringRebase
