@@ -35,10 +35,6 @@ class DisplayLabelValidator(SchemaBranchValidator):
         inherited_from_labels = self.validate_display_labels(schema_branch)
         self.validate_display_label(schema_branch, skip_validation=inherited_from_labels)
 
-    # ------------------------------------------------------------------
-    # validate_display_labels (deprecated display_labels field)
-    # ------------------------------------------------------------------
-
     def validate_display_labels(self, schema_branch: SchemaBranch) -> set[str]:
         """Validate and propagate the deprecated display_labels field.
 
@@ -74,10 +70,6 @@ class DisplayLabelValidator(SchemaBranchValidator):
 
         return inherited_nodes
 
-    # ------------------------------------------------------------------
-    # validate_display_label (new display_label field)
-    # ------------------------------------------------------------------
-
     def validate_display_label(self, schema_branch: SchemaBranch, skip_validation: set[str] | None = None) -> None:
         """Validate and normalise the display_label field.
 
@@ -90,7 +82,7 @@ class DisplayLabelValidator(SchemaBranchValidator):
         schema_branch.display_labels = DisplayLabels()
         nodes_to_skip: set[str] = skip_validation or set()
 
-        # Pass 1: convert legacy display_labels to display_label for all schemas.
+        # Convert legacy display_labels to display_label for all schemas.
         # Must run before inheritance so generics are fully resolved before children read them.
         for name in schema_branch.all_names:
             node_schema = schema_branch.get(name=name, duplicate=False)
@@ -112,7 +104,7 @@ class DisplayLabelValidator(SchemaBranchValidator):
                 )
             schema_branch.set(name=name, schema=update_candidate)
 
-        # Pass 2: inherit display_label from a parent generic when the node defines neither field.
+        # Inherit display_label from a parent generic when the node defines neither field.
         # Validation is skipped for inherited nodes because the generic's display_label
         # is already validated on the generic itself.
         for name in schema_branch.all_names:
@@ -134,7 +126,7 @@ class DisplayLabelValidator(SchemaBranchValidator):
                 schema_branch.set(name=name, schema=update_candidate)
                 nodes_to_skip.add(name)
 
-        # Pass 3: validate display_label on all schemas that have one set.
+        # Validate display_label on all schemas that have one set.
         for name in schema_branch.all_names:
             if name in nodes_to_skip:
                 continue
