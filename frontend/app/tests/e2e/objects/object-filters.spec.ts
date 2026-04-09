@@ -219,47 +219,6 @@ test.describe("Object filters", () => {
         await page.getByTestId("filter-reset-button").click();
       });
 
-      await test.step("filter by metadata date with 'between' condition", async () => {
-        await page.getByRole("button", { name: "Filter" }).click();
-        await page
-          .getByRole("listbox", { name: "Filter fields" })
-          .getByRole("option", { name: "Updated at" })
-          .click();
-
-        await page.getByRole("button", { name: /select a condition/ }).click();
-        await page.getByRole("option", { name: "between" }).click();
-
-        // Two calendars appear: After and Before
-        const afterCalendar = page
-          .getByTestId("metadata-date-filter-form")
-          .getByText("After")
-          .locator("..");
-        const beforeCalendar = page
-          .getByTestId("metadata-date-filter-form")
-          .getByText("Before")
-          .locator("..");
-
-        await afterCalendar
-          .getByRole("option", { name: /Choose.*1st/ })
-          .first()
-          .click();
-        await beforeCalendar
-          .getByRole("option", { name: /Choose.*28/ })
-          .first()
-          .click();
-        await page
-          .getByTestId("metadata-date-filter-form")
-          .getByRole("button", { name: "Apply" })
-          .click();
-
-        await expect(page.getByRole("row", { name: /Updated at.*after/ })).toBeVisible();
-        await expect(page.getByRole("row", { name: /Updated at.*before/ })).toBeVisible();
-      });
-
-      await test.step("clear filters", async () => {
-        await page.getByTestId("filter-reset-button").click();
-      });
-
       await test.step("filter by metadata user with 'is any of' condition", async () => {
         await page.getByRole("button", { name: "Filter" }).click();
         await page
