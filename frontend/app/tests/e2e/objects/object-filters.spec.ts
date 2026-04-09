@@ -88,7 +88,7 @@ test.describe("Object filters", () => {
         await page.getByRole("button", { name: "Filter" }).click();
         await page
           .getByRole("listbox", { name: "Filter fields" })
-          .getByRole("option", { name: "Role" })
+          .getByRole("option", { name: "Name" })
           .click();
 
         await page.getByRole("button", { name: /select a condition/ }).click();
@@ -98,7 +98,7 @@ test.describe("Object filters", () => {
           .getByRole("button", { name: "Apply" })
           .click();
 
-        await expect(page.getByRole("row", { name: "Role is empty" })).toBeVisible();
+        await expect(page.getByRole("row", { name: "Name is empty" })).toBeVisible();
       });
 
       await test.step("clear filters", async () => {
@@ -109,7 +109,7 @@ test.describe("Object filters", () => {
         await page.getByRole("button", { name: "Filter" }).click();
         await page
           .getByRole("listbox", { name: "Filter fields" })
-          .getByRole("option", { name: "Role" })
+          .getByRole("option", { name: "Name" })
           .click();
 
         await page.getByRole("button", { name: /select a condition/ }).click();
@@ -119,7 +119,7 @@ test.describe("Object filters", () => {
           .getByRole("button", { name: "Apply" })
           .click();
 
-        await expect(page.getByRole("row", { name: "Role is not empty" })).toBeVisible();
+        await expect(page.getByRole("row", { name: "Name is not empty" })).toBeVisible();
       });
 
       await test.step("clear filters", async () => {
@@ -389,7 +389,6 @@ test.describe("Object filters", () => {
 
       await test.step("clear filters", async () => {
         await page.getByTestId("filter-reset-button").click();
-        await page.getByTestId("filter-reset-button").click();
       });
 
       await test.step("filter by relationship with 'is not empty' condition via column header", async () => {
@@ -407,16 +406,13 @@ test.describe("Object filters", () => {
 
       await test.step("update filter via filter tag click", async () => {
         await page.getByRole("row", { name: "Tags is not empty" }).click();
-        await expect(page.getByTestId("relationship-filter-form")).toBeVisible();
 
-        await page.getByRole("button", { name: /select a condition/ }).click();
+        const editPopover = page.getByRole("dialog").last();
+        await editPopover.getByRole("button", { name: /select a condition/ }).click();
         await page.getByRole("option", { name: "is any of" }).click();
 
         await page.getByRole("option", { name: "blue" }).click();
-        await page
-          .getByTestId("relationship-filter-form")
-          .getByRole("button", { name: "Apply" })
-          .click();
+        await editPopover.getByRole("button", { name: "Apply" }).click();
 
         await expect(page.getByRole("row", { name: /Tags.*is any of.*blue/ })).toBeVisible();
       });
@@ -493,8 +489,11 @@ test.describe("Object filters", () => {
 
     await page.getByTestId("object-items").getByRole("button", { name: "Type" }).click();
     await expect(page.getByRole("combobox").filter({ hasText: "EXTERNAL" })).toBeVisible();
+    await page.keyboard.press("Escape");
 
-    await page.getByRole("row", { name: "Type contains EXTERNAL" }).click();
+    await page
+      .getByRole("button", { name: "Remove Type contains EXTERNAL" })
+      .click();
     await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");
     await expect(page.getByTestId("object-items")).toContainText("INTERNAL");
   });
