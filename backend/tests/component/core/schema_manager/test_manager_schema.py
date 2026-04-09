@@ -41,6 +41,7 @@ from infrahub.core.schema.definitions.core.template import core_object_component
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
+from infrahub.core.validators.schema_branch.display_label_validator import DisplayLabelValidator
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import SchemaNotFoundError, ValidationError
 from tests.conftest import TestHelper
@@ -1868,7 +1869,7 @@ async def test_validate_display_labels_success(schema_all_in_one: dict[str, Any]
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_labels()
+    DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
@@ -1881,7 +1882,7 @@ async def test_validate_display_label_success(schema_all_in_one: dict[str, Any],
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_label()
+    DisplayLabelValidator().check(schema)
 
 
 async def test_validate_display_label_inherited_from_generic(schema_all_in_one: dict[str, Any]) -> None:
@@ -1892,7 +1893,7 @@ async def test_validate_display_label_inherited_from_generic(schema_all_in_one: 
     schema = SchemaBranch(cache={}, name="test")
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
-    schema.validate_display_label()
+    DisplayLabelValidator().check(schema)
 
     node = schema.get(name="TestingCriticality", duplicate=False)
     assert node.display_label == "my_generic_name__value"
@@ -1932,7 +1933,7 @@ async def test_validate_display_labels_error(
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     with pytest.raises(ValueError, match=expected_error):
-        schema.validate_display_labels()
+        DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
@@ -1976,7 +1977,7 @@ async def test_validate_display_label_error(
     schema.load_schema(schema=SchemaRoot(**schema_all_in_one))
 
     with pytest.raises(ValueError, match=expected_error):
-        schema.validate_display_label()
+        DisplayLabelValidator().check(schema)
 
 
 @pytest.mark.parametrize(
