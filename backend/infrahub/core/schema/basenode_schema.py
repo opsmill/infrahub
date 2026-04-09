@@ -711,6 +711,14 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         )
 
     def check_if_attr_supports_templates(self, attribute_schema: AttributeSchema) -> bool:
+        """Return True if the attribute can appear in a generated template schema.
+
+        ``max_fields_in_constraint=1`` is passed so that only single-attr constraints
+        block the attribute. A compound constraint such as ``[["name__value", "nbr_seats__value"]]``
+        does not uniquely identify a node by ``nbr_seats`` alone, so the attribute is still
+        safe to override in a template. A single-attr constraint like ``[["nbr_seats__value"]]``
+        does uniquely identify a node, so the attribute must be excluded from templates.
+        """
         return attribute_schema.support_templates and not self._check_attr_in_uniqueness_constraint(
             attr=attribute_schema.name, max_fields_in_constraint=1
         )

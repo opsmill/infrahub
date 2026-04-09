@@ -10,7 +10,7 @@ import pytest
 
 from infrahub.core.node import Node
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
-from tests.helpers.db_validation import LATEST_ATTRIBUTE_PATH_STATUS_QUERY
+from tests.helpers.db_validation import LATEST_ATTRIBUTE_PATH_STATUS_QUERY, assert_attribute_path_status
 from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
 from ..shared import load_schema
@@ -21,25 +21,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-
-
-async def assert_attribute_path_status(
-    db: InfrahubDatabase,
-    node_label: str,
-    attr_name: str,
-    branch_name: str,
-    expected_status: str,
-) -> None:
-    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
-    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
-    assert len(results) > 0, f"No {node_label} nodes found with attribute {attr_name!r}"
-    for record in results:
-        assert record["has_attr_status"] == expected_status, (
-            f"Node {record['node_id']}: HAS_ATTRIBUTE status is {record['has_attr_status']!r}, expected {expected_status!r}"
-        )
-        assert record["has_val_status"] == expected_status, (
-            f"Node {record['node_id']}: HAS_VALUE status is {record['has_val_status']!r}, expected {expected_status!r}"
-        )
 
 
 async def assert_attribute_absent(

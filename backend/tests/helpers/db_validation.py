@@ -332,3 +332,22 @@ CALL (attr) {
 }
 RETURN node.uuid AS node_id, r1.status AS has_attr_status, r2.status AS has_val_status
 """
+
+
+async def assert_attribute_path_status(
+    db: InfrahubDatabase,
+    node_label: str,
+    attr_name: str,
+    branch_name: str,
+    expected_status: str,
+) -> None:
+    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
+    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
+    assert len(results) > 0, f"No {node_label} nodes found with attribute {attr_name!r}"
+    for record in results:
+        assert record["has_attr_status"] == expected_status, (
+            f"Node {record['node_id']}: HAS_ATTRIBUTE status is {record['has_attr_status']!r}, expected {expected_status!r}"
+        )
+        assert record["has_val_status"] == expected_status, (
+            f"Node {record['node_id']}: HAS_VALUE status is {record['has_val_status']!r}, expected {expected_status!r}"
+        )

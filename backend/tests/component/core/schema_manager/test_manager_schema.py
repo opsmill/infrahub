@@ -4688,3 +4688,109 @@ async def test_profile_does_not_contain_optional_unique_attributes() -> None:
 
     with pytest.raises(ValueError, match="Unable to find the attribute year"):
         network_router_profile_2.get_attribute("year")
+
+
+async def test_template_does_not_contain_optional_unique_attributes() -> None:
+    """Templates exclude attributes that are in a single-attr uniqueness constraint or have unique=True,
+    but unlike profiles, they retain optional attributes that appear only in compound constraints."""
+    schema = {
+        "namespace": "Network",
+        "name": "Router",
+        "generate_template": True,
+        "uniqueness_constraints": [["name__value", "age__value"], ["year__value"]],
+        "human_friendly_id": ["name__value"],
+        "display_label": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "Text", "optional": True},
+            {"name": "age", "kind": "Number", "optional": True},
+            {"name": "year", "kind": "Number", "optional": True},
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[schema]))
+    schema_branch.process()
+
+    network_router_template = schema_branch.get(name="TemplateNetworkRouter", duplicate=False)
+
+    # name and age are optional but appear only in a compound constraint — templates include them
+    network_router_template.get_attribute("name")
+    network_router_template.get_attribute("age")
+
+    # year is optional and appears in a single-attr constraint — templates exclude it
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_template.get_attribute("year")
+
+    schema_2 = copy.deepcopy(schema)
+    schema_2["attributes"][0]["unique"] = True
+    schema_2["attributes"][1]["unique"] = True
+    schema_2["attributes"][2]["unique"] = True
+    schema_2["uniqueness_constraints"] = []
+
+    schema_branch_2 = SchemaBranch(cache={}, name="test2")
+    schema_branch_2.load_schema(schema=SchemaRoot(nodes=[schema_2]))
+    schema_branch_2.process()
+
+    network_router_template_2 = schema_branch_2.get(name="TemplateNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_template_2.get_attribute("name")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute age"):
+        network_router_template_2.get_attribute("age")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_template_2.get_attribute("year")
+
+
+async def test_template_does_not_contain_single_constraint_attributes() -> None:
+    """Templates exclude attributes that appear in a single-attr uniqueness constraint or have
+    unique=True, but keep attributes that appear only in compound constraints."""
+    node_schema = {
+        "namespace": "Network",
+        "name": "Router",
+        "generate_template": True,
+        "uniqueness_constraints": [["name__value", "age__value"], ["year__value"]],
+        "human_friendly_id": ["name__value"],
+        "display_label": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "Text", "optional": True},
+            {"name": "age", "kind": "Number", "optional": True},
+            {"name": "year", "kind": "Number", "optional": True},
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(
+        schema=SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[node_schema])
+    )
+    schema_branch.process()
+
+    network_router_template = schema_branch.get(name="TemplateNetworkRouter", duplicate=False)
+
+    # name and age appear only in a compound constraint — templates still include them
+    network_router_template.get_attribute("name")
+    network_router_template.get_attribute("age")
+
+    # year appears in a single-attr constraint — templates exclude it
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_template.get_attribute("year")
+
+    node_schema_2 = copy.deepcopy(node_schema)
+    node_schema_2["attributes"][0]["unique"] = True
+    node_schema_2["attributes"][1]["unique"] = True
+    node_schema_2["attributes"][2]["unique"] = True
+    node_schema_2["uniqueness_constraints"] = []
+
+    schema_branch_2 = SchemaBranch(cache={}, name="test2")
+    schema_branch_2.load_schema(
+        schema=SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[node_schema_2])
+    )
+    schema_branch_2.process()
+
+    network_router_template_2 = schema_branch_2.get(name="TemplateNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_template_2.get_attribute("name")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute age"):
+        network_router_template_2.get_attribute("age")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_template_2.get_attribute("year")
