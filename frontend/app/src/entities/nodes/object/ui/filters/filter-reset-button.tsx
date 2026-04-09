@@ -21,6 +21,7 @@ export const FilterResetButton = () => {
         "data-hovered:bg-gray-100"
       )}
       onPress={handleResetFilters}
+      data-testid="filter-reset-button"
     >
       <Icon icon="mdi:filter-variant-remove" className="mr-1 text-base" />
       Clear filters

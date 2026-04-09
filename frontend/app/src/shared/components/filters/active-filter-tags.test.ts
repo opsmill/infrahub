@@ -36,19 +36,16 @@ describe("formatAttributeFilterValue", () => {
 describe("getFilterTagDisplay", () => {
   it("returns label and value for attribute value filter", () => {
     // GIVEN
-    const fieldSchema = generateAttributeSchema({
-      name: "hostname",
-      label: "Hostname",
-      kind: "Text",
-    });
     const filter = { name: "hostname__value", value: "server01" };
 
     // WHEN
     const result = getFilterTagDisplay({
       filter,
       fieldKey: "value",
-      fieldSchema,
-      isRelationship: false,
+      filterDefinition: {
+        type: "attribute",
+        schema: generateAttributeSchema({ name: "hostname", label: "Hostname", kind: "Text" }),
+      },
     });
 
     // THEN
@@ -59,17 +56,18 @@ describe("getFilterTagDisplay", () => {
     });
   });
 
-  it("returns null for value filter on a relationship schema", () => {
+  it("returns null for value filter on a relationship definition", () => {
     // GIVEN
-    const fieldSchema = generateRelationshipSchema({ name: "site" });
     const filter = { name: "site__value", value: "test" };
 
     // WHEN
     const result = getFilterTagDisplay({
       filter,
       fieldKey: "value",
-      fieldSchema,
-      isRelationship: true,
+      filterDefinition: {
+        type: "relationship",
+        schema: generateRelationshipSchema({ name: "site" }),
+      },
     });
 
     // THEN
@@ -78,7 +76,6 @@ describe("getFilterTagDisplay", () => {
 
   it("returns display labels for relationship ids filter", () => {
     // GIVEN
-    const fieldSchema = generateRelationshipSchema({ name: "site", label: "Site" });
     const filter = {
       name: "site__ids",
       value: [
@@ -91,8 +88,10 @@ describe("getFilterTagDisplay", () => {
     const result = getFilterTagDisplay({
       filter,
       fieldKey: "ids",
-      fieldSchema,
-      isRelationship: true,
+      filterDefinition: {
+        type: "relationship",
+        schema: generateRelationshipSchema({ name: "site", label: "Site" }),
+      },
     });
 
     // THEN
@@ -103,17 +102,48 @@ describe("getFilterTagDisplay", () => {
     });
   });
 
-  it("returns null for ids filter on non-relationship", () => {
+  it("returns display labels for metadata-user ids filter", () => {
     // GIVEN
-    const fieldSchema = generateAttributeSchema({ name: "name" });
+    const filter = {
+      name: "node_metadata__created_by__ids",
+      value: [
+        { id: "1", display_label: "Admin" },
+        { id: "2", display_label: "User" },
+      ],
+    };
+
+    // WHEN
+    const result = getFilterTagDisplay({
+      filter,
+      fieldKey: "ids",
+      filterDefinition: {
+        type: "metadata-user",
+        name: "node_metadata__created_by",
+        label: "Created by",
+        peer: "CoreAccount",
+      },
+    });
+
+    // THEN
+    expect(result).toEqual({
+      label: "Created by",
+      condition: "is any of",
+      value: "Admin, User",
+    });
+  });
+
+  it("returns null for ids filter on attribute definition", () => {
+    // GIVEN
     const filter = { name: "name__ids", value: ["a"] };
 
     // WHEN
     const result = getFilterTagDisplay({
       filter,
       fieldKey: "ids",
-      fieldSchema,
-      isRelationship: false,
+      filterDefinition: {
+        type: "attribute",
+        schema: generateAttributeSchema({ name: "name" }),
+      },
     });
 
     // THEN
@@ -122,15 +152,16 @@ describe("getFilterTagDisplay", () => {
 
   it("returns is empty condition for isnull filter with true value", () => {
     // GIVEN
-    const fieldSchema = generateAttributeSchema({ name: "description", label: "Description" });
     const filter = { name: "description__isnull", value: true };
 
     // WHEN
     const result = getFilterTagDisplay({
       filter,
       fieldKey: "isnull",
-      fieldSchema,
-      isRelationship: false,
+      filterDefinition: {
+        type: "attribute",
+        schema: generateAttributeSchema({ name: "description", label: "Description" }),
+      },
     });
 
     // THEN
@@ -143,15 +174,16 @@ describe("getFilterTagDisplay", () => {
 
   it("returns is not empty condition for isnull filter with false value", () => {
     // GIVEN
-    const fieldSchema = generateAttributeSchema({ name: "description", label: "Description" });
     const filter = { name: "description__isnull", value: false };
 
     // WHEN
     const result = getFilterTagDisplay({
       filter,
       fieldKey: "isnull",
-      fieldSchema,
-      isRelationship: false,
+      filterDefinition: {
+        type: "attribute",
+        schema: generateAttributeSchema({ name: "description", label: "Description" }),
+      },
     });
 
     // THEN
@@ -164,18 +196,40 @@ describe("getFilterTagDisplay", () => {
 
   it("returns null for unknown field key", () => {
     // GIVEN
-    const fieldSchema = generateAttributeSchema({ name: "name" });
     const filter = { name: "name__unknown", value: "test" };
 
     // WHEN
     const result = getFilterTagDisplay({
       filter,
       fieldKey: "unknown",
-      fieldSchema,
-      isRelationship: false,
+      filterDefinition: {
+        type: "attribute",
+        schema: generateAttributeSchema({ name: "name" }),
+      },
     });
 
     // THEN
     expect(result).toBeNull();
+  });
+
+  it("returns before/after display for metadata-date filters", () => {
+    // GIVEN
+    const filter = { name: "node_metadata__created_at__after", value: "2024-01-15T10:30:00.000Z" };
+
+    // WHEN
+    const result = getFilterTagDisplay({
+      filter,
+      fieldKey: "after",
+      filterDefinition: {
+        type: "metadata-date",
+        name: "node_metadata__created_at",
+        label: "Created at",
+      },
+    });
+
+    // THEN
+    expect(result).not.toBeNull();
+    expect(result!.label).toBe("Created at");
+    expect(result!.condition).toBe("after");
   });
 });

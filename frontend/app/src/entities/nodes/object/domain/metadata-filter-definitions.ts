@@ -1,94 +1,38 @@
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+import type {
+  FilterDefinition,
+  MetadataDateFilterDefinition,
+  MetadataUserFilterDefinition,
+} from "@/entities/nodes/object/domain/filter-definition";
 
-export const NODE_METADATA_PREFIX = "node_metadata__";
-
-export const METADATA_CREATED_AT: AttributeSchema = {
-  id: null,
-  state: "present",
+export const METADATA_CREATED_AT: MetadataDateFilterDefinition = {
+  type: "metadata-date",
   name: "node_metadata__created_at",
-  kind: ATTRIBUTE_KIND.DATETIME,
   label: "Created at",
-  description: "Date and time when the node was created",
-  enum: null,
-  computed_attribute: null,
-  choices: null,
-  regex: null,
-  max_length: null,
-  min_length: null,
-  read_only: true,
-  unique: false,
-  optional: true,
-  branch: "aware",
-  order_weight: 0,
-  default_value: null,
-  inherited: false,
-  allow_override: "any",
-  display: "default",
-  deprecation: null,
-  parameters: { id: null, state: "present" },
 };
 
-export const METADATA_UPDATED_AT: AttributeSchema = {
-  ...METADATA_CREATED_AT,
+export const METADATA_UPDATED_AT: MetadataDateFilterDefinition = {
+  type: "metadata-date",
   name: "node_metadata__updated_at",
   label: "Updated at",
-  description: "Date and time when the node was last updated",
 };
 
-export const METADATA_CREATED_BY: RelationshipSchema = {
-  id: null,
-  state: "present",
+export const METADATA_CREATED_BY: MetadataUserFilterDefinition = {
+  type: "metadata-user",
   name: "node_metadata__created_by",
-  peer: "CoreAccount",
-  kind: "Attribute",
   label: "Created by",
-  description: "Account that created the node",
-  identifier: null,
-  cardinality: "one",
-  min_count: 0,
-  max_count: 0,
-  order_weight: 0,
-  optional: true,
-  branch: "aware",
-  inherited: false,
-  direction: "bidirectional",
-  hierarchical: null,
-  on_delete: "no-action",
-  allow_override: "any",
-  read_only: true,
-  display: "default",
-  deprecation: null,
+  peer: "CoreAccount",
 };
 
-export const METADATA_UPDATED_BY: RelationshipSchema = {
-  ...METADATA_CREATED_BY,
+export const METADATA_UPDATED_BY: MetadataUserFilterDefinition = {
+  type: "metadata-user",
   name: "node_metadata__updated_by",
   label: "Updated by",
-  description: "Account that last updated the node",
+  peer: "CoreAccount",
 };
 
-export const METADATA_DATETIME_FILTERS: AttributeSchema[] = [
+export const ALL_METADATA_FILTERS: FilterDefinition[] = [
   METADATA_CREATED_AT,
   METADATA_UPDATED_AT,
-];
-
-export const METADATA_USER_FILTERS: RelationshipSchema[] = [
   METADATA_CREATED_BY,
   METADATA_UPDATED_BY,
 ];
-
-export const ALL_METADATA_FILTERS: Array<AttributeSchema | RelationshipSchema> = [
-  ...METADATA_DATETIME_FILTERS,
-  ...METADATA_USER_FILTERS,
-];
-
-export function isMetadataDatetimeFilter(
-  filter: AttributeSchema | RelationshipSchema
-): filter is AttributeSchema {
-  return !("peer" in filter);
-}
-
-export function isMetadataFilter(name: string): boolean {
-  return name.startsWith(NODE_METADATA_PREFIX);
-}

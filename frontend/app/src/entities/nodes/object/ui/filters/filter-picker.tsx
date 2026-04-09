@@ -12,14 +12,16 @@ import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
-import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
 import {
-  ALL_METADATA_FILTERS,
-  isMetadataFilter,
-} from "@/entities/nodes/object/domain/metadata-filter-definitions";
+  type FilterDefinition,
+  getFilterDefinitionIcon,
+  getFilterDefinitionLabel,
+  getFilterDefinitionName,
+} from "@/entities/nodes/object/domain/filter-definition";
+import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
-import { MetadataFilterForm } from "@/entities/nodes/object/ui/filters/metadata-filter-form";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 interface FilterPickerProps {
@@ -41,11 +43,17 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
     setSelectedField(null);
   };
 
-  const fields = [
-    ...sortByOrderWeight([...(schema.attributes ?? []), ...(schema.relationships ?? [])]),
+  const fields: FilterDefinition[] = [
+    ...sortByOrderWeight([...(schema.attributes ?? []), ...(schema.relationships ?? [])]).map(
+      (field): FilterDefinition =>
+        "peer" in field
+          ? { type: "relationship", schema: field }
+          : { type: "attribute", schema: field }
+    ),
     ...ALL_METADATA_FILTERS,
   ];
-  const activeFieldSchema = fields.find((f) => f.name === selectedField);
+
+  const activeFieldDefinition = fields.find((f) => getFilterDefinitionName(f) === selectedField);
 
   const handleAction = (key: Key) => {
     const fieldName = String(key);
@@ -85,22 +93,25 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
               onAction={handleAction}
               className="max-h-72 p-1"
             >
-              {fields.map((field) => (
-                <FilterPickerItem
-                  key={field.name}
-                  field={field}
-                  hasActiveFilter={filters.some((f) => isFieldFiltered(f, field.name))}
-                  ref={(el: HTMLDivElement | null) => {
-                    if (el) itemElements.current.set(field.name, el);
-                  }}
-                />
-              ))}
+              {fields.map((field) => {
+                const name = getFilterDefinitionName(field);
+                return (
+                  <FilterPickerItem
+                    key={name}
+                    definition={field}
+                    hasActiveFilter={filters.some((f) => isFieldFiltered(f, name))}
+                    ref={(el: HTMLDivElement | null) => {
+                      if (el) itemElements.current.set(name, el);
+                    }}
+                  />
+                );
+              })}
             </ListBox>
           </Autocomplete>
         </Popover>
       </PopoverTrigger>
 
-      {selectedField && activeFieldSchema && (
+      {selectedField && activeFieldDefinition && (
         <Popover
           className="filter-form-popover"
           triggerRef={triggerRef}
@@ -111,11 +122,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
           }}
           placement="end top"
         >
-          {isMetadataFilter(activeFieldSchema.name) ? (
-            <MetadataFilterForm metadataFilter={activeFieldSchema} onSuccess={closePicker} />
-          ) : (
-            <FieldFilterForm fieldSchema={activeFieldSchema} onSuccess={closePicker} />
-          )}
+          <FieldFilterForm definition={activeFieldDefinition} onSuccess={closePicker} />
         </Popover>
       )}
     </>
@@ -123,23 +130,30 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
 }
 
 interface FilterPickerItemProps {
-  field: AttributeSchema | RelationshipSchema;
+  definition: FilterDefinition;
   hasActiveFilter: boolean;
   ref?: React.Ref<HTMLDivElement>;
 }
 
-function FilterPickerItem({ field, hasActiveFilter, ref }: FilterPickerItemProps) {
+function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItemProps) {
+  const name = getFilterDefinitionName(definition);
+  const label = getFilterDefinitionLabel(definition);
+
   return (
     <ListBoxItem
-      id={field.name}
-      textValue={field.label ?? field.name}
+      id={name}
+      textValue={label}
       className={({ isSelected }) => classNames(isSelected && "bg-stone-700/10 text-stone-800")}
       ref={ref}
     >
       {({ isSelected }) => (
         <>
-          <FieldSchemaIcon fieldSchema={field} />
-          <span className="mr-auto">{field.label}</span>
+          {definition.type === "relationship" ? (
+            <FieldSchemaIcon fieldSchema={definition.schema} />
+          ) : (
+            <Icon icon={getFilterDefinitionIcon(definition)} />
+          )}
+          <span className="mr-auto">{label}</span>
           {hasActiveFilter && <ActiveFilterIndicator />}
           <ChevronRightIcon className={classNames("size-3.5", isSelected && "opacity-0")} />
         </>

@@ -5,91 +5,428 @@ import { ACCOUNT_STATE_PATH } from "../../constants";
 test.describe("Object filters", () => {
   test.use({ storageState: ACCOUNT_STATE_PATH.ADMIN });
 
-  test("should filter the nodes list", async ({ page }) => {
-    await test.step("access nodes list and verify initial state", async () => {
-      await page.goto("/objects/InfraDevice");
-      await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+  test.describe("using the filter picker", () => {
+    test("should filter by attribute, relationship, and node metadata with all conditions", async ({
+      page,
+    }) => {
+      await test.step("navigate and verify initial state", async () => {
+        await page.goto("/objects/InfraDevice");
+        await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+      });
+
+      await test.step("filter by attribute with 'contains' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await expect(page.getByRole("listbox", { name: "Filter fields" })).toBeVisible();
+
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Role" })
+          .click();
+        await expect(page.getByTestId("attribute-filter-form")).toBeVisible();
+
+        await page.getByRole("option", { name: "Edge Router" }).click();
+        await page
+          .getByTestId("attribute-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Role contains edge" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
+      });
+
+      await test.step("update attribute filter value", async () => {
+        await page.getByRole("row", { name: "Role contains edge" }).click();
+        await expect(page.getByTestId("attribute-filter-form")).toBeVisible();
+
+        await page.getByRole("option", { name: "Core Router" }).click();
+        await page
+          .getByTestId("attribute-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Role contains core" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).not.toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+        await expect(page.getByRole("row", { name: "Role contains core" })).not.toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+      });
+
+      await test.step("filter by relationship with 'is any of' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Site" })
+          .click();
+        await expect(page.getByTestId("relationship-filter-form")).toBeVisible();
+
+        await page.getByRole("option", { name: "atl1" }).click();
+        await page
+          .getByTestId("relationship-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: /Site.*is any of.*atl1/ })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by attribute with 'is empty' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Role" })
+          .click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is empty" }).click();
+        await page
+          .getByTestId("attribute-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Role is empty" })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by attribute with 'is not empty' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Role" })
+          .click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is not empty" }).click();
+        await page
+          .getByTestId("attribute-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Role is not empty" })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by relationship with 'is empty' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Tags" })
+          .click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is empty" }).click();
+        await page
+          .getByTestId("relationship-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Tags is empty" })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by relationship with 'is not empty' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Tags" })
+          .click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is not empty" }).click();
+        await page
+          .getByTestId("relationship-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Tags is not empty" })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by metadata date with 'after' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Created at" })
+          .click();
+        await expect(page.getByTestId("metadata-date-filter-form")).toBeVisible();
+
+        // Default condition is "after"
+        await page
+          .getByRole("option", { name: /Choose.*1st/ })
+          .first()
+          .click();
+        await page
+          .getByTestId("metadata-date-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: /Created at.*after/ })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by metadata date with 'before' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Created at" })
+          .click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "before" }).click();
+
+        await page
+          .getByRole("option", { name: /Choose.*1st/ })
+          .first()
+          .click();
+        await page
+          .getByTestId("metadata-date-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: /Created at.*before/ })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by metadata date with 'between' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Updated at" })
+          .click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "between" }).click();
+
+        // Two calendars appear: After and Before
+        const afterCalendar = page
+          .getByTestId("metadata-date-filter-form")
+          .getByText("After")
+          .locator("..");
+        const beforeCalendar = page
+          .getByTestId("metadata-date-filter-form")
+          .getByText("Before")
+          .locator("..");
+
+        await afterCalendar
+          .getByRole("option", { name: /Choose.*1st/ })
+          .first()
+          .click();
+        await beforeCalendar
+          .getByRole("option", { name: /Choose.*28/ })
+          .first()
+          .click();
+        await page
+          .getByTestId("metadata-date-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: /Updated at.*after/ })).toBeVisible();
+        await expect(page.getByRole("row", { name: /Updated at.*before/ })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by metadata user with 'is any of' condition", async () => {
+        await page.getByRole("button", { name: "Filter" }).click();
+        await page
+          .getByRole("listbox", { name: "Filter fields" })
+          .getByRole("option", { name: "Created by" })
+          .click();
+        await expect(page.getByTestId("metadata-user-filter-form")).toBeVisible();
+
+        await page.getByRole("option", { name: /admin/i }).first().click();
+        await page
+          .getByTestId("metadata-user-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(
+          page.getByRole("row", { name: /Created by.*is any of.*admin/i })
+        ).toBeVisible();
+      });
+
+      await test.step("clear all filters and verify initial state", async () => {
+        await page.getByTestId("filter-reset-button").click();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+      });
     });
+  });
 
-    await test.step("filter using an attribute", async () => {
-      await page.getByRole("button", { name: "Role" }).click();
-      await page.getByRole("option", { name: "Edge Router" }).click();
-      await page.getByRole("button", { name: "Apply" }).click();
+  test.describe("using the column header", () => {
+    test("should filter by attribute and relationship with all conditions", async ({ page }) => {
+      await test.step("navigate and verify initial state", async () => {
+        await page.goto("/objects/InfraDevice");
+        await expect(page.getByRole("heading", { name: "Device" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+      });
 
-      await expect(
-        page.getByLabel("Active filters").getByLabel("Role contains edge")
-      ).toBeVisible();
-      await expect(page.getByRole("button", { name: "Clear filters" })).toBeVisible();
+      await test.step("filter by attribute with 'contains' condition via column header", async () => {
+        await page.getByRole("button", { name: "Role" }).click();
+        await expect(page.getByText("Filter by Role")).toBeVisible();
 
-      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
+        await page.getByRole("option", { name: "Edge Router" }).click();
+        await page.getByRole("button", { name: "Apply" }).click();
 
-      await page.getByRole("button", { name: "Role" }).click();
-      await expect(page.getByTestId("attribute-filter-form")).toContainText("Edge Router");
-    });
+        await expect(page.getByRole("row", { name: "Role contains edge" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
+      });
 
-    await test.step("filter using a relationship of cardinality one", async () => {
-      await page.getByRole("button", { name: "Site" }).click();
-      await page.getByRole("option", { name: "atl1" }).click();
-      await page
-        .getByTestId("relationship-filter-form")
-        .getByRole("button", { name: "Apply" })
-        .click();
+      await test.step("update attribute filter via column header", async () => {
+        await page.getByTestId("object-items").getByRole("button", { name: "Role" }).click();
+        await expect(page.getByTestId("attribute-filter-form")).toContainText("Edge Router");
 
-      await expect(
-        page.getByLabel("Active filters").getByLabel("Site contains atl1")
-      ).toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-core1" })).not.toBeVisible();
+        await page.getByRole("option", { name: "Core Router" }).click();
+        await page.getByRole("button", { name: "Apply" }).click();
 
-      await page.getByRole("button", { name: "Site" }).click();
-      await expect(page.getByTestId("relationship-filter-form")).toContainText("atl1×");
-      await page.getByText("Filter by Site").press("Escape");
-      await expect(page.getByTestId("relationship-filter-form")).not.toBeVisible();
-    });
+        await expect(page.getByRole("row", { name: "Role contains core" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).not.toBeVisible();
+      });
 
-    await test.step("remove an attribute filter", async () => {
-      await page.getByLabel("Active filters").getByLabel("Role contains edge").click();
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
 
-      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
-    });
+      await test.step("filter by attribute with 'is empty' condition via column header", async () => {
+        await page.getByRole("button", { name: "Role" }).click();
 
-    await test.step("filter using a relationship of cardinality many", async () => {
-      await page.getByRole("button", { name: "Tags" }).click();
-      await page.getByRole("option", { name: "blue" }).click();
-      await page.getByRole("button", { name: "Apply" }).click();
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is empty" }).click();
+        await page.getByRole("button", { name: "Apply" }).click();
 
-      await expect(
-        page.getByLabel("Active filters").getByLabel("Site contains atl1")
-      ).toBeVisible();
-      await expect(
-        page.getByLabel("Active filters").getByLabel("Tags contains blue")
-      ).toBeVisible();
+        await expect(page.getByRole("row", { name: "Role is empty" })).toBeVisible();
+      });
 
-      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-edge1" })).not.toBeVisible();
-      await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
 
-      await page.getByRole("button", { name: "Tags" }).click();
-      await expect(page.getByTestId("relationship-filter-form")).toContainText("blue×");
-    });
+      await test.step("filter by attribute with 'is not empty' condition via column header", async () => {
+        await page.getByRole("button", { name: "Role" }).click();
 
-    await test.step("clear all filters", async () => {
-      await page.getByRole("button", { name: "Clear filters" }).click();
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is not empty" }).click();
+        await page.getByRole("button", { name: "Apply" }).click();
 
-      await expect(page.getByLabel("Site contains atl1")).not.toBeVisible();
-      await expect(page.getByLabel("Tags contains blue")).not.toBeVisible();
+        await expect(page.getByRole("row", { name: "Role is not empty" })).toBeVisible();
+      });
 
-      await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by relationship with 'is any of' condition via column header", async () => {
+        await page.getByRole("button", { name: "Site" }).click();
+        await expect(page.getByText("Filter by Site")).toBeVisible();
+
+        await page.getByRole("option", { name: "atl1" }).click();
+        await page
+          .getByTestId("relationship-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: /Site.*is any of.*atl1/ })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).not.toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by relationship with 'is empty' condition via column header", async () => {
+        await page.getByRole("button", { name: "Tags" }).click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is empty" }).click();
+        await page
+          .getByTestId("relationship-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Tags is empty" })).toBeVisible();
+      });
+
+      await test.step("clear filters", async () => {
+        await page.getByTestId("filter-reset-button").click();
+        await page.getByTestId("filter-reset-button").click();
+      });
+
+      await test.step("filter by relationship with 'is not empty' condition via column header", async () => {
+        await page.getByRole("button", { name: "Tags" }).click();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is not empty" }).click();
+        await page
+          .getByTestId("relationship-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: "Tags is not empty" })).toBeVisible();
+      });
+
+      await test.step("update filter via filter tag click", async () => {
+        await page.getByRole("row", { name: "Tags is not empty" }).click();
+        await expect(page.getByTestId("relationship-filter-form")).toBeVisible();
+
+        await page.getByRole("button", { name: /select a condition/ }).click();
+        await page.getByRole("option", { name: "is any of" }).click();
+
+        await page.getByRole("option", { name: "blue" }).click();
+        await page
+          .getByTestId("relationship-filter-form")
+          .getByRole("button", { name: "Apply" })
+          .click();
+
+        await expect(page.getByRole("row", { name: /Tags.*is any of.*blue/ })).toBeVisible();
+      });
+
+      await test.step("clear all filters and verify initial state", async () => {
+        await page.getByTestId("filter-reset-button").click();
+        await expect(page.getByRole("link", { name: "atl1-core1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "atl1-edge1" })).toBeVisible();
+        await expect(page.getByRole("link", { name: "den1-edge1" })).toBeVisible();
+      });
     });
   });
 
@@ -154,7 +491,7 @@ test.describe("Object filters", () => {
     await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");
     await expect(page.getByTestId("object-items")).not.toContainText("INTERNAL");
 
-    await page.getByRole("button", { name: "Type" }).click();
+    await page.getByTestId("object-items").getByRole("button", { name: "Type" }).click();
     await expect(page.getByRole("combobox").filter({ hasText: "EXTERNAL" })).toBeVisible();
 
     await page.getByRole("row", { name: "Type contains EXTERNAL" }).click();

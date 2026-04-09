@@ -5,31 +5,15 @@ import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";
 
-import { isMetadataDatetimeFilter } from "@/entities/nodes/object/domain/metadata-filter-definitions";
+import type { MetadataDateFilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
 import {
   FILTER_CONDITION,
   type FilterCondition,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
 import { FilterFormLayout } from "@/entities/nodes/object/ui/filters/filter-form-layout";
-import { RelationshipFilterCombobox } from "@/entities/nodes/object/ui/filters/relationship-filter-combobox";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
-export interface MetadataFilterFormProps {
-  metadataFilter: AttributeSchema | RelationshipSchema;
-  onSuccess?: () => void;
-}
-
-export function MetadataFilterForm({ metadataFilter, onSuccess }: MetadataFilterFormProps) {
-  if (isMetadataDatetimeFilter(metadataFilter)) {
-    return <MetadataDateFilterForm attributeSchema={metadataFilter} onSuccess={onSuccess} />;
-  }
-
-  return <MetadataUserFilterForm relationshipSchema={metadataFilter} onSuccess={onSuccess} />;
-}
-
-interface MetadataDateFilterFormProps {
-  attributeSchema: AttributeSchema;
+export interface DateMetadataFilterFormProps {
+  definition: MetadataDateFilterDefinition;
   onSuccess?: () => void;
 }
 
@@ -39,11 +23,11 @@ function getDefaultDateCondition(afterFilter?: Filter, beforeFilter?: Filter): F
   return FILTER_CONDITION.AFTER;
 }
 
-function MetadataDateFilterForm({ attributeSchema, onSuccess }: MetadataDateFilterFormProps) {
+export function DateMetadataFilterForm({ definition, onSuccess }: DateMetadataFilterFormProps) {
   const [filters, setFilters] = useFilters();
 
-  const afterFilterName = `${attributeSchema.name}__after`;
-  const beforeFilterName = `${attributeSchema.name}__before`;
+  const afterFilterName = `${definition.name}__after`;
+  const beforeFilterName = `${definition.name}__before`;
 
   const afterFilter = filters.find((f) => f.name === afterFilterName);
   const beforeFilter = filters.find((f) => f.name === beforeFilterName);
@@ -141,65 +125,6 @@ function MetadataDateFilterForm({ attributeSchema, onSuccess }: MetadataDateFilt
           />
         )}
       </div>
-    </FilterFormLayout>
-  );
-}
-
-interface MetadataUserFilterFormProps {
-  relationshipSchema: RelationshipSchema;
-  onSuccess?: () => void;
-}
-
-type UserFormData = {
-  relationships: RelationshipNode[];
-};
-
-function MetadataUserFilterForm({ relationshipSchema, onSuccess }: MetadataUserFilterFormProps) {
-  const [filters, setFilters] = useFilters();
-  const currentFilter = filters.find((filter) => filter.name.startsWith(relationshipSchema.name));
-
-  const handleSubmit = (data: UserFormData) => {
-    const { relationships } = data;
-
-    if (!relationships?.length) {
-      return setFilters(filters.filter((f) => !f.name.startsWith(relationshipSchema.name)));
-    }
-
-    const newFilter: Filter = {
-      name: `${relationshipSchema.name}__ids`,
-      value: relationships,
-    };
-
-    if (currentFilter) {
-      return setFilters(
-        filters.map((f) => (f.name.startsWith(relationshipSchema.name) ? newFilter : f))
-      );
-    }
-    return setFilters([...filters, newFilter]);
-  };
-
-  return (
-    <FilterFormLayout
-      filterType="metadata-relationship"
-      condition={FILTER_CONDITION.IS_ANY_OF}
-      onConditionChange={() => {}}
-      testId="metadata-user-filter-form"
-      onSubmit={(formData) => {
-        handleSubmit(formData as UserFormData);
-        onSuccess?.();
-      }}
-    >
-      <FormField
-        name="relationships"
-        defaultValue={currentFilter?.value ?? undefined}
-        render={({ field }) => (
-          <RelationshipFilterCombobox
-            peer={relationshipSchema.peer}
-            value={field.value as RelationshipNode[] | undefined}
-            onChange={field.onChange}
-          />
-        )}
-      />
     </FilterFormLayout>
   );
 }

@@ -33,8 +33,12 @@ export function FilterTag({ label, value, condition, ref, ...props }: FilterTagP
           <span>{condition}</span>
         </>
       )}
-      <Separator orientation="vertical" className="h-6 bg-stone-300" />
-      <span className="max-w-xs truncate font-medium text-custom-blue-700">{value}</span>
+      {(value || value === 0) && (
+        <>
+          <Separator orientation="vertical" className="h-6 bg-stone-300" />
+          <span className="max-w-xs truncate font-medium text-custom-blue-700">{value}</span>
+        </>
+      )}
       <Button
         slot="remove"
         className={classNames(

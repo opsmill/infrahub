@@ -12,6 +12,8 @@ import {
 } from "@/entities/ipam/constants";
 import { IpAddressAvailabilityFilterTag } from "@/entities/ipam/ip-addresses/ui/ip-address-availability-filter-tag";
 import { IpPrefixAvailabilityFilterTag } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-availability-filter-tag";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import { getFilterDefinitionName } from "@/entities/nodes/object/domain/filter-definition";
 import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import {
   HIDE_INTERNAL_GROUPS_FILTER,
@@ -20,7 +22,7 @@ import {
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
@@ -30,15 +32,15 @@ export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
 export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilterTagsProps) {
   const { filters, setFilters } = useObjectTableContext();
 
-  const fieldSchemas: Record<string, AttributeSchema | RelationshipSchema> = {};
+  const filterDefinitions: Record<string, FilterDefinition> = {};
   for (const attr of schema?.attributes ?? []) {
-    fieldSchemas[attr.name] = attr;
+    filterDefinitions[attr.name] = { type: "attribute", schema: attr };
   }
   for (const rel of schema?.relationships ?? []) {
-    fieldSchemas[rel.name] = rel;
+    filterDefinitions[rel.name] = { type: "relationship", schema: rel };
   }
   for (const meta of ALL_METADATA_FILTERS) {
-    fieldSchemas[meta.name] = meta;
+    filterDefinitions[getFilterDefinitionName(meta)] = meta;
   }
 
   const displayFilters = filters.filter(
@@ -85,7 +87,7 @@ export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilter
     <ActiveFilterTags
       filters={displayFilters}
       setFilters={setFilters}
-      fieldSchemas={fieldSchemas}
+      filterDefinitions={filterDefinitions}
       additionalTags={additionalTags}
       onCustomFilterRemove={handleCustomFilterRemove}
       {...props}

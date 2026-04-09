@@ -4,6 +4,8 @@ import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { Popover } from "@/shared/components/aria/popover";
 import { Select, SelectTrigger } from "@/shared/components/aria/select";
 
+import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export const FILTER_CONDITION = {
@@ -53,7 +55,7 @@ export const METADATA_USER_FILTER_CONDITION_OPTIONS: Array<{
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export interface FilterConditionSelectProps extends SelectProps {
-  filterType: "attribute" | "relationship" | "datetime" | "metadata-date" | "metadata-relationship";
+  filterType: FilterDefinition["type"] | "datetime";
 }
 
 function getFilterConditionOptions(filterType: FilterConditionSelectProps["filterType"]) {
@@ -64,7 +66,7 @@ function getFilterConditionOptions(filterType: FilterConditionSelectProps["filte
       return DATETIME_FILTER_CONDITION_OPTIONS;
     case "metadata-date":
       return METADATA_DATE_FILTER_CONDITION_OPTIONS;
-    case "metadata-relationship":
+    case "metadata-user":
       return METADATA_USER_FILTER_CONDITION_OPTIONS;
     default:
       return ATTRIBUTE_FILTER_CONDITION_OPTIONS;

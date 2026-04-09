@@ -13,6 +13,8 @@ import {
   HIDE_AVAILABLE_IP_FILTER,
   SHOW_AVAILABLE_IP,
 } from "@/entities/ipam/constants";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import { getFilterDefinitionLabel } from "@/entities/nodes/object/domain/filter-definition";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
@@ -22,17 +24,7 @@ import {
   SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-
-type FieldSchema = AttributeSchema | RelationshipSchema;
-
-function isRelationshipSchema(schema: FieldSchema): schema is RelationshipSchema {
-  return "peer" in schema;
-}
-
-function isAttributeSchema(schema: FieldSchema): schema is AttributeSchema {
-  return !("peer" in schema);
-}
+import type { AttributeKind } from "@/entities/schema/types";
 
 export function formatAttributeFilterValue({
   kind,
@@ -54,7 +46,7 @@ export function formatAttributeFilterValue({
 export interface ActiveFilterTagsProps extends Omit<TagGroupProps, "children"> {
   filters: Filter[];
   setFilters: (filters: Filter[]) => void;
-  fieldSchemas: Record<string, FieldSchema>;
+  filterDefinitions: Record<string, FilterDefinition>;
   additionalTags?: React.ReactNode;
   onCustomFilterRemove?: (filterName: string) => boolean;
 }
@@ -62,13 +54,13 @@ export interface ActiveFilterTagsProps extends Omit<TagGroupProps, "children"> {
 export function ActiveFilterTags({
   filters,
   setFilters,
-  fieldSchemas,
+  filterDefinitions,
   additionalTags,
   onCustomFilterRemove,
   ...props
 }: ActiveFilterTagsProps) {
   const [editingFilter, setEditingFilter] = useState<{
-    fieldSchema: FieldSchema;
+    definition: FilterDefinition;
   } | null>(null);
   const tagElements = useRef(new Map<string, Element>());
   const editTriggerRef = useRef<Element | null>(null);
@@ -112,11 +104,11 @@ export function ActiveFilterTags({
       }
     }
 
-    const fieldSchema = fieldSchemas[fieldName];
+    const definition = filterDefinitions[fieldName];
 
-    if (fieldSchema) {
+    if (definition) {
       editTriggerRef.current = tagElements.current.get(filterName) ?? null;
-      setEditingFilter({ fieldSchema });
+      setEditingFilter({ definition });
       return;
     }
     return;
@@ -153,9 +145,9 @@ export function ActiveFilterTags({
               }
 
               const fieldName = parts.slice(0, -1).join("__");
-              const fieldSchema = fieldSchemas[fieldName];
+              const definition = filterDefinitions[fieldName];
 
-              if (!fieldSchema) {
+              if (!definition) {
                 return null;
               }
 
@@ -164,7 +156,7 @@ export function ActiveFilterTags({
                   key={filter.name}
                   filter={filter}
                   fieldKey={fieldKey}
-                  fieldSchema={fieldSchema}
+                  filterDefinition={definition}
                   ref={(el: HTMLDivElement | null) => {
                     if (el) tagElements.current.set(filter.name, el);
                   }}
@@ -187,7 +179,7 @@ export function ActiveFilterTags({
           placement="bottom start"
         >
           <FieldFilterForm
-            fieldSchema={editingFilter.fieldSchema}
+            definition={editingFilter.definition}
             onSuccess={() => setEditingFilter(null)}
           />
         </Popover>
@@ -200,17 +192,14 @@ interface EditableFilterTagProps {
   ref?: React.Ref<HTMLDivElement>;
   filter: Filter;
   fieldKey: string;
-  fieldSchema: FieldSchema;
+  filterDefinition: FilterDefinition;
 }
 
-function EditableFilterTag({ ref, filter, fieldKey, fieldSchema }: EditableFilterTagProps) {
-  const isRelationship = isRelationshipSchema(fieldSchema);
-
+function EditableFilterTag({ ref, filter, fieldKey, filterDefinition }: EditableFilterTagProps) {
   const display = getFilterTagDisplay({
     filter,
     fieldKey,
-    fieldSchema,
-    isRelationship,
+    filterDefinition,
   });
 
   if (!display) return null;
@@ -225,24 +214,24 @@ type FilterTagDisplay = { label: React.ReactNode; condition: string; value: Reac
 export function getFilterTagDisplay({
   filter,
   fieldKey,
-  fieldSchema,
-  isRelationship,
+  filterDefinition,
 }: {
   filter: Filter;
   fieldKey: string;
-  fieldSchema: FieldSchema;
-  isRelationship: boolean;
+  filterDefinition: FilterDefinition;
 }): FilterTagDisplay | null {
-  const name = fieldSchema.label ?? fieldSchema.name;
+  const name = getFilterDefinitionLabel(filterDefinition);
+  const isRelationship =
+    filterDefinition.type === "relationship" || filterDefinition.type === "metadata-user";
 
   if (fieldKey === "value" || fieldKey === "values") {
-    if (!isAttributeSchema(fieldSchema)) return null;
+    if (filterDefinition.type !== "attribute") return null;
 
     return {
       label: name,
       condition: "contains",
       value: formatAttributeFilterValue({
-        kind: fieldSchema.kind as AttributeKind,
+        kind: filterDefinition.schema.kind as AttributeKind,
         value: filter.value,
       }),
     };
