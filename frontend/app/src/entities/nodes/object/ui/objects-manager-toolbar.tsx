@@ -14,7 +14,7 @@ export function ObjectsManagerToolbar() {
   const { selectedSchema, baseSchema, filters, permission } = useObjectTableContext();
 
   return (
-    <Col className="shrink-0 gap-3 p-3">
+    <Col className="shrink-0 gap-1.5 p-2">
       <Row>
         {isGenericSchema(baseSchema) && (baseSchema.used_by ?? []).length > 1 && (
           <ObjectTableSchemaSelector />
@@ -27,9 +27,7 @@ export function ObjectsManagerToolbar() {
         <ObjectCreateFormTrigger
           schema={selectedSchema}
           onSuccess={() => {
-            queryClient.invalidateQueries({
-              queryKey: objectQueryKeys.all,
-            });
+            queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
           }}
           permission={permission}
           className="ml-auto"

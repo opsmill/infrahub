@@ -1,6 +1,8 @@
 import type { SelectProps } from "react-aria-components";
 
-import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
+import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
+import { Popover } from "@/shared/components/aria/popover";
+import { Select, SelectTrigger } from "@/shared/components/aria/select";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -61,11 +63,13 @@ export function FilterConditionSelect({ filterType, ...props }: FilterConditionS
       isRequired
       {...props}
     >
-      <SelectTrigger className="w-33" />
+      <SelectTrigger className="h-auto min-h-auto border-transparent bg-transparent px-1 py-0" />
 
-      <SelectList items={getFilterConditionOptions(filterType)}>
-        {(item) => <SelectItem>{item.label}</SelectItem>}
-      </SelectList>
+      <Popover>
+        <ListBox items={getFilterConditionOptions(filterType)} className="p-1">
+          {(item) => <ListBoxItem>{item.label}</ListBoxItem>}
+        </ListBox>
+      </Popover>
     </Select>
   );
 }

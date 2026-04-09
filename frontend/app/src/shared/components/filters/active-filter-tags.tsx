@@ -1,15 +1,26 @@
-import { useState } from "react";
-import { TagGroup, type TagGroupProps, TagList } from "react-aria-components";
+import { useRef, useState } from "react";
+import { type Selection, TagGroup, type TagGroupProps, TagList } from "react-aria-components";
 
+import { Popover } from "@/shared/components/aria/popover";
 import { Row } from "@/shared/components/container";
-import { Popover, PopoverAnchor, PopoverContent } from "@/shared/components/ui/popover";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { formatFullDate } from "@/shared/utils/date";
 
-import { FilterFormDispatch } from "@/entities/nodes/object/ui/filters/filter-form-dispatch";
+import {
+  AVAILABLE_IP_FILTER_NAME,
+  HIDE_AVAILABLE_IP,
+  HIDE_AVAILABLE_IP_FILTER,
+  SHOW_AVAILABLE_IP,
+} from "@/entities/ipam/constants";
+import { FilterForm } from "@/entities/nodes/object/ui/filters/filter-form";
 import { FilterResetButton } from "@/entities/nodes/object/ui/filters/filter-reset-button";
 import { FilterTag } from "@/entities/nodes/object/ui/filters/filter-tag";
+import {
+  HIDE_INTERNAL_GROUPS_FILTER,
+  HIDE_INTERNAL_GROUPS_ID,
+  SHOW_INTERNAL_GROUPS_ID,
+} from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
@@ -56,6 +67,12 @@ export function ActiveFilterTags({
   onCustomFilterRemove,
   ...props
 }: ActiveFilterTagsProps) {
+  const [editingFilter, setEditingFilter] = useState<{
+    fieldSchema: FieldSchema;
+  } | null>(null);
+  const tagElements = useRef(new Map<string, Element>());
+  const editTriggerRef = useRef<Element | null>(null);
+
   const handleRemoveFilter = (filterName: string) => {
     if (onCustomFilterRemove?.(filterName)) {
       return;
@@ -63,15 +80,60 @@ export function ActiveFilterTags({
     setFilters(filters.filter((f) => f.name !== filterName));
   };
 
+  const handleSelectionChange = (keys: Selection) => {
+    if (keys === "all") return;
+    const key = [...keys][0];
+    const filterName = key ? String(key) : null;
+
+    if (!filterName) {
+      setEditingFilter(null);
+      return;
+    }
+
+    const parts = filterName.split("__");
+    const fieldName = parts.slice(0, -1).join("__");
+
+    switch (filterName) {
+      case HIDE_INTERNAL_GROUPS_ID: {
+        setFilters([HIDE_INTERNAL_GROUPS_FILTER, ...filters]);
+        return true;
+      }
+      case SHOW_INTERNAL_GROUPS_ID: {
+        setFilters(filters.filter((filter) => filter.name !== HIDE_INTERNAL_GROUPS_FILTER.name));
+        return true;
+      }
+      case SHOW_AVAILABLE_IP: {
+        setFilters(filters.filter((filter) => filter.name !== AVAILABLE_IP_FILTER_NAME));
+        return true;
+      }
+      case HIDE_AVAILABLE_IP: {
+        setFilters([HIDE_AVAILABLE_IP_FILTER, ...filters]);
+        return true;
+      }
+    }
+
+    const fieldSchema = fieldSchemas[fieldName];
+
+    if (fieldSchema) {
+      editTriggerRef.current = tagElements.current.get(filterName) ?? null;
+      setEditingFilter({ fieldSchema });
+      return;
+    }
+    return;
+  };
+
   if (filters.length === 0 && !additionalTags) {
     return null;
   }
 
   return (
-    <ScrollArea scrollX>
-      <Row>
+    <ScrollArea scrollX scrollBarClassName="hidden">
+      <Row className="p-0.5">
         <TagGroup
           aria-label="Active filters"
+          selectionMode="single"
+          selectedKeys={editingFilter ? [] : []}
+          onSelectionChange={handleSelectionChange}
           onRemove={(keys) => {
             const filterName = Array.from(keys)[0]?.toString();
             if (filterName) {
@@ -103,6 +165,9 @@ export function ActiveFilterTags({
                   filter={filter}
                   fieldKey={fieldKey}
                   fieldSchema={fieldSchema}
+                  ref={(el: HTMLDivElement | null) => {
+                    if (el) tagElements.current.set(filter.name, el);
+                  }}
                 />
               );
             })}
@@ -111,19 +176,35 @@ export function ActiveFilterTags({
 
         {filters.length > 0 && <FilterResetButton />}
       </Row>
+
+      {editingFilter && (
+        <Popover
+          triggerRef={editTriggerRef}
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setEditingFilter(null);
+          }}
+          placement="bottom start"
+        >
+          <FilterForm
+            fieldSchema={editingFilter.fieldSchema}
+            onSuccess={() => setEditingFilter(null)}
+          />
+        </Popover>
+      )}
     </ScrollArea>
   );
 }
 
 interface EditableFilterTagProps {
+  ref?: React.Ref<HTMLDivElement>;
   filter: Filter;
   fieldKey: string;
   fieldSchema: FieldSchema;
 }
 
-function EditableFilterTag({ filter, fieldKey, fieldSchema }: EditableFilterTagProps) {
+function EditableFilterTag({ ref, filter, fieldKey, fieldSchema }: EditableFilterTagProps) {
   const isRelationship = isRelationshipSchema(fieldSchema);
-  const [editOpen, setEditOpen] = useState(false);
 
   const display = getFilterTagDisplay({
     filter,
@@ -136,23 +217,7 @@ function EditableFilterTag({ filter, fieldKey, fieldSchema }: EditableFilterTagP
 
   const { label, condition, value } = display;
 
-  return (
-    <Popover open={editOpen} onOpenChange={setEditOpen}>
-      <PopoverAnchor asChild>
-        <FilterTag
-          id={filter.name}
-          label={label}
-          condition={condition}
-          value={value}
-          onEdit={() => setEditOpen(true)}
-        />
-      </PopoverAnchor>
-
-      <PopoverContent align="start" className="p-0" sideOffset={4}>
-        <FilterFormDispatch fieldSchema={fieldSchema} onSuccess={() => setEditOpen(false)} />
-      </PopoverContent>
-    </Popover>
-  );
+  return <FilterTag ref={ref} id={filter.name} label={label} condition={condition} value={value} />;
 }
 
 type FilterTagDisplay = { label: React.ReactNode; condition: string; value: React.ReactNode };

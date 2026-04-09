@@ -1,54 +1,20 @@
 import { Icon } from "@iconify-icon/react";
-import { useState } from "react";
-import { useParams } from "react-router";
+import { ChevronRightIcon } from "lucide-react";
+import { useRef, useState } from "react";
+import { Button as AriaButton, type Selection } from "react-aria-components";
 
-import { Col } from "@/shared/components/container";
-import { Button } from "@/shared/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { Autocomplete } from "@/shared/components/aria/autocomplete";
+import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
+import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { classNames, sortByOrderWeight } from "@/shared/utils/common";
 
-import {
-  AVAILABLE_IP_FILTER_NAME,
-  IP_ADDRESS_GENERIC,
-  IP_PREFIX_GENERIC,
-} from "@/entities/ipam/constants";
-import { hasIncompatibleFiltersForIpAvailability } from "@/entities/ipam/utils";
+import { getFilterMenuCount } from "@/entities/nodes/object/domain/get-filter-menu-count";
 import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
-import { FilterFormDispatch } from "@/entities/nodes/object/ui/filters/filter-form-dispatch";
-import { FilterMenuItem } from "@/entities/nodes/object/ui/filters/filter-menu-item";
-import { FilterMenuSection } from "@/entities/nodes/object/ui/filters/filter-menu-section";
-import { getAttributesVisibleInListView } from "@/entities/nodes/object/utils/get-attributes-visible-in-list-view";
-import { getRelationshipsVisibleInListView } from "@/entities/nodes/object/utils/get-relationships-visible-in-list-view";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
-import { isOfKind } from "@/entities/schema/utils/is-of-kind";
-
-export function getFilterCount(
-  schema: ModelSchema,
-  filters: Filter[],
-  { hasIpAvailabilityFilter = true }: { hasIpAvailabilityFilter?: boolean } = {}
-): number {
-  const isIpamSchema = isOfKind(IP_PREFIX_GENERIC, schema) || isOfKind(IP_ADDRESS_GENERIC, schema);
-
-  if (
-    !isIpamSchema ||
-    !hasIpAvailabilityFilter ||
-    hasIncompatibleFiltersForIpAvailability(filters)
-  ) {
-    return filters.length;
-  }
-
-  const availabilityFilter = filters.find((f) => f.name === AVAILABLE_IP_FILTER_NAME);
-
-  if (!availabilityFilter) {
-    return filters.length + 1;
-  }
-
-  if (!availabilityFilter.value) {
-    return filters.length - 1;
-  }
-
-  return filters.length;
-}
+import { FilterForm } from "@/entities/nodes/object/ui/filters/filter-form";
+import type { ModelSchema } from "@/entities/schema/types";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
 interface FilterMenuProps {
   schema: ModelSchema;
@@ -57,77 +23,123 @@ interface FilterMenuProps {
 
 export function FilterMenu({ schema, filters }: FilterMenuProps) {
   const [open, setOpen] = useState(false);
-  const [hoveredSchema, setHoveredSchema] = useState<AttributeSchema | RelationshipSchema | null>(
-    null
-  );
+  const [selectedField, setSelectedField] = useState<string | null>(null);
 
-  const sections: Array<{ title: string; items: Array<AttributeSchema | RelationshipSchema> }> = [
-    { title: "Metadata", items: ALL_METADATA_FILTERS },
-    { title: "Attributes", items: getAttributesVisibleInListView(schema.attributes ?? []) },
-    {
-      title: "Relationships",
-      items: getRelationshipsVisibleInListView(schema.relationships ?? []),
-    },
-  ];
+  const filterCount = getFilterMenuCount(schema, filters);
 
-  const { objectId } = useParams();
-  const filterCount = getFilterCount(schema, filters, { hasIpAvailabilityFilter: !!objectId });
+  const itemElements = useRef(new Map<string, Element>());
+  const activeItemRef = useRef<Element | null>(null);
 
   const closeMenu = () => {
     setOpen(false);
-    setHoveredSchema(null);
+    setSelectedField(null);
+  };
+
+  const fields = [
+    ...sortByOrderWeight([...(schema.attributes ?? []), ...(schema.relationships ?? [])]),
+    ...ALL_METADATA_FILTERS,
+  ];
+  const activeFieldSchema = fields.find((f) => f.name === selectedField);
+
+  const handleSelectionChange = (keys: Selection) => {
+    if (keys === "all") return;
+    const key = [...keys][0];
+    const fieldName = key ? String(key) : null;
+    activeItemRef.current = fieldName ? (itemElements.current.get(fieldName) ?? null) : null;
+    setSelectedField(fieldName);
   };
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(isOpen) => {
-        setOpen(isOpen);
-        if (!isOpen) setHoveredSchema(null);
-      }}
-    >
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="shrink-0 gap-1">
+    <>
+      <PopoverTrigger
+        isOpen={open}
+        onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          if (!isOpen) setSelectedField(null);
+        }}
+      >
+        <AriaButton
+          className={classNames(
+            focusVisibleStyle,
+            "inline-flex h-8 shrink-0 items-center gap-1 rounded-xl border border-stone-300 px-2 text-sm"
+          )}
+        >
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
           {filterCount > 0 && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-gray-200 px-1 text-gray-600 text-xs">
+            <span className="inline-flex size-4.5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
               {filterCount}
             </span>
           )}
-        </Button>
+        </AriaButton>
+
+        <Popover
+          placement="bottom start"
+          shouldCloseOnInteractOutside={(element) => !element.closest(".filter-form-popover")}
+        >
+          <Autocomplete>
+            <ListBox
+              aria-label="Filter fields"
+              selectionMode="single"
+              selectedKeys={selectedField ? [selectedField] : []}
+              onSelectionChange={handleSelectionChange}
+              className="max-h-72 p-1"
+            >
+              {fields.map((field) => {
+                const hasActiveFilter = filters.some(
+                  (f) => f.name === field.name || f.name.startsWith(field.name + "__")
+                );
+
+                return (
+                  <ListBoxItem
+                    key={field.name}
+                    id={field.name}
+                    textValue={field.label ?? field.name}
+                    className={({ isSelected }) =>
+                      classNames(isSelected && "bg-stone-700/10 text-stone-800")
+                    }
+                    ref={(el: HTMLDivElement | null) => {
+                      if (el) itemElements.current.set(field.name, el);
+                    }}
+                  >
+                    {({ isSelected }) => (
+                      <>
+                        <FieldSchemaIcon fieldSchema={field} />
+                        {field.label}
+                        {hasActiveFilter && (
+                          <span className="ml-auto size-1 rounded-full bg-custom-blue-700" />
+                        )}
+                        <ChevronRightIcon
+                          className={classNames(
+                            "size-3.5",
+                            !hasActiveFilter && "ml-auto",
+                            isSelected && "opacity-0"
+                          )}
+                        />
+                      </>
+                    )}
+                  </ListBoxItem>
+                );
+              })}
+            </ListBox>
+          </Autocomplete>
+        </Popover>
       </PopoverTrigger>
 
-      <PopoverContent align="start" className="flex gap-0 p-0" sideOffset={8}>
-        <Col className="max-h-80 w-52 gap-1 overflow-y-auto border-gray-200 border-r p-2">
-          {sections.map(
-            ({ title, items }) =>
-              items.length > 0 && (
-                <FilterMenuSection key={title} title={title}>
-                  {items.map((fieldSchema) => (
-                    <FilterMenuItem
-                      key={fieldSchema.name}
-                      schema={fieldSchema}
-                      filters={filters}
-                      onHover={setHoveredSchema}
-                      isHovered={hoveredSchema?.name === fieldSchema.name}
-                    />
-                  ))}
-                </FilterMenuSection>
-              )
-          )}
-        </Col>
-
-        {hoveredSchema && (
-          <div className="min-w-64 p-0">
-            <FilterFormDispatch
-              key={hoveredSchema.name}
-              fieldSchema={hoveredSchema}
-              onSuccess={closeMenu}
-            />
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
+      {selectedField && activeFieldSchema && (
+        <Popover
+          className="filter-form-popover"
+          triggerRef={activeItemRef}
+          offset={8}
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedField(null);
+          }}
+          placement="end top"
+        >
+          <FilterForm fieldSchema={activeFieldSchema} onSuccess={closeMenu} />
+        </Popover>
+      )}
+    </>
   );
 }

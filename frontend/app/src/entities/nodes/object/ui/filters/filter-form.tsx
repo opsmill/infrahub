@@ -9,7 +9,7 @@ interface FilterFormDispatchProps {
   onSuccess?: () => void;
 }
 
-export function FilterFormDispatch({ fieldSchema, onSuccess }: FilterFormDispatchProps) {
+export function FilterForm({ fieldSchema, onSuccess }: FilterFormDispatchProps) {
   if (isMetadataFilter(fieldSchema.name)) {
     return <MetadataFilterForm metadataFilter={fieldSchema} onSuccess={onSuccess} />;
   }

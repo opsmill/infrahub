@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { Col, Row } from "@/shared/components/container";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import type { FormAttributeValue } from "@/shared/components/form/type";
 import { DatePicker } from "@/shared/components/inputs/date-picker";
@@ -81,22 +82,23 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
   const showInput = condition === FILTER_CONDITION.CONTAINS;
 
   return (
-    <div className="flex gap-2 p-2">
-      <div className="inline-flex h-10 items-center">Where</div>
-
-      <FilterConditionSelect
-        filterType="attribute"
-        value={condition}
-        onChange={(key) => setCondition(key as FilterCondition)}
-      />
+    <Col className="p-2">
+      <Row className="gap-0">
+        <span className="font-semibold text-sm">Where</span>
+        <FilterConditionSelect
+          filterType="attribute"
+          value={condition}
+          onChange={(key) => setCondition(key as FilterCondition)}
+        />
+      </Row>
 
       <Form
-        className="flex gap-2 space-y-0"
         onSubmit={(formData) => {
           handleSubmit(formData);
           onSuccess?.();
         }}
         data-testid="attribute-filter-form"
+        className="inline-flex flex-col gap-0 space-y-2"
       >
         {showInput && (
           <FormField
@@ -112,9 +114,9 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
           />
         )}
 
-        <FormSubmit>Apply</FormSubmit>
+        <FormSubmit className="self-end">Apply</FormSubmit>
       </Form>
-    </div>
+    </Col>
   );
 }
 

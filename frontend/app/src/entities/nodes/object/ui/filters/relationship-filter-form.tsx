@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
+import { Col, Row } from "@/shared/components/container";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -83,14 +84,15 @@ export function RelationshipFilterForm({
   };
 
   return (
-    <div className="flex gap-2 p-2">
-      <div className="inline-flex h-10 items-center">Where</div>
-
-      <FilterConditionSelect
-        filterType="relationship"
-        value={condition}
-        onChange={(key) => setCondition(key as FilterCondition)}
-      />
+    <Col className="p-2">
+      <Row className="gap-0">
+        <span className="font-semibold text-sm">Where</span>
+        <FilterConditionSelect
+          filterType="relationship"
+          value={condition}
+          onChange={(key) => setCondition(key as FilterCondition)}
+        />
+      </Row>
 
       <Form
         className="flex gap-2 space-y-0"
@@ -167,6 +169,6 @@ export function RelationshipFilterForm({
 
         <FormSubmit>Apply</FormSubmit>
       </Form>
-    </div>
+    </Col>
   );
 }
