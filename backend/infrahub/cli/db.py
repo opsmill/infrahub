@@ -767,9 +767,12 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
         raise typer.Exit(1) from exc
 
-    get_migration_console().log(
-        "The Core Schema has been updated, make sure to rebase any open branches after the upgrade"
-    )
+    branches = await get_branches_needing_rebase(db=db)
+    if branches:
+        branch_names = ", ".join(b.name for b in branches)
+        get_migration_console().log(
+            f"The Core Schema has been updated, make sure to rebase the following branches: {branch_names}"
+        )
     if debug:
         get_migration_console().log(f"New schema hash: {default_branch.active_schema_hash.main}")
 
