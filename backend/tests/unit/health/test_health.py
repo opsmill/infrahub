@@ -17,6 +17,7 @@ from infrahub.health import (
     check_cache,
     check_database,
     check_message_bus,
+    check_task_manager,
     classify_error,
     determine_status,
     get_health_checks,
@@ -151,6 +152,33 @@ async def test_check_cache_os_error() -> None:
     assert result.error == ErrorCategory.CONNECTION_REFUSED
 
 
+async def test_check_task_manager_healthy() -> None:
+    workflow = AsyncMock()
+    workflow.is_healthy = AsyncMock(return_value=True)
+    result = await check_task_manager(workflow=workflow)
+    assert result.name == DependencyName.TASK_MANAGER
+    assert result.status == DependencyStatus.UP
+    assert result.error is None
+
+
+async def test_check_task_manager_unhealthy_returns_false() -> None:
+    workflow = AsyncMock()
+    workflow.is_healthy = AsyncMock(return_value=False)
+    result = await check_task_manager(workflow=workflow)
+    assert result.name == DependencyName.TASK_MANAGER
+    assert result.status == DependencyStatus.DOWN
+    assert result.error == ErrorCategory.UNKNOWN_ERROR
+
+
+async def test_check_task_manager_connection_refused() -> None:
+    workflow = AsyncMock()
+    workflow.is_healthy = AsyncMock(side_effect=ConnectionRefusedError())
+    result = await check_task_manager(workflow=workflow)
+    assert result.name == DependencyName.TASK_MANAGER
+    assert result.status == DependencyStatus.DOWN
+    assert result.error == ErrorCategory.CONNECTION_REFUSED
+
+
 async def test_get_health_checks_all_healthy() -> None:
     db = AsyncMock()
     db.is_healthy = AsyncMock(return_value=True)
@@ -160,9 +188,11 @@ async def test_get_health_checks_all_healthy() -> None:
     service.message_bus.is_healthy = AsyncMock(return_value=True)
     service.cache = AsyncMock()
     service.cache.is_healthy = AsyncMock(return_value=True)
+    service.workflow = AsyncMock()
+    service.workflow.is_healthy = AsyncMock(return_value=True)
 
     checks = await get_health_checks(service=service, db=db)
-    assert len(checks) == 3
+    assert len(checks) == 4
     assert all(c.status == DependencyStatus.UP for c in checks)
     assert all(c.error is None for c in checks)
 
@@ -176,15 +206,19 @@ async def test_get_health_checks_one_down() -> None:
     service.message_bus.is_healthy = AsyncMock(return_value=True)
     service.cache = AsyncMock()
     service.cache.is_healthy = AsyncMock(return_value=True)
+    service.workflow = AsyncMock()
+    service.workflow.is_healthy = AsyncMock(return_value=True)
 
     checks = await get_health_checks(service=service, db=db)
     db_check = next(c for c in checks if c.name == DependencyName.DATABASE)
     bus_check = next(c for c in checks if c.name == DependencyName.MESSAGE_BUS)
     cache_check = next(c for c in checks if c.name == DependencyName.CACHE)
+    tm_check = next(c for c in checks if c.name == DependencyName.TASK_MANAGER)
 
     assert db_check.status == DependencyStatus.DOWN
     assert bus_check.status == DependencyStatus.UP
     assert cache_check.status == DependencyStatus.UP
+    assert tm_check.status == DependencyStatus.UP
 
 
 async def test_get_health_checks_all_down() -> None:
@@ -196,6 +230,8 @@ async def test_get_health_checks_all_down() -> None:
     service.message_bus.is_healthy = AsyncMock(return_value=False)
     service.cache = AsyncMock()
     service.cache.is_healthy = AsyncMock(return_value=False)
+    service.workflow = AsyncMock()
+    service.workflow.is_healthy = AsyncMock(return_value=False)
 
     checks = await get_health_checks(service=service, db=db)
     assert all(c.status == DependencyStatus.DOWN for c in checks)
@@ -241,11 +277,12 @@ def test_healthy_response_model() -> None:
         DependencyHealth(name=DependencyName.DATABASE, status=DependencyStatus.UP),
         DependencyHealth(name=DependencyName.MESSAGE_BUS, status=DependencyStatus.UP),
         DependencyHealth(name=DependencyName.CACHE, status=DependencyStatus.UP),
+        DependencyHealth(name=DependencyName.TASK_MANAGER, status=DependencyStatus.UP),
     ]
     response = HealthResponse(status=OverallStatus.HEALTHY, checks=checks, timestamp="2026-03-30T14:00:00Z")
     data = response.model_dump()
     assert data["status"] == "healthy"
-    assert len(data["checks"]) == 3
+    assert len(data["checks"]) == 4
     assert all(c["error"] is None for c in data["checks"])
 
 

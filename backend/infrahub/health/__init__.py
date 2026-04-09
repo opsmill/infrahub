@@ -15,12 +15,14 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
     from infrahub.services.adapters.cache import InfrahubCache
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
 
 
 class DependencyName(StrEnum):
     DATABASE = "database"
     MESSAGE_BUS = "message_bus"
     CACHE = "cache"
+    TASK_MANAGER = "task_manager"
 
 
 class ErrorCategory(StrEnum):
@@ -101,6 +103,20 @@ async def check_cache(cache: InfrahubCache) -> DependencyHealth:
         return DependencyHealth(name=DependencyName.CACHE, status=DependencyStatus.DOWN, error=classify_error(exc))
 
 
+async def check_task_manager(workflow: InfrahubWorkflow) -> DependencyHealth:
+    try:
+        healthy = await asyncio.wait_for(workflow.is_healthy(), timeout=config.SETTINGS.health.check_timeout)
+        if healthy:
+            return DependencyHealth(name=DependencyName.TASK_MANAGER, status=DependencyStatus.UP)
+        return DependencyHealth(
+            name=DependencyName.TASK_MANAGER, status=DependencyStatus.DOWN, error=ErrorCategory.UNKNOWN_ERROR
+        )
+    except Exception as exc:
+        return DependencyHealth(
+            name=DependencyName.TASK_MANAGER, status=DependencyStatus.DOWN, error=classify_error(exc)
+        )
+
+
 def determine_status(checks: list[DependencyHealth]) -> OverallStatus:
     """Determine the overall health status from individual dependency checks.
 
@@ -116,6 +132,7 @@ async def get_health_checks(service: InfrahubServices, db: InfrahubDatabase) -> 
         check_database(db=db),
         check_message_bus(message_bus=service.message_bus),
         check_cache(cache=service.cache),
+        check_task_manager(workflow=service.workflow),
         return_exceptions=False,
     )
     return list(checks)

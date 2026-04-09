@@ -39,3 +39,6 @@ class WorkflowLocalExecution(InfrahubWorkflow):
     ) -> WorkflowInfo:
         await self.execute_workflow(workflow=workflow, context=context, parameters=parameters)
         return WorkflowInfo(id=uuid.uuid4())
+
+    async def is_healthy(self) -> bool:
+        return True
