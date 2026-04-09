@@ -65,7 +65,9 @@ class DisplayLabelValidator(SchemaBranchValidator):
 
                 if len(generic_display_labels) == 1:
                     # Only assign node display labels if a single generic has them defined
-                    node_schema.display_labels = generic_display_labels[0]
+                    update_candidate = schema_branch.get(name=name, duplicate=True)
+                    update_candidate.display_labels = generic_display_labels[0]
+                    schema_branch.set(name=name, schema=update_candidate)
                     inherited_nodes.add(name)
 
         return inherited_nodes
