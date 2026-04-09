@@ -377,6 +377,7 @@ class InfrahubGraphQLApp:
             graphql_operations=[op.name for op in analyzed_query.operations if op.name],
         )
         service.log_forwarding.forward_exception(exception=exception, context=context)
+        exception.log_forwarded = True
 
     def _log_error(self, error: Exception) -> None:
         if isinstance(error, Error):

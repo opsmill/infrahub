@@ -13,7 +13,7 @@ from starlette.datastructures import State
 from starlette.requests import Request
 from ujson import loads
 
-from infrahub.api.exception_handlers import generic_api_exception_handler, permission_denied_exception_handler
+from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.auth import AccountSession, AuthType
 from infrahub.exceptions import Error, PermissionDeniedError
 from infrahub.log_forwarding.models import LogForwardingContext
@@ -153,11 +153,11 @@ class TestAPIExceptionHandler:
         assert error_dict["errors"] == [{"message": "the teapot error", "extensions": {"code": 418}}]
 
 
-class TestPermissionDeniedForwarding:
+class TestLogForwardingExceptionHandler:
     async def test_forwards_permission_denied_to_log_forwarding(self, request_fixture: RequestFixture) -> None:
         exc = PermissionDeniedError("not allowed")
 
-        await permission_denied_exception_handler(request_fixture.request, exc)
+        await log_forwarding_exception_handler(request_fixture.request, exc)
 
         request_fixture.mock_log_forwarding.forward_exception.assert_called_once()
         call_kwargs = request_fixture.mock_log_forwarding.forward_exception.call_args.kwargs
@@ -170,7 +170,7 @@ class TestPermissionDeniedForwarding:
         assert ctx.request_path == "/api/schema/load"
 
     async def test_returns_403_response(self, request_fixture: RequestFixture) -> None:
-        response = await permission_denied_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
+        response = await log_forwarding_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
 
         error_dict = get_response_body(response)
         assert response.status_code == 403
@@ -181,7 +181,7 @@ class TestPermissionDeniedForwarding:
         app_state.service = None
         request = _make_request(app_state=app_state)
 
-        response = await permission_denied_exception_handler(request, PermissionDeniedError("denied"))
+        response = await log_forwarding_exception_handler(request, PermissionDeniedError("denied"))
 
         assert response.status_code == 403
 
@@ -189,14 +189,14 @@ class TestPermissionDeniedForwarding:
         request_fixture.mock_log_forwarding = None  # type: ignore[assignment]
         request_fixture.request.app.state.service.log_forwarding = None
 
-        response = await permission_denied_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
+        response = await log_forwarding_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
 
         assert response.status_code == 403
 
     async def test_missing_account_session_on_state(self, request_fixture: RequestFixture) -> None:
         del request_fixture.request.state.account_session
 
-        await permission_denied_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
+        await log_forwarding_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
 
         ctx = request_fixture.mock_log_forwarding.forward_exception.call_args.kwargs["context"]
         assert ctx.account_session is None
@@ -204,7 +204,7 @@ class TestPermissionDeniedForwarding:
     async def test_missing_branch_name_on_state(self, request_fixture: RequestFixture) -> None:
         del request_fixture.request.state.branch_name
 
-        await permission_denied_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
+        await log_forwarding_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
 
         ctx = request_fixture.mock_log_forwarding.forward_exception.call_args.kwargs["context"]
         assert not ctx.branch_name
@@ -212,7 +212,7 @@ class TestPermissionDeniedForwarding:
     async def test_no_client_uses_empty_ip(self, request_fixture: RequestFixture) -> None:
         request_fixture.request.scope["client"] = None
 
-        await permission_denied_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
+        await log_forwarding_exception_handler(request_fixture.request, PermissionDeniedError("denied"))
 
         ctx = request_fixture.mock_log_forwarding.forward_exception.call_args.kwargs["context"]
         assert not ctx.ip_address

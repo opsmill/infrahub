@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
 from infrahub.auth import AccountSession
-from infrahub.exceptions import Error, PermissionDeniedError
+from infrahub.exceptions import Error, ForwardableError
 from infrahub.log_forwarding.models import LogForwardingContext
 from infrahub.services import InfrahubServices
 
@@ -35,14 +35,14 @@ async def generic_api_exception_handler(_: Request, exc: Exception, http_code: i
     return JSONResponse(status_code=http_code, content=error_dict)
 
 
-async def permission_denied_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Forward PermissionDeniedError to log forwarding, then delegate to the generic handler."""
-    if isinstance(exc, PermissionDeniedError):
-        _forward_permission_denied(request, exc)
+async def log_forwarding_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Forward ForwardableError to log forwarding, then delegate to the generic handler."""
+    if isinstance(exc, ForwardableError) and not exc.log_forwarded:
+        _forward_exception(request, exc)
     return await generic_api_exception_handler(request, exc)
 
 
-def _forward_permission_denied(request: Request, exc: PermissionDeniedError) -> None:
+def _forward_exception(request: Request, exc: ForwardableError) -> None:
     service = getattr(request.app.state, "service", None)
     if not isinstance(service, InfrahubServices):
         return
@@ -62,3 +62,4 @@ def _forward_permission_denied(request: Request, exc: PermissionDeniedError) -> 
         request_path=request.url.path,
     )
     log_forwarding.forward_exception(exception=exc, context=context)
+    exc.log_forwarded = True
