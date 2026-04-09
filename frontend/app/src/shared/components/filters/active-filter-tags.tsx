@@ -128,7 +128,7 @@ export function ActiveFilterTags({
 
   return (
     <ScrollArea scrollX scrollBarClassName="hidden">
-      <Row className="p-0.5">
+      <Row className="p-2 pt-0">
         <TagGroup
           aria-label="Active filters"
           selectionMode="single"

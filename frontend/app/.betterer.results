@@ -137,12 +137,8 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object-template/object-template-form.tsx:481961693": [
       [86, 44, 5, "tsc: Property \'edges\' does not exist on type \'NodeAttribute<string | NodeRelationshipMany | NodeRelationshipOne | boolean | null> | number | string | string[] | string[]\'.\\n  Property \'edges\' does not exist on type \'string\'.", "165200885"]
     ],
-    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:3447457876": [
-      [40, 29, 2, "tsc: Binding element \'id\' implicitly has an \'any\' type.", "5861160"],
-      [40, 33, 13, "tsc: Binding element \'display_label\' implicitly has an \'any\' type.", "1907695430"],
-      [49, 45, 4, "tsc: Parameter \'item\' implicitly has an \'any\' type.", "2087854480"],
-      [73, 48, 1, "tsc: Parameter \'v\' implicitly has an \'any\' type.", "177619"],
-      [169, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
+    "src/entities/nodes/object/ui/filters/dynamic-filter-input.tsx:266512825": [
+      [114, 25, 9, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2512581423"]
     ],
     "src/entities/nodes/object/ui/filters/kind-combobox-list.tsx:2093276488": [
       [19, 10, 8, "tsc: Type \'(null | string | undefined)[]\' is not assignable to type \'string[]\'.\\n  Type \'string | null | undefined\' is not assignable to type \'string\'.\\n    Type \'undefined\' is not assignable to type \'string\'.", "3441362927"]

@@ -8,7 +8,7 @@ export const METADATA_CREATED_AT: AttributeSchema = {
   state: "present",
   name: "node_metadata__created_at",
   kind: ATTRIBUTE_KIND.DATETIME,
-  label: "Created At",
+  label: "Created at",
   description: "Date and time when the node was created",
   enum: null,
   computed_attribute: null,
@@ -32,7 +32,7 @@ export const METADATA_CREATED_AT: AttributeSchema = {
 export const METADATA_UPDATED_AT: AttributeSchema = {
   ...METADATA_CREATED_AT,
   name: "node_metadata__updated_at",
-  label: "Updated At",
+  label: "Updated at",
   description: "Date and time when the node was last updated",
 };
 
@@ -42,7 +42,7 @@ export const METADATA_CREATED_BY: RelationshipSchema = {
   name: "node_metadata__created_by",
   peer: "CoreAccount",
   kind: "Attribute",
-  label: "Created By",
+  label: "Created by",
   description: "Account that created the node",
   identifier: null,
   cardinality: "one",
@@ -64,7 +64,7 @@ export const METADATA_CREATED_BY: RelationshipSchema = {
 export const METADATA_UPDATED_BY: RelationshipSchema = {
   ...METADATA_CREATED_BY,
   name: "node_metadata__updated_by",
-  label: "Updated By",
+  label: "Updated by",
   description: "Account that last updated the node",
 };
 

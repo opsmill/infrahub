@@ -27,8 +27,8 @@ export function FilterFormLayout({
   children,
 }: FilterFormLayoutProps) {
   return (
-    <Col className="p-2">
-      <Row className="gap-0">
+    <Col className="max-h-[inherit] overflow-hidden p-2">
+      <Row className="shrink-0 gap-0">
         <span className="font-semibold text-sm">Where</span>
         <FilterConditionSelect
           filterType={filterType}
@@ -38,12 +38,14 @@ export function FilterFormLayout({
       </Row>
 
       <Form
-        className="inline-flex flex-col gap-0 space-y-2"
+        className="inline-flex min-h-0 flex-col gap-0 space-y-2"
         onSubmit={(formData) => onSubmit(formData as Record<string, unknown>)}
         data-testid={testId}
       >
         {children}
-        <FormSubmit className="self-end">Apply</FormSubmit>
+        <FormSubmit size="sm" className="shrink-0 self-end">
+          Apply
+        </FormSubmit>
       </Form>
     </Col>
   );

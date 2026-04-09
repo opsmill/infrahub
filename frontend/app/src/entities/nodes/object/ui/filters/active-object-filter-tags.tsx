@@ -68,13 +68,18 @@ export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilter
     }
   };
 
-  const additionalTags = (
+  const hasAdditionalTags =
+    isOfKind("CoreGroup", schema) ||
+    isOfKind(IP_PREFIX_GENERIC, schema) ||
+    isOfKind(IP_ADDRESS_GENERIC, schema);
+
+  const additionalTags = hasAdditionalTags ? (
     <>
       {isOfKind("CoreGroup", schema) && <InternalGroupsFilterTag />}
       {isOfKind(IP_PREFIX_GENERIC, schema) && <IpPrefixAvailabilityFilterTag />}
       {isOfKind(IP_ADDRESS_GENERIC, schema) && <IpAddressAvailabilityFilterTag />}
     </>
-  );
+  ) : undefined;
 
   return (
     <ActiveFilterTags

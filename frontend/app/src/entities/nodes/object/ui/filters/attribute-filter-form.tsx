@@ -72,8 +72,6 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
     }
   };
 
-  const showInput = condition === FILTER_CONDITION.CONTAINS;
-
   return (
     <FilterFormLayout
       filterType={isDatetime ? "datetime" : "attribute"}
@@ -85,7 +83,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
         onSuccess?.();
       }}
     >
-      {showInput && (
+      {condition === FILTER_CONDITION.CONTAINS && (
         <FormField
           name="attribute"
           defaultValue={

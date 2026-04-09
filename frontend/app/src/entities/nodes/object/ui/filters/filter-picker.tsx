@@ -70,11 +70,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
         >
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
-          {filterCount > 0 && (
-            <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
-              {filterCount}
-            </span>
-          )}
+          {filterCount > 0 && <FilterCountBadge count={filterCount} />}
         </AriaButton>
 
         <Popover
@@ -149,6 +145,14 @@ function FilterPickerItem({ field, hasActiveFilter, ref }: FilterPickerItemProps
         </>
       )}
     </ListBoxItem>
+  );
+}
+
+function FilterCountBadge({ count }: { count: number }) {
+  return (
+    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
+      {count}
+    </span>
   );
 }
 
