@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Col, Row } from "@/shared/components/container";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import type { FormAttributeValue } from "@/shared/components/form/type";
-import { DatePicker } from "@/shared/components/inputs/date-picker";
 import { Form, FormField, FormSubmit } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
@@ -13,7 +12,6 @@ import {
   type FilterCondition,
   FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
-import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeSchema } from "@/entities/schema/types";
 
 export type AttributeFilterFormProps = {
@@ -24,16 +22,9 @@ export type AttributeFilterFormProps = {
 export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFilterFormProps) {
   const [filters, setFilters] = useFilters();
   const currentFilter = filters.find((filter) => filter.name.startsWith(attributeSchema.name));
-  const isDateField = attributeSchema.kind === ATTRIBUTE_KIND.DATETIME;
-  const defaultCondition = isDateField ? FILTER_CONDITION.AFTER : FILTER_CONDITION.CONTAINS;
   const [condition, setCondition] = useState<FilterCondition>(
-    getCurrentFilterCondition(currentFilter) ?? defaultCondition
+    getCurrentFilterCondition(currentFilter) ?? FILTER_CONDITION.CONTAINS
   );
-
-  // For date range filters
-  if (isDateField) {
-    return <DateRangeFilterForm attributeSchema={attributeSchema} onSuccess={onSuccess} />;
-  }
 
   const handleSubmit = (formData: Record<string, FormAttributeValue["value"]>) => {
     if (condition === FILTER_CONDITION.CONTAINS) {
@@ -117,81 +108,5 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
         <FormSubmit className="self-end">Apply</FormSubmit>
       </Form>
     </Col>
-  );
-}
-
-function DateRangeFilterForm({ attributeSchema, onSuccess }: AttributeFilterFormProps) {
-  const [filters, setFilters] = useFilters();
-
-  const afterFilterName = `${attributeSchema.name}__after`;
-  const beforeFilterName = `${attributeSchema.name}__before`;
-
-  const afterFilter = filters.find((f) => f.name === afterFilterName);
-  const beforeFilter = filters.find((f) => f.name === beforeFilterName);
-
-  const toISOString = (value: unknown): string => {
-    return value instanceof Date ? value.toISOString() : String(value);
-  };
-
-  const handleSubmit = (formData: Record<string, unknown>) => {
-    const { afterDate, beforeDate } = formData;
-
-    // Remove existing date filters for this field
-    let newFilters = filters.filter(
-      (f) => f.name !== afterFilterName && f.name !== beforeFilterName
-    );
-
-    // Add new filters - convert Date objects to ISO strings for GraphQL DateTime scalar
-    if (afterDate) {
-      newFilters = [...newFilters, { name: afterFilterName, value: toISOString(afterDate) }];
-    }
-    if (beforeDate) {
-      newFilters = [...newFilters, { name: beforeFilterName, value: toISOString(beforeDate) }];
-    }
-
-    setFilters(newFilters);
-    onSuccess?.();
-  };
-
-  return (
-    <Form
-      className="flex items-end gap-2 space-y-0 p-2"
-      onSubmit={(formData) => handleSubmit(formData as Record<string, unknown>)}
-      data-testid="date-range-filter-form"
-    >
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <span className="w-12 shrink-0 text-gray-600 text-sm">After</span>
-          <FormField
-            name="afterDate"
-            defaultValue={afterFilter?.value ?? undefined}
-            render={({ field }) => (
-              <DatePicker
-                date={field.value ? new Date(field.value as string) : null}
-                onChange={field.onChange}
-                className="w-52"
-              />
-            )}
-          />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="w-12 shrink-0 text-gray-600 text-sm">Before</span>
-          <FormField
-            name="beforeDate"
-            defaultValue={beforeFilter?.value ?? undefined}
-            render={({ field }) => (
-              <DatePicker
-                date={field.value ? new Date(field.value as string) : null}
-                onChange={field.onChange}
-                className="w-52"
-              />
-            )}
-          />
-        </div>
-      </div>
-
-      <FormSubmit>Apply</FormSubmit>
-    </Form>
   );
 }

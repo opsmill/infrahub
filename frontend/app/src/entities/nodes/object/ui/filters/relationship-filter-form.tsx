@@ -95,7 +95,7 @@ export function RelationshipFilterForm({
       </Row>
 
       <Form
-        className="flex gap-2 space-y-0"
+        className="inline-flex flex-col gap-0 space-y-2"
         onSubmit={(formData) => {
           handleSubmit(formData as FormData);
           onSuccess?.();
@@ -167,7 +167,7 @@ export function RelationshipFilterForm({
           />
         )}
 
-        <FormSubmit>Apply</FormSubmit>
+        <FormSubmit className="self-end">Apply</FormSubmit>
       </Form>
     </Col>
   );

@@ -13,6 +13,7 @@ export const FILTER_CONDITION = {
   IS_NOT_EMPTY: "is not empty",
   BEFORE: "before",
   AFTER: "after",
+  BETWEEN: "between",
 } as const;
 
 export type FilterCondition = (typeof FILTER_CONDITION)[keyof typeof FILTER_CONDITION];
@@ -30,25 +31,34 @@ export const ATTRIBUTE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; l
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
 ];
 
-export const DATE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; label: string }> = [
+export const METADATA_DATE_FILTER_CONDITION_OPTIONS: Array<{
+  key: FilterCondition;
+  label: string;
+}> = [
   { key: FILTER_CONDITION.BEFORE, label: "before" },
   { key: FILTER_CONDITION.AFTER, label: "after" },
-  { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
-  { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
+  { key: FILTER_CONDITION.BETWEEN, label: "between" },
 ];
+
+export const METADATA_USER_FILTER_CONDITION_OPTIONS: Array<{
+  key: FilterCondition;
+  label: string;
+}> = [{ key: FILTER_CONDITION.IS_ANY_OF, label: "is any of" }];
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export interface FilterConditionSelectProps extends SelectProps {
-  filterType: "attribute" | "relationship" | "date";
+  filterType: "attribute" | "relationship" | "metadata-date" | "metadata-relationship";
 }
 
 function getFilterConditionOptions(filterType: FilterConditionSelectProps["filterType"]) {
   switch (filterType) {
     case "relationship":
       return RELATIONSHIP_FILTER_CONDITION_OPTIONS;
-    case "date":
-      return DATE_FILTER_CONDITION_OPTIONS;
+    case "metadata-date":
+      return METADATA_DATE_FILTER_CONDITION_OPTIONS;
+    case "metadata-relationship":
+      return METADATA_USER_FILTER_CONDITION_OPTIONS;
     default:
       return ATTRIBUTE_FILTER_CONDITION_OPTIONS;
   }

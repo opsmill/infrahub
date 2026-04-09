@@ -88,7 +88,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
         {
           onSuccess: async (newNode) => {
             toast(<Alert type={ALERT_TYPES.SUCCESS} message="Role created!" />, {
-              toastId: "alert-success-role-created",
+              toastId: `alert-success-role-created-${newNode.id}`,
             });
             if (onSuccess) await onSuccess(newNode);
           },
