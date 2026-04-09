@@ -491,9 +491,7 @@ test.describe("Object filters", () => {
     await expect(page.getByRole("combobox").filter({ hasText: "EXTERNAL" })).toBeVisible();
     await page.keyboard.press("Escape");
 
-    await page
-      .getByRole("button", { name: "Remove Type contains EXTERNAL" })
-      .click();
+    await page.getByRole("button", { name: "Remove Type contains EXTERNAL" }).click();
     await expect(page.getByTestId("object-items")).toContainText("EXTERNAL");
     await expect(page.getByTestId("object-items")).toContainText("INTERNAL");
   });

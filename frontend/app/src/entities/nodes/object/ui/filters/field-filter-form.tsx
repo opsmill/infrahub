@@ -1,8 +1,8 @@
 import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
 import { AttributeFilterForm } from "@/entities/nodes/object/ui/filters/attribute-filter-form";
 import { DateMetadataFilterForm } from "@/entities/nodes/object/ui/filters/date-metadata-filter-form";
-import { UserMetadataFilterForm } from "@/entities/nodes/object/ui/filters/user-metadata-filter-form";
 import { RelationshipFilterForm } from "@/entities/nodes/object/ui/filters/relationship-filter-form";
+import { UserMetadataFilterForm } from "@/entities/nodes/object/ui/filters/user-metadata-filter-form";
 
 interface FieldFilterFormProps {
   definition: FilterDefinition;
