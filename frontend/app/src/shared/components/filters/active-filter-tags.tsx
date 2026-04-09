@@ -96,19 +96,19 @@ export function ActiveFilterTags({
     switch (filterName) {
       case HIDE_INTERNAL_GROUPS_ID: {
         setFilters([HIDE_INTERNAL_GROUPS_FILTER, ...filters]);
-        return true;
+        return;
       }
       case SHOW_INTERNAL_GROUPS_ID: {
         setFilters(filters.filter((filter) => filter.name !== HIDE_INTERNAL_GROUPS_FILTER.name));
-        return true;
+        return;
       }
       case SHOW_AVAILABLE_IP: {
         setFilters(filters.filter((filter) => filter.name !== AVAILABLE_IP_FILTER_NAME));
-        return true;
+        return;
       }
       case HIDE_AVAILABLE_IP: {
         setFilters([HIDE_AVAILABLE_IP_FILTER, ...filters]);
-        return true;
+        return;
       }
     }
 

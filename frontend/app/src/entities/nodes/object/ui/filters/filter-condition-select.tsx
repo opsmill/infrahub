@@ -31,6 +31,11 @@ export const ATTRIBUTE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; l
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
 ];
 
+export const DATETIME_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; label: string }> = [
+  { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
+  { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
+];
+
 export const METADATA_DATE_FILTER_CONDITION_OPTIONS: Array<{
   key: FilterCondition;
   label: string;
@@ -48,13 +53,15 @@ export const METADATA_USER_FILTER_CONDITION_OPTIONS: Array<{
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 export interface FilterConditionSelectProps extends SelectProps {
-  filterType: "attribute" | "relationship" | "metadata-date" | "metadata-relationship";
+  filterType: "attribute" | "relationship" | "datetime" | "metadata-date" | "metadata-relationship";
 }
 
 function getFilterConditionOptions(filterType: FilterConditionSelectProps["filterType"]) {
   switch (filterType) {
     case "relationship":
       return RELATIONSHIP_FILTER_CONDITION_OPTIONS;
+    case "datetime":
+      return DATETIME_FILTER_CONDITION_OPTIONS;
     case "metadata-date":
       return METADATA_DATE_FILTER_CONDITION_OPTIONS;
     case "metadata-relationship":

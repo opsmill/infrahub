@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
@@ -19,7 +20,7 @@ export interface TableColumnHeaderProps extends PopoverTriggerProps {
 export function TableColumnHeader({ columnSchema, className, ...props }: TableColumnHeaderProps) {
   const [filters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
-  const currentColumnFilters = filters.find((f) => f.name.startsWith(columnSchema.name));
+  const currentColumnFilters = filters.find((f) => isFieldFiltered(f, columnSchema.name));
 
   const closePopover = () => {
     setShowFilters(false);

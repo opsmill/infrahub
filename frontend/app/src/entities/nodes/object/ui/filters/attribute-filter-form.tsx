@@ -12,6 +12,7 @@ import {
   type FilterCondition,
   FilterConditionSelect,
 } from "@/entities/nodes/object/ui/filters/filter-condition-select";
+import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
 import type { AttributeSchema } from "@/entities/schema/types";
 
 export type AttributeFilterFormProps = {
@@ -22,8 +23,10 @@ export type AttributeFilterFormProps = {
 export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFilterFormProps) {
   const [filters, setFilters] = useFilters();
   const currentFilter = filters.find((filter) => filter.name.startsWith(attributeSchema.name));
+  const isDatetime = attributeSchema.kind === ATTRIBUTE_KIND.DATETIME;
+  const defaultCondition = isDatetime ? FILTER_CONDITION.IS_EMPTY : FILTER_CONDITION.CONTAINS;
   const [condition, setCondition] = useState<FilterCondition>(
-    getCurrentFilterCondition(currentFilter) ?? FILTER_CONDITION.CONTAINS
+    getCurrentFilterCondition(currentFilter) ?? defaultCondition
   );
 
   const handleSubmit = (formData: Record<string, FormAttributeValue["value"]>) => {
@@ -77,7 +80,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
       <Row className="gap-0">
         <span className="font-semibold text-sm">Where</span>
         <FilterConditionSelect
-          filterType="attribute"
+          filterType={isDatetime ? "datetime" : "attribute"}
           value={condition}
           onChange={(key) => setCondition(key as FilterCondition)}
         />

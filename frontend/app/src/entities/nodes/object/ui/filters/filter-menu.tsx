@@ -68,7 +68,7 @@ export function FilterMenu({ schema, filters }: FilterMenuProps) {
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
           {filterCount > 0 && (
-            <span className="inline-flex size-4.5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
+            <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
               {filterCount}
             </span>
           )}
