@@ -88,7 +88,6 @@ Determine which mode you are in:
    - `uv run invoke schema.generate-jsonschema`
    - `uv run invoke docs.generate`
    - `uv run invoke docs.lint`
-   - `uv lock --check` (if it fails, run `uv lock` and commit the updated lockfile)
    - `(cd frontend/app && npm run codegen:graphql)`
    - `(cd frontend/app && npm run codegen:openapi)`
    - `(cd frontend/app && npx betterer --update)`
