@@ -119,6 +119,8 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'guides/generator',
+            'guides/chaining-generators',
+            'guides/modular-generator-best-practices',
           ],
         },
         {
@@ -206,6 +208,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/generator',
+                'topics/modular-generators',
               ],
             },
             {
@@ -428,6 +431,9 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_8_4',
+            'release-notes/infrahub/release-1_8_3',
+            'release-notes/infrahub/release-1_8_2',
             'release-notes/infrahub/release-1_8_1',
             'release-notes/infrahub/release-1_8_0',
             'release-notes/infrahub/release-1_7_7',

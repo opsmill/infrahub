@@ -16,10 +16,12 @@ export const FilterResetButton = () => {
     <Button
       className={classNames(
         focusVisibleStyle,
-        "inline-flex items-center whitespace-nowrap rounded-full border border-transparent px-2 py-0.5 text-neutral-800 text-sm",
+        "inline-flex items-center whitespace-nowrap rounded-full border border-stone-300 bg-white px-2 py-0.5 text-neutral-800 text-sm",
+        "sticky right-0 z-10",
         "data-hovered:bg-gray-100"
       )}
       onPress={handleResetFilters}
+      data-testid="filter-reset-button"
     >
       <Icon icon="mdi:filter-variant-remove" className="mr-1 text-base" />
       Clear filters

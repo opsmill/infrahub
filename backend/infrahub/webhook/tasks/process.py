@@ -61,13 +61,9 @@ def _extract_custom_headers(webhook_node: CoreWebhook) -> list[WebhookHeader]:
 @task(name="webhook-convert-node", task_run_name="Convert node to webhook", cache_policy=NONE)
 async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubClient) -> Webhook:
     webhook_kind = webhook_node.get_kind()
-
-    if webhook_kind not in ["CoreStandardWebhook", "CoreCustomWebhook"]:
-        raise ValueError(f"Unsupported webhook kind: {webhook_kind}")
-
     custom_headers = _extract_custom_headers(webhook_node)
 
-    if webhook_kind == "CoreStandardWebhook":
+    if webhook_kind == InfrahubKind.STANDARDWEBHOOK:
         return StandardWebhook.from_object(obj=webhook_node, custom_headers=custom_headers)
 
     # Processing Custom Webhook

@@ -70,7 +70,7 @@ graph TB
         subgraph "Artifact System"
             ArtifactDef[Artifact Definitions]
             Templates[Jinja2 Templates]
-            Transforms[Transform Functions]
+            Transformations[Transform Functions]
             Generator[Artifact Generator]
         end
     end
@@ -146,9 +146,9 @@ graph TB
     %% Artifact Generation Flow
     Workers --> ArtifactDef
     ArtifactDef --> Templates
-    ArtifactDef --> Transforms
+    ArtifactDef --> Transformations
     Templates --> Generator
-    Transforms --> Generator
+    Transformations --> Generator
     Generator --> DBAdapter
     Generator --> StorageAdapter
     StorageAdapter --> Storage
@@ -178,7 +178,7 @@ graph TB
 
     class Client,GitRepo,ExtAuth external
     class UI,API presentation
-    class Schema,Branch,Node,Perm,Valid,Prefect,TaskManager,Workers,EventBus,Triggers,Actions,ArtifactDef,Templates,Transforms,Generator application
+    class Schema,Branch,Node,Perm,Valid,Prefect,TaskManager,Workers,EventBus,Triggers,Actions,ArtifactDef,Templates,Transformations,Generator application
     class GraphDB,TaskDB,Redis,MessageBus,Storage,Artifacts data
     class DBAdapter,CacheAdapter,MsgAdapter,StorageAdapter service
 ```

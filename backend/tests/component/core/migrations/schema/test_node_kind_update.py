@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID, MetadataOptions, RelationshipHierarchyDirection, SchemaPathType
@@ -21,7 +23,7 @@ from tests.helpers.schema import LOCATION_SCHEMA, load_schema
 
 
 async def test_query_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
@@ -64,7 +66,7 @@ async def test_query_default_branch(
 
 
 async def test_migration_aware_relationship(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
@@ -113,7 +115,7 @@ async def test_migration_aware_relationship(
 
 
 async def test_migration_agnostic_relationship(
-    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema: dict[str, Any]
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
 
@@ -206,7 +208,7 @@ async def test_migration_hierarchy(db: InfrahubDatabase, default_branch: Branch)
 
 
 async def test_inheritance_migration_on_branch_and_main(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main, person_alfred_main: Node
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node, person_alfred_main: Node
 ) -> None:
     # 0. add a deleted relationship
     accord_main = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)

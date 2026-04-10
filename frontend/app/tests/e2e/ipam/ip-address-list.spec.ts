@@ -8,12 +8,14 @@ test.describe("/ipam/ip_addresses - IP Address list", () => {
 
     await page.getByTestId("identifier-cell").getByRole("link", { name: "10.0.0.16/32" }).click();
 
-    await expect(page.getByRole("heading", { name: "Details" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Activities" })).toBeVisible();
+    const objectDetailsCard = page.getByTestId("object-details");
+    await expect(objectDetailsCard.getByRole("heading", { name: "Details" })).toBeVisible();
+    await expect(objectDetailsCard.getByText("Address10.0.0.16/32")).toBeVisible();
+    await expect(objectDetailsCard.getByText("InterfaceLoopback0")).toBeVisible();
+    await expect(objectDetailsCard.getByText("Ip Prefix10.0.0.0/16")).toBeVisible();
 
-    await expect(page.getByRole("row", { name: "Address 10.0.0.16/32" })).toBeVisible();
-    await expect(page.getByText("InterfaceLoopback0")).toBeVisible();
-    await expect(page.getByRole("row", { name: "Ip Prefix 10.0.0.0/16" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Groups" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Activities" })).toBeVisible();
   });
 
   test("view all ip addresses under a given prefix", async ({ page }) => {

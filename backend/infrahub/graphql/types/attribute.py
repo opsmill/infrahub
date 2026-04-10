@@ -39,6 +39,7 @@ class IPPrefixPoolInput(GenericPoolInput):
 
 class RelatedIPAddressNodeInput(InputObjectType):
     id = String(required=False)
+    hfid = Field(List(of_type=String), required=False)
     from_pool = Field(IPAddressPoolInput, required=False)
     _relation__is_protected = Boolean(required=False)
     _relation__owner = String(required=False)

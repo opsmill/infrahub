@@ -16,6 +16,7 @@ interface ObjectDetailsCardProps {
   objectData: NodeObjectWithMetadata;
   permission: Permission;
   className?: string;
+  excludeRelationships?: string[];
 }
 
 export function ObjectDetailsCard({
@@ -23,6 +24,7 @@ export function ObjectDetailsCard({
   objectData,
   permission,
   className,
+  excludeRelationships,
 }: ObjectDetailsCardProps) {
   const [showExtra, setShowExtra] = React.useState(false);
   const schemaHasExtraFields = hasExtraFields(objectSchema);
@@ -49,6 +51,7 @@ export function ObjectDetailsCard({
         objectData={objectData}
         permission={permission}
         showExtra={showExtra}
+        excludeRelationships={excludeRelationships}
       />
     </Card>
   );

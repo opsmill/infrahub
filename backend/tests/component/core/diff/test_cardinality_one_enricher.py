@@ -7,6 +7,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.enricher.cardinality_one import DiffCardinalityOneEnricher
 from infrahub.core.diff.model.path import EnrichedDiffProperty
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
@@ -20,7 +21,9 @@ from .factories import (
 
 
 class TestDiffCardinalityOneEnricher:
-    async def test_no_cardinality_one_relationships(self, db: InfrahubDatabase, car_person_schema) -> None:
+    async def test_no_cardinality_one_relationships(
+        self, db: InfrahubDatabase, car_person_schema: SchemaBranch
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         diff_relationship = EnrichedRelationshipGroupFactory.build(
@@ -37,7 +40,9 @@ class TestDiffCardinalityOneEnricher:
 
         assert diff_root == diff_root_copy
 
-    async def test_cardinality_one_relationship_update(self, db: InfrahubDatabase, car_person_schema) -> None:
+    async def test_cardinality_one_relationship_update(
+        self, db: InfrahubDatabase, car_person_schema: SchemaBranch
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         peer_id_1 = str(uuid4())
@@ -114,7 +119,7 @@ class TestDiffCardinalityOneEnricher:
         )
 
     async def test_cardinality_one_relationship_simulataneous_update(
-        self, db: InfrahubDatabase, car_person_schema
+        self, db: InfrahubDatabase, car_person_schema: SchemaBranch
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
@@ -215,7 +220,9 @@ class TestDiffCardinalityOneEnricher:
             in diff_properties
         )
 
-    async def test_cardinality_one_relationship_reverted_update(self, db: InfrahubDatabase, car_person_schema) -> None:
+    async def test_cardinality_one_relationship_reverted_update(
+        self, db: InfrahubDatabase, car_person_schema: SchemaBranch
+    ) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         enricher = DiffCardinalityOneEnricher(db=db)
         peer_id = str(uuid4())

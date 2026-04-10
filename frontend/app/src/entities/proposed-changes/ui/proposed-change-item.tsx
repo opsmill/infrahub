@@ -35,7 +35,7 @@ export const ProposedChangesItem = ({ proposedChange }: ProposedChangesItemProps
           state={node.state?.value}
           isDraft={!!node.is_draft?.value}
           isApproved={!!node.approved_by.edges.length}
-          createdAt={node._updated_at}
+          createdAt={metadata.created_at}
           branchName={node.source_branch?.value}
         />
 
@@ -63,7 +63,7 @@ type ProposedChangesInfoProps = {
   state: string;
   isDraft: boolean;
   isApproved: boolean;
-  createdAt: string;
+  createdAt: string | null;
   branchName?: string;
 };
 

@@ -1,4 +1,4 @@
-import type { ActionAvailability } from "@/shared/api/graphql/generated/graphql";
+import type { ActionAvailability } from "@/shared/api/graphql/generated/types";
 
 import {
   type GetProposedChangeActionFromApiParams,
@@ -20,41 +20,38 @@ export const getProposedChangeAvailableActions: GetProposedChangeAvailableAction
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  return data.CoreProposedChangeAvailableActions.edges.reduce(
-    (acc: Record<string, ActionAvailability>, edge: { node: ActionAvailability }) => {
-      if (edge.node.action === "set-draft") {
-        return {
-          ...acc,
-          setDraft: edge.node,
-        };
-      }
-
-      if (edge.node.action === "unset-draft") {
-        return {
-          ...acc,
-          unsetDraft: edge.node,
-        };
-      }
-
-      if (edge.node.action === "cancel-approve") {
-        return {
-          ...acc,
-          cancelApprove: edge.node,
-        };
-      }
-
-      if (edge.node.action === "cancel-reject") {
-        return {
-          ...acc,
-          cancelReject: edge.node,
-        };
-      }
-
+  return data.CoreProposedChangeAvailableActions.edges.reduce((acc, edge) => {
+    if (edge.node.action === "set-draft") {
       return {
         ...acc,
-        [edge.node.action]: edge.node,
+        setDraft: edge.node,
       };
-    },
-    {}
-  );
+    }
+
+    if (edge.node.action === "unset-draft") {
+      return {
+        ...acc,
+        unsetDraft: edge.node,
+      };
+    }
+
+    if (edge.node.action === "cancel-approve") {
+      return {
+        ...acc,
+        cancelApprove: edge.node,
+      };
+    }
+
+    if (edge.node.action === "cancel-reject") {
+      return {
+        ...acc,
+        cancelReject: edge.node,
+      };
+    }
+
+    return {
+      ...acc,
+      [edge.node.action]: edge.node,
+    };
+  }, {});
 };

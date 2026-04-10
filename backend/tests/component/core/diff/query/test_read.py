@@ -92,7 +92,7 @@ class TestDiffReadQuery(TestInfrahub):
 
     @pytest.fixture(scope="class")
     async def hierarchical_data(
-        self, db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema
+        self, db: InfrahubDatabase, default_branch: Branch, hierarchical_location_schema: None
     ) -> dict[str, Node]:
         REGIONS = (
             ("north-america",),
@@ -135,7 +135,9 @@ class TestDiffReadQuery(TestInfrahub):
         return nodes
 
     @pytest.fixture(scope="class")
-    async def load_data(self, db: InfrahubDatabase, default_branch: Branch, hierarchical_data) -> dict[str, Any]:
+    async def load_data(
+        self, db: InfrahubDatabase, default_branch: Branch, hierarchical_data: dict[str, Node]
+    ) -> dict[str, Any]:
         rack1_main = hierarchical_data["paris-r1"]
         rack2_main = hierarchical_data["paris-r2"]
 
@@ -228,7 +230,12 @@ class TestDiffReadQuery(TestInfrahub):
         ],
     )
     async def test_summary_no_filter(
-        self, db: InfrahubDatabase, default_branch: Branch, load_data, filters, counters
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        load_data: dict[str, Any],
+        filters: dict[str, Any],
+        counters: DiffSummaryCounters,
     ) -> None:
         query = await DiffSummaryQuery.init(
             db=db,
@@ -245,7 +252,9 @@ class TestDiffReadQuery(TestInfrahub):
         counters.to_time = load_data["to_time"]
         assert summary == counters
 
-    async def test_get_without_parent(self, db: InfrahubDatabase, default_branch: Branch, load_data) -> None:
+    async def test_get_without_parent(
+        self, db: InfrahubDatabase, default_branch: Branch, load_data: dict[str, Any]
+    ) -> None:
         repository = DiffRepository(db=db, deserializer=EnrichedDiffDeserializer(DiffParentNodeAdder()))
         diffs_without = await repository.get(
             base_branch_name=default_branch.name,

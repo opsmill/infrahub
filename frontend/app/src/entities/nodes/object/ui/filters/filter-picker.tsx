@@ -1,0 +1,175 @@
+import { Icon } from "@iconify-icon/react";
+import { ChevronRightIcon } from "lucide-react";
+import type React from "react";
+import { useRef, useState } from "react";
+import { Button as AriaButton, type Key } from "react-aria-components";
+
+import { Autocomplete } from "@/shared/components/aria/autocomplete";
+import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
+import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
+import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
+import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
+import type { Filter } from "@/shared/hooks/useFilters";
+import { classNames, sortByOrderWeight } from "@/shared/utils/common";
+
+import {
+  type FilterDefinition,
+  getFilterDefinitionIcon,
+  getFilterDefinitionLabel,
+  getFilterDefinitionName,
+} from "@/entities/nodes/object/domain/filter-definition";
+import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
+import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
+import type { ModelSchema } from "@/entities/schema/types";
+import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
+
+interface FilterPickerProps {
+  schema: ModelSchema;
+  filters: Filter[];
+}
+
+export function FilterPicker({ schema, filters }: FilterPickerProps) {
+  const [open, setOpen] = useState(false);
+  const [selectedField, setSelectedField] = useState<string | null>(null);
+
+  const filterCount = getFilterPickerCount(schema, filters);
+
+  const itemElements = useRef(new Map<string, Element>());
+  const triggerRef = useRef<Element | null>(null);
+
+  const closePicker = () => {
+    setOpen(false);
+    setSelectedField(null);
+  };
+
+  const fields: FilterDefinition[] = [
+    ...sortByOrderWeight([...(schema.attributes ?? []), ...(schema.relationships ?? [])]).map(
+      (field): FilterDefinition =>
+        "peer" in field
+          ? { type: "relationship", schema: field }
+          : { type: "attribute", schema: field }
+    ),
+    ...ALL_METADATA_FILTERS,
+  ];
+
+  const activeFieldDefinition = fields.find((f) => getFilterDefinitionName(f) === selectedField);
+
+  const handleAction = (key: Key) => {
+    const fieldName = String(key);
+    triggerRef.current = itemElements.current.get(fieldName) ?? null;
+    setSelectedField(fieldName);
+  };
+
+  return (
+    <>
+      <PopoverTrigger
+        isOpen={open}
+        onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          if (!isOpen) setSelectedField(null);
+        }}
+      >
+        <AriaButton
+          className={classNames(
+            focusVisibleStyle,
+            "inline-flex h-8 shrink-0 items-center gap-1 rounded-xl border border-stone-300 px-2 text-sm"
+          )}
+        >
+          <Icon icon="mdi:filter-variant" className="text-base" />
+          Filter
+          {filterCount > 0 && <FilterCountBadge count={filterCount} />}
+        </AriaButton>
+
+        <Popover
+          placement="bottom start"
+          shouldCloseOnInteractOutside={(element) => !element.closest(".filter-form-popover")}
+        >
+          <Autocomplete>
+            <ListBox
+              aria-label="Filter fields"
+              selectionMode="single"
+              selectedKeys={selectedField ? [selectedField] : []}
+              onAction={handleAction}
+              className="max-h-72 p-1"
+            >
+              {fields.map((field) => {
+                const name = getFilterDefinitionName(field);
+                return (
+                  <FilterPickerItem
+                    key={name}
+                    definition={field}
+                    hasActiveFilter={filters.some((f) => isFieldFiltered(f, name))}
+                    ref={(el: HTMLDivElement | null) => {
+                      if (el) itemElements.current.set(name, el);
+                    }}
+                  />
+                );
+              })}
+            </ListBox>
+          </Autocomplete>
+        </Popover>
+      </PopoverTrigger>
+
+      {selectedField && activeFieldDefinition && (
+        <Popover
+          className="filter-form-popover"
+          triggerRef={triggerRef}
+          offset={8}
+          isOpen
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setSelectedField(null);
+          }}
+          placement="end top"
+        >
+          <FieldFilterForm definition={activeFieldDefinition} onSuccess={closePicker} />
+        </Popover>
+      )}
+    </>
+  );
+}
+
+interface FilterPickerItemProps {
+  definition: FilterDefinition;
+  hasActiveFilter: boolean;
+  ref?: React.Ref<HTMLDivElement>;
+}
+
+function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItemProps) {
+  const name = getFilterDefinitionName(definition);
+  const label = getFilterDefinitionLabel(definition);
+
+  return (
+    <ListBoxItem
+      id={name}
+      textValue={label}
+      className={({ isSelected }) => classNames(isSelected && "bg-stone-700/10 text-stone-800")}
+      ref={ref}
+    >
+      {({ isSelected }) => (
+        <>
+          {definition.type === "relationship" ? (
+            <FieldSchemaIcon fieldSchema={definition.schema} />
+          ) : (
+            <Icon icon={getFilterDefinitionIcon(definition)} />
+          )}
+          <span className="mr-auto">{label}</span>
+          {hasActiveFilter && <ActiveFilterIndicator />}
+          <ChevronRightIcon className={classNames("size-3.5", isSelected && "opacity-0")} />
+        </>
+      )}
+    </ListBoxItem>
+  );
+}
+
+function FilterCountBadge({ count }: { count: number }) {
+  return (
+    <span className="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-stone-200 px-1 text-stone-600 text-xs">
+      {count}
+    </span>
+  );
+}
+
+function ActiveFilterIndicator() {
+  return <span className="size-1 rounded-full bg-custom-blue-700" />;
+}

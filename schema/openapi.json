@@ -2474,6 +2474,22 @@
                         "description": "List of Nodes that are referencing this Generic",
                         "update": "not_applicable"
                     },
+                    "restricted_namespaces": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Restricted Namespaces",
+                        "description": "Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
+                        "update": "allowed"
+                    },
                     "kind": {
                         "anyOf": [
                             {
@@ -4022,7 +4038,7 @@
                 "properties": {
                     "file": {
                         "type": "string",
-                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
                         "title": "File"
                     }
                 },
@@ -4684,6 +4700,22 @@
                         "title": "Used By",
                         "description": "List of Nodes that are referencing this Generic",
                         "update": "not_applicable"
+                    },
+                    "restricted_namespaces": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Restricted Namespaces",
+                        "description": "Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -6540,6 +6572,13 @@
                     "type": {
                         "type": "string",
                         "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
                     }
                 },
                 "type": "object",

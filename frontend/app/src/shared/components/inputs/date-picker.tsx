@@ -34,7 +34,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
 
 interface DatePickerProps {
   id?: string;
-  date?: Date;
+  date?: Date | null;
   onChange: (date: Date | null) => void;
   disabled?: boolean;
   isProtected?: boolean;

@@ -21,10 +21,11 @@ interface Props {
   closeDrawer: () => void;
   onUpdateComplete?: () => void;
   formStructure?: DynamicFieldData[];
+  extraRelationshipNames?: string[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const { objectname, objectId, closeDrawer, onUpdateComplete } = props;
+  const { objectname, objectId, closeDrawer, onUpdateComplete, extraRelationshipNames } = props;
 
   const { schema } = useSchema(objectname);
 
@@ -36,6 +37,7 @@ export default function ObjectItemEditComponent(props: Props) {
     generateObjectEditFormQuery({
       schema,
       objectId,
+      extraRelationshipNames,
     })
   );
 

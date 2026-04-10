@@ -363,6 +363,60 @@ from infrahub.core.schema.schema_branch import SchemaBranch
             "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: The 'pprint' filter isn't allowed to be used",  # noqa:E501
             id="template_invalid_format",
         ),
+        pytest.param(
+            SchemaRoot(
+                nodes=[
+                    NodeSchema(
+                        name="Person",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.JINJA2,
+                                    jinja2_template="{{ name__value | artifact_content }}",
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: The 'artifact_content' filter isn't allowed to be used",  # noqa:E501
+            id="artifact_content_blocked_in_core",
+        ),
+        pytest.param(
+            SchemaRoot(
+                nodes=[
+                    NodeSchema(
+                        name="Person",
+                        namespace="Testing",
+                        attributes=[
+                            AttributeSchema(
+                                name="name",
+                                kind="Text",
+                            ),
+                            AttributeSchema(
+                                name="computed",
+                                kind="Text",
+                                read_only=True,
+                                computed_attribute=ComputedAttribute(
+                                    kind=ComputedAttributeKind.JINJA2,
+                                    jinja2_template="{{ name__value | file_object_content }}",
+                                ),
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            "TestingPerson: Attribute 'computed' is assigned by a jinja2 template, but has an invalid template: The 'file_object_content' filter isn't allowed to be used",  # noqa:E501
+            id="file_object_content_blocked_in_core",
+        ),
     ],
 )
 async def test_schema_computed_attribute_violations(schema_root: SchemaRoot, expected_error: str) -> None:

@@ -3,7 +3,7 @@ import { useCommandState } from "cmdk";
 import { useQueryState } from "nuqs";
 import { useRef, useState } from "react";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { ComboboxItem } from "@/shared/components/ui/combobox";

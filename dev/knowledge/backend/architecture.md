@@ -59,6 +59,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 - [Events System](events.md) - Event-driven architecture
 - [Async Tasks](async-tasks.md) - Background task processing
 - [Message Bus](message-bus.md) - Inter-service communication
+- [Computed Attributes](computed-attributes.md) - Jinja2 evaluation paths and schema registry
 
 ### Guidelines
 

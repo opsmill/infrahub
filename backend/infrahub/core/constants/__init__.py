@@ -89,6 +89,9 @@ class EventType(InfrahubStringEnum):
     VALIDATOR_PASSED = f"{EVENT_NAMESPACE}.validator.passed"
     VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
 
+    ACCOUNT_LOGGED_IN = f"{EVENT_NAMESPACE}.account.logged_in"
+    ACCOUNT_LOGGED_OUT = f"{EVENT_NAMESPACE}.account.logged_out"
+
 
 class PermissionLevel(Flag):
     READ = 1

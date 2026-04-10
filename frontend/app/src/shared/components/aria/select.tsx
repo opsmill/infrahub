@@ -33,7 +33,7 @@ export const SelectTrigger = ({ className, children, ...props }: AriaButtonProps
 export const SelectPopover = ({ className, ...props }: PopoverProps) => (
   <Popover
     className={composeRenderProps(className, (className) =>
-      classNames("min-w-(--trigger-width)", className)
+      classNames("min-w-(--trigger-width) bg-white", className)
     )}
     {...props}
   />

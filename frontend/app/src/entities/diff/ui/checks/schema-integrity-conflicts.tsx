@@ -1,4 +1,4 @@
-import type { CoreDataCheck } from "@/shared/api/graphql/generated/graphql";
+import type { CoreDataCheck } from "@/shared/api/graphql/generated/types";
 
 import { SchemaConflict } from "./schema-conflict";
 

@@ -116,7 +116,7 @@ class TestWebhookProcess(TestInfrahubApp):
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",
-                webhook_kind="CoreStandardWebhook",
+                webhook_kind=InfrahubKind.STANDARDWEBHOOK,
                 event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
                 event_type="infrahub.branch.created",
                 event_occured_at="2025-02-28T08:37:09.969Z",
@@ -144,7 +144,7 @@ class TestWebhookProcess(TestInfrahubApp):
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",
-                webhook_kind="CoreStandardWebhook",
+                webhook_kind=InfrahubKind.STANDARDWEBHOOK,
                 branch_name="main",
                 event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
                 event_type="infrahub.branch.created",

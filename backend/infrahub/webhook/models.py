@@ -6,7 +6,7 @@ import hmac
 import json
 import logging
 import os
-from enum import StrEnum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, assert_never
 from uuid import UUID, uuid4
 
@@ -47,10 +47,13 @@ class WebhookTriggerDefinition(TriggerDefinition):
     @classmethod
     def from_object(cls, obj: CoreWebhook | CoreWebhookNode) -> Self:
         event_trigger = EventTrigger()
-        if obj.event_type.value == "all":
+        event_type = obj.event_type.value
+        if isinstance(event_type, Enum):
+            event_type = obj.event_type.value.value
+        if event_type == "all":
             event_trigger.events.add("infrahub.*")
         else:
-            event_trigger.events.add(obj.event_type.value)
+            event_trigger.events.add(event_type)
 
         if obj.branch_scope.value == "default_branch":
             event_trigger.match_related = {
@@ -63,7 +66,7 @@ class WebhookTriggerDefinition(TriggerDefinition):
                 "infrahub.resource.label": f"!{registry.default_branch}",
             }
 
-        if obj.node_kind.value and obj.event_type.value in get_all_infrahub_node_kind_events():
+        if obj.node_kind.value and event_type in get_all_infrahub_node_kind_events():
             event_trigger.match = {"infrahub.node.kind": obj.node_kind.value}
 
         definition = cls(

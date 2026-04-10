@@ -1,4 +1,7 @@
+from typing import Any
+
 from infrahub.core import registry
+from infrahub.core.branch.models import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.graph import Migration019
 from infrahub.core.migrations.shared import MigrationInput
@@ -11,7 +14,7 @@ from tests.helpers.db_validation import validate_node_relationships
 
 async def test_migration_019(
     db: InfrahubDatabase,
-    default_branch,
+    default_branch: Branch,
 ) -> None:
     """
     Reproduce corrupted state introduced by migration 12, and apply the migration fixing it.
@@ -129,7 +132,7 @@ async def test_migration_019(
 
 
 async def test_incorrectly_deleted_aware_nodes_and_relationship(
-    db: InfrahubDatabase, branch, car_person_schema_unregistered
+    db: InfrahubDatabase, branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> None:
     """
     Reproduce a state where a branch aware node would have been incorrectly deleted, this node being
@@ -169,7 +172,7 @@ async def test_incorrectly_deleted_aware_nodes_and_relationship(
 
 
 async def test_incorrectly_deleted_agnostic_node(
-    db: InfrahubDatabase, branch, car_person_branch_agnostic_schema
+    db: InfrahubDatabase, branch: Branch, car_person_branch_agnostic_schema: dict[str, Any]
 ) -> None:
     """
     Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being
@@ -209,7 +212,9 @@ async def test_incorrectly_deleted_agnostic_node(
     await validate_node_relationships(node=agnostic_car, branch=registry.get_global_branch(), db=db)
 
 
-async def test_incorrectly_deleted_aware_node(db: InfrahubDatabase, branch, car_person_branch_agnostic_schema) -> None:
+async def test_incorrectly_deleted_aware_node(
+    db: InfrahubDatabase, branch: Branch, car_person_branch_agnostic_schema: dict[str, Any]
+) -> None:
     """
     Reproduce a state where a branch agnostic node would have been incorrectly deleted, this node being
     connected to another node through 2 relationships, both aware and agnostic.

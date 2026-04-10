@@ -67,7 +67,7 @@ True distributed tests with multiple Docker containers running the full Infrahub
 - Slowest but most realistic testing
 - Tests real distributed behavior
 
-**When to use:** Testing behavior that requires actual distributed execution, like computed attributes, triggered actions, or schema migrations in production-like environments.
+**When to use:** Testing behavior that requires actual distributed execution, like [computed attributes](computed-attributes.md), triggered actions, or schema migrations in production-like environments.
 
 ```python
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient

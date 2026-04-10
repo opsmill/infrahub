@@ -35,6 +35,7 @@ from infrahub_sdk.spec.menu import MenuFile
 from infrahub_sdk.spec.object import ObjectFile
 from infrahub_sdk.template import Jinja2Template
 from infrahub_sdk.template.exceptions import JinjaTemplateError
+from infrahub_sdk.template.filters import ExecutionContext
 from infrahub_sdk.utils import compare_lists
 from infrahub_sdk.yaml import InfrahubFile, SchemaFile
 from prefect import flow, task
@@ -44,6 +45,7 @@ from pydantic import BaseModel, Field
 from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
+from infrahub import config
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -1208,8 +1210,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         self.validate_location(commit=commit, worktree_directory=commit_worktree.directory, file_path=location)
 
-        jinja2_template = Jinja2Template(template=Path(location), template_directory=Path(commit_worktree.directory))
+        jinja2_template = Jinja2Template(
+            template=Path(location), template_directory=Path(commit_worktree.directory), client=self.sdk
+        )
         try:
+            context = ExecutionContext.CORE | ExecutionContext.WORKER
+            if not config.SETTINGS.security.restrict_untrusted_jinja2_filters:
+                context = ExecutionContext.ALL
+            jinja2_template.validate(context=context)
             return await jinja2_template.render(variables=data)
         except JinjaTemplateError as exc:
             log.error(str(exc), exc_info=True)

@@ -13,14 +13,12 @@ import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Link } from "@/shared/components/ui/link";
 
 import { IP_SUMMARY_RELATIONSHIPS_BLACKLIST } from "@/entities/ipam/constants";
-import {
-  type AttributeType,
-  ObjectAttributeValue,
-} from "@/entities/nodes/getObjectItemDisplayValue";
+import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
+import type { NodeAttributeWithMetadata } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { Permission } from "@/entities/permission/types";
 import { RequireObjectPermissions } from "@/entities/permission/ui/require-object-permissions";
@@ -139,7 +137,7 @@ const ResourcePoolContent = ({ resourcePoolId, schema, permission }: ResourcePoo
         value: (
           <ObjectAttributeValue
             attributeSchema={schemaAttribute}
-            attributeData={resourcePool[schemaAttribute.name] as AttributeType}
+            attributeData={resourcePool[schemaAttribute.name] as NodeAttributeWithMetadata}
           />
         ),
       };

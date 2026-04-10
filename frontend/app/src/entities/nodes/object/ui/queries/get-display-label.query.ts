@@ -8,7 +8,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getNodeLabelFromApi } from "@/entities/nodes/object/api/get-display-label";
 
 type NodeLabelProps = {
-  objectId?: string;
+  objectId?: string | null;
   kind: string;
   enabled?: boolean;
   branch?: string | null;

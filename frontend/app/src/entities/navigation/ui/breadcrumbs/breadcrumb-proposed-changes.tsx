@@ -61,7 +61,7 @@ function BreadcrumbProposedChangeSelector({ proposedChangeId }: { proposedChange
       <MenuTrigger>
         <BreadcrumbSelectorTrigger>{getNodeLabel(data)}</BreadcrumbSelectorTrigger>
 
-        <Popover className="bg-stone-100/50 backdrop-blur">
+        <Popover>
           <ObjectAutocomplete className="max-h-58" objectKind={PROPOSED_CHANGES_OBJECT} />
         </Popover>
       </MenuTrigger>

@@ -63,17 +63,20 @@ resolve_relationships()
 
 ### Guard Conditions
 
-In `_collect_extra_filters()`, extra filters are only computed when needed:
+In `_collect_extra_filters()`, extra filters are computed for three sources:
 
 ```python
 if not self._existing or self._human_friendly_id:
     # Fetch HFID-related peer attributes
 if not self._existing or self._display_label:
     # Fetch display-label-related peer attributes
+if self._existing:
+    # Fetch peer attributes needed by Jinja2 computed attribute templates
 ```
 
-- **New nodes** (`not self._existing`): Always need extra filters
+- **New nodes** (`not self._existing`): Always need HFID/display_label extra filters
 - **Existing nodes with HFID/display_label set**: Need extra filters for recomputation during updates
+- **Existing nodes (updates)**: Always include peer attributes needed by Jinja2 computed attribute templates (via `computed_attributes.get_registered_jinja2_node`)
 
 ## Lifecycle
 
@@ -86,7 +89,7 @@ if not self._existing or self._display_label:
 ### Update
 
 1. `Node.load()` receives `human_friendly_id` and `display_label` kwargs, wraps them in property objects
-2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label`)
+2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label` for those sources, plus always-on computed attribute extra filters via `computed_attributes.get_registered_jinja2_node`)
 3. `_update()` checks `needs_update(fields)` for each property; recomputes and persists if needed
 
 ### Manual Override

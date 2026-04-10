@@ -9,6 +9,7 @@ from infrahub import config
 from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.task_manager.task import PrefectTask
 from infrahub.tasks.dummy import DUMMY_FLOW, DummyInput
+from infrahub.workers.dependencies import build_tls_registry
 from infrahub.workflows.initialization import setup_task_manager
 from infrahub.workflows.models import WorkerPoolDefinition
 
@@ -43,7 +44,7 @@ async def execute(
     config.load_and_exit(config_file_name=config_file)
 
     async with get_client(sync_client=False) as client:
-        worker = WorkflowWorkerExecution()
+        worker = WorkflowWorkerExecution(tls_registry=build_tls_registry())
         await DUMMY_FLOW.save(
             client=client, work_pool=WorkerPoolDefinition(name="infrahub-worker", worker_type="infrahubasync")
         )

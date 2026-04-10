@@ -60,6 +60,15 @@ test.describe("/schema - Schema visualizer", () => {
     await expect(page.getByRole("heading", { name: "Core Account Node" })).not.toBeVisible();
   });
 
+  test("navigate to schema graph view", async ({ page }) => {
+    await page.goto("/schema");
+    await expect(page.getByRole("heading", { name: "Core Account Node" })).toBeVisible();
+    await page.getByRole("heading", { name: "Core Account Node" }).click();
+    await page.getByRole("link", { name: "View in graph" }).click();
+    await expect(page).toHaveURL(/\/schema\/graph\?highlight=CoreAccount/);
+    await expect(page.getByText("Schema Overview")).toBeVisible();
+  });
+
   test("view schema attribute kind numberpool", async ({ page }) => {
     await page.goto("/schema");
     await page.getByPlaceholder("Search schema").fill("InfraBackBoneService");

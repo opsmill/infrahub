@@ -1,5 +1,4 @@
 import { Icon } from "@iconify-icon/react";
-import { useFilter } from "react-aria-components";
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -29,17 +28,15 @@ interface BreadcrumbBranchSelectorProps {
 
 export function BreadcrumbBranchSelector({ currentBranchName }: BreadcrumbBranchSelectorProps) {
   const { data: branches = [] } = useGetBranches();
-  const { contains } = useFilter({ sensitivity: "base" });
-
   return (
     <Breadcrumb>
       <MenuTrigger>
         <BreadcrumbSelectorTrigger>{currentBranchName}</BreadcrumbSelectorTrigger>
 
-        <Popover className="bg-stone-100/50 backdrop-blur">
+        <Popover>
           <PopoverDialog aria-label="Branch selector">
             {({ close }) => (
-              <Autocomplete filter={contains}>
+              <Autocomplete>
                 <ListBox
                   items={branches}
                   emptyMessage="No branches found."

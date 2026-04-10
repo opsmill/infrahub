@@ -5,6 +5,7 @@ from contextlib import ExitStack
 from typing import TYPE_CHECKING
 from unittest.mock import patch
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.webhook.constants import CACHE_KEY_PREFIX
@@ -17,14 +18,14 @@ if TYPE_CHECKING:
 
 
 async def _create_keyvalue(db: InfrahubDatabase, branch: Branch, name: str, key: str, value: str) -> Node:
-    kv = await Node.init(db=db, branch=branch, schema="CoreStaticKeyValue")
+    kv = await Node.init(db=db, branch=branch, schema=InfrahubKind.STATICKEYVALUE)
     await kv.new(db=db, name=name, key=key, value=value)
     await kv.save(db=db)
     return kv
 
 
 async def _create_webhook(db: InfrahubDatabase, branch: Branch, name: str, headers: list[Node] | None = None) -> Node:
-    webhook = await Node.init(db=db, branch=branch, schema="CoreStandardWebhook")
+    webhook = await Node.init(db=db, branch=branch, schema=InfrahubKind.STANDARDWEBHOOK)
     kwargs: dict = {
         "name": name,
         "url": "https://example.com/hook",

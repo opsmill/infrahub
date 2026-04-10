@@ -609,9 +609,9 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         diff_repository: DiffRepository,
         default_branch: Branch,
-        person_john_main,
-        person_jane_main,
-        new_height,
+        person_john_main: Node,
+        person_jane_main: Node,
+        new_height: int | None,
     ) -> None:
         # Capture initial metadata before any changes
         person_before = await NodeManager.get_one(
@@ -827,9 +827,9 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         diff_repository: DiffRepository,
         default_branch: Branch,
-        person_john_main,
-        person_jane_main,
-        car_camry_main,
+        person_john_main: Node,
+        person_jane_main: Node,
+        car_camry_main: Node,
     ) -> None:
         # Capture person_jane's updated_at before adding the relationship
         person_jane_before = await NodeManager.get_one(
@@ -924,7 +924,11 @@ class TestDiffAndMerge:
         await verify_no_duplicate_paths(db=db)
 
     async def test_relationship_set_to_null(
-        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, animal_person_schema
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        animal_person_schema: SchemaBranch,
     ) -> None:
         person_main = await Node.init(db=db, schema="TestPerson")
         await person_main.new(db=db, name="Dude")
@@ -1153,7 +1157,11 @@ class TestDiffAndMerge:
         await verify_no_duplicate_paths(db=db)
 
     async def test_agnostic_and_aware_nodes_added_on_branch(
-        self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, car_person_schema_global
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        diff_repository: DiffRepository,
+        car_person_schema_global: None,
     ) -> None:
         branch2 = await create_branch(db=db, branch_name="branch2")
         person = await Node.init(db=db, schema="TestPerson", branch=branch2)
@@ -1304,10 +1312,10 @@ class TestDiffAndMerge:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_john_main,
-        person_jane_main,
-        car_accord_main,
-        car_camry_main,
+        person_john_main: Node,
+        person_jane_main: Node,
+        car_accord_main: Node,
+        car_camry_main: Node,
     ) -> None:
         before_test_start = Timestamp()
         person_schema = db.schema.get(name="TestPerson", duplicate=False)
@@ -1391,11 +1399,11 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         default_branch: Branch,
         diff_repository: DiffRepository,
-        person_john_main,
-        person_jane_main,
-        person_alfred_main,
-        car_accord_main,
-        car_camry_main,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_accord_main: Node,
+        car_camry_main: Node,
     ) -> None:
         car_created_at = car_accord_main._get_created_at()
 
@@ -1556,11 +1564,11 @@ class TestDiffAndMerge:
         db: InfrahubDatabase,
         default_branch: Branch,
         diff_repository: DiffRepository,
-        person_john_main,
-        person_jane_main,
-        person_alfred_main,
-        car_accord_main,
-        car_camry_main,
+        person_john_main: Node,
+        person_jane_main: Node,
+        person_alfred_main: Node,
+        car_accord_main: Node,
+        car_camry_main: Node,
     ) -> None:
         car_created_at = car_accord_main._get_created_at()
 
