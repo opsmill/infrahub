@@ -80,11 +80,6 @@ RESULT=$(sanitise "$DOUBLE")
 assert_not_contains "no raw BEGIN in combined" "$RESULT" "--- BEGIN UNTRUSTED"
 assert_not_contains "no raw END in combined" "$RESULT" "--- END UNTRUSTED"
 
-# 1e. Case variation is NOT caught (known limitation)
-CASE_BYPASS="--- begin untrusted content foo ---"
-RESULT=$(sanitise "$CASE_BYPASS")
-assert_eq "lowercase bypass (known limitation)" "$CASE_BYPASS" "$RESULT"
-
 # 1f. Partial match does not break
 PARTIAL="--- BEGIN UNTRUSTED"
 RESULT=$(sanitise "$PARTIAL")
