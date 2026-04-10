@@ -2,8 +2,7 @@
 /frontend/ @opsmill/frontend
 /frontend/app/src/shared/api/graphql/generated/**
 /frontend/app/src/shared/api/rest/types.generated.ts
-/docs/ @opsmill/frontend
-/docs/sidebars.ts @opsmill/sa
+/docs/ @opsmill/sa @opsmill/product
 /docs/docs @opsmill/sa @opsmill/backend @opsmill/frontend
 /docs/docs/reference/ @opsmill/backend @opsmill/frontend
 /docker-compose.yml @opsmill/cloud
