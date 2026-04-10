@@ -124,7 +124,7 @@ class SchemaBranch:
             self.profiles = data.get("profiles", {})
             self.templates = data.get("templates", {})
 
-        self.validators: list[SchemaBranchValidator] = [HierarchicalNodesRestrictedWords(), DisplayLabelValidator()]
+        self.validators: list[SchemaBranchValidator] = [HierarchicalNodesRestrictedWords()]
 
     @classmethod
     def validate(cls, data: Any) -> Self:
@@ -662,6 +662,9 @@ class SchemaBranch:
         self.validate_identifiers()
         self.sync_uniqueness_constraints_and_unique_attributes()
         self.validate_uniqueness_constraints()
+        # Cant move DisplayLabelValidator into the validators yet as the validation sequence would be broken
+        # validate_uniqueness_constraints needs to run before display label validation
+        DisplayLabelValidator().check(schema_branch=self)
         self.validate_order_by()
         self.validate_default_filters()
         self.validate_parent_component()
