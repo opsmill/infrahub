@@ -81,7 +81,6 @@ Determine which mode you are in:
    If Phase 1 changed any source files, you must re-run from Phase 2.
 
    **Phase 2 -- Regenerate & lint (run all in parallel):**
-   - `uv run invoke main.scan`
    - `uv run invoke main.lint`
    - `uv run invoke backend.lint`
    - `uv run invoke backend.generate`
