@@ -8,7 +8,7 @@ from infrahub import lock
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.branch.tasks import BranchCreator
+from infrahub.core.branch.creator import BranchCreator
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
