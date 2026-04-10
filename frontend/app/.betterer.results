@@ -28,12 +28,12 @@ exports[`fix ts error`] = {
       [133, 16, 6, "tsc: Type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is missing 6 properties from type \'Branch\'", "1513838097"],
       [134, 51, 6, "tsc: Argument of type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is not assignable to parameter of type \'Branch\'.\\n  Type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is missing 6 properties from type \'Branch\'", "1513838097"]
     ],
-    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:3859837992": [
-      [9, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
-      [32, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
-      [335, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [337, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [339, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
+    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:2250610657": [
+      [8, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
+      [30, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
+      [325, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [327, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [329, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
     "src/entities/diff/ui/checks/check.tsx:108481065": [
       [103, 4, 9, "tsc: Property \'conflicts\' does not exist on type \'null; artifact_id: { value: string | null; commit: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conflicts: { value: unknown; } | null; conflicts: { value: unknown; } | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; files: { value: unknown; } | null; keep_branch: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; storage_id: { value: string | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | { __typename: \\"CoreArtifactCheck\\"; id: string | { __typename: \\"CoreDataCheck\\"; id: string | { __typename: \\"CoreFileCheck\\"; id: string | { __typename: \\"CoreGeneratorCheck\\"; id: string | { __typename: \\"CoreSchemaCheck\\"; id: string | { __typename: \\"CoreStandardCheck\\"; id: string\'.", "1029368512"],
@@ -45,18 +45,17 @@ exports[`fix ts error`] = {
     "src/entities/diff/ui/diff-utils.tsx:2041680367": [
       [31, 40, 4, "tsc: Argument of type \'string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "2088095368"]
     ],
-    "src/entities/diff/ui/file-diff/file-content-diff.tsx:1388537556": [
-      [26, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
-      [45, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
-      [273, 47, 7, "tsc: Type \'((variables?: Partial<OperationVariables> | null | undefined) => Promise<ApolloQueryResult<any>>)\' is not assignable to type \'Function | undefined\'.\\n  Type \'null\' is not assignable to type \'Function | undefined\'.", "1381115054"],
-      [367, 19, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [369, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [371, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
+    "src/entities/diff/ui/file-diff/file-content-diff.tsx:4249516430": [
+      [24, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
+      [43, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
+      [348, 19, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [350, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [352, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
-    "src/entities/diff/ui/node-diff/comments.tsx:1801811839": [
-      [30, 10, 7, "tsc: Property \'refetch\' does not exist on type \'{}\'.", "1381115054"],
-      [30, 35, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
-      [30, 41, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
+    "src/entities/diff/ui/node-diff/comments.tsx:1884337612": [
+      [27, 10, 7, "tsc: Property \'refetch\' does not exist on type \'{}\'.", "1381115054"],
+      [27, 35, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
+      [27, 41, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
     ],
     "src/entities/diff/ui/node-diff/index.tsx:4178895949": [
       [90, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
@@ -74,15 +73,9 @@ exports[`fix ts error`] = {
       [136, 20, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [140, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
     ],
-    "src/entities/diff/ui/node-diff/thread.tsx:1634020961": [
-      [27, 10, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
-      [27, 16, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"],
-      [48, 29, 10, "tsc: \'schemaData\' is possibly \'undefined\'.", "2830256484"],
-      [48, 29, 15, "tsc: Type \'null\' cannot be used as an index type.", "405186850"],
-      [48, 29, 15, "tsc: Type \'undefined\' cannot be used as an index type.", "405186850"],
-      [50, 50, 10, "tsc: \'schemaData\' is possibly \'undefined\'.", "2830256484"],
-      [50, 50, 15, "tsc: Type \'null\' cannot be used as an index type.", "405186850"],
-      [50, 50, 15, "tsc: Type \'undefined\' cannot be used as an index type.", "405186850"]
+    "src/entities/diff/ui/node-diff/thread.tsx:1297085934": [
+      [23, 10, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
+      [23, 16, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
     ],
     "src/entities/diff/utils/build-diff-tree-items.ts:3247801260": [
       [73, 66, 24, "tsc: Not all code paths return a value.", "3673565821"]

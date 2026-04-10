@@ -1,15 +1,20 @@
-import Handlebars from "@/shared/libs/handlebars";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
-export const getRelationshipParent = Handlebars.compile(`
-  query GET_RELATIONSHIP_PARENT {
-    {{kind}}({{attribute}}: ["{{id}}"]) {
-      count
-      edges {
-        node {
-          id
-          display_label
-        }
-      }
-    }
-  }
-`);
+export const getRelationshipParent = ({ kind, attribute }: { kind: string; attribute: string }) => {
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `getRelationshipParent__${kind}`,
+      __variables: { ids: "[ID]" },
+      [kind]: {
+        __args: { [attribute]: new VariableType("ids") },
+        count: true,
+        edges: {
+          node: {
+            id: true,
+            display_label: true,
+          },
+        },
+      },
+    },
+  });
+};

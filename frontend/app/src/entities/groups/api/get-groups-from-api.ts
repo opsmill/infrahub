@@ -1,48 +1,47 @@
 import { gql } from "@apollo/client";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
-import Handlebars from "@/shared/libs/handlebars";
 
-const getGroupsQuery = Handlebars.compile(`
-query GET_GROUPS {
-  {{objectKind}}(ids:["{{objectId}}"]) {
-    edges {
-      node {
-        member_of_groups {
-          count
-          edges {
-            node {
-              id
-              display_label
-              description {
-                value
-              }
-              group_type {
-                value
-              }
-              members {
-                count
-              }
-            }
-          }
-        }
-      }
-    }
-    permissions {
-      edges {
-        node {
-          kind
-          view
-          create
-          update
-          delete
-        }
-      }
-    }
-  }
-}
-`);
+const getObjectGroups = ({ objectKind }: { objectKind: string }) => {
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `getObjectGroups__${objectKind}`,
+      __variables: { ids: "[ID]" },
+      [objectKind]: {
+        __args: { ids: new VariableType("ids") },
+        edges: {
+          node: {
+            member_of_groups: {
+              count: true,
+              edges: {
+                node: {
+                  id: true,
+                  display_label: true,
+                  description: { value: true },
+                  group_type: { value: true },
+                  members: { count: true },
+                },
+              },
+            },
+          },
+        },
+        permissions: {
+          edges: {
+            node: {
+              kind: true,
+              view: true,
+              create: true,
+              update: true,
+              delete: true,
+            },
+          },
+        },
+      },
+    },
+  });
+};
 
 export interface GetGroupsFromApiParams extends ContextParams {
   objectKind: string;
@@ -55,10 +54,11 @@ export function getGroupsFromApi({
   branchName,
   atDate,
 }: GetGroupsFromApiParams) {
-  const query = gql(getGroupsQuery({ objectKind, objectId }));
+  const query = gql(getObjectGroups({ objectKind }));
 
   return graphqlClient.query({
     query,
+    variables: { ids: [objectId] },
     context: {
       branch: branchName,
       date: atDate,
