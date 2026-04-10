@@ -382,6 +382,369 @@ assert_eq "analyst contents permission" "write" "$ANALYST_PERMS"
 
 # ─────────────────────────────────────────────────────────────
 echo ""
+echo "=== 14. Pre-push hook blocks non-pipeline branches ==="
+# ─────────────────────────────────────────────────────────────
+
+# Recreate the pre-push hook in a temp dir and feed it simulated
+# git push ref lines via stdin (the format git passes to pre-push hooks).
+
+HOOK_DIR=$(mktemp -d)
+HOOK_FILE="${HOOK_DIR}/pre-push"
+cat > "$HOOK_FILE" << 'HOOK'
+#!/bin/bash
+while read local_ref local_sha remote_ref remote_sha; do
+  if [[ "$remote_ref" != refs/heads/ai-bug-pipeline-* ]]; then
+    echo "BLOCKED: push to '$remote_ref' rejected. Only ai-bug-pipeline-* branches allowed." >&2
+    exit 1
+  fi
+done
+HOOK
+chmod +x "$HOOK_FILE"
+
+# 14a. Allowed: push to ai-bug-pipeline-1042-broken-auth
+HOOK_OUT=$( echo "refs/heads/ai-bug-pipeline-1042-broken-auth abc123 refs/heads/ai-bug-pipeline-1042-broken-auth def456" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook allows ai-bug-pipeline branch" "0" "$HOOK_RC"
+
+# 14b. Blocked: push to main
+HOOK_OUT=$( echo "refs/heads/main abc123 refs/heads/main def456" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook blocks main" "1" "$HOOK_RC"
+assert_contains "hook error mentions BLOCKED" "$HOOK_OUT" "BLOCKED"
+
+# 14c. Blocked: push to stable
+HOOK_OUT=$( echo "refs/heads/stable abc123 refs/heads/stable def456" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook blocks stable" "1" "$HOOK_RC"
+
+# 14d. Blocked: push to develop
+HOOK_OUT=$( echo "refs/heads/develop abc123 refs/heads/develop def456" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook blocks develop" "1" "$HOOK_RC"
+
+# 14e. Blocked: push to feature branch
+HOOK_OUT=$( echo "refs/heads/feature/my-thing abc123 refs/heads/feature/my-thing def456" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook blocks feature branch" "1" "$HOOK_RC"
+
+# 14f. Blocked: branch named "ai-bug-pipeline" without the trailing dash
+HOOK_OUT=$( echo "refs/heads/ai-bug-pipeline abc123 refs/heads/ai-bug-pipeline def456" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook blocks ai-bug-pipeline without suffix" "1" "$HOOK_RC"
+
+# 14g. Multiple refs — first allowed, second blocked → overall fails
+HOOK_OUT=$( printf '%s\n%s\n' \
+  "refs/heads/ai-bug-pipeline-100 a1 refs/heads/ai-bug-pipeline-100 b1" \
+  "refs/heads/stable a2 refs/heads/stable b2" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook blocks mixed refs (one bad)" "1" "$HOOK_RC"
+
+# 14h. Multiple refs — all allowed → passes
+HOOK_OUT=$( printf '%s\n%s\n' \
+  "refs/heads/ai-bug-pipeline-100 a1 refs/heads/ai-bug-pipeline-100 b1" \
+  "refs/heads/ai-bug-pipeline-200 a2 refs/heads/ai-bug-pipeline-200 b2" \
+  | "$HOOK_FILE" 2>&1 ) && HOOK_RC=$? || HOOK_RC=$?
+assert_eq "hook allows multiple pipeline refs" "0" "$HOOK_RC"
+
+rm -rf "$HOOK_DIR"
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 15. Pre-push hook installed in all push-capable workflows ==="
+# ─────────────────────────────────────────────────────────────
+
+# Every workflow that has a git push permission must also install the hook.
+# The reviewer is read-only and doesn't push, so it is excluded.
+
+for wf in \
+  ".github/workflows/bug-agent-analyst.yml" \
+  ".github/workflows/bug-agent-test.yml" \
+  ".github/workflows/bug-agent-fix.yml"; do
+  WF_CONTENT=$(cat "$wf")
+  WF_BASE=$(basename "$wf")
+  assert_contains "$WF_BASE has pre-push hook" "$WF_CONTENT" "Install pre-push safety hook"
+  assert_contains "$WF_BASE hook checks remote_ref" "$WF_CONTENT" 'refs/heads/ai-bug-pipeline-*'
+done
+
+# Reviewer should NOT have the hook (it's read-only, no push)
+REVIEW_CONTENT=$(cat ".github/workflows/bug-agent-review.yml")
+assert_not_contains "reviewer has no pre-push hook" "$REVIEW_CONTENT" "Install pre-push safety hook"
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 16. Permission settings present in all workflows ==="
+# ─────────────────────────────────────────────────────────────
+
+# Every claude-code-action step must have a settings block with permissions.
+
+for wf in \
+  ".github/workflows/bug-agent-analyst.yml" \
+  ".github/workflows/bug-agent-test.yml" \
+  ".github/workflows/bug-agent-fix.yml" \
+  ".github/workflows/bug-agent-review.yml"; do
+  WF_CONTENT=$(cat "$wf")
+  WF_BASE=$(basename "$wf")
+  assert_contains "$WF_BASE has permissions settings" "$WF_CONTENT" '"permissions"'
+  assert_contains "$WF_BASE has allow list" "$WF_CONTENT" '"allow"'
+done
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 17. Read-only agents have no write tools ==="
+# ─────────────────────────────────────────────────────────────
+
+# Analyst and reviewer should NOT have Edit, Write, git add, git commit,
+# or git push in their permission allow lists.
+
+for wf in \
+  ".github/workflows/bug-agent-analyst.yml" \
+  ".github/workflows/bug-agent-review.yml"; do
+  WF_BASE=$(basename "$wf")
+
+  # Extract the settings JSON block(s) using Python for reliable YAML parsing
+  PERMS=$(python3 -c "
+import yaml, json
+with open('$wf') as f:
+    data = yaml.safe_load(f)
+for job in data['jobs'].values():
+    for step in job.get('steps', []):
+        w = step.get('with', {})
+        if 'settings' in w:
+            settings = json.loads(w['settings'])
+            for p in settings.get('permissions', {}).get('allow', []):
+                print(p)
+")
+  assert_not_contains "$WF_BASE no Edit tool" "$PERMS" '"Edit"'
+  assert_not_contains "$WF_BASE no Write tool" "$PERMS" '"Write"'
+  assert_not_contains "$WF_BASE no git add" "$PERMS" "Bash(git add"
+  assert_not_contains "$WF_BASE no git commit" "$PERMS" "Bash(git commit"
+done
+
+# Reviewer specifically should also have no git push
+REVIEW_PERMS=$(python3 -c "
+import yaml, json
+with open('.github/workflows/bug-agent-review.yml') as f:
+    data = yaml.safe_load(f)
+for job in data['jobs'].values():
+    for step in job.get('steps', []):
+        w = step.get('with', {})
+        if 'settings' in w:
+            settings = json.loads(w['settings'])
+            for p in settings.get('permissions', {}).get('allow', []):
+                print(p)
+")
+assert_not_contains "reviewer no git push" "$REVIEW_PERMS" "Bash(git push"
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 18. Write agents have required tools ==="
+# ─────────────────────────────────────────────────────────────
+
+# Fixer and test-writer need Edit, Write, git add, git commit, git push.
+
+for wf in \
+  ".github/workflows/bug-agent-fix.yml" \
+  ".github/workflows/bug-agent-test.yml"; do
+  WF_BASE=$(basename "$wf")
+
+  PERMS=$(python3 -c "
+import yaml, json
+with open('$wf') as f:
+    data = yaml.safe_load(f)
+for job in data['jobs'].values():
+    for step in job.get('steps', []):
+        w = step.get('with', {})
+        if 'settings' in w:
+            settings = json.loads(w['settings'])
+            for p in settings.get('permissions', {}).get('allow', []):
+                print(p)
+" | sort -u)
+
+  assert_contains "$WF_BASE has Edit" "$PERMS" "Edit"
+  assert_contains "$WF_BASE has Write" "$PERMS" "Write"
+  assert_contains "$WF_BASE has git add" "$PERMS" "Bash(git add"
+  assert_contains "$WF_BASE has git commit" "$PERMS" "Bash(git commit"
+  assert_contains "$WF_BASE has git push" "$PERMS" "Bash(git push origin ai-bug-pipeline-"
+done
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 19. Git push restricted to ai-bug-pipeline-* in permissions ==="
+# ─────────────────────────────────────────────────────────────
+
+# For all workflows that allow git push, the push must be scoped
+# to "origin ai-bug-pipeline-" (not a bare "git push" or "git push origin").
+
+for wf in \
+  ".github/workflows/bug-agent-analyst.yml" \
+  ".github/workflows/bug-agent-test.yml" \
+  ".github/workflows/bug-agent-fix.yml"; do
+  WF_BASE=$(basename "$wf")
+
+  PUSH_RULES=$(python3 -c "
+import yaml, json
+with open('$wf') as f:
+    data = yaml.safe_load(f)
+for job in data['jobs'].values():
+    for step in job.get('steps', []):
+        w = step.get('with', {})
+        if 'settings' in w:
+            settings = json.loads(w['settings'])
+            for p in settings.get('permissions', {}).get('allow', []):
+                if 'git push' in p:
+                    print(p)
+")
+
+  # Every push rule must contain "ai-bug-pipeline-"
+  if [ -n "$PUSH_RULES" ]; then
+    UNSAFE=$(echo "$PUSH_RULES" | grep -v "ai-bug-pipeline-" || true)
+    if [ -z "$UNSAFE" ]; then
+      pass "$WF_BASE push rules scoped to pipeline branches"
+    else
+      fail "$WF_BASE has unscoped push rule: $UNSAFE"
+    fi
+  else
+    # No push rules means agent can't push — that's fine for analyst
+    pass "$WF_BASE no push rules (acceptable for read-heavy agent)"
+  fi
+done
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 20. No dangerous commands in any permission list ==="
+# ─────────────────────────────────────────────────────────────
+
+# None of the agents should have access to: git push --force, git reset,
+# git checkout stable, git checkout develop, rm, or direct shell access.
+
+ALL_PERMS=$(python3 -c "
+import yaml, json, glob
+for wf in glob.glob('.github/workflows/bug-agent-*.yml'):
+    with open(wf) as f:
+        data = yaml.safe_load(f)
+    for job_name, job in data['jobs'].items():
+        for step in job.get('steps', []):
+            w = step.get('with', {})
+            if 'settings' in w:
+                settings = json.loads(w['settings'])
+                for p in settings.get('permissions', {}).get('allow', []):
+                    print(f'{wf}:{job_name}:{p}')
+")
+
+assert_not_contains "no force push anywhere" "$ALL_PERMS" "push --force"
+assert_not_contains "no push -f anywhere" "$ALL_PERMS" "push -f"
+assert_not_contains "no git reset anywhere" "$ALL_PERMS" "git reset"
+assert_not_contains "no git checkout stable" "$ALL_PERMS" "git checkout stable"
+assert_not_contains "no git checkout develop" "$ALL_PERMS" "git checkout develop"
+assert_not_contains "no rm command anywhere" "$ALL_PERMS" "Bash(rm"
+assert_not_contains "no bare Bash allowed" "$ALL_PERMS" '"Bash"'
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 21. Fixer pushes AFTER PR body update ==="
+# ─────────────────────────────────────────────────────────────
+
+# The fixer.md must instruct the agent to push LAST, after updating PR body.
+# This ensures the reviewer workflow (triggered by push) sees the
+# AGENT_FIX_COMPLETE marker in the PR body.
+
+FIXER_MD=$(cat ".github/bug-agent-pipeline/fixer.md")
+
+assert_contains "fixer instructs push last" "$FIXER_MD" "Push your fix commits to the PR branch LAST"
+assert_contains "fixer explains reviewer timing" "$FIXER_MD" "push triggers the reviewer"
+assert_contains "fixer warns about body visibility" "$FIXER_MD" "AGENT_FIX_COMPLETE"
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 22. All agents share baseline read tools ==="
+# ─────────────────────────────────────────────────────────────
+
+# Every agent must have Read, Glob, Grep as baseline read-only tools.
+
+for wf in \
+  ".github/workflows/bug-agent-analyst.yml" \
+  ".github/workflows/bug-agent-test.yml" \
+  ".github/workflows/bug-agent-fix.yml" \
+  ".github/workflows/bug-agent-review.yml"; do
+  WF_BASE=$(basename "$wf")
+
+  PERMS=$(python3 -c "
+import yaml, json
+with open('$wf') as f:
+    data = yaml.safe_load(f)
+for job in data['jobs'].values():
+    for step in job.get('steps', []):
+        w = step.get('with', {})
+        if 'settings' in w:
+            settings = json.loads(w['settings'])
+            for p in settings.get('permissions', {}).get('allow', []):
+                print(p)
+" | sort -u)
+
+  assert_contains "$WF_BASE has Read" "$PERMS" "Read"
+  assert_contains "$WF_BASE has Glob" "$PERMS" "Glob"
+  assert_contains "$WF_BASE has Grep" "$PERMS" "Grep"
+  assert_contains "$WF_BASE has ls" "$PERMS" "Bash(ls"
+done
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 23. Hook script matches across workflows ==="
+# ─────────────────────────────────────────────────────────────
+
+# All pre-push hooks should be identical. Extract each hook body and compare.
+# Workflows may contain multiple jobs each with a hook, so we collect all
+# individual hook bodies and verify they are all the same.
+
+ALL_HOOK_BODIES=$(python3 -c "
+import yaml
+wfs = [
+    '.github/workflows/bug-agent-analyst.yml',
+    '.github/workflows/bug-agent-test.yml',
+    '.github/workflows/bug-agent-fix.yml',
+]
+SEP = '---HOOK_SEP---'
+for wf in wfs:
+    with open(wf) as f:
+        data = yaml.safe_load(f)
+    for job_name, job in data['jobs'].items():
+        for step in job.get('steps', []):
+            if step.get('name', '') == 'Install pre-push safety hook':
+                print(step['run'].strip())
+                print(SEP)
+")
+
+# Split on separator and compare all to first
+IFS=$'\n' read -r -d '' -a PARTS <<< "$ALL_HOOK_BODIES" || true
+REFERENCE=""
+IDX=0
+ALL_MATCH=true
+CURRENT=""
+for line in "${PARTS[@]}"; do
+  if [[ "$line" == "---HOOK_SEP---" ]]; then
+    if [[ -z "$REFERENCE" ]]; then
+      REFERENCE="$CURRENT"
+    elif [[ "$CURRENT" != "$REFERENCE" ]]; then
+      ALL_MATCH=false
+      fail "hook instance $IDX differs from reference"
+    fi
+    ((IDX++))
+    CURRENT=""
+  else
+    if [[ -n "$CURRENT" ]]; then
+      CURRENT="${CURRENT}"$'\n'"${line}"
+    else
+      CURRENT="$line"
+    fi
+  fi
+done
+
+if $ALL_MATCH; then
+  pass "all pre-push hooks are identical ($IDX instances)"
+fi
+
+# ─────────────────────────────────────────────────────────────
+echo ""
 echo "========================================="
 echo "Results: $PASS passed, $FAIL failed"
 echo "========================================="
