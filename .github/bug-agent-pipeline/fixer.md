@@ -126,10 +126,7 @@ Determine which mode you are in:
      nothing meaningful to add (e.g., Screenshots), write "N/A" rather than inventing content.
    - Make sure the hidden marker `<!-- AGENT_FIX_COMPLETE -->` appears
      somewhere in the PR body: it is used by downstream automation to detect this PR.
-   - **Push your fix commits to the PR branch LAST.** The push triggers the reviewer
-     workflow, which reads the PR body from the event payload. If you push before updating
-     the body, the reviewer will not see `AGENT_FIX_COMPLETE` and will enter the wrong
-     review mode.
+   - **Push your fix commits to the PR branch LAST.**
 9. Post a comment on the issue linking to the updated PR.
 
 ## Revision mode
