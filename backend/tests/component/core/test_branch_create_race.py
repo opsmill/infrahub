@@ -45,9 +45,9 @@ class TestBranchCreateRaceCondition:
         branch_model: BranchCreateModel,
     ) -> None:
         """Two concurrent branch creations with the same name: exactly one should succeed."""
-        component = create_autospec(spec=InfrahubComponent)
-        event_service = create_autospec(spec=InfrahubEventService)
-        workflow = create_autospec(spec=InfrahubWorkflow)
+        component = create_autospec(spec=InfrahubComponent, spec_set=True)
+        event_service = create_autospec(spec=InfrahubEventService, spec_set=True)
+        workflow = create_autospec(spec=InfrahubWorkflow, spec_set=True)
 
         async def run_creator() -> None:
             async with db.start_session() as session:
