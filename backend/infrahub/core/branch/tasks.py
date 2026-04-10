@@ -63,6 +63,10 @@ if TYPE_CHECKING:
 
     from infrahub.core.changelog.models import NodeChangelog
     from infrahub.database import InfrahubDatabase
+    from infrahub.lock import InfrahubLockRegistry
+    from infrahub.services.adapters.event import InfrahubEventService
+    from infrahub.services.adapters.workflow import InfrahubWorkflow
+    from infrahub.services.component import InfrahubComponent
 
 
 @flow(name="branch-migrate", flow_run_name="Apply migrations to branch {branch}")
@@ -481,14 +485,24 @@ async def validate_branch(branch: str) -> State:
         return Completed(message="branch is valid")
 
 
-@flow(name="create-branch", flow_run_name="Create branch {model.name}")
-async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> None:
-    await add_tags(branches=[model.name])
+class BranchCreator:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        lock_registry: InfrahubLockRegistry,
+        component: InfrahubComponent,
+        event_service: InfrahubEventService,
+        workflow: InfrahubWorkflow,
+    ) -> None:
+        self.db = db
+        self.lock_registry = lock_registry
+        self.component = component
+        self.event_service = event_service
+        self.workflow = workflow
 
-    database = await get_database()
-    async with database.start_session() as db:
+    async def create(self, model: BranchCreateModel, context: InfrahubContext) -> None:
         try:
-            await Branch.get_by_name(db=db, name=model.name)
+            await Branch.get_by_name(db=self.db, name=model.name)
             raise ValidationError(f"The branch {model.name} already exists")
         except BranchNotFoundError:
             pass
@@ -503,26 +517,25 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             raise ValidationError("\n".join(error_msgs)) from exc
 
         # distributed lock to prevent creating multiple branches with the same name
-        async with lock.registry.get(name=model.name, namespace="branch_create", local=False):
+        async with self.lock_registry.get(name=model.name, namespace="branch_create", local=False):
             # Re-check existence under the lock to prevent TOCTOU race
             try:
-                await Branch.get_by_name(db=db, name=model.name)
+                await Branch.get_by_name(db=self.db, name=model.name)
                 raise ValidationError(f"The branch {model.name} already exists")
             except BranchNotFoundError:
                 pass
 
-            async with lock.registry.local_schema_lock():
+            async with self.lock_registry.local_schema_lock():
                 # Copy the schema from the origin branch and set the hash and the schema_changed_at value
                 origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
                 new_schema = origin_schema.duplicate(name=obj.name)
                 registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
                 obj.update_schema_hash()
-                await obj.save(db=db, user_id=context.account.account_id)
+                await obj.save(db=self.db, user_id=context.account.account_id)
 
                 # Add Branch to registry
                 registry.branch[obj.name] = obj
-                component = await get_component()
-                await component.refresh_schema_hash(branches=[obj.name])
+                await self.component.refresh_schema_hash(branches=[obj.name])
 
         event = BranchCreatedEvent(
             branch_name=obj.name,
@@ -530,15 +543,34 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
             sync_with_git=obj.sync_with_git,
             meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
         )
-        event_service = await get_event_service()
-        await event_service.send(event=event)
+        await self.event_service.send(event=event)
 
         if obj.sync_with_git:
-            await get_workflow().submit_workflow(
+            await self.workflow.submit_workflow(
                 workflow=GIT_REPOSITORIES_CREATE_BRANCH,
                 context=context,
                 parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
             )
+
+
+@flow(name="create-branch", flow_run_name="Create branch {model.name}")
+async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> None:
+    await add_tags(branches=[model.name])
+
+    database = await get_database()
+    component = await get_component()
+    event_service = await get_event_service()
+    workflow = get_workflow()
+
+    async with database.start_session() as db:
+        creator = BranchCreator(
+            db=db,
+            lock_registry=lock.registry,
+            component=component,
+            event_service=event_service,
+            workflow=workflow,
+        )
+        await creator.create(model=model, context=context)
 
 
 async def _get_diff_root(

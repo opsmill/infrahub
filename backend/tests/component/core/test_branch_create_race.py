@@ -1,34 +1,21 @@
 import asyncio
-from contextlib import contextmanager
-from typing import Any, Generator
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from fast_depends import Provider
 
 from infrahub import lock
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
-from infrahub.core.branch.tasks import create_branch
+from infrahub.core.branch.tasks import BranchCreator
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
-from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.exceptions import ValidationError
 from infrahub.graphql.mutations.models import BranchCreateModel
-from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_database
-
-
-@contextmanager
-def stub_branch_task_infrastructure() -> Generator[None, Any, None]:
-    """Stub out infrastructure services (event bus, tags, components) not available in component tests."""
-    with (
-        patch("infrahub.core.branch.tasks.add_tags", new_callable=AsyncMock),
-        patch("infrahub.core.branch.tasks.get_event_service", new_callable=AsyncMock),
-        patch("infrahub.core.branch.tasks.get_component", new_callable=AsyncMock),
-    ):
-        yield
+from infrahub.services.adapters.event import InfrahubEventService
+from infrahub.services.adapters.workflow import InfrahubWorkflow
+from infrahub.services.component import InfrahubComponent
 
 
 class TestBranchCreateRaceCondition:
@@ -54,48 +41,30 @@ class TestBranchCreateRaceCondition:
     async def test_concurrent_create_same_branch_only_one_succeeds(
         self,
         db: InfrahubDatabase,
-        default_branch: Branch,
-        workflow_local: WorkflowLocalExecution,
-        dependency_provider: Provider,
         context: InfrahubContext,
         branch_model: BranchCreateModel,
     ) -> None:
-        """Simulate a TOCTOU race: both coroutines see 'branch not found' before either creates it.
-        Exactly one should succeed and the other should fail."""
-        real_get_by_name_method = Branch.get_by_name
-        both_saw_not_found = asyncio.Barrier(2)
-        race_triggered = False
+        """Two concurrent branch creations with the same name: exactly one should succeed."""
+        component = AsyncMock(spec=InfrahubComponent)
+        event_service = AsyncMock(spec=InfrahubEventService)
+        workflow = AsyncMock(spec=InfrahubWorkflow)
 
-        async def get_by_name_with_forced_race(**kwargs):
-            """Force both coroutines to see 'branch not found' before either proceeds."""
-            nonlocal race_triggered
-            if classic_method_call_required(kwargs, race_triggered):
-                return await real_get_by_name_method(**kwargs)
+        async def run_creator() -> None:
+            async with db.start_session() as session:
+                creator = BranchCreator(
+                    db=session,
+                    lock_registry=lock.registry,
+                    component=component,
+                    event_service=event_service,
+                    workflow=workflow,
+                )
+                await creator.create(model=branch_model, context=context)
 
-            # We want to make the two methods wait one another after they have checked that the branch
-            # was not existing in the database
-            try:
-                return await real_get_by_name_method(**kwargs)
-            except BranchNotFoundError:
-                await both_saw_not_found.wait()
-                race_triggered = True
-                raise
-
-        def classic_method_call_required(kwargs: dict[str, Any], race_triggered: bool) -> bool | Any:
-            # If the branch is not the branch of the test, or if the race situation has already been triggered,
-            # we do not need to fake the behavior
-            return kwargs.get("name") != branch_model.name or race_triggered
-
-        with (
-            dependency_provider.scope(build_database, lambda singleton=True: db),  # noqa: ARG005
-            stub_branch_task_infrastructure(),
-            patch.object(Branch, "get_by_name", side_effect=get_by_name_with_forced_race),
-        ):
-            results = await asyncio.gather(
-                create_branch(model=branch_model, context=context),
-                create_branch(model=branch_model, context=context),
-                return_exceptions=True,
-            )
+        results = await asyncio.gather(
+            run_creator(),
+            run_creator(),
+            return_exceptions=True,
+        )
 
         successes = [r for r in results if r is None]
         failures = [r for r in results if isinstance(r, ValidationError)]
@@ -105,3 +74,5 @@ class TestBranchCreateRaceCondition:
         )
         assert len(failures) == 1, f"Expected exactly 1 failure, got {len(failures)}. Results: {results}"
         assert "already exists" in str(failures[0])
+        component.refresh_schema_hash.assert_awaited_once_with(branches=[branch_model.name])
+        event_service.send.assert_awaited_once()
