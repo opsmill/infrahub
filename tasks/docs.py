@@ -43,6 +43,7 @@ def generate_schema(context: Context) -> None:  # noqa: ARG001
 
 @task
 def generate_config(context: Context) -> None:  # noqa: ARG001
+    """Generate documentation for Infrahub configuration settings."""
     _generate_infrahub_config_documentation()
 
 
@@ -158,13 +159,13 @@ def format_markdownlint(context: Context) -> None:
 
 @task
 def format(context: Context) -> None:
-    """This will run all formatter."""
+    """Format all documentation markdown files."""
     format_markdownlint(context)
 
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linter."""
+    """Run all documentation linters (markdownlint, vale)."""
     markdownlint(context)
     vale(context)
 
