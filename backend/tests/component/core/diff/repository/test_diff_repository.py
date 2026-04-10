@@ -56,7 +56,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         config.SETTINGS.database.max_depth_search_hierarchy = original_depth
         config.SETTINGS.database.query_size_limit = original_size
 
-    async def test_get_non_existent_diff(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_get_non_existent_diff(self, diff_repository: DiffRepository, reset_database: None) -> None:
         right_now = Timestamp()
         enriched_diffs = await diff_repository.get(
             base_branch_name=self.base_branch_name,
@@ -66,7 +66,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         )
         assert len(enriched_diffs) == 0
 
-    async def test_save_and_retrieve(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_save_and_retrieve(self, diff_repository: DiffRepository, reset_database: None) -> None:
         enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
@@ -92,7 +92,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         diff_root.exists_on_database = False
         assert diff_root == enriched_diff
 
-    async def test_save_and_retrieve_large_diff(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_save_and_retrieve_large_diff(self, diff_repository: DiffRepository, reset_database: None) -> None:
         enriched_branch_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
             diff_branch_name=self.diff_branch_name,
@@ -134,7 +134,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved_pair.base_branch_diff.exists_on_database = False
         assert retrieved_pair == enriched_diffs
 
-    async def test_base_branch_name_filter(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_base_branch_name_filter(self, diff_repository: DiffRepository, reset_database: None) -> None:
         name_uuid_map = {name: str(uuid4()) for name in (self.base_branch_name, "more-main", "most-main")}
         for base_branch_name, root_uuid in name_uuid_map.items():
             enriched_diff = EnrichedRootFactory.build(
@@ -159,7 +159,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert retrieved[0].base_branch_name == self.base_branch_name
         assert retrieved[0].uuid == name_uuid_map[self.base_branch_name]
 
-    async def test_diff_branch_name_filter(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_diff_branch_name_filter(self, diff_repository: DiffRepository, reset_database: None) -> None:
         diff_branch_1, diff_branch_2, diff_branch_3 = "diff1", "diff2", "diff3"
         diff_uuids_by_name = {diff_branch_1: set(), diff_branch_2: set(), diff_branch_3: set()}
         for diff_branch_name in (diff_branch_1, diff_branch_2, diff_branch_3):
@@ -203,7 +203,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved_uuids = {root_diff.uuid for root_diff in retrieved}
         assert retrieved_uuids == expected_uuids
 
-    async def test_filter_time_ranges(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_filter_time_ranges(self, diff_repository: DiffRepository, reset_database: None) -> None:
         root_uuid = str(uuid4())
         enriched_diff = EnrichedRootFactory.build(
             base_branch_name=self.base_branch_name,
@@ -267,7 +267,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         )
         assert len(retrieved) == 0
 
-    async def test_filter_root_node_uuids(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_filter_root_node_uuids(self, diff_repository: DiffRepository, reset_database: None) -> None:
         enriched_diffs: list[EnrichedDiffRoot] = []
         for i in range(5):
             nodes = self._build_nodes(num_nodes=4, num_sub_fields=3)
@@ -421,7 +421,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved[0].exists_on_database = False
         assert retrieved[0] == replace(this_diff, nodes={parent_node, thin_middle_node, expected_leaf_node})
 
-    async def test_save_and_retrieve_many_diffs(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_save_and_retrieve_many_diffs(self, diff_repository: DiffRepository, reset_database: None) -> None:
         diffs_to_retrieve: list[EnrichedDiffRoot] = []
         start_time = self.diff_from_time.add(seconds=1)
         for i in range(5):
@@ -462,7 +462,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             r.exists_on_database = False
         assert set(retrieved) == set(diffs_to_retrieve)
 
-    async def test_delete_diff_by_uuid(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_delete_diff_by_uuid(self, diff_repository: DiffRepository, reset_database: None) -> None:
         diffs: list[EnrichedDiffRoot] = []
         start_time = self.diff_from_time.add(seconds=1)
         for i in range(5):
@@ -496,7 +496,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             r.exists_on_database = False
         assert set(retrieved) == set(diffs)
 
-    async def test_delete_all_diffs(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_delete_all_diffs(self, diff_repository: DiffRepository, reset_database: None) -> None:
         diffs: list[EnrichedDiffRoot] = []
         for _ in range(5):
             nodes = self._build_nodes(num_nodes=2, num_sub_fields=1)
@@ -514,7 +514,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         )
         assert len(retrieved) == 0
 
-    async def test_get_by_tracking_id(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_get_by_tracking_id(self, diff_repository: DiffRepository, reset_database: None) -> None:
         branch_tracking_id = BranchTrackingId(name=self.diff_branch_name)
         name_tracking_id = NameTrackingId(name="an very cool diff")
         end_time = self.diff_from_time.add(minutes=5)
@@ -618,7 +618,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         retrieved_map = {summary.kind: summary for summary in retrieved_node_field_summaries}
         assert expected_map == retrieved_map
 
-    async def test_merge_tracking_ids(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_merge_tracking_ids(self, diff_repository: DiffRepository, reset_database: None) -> None:
         base_branch_name = "main"
         tracking_id_diff_1 = EnrichedRootFactory.build(base_branch_name=base_branch_name)
         tracking_id_1 = BranchTrackingId(name=tracking_id_diff_1.diff_branch_name)
@@ -653,7 +653,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         diff_uuids = {d.uuid for d in diffs}
         assert tracking_id_diff_1.uuid not in diff_uuids
 
-    async def test_limit_and_offset(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_limit_and_offset(self, diff_repository: DiffRepository, reset_database: None) -> None:
         nodes_by_kind = defaultdict(list)
         all_nodes = set()
         for kind in ("KindOne", "KindTwo", "KindThree"):
@@ -749,7 +749,9 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             n.uuid for n in sorted(nodes_by_kind["KindOne"], key=lambda x: x.uuid)[7:]
         }
 
-    async def test_update_existing(self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_update_existing(
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
+    ) -> None:
         node_with_removes = self.build_diff_node(no_recurse=True, num_sub_fields=3)
         node_with_updates = self.build_diff_node(no_recurse=True, num_sub_fields=3)
         # there are no conflicts by default
@@ -983,7 +985,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         await verify_no_orphaned_nodes(db=db)
 
     async def test_update_existing_hierarchy(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         nodes = self._build_nodes(num_nodes=2, num_sub_fields=3)
         for n in nodes:
@@ -1035,7 +1037,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         await verify_no_orphaned_nodes(db=db)
 
     async def test_save_and_retrieve_with_proposed_change(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test that saving a diff with proposed_change_id creates the DIFF_FOR_PROPOSED_CHANGE edge."""
         # Create a node that will act as the proposed change
@@ -1083,7 +1085,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             assert m.proposed_change_id == proposed_change_id
 
     async def test_update_proposed_change_link(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test that updating a diff's proposed_change_id updates the edge."""
         # Create two nodes that will act as proposed changes
@@ -1145,7 +1147,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert len(metadatas) == 0
 
     async def test_link_to_proposed_change(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test the link_to_proposed_change method for linking existing diffs."""
         # Create proposed change node
@@ -1202,7 +1204,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert metadata_pc_map == {enriched_branch_diff.uuid: proposed_change_id, enriched_base_diff.uuid: None}
 
     async def test_filter_by_proposed_change_id(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test filtering diffs by proposed_change_id."""
         # Create two proposed changes
@@ -1273,7 +1275,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         )
         assert len(retrieved) == 3
 
-    async def test_get_exclude_merged(self, diff_repository: DiffRepository, reset_database) -> None:
+    async def test_get_exclude_merged(self, diff_repository: DiffRepository, reset_database: None) -> None:
         base_branch_name = "main"
         # Create two diffs with tracking IDs
         merged_diff = EnrichedRootFactory.build(base_branch_name=base_branch_name)
@@ -1354,7 +1356,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert summary is not None
 
     async def test_freeze_diffs_for_proposed_change(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test freezing diffs linked to a proposed change."""
         # Create proposed change node
@@ -1412,7 +1414,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
             assert m.tracking_id.name == proposed_change_id
 
     async def test_delete_frozen_diff_protection(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test that frozen diffs are protected from deletion unless include_frozen=True."""
         # Create proposed change nodes
@@ -1520,7 +1522,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert frozen_branch_diff.uuid not in frozen_uuids_after
 
     async def test_freeze_diffs_for_branch(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test freezing diffs by branch name, including partner diffs."""
         branch_name = "freeze-branch-test"
@@ -1608,7 +1610,7 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
         assert len(old_metadata) == 0
 
     async def test_save_and_retrieve_is_frozen(
-        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database
+        self, db: InfrahubDatabase, diff_repository: DiffRepository, reset_database: None
     ) -> None:
         """Test that is_frozen property is saved and retrieved correctly."""
         # Create diff with is_frozen=True
