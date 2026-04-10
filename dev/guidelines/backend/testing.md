@@ -18,6 +18,13 @@ Note that at some point the current integration tests will be merged with the fu
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 
+## Test Documentation
+
+Tests are behavioral specifications. Write them to describe **what the system should do**, not which bug prompted the test.
+
+- **Do not reference issue numbers, GitHub URLs, or Jira tickets** in test code (names, comments, or docstrings). The git history links commits to issues.
+- **Do not describe which bug a test prevents.** Describe the expected behavior instead.
+
 ## Dataclass Test Case Pattern
 
 For parametrized tests with multiple scenarios, use dataclasses to define test cases. This pattern provides type safety, readable test IDs, and clear separation between test data and test logic.
