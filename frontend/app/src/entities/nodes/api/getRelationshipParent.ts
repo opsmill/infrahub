@@ -1,5 +1,7 @@
 import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
+import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
+
 export const getRelationshipParent = ({ kind, attribute }: { kind: string; attribute: string }) => {
   return jsonToGraphQLQuery({
     query: {
@@ -9,10 +11,7 @@ export const getRelationshipParent = ({ kind, attribute }: { kind: string; attri
         __args: { [attribute]: new VariableType("ids") },
         count: true,
         edges: {
-          node: {
-            id: true,
-            display_label: true,
-          },
+          node: nodeCoreFragment,
         },
       },
     },

@@ -136,11 +136,11 @@ export function FileContentDiff({
   });
 
   const { loading, error, data, refetch } = useQuery(GET_FILE_THREADS, {
-    variables: { changeIds: proposedChangeId },
+    variables: { changeIds: [proposedChangeId!] },
     skip: !proposedChangeId,
   });
 
-  const threads = data?.CoreFileThread?.edges?.map((edge: any) => edge.node) ?? [];
+  const threads = data?.CoreFileThread?.edges?.map((edge) => edge.node) ?? [];
 
   const handleCloseComment = () => {
     setDisplayAddComment({});

@@ -1,7 +1,7 @@
 import { graphql } from "gql.tada";
 
 export const GET_OBJECT_THREAD_COMMENTS = graphql(`
-  query GET_OBJECT_THREAD_COMMENTS($changeIds: String, $objectPath: String) {
+  query GET_OBJECT_THREAD_COMMENTS($changeIds: [ID!], $objectPath: String) {
     CoreObjectThread(change__ids: $changeIds, object_path__value: $objectPath) {
       count
       edges {

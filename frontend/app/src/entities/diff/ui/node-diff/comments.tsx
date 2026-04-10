@@ -30,7 +30,7 @@ export const DiffComments = (props: tDiffComments) => {
   const deleteObject = useDeleteObjectMutation();
 
   const { loading, error, data, refetch } = useQuery(GET_OBJECT_THREAD_COMMENTS, {
-    variables: { changeIds: proposedChangeId, objectPath: path },
+    variables: { changeIds: [proposedChangeId!], objectPath: path },
     skip: !proposedChangeId,
   });
 

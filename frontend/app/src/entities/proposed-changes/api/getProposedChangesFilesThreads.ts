@@ -1,7 +1,7 @@
 import { graphql } from "gql.tada";
 
 export const GET_FILE_THREADS = graphql(`
-  query GET_FILE_THREADS($changeIds: String) {
+  query GET_FILE_THREADS($changeIds: [ID!]) {
     CoreFileThread(change__ids: $changeIds) {
       count
       edges {

@@ -4,10 +4,10 @@ import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-const getObjectGroups = ({ objectKind }: { objectKind: string }) => {
+const getGroupsQuery = ({ objectKind }: { objectKind: string }) => {
   return jsonToGraphQLQuery({
     query: {
-      __name: `getObjectGroups__${objectKind}`,
+      __name: `getGroups__${objectKind}`,
       __variables: { ids: "[ID]" },
       [objectKind]: {
         __args: { ids: new VariableType("ids") },
@@ -54,7 +54,7 @@ export function getGroupsFromApi({
   branchName,
   atDate,
 }: GetGroupsFromApiParams) {
-  const query = gql(getObjectGroups({ objectKind }));
+  const query = gql(getGroupsQuery({ objectKind }));
 
   return graphqlClient.query({
     query,
