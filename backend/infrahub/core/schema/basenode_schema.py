@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import keyword
-import os
 from collections import defaultdict
 from dataclasses import asdict, dataclass
 from enum import Enum
@@ -259,11 +258,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         # Process element b
         for name in sorted(present_both):
-            # If the element doesn't have an ID on either side
-            # this most likely means it was added recently from the internal schema.
-            if os.environ.get("PYTEST_RUNNING", "") != "true" and local_map[name] is None and other_map[name] is None:
-                elements_diff.added[name] = None
-                continue
             local_element: obj_type = get_func(self, name=name)
             other_element: obj_type = get_func(other, name=name)
             element_diff = local_element.diff(other_element)
