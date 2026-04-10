@@ -24,7 +24,9 @@ Fast unittests that require no external services to run. I.e. no database or net
 - Fast feedback loop
 - Sanity checks
 
-**When to use:** Testing smaller functions that doesn't require network services.
+**When to use:** Pure logic — parsing, validation, transformation, data structures. No database, no network, no infrastructure. If the function under test doesn't need a DB connection or external service to do its job, it's a unit test.
+
+**When NOT to use:** If reproducing the bug requires database state, concurrent writes, constraint enforcement, or infrastructure behavior (locks, caches, message buses). Use component or functional tests instead — do not mock infrastructure to force a unit test.
 
 ### Component Tests (`backend/tests/component/`)
 
@@ -37,7 +39,7 @@ Many tests leverage the database and use TestContainers for external dependencie
 - Tests individual components with database interaction
 - Fast feedback loop
 
-**When to use:** Testing business logic that requires database state but doesn't need the full application context.
+**When to use:** Testing individual components that require external services — database state, cache behavior, lock coordination, message bus interactions, or any business logic that depends on infrastructure. See the [Key Root Fixtures](#key-root-fixtures) and [Test Adapters](#test-adapters) sections below for available test infrastructure.
 
 ### Functional Tests (`backend/tests/functional/`)
 
@@ -50,7 +52,7 @@ Multi-component tests running in a single thread/process. Async tasks execute in
 - Full debuggability with breakpoints
 - Uses `prefect_test_harness` for Prefect integration
 
-**When to use:** Testing features that span multiple components, including async workflows, while maintaining the ability to debug.
+**When to use:** Features that span multiple components, including async workflows, event-driven behavior, or end-to-end flows that cross service boundaries.
 
 ### Integration Tests (`backend/tests/integration/`)
 

@@ -18,6 +18,13 @@ Note that at some point the current integration tests will be merged with the fu
 
 Test files mirror source structure: `infrahub/core/node.py` → `tests/unit/core/test_node.py`
 
+## Test Documentation
+
+Tests are behavioral specifications. Write them to describe **what the system should do**, not which bug prompted the test.
+
+- **Do not reference issue numbers, GitHub URLs, or Jira tickets** in test code (names, comments, or docstrings). The git history links commits to issues.
+- **Do not describe which bug a test prevents.** Describe the expected behavior instead.
+
 ## Test Schemas
 
 Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).
