@@ -1,11 +1,12 @@
-import { queryClient } from "@/shared/api/rest/client";
-import { removeFiltersNotInSchema } from "@/shared/components/filters/utils/remove-filters-not-in-schema";
-import Content from "@/shared/components/layout/content";
-import useFilters from "@/shared/hooks/useFilters";
+import { Icon } from "@iconify-icon/react";
+import { BookTextIcon } from "lucide-react";
 
-import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
-import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
-import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
+import { constructPath } from "@/shared/api/rest/fetch";
+import { LinkButton } from "@/shared/components/ui/button";
+import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
+
+import { HeaderContainer } from "@/entities/nodes/object/ui/object-details/object-details-header";
+import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
 import type { ModelSchema } from "@/entities/schema/types";
 
 interface ObjectItemsHeaderProps {
@@ -13,36 +14,39 @@ interface ObjectItemsHeaderProps {
 }
 
 export function ObjectItemsHeader({ schema }: ObjectItemsHeaderProps) {
-  const [filters] = useFilters();
-  const {
-    data: count,
-    isPending,
-    isRefetching,
-    isError,
-  } = useObjectsCount({
-    objectKind: schema.kind!,
-    filters: removeFiltersNotInSchema(filters, schema),
-  });
-
-  const refetchObjects = async () => {
-    await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
-  };
-
   return (
-    <Content.CardTitle
-      title={schema.label || schema.name}
-      badgeContent={isPending && !isError ? "..." : count}
-      description={schema.description}
-      isReloadLoading={isRefetching}
-      reload={refetchObjects}
-      data-testid="object-header"
-      end={
-        <ObjectHelpButton
-          kind={schema.kind}
-          documentationUrl={schema.documentation}
-          className="ml-auto"
-        />
-      }
-    />
+    <HeaderContainer className="items-start">
+      <div>
+        <h1 className="truncate font-bold text-xl">{schema.label}</h1>
+        <div className="text-sm">{schema.description}</div>
+      </div>
+
+      <RefreshButton className="ml-auto" />
+      <LinkButton
+        variant="outline"
+        size="sm"
+        to={constructPath("/schema", [{ name: "kind", value: schema.kind }])}
+      >
+        <Icon icon="mdi:code-json" className="mr-1" />
+        Schema
+      </LinkButton>
+      {schema.documentation && (
+        <LinkButton
+          variant="outline"
+          size="sm"
+          to={
+            schema.documentation.startsWith("http")
+              ? INFRAHUB_DOC_LOCAL
+              : INFRAHUB_DOC_LOCAL + schema.documentation
+          }
+          className="gap-1"
+          target="_blank"
+          rel="noreferrer"
+        >
+          <BookTextIcon className="size-3.5" />
+          Docs
+        </LinkButton>
+      )}
+    </HeaderContainer>
   );
 }

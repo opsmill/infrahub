@@ -1,6 +1,7 @@
 import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
-import { Row } from "@/shared/components/container";
+import { Row, type RowProps } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { classNames } from "@/shared/utils/common";
 
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
@@ -37,7 +38,7 @@ export function ObjectDetailsHeader({
 
   return (
     <HeaderContainer>
-      <h2 className="truncate font-semibold text-xl">{getNodeLabel(objectData)}</h2>
+      <h1 className="truncate font-bold text-xl">{getNodeLabel(objectData)}</h1>
       <CopyToClipboardButton data={getNodeLabel(objectData)} />
       <NodeMetadataPopover objectId={objectId} objectKind={objectSchema.kind!} />
 
@@ -58,10 +59,12 @@ export function ObjectDetailsHeader({
   );
 }
 
-export function HeaderContainer({ children }: { children: React.ReactNode }) {
+export function HeaderContainer({ className, ...props }: RowProps) {
   return (
-    <Row className="w-full p-3 pb-1.5" data-testid="object-header">
-      {children}
-    </Row>
+    <Row
+      className={classNames("w-full p-3 pb-1.5", className)}
+      data-testid="object-header"
+      {...props}
+    />
   );
 }
