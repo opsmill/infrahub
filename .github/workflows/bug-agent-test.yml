@@ -221,9 +221,13 @@ jobs:
             exit 0
           fi
 
+          # Extract linked issue number from branch name: "ai-bug-pipeline-123-slug"
+          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.headRefName' | sed -n 's/.*ai-bug-pipeline-\([0-9]*\).*/\1/p')
+
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "branch=$(echo "$PR_JSON" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
           echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
+          echo "issue=${ISSUE_NUMBER}" >> $GITHUB_OUTPUT
 
       - uses: actions/checkout@v6
         if: steps.resolve.outputs.skip != 'true'
