@@ -4707,7 +4707,9 @@ async def test_template_does_not_contain_optional_unique_attributes() -> None:
         ],
     }
     schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=SchemaRoot(nodes=[schema]))
+    schema_branch.load_schema(
+        schema=SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[schema])
+    )
     schema_branch.process()
 
     network_router_template = schema_branch.get(name="TemplateNetworkRouter", duplicate=False)
@@ -4727,7 +4729,9 @@ async def test_template_does_not_contain_optional_unique_attributes() -> None:
     schema_2["uniqueness_constraints"] = []
 
     schema_branch_2 = SchemaBranch(cache={}, name="test2")
-    schema_branch_2.load_schema(schema=SchemaRoot(nodes=[schema_2]))
+    schema_branch_2.load_schema(
+        schema=SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[schema_2])
+    )
     schema_branch_2.process()
 
     network_router_template_2 = schema_branch_2.get(name="TemplateNetworkRouter", duplicate=False)
