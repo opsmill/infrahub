@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.migrations.graph.m041_deleted_dup_edges import DeleteDuplicatedRelationshipEdges
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -146,7 +146,7 @@ class Migration048(ArbitraryMigration):
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
         at = migration_input.at
-        console = get_migration_console()
+        console = migration_input.console
 
         console.log("Deleting duplicate edges for all Relationships", end="...")
         delete_duplicate_edges_query = await DeleteDuplicatedRelationshipEdges.init(

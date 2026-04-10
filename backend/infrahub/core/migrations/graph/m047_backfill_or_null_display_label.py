@@ -14,7 +14,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 from infrahub.core.query import Query, QueryType
 
@@ -32,9 +31,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-console = get_migration_console()
 
 
 def _is_jinja2_template(display_label: str) -> bool:
@@ -388,7 +384,7 @@ class Migration047(MigrationRequiringRebase):
             backfill_count = count_query.get_num_nodes()
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 # Create NULL display_label
                 if nodes_without_display_label:
                     null_task = progress.add_task(

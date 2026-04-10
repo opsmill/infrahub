@@ -3,7 +3,7 @@ from typing import Any
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
-from infrahub.core.migrations.graph import Migration019
+from infrahub.core.migrations.graph.m019_restore_rels_to_time import Migration019
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models

@@ -12,7 +12,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 
 from .load_schema_branch import get_or_load_schema_branch
@@ -22,8 +21,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema import MainSchemaTypes
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-console = get_migration_console()
 
 
 class Migration063(MigrationRequiringRebase):

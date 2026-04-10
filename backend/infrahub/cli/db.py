@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import contextlib
+import inspect
 import logging
 import os
+import time
 from collections import defaultdict
 from csv import DictReader, DictWriter
 from datetime import UTC, datetime
@@ -37,8 +40,14 @@ from infrahub.core.graph.schema import (
 )
 from infrahub.core.initialization import get_root_node, initialize_registry
 from infrahub.core.migrations.exceptions import MigrationFailureError
-from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
-from infrahub.core.migrations.shared import MigrationInput, get_migration_console
+from infrahub.core.migrations.graph import MIGRATIONS, get_graph_migrations, get_migration_by_number
+from infrahub.core.migrations.shared import (
+    BaseMigration,
+    GraphMigration,
+    MigrationInput,
+    get_migration_console,
+    suppress_internal_logs,
+)
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.definitions.deprecated import deprecated_models
 from infrahub.core.schema.manager import SchemaManager
@@ -52,7 +61,7 @@ from infrahub.database.neo4j import IndexManagerNeo4j
 from infrahub.dependencies.registry import build_component_registry
 from infrahub.exceptions import ValidationError
 
-from .constants import ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
+from .constants import APPLIED_BADGE, ERROR_BADGE, FAILED_BADGE, SUCCESS_BADGE
 from .db_commands.check_inheritance import check_inheritance
 from .db_commands.clean_duplicate_schema_fields import clean_duplicate_schema_fields
 from .patch import patch_app
@@ -65,7 +74,6 @@ def get_timestamp_string() -> str:
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
-    from infrahub.core.migrations.shared import MigrationTypes
     from infrahub.core.root import Root
     from infrahub.database import InfrahubDatabase
     from infrahub.database.index import IndexManagerBase
@@ -88,6 +96,20 @@ class IndexAction(StrEnum):
     DROP = "drop"
 
 
+def _get_migration_type_name(migration: BaseMigration) -> str:
+    """Return the base migration type name (e.g. 'GraphMigration') instead of the concrete class name."""
+    for base in type(migration).__mro__:
+        if base is not BaseMigration and BaseMigration in base.__bases__:
+            return base.__name__
+    return type(migration).__name__
+
+
+def _get_migration_display_name(migration: BaseMigration) -> str:
+    """Return the migration name without the numeric prefix (e.g. 'add_version_to_graph' from '001_add_version_to_graph')."""
+    parts = migration.name.split("_", 1)
+    return parts[1] if len(parts) > 1 and parts[0].isdigit() else migration.name
+
+
 @app.callback()
 def callback() -> None:
     """
@@ -100,6 +122,7 @@ async def do_migrate(
     root_node: Root,
     check: bool = False,
     migration_number: int | None = None,
+    verbose: bool = False,
 ) -> None:
     """Core migration logic that can be called independently of CLI.
 
@@ -108,6 +131,7 @@ async def do_migrate(
         root_node: The root node containing the current graph version.
         check: If True, only check which migrations need to run without applying them.
         migration_number: If provided, run only this specific migration.
+        verbose: If True, show internal migration output.
     """
     migrations = await detect_migration_to_run(
         current_graph_version=root_node.graph_version, migration_number=migration_number
@@ -116,15 +140,31 @@ async def do_migrate(
     if check or not migrations:
         return
 
-    await migrate_database(
-        db=db, migrations=migrations, initialize=True, update_graph_version=(migration_number is None)
-    )
+    if verbose:
+        await migrate_database(
+            db=db,
+            migrations=migrations,
+            initialize=True,
+            update_graph_version=(migration_number is None),
+            verbose=verbose,
+        )
+    else:
+        with suppress_internal_logs():
+            await migrate_database(
+                db=db,
+                migrations=migrations,
+                initialize=True,
+                update_graph_version=(migration_number is None),
+                verbose=verbose,
+            )
 
 
 @app.command(name="migrate")
 async def migrate_cmd(
     ctx: typer.Context,
     check: bool = typer.Option(False, help="Check the state of the database without applying the migrations."),
+    plan: bool = typer.Option(False, help="Show the migration plan without executing."),
+    verbose: bool = typer.Option(False, help="Show detailed internal output from each migration."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     migration_number: int | None = typer.Option(
         None, help="Apply a specific migration by number, regardless of current database version"
@@ -141,7 +181,115 @@ async def migrate_cmd(
     dbdriver = await context.init_db(retry=1)
 
     root_node = await get_root_node(db=dbdriver)
-    await do_migrate(db=dbdriver, root_node=root_node, check=check, migration_number=migration_number)
+
+    if plan or check:
+        migrations = await detect_migration_to_run(
+            current_graph_version=root_node.graph_version, migration_number=migration_number
+        )
+        if plan and migrations:
+            display_migration_plan(migrations)
+        await dbdriver.close()
+        return
+
+    await do_migrate(db=dbdriver, root_node=root_node, check=False, migration_number=migration_number, verbose=verbose)
+
+    await dbdriver.close()
+
+
+def display_migration_plan(migrations: Sequence[BaseMigration]) -> None:
+    """Display a migration execution plan without running anything."""
+    console = get_migration_console()
+    console.log(f"Migration plan ({len(migrations)} pending):")
+    for idx, migration in enumerate(migrations, 1):
+        migration_type = _get_migration_type_name(migration)
+        console.log(f"  {idx}. {_get_migration_display_name(migration):<50s} {migration_type}")
+        if isinstance(migration, GraphMigration) and migration.queries:
+            query_names = ", ".join(q.__name__ for q in migration.queries)
+            console.log(f"         Queries: {query_names}")
+    console.log("No migrations were applied. Run 'infrahub db migrate' to apply.")
+
+
+@app.command(name="showmigrations")
+async def showmigrations_cmd(
+    ctx: typer.Context,
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Display all migrations and their applied/pending status."""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    root_node = await get_root_node(db=dbdriver)
+    graph_version = root_node.graph_version
+
+    console = Console()
+    console.print(f"\nMigration list (database version: {graph_version}, target version: {GRAPH_VERSION}):\n")
+
+    for migration_class in MIGRATIONS:
+        migration = migration_class.init()
+        num = migration.number
+        migration_type = _get_migration_type_name(migration)
+        applied = graph_version >= num
+        status = "[green]\\[X][/green]" if applied else "[ ]"
+        display_name = _get_migration_display_name(migration)
+        console.print(f" {status} {num:03d}  {display_name:<50s} {migration_type}")
+
+    await dbdriver.close()
+
+
+@app.command(name="showmigration")
+async def showmigration_cmd(
+    ctx: typer.Context,
+    migration_number: int = typer.Argument(..., help="Migration number to inspect"),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Show detailed information about a specific migration."""
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    try:
+        migration = get_migration_by_number(migration_number)
+    except ValueError as exc:
+        get_migration_console().log(f"{ERROR_BADGE} {exc}")
+        await dbdriver.close()
+        raise typer.Exit(1) from exc
+
+    root_node = await get_root_node(db=dbdriver)
+    graph_version = root_node.graph_version
+    applied = graph_version >= migration_number
+    status = "Applied" if applied else "Pending"
+    migration_type = _get_migration_type_name(migration)
+
+    console = Console()
+    console.print(f"\nMigration {migration_number:03d}: {_get_migration_display_name(migration)}")
+    console.print(f"  Type:            {migration_type}")
+    console.print(f"  Minimum version: {migration.minimum_version}")
+    console.print(f"  Status:          {status}")
+
+    with contextlib.suppress(TypeError, OSError):
+        source_file = inspect.getfile(type(migration))
+        console.print(f"  Source:          {source_file}")
+
+    if migration.description:
+        console.print(f"  Description:     {migration.description}")
+
+    if isinstance(migration, GraphMigration) and migration.queries:
+        console.print("\n  Queries:")
+        for idx, query_class in enumerate(migration.queries, 1):
+            query_type = getattr(query_class, "type", None)
+            type_label = f" ({query_type.name})" if query_type else ""
+            console.print(f"    {idx}. {query_class.__name__}{type_label}")
 
     await dbdriver.close()
 
@@ -306,38 +454,70 @@ async def index(
 
 async def detect_migration_to_run(
     current_graph_version: int, migration_number: int | str | None = None
-) -> Sequence[MigrationTypes]:
+) -> Sequence[BaseMigration]:
     """Return a sequence of migrations to apply to upgrade the database."""
-    get_migration_console().log("Checking current state of the database")
-    migrations: list[MigrationTypes] = []
+    console = get_migration_console()
+    migrations: list[BaseMigration] = []
 
     if migration_number:
         migration = get_migration_by_number(migration_number)
         migrations.append(migration)
         if current_graph_version > migration.minimum_version:
-            get_migration_console().log(f"Migration {migration_number} will be re-applied.")
+            console.log(f"Migration {migration_number} will be re-applied.")
         else:
-            get_migration_console().log(
+            console.log(
                 f"Migration {migration_number} needs to be applied. Run `infrahub db migrate` to apply all outstanding migrations."
             )
             return migrations
 
     migrations.extend(await get_graph_migrations(current_graph_version=current_graph_version))
     if not migrations:
-        get_migration_console().log(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
+        console.log(f"Database up-to-date (v{current_graph_version}), no migration to execute.")
         return []
 
-    get_migration_console().log(
-        f"Database needs to be updated (v{current_graph_version} -> v{GRAPH_VERSION}), {len(migrations)} migrations pending"
-    )
+    plural = "s" if len(migrations) != 1 else ""
+    console.log(f"Database version: {current_graph_version}")
+    console.log(f"Target version:   {GRAPH_VERSION}")
+    console.log(f"Pending: {len(migrations)} migration{plural}")
+    for migration in migrations:
+        num = migration.number
+        migration_type = _get_migration_type_name(migration)
+        console.log(f"  {num:03d}  {_get_migration_display_name(migration):<50s} ({migration_type})")
     return migrations
+
+
+def _validate_migration_sequence(migrations: Sequence[BaseMigration], current_graph_version: int) -> list[str]:
+    """Run pre-flight checks on the migration sequence before executing.
+
+    Returns a list of error messages. An empty list means all checks passed.
+    """
+    errors: list[str] = []
+
+    if current_graph_version > GRAPH_VERSION:
+        errors.append(
+            f"Database version ({current_graph_version}) is ahead of the application version ({GRAPH_VERSION}). "
+            "This may indicate a downgrade which is not supported."
+        )
+
+    # Check for gaps in the migration sequence
+    expected_version = current_graph_version
+    for migration in migrations:
+        if migration.minimum_version > expected_version:
+            errors.append(
+                f"Migration gap detected: expected minimum_version {expected_version} "
+                f"but migration '{migration.name}' requires {migration.minimum_version}"
+            )
+        expected_version = migration.minimum_version + 1
+
+    return errors
 
 
 async def migrate_database(
     db: InfrahubDatabase,
-    migrations: Sequence[MigrationTypes],
+    migrations: Sequence[BaseMigration],
     initialize: bool = False,
     update_graph_version: bool = True,
+    verbose: bool = False,
 ) -> bool:
     """Apply the latest migrations to the database, this function will print the status directly in the console.
 
@@ -348,6 +528,7 @@ async def migrate_database(
         migrations: Sequence of migrations to apply.
         initialize: Whether to initialize the registry before running migrations.
         update_graph_version: Whether to update the graph version after each migration.
+        verbose: If True, show detailed internal output from each migration.
     """
     if not migrations:
         return True
@@ -355,30 +536,82 @@ async def migrate_database(
     if initialize:
         await initialize_registry(db=db)
 
+    migration_console = get_migration_console()
     root_node = await get_root_node(db=db)
 
-    for migration in migrations:
-        execution_result = await migration.execute(migration_input=MigrationInput(db=db))
-        validation_result = None
+    # Pre-flight validation
+    preflight_errors = _validate_migration_sequence(migrations, current_graph_version=root_node.graph_version)
+    if preflight_errors:
+        for error in preflight_errors:
+            migration_console.log(f"{ERROR_BADGE} {error}")
+        return False
 
+    inner_console = migration_console if verbose else Console(quiet=True)
+    total_start = time.perf_counter()
+    applied_count = 0
+
+    migration_console.log("Applying migrations:")
+
+    for migration in migrations:
+        start = time.perf_counter()
+
+        execution_result = await migration.execute(
+            migration_input=MigrationInput(db=db, console=inner_console),
+        )
+        validation_result = None
         if execution_result.success:
             validation_result = await migration.validate_migration(db=db)
-            if validation_result.success:
-                get_migration_console().log(f"Migration: {migration.name} {SUCCESS_BADGE}")
-                if update_graph_version:
-                    root_node.graph_version = migration.minimum_version + 1
-                    await root_node.save(db=db)
 
-        if not execution_result.success or (validation_result and not validation_result.success):
-            get_migration_console().log(f"Migration: {migration.name} {FAILED_BADGE}")
+        elapsed = time.perf_counter() - start
+
+        if execution_result.success and validation_result and validation_result.success:
+            migration_console.log(f"  Applying {migration.name}... {APPLIED_BADGE} ({elapsed:.2f}s)")
+            applied_count += 1
+            if update_graph_version:
+                root_node.graph_version = migration.minimum_version + 1
+                await root_node.save(db=db)
+        else:
+            migration_num = migration.number
+            migration_console.log(f"  Applying {migration.name}... {FAILED_BADGE} ({elapsed:.2f}s)")
             for error in execution_result.errors:
-                get_migration_console().log(f"  {error}")
+                migration_console.log(f"    Error: {error}")
             if validation_result and not validation_result.success:
                 for error in validation_result.errors:
-                    get_migration_console().log(f"  {error}")
+                    migration_console.log(f"    Error: {error}")
+            if not verbose:
+                migration_console.log(
+                    f"    Hint: Use --verbose for detailed output, or re-run with: infrahub db migrate --migration-number {migration_num} --verbose"
+                )
             return False
 
+    total_elapsed = time.perf_counter() - total_start
+    plural = "s" if applied_count != 1 else ""
+    migration_console.log(f"Applied {applied_count} migration{plural} successfully in {total_elapsed:.2f}s")
     return True
+
+
+async def check_core_schema_diff(db: InfrahubDatabase) -> bool:
+    """Check if the core schema has pending changes. Returns True if an update is needed."""
+    default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+
+    schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+    branch_schema = registry.schema.get_schema_branch(name=registry.default_branch)
+
+    candidate_schema = branch_schema.duplicate()
+    candidate_schema.load_schema(schema=SchemaRoot(**internal_schema))
+    candidate_schema.load_schema(schema=SchemaRoot(**core_models))
+    candidate_schema.load_schema(schema=SchemaRoot(**deprecated_models))
+    candidate_schema.process()
+
+    schema_diff = branch_schema.diff(other=candidate_schema)
+    return bool(schema_diff.all)
+
+
+async def get_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
+    """Return branches that need rebase without modifying their status."""
+    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    return [b for b in branches if b.graph_version != GRAPH_VERSION]
 
 
 async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
@@ -415,7 +648,7 @@ async def trigger_rebase_branches(db: InfrahubDatabase, branches: Sequence[Branc
             )
             continue
 
-        get_migration_console().print(f"Rebasing branch '{branch.name}' (ID: {branch.uuid})...", end="")
+        console = get_migration_console()
         try:
             await registry.schema.load_schema(db=db, branch=branch)
             await rebase_branch(
@@ -425,9 +658,10 @@ async def trigger_rebase_branches(db: InfrahubDatabase, branches: Sequence[Branc
                 ),
                 send_events=False,
             )
-            get_migration_console().log(SUCCESS_BADGE)
         except (ValidationError, MigrationFailureError):
-            get_migration_console().log(FAILED_BADGE)
+            console.log(f"Rebased branch '{branch.name}' (ID: {branch.uuid}) {FAILED_BADGE}")
+        else:
+            console.log(f"Rebased branch '{branch.name}' (ID: {branch.uuid}) {SUCCESS_BADGE}")
 
 
 async def initialize_internal_schema() -> None:
@@ -526,9 +760,13 @@ async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debu
         get_migration_console().log(f"{ERROR_BADGE} | Schema update failed: {exc}")
         raise typer.Exit(1) from exc
 
-    get_migration_console().log(
-        "The Core Schema has been updated, make sure to rebase any open branches after the upgrade"
-    )
+    message = f"{SUCCESS_BADGE} | Core Schema updated successfully"
+
+    branches = await get_branches_needing_rebase(db=db)
+    if branches:
+        branch_names = ", ".join(b.name for b in branches)
+        message += f". Make sure to rebase the following branches: {branch_names}"
+    get_migration_console().log(message)
     if debug:
         get_migration_console().log(f"New schema hash: {default_branch.active_schema_hash.main}")
 
