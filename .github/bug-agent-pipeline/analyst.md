@@ -57,6 +57,7 @@ Verify the issue has enough information to work with. Check for:
 6. Create a working branch from `origin/stable`.
    - Name: `ai-bug-pipeline-<issue_number>-<short-slug>` (lowercase, hyphens only, max 50 chars total).
    - If the branch already exists, check it out instead of creating a new one.
+   - Record the commit SHA of `origin/stable` that the branch was created from (use `git rev-parse origin/stable`).
 
 7. Push the working branch to origin so the test-writer agent can use it.
 
@@ -66,6 +67,7 @@ Verify the issue has enough information to work with. Check for:
 ## Root cause analysis
 
 **Branch:** `ai-bug-pipeline-<issue_number>-<short-slug>`
+**Based on:** `<commit SHA of origin/stable at branch creation>`
 **Bug clarity:** CLEAR
 **Code identification:** RESOLVED | EXPLORATION REQUIRED
 
