@@ -90,6 +90,20 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: Install pre-push safety hook
+        if: steps.resolve.outputs.skip != 'true'
+        run: |
+          cat > .git/hooks/pre-push << 'HOOK'
+          #!/bin/bash
+          while read local_ref local_sha remote_ref remote_sha; do
+            if [[ "$remote_ref" != refs/heads/ai-bug-pipeline-* ]]; then
+              echo "BLOCKED: push to '$remote_ref' rejected. Only ai-bug-pipeline-* branches allowed." >&2
+              exit 1
+            fi
+          done
+          HOOK
+          chmod +x .git/hooks/pre-push
+
       - name: Set up Python
         if: steps.resolve.outputs.skip != 'true'
         uses: actions/setup-python@v6
@@ -174,6 +188,27 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # model: claude-opus-4-6
+          # NOTE: git push prefix patterns are defence-in-depth only.
+          # The pre-push hook above enforces the ai-bug-pipeline-* branch constraint.
+          # GitHub branch protection on stable/develop is the ultimate boundary.
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Read", "Edit", "Write", "Glob", "Grep",
+                  "Bash(git checkout ai-bug-pipeline-:*)", "Bash(git add:*)", "Bash(git commit:*)",
+                  "Bash(git push origin ai-bug-pipeline-:*)", "Bash(git diff:*)", "Bash(git log:*)",
+                  "Bash(gh pr edit:*)", "Bash(gh issue comment:*)", "Bash(gh issue edit:*)",
+                  "Bash(uv run pytest:*)", "Bash(uv run towncrier:*)",
+                  "Bash(uv run invoke format:*)", "Bash(uv run invoke lint:*)",
+                  "Bash(uv run invoke backend:*)", "Bash(uv run invoke main:*)",
+                  "Bash(uv run invoke schema:*)", "Bash(uv run invoke docs:*)",
+                  "Bash(npm run test:*)", "Bash(npm run codegen:graphql:*)", "Bash(npm run codegen:openapi:*)",
+                  "Bash(npx biome check:*)", "Bash(npx playwright test:*)", "Bash(npx betterer:*)",
+                  "Bash(ls:*)"
+                ]
+              }
+            }
           prompt: |
             ${{ steps.prompt.outputs.PROMPT }}
 
@@ -228,6 +263,20 @@ jobs:
           ref: ${{ steps.resolve.outputs.branch }}
           fetch-depth: 0
           submodules: true
+
+      - name: Install pre-push safety hook
+        if: steps.resolve.outputs.skip != 'true'
+        run: |
+          cat > .git/hooks/pre-push << 'HOOK'
+          #!/bin/bash
+          while read local_ref local_sha remote_ref remote_sha; do
+            if [[ "$remote_ref" != refs/heads/ai-bug-pipeline-* ]]; then
+              echo "BLOCKED: push to '$remote_ref' rejected. Only ai-bug-pipeline-* branches allowed." >&2
+              exit 1
+            fi
+          done
+          HOOK
+          chmod +x .git/hooks/pre-push
 
       - name: Set up Python
         if: steps.resolve.outputs.skip != 'true'
@@ -313,6 +362,27 @@ jobs:
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           # model: claude-opus-4-6
+          # NOTE: git push prefix patterns are defence-in-depth only.
+          # The pre-push hook above enforces the ai-bug-pipeline-* branch constraint.
+          # GitHub branch protection on stable/develop is the ultimate boundary.
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Read", "Edit", "Write", "Glob", "Grep",
+                  "Bash(git checkout ai-bug-pipeline-:*)", "Bash(git add:*)", "Bash(git commit:*)",
+                  "Bash(git push origin ai-bug-pipeline-:*)", "Bash(git diff:*)", "Bash(git log:*)",
+                  "Bash(gh pr edit:*)", "Bash(gh issue comment:*)", "Bash(gh issue edit:*)",
+                  "Bash(uv run pytest:*)", "Bash(uv run towncrier:*)",
+                  "Bash(uv run invoke format:*)", "Bash(uv run invoke lint:*)",
+                  "Bash(uv run invoke backend:*)", "Bash(uv run invoke main:*)",
+                  "Bash(uv run invoke schema:*)", "Bash(uv run invoke docs:*)",
+                  "Bash(npm run test:*)", "Bash(npm run codegen:graphql:*)", "Bash(npm run codegen:openapi:*)",
+                  "Bash(npx biome check:*)", "Bash(npx playwright test:*)", "Bash(npx betterer:*)",
+                  "Bash(ls:*)"
+                ]
+              }
+            }
           prompt: |
             ${{ steps.prompt.outputs.PROMPT }}
 
