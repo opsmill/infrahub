@@ -1,4 +1,4 @@
-import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
+import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
 import { Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 
@@ -38,7 +38,7 @@ export function ObjectDetailsHeader({
   return (
     <HeaderContainer>
       <h2 className="truncate font-semibold text-xl">{getNodeLabel(objectData)}</h2>
-      <CopyToClipboard text={getNodeLabel(objectData)} />
+      <CopyToClipboardButton data={getNodeLabel(objectData)} />
       <NodeMetadataPopover objectId={objectId} objectKind={objectSchema.kind!} />
 
       <RefreshButton className="ml-auto" />
