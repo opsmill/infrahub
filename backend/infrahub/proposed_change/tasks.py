@@ -354,6 +354,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
+    generator_check_coroutines = []
     for generator_definition in generator_definitions:
         # Request generator definitions if the source branch that is managed in combination
         # to the Git repository containing modifications which could indicate changes to the transforms
@@ -384,39 +385,16 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
                 source_branch_sync_with_git=model.source_branch_sync_with_git,
                 destination_branch=model.destination_branch,
             )
-            await get_workflow().submit_workflow(
-                workflow=REQUEST_GENERATOR_DEFINITION_CHECK,
-                parameters={"model": request_generator_def_check_model},
-                context=context,
+            generator_check_coroutines.append(
+                get_workflow().execute_workflow(
+                    workflow=REQUEST_GENERATOR_DEFINITION_CHECK,
+                    parameters={"model": request_generator_def_check_model},
+                    context=context,
+                )
             )
 
-    if model.refresh_artifacts:
-        request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
-            proposed_change=model.proposed_change,
-            source_branch=model.source_branch,
-            source_branch_sync_with_git=model.source_branch_sync_with_git,
-            destination_branch=model.destination_branch,
-            branch_diff=model.branch_diff,
-        )
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
-            parameters={"model": request_refresh_artifact_model},
-            context=context,
-        )
-
-    if model.do_repository_checks:
-        model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(
-            proposed_change=model.proposed_change,
-            source_branch=model.source_branch,
-            source_branch_sync_with_git=model.source_branch_sync_with_git,
-            destination_branch=model.destination_branch,
-            branch_diff=model.branch_diff,
-        )
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
-            context=context,
-            parameters={"model": model_proposed_change_repo_checks},
-        )
+    if generator_check_coroutines:
+        await asyncio.gather(*generator_check_coroutines, return_exceptions=True)
 
 
 @flow(name="proposed-changed-schema-integrity", flow_run_name="Process schema integrity")
@@ -1200,6 +1178,8 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
         await _get_subscribers_from_diff(diff_summary=diff_summary, branch=model.source_branch, client=client)
     )
 
+    # --- Phase 1: Dispatch standalone artifact refresh (CheckType.ARTIFACT only) ---
+
     if model.check_type is CheckType.ARTIFACT:
         request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
             proposed_change=model.proposed_change,
@@ -1214,21 +1194,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             context=context,
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.GENERATOR]:
-        model_proposed_change_run_generator = RequestProposedChangeRunGenerators(
-            proposed_change=model.proposed_change,
-            source_branch=model.source_branch,
-            source_branch_sync_with_git=model.source_branch_sync_with_git,
-            destination_branch=model.destination_branch,
-            branch_diff=branch_diff,
-            refresh_artifacts=model.check_type is CheckType.ALL,
-            do_repository_checks=model.check_type is CheckType.ALL,
-        )
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
-            context=context,
-            parameters={"model": model_proposed_change_run_generator},
-        )
+    # --- Phase 2: Dispatch checks independent of generators (fire-and-forget) ---
 
     if model.check_type in [CheckType.ALL, CheckType.DATA] and has_node_changes(
         diff_summary=diff_summary, branch=model.source_branch
@@ -1290,6 +1256,51 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
                     branch_diff=branch_diff,
                 )
             },
+        )
+
+    # --- Phase 3: Run generators and WAIT for completion ---
+
+    if model.check_type in [CheckType.ALL, CheckType.GENERATOR]:
+        model_proposed_change_run_generator = RequestProposedChangeRunGenerators(
+            proposed_change=model.proposed_change,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            destination_branch=model.destination_branch,
+            branch_diff=branch_diff,
+        )
+        await get_workflow().execute_workflow(
+            workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+            context=context,
+            parameters={"model": model_proposed_change_run_generator},
+        )
+
+    # --- Phase 4: Dispatch generator-dependent checks (fire-and-forget) ---
+
+    if model.check_type is CheckType.ALL:
+        request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
+            proposed_change=model.proposed_change,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            destination_branch=model.destination_branch,
+            branch_diff=branch_diff,
+        )
+        await get_workflow().submit_workflow(
+            workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
+            parameters={"model": request_refresh_artifact_model},
+            context=context,
+        )
+
+        model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(
+            proposed_change=model.proposed_change,
+            source_branch=model.source_branch,
+            source_branch_sync_with_git=model.source_branch_sync_with_git,
+            destination_branch=model.destination_branch,
+            branch_diff=branch_diff,
+        )
+        await get_workflow().submit_workflow(
+            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+            context=context,
+            parameters={"model": model_proposed_change_repo_checks},
         )
 
 

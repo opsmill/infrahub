@@ -16,7 +16,6 @@ from infrahub.message_bus.types import ProposedChangeBranchDiff
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import (
     RequestProposedChangePipeline,
-    RequestProposedChangeRefreshArtifacts,
     RequestProposedChangeRunGenerators,
 )
 from infrahub.proposed_change.tasks import run_generators, run_proposed_change_pipeline
@@ -27,6 +26,7 @@ from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workflows.catalogue import (
     REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
+    REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
     REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_USER_TESTS,
@@ -185,25 +185,48 @@ class TestProposedChange(TestInfrahubApp):
             destination_branch="main",
             proposed_change=prepare_proposed_change,
         )
-        with patch(
-            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
-        ) as mock_submit_workflow:
+        with (
+            patch(
+                "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
+            ) as mock_submit_workflow,
+            patch(
+                "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.execute_workflow"
+            ) as mock_execute_workflow,
+        ):
             await run_proposed_change_pipeline(model=model, context=context)
 
-            expected_calls_before_data_changes = [
-                call(
-                    workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
-                    parameters=ANY,
-                    context=ANY,
-                ),
+            # Generators are dispatched via execute_workflow (blocking)
+            mock_execute_workflow.assert_has_calls(
+                [
+                    call(
+                        workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+                        parameters=ANY,
+                        context=ANY,
+                    ),
+                ]
+            )
+
+            # Independent checks and generator-dependent checks via submit_workflow
+            expected_submit_calls_before_data_changes = [
                 call(
                     workflow=REQUEST_PROPOSED_CHANGE_USER_TESTS,
                     parameters=ANY,
                     context=ANY,
                 ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
             ]
-            mock_submit_workflow.assert_has_calls(expected_calls_before_data_changes)
+            mock_submit_workflow.assert_has_calls(expected_submit_calls_before_data_changes)
             mock_submit_workflow.reset_mock()
+            mock_execute_workflow.reset_mock()
 
             # Add an object to the source_branch to modify the data
             obj = await Node.init(db=db, schema=InfrahubKind.TAG, branch="change1")
@@ -212,12 +235,17 @@ class TestProposedChange(TestInfrahubApp):
 
             await run_proposed_change_pipeline(model=model, context=context)
 
-            expected_calls_after_data_changes = [
-                call(
-                    workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
-                    parameters=ANY,
-                    context=ANY,
-                ),
+            mock_execute_workflow.assert_has_calls(
+                [
+                    call(
+                        workflow=REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+                        parameters=ANY,
+                        context=ANY,
+                    ),
+                ]
+            )
+
+            expected_submit_calls_after_data_changes = [
                 call(
                     workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
                     parameters=ANY,
@@ -233,8 +261,18 @@ class TestProposedChange(TestInfrahubApp):
                     parameters=ANY,
                     context=ANY,
                 ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
+                call(
+                    workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
+                    parameters=ANY,
+                    context=ANY,
+                ),
             ]
-            mock_submit_workflow.assert_has_calls(expected_calls_after_data_changes)
+            mock_submit_workflow.assert_has_calls(expected_submit_calls_after_data_changes)
 
     async def test_run_generators_validate_requested_jobs(
         self,
@@ -251,8 +289,6 @@ class TestProposedChange(TestInfrahubApp):
             destination_branch="main",
             proposed_change=prepare_proposed_change,
             branch_diff=ProposedChangeBranchDiff(pipeline_id=pipeline_id, repositories=[], subscribers=[]),
-            refresh_artifacts=True,
-            do_repository_checks=True,
         )
         bus = BusRecorder()
         service = await InfrahubServices.new(
@@ -263,24 +299,4 @@ class TestProposedChange(TestInfrahubApp):
             workflow=WorkflowLocalExecution(),
         )
         await set_diff_summary_cache(pipeline_id=pipeline_id, diff_summary=[], cache=service.cache)
-        with patch(
-            "infrahub.services.adapters.workflow.local.WorkflowLocalExecution.submit_workflow"
-        ) as mock_submit_workflow:
-            await run_generators(model=model, context=context)
-
-            expected_calls = [
-                call(
-                    workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
-                    parameters={
-                        "model": RequestProposedChangeRefreshArtifacts(
-                            proposed_change=model.proposed_change,
-                            source_branch=model.source_branch,
-                            source_branch_sync_with_git=model.source_branch_sync_with_git,
-                            destination_branch=model.destination_branch,
-                            branch_diff=model.branch_diff,
-                        )
-                    },
-                    context=ANY,
-                ),
-            ]
-            mock_submit_workflow.assert_has_calls(expected_calls)
+        await run_generators(model=model, context=context)

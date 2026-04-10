@@ -17,6 +17,7 @@ class WorkflowRecorder(InfrahubWorkflow):
     def __init__(self) -> None:
         self.execute_calls: list[dict[str, Any]] = []
         self.submit_calls: list[dict[str, Any]] = []
+        self.all_calls: list[dict[str, Any]] = []
 
     async def execute_workflow(
         self,
@@ -26,7 +27,9 @@ class WorkflowRecorder(InfrahubWorkflow):
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
-        self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})
+        record = {"workflow": workflow, "parameters": parameters or {}, "type": "execute"}
+        self.execute_calls.append(record)
+        self.all_calls.append(record)
         if expected_return is ValidatorConclusion:
             return ValidatorConclusion.SUCCESS
         return None
@@ -38,7 +41,9 @@ class WorkflowRecorder(InfrahubWorkflow):
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:
-        self.submit_calls.append({"workflow": workflow, "parameters": parameters or {}})
+        record = {"workflow": workflow, "parameters": parameters or {}, "type": "submit"}
+        self.submit_calls.append(record)
+        self.all_calls.append(record)
         return WorkflowInfo(id=uuid.uuid4())
 
     def get_execute_calls_for(self, workflow: WorkflowDefinition) -> list[dict[str, Any]]:
