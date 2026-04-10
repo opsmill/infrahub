@@ -87,10 +87,10 @@ class BaseMigration(BaseModel):
         return cls(**kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
-        raise NotImplementedError
+        raise NotImplementedError()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 @dataclass
