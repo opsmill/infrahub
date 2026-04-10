@@ -36,7 +36,7 @@ export function ObjectItemsHeader({ schema }: ObjectItemsHeaderProps) {
           size="sm"
           to={
             schema.documentation.startsWith("http")
-              ? INFRAHUB_DOC_LOCAL
+              ? schema.documentation
               : INFRAHUB_DOC_LOCAL + schema.documentation
           }
           className="gap-1"
