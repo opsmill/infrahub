@@ -170,15 +170,22 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
-                  "Bash(git checkout ai-bug-pipeline-:*)", "Bash(git add:*)", "Bash(git commit:*)",
-                  "Bash(git push origin ai-bug-pipeline-:*)", "Bash(git diff:*)", "Bash(git log:*)",
-                  "Bash(git status:*)",
-                  "Bash(gh pr create:*)", "Bash(gh pr edit:*)", "Bash(gh issue comment:*)", "Bash(gh issue edit:*)",
-                  "Bash(uv run pytest:*)",
-                  "Bash(uv run invoke format:*)", "Bash(uv run invoke lint:*)",
-                  "Bash(uv run invoke backend:*)",
-                  "Bash(npm run test:*)", "Bash(npx biome check:*)", "Bash(npx playwright test:*)",
-                  "Bash(ls:*)"
+                  "Bash(git checkout ai-bug-pipeline-:*)",
+                  "Bash(git add :*)", "Bash(git commit -m :*)",
+                  "Bash(git push origin ai-bug-pipeline-:*)",
+                  "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
+                  "Bash(git status)",
+                  "Bash(gh pr create :*)", "Bash(gh pr edit :*)",
+                  "Bash(gh issue comment :*)", "Bash(gh issue edit :*)",
+                  "Bash(uv run pytest :*)",
+                  "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
+                  "Bash(npm run test :*)",
+                  "Bash(npx biome check --write .)",
+                  "Bash(npx playwright test :*)",
+                  "Bash(cd frontend/app && npm run test :*)",
+                  "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && npx playwright test :*)",
+                  "Bash(ls)", "Bash(ls :*)"
                 ]
               }
             }
@@ -223,7 +230,7 @@ jobs:
           fi
 
           # Extract linked issue number from branch name: "ai-bug-pipeline-123-slug"
-          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.headRefName' | sed -n 's/.*ai-bug-pipeline-\([0-9]*\).*/\1/p')
+          ISSUE_NUMBER=$(echo "$PR_JSON" | jq -r '.headRefName' | sed -n 's/.*ai-bug-pipeline-\([0-9][0-9]*\).*/\1/p')
 
           echo "skip=false" >> $GITHUB_OUTPUT
           echo "branch=$(echo "$PR_JSON" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
@@ -350,14 +357,22 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
-                  "Bash(git checkout ai-bug-pipeline-:*)", "Bash(git add:*)", "Bash(git commit:*)",
-                  "Bash(git push origin ai-bug-pipeline-:*)", "Bash(git diff:*)", "Bash(git log:*)",
-                  "Bash(git status:*)",
-                  "Bash(gh pr edit:*)", "Bash(gh issue comment:*)", "Bash(gh issue edit:*)",
-                  "Bash(uv run pytest:*)",
-                  "Bash(uv run invoke format:*)", "Bash(uv run invoke lint:*)",
-                  "Bash(uv run invoke backend:*)",
-                  "Bash(npm run test:*)", "Bash(npx biome check:*)", "Bash(npx playwright test:*)",
+                  "Bash(git checkout ai-bug-pipeline-:*)",
+                  "Bash(git add :*)", "Bash(git commit -m :*)",
+                  "Bash(git push origin ai-bug-pipeline-:*)",
+                  "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
+                  "Bash(git status)",
+                  "Bash(gh pr edit :*)",
+                  "Bash(gh issue comment :*)", "Bash(gh issue edit :*)",
+                  "Bash(uv run pytest :*)",
+                  "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
+                  "Bash(npm run test :*)",
+                  "Bash(npx biome check --write .)",
+                  "Bash(npx playwright test :*)",
+                  "Bash(cd frontend/app && npm run test :*)",
+                  "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && npx playwright test :*)",
+                  "Bash((cd frontend/app && npx biome check --write .))",
                   "Bash(ls:*)"
                 ]
               }

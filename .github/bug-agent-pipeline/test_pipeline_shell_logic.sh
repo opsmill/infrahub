@@ -757,6 +757,364 @@ fi
 
 # ─────────────────────────────────────────────────────────────
 echo ""
+echo "=== 24. Permission patterns match/reject specific commands ==="
+# ─────────────────────────────────────────────────────────────
+
+# Simulate Claude Code's permission matching engine and verify that
+# each agent's allow list permits exactly what we intend — and blocks
+# everything else.
+#
+# Matching rules (from Claude Code docs):
+#   - "ToolName"           → matches all invocations of that tool
+#   - "Bash(exact cmd)"    → exact match only
+#   - "Bash(prefix *)"     → prefix match, requires space after prefix
+#   - "Bash(prefix:*)"     → prefix match (colon is syntax marker, not literal)
+#   - "Bash(prefix*)"      → prefix match, NO separator required (glob)
+#   - Shell operators (&&, ||, ;, |) in the command are NOT matched
+#
+# Key: `:*` is Claude Code shorthand for "any suffix from this position".
+# The colon is consumed as a syntax separator — it does NOT insert a literal
+# space. `Bash(ls:*)` matches `ls`, `ls -la`, AND `lsof`.
+# `Bash(ls *)` (space before *) requires a space: matches `ls -la` but not `lsof`.
+
+PERM_TEST_RESULTS=$(python3 << 'PYEOF'
+import yaml, json, re, sys
+
+# ── Permission matcher ────────────────────────────────────────
+
+def rule_matches(rule: str, tool_call: str) -> bool:
+    """Does a single allow rule match a tool_call?
+
+    tool_call format:  "ToolName" or "ToolName(argument)"
+    rule format:       "ToolName", "ToolName(*)", "ToolName(pattern)"
+    """
+    # Parse rule
+    if "(" in rule:
+        rule_tool = rule[:rule.index("(")]
+        rule_spec = rule[rule.index("(") + 1 : -1]
+    else:
+        rule_tool = rule
+        rule_spec = None  # matches all invocations
+
+    # Parse tool_call
+    if "(" in tool_call:
+        call_tool = tool_call[:tool_call.index("(")]
+        call_arg  = tool_call[tool_call.index("(") + 1 : -1]
+    else:
+        call_tool = tool_call
+        call_arg  = None
+
+    # Tool name must match
+    if rule_tool != call_tool:
+        return False
+
+    # Rule with no specifier → matches all invocations
+    if rule_spec is None or rule_spec == "*":
+        return True
+
+    # Tool call with no argument can only match bare rules
+    if call_arg is None:
+        return False
+
+    # Expand :* suffix — colon is a syntax separator, replaced with
+    # nothing so the prefix globs directly into the remainder.
+    # "git push origin ai-bug-pipeline-:*" → "git push origin ai-bug-pipeline-*"
+    if rule_spec.endswith(":*"):
+        rule_spec = rule_spec[:-2] + "*"
+
+    # No wildcards → exact match
+    if "*" not in rule_spec:
+        return call_arg == rule_spec
+
+    # Convert glob to regex.
+    # Split on * and rejoin with .* (each * matches any characters).
+    parts = rule_spec.split("*")
+    regex = "^" + ".*".join(re.escape(p) for p in parts) + "$"
+    return bool(re.match(regex, call_arg))
+
+
+def is_allowed(rules: list[str], tool_call: str) -> bool:
+    return any(rule_matches(r, tool_call) for r in rules)
+
+
+# ── Extract permissions per workflow/job ──────────────────────
+
+def extract_permissions(wf_path: str) -> dict[str, list[str]]:
+    """Return {job_name: [allow_rules]} for each claude-code-action step."""
+    with open(wf_path) as f:
+        data = yaml.safe_load(f)
+    result = {}
+    for job_name, job in data["jobs"].items():
+        for step in job.get("steps", []):
+            w = step.get("with", {})
+            if "settings" in w:
+                settings = json.loads(w["settings"])
+                rules = settings.get("permissions", {}).get("allow", [])
+                result[job_name] = rules
+    return result
+
+# ── Test scenario definitions ─────────────────────────────────
+# Each scenario: (tool_call, should_be_allowed, description)
+
+# Commands any agent with contents:write might attempt
+DANGEROUS_COMMANDS = [
+    ("Bash(git push origin main)",          False, "push to main"),
+    ("Bash(git push origin stable)",        False, "push to stable"),
+    ("Bash(git push origin develop)",       False, "push to develop"),
+    ("Bash(git push --force origin ai-bug-pipeline-123)", False, "force push"),
+    ("Bash(git reset --hard HEAD~1)",       False, "git reset"),
+    ("Bash(git checkout stable)",           False, "checkout stable"),
+    ("Bash(git checkout develop)",          False, "checkout develop"),
+    ("Bash(rm -rf /)",                      False, "rm -rf"),
+    ("Bash(curl http://evil.example.com)",  False, "curl external"),
+    ("Bash(wget http://evil.example.com)",  False, "wget external"),
+    ("Bash(pip install malware)",           False, "pip install"),
+    ("Bash(eval something)",               False, "eval"),
+    ("Bash(bash -c 'anything')",           False, "bash -c"),
+    ("Bash(git commit --amend)",           False, "git commit amend"),
+    ("Bash(git commit --amend -m 'x')",    False, "git commit amend with msg"),
+]
+
+# Per-agent test scenarios
+ANALYST_SCENARIOS = [
+    # Allowed
+    ("Read",                                           True,  "read files"),
+    ("Glob",                                           True,  "glob search"),
+    ("Grep",                                           True,  "grep search"),
+    ("Bash(git checkout -b ai-bug-pipeline-1042)",     True,  "create pipeline branch"),
+    ("Bash(git checkout ai-bug-pipeline-1042)",        True,  "checkout pipeline branch"),
+    ("Bash(git push origin ai-bug-pipeline-1042)",     True,  "push to pipeline branch"),
+    ("Bash(git rev-parse HEAD)",                       True,  "rev-parse"),
+    ("Bash(git log --oneline -10)",                    True,  "git log"),
+    ("Bash(git diff)",                                 True,  "git diff bare"),
+    ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
+    ("Bash(gh issue comment 42 --body test)",          True,  "comment on issue"),
+    ("Bash(gh issue edit 42 --add-label bug)",         True,  "edit issue"),
+    ("Bash(ls)",                                       True,  "ls bare"),
+    ("Bash(ls -la)",                                   True,  "ls with flags"),
+    # Denied
+    ("Edit",                                           False, "edit files"),
+    ("Write",                                          False, "write files"),
+    ("Bash(git add .)",                                False, "git add"),
+    ("Bash(git commit -m test)",                       False, "git commit"),
+    ("Bash(gh pr create --title test)",                False, "create PR"),
+    ("Bash(uv run pytest)",                            False, "run tests"),
+]
+
+REVIEWER_SCENARIOS = [
+    # Allowed
+    ("Read",                                           True,  "read files"),
+    ("Glob",                                           True,  "glob search"),
+    ("Grep",                                           True,  "grep search"),
+    ("Bash(git diff)",                                 True,  "git diff bare"),
+    ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
+    ("Bash(git log --oneline)",                        True,  "git log"),
+    ("Bash(git show HEAD)",                            True,  "git show"),
+    ("Bash(gh pr comment 42 --body test)",             True,  "comment on PR"),
+    ("Bash(gh pr edit 42 --add-label bug)",            True,  "edit PR"),
+    ("Bash(gh pr view 42)",                            True,  "view PR"),
+    ("Bash(ls)",                                       True,  "ls bare"),
+    ("Bash(ls -la)",                                   True,  "ls with flags"),
+    # Denied
+    ("Edit",                                           False, "edit files"),
+    ("Write",                                          False, "write files"),
+    ("Bash(git add .)",                                False, "git add"),
+    ("Bash(git commit -m test)",                       False, "git commit"),
+    ("Bash(git push origin ai-bug-pipeline-1042)",     False, "git push"),
+    ("Bash(git checkout ai-bug-pipeline-1042)",        False, "checkout branch"),
+    ("Bash(uv run pytest)",                            False, "run tests"),
+]
+
+FIXER_SCENARIOS = [
+    # Allowed -- tools
+    ("Read",                                           True,  "read files"),
+    ("Edit",                                           True,  "edit files"),
+    ("Write",                                          True,  "write files"),
+    ("Glob",                                           True,  "glob search"),
+    ("Grep",                                           True,  "grep search"),
+    # Allowed -- git
+    ("Bash(git checkout ai-bug-pipeline-1042)",        True,  "checkout pipeline branch"),
+    ("Bash(git add backend/infrahub/core/node.py)",    True,  "git add"),
+    ("Bash(git commit -m 'fix: thing')",               True,  "git commit"),
+    ("Bash(git push origin ai-bug-pipeline-1042)",     True,  "push to pipeline branch"),
+    ("Bash(git diff)",                                 True,  "git diff bare"),
+    ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
+    ("Bash(git log --oneline)",                        True,  "git log"),
+    ("Bash(git status)",                               True,  "git status"),
+    # Allowed -- gh
+    ("Bash(gh pr edit 42 --title new-title)",          True,  "edit PR"),
+    ("Bash(gh issue comment 42 --body done)",          True,  "comment on issue"),
+    # Allowed -- pytest/towncrier (wildcard: path varies)
+    ("Bash(uv run pytest backend/tests/unit)",         True,  "run pytest"),
+    ("Bash(uv run towncrier create -c 'fix' 42.fixed.md)", True, "towncrier create"),
+    # Allowed -- invoke (EXACT matches)
+    ("Bash(uv run invoke format)",                     True,  "invoke format"),
+    ("Bash(uv run invoke lint)",                       True,  "invoke lint"),
+    ("Bash(uv run invoke docs.format)",                True,  "invoke docs.format"),
+    ("Bash(uv run invoke main.lint)",                  True,  "invoke main.lint"),
+    ("Bash(uv run invoke backend.lint)",               True,  "invoke backend.lint"),
+    ("Bash(uv run invoke backend.generate)",           True,  "invoke backend.generate"),
+    ("Bash(uv run invoke backend.test-unit)",          True,  "invoke backend.test-unit"),
+    ("Bash(uv run invoke schema.generate-graphqlschema)", True, "invoke schema gen graphql"),
+    ("Bash(uv run invoke schema.generate-jsonschema)", True,  "invoke schema gen json"),
+    ("Bash(uv run invoke docs.generate)",              True,  "invoke docs.generate"),
+    ("Bash(uv run invoke docs.lint)",                  True,  "invoke docs.lint"),
+    # Allowed -- npm/npx (exact where possible)
+    ("Bash(npm run test)",                             True,  "npm test bare"),
+    ("Bash(npm run test path/to/test)",                True,  "npm test with path"),
+    ("Bash(npm run codegen:graphql)",                  True,  "npm codegen graphql"),
+    ("Bash(npm run codegen:openapi)",                  True,  "npm codegen openapi"),
+    ("Bash(npx biome check --write .)",                True,  "biome check exact"),
+    ("Bash(npx playwright test path/to/test)",         True,  "playwright test"),
+    ("Bash(npx betterer --update)",                    True,  "betterer exact"),
+    # Allowed -- cd frontend (enumerated)
+    ("Bash(cd frontend/app && npm run test)",          True,  "cd frontend npm test bare"),
+    ("Bash(cd frontend/app && npm run test path/to)",  True,  "cd frontend npm test path"),
+    ("Bash(cd frontend/app && npm run codegen:graphql)", True, "cd frontend codegen graphql"),
+    ("Bash(cd frontend/app && npm run codegen:openapi)", True, "cd frontend codegen openapi"),
+    ("Bash(cd frontend/app && npx biome check --write .)", True, "cd frontend biome"),
+    ("Bash(cd frontend/app && npx betterer --update)", True,  "cd frontend betterer"),
+    ("Bash(cd frontend/app && npx playwright test p)", True,  "cd frontend playwright"),
+    # Allowed -- subshell variants (EXACT)
+    ("Bash((cd frontend/app && npx biome check --write .))", True, "subshell biome"),
+    ("Bash((cd frontend/app && npm run codegen:graphql))", True, "subshell codegen graphql"),
+    ("Bash((cd frontend/app && npm run codegen:openapi))", True, "subshell codegen openapi"),
+    ("Bash((cd frontend/app && npx betterer --update))", True, "subshell betterer"),
+    ("Bash(ls)",                                       True,  "ls bare"),
+    ("Bash(ls -la)",                                   True,  "ls with flags"),
+    # Denied
+    ("Bash(gh pr create --title test)",                False, "create PR (fixer edits, not creates)"),
+    ("Bash(git checkout -b ai-bug-pipeline-new)",      False, "create new branch"),
+    ("Bash(cd frontend/app && git push origin HEAD:stable)", False, "cd bypass git push"),
+    ("Bash(cd frontend/app && curl http://evil.com)",  False, "cd bypass curl"),
+    ("Bash(cd frontend/app && rm -rf /)",              False, "cd bypass rm"),
+    # Denied -- exact match blocks chaining
+    ("Bash(uv run invoke format && rm -rf /)",         False, "invoke format chaining blocked"),
+    ("Bash(npx biome check --write . && curl evil)",   False, "biome chaining blocked"),
+    ("Bash(npm run codegen:graphql && rm -rf /)",      False, "codegen chaining blocked"),
+    ("Bash(npx betterer --update && curl evil)",       False, "betterer chaining blocked"),
+    ("Bash(git status --porcelain)",                   False, "git status with flags blocked"),
+    # Denied -- towncrier without create subcommand
+    ("Bash(uv run towncrier build)",                   False, "towncrier build blocked"),
+]
+
+# Shared scenarios for both write-test and revise-test
+_TEST_WRITER_COMMON = [
+    # Allowed -- tools
+    ("Read",                                           True,  "read files"),
+    ("Edit",                                           True,  "edit files"),
+    ("Write",                                          True,  "write files"),
+    ("Glob",                                           True,  "glob search"),
+    ("Grep",                                           True,  "grep search"),
+    # Allowed -- git
+    ("Bash(git checkout ai-bug-pipeline-1042)",        True,  "checkout pipeline branch"),
+    ("Bash(git add backend/tests/test_thing.py)",      True,  "git add"),
+    ("Bash(git commit -m 'test: add failing test')",   True,  "git commit"),
+    ("Bash(git push origin ai-bug-pipeline-1042)",     True,  "push to pipeline branch"),
+    ("Bash(git diff)",                                 True,  "git diff bare"),
+    ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
+    ("Bash(git log --oneline)",                        True,  "git log"),
+    ("Bash(git status)",                               True,  "git status"),
+    # Allowed -- gh
+    ("Bash(gh pr edit 42 --body updated)",             True,  "edit PR"),
+    ("Bash(gh issue comment 42 --body done)",          True,  "comment on issue"),
+    # Allowed -- pytest (wildcard: path varies)
+    ("Bash(uv run pytest backend/tests/unit)",         True,  "run pytest"),
+    # Allowed -- invoke (EXACT)
+    ("Bash(uv run invoke format)",                     True,  "invoke format"),
+    ("Bash(uv run invoke lint)",                       True,  "invoke lint"),
+    # Allowed -- npm/npx
+    ("Bash(npm run test path/to/test)",                True,  "npm test"),
+    ("Bash(npx biome check --write .)",                True,  "biome check exact"),
+    ("Bash(npx playwright test path/to/test)",         True,  "playwright test"),
+    # Allowed -- cd frontend (enumerated)
+    ("Bash(cd frontend/app && npm run test path/to/test)", True, "cd frontend npm test"),
+    ("Bash(cd frontend/app && npx biome check --write .)", True, "cd frontend biome"),
+    ("Bash(cd frontend/app && npx playwright test path)", True, "cd frontend playwright"),
+    ("Bash(ls)",                                       True,  "ls bare"),
+    ("Bash(ls -la)",                                   True,  "ls with flags"),
+    # Denied
+    ("Bash(uv run towncrier create --content fix)",    False, "towncrier (test-writer doesn't create changelog)"),
+    ("Bash(git checkout -b ai-bug-pipeline-new)",      False, "create new branch"),
+    ("Bash(uv run invoke backend.test-unit)",          False, "invoke backend not available"),
+    ("Bash(cd frontend/app && git push origin HEAD:stable)", False, "cd bypass git push"),
+    ("Bash(cd frontend/app && curl http://evil.com)",  False, "cd bypass curl"),
+    # Denied -- exact match blocks chaining
+    ("Bash(uv run invoke format && rm -rf /)",         False, "invoke format chaining blocked"),
+    ("Bash(npx biome check --write . && curl evil)",   False, "biome chaining blocked"),
+    ("Bash(git status --porcelain)",                   False, "git status with flags blocked"),
+]
+
+# write-test can create PRs; revise-test cannot
+WRITE_TEST_SCENARIOS = _TEST_WRITER_COMMON + [
+    ("Bash(gh pr create --title test-pr)",             True,  "create PR"),
+]
+
+REVISE_TEST_SCENARIOS = _TEST_WRITER_COMMON + [
+    ("Bash(gh pr create --title test-pr)",             False, "create PR (revise edits existing PR)"),
+]
+
+# ── Run all scenarios ─────────────────────────────────────────
+
+pass_count = 0
+fail_count = 0
+
+def run_scenarios(wf_path, job_name, scenarios, label):
+    global pass_count, fail_count
+    perms = extract_permissions(wf_path)
+    if job_name not in perms:
+        print(f"FAIL:{label}:job '{job_name}' not found in {wf_path}")
+        fail_count += 1
+        return
+    rules = perms[job_name]
+    # Always include dangerous commands as denied
+    all_scenarios = scenarios + DANGEROUS_COMMANDS
+    for tool_call, expected, desc in all_scenarios:
+        actual = is_allowed(rules, tool_call)
+        tag = f"{label}:{desc}"
+        if actual == expected:
+            print(f"PASS:{tag}")
+            pass_count += 1
+        else:
+            verdict = "ALLOWED (should be DENIED)" if actual else "DENIED (should be ALLOWED)"
+            print(f"FAIL:{tag}:{verdict}:{tool_call}")
+            fail_count += 1
+
+run_scenarios(".github/workflows/bug-agent-analyst.yml", "analyse",
+              ANALYST_SCENARIOS, "analyst")
+run_scenarios(".github/workflows/bug-agent-review.yml",  "review",
+              REVIEWER_SCENARIOS, "reviewer")
+run_scenarios(".github/workflows/bug-agent-fix.yml",     "fix",
+              FIXER_SCENARIOS, "fixer")
+run_scenarios(".github/workflows/bug-agent-fix.yml",     "revise",
+              FIXER_SCENARIOS, "fixer-revise")
+run_scenarios(".github/workflows/bug-agent-test.yml",    "write-test",
+              WRITE_TEST_SCENARIOS, "test-writer")
+run_scenarios(".github/workflows/bug-agent-test.yml",    "revise-test",
+              REVISE_TEST_SCENARIOS, "test-writer-revise")
+
+print(f"SUMMARY:{pass_count}:{fail_count}")
+PYEOF
+)
+
+# Parse results
+while IFS= read -r line; do
+  case "$line" in
+    PASS:*)  pass "${line#PASS:}" ;;
+    FAIL:*)  fail "${line#FAIL:}" ;;
+    SUMMARY:*) ;;  # handled below
+  esac
+done <<< "$PERM_TEST_RESULTS"
+
+# Verify at least some scenarios ran (guard against silent Python crash)
+PERM_SUMMARY=$(echo "$PERM_TEST_RESULTS" | grep "^SUMMARY:" | head -1)
+PERM_PASS=$(echo "$PERM_SUMMARY" | cut -d: -f2)
+if [[ "${PERM_PASS:-0}" -lt 10 ]]; then
+  fail "permission matcher produced too few results ($PERM_PASS); possible extraction error"
+fi
+
+# ─────────────────────────────────────────────────────────────
+echo ""
 echo "========================================="
 echo "Results: $PASS passed, $FAIL failed"
 echo "========================================="

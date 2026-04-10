@@ -89,9 +89,10 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Glob", "Grep",
-                  "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
-                  "Bash(gh pr comment:*)", "Bash(gh pr edit:*)", "Bash(gh pr view:*)",
-                  "Bash(ls:*)"
+                  "Bash(git diff)", "Bash(git diff :*)",
+                  "Bash(git log :*)", "Bash(git show :*)",
+                  "Bash(gh pr comment :*)", "Bash(gh pr edit :*)", "Bash(gh pr view :*)",
+                  "Bash(ls)", "Bash(ls :*)"
                 ]
               }
             }
