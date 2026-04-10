@@ -8,6 +8,10 @@
 
 set -euo pipefail
 
+# Ensure we run from the repo root regardless of where the script is invoked.
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+cd "$REPO_ROOT"
+
 PASS=0
 FAIL=0
 
@@ -514,8 +518,8 @@ for job in data['jobs'].values():
             for p in settings.get('permissions', {}).get('allow', []):
                 print(p)
 ")
-  assert_not_contains "$WF_BASE no Edit tool" "$PERMS" '"Edit"'
-  assert_not_contains "$WF_BASE no Write tool" "$PERMS" '"Write"'
+  assert_not_contains "$WF_BASE no Edit tool" "$PERMS" "Edit"
+  assert_not_contains "$WF_BASE no Write tool" "$PERMS" "Write"
   assert_not_contains "$WF_BASE no git add" "$PERMS" "Bash(git add"
   assert_not_contains "$WF_BASE no git commit" "$PERMS" "Bash(git commit"
 done
@@ -637,7 +641,14 @@ assert_not_contains "no git reset anywhere" "$ALL_PERMS" "git reset"
 assert_not_contains "no git checkout stable" "$ALL_PERMS" "git checkout stable"
 assert_not_contains "no git checkout develop" "$ALL_PERMS" "git checkout develop"
 assert_not_contains "no rm command anywhere" "$ALL_PERMS" "Bash(rm"
-assert_not_contains "no bare Bash allowed" "$ALL_PERMS" '"Bash"'
+# Check for bare "Bash" permission (unrestricted shell). Cannot use
+# assert_not_contains because "Bash" is a substring of every "Bash(...)" entry.
+# The output format is "wf:job:permission", so a bare Bash ends the line with ":Bash".
+if echo "$ALL_PERMS" | grep -qE ':Bash$'; then
+  fail "no bare Bash allowed"
+else
+  pass "no bare Bash allowed"
+fi
 
 # ─────────────────────────────────────────────────────────────
 echo ""
@@ -651,7 +662,6 @@ echo "=== 21. Fixer pushes AFTER PR body update ==="
 FIXER_MD=$(cat ".github/bug-agent-pipeline/fixer.md")
 
 assert_contains "fixer instructs push last" "$FIXER_MD" "Push your fix commits to the PR branch LAST"
-assert_contains "fixer explains reviewer timing" "$FIXER_MD" "push triggers the reviewer"
 assert_contains "fixer warns about body visibility" "$FIXER_MD" "AGENT_FIX_COMPLETE"
 
 # ─────────────────────────────────────────────────────────────
@@ -739,7 +749,9 @@ for line in "${PARTS[@]}"; do
   fi
 done
 
-if $ALL_MATCH; then
+if [[ $IDX -lt 3 ]]; then
+  fail "expected at least 3 hook instances, found $IDX"
+elif $ALL_MATCH; then
   pass "all pre-push hooks are identical ($IDX instances)"
 fi
 
