@@ -128,3 +128,8 @@ jobs:
     secrets: inherit
     with:
       version: ${{ needs.check_release.outputs.version }}
+
+  update-sdk-compatibility-docs:
+    needs: check_release
+    uses: ./.github/workflows/update-sdk-compatibility-docs.yml
+    secrets: inherit
