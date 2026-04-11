@@ -131,5 +131,6 @@ jobs:
 
   update-sdk-compatibility-docs:
     needs: check_release
+    if: github.event.release.prerelease == false
     uses: ./.github/workflows/update-sdk-compatibility-docs.yml
     secrets: inherit

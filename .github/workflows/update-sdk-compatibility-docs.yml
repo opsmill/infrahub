@@ -55,7 +55,7 @@ jobs:
           body: |
             Automated update of the SDK compatibility matrix after Infrahub release.
 
-            Automated update triggered from the Infrahub release workflow.
+            Triggered by: ${{ github.event_name == 'workflow_dispatch' && 'manual workflow_dispatch' || 'Infrahub release workflow' }}
           branch: automated/update-compatibility-docs
           base: stable
           committer: opsmill-bot <github-bot@opsmill.com>
