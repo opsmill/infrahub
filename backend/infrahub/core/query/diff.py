@@ -72,9 +72,8 @@ class DiffCountChanges(Query):
             "branch_names": self.branch_names,
         }
         query = """
-        MATCH (p)-[diff_rel]-(q)
-        WHERE any(l in labels(p) WHERE l in ["Node", "Attribute", "Relationship"])
-        AND diff_rel.branch in $branch_names
+        MATCH (p:Node|Attribute|Relationship)-[diff_rel]-(q)
+        WHERE diff_rel.branch in $branch_names
         AND (
             (diff_rel.from >= $from_time AND diff_rel.from < $to_time)
             OR (diff_rel.to >= $from_time AND diff_rel.to < $to_time)

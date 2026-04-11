@@ -50,62 +50,25 @@ class TestMergeDiffFallback:
         component_registry = get_component_registry()
         return await component_registry.get_component(DiffRepository, db=db, branch=default_branch)
 
-    async def test_attribute_value_conflict_diff_branch(
+    @pytest.mark.parametrize(
+        "conflict_selection,expected_height,expected_user",
+        [
+            (ConflictSelection.DIFF_BRANCH, 150, "branch-user"),
+            (ConflictSelection.BASE_BRANCH, 200, "main-user"),
+        ],
+    )
+    async def test_attribute_value_conflict(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         diff_repository: DiffRepository,
         person_john_main: Node,
         car_person_schema: SchemaBranch,
+        conflict_selection: ConflictSelection,
+        expected_height: int,
+        expected_user: str,
     ) -> None:
-        """Attribute value changed on both branches, resolved as DIFF_BRANCH."""
-        branch = await create_branch(db=db, branch_name="branch1")
-
-        # Conflict: both branches update john's height
-        person_main = await NodeManager.get_one(db=db, id=person_john_main.id)
-        person_main.height.value = 200
-        await person_main.save(db=db, user_id="main-user")
-
-        person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
-        person_branch.height.value = 150
-        await person_branch.save(db=db, user_id="branch-user")
-
-        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch)
-        enriched_diff_metadata = await diff_coordinator.update_branch_diff(
-            base_branch=default_branch, diff_branch=branch
-        )
-        enriched_diff = await diff_repository.get_one(
-            diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
-        )
-        conflicts_map = enriched_diff.get_all_conflicts()
-        assert len(conflicts_map) >= 1
-        for conflict in conflicts_map.values():
-            await diff_repository.update_conflict_by_id(
-                conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
-            )
-
-        merge_at = Timestamp()
-        diff_merger = await self._get_diff_merger(db=db, branch=branch)
-        await diff_merger.merge_graph(at=merge_at)
-
-        updated_person = await NodeManager.get_one(
-            db=db, id=person_john_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
-        )
-        assert updated_person.height.value == 150
-        assert updated_person._get_updated_at() == merge_at
-        assert updated_person._get_updated_by() == "branch-user"
-
-        await verify_graph_after_merge(db=db)
-
-    async def test_attribute_value_conflict_base_branch(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        diff_repository: DiffRepository,
-        person_john_main: Node,
-        car_person_schema: SchemaBranch,
-    ) -> None:
-        """Attribute value changed on both branches, resolved as BASE_BRANCH."""
+        """Attribute value changed on both branches, resolved as base or diff."""
         branch = await create_branch(db=db, branch_name="branch1")
 
         before_main_update = Timestamp()
@@ -128,9 +91,7 @@ class TestMergeDiffFallback:
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) >= 1
         for conflict in conflicts_map.values():
-            await diff_repository.update_conflict_by_id(
-                conflict_id=conflict.uuid, selection=ConflictSelection.BASE_BRANCH
-            )
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
 
         merge_at = Timestamp()
         diff_merger = await self._get_diff_merger(db=db, branch=branch)
@@ -139,9 +100,12 @@ class TestMergeDiffFallback:
         updated_person = await NodeManager.get_one(
             db=db, id=person_john_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
         )
-        assert updated_person.height.value == 200
-        assert before_main_update < updated_person._get_updated_at() < after_main_update
-        assert updated_person._get_updated_by() == "main-user"
+        assert updated_person.height.value == expected_height
+        assert updated_person._get_updated_by() == expected_user
+        if conflict_selection is ConflictSelection.DIFF_BRANCH:
+            assert updated_person._get_updated_at() == merge_at
+        else:
+            assert before_main_update < updated_person._get_updated_at() < after_main_update
 
         await verify_graph_after_merge(db=db)
 
@@ -162,12 +126,10 @@ class TestMergeDiffFallback:
         """Node deleted on branch, updated on main. Resolved as base or diff."""
         branch = await create_branch(db=db, branch_name="branch1")
 
-        # Main updates
         person_main = await NodeManager.get_one(db=db, id=person_john_main.id)
         person_main.height.value = 200
         await person_main.save(db=db, user_id="main-user")
 
-        # Branch deletes
         person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_john_main.id)
         await person_branch.delete(db=db, user_id="branch-user")
 
@@ -181,9 +143,7 @@ class TestMergeDiffFallback:
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) >= 1
         for conflict in conflicts_map.values():
-            await diff_repository.update_conflict_by_id(
-                conflict_id=conflict.uuid, selection=conflict_selection
-            )
+            await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
 
         merge_at = Timestamp()
         diff_merger = await self._get_diff_merger(db=db, branch=branch)
@@ -199,7 +159,11 @@ class TestMergeDiffFallback:
 
         await verify_graph_after_merge(db=db)
 
-    async def test_relationship_conflict_diff_branch(
+    @pytest.mark.parametrize(
+        "conflict_selection",
+        [ConflictSelection.DIFF_BRANCH, ConflictSelection.BASE_BRANCH],
+    )
+    async def test_relationship_conflict(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
@@ -209,8 +173,9 @@ class TestMergeDiffFallback:
         person_alfred_main: Node,
         car_accord_main: Node,
         car_person_schema: SchemaBranch,
+        conflict_selection: ConflictSelection,
     ) -> None:
-        """Cardinality-one relationship changed on both branches, resolved as DIFF_BRANCH."""
+        """Cardinality-one relationship changed on both branches, resolved as base or diff."""
         branch = await create_branch(db=db, branch_name="branch1")
 
         car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
@@ -231,18 +196,17 @@ class TestMergeDiffFallback:
         conflicts_map = enriched_diff.get_all_conflicts()
         assert len(conflicts_map) == 1
         conflict = next(iter(conflicts_map.values()))
-        await diff_repository.update_conflict_by_id(
-            conflict_id=conflict.uuid, selection=ConflictSelection.DIFF_BRANCH
-        )
+        await diff_repository.update_conflict_by_id(conflict_id=conflict.uuid, selection=conflict_selection)
 
         merge_at = Timestamp()
         diff_merger = await self._get_diff_merger(db=db, branch=branch)
         await diff_merger.merge_graph(at=merge_at)
 
-        updated_car = await NodeManager.get_one(
-            db=db, id=car_accord_main.id, prefetch_relationships=True
-        )
+        updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id, prefetch_relationships=True)
         owner_rel = await updated_car.owner.get(db=db)
-        assert owner_rel.peer_id == person_jane_main.id
+        if conflict_selection is ConflictSelection.DIFF_BRANCH:
+            assert owner_rel.peer_id == person_jane_main.id
+        else:
+            assert owner_rel.peer_id == person_alfred_main.id
 
         await verify_graph_after_merge(db=db)
