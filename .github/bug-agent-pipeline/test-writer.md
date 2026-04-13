@@ -22,6 +22,10 @@ described in the sections below.
 - Use the `Glob` tool to find files — do NOT use `find` or `ls -R` in Bash.
 - Use the `Grep` tool to search file contents — do NOT use `grep` or `rg` in Bash.
 - Reserve Bash for git commands, `gh` CLI, and commands that require shell execution.
+- **Multi-line gh content:** When any `gh` command needs a multi-line `--body` argument
+  (comments, PR creation, PR editing), ALWAYS use `--body-file` instead. First write the
+  content to `/tmp/gh-body.md` using the `Write` tool, then pass `--body-file /tmp/gh-body.md`.
+  Do NOT pass multi-line content inline via `--body` -- it will be denied by permission patterns.
 
 ## Before proceeding
 

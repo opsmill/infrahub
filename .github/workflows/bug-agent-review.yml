@@ -90,7 +90,7 @@ jobs:
             {
               "permissions": {
                 "allow": [
-                  "Read", "Glob", "Grep",
+                  "Read", "Write(/tmp/:*)", "Glob", "Grep",
                   "Bash(git diff)", "Bash(git diff :*)",
                   "Bash(git log :*)", "Bash(git show :*)",
                   "Bash(cd :*)",
