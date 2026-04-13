@@ -321,7 +321,7 @@ Configuration settings for the message bus.
 | Name | Description | Type | Default |
 |------|-------------|------|---------|
 | `INFRAHUB_LOG_FORWARDING_HOSTNAME` | Hostname to use in syslog message headers. If not set, defaults to the system FQDN. | None | None |
-| `INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES` | Comma-separated list of destination names to load from per-destination environment variables (e.g. INFRAHUB_LOG_FORWARDING_DESTINATION_<NAME>_HOST). Names must match [a-z0-9_]+. Mutually exclusive with `destinations`. | array[string] | None |
+| `INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES` | Comma-separated list of destination names to load from per-destination environment variables (e.g. `INFRAHUB_LOG_FORWARDING_DESTINATION_<NAME>_HOST`). Names must match `[a-z0-9_]+`. Mutually exclusive with `destinations`. | array[string] | None |
 | `INFRAHUB_LOG_FORWARDING_DESTINATIONS` | List of log forwarding destinations. (Enterprise only: not available in the community version.) | array[object] | Check nested parameters |
 
 ### INFRAHUB_LOG_FORWARDING_DESTINATIONS
