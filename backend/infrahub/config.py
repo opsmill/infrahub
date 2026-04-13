@@ -960,8 +960,8 @@ class LogForwardingSettings(BaseSettings):
         default_factory=list,
         description=(
             "Comma-separated list of destination names to load from per-destination environment variables "
-            "(e.g. INFRAHUB_LOG_FORWARDING_DESTINATION_<NAME>_HOST). Names must match [a-z0-9_]+. "
-            "Mutually exclusive with `destinations`."
+            "(e.g. `INFRAHUB_LOG_FORWARDING_DESTINATION_PRIMARY_HOST` where `PRIMARY` is the destination name). "
+            "Names must match `[a-z0-9_]+`. Mutually exclusive with `destinations`."
         ),
     )
     destinations: list[LogForwardingDestination] = Field(
