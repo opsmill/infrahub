@@ -260,6 +260,12 @@ async def sync_remote_repositories() -> None:
                     staging_branch=staging_branch,
                     infrahub_branch=infrahub_branch,
                 )
+
+                # After sync, check if DB commits are stale (e.g., after a fresh re-clone).
+                # The subflow sync only compares local git vs remote git — it doesn't
+                # detect drift between DB and local git HEAD.
+                if not init_failed:
+                    await repo.sync(db_commits=repository_data.branches)
                 # Tell workers to fetch to stay in sync
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
