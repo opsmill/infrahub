@@ -575,16 +575,14 @@ echo ""
 echo "=== 17. Read-only agents have no write tools ==="
 # ─────────────────────────────────────────────────────────────
 
-# Analyst and reviewer should NOT have Edit, bare Write, git add, git commit,
-# or git push in their permission allow lists.
-# Write(/tmp/:*) is allowed for --body-file workflow but unrestricted Write is not.
+# Analyst and reviewer should NOT have Edit, git add, or git commit.
+# They DO have bare Write (needed for --body-file comment workflow).
 
 for wf in \
   ".github/workflows/bug-agent-analyst.yml" \
   ".github/workflows/bug-agent-review.yml"; do
   WF_BASE=$(basename "$wf")
 
-  # Extract the settings JSON block(s) using Python for reliable YAML parsing
   PERMS=$(python3 -c "
 import yaml, json
 with open('$wf') as f:
@@ -598,26 +596,7 @@ for job in data['jobs'].values():
                 print(p)
 ")
   assert_not_contains "$WF_BASE no Edit tool" "$PERMS" "Edit"
-  # Check for bare/unrestricted Write (not scoped to /tmp)
-  HAS_BAD_WRITE=$(python3 -c "
-import yaml, json
-with open('$wf') as f:
-    data = yaml.safe_load(f)
-for job in data['jobs'].values():
-    for step in job.get('steps', []):
-        w = step.get('with', {})
-        if 'settings' in w:
-            settings = json.loads(w['settings'])
-            for p in settings.get('permissions', {}).get('allow', []):
-                # Bare 'Write' (unrestricted) or Write to non-tmp paths
-                if p == 'Write' or (p.startswith('Write(') and '/tmp/' not in p):
-                    print(p)
-")
-  if [[ -z "$HAS_BAD_WRITE" ]]; then
-    pass "$WF_BASE no unrestricted Write tool"
-  else
-    fail "$WF_BASE has unrestricted Write: $HAS_BAD_WRITE"
-  fi
+  assert_contains "$WF_BASE has Write (for body-file)" "$PERMS" "Write"
   assert_not_contains "$WF_BASE no git add" "$PERMS" "Bash(git add"
   assert_not_contains "$WF_BASE no git commit" "$PERMS" "Bash(git commit"
 done
@@ -914,11 +893,27 @@ def rule_matches(rule: str, tool_call: str) -> bool:
     if call_arg is None:
         return False
 
-    # :* is only valid for Bash prefix rules (colon consumed as syntax separator).
+    # :* is only valid for Bash prefix rules (only at end of pattern).
+    # It enforces a word boundary: the prefix must be followed by end-of-string
+    # or a space (then anything). E.g. Bash(ls:*) matches "ls" and "ls -la"
+    # but NOT "lsof".
+    # Plain * is a glob with no word boundary: Bash(ls*) matches all three.
     # For file-based tools (Write, Edit, etc.), use standard glob: ** for
     # recursive match, * for single-segment match.
-    if rule_tool == "Bash":
-        rule_spec = rule_spec.replace(":*", "*")
+
+    if rule_tool == "Bash" and rule_spec.endswith(":*"):
+        # :* = word-boundary wildcard at end of prefix.
+        # If the char before :* is a space, the space IS the word boundary
+        # and the rest is a plain suffix match.
+        # If the char before :* is NOT a space, enforce space-or-end after prefix.
+        prefix = rule_spec[:-2]
+        if prefix.endswith(" "):
+            # Space already provides the boundary — match anything after
+            regex = "^" + re.escape(prefix) + ".*$"
+        else:
+            # No space — require word boundary (space or end-of-string)
+            regex = "^" + re.escape(prefix) + "($| .*)$"
+        return bool(re.match(regex, call_arg))
 
     # No wildcards → exact match
     if "*" not in rule_spec:
@@ -931,7 +926,6 @@ def rule_matches(rule: str, tool_call: str) -> bool:
         regex = "^" + ".*".join(re.escape(p) for p in parts) + "$"
     else:
         # File tools: ** matches any path depth, * matches within one segment
-        # First handle ** (any path), then * (single segment)
         escaped = re.escape(rule_spec)
         # re.escape turns * into \*, so we look for \*\* and \*
         escaped = escaped.replace(r"\*\*", "<<GLOBSTAR>>")
@@ -957,12 +951,17 @@ fail_count = 0
 
 MATCHER_SELF_TESTS = [
     # (rule, tool_call, expected, description)
-    # `:*` suffix — colon consumed as syntax separator, remainder is glob
+    # `:*` suffix — equivalent to ` *` (space-star), enforces word boundary
     ("Bash(ls:*)",       "Bash(ls -la)",    True,  "colon-star: space arg"),
     ("Bash(ls:*)",       "Bash(ls)",        True,  "colon-star: bare cmd"),
+    ("Bash(ls:*)",       "Bash(lsof)",      False, "colon-star: word boundary"),
+    # `:*` after dash requires space — use plain `*` for concatenated prefixes
     ("Bash(git push origin ai-bug-pipeline-:*)",
+     "Bash(git push origin ai-bug-pipeline-1042)", False,
+     "colon-star: after dash needs space"),
+    ("Bash(git push origin ai-bug-pipeline-*)",
      "Bash(git push origin ai-bug-pipeline-1042)", True,
-     "colon-star: after dash prefix"),
+     "plain-star: after dash no space needed"),
     # Exact match — no wildcards means no extra args allowed
     ("Bash(uv run invoke format)",
      "Bash(uv run invoke format)", True, "exact: identical"),
@@ -1007,13 +1006,6 @@ MATCHER_SELF_TESTS = [
     ("Bash(gh issue comment :*)",
      "Bash(gh issue comment 42 --body-file /tmp/gh-body.md)",
      True, "colon-star: body-file is single-line"),
-    # Write path restriction (using ** glob, not :*)
-    ("Write(/tmp/**)",   "Write(/tmp/gh-body.md)", True,
-     "Write /tmp: allowed"),
-    ("Write(/tmp/**)",   "Write(backend/foo.py)",  False,
-     "Write /tmp: outside path denied"),
-    ("Write(/tmp/**)",   "Write(.github/test.yml)", False,
-     "Write /tmp: .github denied"),
 ]
 
 for rule, tool_call, expected, desc in MATCHER_SELF_TESTS:
@@ -1071,8 +1063,8 @@ ANALYST_SCENARIOS = [
     ("Read",                                           True,  "read files"),
     ("Glob",                                           True,  "glob search"),
     ("Grep",                                           True,  "grep search"),
-    ("Write(/tmp/gh-body.md)",                         True,  "write to /tmp for body-file"),
-    ("Write(/tmp/comment.md)",                         True,  "write to /tmp other name"),
+    ("Write",                                          True,  "write files (for body-file workflow)"),
+    ("Write(.agent-tmp/gh-body.md)",                   True,  "write body-file"),
     ("Bash(git checkout -b ai-bug-pipeline-1042)",     True,  "create pipeline branch"),
     ("Bash(git checkout ai-bug-pipeline-1042)",        True,  "checkout pipeline branch"),
     ("Bash(git push origin ai-bug-pipeline-1042)",     True,  "push to pipeline branch"),
@@ -1087,9 +1079,6 @@ ANALYST_SCENARIOS = [
     ("Bash(ls -la)",                                   True,  "ls with flags"),
     # Denied
     ("Edit",                                           False, "edit files"),
-    ("Write",                                          False, "write files bare"),
-    ("Write(backend/infrahub/core/foo.py)",            False, "write outside /tmp"),
-    ("Write(.github/workflows/test.yml)",              False, "write to .github"),
     # Multi-line --body is denied because :* glob does not match newlines
     ("Bash(gh issue comment 42 --body '## Root cause\nAffected files')",
                                                        False, "multi-line comment denied"),
@@ -1104,7 +1093,8 @@ REVIEWER_SCENARIOS = [
     ("Read",                                           True,  "read files"),
     ("Glob",                                           True,  "glob search"),
     ("Grep",                                           True,  "grep search"),
-    ("Write(/tmp/gh-body.md)",                         True,  "write to /tmp for body-file"),
+    ("Write",                                          True,  "write files (for body-file workflow)"),
+    ("Write(.agent-tmp/gh-body.md)",                   True,  "write body-file"),
     ("Bash(git diff)",                                 True,  "git diff bare"),
     ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
     ("Bash(git log --oneline)",                        True,  "git log"),
@@ -1117,8 +1107,6 @@ REVIEWER_SCENARIOS = [
     ("Bash(ls -la)",                                   True,  "ls with flags"),
     # Denied
     ("Edit",                                           False, "edit files"),
-    ("Write",                                          False, "write files bare"),
-    ("Write(backend/infrahub/core/foo.py)",            False, "write outside /tmp"),
     # Multi-line --body is denied because :* glob does not match newlines
     ("Bash(gh pr comment 42 --body '## Review\nDimension A')",
                                                        False, "multi-line comment denied"),
