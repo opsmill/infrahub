@@ -5,6 +5,82 @@
 #
 # Usage:  bash .github/bug-agent-pipeline/test_pipeline_shell_logic.sh
 # Exit 0 = all pass, non-zero = failures printed to stderr.
+#
+# Test cases:
+#  1. Untrusted-content boundary sanitisation
+#     Verifies sed neutralises injected BEGIN/END delimiter markers while
+#     leaving benign and partial-match inputs untouched.
+#  2. GITHUB_OUTPUT heredoc simulation
+#     Confirms a random-hex delimiter survives hostile content that contains
+#     the delimiter prefix, with exactly one open/close pair in the output.
+#  3. jq analyst-comment extraction
+#     Finds the last github-actions[bot] comment containing
+#     AGENT_ANALYSIS_COMPLETE; returns empty when none match.
+#  4. PR marker validation (fixer workflow)
+#     Gates fixer execution: blocks without AGENT_TEST_COMPLETE, blocks if
+#     AGENT_FIX_COMPLETE already present, allows test-only state.
+#  5. Reviewer mode detection
+#     Returns "fix-review", "test-review", or "unknown" based on which
+#     AGENT_*_COMPLETE markers are in the PR body.
+#  6. TEST_APPROVED count check
+#     Counts AGENT_REVIEW_VERDICT: TEST_APPROVED comments from the bot;
+#     returns 0 when none exist.
+#  7. Shell injection safety
+#     Ensures $() and backtick payloads in env vars pass through
+#     printf/sed as literal text, never executed.
+#  8. Revise-test marker gating
+#     Runs revise-test only when TEST_COMPLETE is present and FIX_COMPLETE
+#     is not; skips in all other combinations.
+#  9. Fixer issue-number extraction
+#     Extracts issue numbers from PR titles (#N) and branch names
+#     (ai-bug-pipeline-N); handles multiple refs and missing refs.
+# 10. Label names match labels.yml
+#     Every `state/*` label referenced in agent prompt .md files exists in
+#     .github/labels.yml; also checks type/bug.
+# 11. define-versions.yml outputs
+#     Test/fix workflows reference PYTHON_VERSION and UV_VERSION from
+#     define-versions; analyst/reviewer have no setup-python or setup-uv.
+# 12. Workflow YAML validity
+#     Parses all 4 bug-agent workflow YAMLs with Python yaml.safe_load.
+# 13. Analyst has contents:write
+#     Confirms the analyse job has contents: write permission.
+# 14. Pre-push hook blocks non-pipeline branches
+#     Recreates the hook and feeds simulated push refs: allows
+#     ai-bug-pipeline-*, blocks main/stable/develop/feature/bare-prefix,
+#     and fails on mixed-ref pushes.
+# 15. Pre-push hook installed in all push-capable workflows
+#     Analyst, test-writer, and fixer workflows contain the hook install
+#     step; reviewer (read-only) does not.
+# 16. Permission settings present in all workflows
+#     Every claude-code-action step has a settings block with "permissions"
+#     and "allow" keys.
+# 17. Read-only agents have no write tools
+#     Analyst and reviewer lack Edit, Write, git add, git commit; reviewer
+#     also lacks git push.
+# 18. Write agents have required tools
+#     Fixer and test-writer have Edit, Write, git add, git commit, and
+#     scoped git push.
+# 19. Git push restricted to ai-bug-pipeline-* in permissions
+#     Every push allow-rule in all workflows contains "ai-bug-pipeline-".
+# 20. No dangerous commands in any permission list
+#     No force push, git reset, checkout stable/develop, rm, or bare Bash
+#     anywhere across all workflows.
+# 21. Fixer pushes AFTER PR body update
+#     fixer.md instructs push-last ordering so the reviewer sees
+#     AGENT_FIX_COMPLETE in the PR body at trigger time.
+# 22. All agents share baseline read tools
+#     Every workflow has Read, Glob, Grep, and ls in its allow list.
+# 23. Hook script matches across workflows
+#     All pre-push hook bodies (analyst, test-writer, fixer) are identical.
+# 24. Permission patterns match/reject specific commands
+#     Self-validates the matcher against Claude Code semantics, then tests
+#     per-agent allow/deny scenarios plus dangerous commands.
+# 25. Deny lists present in all workflows
+#     Every job with permissions has the expected deny rules (dynamically
+#     discovered, no hardcoded job names).
+# 26. Untrusted content sanitized before GITHUB_OUTPUT
+#     All user-provided content (issue/PR body/title, comment body) is
+#     sanitized before output; raw values never reach GITHUB_OUTPUT.
 
 set -euo pipefail
 
