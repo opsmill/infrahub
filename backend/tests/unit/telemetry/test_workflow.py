@@ -35,7 +35,7 @@ def _patch_prefect_logger() -> Iterator[None]:
 def telemetry_mocks() -> Iterator[dict[str, Any]]:
     """Combined fixture providing all mocks needed for telemetry workflow tests."""
     repo = create_autospec(TelemetrySnapshotRepository, spec_set=True, instance=True)
-    repo.save = AsyncMock(return_value=None)
+    repo.save.return_value = None
     with (
         patch(
             "infrahub.telemetry.tasks.gather_anonymous_telemetry_data",
