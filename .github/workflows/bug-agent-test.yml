@@ -172,9 +172,9 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
-                  "Bash(git checkout ai-bug-pipeline-:*)",
+                  "Bash(git checkout ai-bug-pipeline-*)",
                   "Bash(git add :*)", "Bash(git commit -m :*)",
-                  "Bash(git push origin ai-bug-pipeline-:*)",
+                  "Bash(git push origin ai-bug-pipeline-*)",
                   "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
                   "Bash(git show :*)",
                   "Bash(git status)",
@@ -370,9 +370,9 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
-                  "Bash(git checkout ai-bug-pipeline-:*)",
+                  "Bash(git checkout ai-bug-pipeline-*)",
                   "Bash(git add :*)", "Bash(git commit -m :*)",
-                  "Bash(git push origin ai-bug-pipeline-:*)",
+                  "Bash(git push origin ai-bug-pipeline-*)",
                   "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
                   "Bash(git show :*)",
                   "Bash(git status)",
