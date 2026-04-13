@@ -914,19 +914,30 @@ def rule_matches(rule: str, tool_call: str) -> bool:
     if call_arg is None:
         return False
 
-    # Expand :* — colon is a syntax separator, replaced with nothing so
-    # the prefix globs directly into the remainder.  Handle ALL occurrences,
-    # not just trailing (e.g. "Write(:*.github/:*)" → "*.github/*").
-    rule_spec = rule_spec.replace(":*", "*")
+    # :* is only valid for Bash prefix rules (colon consumed as syntax separator).
+    # For file-based tools (Write, Edit, etc.), use standard glob: ** for
+    # recursive match, * for single-segment match.
+    if rule_tool == "Bash":
+        rule_spec = rule_spec.replace(":*", "*")
 
     # No wildcards → exact match
     if "*" not in rule_spec:
         return call_arg == rule_spec
 
     # Convert glob to regex.
-    # Split on * and rejoin with .* (each * matches any characters).
-    parts = rule_spec.split("*")
-    regex = "^" + ".*".join(re.escape(p) for p in parts) + "$"
+    if rule_tool == "Bash":
+        # Bash: * matches any chars except newlines (single-line matching)
+        parts = rule_spec.split("*")
+        regex = "^" + ".*".join(re.escape(p) for p in parts) + "$"
+    else:
+        # File tools: ** matches any path depth, * matches within one segment
+        # First handle ** (any path), then * (single segment)
+        escaped = re.escape(rule_spec)
+        # re.escape turns * into \*, so we look for \*\* and \*
+        escaped = escaped.replace(r"\*\*", "<<GLOBSTAR>>")
+        escaped = escaped.replace(r"\*", "[^/]*")
+        escaped = escaped.replace("<<GLOBSTAR>>", ".*")
+        regex = "^" + escaped + "$"
     return bool(re.match(regex, call_arg))
 
 
@@ -964,17 +975,17 @@ MATCHER_SELF_TESTS = [
     # Bare tool name — matches all invocations of that tool
     ("Read",             "Read",              True,  "bare tool: bare call"),
     ("Read",             "Read(/some/path)",   True,  "bare tool: with arg"),
-    # Write/Edit path deny patterns
-    ("Write(:*.github/:*)",
+    # Write/Edit path deny patterns (using ** glob, not :*)
+    ("Write(.github/**)",
      "Write(.github/workflows/test.yml)", True,
      "Write deny: .github path"),
-    ("Edit(:*.github/:*)",
+    ("Edit(.github/**)",
      "Edit(.github/bug-agent-pipeline/fixer.md)", True,
      "Edit deny: .github path"),
-    ("Write(:*.github/:*)",
+    ("Write(.github/**)",
      "Write(backend/infrahub/core/foo.py)", False,
      "Write deny: non-.github allowed"),
-    ("Edit(:*.github/:*)",
+    ("Edit(.github/**)",
      "Edit(backend/infrahub/core/foo.py)", False,
      "Edit deny: non-.github allowed"),
     # Star with colon in context of git commands
@@ -996,12 +1007,12 @@ MATCHER_SELF_TESTS = [
     ("Bash(gh issue comment :*)",
      "Bash(gh issue comment 42 --body-file /tmp/gh-body.md)",
      True, "colon-star: body-file is single-line"),
-    # Write path restriction
-    ("Write(/tmp/:*)",   "Write(/tmp/gh-body.md)", True,
+    # Write path restriction (using ** glob, not :*)
+    ("Write(/tmp/**)",   "Write(/tmp/gh-body.md)", True,
      "Write /tmp: allowed"),
-    ("Write(/tmp/:*)",   "Write(backend/foo.py)",  False,
+    ("Write(/tmp/**)",   "Write(backend/foo.py)",  False,
      "Write /tmp: outside path denied"),
-    ("Write(/tmp/:*)",   "Write(.github/test.yml)", False,
+    ("Write(/tmp/**)",   "Write(.github/test.yml)", False,
      "Write /tmp: .github denied"),
 ]
 
@@ -1315,8 +1326,8 @@ EXPECTED_DENY = [
     'Bash(git reset :*)',
     'Bash(git clean :*)',
     'Bash(gh pr merge :*)',
-    'Write(:*.github/:*)',
-    'Edit(:*.github/:*)',
+    'Write(.github/**)',
+    'Edit(.github/**)',
 ]
 
 pass_count = 0

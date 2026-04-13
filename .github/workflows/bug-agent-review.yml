@@ -90,7 +90,7 @@ jobs:
             {
               "permissions": {
                 "allow": [
-                  "Read", "Write(/tmp/:*)", "Glob", "Grep",
+                  "Read", "Write(/tmp/**)", "Glob", "Grep",
                   "Bash(git diff)", "Bash(git diff :*)",
                   "Bash(git log :*)", "Bash(git show :*)",
                   "Bash(cd :*)",
@@ -101,8 +101,8 @@ jobs:
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
                   "Bash(git reset :*)", "Bash(git clean :*)",
                   "Bash(gh pr merge :*)",
-                  "Write(:*.github/:*)", "Edit(:*.github/:*)",
-                  "Write(:*.git/:*)", "Edit(:*.git/:*)"
+                  "Write(.github/**)", "Edit(.github/**)",
+                  "Write(.git/**)", "Edit(.git/**)"
                 ]
               }
             }
