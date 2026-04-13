@@ -5,12 +5,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from infrahub.telemetry.constants import (
-    REMOTE_SEND_STATUS_FAILED,
-    REMOTE_SEND_STATUS_PENDING,
-    REMOTE_SEND_STATUS_SENT,
-    REMOTE_SEND_STATUS_SKIPPED,
-)
+from infrahub.telemetry.constants import RemoteSendStatus
 from infrahub.telemetry.snapshot import TelemetrySnapshot
 
 
@@ -31,7 +26,7 @@ def _make_snapshot(**overrides: Any) -> TelemetrySnapshot:
         infrahub_version=overrides.pop("infrahub_version", "1.2.3"),
         data=data,
         checksum=overrides.pop("checksum", _compute_checksum(data)),
-        remote_send_status=overrides.pop("remote_send_status", REMOTE_SEND_STATUS_PENDING),
+        remote_send_status=overrides.pop("remote_send_status", RemoteSendStatus.PENDING),
     )
 
 
@@ -43,7 +38,7 @@ class TestTelemetrySnapshotModel:
         assert snapshot.deployment_id == "dep-123"
         assert snapshot.infrahub_version == "1.2.3"
         assert snapshot.data == _sample_data()
-        assert snapshot.remote_send_status == REMOTE_SEND_STATUS_PENDING
+        assert snapshot.remote_send_status == RemoteSendStatus.PENDING
 
     def test_checksum_computation(self) -> None:
         data = _sample_data()
@@ -62,21 +57,27 @@ class TestTelemetrySnapshotModel:
             data=data,
             checksum=_compute_checksum(data),
         )
-        assert snapshot.remote_send_status == REMOTE_SEND_STATUS_PENDING
+        assert snapshot.remote_send_status == RemoteSendStatus.PENDING
 
     def test_all_valid_remote_send_statuses(self) -> None:
-        for status in (
-            REMOTE_SEND_STATUS_PENDING,
-            REMOTE_SEND_STATUS_SENT,
-            REMOTE_SEND_STATUS_SKIPPED,
-            REMOTE_SEND_STATUS_FAILED,
-        ):
+        for status in RemoteSendStatus:
             snapshot = _make_snapshot(remote_send_status=status)
             assert snapshot.remote_send_status == status
 
     def test_invalid_remote_send_status_raises(self) -> None:
         with pytest.raises(ValidationError, match="remote_send_status"):
             _make_snapshot(remote_send_status="unknown")
+
+    def test_remote_send_status_field_is_enum(self) -> None:
+        snapshot = _make_snapshot(remote_send_status="sent")
+        assert isinstance(snapshot.remote_send_status, RemoteSendStatus)
+        assert snapshot.remote_send_status is RemoteSendStatus.SENT
+
+    def test_remote_send_status_serializes_to_string(self) -> None:
+        snapshot = _make_snapshot(remote_send_status=RemoteSendStatus.FAILED)
+        db_dict = snapshot.to_db()
+        # StandardNode.to_db() converts Enum → .value before persistence.
+        assert db_dict["remote_send_status"] == "failed"
 
     def test_empty_kind_raises(self) -> None:
         with pytest.raises(ValidationError, match="kind"):
@@ -108,7 +109,7 @@ class TestTelemetrySnapshotModel:
         db_dict = snapshot.to_db()
         assert "uuid" in db_dict
         assert db_dict["kind"] == "community"
-        assert db_dict["remote_send_status"] == REMOTE_SEND_STATUS_PENDING
+        assert db_dict["remote_send_status"] == RemoteSendStatus.PENDING.value
         assert db_dict["deployment_id"] == "dep-123"
 
     def test_get_type(self) -> None:

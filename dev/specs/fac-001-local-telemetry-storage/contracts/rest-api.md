@@ -15,8 +15,8 @@ Retrieves stored telemetry snapshots with optional date-range filtering. Require
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `start_date` | `string` (ISO 8601) | No | None | Include snapshots created on or after this date |
-| `end_date` | `string` (ISO 8601) | No | None | Include snapshots created on or before this date |
+| `start_date` | `string` (ISO 8601 date or timestamp) | No | None | Include snapshots created on or after this date. A bare date (`YYYY-MM-DD`) is expanded to the start of that day in UTC. |
+| `end_date` | `string` (ISO 8601 date or timestamp) | No | None | Include snapshots created on or before this date. A bare date (`YYYY-MM-DD`) is expanded to the end of that day in UTC, so same-day snapshots are included. |
 | `limit` | `integer` | No | 1000 | Maximum number of snapshots to return |
 | `offset` | `integer` | No | 0 | Number of snapshots to skip |
 
@@ -63,6 +63,12 @@ Retrieves stored telemetry snapshots with optional date-range filtering. Require
 #### Response Model (Pydantic)
 
 ```python
+class RemoteSendStatus(StrEnum):
+    PENDING = "pending"
+    SENT = "sent"
+    SKIPPED = "skipped"
+    FAILED = "failed"
+
 class TelemetrySnapshotResponse(BaseModel):
     id: str                          # UUID
     created_at: str                  # ISO 8601 timestamp
@@ -72,10 +78,10 @@ class TelemetrySnapshotResponse(BaseModel):
     infrahub_version: str            # Product version
     data: dict[str, Any]             # Full telemetry payload
     checksum: str                    # SHA-256 integrity hash
-    remote_send_status: str          # "sent" | "skipped" | "failed" | "pending"
+    remote_send_status: RemoteSendStatus  # See enum above
 
 class TelemetrySnapshotListResponse(BaseModel):
-    count: int                       # Total matching snapshots
+    count: int                       # Total matching snapshots (independent of limit/offset)
     snapshots: list[TelemetrySnapshotResponse]
 ```
 
@@ -122,6 +128,9 @@ Options:
 
 Output: JSON file containing array of snapshot objects
 Exit codes: 0 (success), 1 (error), 2 (no data found)
+
+The command pages through the API automatically (page size: 1000) so all matching
+snapshots are exported, never silently truncated.
 ```
 
 **Example output file**:

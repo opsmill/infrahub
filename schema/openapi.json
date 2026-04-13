@@ -6169,6 +6169,16 @@
                 "type": "object",
                 "title": "RemoteLoggingSettings"
             },
+            "RemoteSendStatus": {
+                "type": "string",
+                "enum": [
+                    "pending",
+                    "sent",
+                    "skipped",
+                    "failed"
+                ],
+                "title": "RemoteSendStatus"
+            },
             "SSOInfo": {
                 "properties": {
                     "providers": {
@@ -6604,8 +6614,7 @@
                         "title": "Checksum"
                     },
                     "remote_send_status": {
-                        "type": "string",
-                        "title": "Remote Send Status"
+                        "$ref": "#/components/schemas/RemoteSendStatus"
                     }
                 },
                 "type": "object",

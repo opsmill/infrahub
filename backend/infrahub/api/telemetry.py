@@ -9,12 +9,14 @@ from infrahub.api.dependencies import get_current_user, get_db, get_permission_m
 from infrahub.core.account import GlobalPermission
 from infrahub.core.constants import GlobalPermissions
 from infrahub.permissions.constants import PermissionDecisionFlag
-from infrahub.telemetry.snapshot import TelemetrySnapshot
+from infrahub.telemetry.constants import RemoteSendStatus  # noqa: TC001  (Pydantic field type — needs runtime import)
+from infrahub.telemetry.repository import TelemetrySnapshotRepository
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.database import InfrahubDatabase
     from infrahub.permissions.manager import PermissionManager
+    from infrahub.telemetry.snapshot import TelemetrySnapshot
 
 router = APIRouter(prefix="/telemetry")
 
@@ -28,7 +30,7 @@ class TelemetrySnapshotResponse(BaseModel):
     infrahub_version: str
     data: dict[str, Any]
     checksum: str
-    remote_send_status: str
+    remote_send_status: RemoteSendStatus
 
 
 class TelemetrySnapshotListResponse(BaseModel):
@@ -71,15 +73,16 @@ async def get_telemetry_snapshots(
         ),
     )
 
-    snapshots = await TelemetrySnapshot.get_list_filtered(
-        db=db,
+    repository = TelemetrySnapshotRepository(db=db)
+    snapshots = await repository.get_list(
         start_date=start_date,
         end_date=end_date,
         limit=limit,
         offset=offset,
     )
+    total = await repository.count(start_date=start_date, end_date=end_date)
 
     return TelemetrySnapshotListResponse(
-        count=len(snapshots),
+        count=total,
         snapshots=[_snapshot_to_response(s) for s in snapshots],
     )

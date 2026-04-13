@@ -1,29 +1,18 @@
 from __future__ import annotations
 
 import logging
-from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, create_autospec, patch
 
 import pytest
 
+from infrahub.telemetry.repository import TelemetrySnapshotRepository
 from infrahub.telemetry.tasks import send_telemetry_push
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
 LOGGER_NAME = "infrahub.telemetry.tasks"
-
-
-@asynccontextmanager
-async def _fake_session(read_only: bool = False) -> Any:
-    yield MagicMock()
-
-
-def _build_mock_db() -> MagicMock:
-    mock_db = MagicMock()
-    mock_db.start_session = _fake_session
-    return mock_db
 
 
 def _build_telemetry_data_mock() -> MagicMock:
@@ -45,7 +34,8 @@ def _patch_prefect_logger() -> Iterator[None]:
 @pytest.fixture
 def telemetry_mocks() -> Iterator[dict[str, Any]]:
     """Combined fixture providing all mocks needed for telemetry workflow tests."""
-    mock_db = _build_mock_db()
+    repo = create_autospec(TelemetrySnapshotRepository, spec_set=True, instance=True)
+    repo.save = AsyncMock(return_value=None)
     with (
         patch(
             "infrahub.telemetry.tasks.gather_anonymous_telemetry_data",
@@ -53,14 +43,18 @@ def telemetry_mocks() -> Iterator[dict[str, Any]]:
             return_value=_build_telemetry_data_mock(),
         ) as mock_gather,
         patch("infrahub.telemetry.tasks.post_telemetry_data", new_callable=AsyncMock) as mock_post,
-        patch("infrahub.telemetry.tasks.get_database", new_callable=AsyncMock, return_value=mock_db),
-        patch(
-            "infrahub.telemetry.snapshot.TelemetrySnapshot.save", new_callable=AsyncMock, return_value=True
-        ) as mock_save,
+        patch("infrahub.telemetry.tasks.get_database", new_callable=AsyncMock, return_value=MagicMock()),
+        patch("infrahub.telemetry.tasks.TelemetrySnapshotRepository", return_value=repo) as mock_repo_cls,
         patch("infrahub.telemetry.tasks.registry") as mock_registry,
     ):
         mock_registry.id = "dep-123"
-        yield {"gather": mock_gather, "post": mock_post, "db": mock_db, "save": mock_save, "registry": mock_registry}
+        yield {
+            "gather": mock_gather,
+            "post": mock_post,
+            "repo": repo,
+            "repo_cls": mock_repo_cls,
+            "registry": mock_registry,
+        }
 
 
 class TestSendTelemetryPushOptedOut:
@@ -78,7 +72,8 @@ class TestSendTelemetryPushOptedOut:
             await send_telemetry_push.fn()
 
             telemetry_mocks["gather"].assert_awaited_once()
-            assert telemetry_mocks["save"].await_count >= 1
+            # One save for the initial PENDING insert, one for the SKIPPED status update.
+            assert telemetry_mocks["repo"].save.await_count == 2
             telemetry_mocks["post"].assert_not_awaited()
             assert "opted out" in caplog.text.lower()
 
@@ -99,7 +94,8 @@ class TestSendTelemetryPushOptedIn:
             await send_telemetry_push.fn()
 
             telemetry_mocks["gather"].assert_awaited_once()
-            assert telemetry_mocks["save"].await_count >= 1
+            # One save for the initial PENDING insert, one for the SENT status update.
+            assert telemetry_mocks["repo"].save.await_count == 2
             telemetry_mocks["post"].assert_awaited_once()
             assert "successfully" in caplog.text.lower()
 
@@ -119,5 +115,27 @@ class TestSendTelemetryPushOptedIn:
             await send_telemetry_push.fn()
 
             telemetry_mocks["gather"].assert_awaited_once()
-            assert telemetry_mocks["save"].await_count >= 1
+            assert telemetry_mocks["repo"].save.await_count == 2
             assert "failed to send" in caplog.text.lower()
+
+
+class TestSendTelemetryPushLocalSaveFails:
+    async def test_bails_out_when_initial_save_fails(
+        self,
+        telemetry_mocks: dict[str, Any],
+        caplog: pytest.LogCaptureFixture,
+    ) -> None:
+        """If the initial local save fails we must not continue and silently no-op the status update."""
+        with (
+            patch("infrahub.telemetry.tasks.config") as mock_config,
+            caplog.at_level(logging.WARNING, logger=LOGGER_NAME),
+        ):
+            mock_config.SETTINGS.main.telemetry_optout = True
+            telemetry_mocks["repo"].save.side_effect = Exception("DB unavailable")
+
+            await send_telemetry_push.fn()
+
+            # Only one save attempt (the failed initial one); no second attempt.
+            assert telemetry_mocks["repo"].save.await_count == 1
+            telemetry_mocks["post"].assert_not_awaited()
+            assert "failed to store" in caplog.text.lower()

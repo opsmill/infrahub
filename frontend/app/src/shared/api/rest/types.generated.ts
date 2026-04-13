@@ -2205,6 +2205,11 @@ export interface components {
             /** Git Agent Dsn */
             git_agent_dsn?: string | null;
         };
+        /**
+         * RemoteSendStatus
+         * @enum {string}
+         */
+        RemoteSendStatus: "pending" | "sent" | "skipped" | "failed";
         /** SSOInfo */
         SSOInfo: {
             /** Providers */
@@ -2404,8 +2409,7 @@ export interface components {
             };
             /** Checksum */
             checksum: string;
-            /** Remote Send Status */
-            remote_send_status: string;
+            remote_send_status: components["schemas"]["RemoteSendStatus"];
         };
         /** TextAttributeParameters */
         TextAttributeParameters: {

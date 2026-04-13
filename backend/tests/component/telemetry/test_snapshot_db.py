@@ -3,12 +3,7 @@ import json
 from typing import Any
 
 from infrahub.database import InfrahubDatabase
-from infrahub.telemetry.constants import (
-    REMOTE_SEND_STATUS_FAILED,
-    REMOTE_SEND_STATUS_PENDING,
-    REMOTE_SEND_STATUS_SENT,
-    REMOTE_SEND_STATUS_SKIPPED,
-)
+from infrahub.telemetry.constants import RemoteSendStatus
 from infrahub.telemetry.snapshot import TelemetrySnapshot
 
 
@@ -29,7 +24,7 @@ def _make_snapshot(**overrides: Any) -> TelemetrySnapshot:
         infrahub_version=overrides.pop("infrahub_version", "1.2.3"),
         data=data,
         checksum=overrides.pop("checksum", _compute_checksum(data)),
-        remote_send_status=overrides.pop("remote_send_status", REMOTE_SEND_STATUS_PENDING),
+        remote_send_status=overrides.pop("remote_send_status", RemoteSendStatus.PENDING),
     )
 
 
@@ -52,7 +47,7 @@ async def test_get_by_uuid(db: InfrahubDatabase, empty_database: None) -> None:
     assert retrieved.deployment_id == "dep-123"
     assert retrieved.data == _sample_data()
     assert retrieved.checksum == snapshot.checksum
-    assert retrieved.remote_send_status == REMOTE_SEND_STATUS_PENDING
+    assert retrieved.remote_send_status == RemoteSendStatus.PENDING
 
 
 async def test_get_list(db: InfrahubDatabase, empty_database: None) -> None:
@@ -69,35 +64,35 @@ async def test_get_list(db: InfrahubDatabase, empty_database: None) -> None:
 async def test_update_remote_send_status(db: InfrahubDatabase, empty_database: None) -> None:
     snapshot = _make_snapshot()
     await snapshot.save(db=db)
-    assert snapshot.remote_send_status == REMOTE_SEND_STATUS_PENDING
+    assert snapshot.remote_send_status == RemoteSendStatus.PENDING
 
-    snapshot.remote_send_status = REMOTE_SEND_STATUS_SENT
+    snapshot.remote_send_status = RemoteSendStatus.SENT
     await snapshot.save(db=db)
 
     retrieved = await TelemetrySnapshot.get(id=str(snapshot.uuid), db=db)
     assert retrieved is not None
-    assert retrieved.remote_send_status == REMOTE_SEND_STATUS_SENT
+    assert retrieved.remote_send_status == RemoteSendStatus.SENT
 
 
 async def test_update_to_skipped(db: InfrahubDatabase, empty_database: None) -> None:
     snapshot = _make_snapshot()
     await snapshot.save(db=db)
 
-    snapshot.remote_send_status = REMOTE_SEND_STATUS_SKIPPED
+    snapshot.remote_send_status = RemoteSendStatus.SKIPPED
     await snapshot.save(db=db)
 
     retrieved = await TelemetrySnapshot.get(id=str(snapshot.uuid), db=db)
     assert retrieved is not None
-    assert retrieved.remote_send_status == REMOTE_SEND_STATUS_SKIPPED
+    assert retrieved.remote_send_status == RemoteSendStatus.SKIPPED
 
 
 async def test_update_to_failed(db: InfrahubDatabase, empty_database: None) -> None:
     snapshot = _make_snapshot()
     await snapshot.save(db=db)
 
-    snapshot.remote_send_status = REMOTE_SEND_STATUS_FAILED
+    snapshot.remote_send_status = RemoteSendStatus.FAILED
     await snapshot.save(db=db)
 
     retrieved = await TelemetrySnapshot.get(id=str(snapshot.uuid), db=db)
     assert retrieved is not None
-    assert retrieved.remote_send_status == REMOTE_SEND_STATUS_FAILED
+    assert retrieved.remote_send_status == RemoteSendStatus.FAILED

@@ -30,7 +30,7 @@ A single daily telemetry data capture persisted to the Neo4j database. Stored as
 - `kind` must be a non-empty string
 - `payload_format` must be a non-empty string
 - `checksum` must be a 64-character hex string (SHA-256)
-- `remote_send_status` must be one of: `"pending"`, `"sent"`, `"skipped"`, `"failed"`
+- `remote_send_status` is a `RemoteSendStatus` `StrEnum` with members `PENDING`, `SENT`, `SKIPPED`, `FAILED`
 - `data` must be a non-empty JSON dict
 
 **Neo4j Storage**:
@@ -97,15 +97,18 @@ RETURN n
 
 ### List Snapshots (with optional date-range filter)
 
-Custom filter via `TelemetrySnapshotGetListQuery`. Supports open-ended ranges — either or both date params can be null:
+Custom filter via `TelemetrySnapshotGetListQuery` (in `backend/infrahub/telemetry/queries.py`). Supports open-ended ranges — either or both date params can be null. Bare `YYYY-MM-DD` date inputs are normalized to `T00:00:00.000000+00:00` (start) or `T23:59:59.999999+00:00` (end) before being bound, so an `end_date` of `2026-04-10` includes snapshots collected mid-day on 2026-04-10:
 ```cypher
 MATCH (n:TelemetrySnapshot)
 WHERE ($start_date IS NULL OR n.created_at >= $start_date)
   AND ($end_date IS NULL OR n.created_at <= $end_date)
 RETURN n
 ORDER BY n.created_at DESC
+SKIP $offset
 LIMIT $limit
 ```
+
+CRUD lives in `TelemetrySnapshotRepository` (in `backend/infrahub/telemetry/repository.py`), which exposes `save`, `get_list`, and `count`. The `count` method reuses the same query (with limit/offset stripped) so the API can return a real total alongside a page.
 
 ## State Transitions
 

@@ -15,15 +15,13 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
 from .constants import (
-    REMOTE_SEND_STATUS_FAILED,
-    REMOTE_SEND_STATUS_PENDING,
-    REMOTE_SEND_STATUS_SENT,
-    REMOTE_SEND_STATUS_SKIPPED,
     TELEMETRY_KIND,
     TELEMETRY_VERSION,
+    RemoteSendStatus,
 )
 from .database import gather_database_information
 from .models import TelemetryBranchData, TelemetryData, TelemetrySchemaData, TelemetryWorkerData
+from .repository import TelemetrySnapshotRepository
 from .snapshot import TelemetrySnapshot
 from .task_manager import gather_prefect_information
 from .utils import determine_infrahub_type
@@ -118,28 +116,25 @@ async def send_telemetry_push() -> None:
         infrahub_version=__version__,
         data=data_dict,
         checksum=checksum,
-        remote_send_status=REMOTE_SEND_STATUS_PENDING,
+        remote_send_status=RemoteSendStatus.PENDING,
     )
 
-    # Always store locally
+    database = await get_database()
+    repository = TelemetrySnapshotRepository(db=database)
+
+    # Always store locally. If this fails, we have nothing to update later — bail out.
     try:
-        database = await get_database()
-        async with database.start_session() as db:
-            await snapshot.save(db=db)
+        await repository.save(snapshot)
         log.info(f"Telemetry snapshot stored locally (uuid={snapshot.uuid}).")
     except Exception as exc:
         log.warning(f"Failed to store telemetry snapshot locally: {exc}")
+        return
 
     # Conditionally send remotely
     if config.SETTINGS.main.telemetry_optout:
         log.info("User opted out of remote telemetry. Marking snapshot as skipped.")
-        try:
-            snapshot.remote_send_status = REMOTE_SEND_STATUS_SKIPPED
-            if snapshot.id:
-                async with database.start_session() as db:
-                    await snapshot.save(db=db)
-        except Exception as exc:
-            log.warning(f"Failed to update snapshot status to skipped: {exc}")
+        snapshot.remote_send_status = RemoteSendStatus.SKIPPED
+        await repository.save(snapshot)
         return
 
     log.info(f"Pushing anonymous telemetry data to {config.SETTINGS.main.telemetry_endpoint}...")
@@ -152,16 +147,14 @@ async def send_telemetry_push() -> None:
 
     try:
         await post_telemetry_data(url=config.SETTINGS.main.telemetry_endpoint, payload=payload)
-        snapshot.remote_send_status = REMOTE_SEND_STATUS_SENT
+        snapshot.remote_send_status = RemoteSendStatus.SENT
         log.info("Telemetry data sent to remote endpoint successfully.")
     except Exception as exc:
-        snapshot.remote_send_status = REMOTE_SEND_STATUS_FAILED
+        snapshot.remote_send_status = RemoteSendStatus.FAILED
         log.warning(f"Failed to send telemetry data to remote endpoint: {exc}")
 
     # Update remote send status in DB
     try:
-        if snapshot.id:
-            async with database.start_session() as db:
-                await snapshot.save(db=db)
+        await repository.save(snapshot)
     except Exception as exc:
         log.warning(f"Failed to update snapshot remote send status: {exc}")
