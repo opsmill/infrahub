@@ -192,7 +192,8 @@ jobs:
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
                   "Bash(git reset :*)", "Bash(git clean :*)",
                   "Bash(gh pr merge :*)",
-                  "Write(:*.github/:*)", "Edit(:*.github/:*)"
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)",
+                  "Write(:*.git/:*)", "Edit(:*.git/:*)"
                 ]
               }
             }
@@ -386,7 +387,8 @@ jobs:
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
                   "Bash(git reset :*)", "Bash(git clean :*)",
                   "Bash(gh pr merge :*)",
-                  "Write(:*.github/:*)", "Edit(:*.github/:*)"
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)",
+                  "Write(:*.git/:*)", "Edit(:*.git/:*)"
                 ]
               }
             }
