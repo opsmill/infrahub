@@ -31,6 +31,23 @@ Both provide:
 | `needs_update(fields)` | Returns True if any dependent field changed |
 | `set_value(value, manually_assigned)` | Manual override; skips future `compute()` calls |
 
+### HFID Storage and Indexing
+
+**Location:** `backend/infrahub/core/attribute.py`
+
+HFID values are stored using `IndexedListAttribute`, a subclass of `ListAttributeOptional` that:
+
+- Returns `AttributeDBNodeType.INDEXED` from `get_db_node_type()`, so the `AttributeValue` node gets the `AttributeValueIndexed` label in Neo4j (enabling RANGE/TEXT index lookups)
+- Falls back to non-indexed storage (`DEFAULT`) with a warning when the serialized value exceeds `MAX_STRING_LENGTH` (4096 bytes)
+
+`HumanFriendlyIdentifier.compute()` converts all resolved path values to strings via `str()`. This ensures consistent JSON serialization — callers, the GraphQL API, and the stored value all use `list[str]`.
+
+### HFID Lookup
+
+**Location:** `backend/infrahub/core/manager.py`, `backend/infrahub/core/query/node.py`
+
+`NodeManager.get_one_by_hfid()` uses `NodeGetByHFIDQuery` to match directly on the stored `human_friendly_id` attribute value. The query starts from `AttributeValue` nodes matching the serialized HFID, traverses back to the owning node, and branch-filters each edge (`IS_PART_OF`, `HAS_VALUE`, `HAS_ATTRIBUTE`).
+
 ### Schema Registries
 
 **Location:** `backend/infrahub/core/schema/schema_branch_display.py`, `schema_branch_hfid.py`
@@ -148,8 +165,11 @@ parent { node { ... on LocationSite { name { value } } } }
 
 | File | What |
 |------|------|
+| `core/attribute.py` | `IndexedListAttribute` (HFID storage with indexing and size fallback) |
 | `core/node/node_property_attribute.py` | `DisplayLabel`, `HumanFriendlyIdentifier` classes |
 | `core/node/__init__.py` | `resolve_relationships()`, `_collect_extra_filters()`, `add_display_label()`, `_update()` |
+| `core/query/node.py` | `NodeGetByHFIDQuery` (branch-aware HFID lookup) |
+| `core/manager.py` | `NodeManager.get_one_by_hfid()` (uses `NodeGetByHFIDQuery`) |
 | `core/schema/schema_branch_display.py` | `DisplayLabels` registry, `TemplateLabel` |
 | `core/schema/schema_branch_hfid.py` | `HFIDs` registry, `HFIDDefinition` |
 | `core/schema/schema_branch.py` | `validate_display_label()`, `process_human_friendly_id()` |
