@@ -27,6 +27,8 @@ described in the sections below.
   (comments, PR creation, PR editing), ALWAYS use `--body-file` instead. First write the
   content to `.agent-tmp/gh-body.md` using the `Write` tool, then pass `--body-file .agent-tmp/gh-body.md`.
   Do NOT pass multi-line content inline via `--body` -- it will be denied by permission patterns.
+- **One command per Bash call.** Do NOT chain commands with `&&`, `||`, `;`, or `|`.
+  Each command must be a separate Bash tool invocation. Chained commands will be denied by the permission system.
 
 ## Before proceeding
 
