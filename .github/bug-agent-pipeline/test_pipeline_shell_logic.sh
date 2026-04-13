@@ -1070,6 +1070,7 @@ ANALYST_SCENARIOS = [
     ("Bash(git push origin ai-bug-pipeline-1042)",     True,  "push to pipeline branch"),
     ("Bash(git rev-parse HEAD)",                       True,  "rev-parse"),
     ("Bash(git log --oneline -10)",                    True,  "git log"),
+    ("Bash(git log --all --oneline --diff-filter=A -S \"CopyToClipboardMenuItem\" -- '*.tsx' '*.ts')", True, "git log with -S and quotes"),
     ("Bash(git diff)",                                 True,  "git diff bare"),
     ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
     ("Bash(gh issue comment 42 --body test)",          True,  "comment on issue single-line"),
