@@ -112,7 +112,8 @@ jobs:
                   "Bash(git fetch *)", "Bash(git branch -a)",
                   "Bash(cd :*)",
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
-                  "Bash(ls)", "Bash(ls :*)"
+                  "Bash(ls)", "Bash(ls :*)",
+                  "Bash(mkdir -p :*)"
                 ],
                 "deny": [
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
