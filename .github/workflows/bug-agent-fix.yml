@@ -230,6 +230,12 @@ jobs:
                   "Bash((cd frontend/app && npm run codegen:openapi))",
                   "Bash((cd frontend/app && npx betterer --update))",
                   "Bash(ls)", "Bash(ls :*)"
+                ],
+                "deny": [
+                  "Bash(git push --force :*)", "Bash(git push -f :*)",
+                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(gh pr merge :*)",
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)"
                 ]
               }
             }
@@ -435,6 +441,12 @@ jobs:
                   "Bash((cd frontend/app && npm run codegen:openapi))",
                   "Bash((cd frontend/app && npx betterer --update))",
                   "Bash(ls)", "Bash(ls :*)"
+                ],
+                "deny": [
+                  "Bash(git push --force :*)", "Bash(git push -f :*)",
+                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(gh pr merge :*)",
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)"
                 ]
               }
             }

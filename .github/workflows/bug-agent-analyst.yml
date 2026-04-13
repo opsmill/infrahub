@@ -108,6 +108,12 @@ jobs:
                   "Bash(git diff)", "Bash(git diff :*)",
                   "Bash(gh issue comment :*)", "Bash(gh issue edit :*)",
                   "Bash(ls)", "Bash(ls :*)"
+                ],
+                "deny": [
+                  "Bash(git push --force :*)", "Bash(git push -f :*)",
+                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(gh pr merge :*)",
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)"
                 ]
               }
             }

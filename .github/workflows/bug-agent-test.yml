@@ -186,6 +186,12 @@ jobs:
                   "Bash(cd frontend/app && npx biome check --write .)",
                   "Bash(cd frontend/app && npx playwright test :*)",
                   "Bash(ls)", "Bash(ls :*)"
+                ],
+                "deny": [
+                  "Bash(git push --force :*)", "Bash(git push -f :*)",
+                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(gh pr merge :*)",
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)"
                 ]
               }
             }
@@ -372,8 +378,13 @@ jobs:
                   "Bash(cd frontend/app && npm run test :*)",
                   "Bash(cd frontend/app && npx biome check --write .)",
                   "Bash(cd frontend/app && npx playwright test :*)",
-                  "Bash((cd frontend/app && npx biome check --write .))",
-                  "Bash(ls:*)"
+                  "Bash(ls)", "Bash(ls :*)"
+                ],
+                "deny": [
+                  "Bash(git push --force :*)", "Bash(git push -f :*)",
+                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(gh pr merge :*)",
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)"
                 ]
               }
             }

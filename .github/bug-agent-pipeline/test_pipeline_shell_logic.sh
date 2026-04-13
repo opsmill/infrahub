@@ -816,11 +816,10 @@ def rule_matches(rule: str, tool_call: str) -> bool:
     if call_arg is None:
         return False
 
-    # Expand :* suffix — colon is a syntax separator, replaced with
-    # nothing so the prefix globs directly into the remainder.
-    # "git push origin ai-bug-pipeline-:*" → "git push origin ai-bug-pipeline-*"
-    if rule_spec.endswith(":*"):
-        rule_spec = rule_spec[:-2] + "*"
+    # Expand :* — colon is a syntax separator, replaced with nothing so
+    # the prefix globs directly into the remainder.  Handle ALL occurrences,
+    # not just trailing (e.g. "Write(:*.github/:*)" → "*.github/*").
+    rule_spec = rule_spec.replace(":*", "*")
 
     # No wildcards → exact match
     if "*" not in rule_spec:
@@ -836,6 +835,70 @@ def rule_matches(rule: str, tool_call: str) -> bool:
 def is_allowed(rules: list[str], tool_call: str) -> bool:
     return any(rule_matches(r, tool_call) for r in rules)
 
+
+pass_count = 0
+fail_count = 0
+
+# ── Matcher self-validation ──────────────────────────────────
+# These verify the matcher's own behavior against documented Claude Code
+# semantics. If Claude Code ever changes its matching rules, these will
+# surface the divergence even if the per-agent scenarios still happen to
+# pass. This is a best-effort reimplementation — not a test against the
+# real Claude Code binary.
+
+MATCHER_SELF_TESTS = [
+    # (rule, tool_call, expected, description)
+    # `:*` suffix — colon consumed as syntax separator, remainder is glob
+    ("Bash(ls:*)",       "Bash(ls -la)",    True,  "colon-star: space arg"),
+    ("Bash(ls:*)",       "Bash(ls)",        True,  "colon-star: bare cmd"),
+    ("Bash(git push origin ai-bug-pipeline-:*)",
+     "Bash(git push origin ai-bug-pipeline-1042)", True,
+     "colon-star: after dash prefix"),
+    # Exact match — no wildcards means no extra args allowed
+    ("Bash(uv run invoke format)",
+     "Bash(uv run invoke format)", True, "exact: identical"),
+    ("Bash(uv run invoke format)",
+     "Bash(uv run invoke format && rm -rf /)", False,
+     "exact: rejects chaining"),
+    ("Bash(uv run invoke format)",
+     "Bash(uv run invoke format --verbose)", False,
+     "exact: rejects extra args"),
+    # Bare tool name — matches all invocations of that tool
+    ("Read",             "Read",              True,  "bare tool: bare call"),
+    ("Read",             "Read(/some/path)",   True,  "bare tool: with arg"),
+    # Write/Edit path deny patterns
+    ("Write(:*.github/:*)",
+     "Write(.github/workflows/test.yml)", True,
+     "Write deny: .github path"),
+    ("Edit(:*.github/:*)",
+     "Edit(.github/bug-agent-pipeline/fixer.md)", True,
+     "Edit deny: .github path"),
+    ("Write(:*.github/:*)",
+     "Write(backend/infrahub/core/foo.py)", False,
+     "Write deny: non-.github allowed"),
+    ("Edit(:*.github/:*)",
+     "Edit(backend/infrahub/core/foo.py)", False,
+     "Edit deny: non-.github allowed"),
+    # Star with colon in context of git commands
+    ("Bash(git diff :*)", "Bash(git diff HEAD~1)", True,
+     "colon-star: git diff with arg"),
+    ("Bash(git diff)",    "Bash(git diff HEAD~1)", False,
+     "exact: git diff rejects arg"),
+    # Wildcard-only specifier matches everything
+    ("Bash(*)",          "Bash(anything here)", True,
+     "star-only: matches any arg"),
+]
+
+for rule, tool_call, expected, desc in MATCHER_SELF_TESTS:
+    actual = rule_matches(rule, tool_call)
+    tag = f"matcher-self-test:{desc}"
+    if actual == expected:
+        print(f"PASS:{tag}")
+        pass_count += 1
+    else:
+        verdict = "matched (expected reject)" if actual else "rejected (expected match)"
+        print(f"FAIL:{tag}:{verdict}: rule={rule} call={tool_call}")
+        fail_count += 1
 
 # ── Extract permissions per workflow/job ──────────────────────
 
@@ -1056,9 +1119,6 @@ REVISE_TEST_SCENARIOS = _TEST_WRITER_COMMON + [
 
 # ── Run all scenarios ─────────────────────────────────────────
 
-pass_count = 0
-fail_count = 0
-
 def run_scenarios(wf_path, job_name, scenarios, label):
     global pass_count, fail_count
     perms = extract_permissions(wf_path)
@@ -1111,6 +1171,234 @@ PERM_SUMMARY=$(echo "$PERM_TEST_RESULTS" | grep "^SUMMARY:" | head -1)
 PERM_PASS=$(echo "$PERM_SUMMARY" | cut -d: -f2)
 if [[ "${PERM_PASS:-0}" -lt 10 ]]; then
   fail "permission matcher produced too few results ($PERM_PASS); possible extraction error"
+fi
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 25. Deny lists present in all workflows ==="
+
+DENY_TEST_RESULTS=$(python3 << 'PYEOF'
+import json, yaml, glob, os
+
+# Dynamically discover all jobs with permission settings — no hardcoded
+# job names. If a job is added, renamed, or removed the test adapts
+# automatically. A renamed job that drops its deny list will be caught.
+
+EXPECTED_DENY = [
+    'Bash(git push --force :*)',
+    'Bash(git push -f :*)',
+    'Bash(git reset :*)',
+    'Bash(git clean :*)',
+    'Bash(gh pr merge :*)',
+    'Write(:*.github/:*)',
+    'Edit(:*.github/:*)',
+]
+
+pass_count = 0
+fail_count = 0
+discovered_jobs = 0
+
+for wf_path in sorted(glob.glob('.github/workflows/bug-agent-*.yml')):
+    wf_file = os.path.basename(wf_path)
+    with open(wf_path) as f:
+        data = yaml.safe_load(f)
+
+    for job_name, job in data["jobs"].items():
+        # Find jobs that have a claude-code-action step with settings
+        deny_rules = []
+        has_settings = False
+        for step in job.get("steps", []):
+            w = step.get("with", {})
+            if "settings" in w:
+                has_settings = True
+                settings = json.loads(w["settings"])
+                deny_rules = settings.get("permissions", {}).get("deny", [])
+
+        if not has_settings:
+            continue  # Not a claude-code-action job (e.g. prepare-environment)
+
+        discovered_jobs += 1
+
+        if not deny_rules:
+            print(f"FAIL:{wf_file}/{job_name}:no deny list found")
+            fail_count += 1
+            continue
+
+        for expected in EXPECTED_DENY:
+            if expected in deny_rules:
+                print(f"PASS:{wf_file}/{job_name}:has deny rule '{expected}'")
+                pass_count += 1
+            else:
+                print(f"FAIL:{wf_file}/{job_name}:missing deny rule '{expected}'")
+                fail_count += 1
+
+if discovered_jobs == 0:
+    print("FAIL:no jobs with permission settings discovered")
+    fail_count += 1
+
+print(f"SUMMARY:{pass_count}:{fail_count}")
+PYEOF
+)
+
+while IFS= read -r line; do
+  case "$line" in
+    PASS:*)  pass "${line#PASS:}" ;;
+    FAIL:*)  fail "${line#FAIL:}" ;;
+    SUMMARY:*) ;;
+  esac
+done <<< "$DENY_TEST_RESULTS"
+
+DENY_SUMMARY=$(echo "$DENY_TEST_RESULTS" | grep "^SUMMARY:" | head -1)
+DENY_PASS=$(echo "$DENY_SUMMARY" | cut -d: -f2)
+if [[ "${DENY_PASS:-0}" -lt 5 ]]; then
+  fail "deny list check produced too few results ($DENY_PASS); possible extraction error"
+fi
+
+# ─────────────────────────────────────────────────────────────
+echo ""
+echo "=== 26. Untrusted content sanitized before GITHUB_OUTPUT ==="
+# ─────────────────────────────────────────────────────────────
+
+# Every user-provided value (issue body/title, PR body/title, comment body,
+# review body) must be sanitized via the sed neutralization pattern BEFORE
+# being written to $GITHUB_OUTPUT. This test verifies:
+#   a) Each untrusted env var or jq-extracted body/title has a SAFE_ counterpart
+#   b) Only the SAFE_ version appears in lines that write to GITHUB_OUTPUT
+
+SANITIZE_RESULTS=$(python3 << 'PYEOF'
+import yaml, re, glob, os
+
+# Patterns in env values that indicate untrusted content from GitHub events
+UNTRUSTED_ENV_VALUE_PATTERNS = [
+    'github.event.issue.body',
+    'github.event.issue.title',
+    'github.event.pull_request.body',
+    'github.event.pull_request.title',
+    'github.event.comment.body',
+]
+
+# Variables that are safe by construction (not user-provided content)
+KNOWN_SAFE_VARS = {
+    'DELIM', 'BOUNDARY', 'ISSUE_URL', 'ISSUE_NUMBER', 'ISSUE_REPORTER',
+    'PR_NUMBER', 'PR_BRANCH', 'PR_URL', 'GH_TOKEN',
+}
+
+pass_count = 0
+fail_count = 0
+
+for wf_path in sorted(glob.glob('.github/workflows/bug-agent-*.yml')):
+    wf_name = os.path.basename(wf_path)
+    with open(wf_path) as f:
+        data = yaml.safe_load(f)
+
+    for job_name, job in data['jobs'].items():
+        for step in job.get('steps', []):
+            env = step.get('env', {})
+            run = step.get('run', '')
+            step_name = step.get('name', 'unnamed')
+
+            if not run or 'GITHUB_OUTPUT' not in run:
+                continue
+
+            tag = f"{wf_name}/{job_name}/{step_name}"
+
+            # 1. Identify untrusted env vars
+            untrusted_env = {}  # env_var_name -> source
+            for env_name, env_value in env.items():
+                val = str(env_value)
+                for pattern in UNTRUSTED_ENV_VALUE_PATTERNS:
+                    if pattern in val:
+                        untrusted_env[env_name] = pattern
+                        break
+                # Also catch outputs.BODY references (bot comments reflected)
+                if 'outputs.BODY' in str(env_value):
+                    untrusted_env[env_name] = str(env_value)
+
+            # 2. Identify jq-extracted body/title vars in the run block
+            jq_untrusted = {}
+            for m in re.finditer(
+                r"(\w+)=\$\(echo.*?jq\s+-r\s+'\.(?:body|title)'\)", run
+            ):
+                var = m.group(1)
+                if var not in KNOWN_SAFE_VARS:
+                    jq_untrusted[var] = "jq .body/.title extraction"
+
+            all_untrusted = {**untrusted_env, **jq_untrusted}
+            if not all_untrusted:
+                continue
+
+            # 3. Determine which untrusted vars are written to GITHUB_OUTPUT
+            #    (vars used only in control flow don't need sanitization)
+            output_lines = [
+                l.strip() for l in run.split('\n')
+                if 'GITHUB_OUTPUT' in l
+                and not l.strip().startswith('echo "META<<')
+                and 'echo "${DELIM}"' not in l.strip()
+                and '>> $GITHUB_OUTPUT' in l
+            ]
+
+            for var, source in sorted(all_untrusted.items()):
+                # Extract the actual SAFE_ variable name used for this var.
+                # The convention varies (SAFE_PR_BODY, SAFE_COMMENT, SAFE_REVIEW)
+                # so we extract it from the sed assignment line.
+                safe_name_match = re.search(
+                    r'(SAFE_\w+)=\$\(printf\s.*\$\{' + re.escape(var) + r'\}.*\bsed\b',
+                    run,
+                )
+                actual_safe_name = safe_name_match.group(1) if safe_name_match else None
+
+                # Is this var's content written to GITHUB_OUTPUT
+                # (either raw or via its SAFE_ counterpart)?
+                raw_refs = [f'${{{var}}}', f'${var}']
+                safe_refs = (
+                    [f'${{{actual_safe_name}}}', f'${actual_safe_name}']
+                    if actual_safe_name else []
+                )
+                written_to_output = any(
+                    ref in line
+                    for line in output_lines
+                    for ref in raw_refs + safe_refs
+                )
+
+                if not written_to_output:
+                    # Var is only used for control flow — sanitization not required
+                    continue
+
+                # Var content IS written to output — it MUST be sanitized
+                if actual_safe_name:
+                    print(f"PASS:{tag}:{var} sanitized as {actual_safe_name}")
+                    pass_count += 1
+                else:
+                    print(f"FAIL:{tag}:{var} (from {source}) lacks SAFE_ sed sanitization")
+                    fail_count += 1
+
+                # Also verify the raw version is NOT in output (only SAFE_ should be)
+                raw_in_output = any(
+                    ref in line for line in output_lines for ref in raw_refs
+                )
+                if raw_in_output:
+                    print(f"FAIL:{tag}:raw ${{{var}}} written to GITHUB_OUTPUT")
+                    fail_count += 1
+                else:
+                    print(f"PASS:{tag}:{var} only sanitized version in GITHUB_OUTPUT")
+                    pass_count += 1
+
+print(f"SUMMARY:{pass_count}:{fail_count}")
+PYEOF
+)
+
+while IFS= read -r line; do
+  case "$line" in
+    PASS:*)  pass "${line#PASS:}" ;;
+    FAIL:*)  fail "${line#FAIL:}" ;;
+    SUMMARY:*) ;;
+  esac
+done <<< "$SANITIZE_RESULTS"
+
+SANITIZE_SUMMARY=$(echo "$SANITIZE_RESULTS" | grep "^SUMMARY:" | head -1)
+SANITIZE_PASS=$(echo "$SANITIZE_SUMMARY" | cut -d: -f2)
+if [[ "${SANITIZE_PASS:-0}" -lt 1 ]]; then
+  fail "sanitization check produced no results; possible extraction error"
 fi
 
 # ─────────────────────────────────────────────────────────────
