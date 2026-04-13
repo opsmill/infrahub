@@ -36,8 +36,8 @@ function BranchesListToolbar() {
     <Col className="gap-0">
       <BranchesListHeader />
 
-      <Row className="px-3 py-1">
-        <FilterSearchInput placeholder="Search branches" className="p-0" />
+      <Row className="px-3 py-2">
+        <FilterSearchInput placeholder="Search branches" />
 
         <ActiveFilterTags
           filters={filters}
