@@ -106,7 +106,7 @@ jobs:
                   "Read", "Write", "Glob", "Grep",
                   "Bash(git checkout -b ai-bug-pipeline-*)", "Bash(git checkout ai-bug-pipeline-*)",
                   "Bash(git push origin ai-bug-pipeline-*)",
-                  "Bash(git rev-parse :*)", "Bash(git log*)",
+                  "Bash(git rev-parse :*)", "Bash(git log *)",
                   "Bash(git diff)", "Bash(git diff :*)",
                   "Bash(git show :*)",
                   "Bash(git fetch *)", "Bash(git branch -a)",
