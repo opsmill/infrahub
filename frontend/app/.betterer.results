@@ -283,7 +283,7 @@ exports[`fix ts error`] = {
       [67, 45, 5, "tsc: Parameter \'index\' implicitly has an \'any\' type.", "178792571"],
       [102, 16, 4, "tsc: \'data\' is possibly \'undefined\'.", "2087377941"]
     ],
-    "src/entities/tasks/ui/task-item-details.tsx:521792775": [
+    "src/entities/tasks/ui/task-item-details.tsx:1754608167": [
       [55, 25, 17, "tsc: Element implicitly has an \'any\' type because expression of type \'\\"InfrahubTask\\"\' can\'t be used to index type \'{}\'.\\n  Property \'InfrahubTask\' does not exist on type \'{}\'.", "1025837332"]
     ],
     "src/entities/tasks/ui/task-items.tsx:1246756644": [
