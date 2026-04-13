@@ -22,28 +22,40 @@ ORDER BY elementId(av)
 SKIP $offset LIMIT $limit
 """
 
-APPLY_UPDATES_QUERY = """
+NORMALIZE_VALUES_QUERY = """
 UNWIND $updates AS update
 CALL (update) {
-    MATCH (av) WHERE elementId(av) = update.element_id
-    SET av.value = update.new_value
-    WITH av, update
-    WHERE update.add_index = true
-    SET av:AttributeValueIndexed
+    MATCH (attr:Attribute {name: "human_friendly_id"})-[old_r:HAS_VALUE]->(old_av)
+    WHERE elementId(old_av) = update.element_id
+    CREATE (new_av:AttributeValue {value: update.new_value, is_default: old_av.is_default})
+    CREATE (attr)-[new_r:HAS_VALUE]->(new_av)
+    SET new_r = properties(old_r)
+    DELETE old_r
 } IN TRANSACTIONS OF 500 ROWS
 """
 
+INDEX_HFID_VALUES_QUERY = """
+MATCH (attr:Attribute {name: "human_friendly_id"})-[:HAS_VALUE]->(av:AttributeValue)
+WHERE NOT av:AttributeValueIndexed
+    AND size(av.value) < $max_length
+    AND NOT EXISTS {
+        MATCH (other:Attribute)-[:HAS_VALUE]->(av)
+        WHERE other.name <> "human_friendly_id"
+    }
+CALL (av) {
+    SET av:AttributeValueIndexed
+} IN TRANSACTIONS OF 1000 ROWS
+"""
 
-class HFIDUpdate(TypedDict):
+
+class NormalizeUpdate(TypedDict):
     element_id: str
     new_value: str
-    add_index: bool
 
 
-def _build_update(record: Record) -> HFIDUpdate | None:
-    """Determine if an HFID value needs normalization and/or indexing."""
+def _needs_normalization(record: Record) -> NormalizeUpdate | None:
+    """Determine if an HFID value needs normalization to all-strings."""
     raw_value = record.get("value")
-    is_indexed = record.get("is_indexed")
 
     if not isinstance(raw_value, str):
         return None
@@ -58,13 +70,11 @@ def _build_update(record: Record) -> HFIDUpdate | None:
 
     normalized = [str(item) for item in parsed]
     new_value = ujson.dumps(normalized)
-    needs_normalize = new_value != raw_value
-    needs_index = not is_indexed and 3 + len(new_value.encode("utf-8")) < MAX_STRING_LENGTH
 
-    if not needs_normalize and not needs_index:
+    if new_value == raw_value:
         return None
 
-    return HFIDUpdate(element_id=record.get("element_id"), new_value=new_value, add_index=needs_index)
+    return NormalizeUpdate(element_id=record.get("element_id"), new_value=new_value)
 
 
 class Migration070(ArbitraryMigration):
@@ -80,23 +90,14 @@ class Migration070(ArbitraryMigration):
     minimum_version: int = 69
     update_batch_size: int = 1000
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        return MigrationResult()
+    async def _normalize_hfid_values(self, db: InfrahubDatabase) -> None:
+        """Normalize HFID values to all-strings, in batches.
 
-    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
-        db = migration_input.db
-        try:
-            await self._normalize_and_index_hfid_values(db=db)
-        except Exception as exc:
-            return MigrationResult(errors=[str(exc)])
-
-        return MigrationResult()
-
-    async def _normalize_and_index_hfid_values(self, db: InfrahubDatabase) -> None:
-        """Normalize HFID values to all-strings and add the indexed label, in batches."""
+        Creates new AttributeValue nodes and transfers HAS_VALUE edges
+        to avoid corrupting shared AttributeValue nodes.
+        """
         offset = 0
         total_normalized = 0
-        total_indexed = 0
 
         while True:
             results = await db.execute_query(
@@ -106,22 +107,38 @@ class Migration070(ArbitraryMigration):
             if not results:
                 break
 
-            updates: list[HFIDUpdate] = []
+            updates: list[NormalizeUpdate] = []
             for record in results:
-                update = _build_update(record)
+                update = _needs_normalization(record=record)
                 if update:
                     updates.append(update)
-                    if update["new_value"] != record.get("value"):
-                        total_normalized += 1
-                    if update["add_index"]:
-                        total_indexed += 1
 
             if updates:
-                await db.execute_query(query=APPLY_UPDATES_QUERY, params={"updates": updates})
+                await db.execute_query(query=NORMALIZE_VALUES_QUERY, params={"updates": updates})
+                total_normalized += len(updates)
 
             offset += self.update_batch_size
 
         if total_normalized:
             console.log(f"Normalized {total_normalized} HFID value(s) to all-string format")
-        if total_indexed:
-            console.log(f"Added AttributeValueIndexed label to {total_indexed} HFID value(s)")
+
+    async def _index_hfid_values(self, db: InfrahubDatabase) -> None:
+        """Add AttributeValueIndexed label to HFID values within the index size limit.
+
+        Only indexes values that are not shared with non-HFID attributes.
+        """
+        await db.execute_query(query=INDEX_HFID_VALUES_QUERY, params={"max_length": MAX_STRING_LENGTH})
+        console.log("Added AttributeValueIndexed label to HFID values")
+
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
+        return MigrationResult()
+
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        db = migration_input.db
+        try:
+            await self._normalize_hfid_values(db=db)
+            await self._index_hfid_values(db=db)
+        except Exception as exc:
+            return MigrationResult(errors=[str(exc)])
+
+        return MigrationResult()
