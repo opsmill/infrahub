@@ -62,10 +62,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         return response
 
-    async def sync(self, staging_branch: str | None = None) -> None:
+    async def sync(self, staging_branch: str | None = None, db_commits: dict[str, str] | None = None) -> None:
         """Synchronize the repository with its remote origin and with the database.
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
+        If db_commits is provided, also detect branches where the local git HEAD differs from the DB commit value
+        and re-import objects for those branches (handles stale DB state after a re-clone).
         """
 
         log.info("Starting the synchronization.", repository=self.name)
@@ -74,7 +76,26 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         new_branches, updated_branches = await self.compare_local_remote()
 
-        if not new_branches and not updated_branches:
+        # Detect branches where the DB commit is stale compared to local git HEAD
+        stale_db_branches: list[str] = []
+        if db_commits and self.internal_status == RepositoryInternalStatus.ACTIVE.value:
+            already_handled = set(new_branches) | set(updated_branches)
+            local_branches = self.get_branches_from_local(include_worktree=False)
+            for branch_name, branch_data in local_branches.items():
+                if branch_name in already_handled:
+                    continue
+                db_commit = db_commits.get(self._get_mapped_target_branch(branch_name=branch_name))
+                if db_commit is not None and str(branch_data.commit) != db_commit:
+                    log.info(
+                        "Stale DB commit detected",
+                        repository=self.name,
+                        branch=branch_name,
+                        local_commit=str(branch_data.commit),
+                        db_commit=db_commit,
+                    )
+                    stale_db_branches.append(branch_name)
+
+        if not new_branches and not updated_branches and not stale_db_branches:
             return
 
         log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
@@ -119,6 +140,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         repository=self.name,
                         branch=branch_name,
                     )
+
+            for branch_name in stale_db_branches:
+                infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+                commit = self.get_commit_value(branch_name=branch_name, remote=False)
+                self.create_commit_worktree(commit=commit)
+                await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
+                await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit)
 
         await self._sync_staging(staging_branch=staging_branch, updated_branches=updated_branches)
 
