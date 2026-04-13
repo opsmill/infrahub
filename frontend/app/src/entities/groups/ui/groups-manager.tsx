@@ -3,10 +3,9 @@ import { useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { SearchInput } from "@/shared/components/inputs/search-input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Button } from "@/shared/components/ui/button";
-import { SearchInput } from "@/shared/components/ui/search-input";
-import { classNames } from "@/shared/utils/common";
 
 import { AddGroupTriggerButton } from "@/entities/groups/ui/add-group-trigger-button";
 import { ObjectGroupsList } from "@/entities/groups/ui/object-groups-list";
@@ -55,14 +54,9 @@ export function GroupsManager({ className, schema, objectId }: GroupsManagerProp
   );
 
   return (
-    <Col className={classNames("h-full", className)}>
+    <Col className={className}>
       <Row>
-        <SearchInput
-          containerClassName="grow"
-          className="h-9"
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="filter groups..."
-        />
+        <SearchInput onChange={setQuery} placeholder="filter groups..." />
 
         <AddGroupTriggerButton
           schema={schema}

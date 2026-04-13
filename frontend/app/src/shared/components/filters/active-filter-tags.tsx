@@ -5,6 +5,7 @@ import { Popover } from "@/shared/components/aria/popover";
 import { Row } from "@/shared/components/container";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import type { Filter } from "@/shared/hooks/useFilters";
+import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";
 
 import {
@@ -55,6 +56,7 @@ export function ActiveFilterTags({
   setFilters,
   filterDefinitions,
   additionalTags,
+  className,
   ...props
 }: ActiveFilterTagsProps) {
   const [editingFilter, setEditingFilter] = useState<FilterDefinition | null>(null);
@@ -134,7 +136,7 @@ export function ActiveFilterTags({
 
   return (
     <ScrollArea scrollX scrollBarClassName="hidden">
-      <Row className="p-2 pt-0">
+      <Row className={classNames("p-2 pt-0", className)}>
         <TagGroup
           aria-label="Active filters"
           selectionMode="single"

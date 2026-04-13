@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import * as R from "remeda";
 
 import Accordion from "@/shared/components/display/accordion";
+import { SearchInput } from "@/shared/components/inputs/search-input";
 import { Badge } from "@/shared/components/ui/badge";
-import { SearchInput } from "@/shared/components/ui/search-input";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -53,7 +53,7 @@ export const SchemaSelector = ({ className = "" }: SchemaSelectorProps) => {
         className="mb-4"
         placeholder="Search schema"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={setSearch}
       />
 
       {Object.entries(schemasPerNamespace).map(([namespace, schemas]) => {
