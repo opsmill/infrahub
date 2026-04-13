@@ -38,7 +38,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
   const schemas = [...nodes, ...generics, ...profiles, ...templates];
 
   return (
-    <div className={classNames("relative", className)}>
+    <div className={classNames("relative z-1", className)}>
       {selectedKind.map((kind, index) => {
         const position = selectedKind.length - index - 1;
         const schema = schemas.find((s) => s.kind === kind);
