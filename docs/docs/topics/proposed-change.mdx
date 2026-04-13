@@ -133,7 +133,7 @@ Proposed changes follow a workflow with specific states that track progression f
 
 4. **Merged**: After receiving approval (if required) and passing all automated checks, the change is merged into the target branch. At this point:
    - The changes become part of the target branch.
-   - The source branch will be retained but could be manually deleted.
+   - The source branch is retained by default. It can be deleted manually from the branch detail view, or automatically if `delete_branch_after_merge` is enabled in the Infrahub configuration. When both that setting and `delete_git_branch_after_merge` are enabled, the corresponding Git branch is also removed asynchronously.
 
 5. **Closed**: A proposed change can be closed without merging if it's determined to be unnecessary, superseded by another change, or otherwise no longer needed. This provides a clean resolution for abandoned changes.
 
@@ -191,6 +191,7 @@ The audit capabilities are particularly valuable for infrastructure changes that
 
 The proposed change functionality interconnects with several other key concepts in Infrahub:
 
+- [Branching](branching): Understand branch lifecycle, auto-delete after merge, and how branches are cleaned up post-merge
 - [Version control](version-control): Understand how branches and commits work in Infrahub, which form the foundation of proposed changes
 - [Schema](schema): Learn about the data models that define your infrastructure objects and are subject to review in proposed changes
 - [Artifacts](artifact): Explore how proposed changes affect the generated outputs from your infrastructure data
