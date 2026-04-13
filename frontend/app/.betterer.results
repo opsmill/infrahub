@@ -289,7 +289,7 @@ exports[`fix ts error`] = {
     "src/entities/proposed-changes/ui/conversations/add-comment.tsx:3479187327": [
       [36, 9, 13, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; } | { name: string; label: string; placeholder: string; rules: { validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'FormFieldProps\'.", "941754925"]
     ],
-    "src/entities/proposed-changes/ui/proposed-change-details.tsx:354180157": [
+    "src/entities/proposed-changes/ui/proposed-change-details.tsx:858710107": [
       [35, 2, 10, "tsc: Property \'tasksCount\' does not exist on type \'ProposedChangeDetailsProps\'.", "3126552024"],
       [68, 59, 5, "tsc: Argument of type \'null | string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "195031250"],
       [198, 18, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
