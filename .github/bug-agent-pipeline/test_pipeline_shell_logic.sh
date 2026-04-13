@@ -995,17 +995,17 @@ MATCHER_SELF_TESTS = [
     # Wildcard-only specifier matches everything
     ("Bash(*)",          "Bash(anything here)", True,
      "star-only: matches any arg"),
-    # Multi-line content: :* glob does NOT match newlines (. without re.DOTALL)
-    ("Bash(gh issue comment :*)",
+    # Multi-line content: * glob does NOT match newlines (. without re.DOTALL)
+    ("Bash(gh issue comment *)",
      "Bash(gh issue comment 42 --body '## Root cause\nAffected files')",
-     False, "colon-star: rejects multi-line content"),
-    ("Bash(gh pr comment :*)",
+     False, "star: rejects multi-line content"),
+    ("Bash(gh pr comment *)",
      "Bash(gh pr comment 42 --body '## Review\nDimension A')",
-     False, "colon-star: rejects multi-line pr comment"),
+     False, "star: rejects multi-line pr comment"),
     # Single-line --body-file works fine
-    ("Bash(gh issue comment :*)",
-     "Bash(gh issue comment 42 --body-file /tmp/gh-body.md)",
-     True, "colon-star: body-file is single-line"),
+    ("Bash(gh issue comment *)",
+     "Bash(gh issue comment 42 --body-file .agent-tmp/gh-body.md)",
+     True, "star: body-file is single-line"),
 ]
 
 for rule, tool_call, expected, desc in MATCHER_SELF_TESTS:
@@ -1314,7 +1314,7 @@ EXPECTED_DENY = [
     'Bash(git push -f :*)',
     'Bash(git reset :*)',
     'Bash(git clean :*)',
-    'Bash(gh pr merge :*)',
+    'Bash(gh pr merge *)',
     'Write(.github/**)',
     'Edit(.github/**)',
 ]

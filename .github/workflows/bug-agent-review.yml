@@ -94,13 +94,13 @@ jobs:
                   "Bash(git diff)", "Bash(git diff :*)",
                   "Bash(git log :*)", "Bash(git show :*)",
                   "Bash(cd :*)",
-                  "Bash(gh pr comment :*)", "Bash(gh pr edit :*)", "Bash(gh pr view :*)",
+                  "Bash(gh pr comment *)", "Bash(gh pr edit *)", "Bash(gh pr view *)",
                   "Bash(ls)", "Bash(ls :*)"
                 ],
                 "deny": [
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
                   "Bash(git reset :*)", "Bash(git clean :*)",
-                  "Bash(gh pr merge :*)",
+                  "Bash(gh pr merge *)",
                   "Write(.github/**)", "Edit(.github/**)",
                   "Write(.git/**)", "Edit(.git/**)"
                 ]
