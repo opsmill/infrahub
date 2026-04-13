@@ -769,9 +769,19 @@ class NodeManager:
                 message=f"Unable to lookup node by HFID, schema '{node_schema.kind}' HFID does not contain the same number of elements as {hfid}",
             )
 
-        query = await NodeGetByHFIDQuery.init(db=db, branch=branch, at=at, node_kind=kind_str, hfids=[hfid])
+        # Try indexed lookup first for performance, fall back to non-indexed for oversized HFIDs that couldn't be indexed.
+        query = await NodeGetByHFIDQuery.init(
+            db=db, branch=branch, at=at, node_kind=kind_str, hfids=[hfid], use_index=True
+        )
         await query.execute(db=db)
         node_uuids = query.get_node_uuids()
+
+        if not node_uuids:
+            query = await NodeGetByHFIDQuery.init(
+                db=db, branch=branch, at=at, node_kind=kind_str, hfids=[hfid], use_index=False
+            )
+            await query.execute(db=db)
+            node_uuids = query.get_node_uuids()
 
         if len(node_uuids) < 1:
             if raise_on_error:

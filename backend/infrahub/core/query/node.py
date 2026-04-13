@@ -1446,9 +1446,10 @@ class NodeGetByHFIDQuery(Query):
     name = "node_get_by_hfid"
     type = QueryType.READ
 
-    def __init__(self, node_kind: str, hfids: list[list[str]], **kwargs: Any) -> None:
+    def __init__(self, node_kind: str, hfids: list[list[str]], use_index: bool = True, **kwargs: Any) -> None:
         self.node_kind = node_kind
         self.hfids = hfids
+        self.use_index = use_index
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -1461,8 +1462,9 @@ class NodeGetByHFIDQuery(Query):
         query = """
         // --------------------------
         // Start from matching HFID values and traverse back to nodes
+        // Uses AttributeValueIndexed when available for index-backed lookups
         // --------------------------
-        MATCH (av:AttributeValue)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
+        MATCH (av:%(av_label)s)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
         WHERE av.value IN $hfid_values
         WITH DISTINCT n, attr, av
         // --------------------------
@@ -1503,7 +1505,11 @@ class NodeGetByHFIDQuery(Query):
         }
         With n, av, r
         WHERE r.status = "active"
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_kind}
+        """ % {
+            "branch_filter": branch_filter,
+            "node_kind": self.node_kind,
+            "av_label": "AttributeValueIndexed" if self.use_index else "AttributeValue",
+        }
 
         self.add_to_query(query)
         self.return_labels = ["DISTINCT n.uuid AS node_uuid", "av.value AS hfid"]
