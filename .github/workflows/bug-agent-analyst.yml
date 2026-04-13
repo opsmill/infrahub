@@ -93,6 +93,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--permission-mode dontAsk"
           # model: claude-opus-4-6
           # NOTE: git push prefix patterns are defence-in-depth only.
           # The pre-push hook above enforces the ai-bug-pipeline-* branch constraint.

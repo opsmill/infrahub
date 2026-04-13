@@ -53,7 +53,7 @@
 #     step; reviewer (read-only) does not.
 # 16. Permission settings present in all workflows
 #     Every claude-code-action step has a settings block with "permissions"
-#     and "allow" keys.
+#     and "allow" keys, and forces dontAsk mode via claude_args.
 # 17. Read-only agents have no write tools
 #     Analyst and reviewer lack Edit, Write, git add, git commit; reviewer
 #     also lacks git push.
@@ -555,7 +555,8 @@ echo ""
 echo "=== 16. Permission settings present in all workflows ==="
 # ─────────────────────────────────────────────────────────────
 
-# Every claude-code-action step must have a settings block with permissions.
+# Every claude-code-action step must have a settings block with permissions
+# and force dontAsk mode via claude_args.
 
 for wf in \
   ".github/workflows/bug-agent-analyst.yml" \
@@ -566,6 +567,7 @@ for wf in \
   WF_BASE=$(basename "$wf")
   assert_contains "$WF_BASE has permissions settings" "$WF_CONTENT" '"permissions"'
   assert_contains "$WF_BASE has allow list" "$WF_CONTENT" '"allow"'
+  assert_contains "$WF_BASE forces dontAsk mode" "$WF_CONTENT" '--permission-mode dontAsk'
 done
 
 # ─────────────────────────────────────────────────────────────
