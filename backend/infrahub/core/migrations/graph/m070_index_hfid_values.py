@@ -27,7 +27,9 @@ UNWIND $updates AS update
 CALL (update) {
     MATCH (attr:Attribute {name: "human_friendly_id"})-[old_r:HAS_VALUE]->(old_av)
     WHERE elementId(old_av) = update.element_id
-    CREATE (new_av:AttributeValue {value: update.new_value, is_default: old_av.is_default})
+    MERGE (new_av:AttributeValue {value: update.new_value, is_default: old_av.is_default})
+    WITH attr, old_r, new_av
+    LIMIT 1
     CREATE (attr)-[new_r:HAS_VALUE]->(new_av)
     SET new_r = properties(old_r)
     DELETE old_r
