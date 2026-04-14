@@ -51,7 +51,7 @@ export function getFilterDefinitionName(def: FilterDefinition): string {
       return def.name;
     default:
       warnUnexpectedType(def);
-      return def;
+      return "???";
   }
 }
 
