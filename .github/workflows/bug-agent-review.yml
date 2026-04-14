@@ -84,7 +84,27 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: "--permission-mode dontAsk"
           # model: claude-opus-4-6
+          settings: |
+            {
+              "permissions": {
+                "allow": [
+                  "Read", "Glob", "Grep",
+                  "Bash(git diff)", "Bash(git diff :*)",
+                  "Bash(git log :*)", "Bash(git show :*)",
+                  "Bash(gh pr comment :*)", "Bash(gh pr edit :*)", "Bash(gh pr view :*)",
+                  "Bash(ls)", "Bash(ls :*)"
+                ],
+                "deny": [
+                  "Bash(git push --force :*)", "Bash(git push -f :*)",
+                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(gh pr merge :*)",
+                  "Write(:*.github/:*)", "Edit(:*.github/:*)",
+                  "Write(:*.git/:*)", "Edit(:*.git/:*)"
+                ]
+              }
+            }
           prompt: |
             ${{ steps.prompt.outputs.PROMPT }}
 
