@@ -1480,19 +1480,6 @@ class NodeGetByHFIDQuery(Query):
         WITH n, attr, av
         WHERE r.status = "active"
         // --------------------------
-        // Filter HAS_VALUE edges to resolve the active value
-        // on the correct branch at the requested point in time
-        // --------------------------
-        CALL (av, attr) {
-            MATCH (av)<-[r:HAS_VALUE]-(attr)
-            WHERE %(branch_filter)s
-            RETURN r
-            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            LIMIT 1
-        }
-        WITH n, attr, av
-        WHERE r.status = "active"
-        // --------------------------
         // Filter HAS_ATTRIBUTE edges to confirm the attribute
         // is actively linked to the node on the correct branch
         // --------------------------
@@ -1503,7 +1490,20 @@ class NodeGetByHFIDQuery(Query):
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        With n, av, r
+        WITH n, attr, av
+        WHERE r.status = "active"
+        // --------------------------
+        // Filter HAS_VALUE edges to resolve the active value
+        // on the correct branch at the requested point in time
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r
         WHERE r.status = "active"
         """ % {
             "branch_filter": branch_filter,
