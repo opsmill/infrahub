@@ -278,11 +278,11 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     // Close sub-edges hanging off the Attribute/Relationship peer vertex
     // ----------------------------------------------------------
     WITH DISTINCT active_node, peer_node
-    MATCH (peer_node:Attribute|Relationship)-[]-(sub_peer)
+    MATCH (peer_node:Attribute|Relationship)-[e]-(sub_peer)
     WHERE sub_peer <> active_node
-    WITH DISTINCT active_node, peer_node, sub_peer
-    CALL (peer_node, sub_peer) {
-        MATCH (peer_node)-[r]-(sub_peer)
+    WITH DISTINCT active_node, peer_node, type(e) AS sub_edge_type, sub_peer
+    CALL (peer_node, sub_edge_type, sub_peer) {
+        MATCH (peer_node)-[r:$(sub_edge_type)]-(sub_peer)
         WHERE %(branch_filter)s
         RETURN r AS sub_edge
         ORDER BY r.branch_level DESC, r.from DESC
