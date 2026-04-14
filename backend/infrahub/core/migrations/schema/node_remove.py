@@ -94,7 +94,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     // For each inbound edge to active_node, find the latest active edge on the branch
     // ----------------------------------------------------------
-    MATCH (active_node)<-[r]-(peer)
+    MATCH (active_node)<-[r:IS_RELATED|HAS_SOURCE|HAS_OWNER]-(peer:Attribute|Relationship)
     WITH DISTINCT active_node, type(r) AS edge_type, peer
     CALL (active_node, edge_type, peer) {
         MATCH (active_node)<-[r:$(edge_type)]-(peer)
@@ -118,14 +118,13 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     WITH active_node, rel_inbound, peer_node,
          """
         + _BRANCH_FROM_EXISTING.format(existing="rel_inbound")
-        + """,
-         startNode(rel_inbound) AS existing_start, endNode(rel_inbound) AS existing_end
+        + """
 
     // ----------------------------------------------------------
     // Create a "deleted" edge of the same type and direction
     // ----------------------------------------------------------
-    CALL (existing_start, existing_end, rel_inbound, new_branch, new_branch_level) {
-        CREATE (existing_start)-[new_edge:$(type(rel_inbound))]->(existing_end)
+    CALL (peer_node, active_node, rel_inbound, new_branch, new_branch_level) {
+        CREATE (peer_node)-[new_edge:$(type(rel_inbound))]->(active_node)
         SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
     }
 
@@ -145,36 +144,40 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // belongs to another Node and stays active.
     // ----------------------------------------------------------
     WITH DISTINCT active_node, peer_node, rel_inbound
-    CALL (active_node, peer_node, rel_inbound) {
-        WITH active_node, peer_node
-        WHERE type(rel_inbound) = "IS_RELATED"
-        MATCH (peer_node)-[]-(sub_peer)
-        WHERE NOT (sub_peer = active_node)
-        WITH DISTINCT peer_node, sub_peer
-        CALL (peer_node, sub_peer) {
-            MATCH (peer_node)-[r]-(sub_peer)
-            WHERE %(branch_filter)s
-            RETURN r AS sub_edge
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH peer_node, sub_peer, sub_edge,
-             """
+    WHERE type(rel_inbound) = "IS_RELATED"
+
+    MATCH (peer_node:Relationship)-[sub_edge]-(sub_peer)
+    WHERE sub_peer <> active_node
+    WITH DISTINCT peer_node, type(sub_edge) AS sub_edge_type, sub_peer
+    CALL (peer_node, sub_edge_type, sub_peer) {
+        MATCH (peer_node)-[r:$(sub_edge_type)]-(sub_peer)
+        WHERE %(branch_filter)s
+        RETURN r AS sub_edge
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH peer_node, sub_peer, sub_edge,
+            """
         + _BRANCH_FROM_EXISTING.format(existing="sub_edge")
         + """,
-             startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
-        WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
+            startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
+    WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
 
-        CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
-            CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
-            SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
-        }
+    // ----------------------------------------------------------
+    // Create a deleted sub-edge of the same type and direction
+    // ----------------------------------------------------------
+    CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
+        CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
+        SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
+    }
 
-        CALL (sub_edge) {
-            WITH sub_edge
-            WHERE sub_edge.branch IN ["-global-", $branch]
-            SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
-        }
+    // ----------------------------------------------------------
+    // Close the existing sub-edge if it lives on the migration branch or is global
+    // ----------------------------------------------------------
+    CALL (sub_edge) {
+        WITH sub_edge
+        WHERE sub_edge.branch IN ["-global-", $branch]
+        SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
     }
     """
     )
@@ -216,7 +219,9 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     WITH node AS active_node, root_edge
     WHERE root_edge.status = "active"
 
+    // ----------------------------------------------------------
     // Set updated metadata on the Node vertex on default/global branch
+    // ----------------------------------------------------------
     CALL (active_node) {
         WITH active_node
         WHERE $set_metadata
@@ -227,7 +232,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     // For each outbound edge from active_node, find the latest active edge on the branch
     // ----------------------------------------------------------
     WITH active_node
-    MATCH (active_node)-[]->(peer)
+    MATCH (active_node)-[:HAS_ATTRIBUTE|IS_RELATED|IS_PART_OF]->(peer:Attribute|Relationship|Root)
     CALL (active_node, peer) {
         MATCH (active_node)-[r]->(peer)
         WHERE %(branch_filter)s
@@ -238,27 +243,31 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     WITH active_node, rel_outbound, peer_node
     WHERE rel_outbound.status = "active"
 
+    // ----------------------------------------------------------
     // Set updated metadata on the peer vertex on default/global branch
+    // ----------------------------------------------------------
     CALL (peer_node) {
         WITH peer_node
-        WHERE $set_metadata
+        WHERE $set_metadata AND (peer_node:Attribute OR peer_node:Relationship)
         SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
     }
 
     WITH active_node, rel_outbound, peer_node,
          """
         + _BRANCH_FROM_EXISTING.format(existing="rel_outbound")
-        + """,
-         startNode(rel_outbound) AS existing_start, endNode(rel_outbound) AS existing_end
+        + """
 
-    // Create a "deleted" edge of the same type and direction. Dynamic relationship type
-    // via $(type(rel_outbound)) requires Neo4j 5.26+.
-    CALL (existing_start, existing_end, rel_outbound, new_branch, new_branch_level) {
-        CREATE (existing_start)-[new_edge:$(type(rel_outbound))]->(existing_end)
+    // ----------------------------------------------------------
+    // Create a "deleted" edge of the same type and direction
+    // ----------------------------------------------------------
+    CALL (active_node, peer_node, rel_outbound, new_branch, new_branch_level) {
+        CREATE (active_node)-[new_edge:$(type(rel_outbound))]->(peer_node)
         SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
     }
 
+    // ----------------------------------------------------------
     // Close the existing parent edge if it lives on the migration branch (or is global)
+    // ----------------------------------------------------------
     CALL (rel_outbound) {
         WITH rel_outbound
         WHERE rel_outbound.branch IN ["-global-", $branch]
@@ -269,38 +278,38 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     // Close sub-edges hanging off the Attribute/Relationship peer vertex
     // ----------------------------------------------------------
     WITH DISTINCT active_node, peer_node
-    CALL (active_node, peer_node) {
-        WITH active_node, peer_node
-        WHERE peer_node:Attribute OR peer_node:Relationship
-        MATCH (peer_node)-[]-(sub_peer)
-        WHERE NOT (sub_peer = active_node)
-        WITH DISTINCT peer_node, sub_peer
-        CALL (peer_node, sub_peer) {
-            MATCH (peer_node)-[r]-(sub_peer)
-            WHERE %(branch_filter)s
-            RETURN r AS sub_edge
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH peer_node, sub_peer, sub_edge,
-             """
+    MATCH (peer_node:Attribute|Relationship)-[]-(sub_peer)
+    WHERE sub_peer <> active_node
+    WITH DISTINCT active_node, peer_node, sub_peer
+    CALL (peer_node, sub_peer) {
+        MATCH (peer_node)-[r]-(sub_peer)
+        WHERE %(branch_filter)s
+        RETURN r AS sub_edge
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH active_node, peer_node, sub_peer, sub_edge,
+            """
         + _BRANCH_FROM_EXISTING.format(existing="sub_edge")
         + """,
-             startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
-        WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
+            startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
+    WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
 
-        // Create a deleted sub-edge of the same type and direction.
-        CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
-            CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
-            SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
-        }
+    // ----------------------------------------------------------
+    // Create a deleted sub-edge of the same type and direction.
+    // ----------------------------------------------------------
+    CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
+        CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
+        SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
+    }
 
-        // Close the existing sub-edge if it lives on the migration branch (or is global)
-        CALL (sub_edge) {
-            WITH sub_edge
-            WHERE sub_edge.branch IN ["-global-", $branch]
-            SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
-        }
+    // ----------------------------------------------------------
+    // Close the existing sub-edge if it lives on the migration branch (or is global)
+    // ----------------------------------------------------------
+    CALL (sub_edge) {
+        WITH sub_edge
+        WHERE sub_edge.branch IN ["-global-", $branch]
+        SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
     }
 
     RETURN DISTINCT active_node
@@ -308,6 +317,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     )
 
     def get_nbr_migrations_executed(self) -> int:
+        """Only in the outbound query b/c only the outbound query is guaranteed to run"""
         return self.num_of_results
 
 
