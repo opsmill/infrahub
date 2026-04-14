@@ -97,7 +97,7 @@ if self._existing:
 `Node.get_display_label(db)` returns the display label for a node during GraphQL queries. It distinguishes between saved and virtual nodes:
 
 1. **Stored value exists** (`_display_label` set with a non-empty value): return it directly.
-2. **Stored attribute is empty** (`_display_label` set but value is null): return `""`. The async backfill workflow is responsible for populating stored values after schema changes. Computing on the fly here would cause the backfill to detect no difference and skip the update (IFC-2459).
+2. **Stored attribute is empty** (`_display_label` set but value is null): return `""`. The async backfill workflow is responsible for populating stored values after schema changes. Computing on the fly here would cause the backfill to detect no difference and skip the update.
 3. **No `display_label` template** in schema: return `repr(self)`.
 4. **No stored attribute at all** (virtual nodes like IPAM available nodes that are never saved): compute on the fly using `DisplayLabel.compute()`.
 

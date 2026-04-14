@@ -36,8 +36,7 @@ async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
 
 
 class TestDisplayLabelBackfillOnSchemaChange(TestInfrahubDockerClient):
-    """IFC-2459: existing nodes should get their display_label backfilled
-    after the schema is updated to add one."""
+    """Existing nodes should get their display_label backfilled after the schema is updated to add one."""
 
     @pytest.fixture(scope="class")
     def infrahub_version(self) -> str:
