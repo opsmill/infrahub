@@ -33,6 +33,15 @@ export const ATTRIBUTE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; l
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
 ];
 
+export const PERMISSION_DECISION_FILTER_CONDITION_OPTIONS: Array<{
+  key: FilterCondition;
+  label: string;
+}> = [
+  { key: FILTER_CONDITION.CONTAINS, label: "is" },
+  { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
+  { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
+];
+
 export const DATETIME_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; label: string }> = [
   { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
@@ -62,6 +71,8 @@ function getFilterConditionOptions(filterType: FilterConditionSelectProps["filte
   switch (filterType) {
     case "relationship":
       return RELATIONSHIP_FILTER_CONDITION_OPTIONS;
+    case "permission-decision":
+      return PERMISSION_DECISION_FILTER_CONDITION_OPTIONS;
     case "datetime":
       return DATETIME_FILTER_CONDITION_OPTIONS;
     case "metadata-date":

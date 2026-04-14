@@ -242,6 +242,109 @@ def test_log_forwarding_from_toml_file() -> None:
     assert backup.min_log_severity == ExtraLogLevel.WARNING
 
 
+def test_log_forwarding_destinations_from_per_destination_env_vars() -> None:
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem_primary,backup_collector",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST": "syslog.example.com",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_PORT": "514",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_PROTOCOL": "tcp",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_FORMAT": "rfc5424",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_TLS_ENABLED": "true",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_TLS_CA_BUNDLE": "/etc/ssl/certs/ca.crt",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_FORWARD_APPLICATION_LOGS": "true",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_MIN_LOG_SEVERITY": "INFO",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_BACKUP_COLLECTOR_HOST": "syslog-backup.example.com",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_BACKUP_COLLECTOR_PORT": "1514",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_BACKUP_COLLECTOR_PROTOCOL": "udp",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_BACKUP_COLLECTOR_FORMAT": "rfc3164",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        settings = LogForwardingSettings()
+
+    assert [d.name for d in settings.destinations] == ["siem_primary", "backup_collector"]
+
+    primary = settings.destinations[0]
+    assert primary.host == "syslog.example.com"
+    assert primary.port == 514
+    assert primary.protocol is SyslogProtocol.TCP
+    assert primary.format is SyslogFormat.RFC5424
+    assert primary.tls_enabled is True
+    assert primary.tls_ca_bundle == "/etc/ssl/certs/ca.crt"
+    assert primary.forward_application_logs is True
+    assert primary.min_log_severity is ExtraLogLevel.INFO
+
+    backup = settings.destinations[1]
+    assert backup.host == "syslog-backup.example.com"
+    assert backup.port == 1514
+    assert backup.protocol is SyslogProtocol.UDP
+    assert backup.format is SyslogFormat.RFC3164
+    assert backup.tls_enabled is False
+
+
+def test_log_forwarding_destination_names_mutually_exclusive_with_destinations_env() -> None:
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem_primary",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST": "h",
+        "INFRAHUB_LOG_FORWARDING_DESTINATIONS": json.dumps([{"name": "x", "host": "h"}]),
+    }
+    with (
+        patch.dict(os.environ, env, clear=False),
+        pytest.raises(ValidationError, match="cannot be combined with explicit `destinations`"),
+    ):
+        LogForwardingSettings()
+
+
+def test_log_forwarding_destination_names_mutually_exclusive_with_toml_destinations() -> None:
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem_primary",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST": "h",
+    }
+    with (
+        patch.dict(os.environ, env, clear=False),
+        pytest.raises(ValueError, match="cannot be combined with explicit `destinations`"),
+    ):
+        load(
+            config_data={
+                "log_forwarding": {
+                    "destinations": [{"name": "x", "type": "syslog", "host": "h", "port": 514}],
+                }
+            }
+        )
+
+
+@pytest.mark.parametrize("invalid_name", ["SIEM-PRIMARY", "siem-primary", "Siem", "with space", "with.dot"])
+def test_log_forwarding_destination_names_rejects_invalid_charset(invalid_name: str) -> None:
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": invalid_name,
+        f"INFRAHUB_LOG_FORWARDING_DESTINATION_{invalid_name.upper()}_HOST": "h",
+    }
+    with patch.dict(os.environ, env, clear=False), pytest.raises(ValidationError, match="must match"):
+        LogForwardingSettings()
+
+
+def test_log_forwarding_destination_names_duplicate_names_rejected() -> None:
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem,siem",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_HOST": "h",
+    }
+    with patch.dict(os.environ, env, clear=False), pytest.raises(ValidationError, match="must be unique"):
+        LogForwardingSettings()
+
+
+def test_log_forwarding_destination_names_per_dest_env_validates_tls_udp() -> None:
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "broken",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_BROKEN_HOST": "h",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_BROKEN_PROTOCOL": "udp",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_BROKEN_TLS_ENABLED": "true",
+    }
+    with (
+        patch.dict(os.environ, env, clear=False),
+        pytest.raises(ValidationError, match="TLS is only supported with TCP"),
+    ):
+        LogForwardingSettings()
+
+
 def test_settings_enterprise_features_aggregates_log_forwarding() -> None:
     config_data = {
         "log_forwarding": {"destinations": [{"name": "siem", "type": "syslog", "host": "localhost", "port": 514}]},

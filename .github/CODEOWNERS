@@ -2,7 +2,9 @@
 /frontend/ @opsmill/frontend
 /frontend/app/src/shared/api/graphql/generated/**
 /frontend/app/src/shared/api/rest/types.generated.ts
-/docs/ @opsmill/sa @opsmill/backend @opsmill/frontend
+/docs/ @opsmill/sa @opsmill/product
+/docs/docs @opsmill/sa @opsmill/backend @opsmill/frontend
+/docs/docs/reference/ @opsmill/backend @opsmill/frontend
 /docker-compose.yml @opsmill/cloud
 uv.lock @opsmill/backend
 pyproject.toml @opsmill/backend

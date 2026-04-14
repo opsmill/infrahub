@@ -33,7 +33,7 @@ def _format_ruff(context: Context) -> None:
 
 @task(name="format")
 def format_all(context: Context) -> None:
-    """This will run all formatter."""
+    """Format all backend Python files with ruff."""
 
     _format_ruff(context)
 
@@ -45,7 +45,7 @@ def format_all(context: Context) -> None:
 # ----------------------------------------------------------------------------
 @task
 def ruff(context: Context) -> None:
-    """Run ruff to check that Python files adherence to ruff standards."""
+    """Run ruff linter against backend Python files."""
 
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY}"
@@ -71,7 +71,7 @@ def ty(context: Context) -> None:
 
 @task
 def mypy(context: Context) -> None:
-    """This will run mypy for the specified name and Python version."""
+    """Run mypy type checking against backend Python files."""
 
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"uv run mypy --show-error-codes {MAIN_DIRECTORY}"
@@ -82,7 +82,7 @@ def mypy(context: Context) -> None:
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linters."""
+    """Run all backend linters (ruff, ty, mypy)."""
     ruff(context)
     ty(context)
     mypy(context)
@@ -92,6 +92,7 @@ def lint(context: Context) -> None:
 
 @task(optional=["database"])
 def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend component tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
@@ -102,6 +103,7 @@ def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Resul
 
 @task
 def test_unit(context: Context) -> Result | None:
+    """Run backend unit tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
@@ -110,6 +112,7 @@ def test_unit(context: Context) -> Result | None:
 
 @task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend core component tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component/core"
         if database == "neo4j":
@@ -120,6 +123,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend integration tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
@@ -130,6 +134,7 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Res
 
 @task(optional=["database"])
 def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend functional tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
         if database == "neo4j":
@@ -149,6 +154,7 @@ def test_scale(
     rels: int | None = None,
     changes: int | None = None,
 ) -> Result | None:
+    """Run backend scale/performance tests."""
     args = []
     if stager:
         args.extend(["--stager", stager])
@@ -180,6 +186,7 @@ def test_scale(
 
 @task(default=True)
 def format_and_lint(context: Context) -> None:
+    """Format and lint all backend Python files."""
     format_all(context)
     lint(context)
 
@@ -198,7 +205,7 @@ def generate(context: Context) -> None:
 
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
-    """Validate that the generated documentation is committed to Git."""
+    """Validate that generated schemas and protocols are committed to Git."""
 
     _generate_schemas(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"

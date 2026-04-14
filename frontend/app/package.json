@@ -69,7 +69,6 @@
     "gql.tada": "^1.9.2",
     "graphiql": "^5.2.2",
     "graphql": "^16.13.2",
-    "handlebars": "^4.7.9",
     "infrahub-schema-visualizer": "file:../packages/schema-visualizer",
     "jotai": "^2.19.0",
     "json-to-graphql-query": "^2.3.0",

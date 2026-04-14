@@ -171,6 +171,10 @@ class InfrahubServices:
 
         return self._database
 
+    @property
+    def log_forwarding(self) -> LogForwardingService | None:
+        return self._log_forwarding
+
     async def shutdown(self) -> None:
         if self._log_forwarding is not None:
             await self._log_forwarding.shutdown()

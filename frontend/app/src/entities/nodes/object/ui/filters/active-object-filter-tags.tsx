@@ -18,6 +18,7 @@ import {
   InternalGroupsFilterTag,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
+import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -29,7 +30,10 @@ function buildFilterDefinitions(schema: ModelSchema): Record<string, FilterDefin
   const definitions: Record<string, FilterDefinition> = {};
 
   for (const attr of schema?.attributes ?? []) {
-    definitions[attr.name] = { type: "attribute", schema: attr };
+    const decisionOptions = getDecisionOptions(schema.kind, attr.name);
+    definitions[attr.name] = decisionOptions
+      ? { type: "permission-decision", schema: attr, options: decisionOptions }
+      : { type: "attribute", schema: attr };
   }
   for (const rel of schema?.relationships ?? []) {
     definitions[rel.name] = { type: "relationship", schema: rel };

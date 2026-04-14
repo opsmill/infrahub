@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence
+from typing import TYPE_CHECKING, Sequence
 from uuid import uuid4
 
-import pydantic
 from prefect import flow, get_run_logger
 from prefect.client.schemas.objects import State  # noqa: TC002
 from prefect.states import Completed, Failed
@@ -12,6 +11,7 @@ from infrahub import config, lock
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.branch.creator import BranchCreator
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.changelog.diff import DiffChangelogCollector, MigrationTracker
 from infrahub.core.constants import DiffAction, MutationAction
@@ -34,7 +34,6 @@ from infrahub.core.validators.models.validate_migration import SchemaValidateMig
 from infrahub.core.validators.tasks import schema_validate_migrations
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events.branch_action import (
-    BranchCreatedEvent,
     BranchDeletedEvent,
     BranchMergedEvent,
     BranchMigratedEvent,
@@ -42,7 +41,7 @@ from infrahub.events.branch_action import (
 )
 from infrahub.events.models import EventMeta, InfrahubEvent
 from infrahub.events.node_action import get_node_event
-from infrahub.exceptions import BranchNotFoundError, ValidationError
+from infrahub.exceptions import ValidationError
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
@@ -52,7 +51,6 @@ from infrahub.workflows.catalogue import (
     BRANCH_MERGE_POST_PROCESS,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
-    GIT_REPOSITORIES_CREATE_BRANCH,
     GIT_REPOSITORIES_DELETE_BRANCH,
     IPAM_RECONCILIATION,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
@@ -503,50 +501,19 @@ async def create_branch(model: BranchCreateModel, context: InfrahubContext) -> N
     await add_tags(branches=[model.name])
 
     database = await get_database()
+    component = await get_component()
+    event_service = await get_event_service()
+    workflow = get_workflow()
+
     async with database.start_session() as db:
-        try:
-            await Branch.get_by_name(db=db, name=model.name)
-            raise ValidationError(f"The branch {model.name} already exists")
-        except BranchNotFoundError:
-            pass
-
-        data_dict: dict[str, Any] = dict(model)
-        data_dict.pop("is_isolated", None)
-
-        try:
-            obj = Branch(**data_dict)
-        except pydantic.ValidationError as exc:
-            error_msgs = [f"invalid field {error['loc'][0]}: {error['msg']}" for error in exc.errors()]
-            raise ValidationError("\n".join(error_msgs)) from exc
-
-        async with lock.registry.local_schema_lock():
-            # Copy the schema from the origin branch and set the hash and the schema_changed_at value
-            origin_schema = registry.schema.get_schema_branch(name=obj.origin_branch)
-            new_schema = origin_schema.duplicate(name=obj.name)
-            registry.schema.set_schema_branch(name=obj.name, schema=new_schema)
-            obj.update_schema_hash()
-            await obj.save(db=db, user_id=context.account.account_id)
-
-            # Add Branch to registry
-            registry.branch[obj.name] = obj
-            component = await get_component()
-            await component.refresh_schema_hash(branches=[obj.name])
-
-        event = BranchCreatedEvent(
-            branch_name=obj.name,
-            branch_id=str(obj.uuid),
-            sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+        creator = BranchCreator(
+            db=db,
+            lock_registry=lock.registry,
+            component=component,
+            event_service=event_service,
+            workflow=workflow,
         )
-        event_service = await get_event_service()
-        await event_service.send(event=event)
-
-        if obj.sync_with_git:
-            await get_workflow().submit_workflow(
-                workflow=GIT_REPOSITORIES_CREATE_BRANCH,
-                context=context,
-                parameters={"branch": obj.name, "branch_id": str(obj.uuid)},
-            )
+        await creator.create(model=model, context=context)
 
 
 async def _get_diff_root(
