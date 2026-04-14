@@ -32,52 +32,53 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.http import InfrahubHTTP
 
 
-class WebhookTriggerData(BaseModel):
-    """Typed representation of webhook fields needed to build a trigger definition."""
+class WebhookTrigger:
+    """Wraps a CoreWebhook and knows how to produce its own TriggerDefinition."""
 
-    model_config = ConfigDict(frozen=True)
+    def __init__(self, webhook: CoreWebhook, default_branch: str) -> None:
+        self._webhook = webhook
+        self._default_branch = default_branch
 
-    id: str
-    name: str
-    event_type: str
-    branch_scope: str
-    node_kind: str | None
-    webhook_kind: str
-    active: bool
+    def definition(self) -> WebhookTriggerDefinition:
+        event_type = self._webhook.event_type.value.value
+        branch_scope = self._webhook.branch_scope.value
+        node_kind = self._webhook.node_kind.value
+        webhook_id = self._webhook.id
+        webhook_name = self._webhook.name.value
+        webhook_kind = self._webhook.get_kind()
 
-    def to_trigger(self, default_branch: str) -> WebhookTriggerDefinition:
         event_trigger = EventTrigger()
 
-        if self.event_type == "all":
+        if event_type == "all":
             event_trigger.events.add("infrahub.*")
         else:
-            event_trigger.events.add(self.event_type)
+            event_trigger.events.add(event_type)
 
-        if self.branch_scope == "default_branch":
+        if branch_scope == "default_branch":
             event_trigger.match_related = {
                 "prefect.resource.role": "infrahub.branch",
-                "infrahub.resource.label": default_branch,
+                "infrahub.resource.label": self._default_branch,
             }
-        elif self.branch_scope == "other_branches":
+        elif branch_scope == "other_branches":
             event_trigger.match_related = {
                 "prefect.resource.role": "infrahub.branch",
-                "infrahub.resource.label": f"!{default_branch}",
+                "infrahub.resource.label": f"!{self._default_branch}",
             }
 
-        if self.node_kind and self.event_type in get_all_infrahub_node_kind_events():
-            event_trigger.match = {"infrahub.node.kind": self.node_kind}
+        if node_kind and event_type in get_all_infrahub_node_kind_events():
+            event_trigger.match = {"infrahub.node.kind": node_kind}
 
         return WebhookTriggerDefinition(
-            id=self.id,
-            name=self.name,
+            id=webhook_id,
+            name=webhook_name,
             trigger=event_trigger,
             actions=[
                 ExecuteWorkflow(
                     workflow=WEBHOOK_PROCESS,
                     parameters={
-                        "webhook_id": self.id,
-                        "webhook_name": self.name,
-                        "webhook_kind": self.webhook_kind,
+                        "webhook_id": webhook_id,
+                        "webhook_name": webhook_name,
+                        "webhook_kind": webhook_kind,
                         "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                         "event_id": "{{ event.id }}",
                         "event_type": "{{ event.event }}",
@@ -90,19 +91,6 @@ class WebhookTriggerData(BaseModel):
                 ),
             ],
         )
-
-
-def webhook_to_trigger(webhook: CoreWebhook, default_branch: str) -> WebhookTriggerDefinition:
-    data = WebhookTriggerData(
-        id=webhook.id,
-        name=webhook.name.value,
-        event_type=webhook.event_type.value,
-        branch_scope=webhook.branch_scope.value,
-        node_kind=webhook.node_kind.value,
-        webhook_kind=webhook.get_kind(),
-        active=webhook.active.value,
-    )
-    return data.to_trigger(default_branch)
 
 
 def generate_webhook_automation_name(webhook_id: str) -> str:

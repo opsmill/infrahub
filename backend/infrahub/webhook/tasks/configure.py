@@ -19,7 +19,7 @@ from infrahub.workers.dependencies import get_database
 
 from ..constants import EVENT_TO_ACTION, WebhookAction
 from ..gather import gather_trigger_webhook
-from ..models import WebhookTriggerDefinition, generate_webhook_automation_name, webhook_to_trigger
+from ..models import WebhookTrigger, WebhookTriggerDefinition, generate_webhook_automation_name
 from .cache import invalidate_webhook_cache
 
 if TYPE_CHECKING:
@@ -121,7 +121,7 @@ async def _configure_one(
 
     database = await get_database()
     webhook_node = await NodeManager.get_one(id=webhook_id, db=database, kind=CoreWebhookNode, raise_on_error=True)
-    trigger = webhook_to_trigger(webhook_node, registry.default_branch)
+    trigger = WebhookTrigger(webhook_node, registry.default_branch).definition()
 
     async with get_prefect_client(sync_client=False) as prefect_client:
         all_automations = await gather_all_automations(client=prefect_client)

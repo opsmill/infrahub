@@ -8,11 +8,11 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreWebhook
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
 
-from .models import WebhookTriggerDefinition, webhook_to_trigger
+from .models import WebhookTrigger, WebhookTriggerDefinition
 
 
 @task(name="gather-trigger-webhook", task_run_name="Gather webhook triggers", cache_policy=NONE)
 async def gather_trigger_webhook(db: InfrahubDatabase) -> list[WebhookTriggerDefinition]:
     webhooks = await NodeManager.query(db=db, schema=CoreWebhook)
     default_branch = registry.default_branch
-    return [webhook_to_trigger(webhook, default_branch) for webhook in webhooks if webhook.active.value]
+    return [WebhookTrigger(webhook, default_branch).definition() for webhook in webhooks if webhook.active.value]

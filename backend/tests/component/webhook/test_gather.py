@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.protocols import CoreWebhook
 from infrahub.trigger.models import ExecuteWorkflow, TriggerType
-from infrahub.webhook.models import webhook_to_trigger
+from infrahub.webhook.models import WebhookTrigger
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 if TYPE_CHECKING:
@@ -31,8 +32,8 @@ class TestWebhookToTrigger:
         )
         await node.save(db=db)
 
-        webhook = await NodeManager.get_one(db=db, branch=default_branch, id=node.id)
-        trigger = webhook_to_trigger(webhook, default_branch=default_branch.name)
+        webhook = await NodeManager.get_one(id=node.id, db=db, kind=CoreWebhook, raise_on_error=True)
+        trigger = WebhookTrigger(webhook, default_branch=default_branch.name).definition()
 
         assert trigger.id == node.id
         assert trigger.name == "tag-hook"
@@ -80,8 +81,8 @@ class TestWebhookToTrigger:
         )
         await node.save(db=db)
 
-        webhook = await NodeManager.get_one(db=db, branch=default_branch, id=node.id)
-        trigger = webhook_to_trigger(webhook, default_branch=default_branch.name)
+        webhook = await NodeManager.get_one(id=node.id, db=db, kind=CoreWebhook, raise_on_error=True)
+        trigger = WebhookTrigger(webhook, default_branch=default_branch.name).definition()
 
         assert trigger.id == node.id
         assert trigger.name == "custom-hook"
