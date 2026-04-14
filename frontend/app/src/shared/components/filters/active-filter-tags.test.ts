@@ -5,6 +5,8 @@ import {
   getFilterTagDisplay,
 } from "@/shared/components/filters/active-filter-tags";
 
+import { objectDecisionOptions } from "@/entities/role-manager/constants";
+
 import { generateAttributeSchema, generateRelationshipSchema } from "../../../../tests/fake/schema";
 
 describe("formatAttributeFilterValue", () => {
@@ -210,6 +212,52 @@ describe("getFilterTagDisplay", () => {
 
     // THEN
     expect(result).toBeNull();
+  });
+
+  it("returns the decision label for a decision filter definition", () => {
+    // GIVEN
+    const filter = { name: "decision__value", value: 2 };
+
+    // WHEN
+    const result = getFilterTagDisplay({
+      filter,
+      fieldKey: "value",
+      filterDefinition: {
+        type: "permission-decision",
+        schema: generateAttributeSchema({ name: "decision", label: "Decision", kind: "Number" }),
+        options: objectDecisionOptions,
+      },
+    });
+
+    // THEN
+    expect(result).toEqual({
+      label: "Decision",
+      condition: "is",
+      value: "Allow on default branch",
+    });
+  });
+
+  it("falls back to the raw value when the decision value is not in the options", () => {
+    // GIVEN
+    const filter = { name: "decision__value", value: 99 };
+
+    // WHEN
+    const result = getFilterTagDisplay({
+      filter,
+      fieldKey: "value",
+      filterDefinition: {
+        type: "permission-decision",
+        schema: generateAttributeSchema({ name: "decision", label: "Decision", kind: "Number" }),
+        options: objectDecisionOptions,
+      },
+    });
+
+    // THEN
+    expect(result).toEqual({
+      label: "Decision",
+      condition: "is",
+      value: 99,
+    });
   });
 
   it("returns before/after display for metadata-date filters", () => {

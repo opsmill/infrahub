@@ -238,6 +238,15 @@ export function getFilterTagDisplay({
     filterDefinition.type === "relationship" || filterDefinition.type === "metadata-user";
 
   if (fieldKey === "value" || fieldKey === "values") {
+    if (filterDefinition.type === "permission-decision") {
+      const match = filterDefinition.options.find((option) => option.value === filter.value);
+      return {
+        label: name,
+        condition: "is",
+        value: match ? match.label : filter.value,
+      };
+    }
+
     if (filterDefinition.type !== "attribute") return null;
 
     return {
