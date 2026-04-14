@@ -48,7 +48,7 @@ jobs:
           ANALYST_COMMENT=$(gh api \
             "repos/${{ github.repository }}/issues/${ISSUE_NUMBER}/comments" \
             --paginate \
-            --jq '.[] | select(.user.login == "github-actions[bot]"
+            --jq '.[] | select(.user.login == "claude[bot]"
               and (.body | contains("AGENT_ANALYSIS_COMPLETE")))' \
             | jq -s 'last // empty')
 
@@ -172,15 +172,15 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
-                  "Bash(git checkout ai-bug-pipeline-:*)",
+                  "Bash(git checkout ai-bug-pipeline-*)",
                   "Bash(git add :*)", "Bash(git commit -m :*)",
-                  "Bash(git push origin ai-bug-pipeline-:*)",
+                  "Bash(git push origin ai-bug-pipeline-*)",
                   "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
                   "Bash(git show :*)",
                   "Bash(git status)",
                   "Bash(cd :*)",
-                  "Bash(gh pr create :*)", "Bash(gh pr edit :*)",
-                  "Bash(gh issue comment :*)", "Bash(gh issue edit :*)",
+                  "Bash(gh pr create *)", "Bash(gh pr edit *)",
+                  "Bash(gh issue comment *)", "Bash(gh issue edit *)",
                   "Bash(uv run pytest :*)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
                   "Bash(npm run test :*)",
@@ -194,9 +194,9 @@ jobs:
                 "deny": [
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
                   "Bash(git reset :*)", "Bash(git clean :*)",
-                  "Bash(gh pr merge :*)",
-                  "Write(:*.github/:*)", "Edit(:*.github/:*)",
-                  "Write(:*.git/:*)", "Edit(:*.git/:*)"
+                  "Bash(gh pr merge *)",
+                  "Write(.github/**)", "Edit(.github/**)",
+                  "Write(.git/**)", "Edit(.git/**)"
                 ]
               }
             }
@@ -212,7 +212,7 @@ jobs:
       github.event.issue.pull_request &&
       contains(github.event.comment.body, 'AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED') &&
       (
-        github.actor == 'github-actions[bot]' ||
+        github.actor == 'claude[bot]' ||
         github.event.comment.author_association == 'OWNER' ||
         github.event.comment.author_association == 'MEMBER' ||
         github.event.comment.author_association == 'COLLABORATOR'
@@ -370,15 +370,15 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
-                  "Bash(git checkout ai-bug-pipeline-:*)",
+                  "Bash(git checkout ai-bug-pipeline-*)",
                   "Bash(git add :*)", "Bash(git commit -m :*)",
-                  "Bash(git push origin ai-bug-pipeline-:*)",
+                  "Bash(git push origin ai-bug-pipeline-*)",
                   "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
                   "Bash(git show :*)",
                   "Bash(git status)",
                   "Bash(cd :*)",
-                  "Bash(gh pr edit :*)",
-                  "Bash(gh issue comment :*)", "Bash(gh issue edit :*)",
+                  "Bash(gh pr edit *)",
+                  "Bash(gh issue comment *)", "Bash(gh issue edit *)",
                   "Bash(uv run pytest :*)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
                   "Bash(npm run test :*)",
@@ -392,9 +392,9 @@ jobs:
                 "deny": [
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
                   "Bash(git reset :*)", "Bash(git clean :*)",
-                  "Bash(gh pr merge :*)",
-                  "Write(:*.github/:*)", "Edit(:*.github/:*)",
-                  "Write(:*.git/:*)", "Edit(:*.git/:*)"
+                  "Bash(gh pr merge *)",
+                  "Write(.github/**)", "Edit(.github/**)",
+                  "Write(.git/**)", "Edit(.git/**)"
                 ]
               }
             }
