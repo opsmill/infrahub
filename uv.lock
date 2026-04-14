@@ -1438,6 +1438,7 @@ dev = [
     { name = "pytest-cov" },
     { name = "pytest-env" },
     { name = "pytest-httpx" },
+    { name = "pytest-opentelemetry" },
     { name = "pytest-timeout" },
     { name = "pytest-xdist" },
     { name = "ruamel-yaml" },
@@ -1525,6 +1526,7 @@ dev = [
     { name = "pytest-cov", specifier = "==7.0.0" },
     { name = "pytest-env", specifier = ">=1.1.3,<2" },
     { name = "pytest-httpx", specifier = ">=0.33" },
+    { name = "pytest-opentelemetry", specifier = ">=1.0,<2" },
     { name = "pytest-timeout", specifier = "==2.3.1" },
     { name = "pytest-xdist", specifier = ">=3.4,<3.5" },
     { name = "ruamel-yaml", specifier = "==0.18.6" },
@@ -2280,6 +2282,37 @@ wheels = [
 ]
 
 [[package]]
+name = "opentelemetry-container-distro"
+version = "0.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-exporter-otlp" },
+    { name = "opentelemetry-instrumentation" },
+    { name = "opentelemetry-resourcedetector-docker" },
+    { name = "opentelemetry-resourcedetector-kubernetes" },
+    { name = "opentelemetry-resourcedetector-process" },
+    { name = "opentelemetry-sdk" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/e5/deb4d762d20d8622fc008ebd1aa5d23ef2cf77abae4653b90555f13f8a1c/opentelemetry-container-distro-0.2.0.tar.gz", hash = "sha256:09db86b66cb1a5d9a20ee9e2fb8d265c9a72321f3f09651a77c071cc79d5a9e4", size = 5601, upload-time = "2022-09-18T11:51:53.099Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/19/9fdd8bc8c0f5668e3ca30ae4c8022bed2b853347296923bcce4a9abb3d91/opentelemetry_container_distro-0.2.0-py3-none-any.whl", hash = "sha256:61817f99edb46fed168c0eec784b45986b702d95a24fda475a9bb10a652e56b7", size = 4438, upload-time = "2022-09-18T11:51:52.108Z" },
+]
+
+[[package]]
+name = "opentelemetry-exporter-otlp"
+version = "1.39.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-exporter-otlp-proto-grpc" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/13/be/0e9d889f47e55cadc4041e5b53d4e0cc688f9a74811134fb0ba7cbee6905/opentelemetry_exporter_otlp-1.39.0.tar.gz", hash = "sha256:b405da0287b895fe4e2450dedb2a5b072debba1dfcfed5bdb3d1d183d8daa296", size = 6146, upload-time = "2025-12-03T13:19:58.381Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/35/212d2cae4fa9a2c02e74438612268b640ab577b8ccb04590371eb4e0f542/opentelemetry_exporter_otlp-1.39.0-py3-none-any.whl", hash = "sha256:fe155d6968d581b325574ad6dc267c8de299397b18d11feeda2206d0a47928a9", size = 7017, upload-time = "2025-12-03T13:19:35.686Z" },
+]
+
+[[package]]
 name = "opentelemetry-exporter-otlp-proto-common"
 version = "1.39.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2398,6 +2431,46 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/48/b5/64d2f8c3393cd13ea2092106118f7b98461ba09333d40179a31444c6f176/opentelemetry_proto-1.39.0.tar.gz", hash = "sha256:c1fa48678ad1a1624258698e59be73f990b7fc1f39e73e16a9d08eef65dd838c", size = 46153, upload-time = "2025-12-03T13:20:08.729Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e3/4d/d500e1862beed68318705732d1976c390f4a72ca8009c4983ff627acff20/opentelemetry_proto-1.39.0-py3-none-any.whl", hash = "sha256:1e086552ac79acb501485ff0ce75533f70f3382d43d0a30728eeee594f7bf818", size = 72534, upload-time = "2025-12-03T13:19:50.251Z" },
+]
+
+[[package]]
+name = "opentelemetry-resourcedetector-docker"
+version = "0.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/38/bb/f30a59fd8cb41fac8d7d91ad48179e33f011eb8a7d43b1f38a93050803b7/opentelemetry-resourcedetector-docker-0.4.0.tar.gz", hash = "sha256:2723c8c7e63d78eabd9c6ebf7cca7570f4b73d3db18687544073f3c8f280c0bb", size = 6798, upload-time = "2022-09-18T11:53:41.602Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6b/c8/5c7737286172dcfe3c23280d1159b60d0c7f07ffe9a2cff25ade89cfbb79/opentelemetry_resourcedetector_docker-0.4.0-py3-none-any.whl", hash = "sha256:0313ef1678f8af895b4da00b1643567fd50238ffbf2480ce56a6e73d9c7ff32c", size = 3788, upload-time = "2022-09-18T11:53:40.295Z" },
+]
+
+[[package]]
+name = "opentelemetry-resourcedetector-kubernetes"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/e7/0e3d3905971fdf543cc72e77f2997b00df541b1cc6188a9df47ad8174205/opentelemetry-resourcedetector-kubernetes-0.3.0.tar.gz", hash = "sha256:854472ff856c305dc29f033a8f784f9a7f513cb60eb690d2af4a4a572b165019", size = 9067, upload-time = "2022-09-18T12:08:08.143Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/99/c8/cee782a9fb57ab6bfc8fa8c0c43b1d293fab7d932b6f947f563f4ec0d887/opentelemetry_resourcedetector_kubernetes-0.3.0-py3-none-any.whl", hash = "sha256:0abb30217cd71112a48076f86e648de2438003276548e78bf48e4f7a6f4ea219", size = 6148, upload-time = "2022-09-18T12:08:06.573Z" },
+]
+
+[[package]]
+name = "opentelemetry-resourcedetector-process"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "psutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/46/c1/ad691893544068a008f94e0dcc39e641adf6c9ccaf13414f23c1ffbe5bbf/opentelemetry-resourcedetector-process-0.3.0.tar.gz", hash = "sha256:74f51704e40ec73bda088f710f69029802a8c96a06fb0b12e597cdd03fdfe0e9", size = 5155, upload-time = "2022-09-18T12:13:40.063Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/4b/ae/d8f71b176eff48d7b56bc5dc54ecbb0dff4ab2f022682a2e24ca1eeb4d09/opentelemetry_resourcedetector_process-0.3.0-py3-none-any.whl", hash = "sha256:59d770d89c93e873e87ac925b86cfde8a53a0ec04b5418be8d6293f94f42de0f", size = 3818, upload-time = "2022-09-18T12:13:39.047Z" },
 ]
 
 [[package]]
@@ -3376,6 +3449,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ca/bc/5574834da9499066fa1a5ea9c336f94dba2eae02298d36dab192fcf95c86/pytest_httpx-0.36.0.tar.gz", hash = "sha256:9edb66a5fd4388ce3c343189bc67e7e1cb50b07c2e3fc83b97d511975e8a831b", size = 56793, upload-time = "2025-12-02T16:34:57.414Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e2/d2/1eb1ea9c84f0d2033eb0b49675afdc71aa4ea801b74615f00f3c33b725e3/pytest_httpx-0.36.0-py3-none-any.whl", hash = "sha256:bd4c120bb80e142df856e825ec9f17981effb84d159f9fa29ed97e2357c3a9c8", size = 20229, upload-time = "2025-12-02T16:34:56.45Z" },
+]
+
+[[package]]
+name = "pytest-opentelemetry"
+version = "1.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "opentelemetry-api" },
+    { name = "opentelemetry-container-distro" },
+    { name = "opentelemetry-sdk" },
+    { name = "opentelemetry-semantic-conventions" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bd/87/a7ab2173103c7a911952d6cc0a430fd6fcd8313bc869b1d80777d8203c3a/pytest_opentelemetry-1.1.0.tar.gz", hash = "sha256:4e6d552ce90e01dfa33c913ea843ca8a01f306219b4ce36cd7b79d070a82f0c4", size = 17935, upload-time = "2025-04-25T12:30:09.878Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/27/9d/96d2d688369ae707587bc307e186f546355ec0c221b3d3e2feca2bf803f9/pytest_opentelemetry-1.1.0-py3-none-any.whl", hash = "sha256:1fe96eea020bb0cdad3d590c8978908acd75a35d689659cc9b6600740de66812", size = 10446, upload-time = "2025-04-25T12:30:08.686Z" },
 ]
 
 [[package]]

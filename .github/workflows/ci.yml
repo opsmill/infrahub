@@ -8,6 +8,12 @@ on:
       - develop
       - stable
       - release-*
+  workflow_dispatch:
+    inputs:
+      enable-component-tracing:
+        type: boolean
+        description: "Enable OpenTelemetry tracing for component tests"
+        default: false
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -462,9 +468,17 @@ jobs:
           version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
       - name: Install dependencies
         run: "uv sync --all-groups"
-      - name: "Unit Tests"
-        run: "uv run invoke backend.test-component"
-      - name: "Coveralls : Unit Tests"
+      - name: "Enable pytest tracing"
+        if: github.event.inputs.enable-component-tracing == 'true'
+        run: |
+          echo "OTEL_SERVICE_NAME=backend-tests-component" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_ENDPOINT=${{ secrets.TRACING_ENDPOINT }}" >> $GITHUB_ENV
+          echo "OTEL_EXPORTER_OTLP_PROTOCOL=grpc" >> $GITHUB_ENV
+          echo "OTEL_RESOURCE_ATTRIBUTES=github.run_id=${GITHUB_RUN_ID}" >> $GITHUB_ENV
+          echo "PYTEST_OTEL_ARGS=--export-traces" >> $GITHUB_ENV
+      - name: "Component Tests"
+        run: "uv run invoke backend.test-component --extra-args='${PYTEST_OTEL_ARGS:-}'"
+      - name: "Coveralls : Component Tests"
         uses: coverallsapp/github-action@v2
         continue-on-error: true
         env:
@@ -472,15 +486,6 @@ jobs:
         with:
           flag-name: backend-component
           parallel: true
-      # - name: Generate tracing spans
-      #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
-      #   uses: inception-health/otel-upload-test-artifact-action@v1
-      #   with:
-      #     jobName: "backend-tests-unit"
-      #     stepName: "Unit Tests"
-      #     path: "pytest-junit.xml"
-      #     type: "junit"
-      #     githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
   backend-tests-integration:
     if: |

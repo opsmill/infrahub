@@ -90,13 +90,15 @@ def lint(context: Context) -> None:
     print(f" - [{NAMESPACE}] All tests have passed!")
 
 
-@task(optional=["database"])
-def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+@task(optional=["database", "extra-args"])
+def test_component(context: Context, database: str = INFRAHUB_DATABASE, extra_args: str = "") -> Result | None:
     """Run backend component tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
             exec_cmd += " --neo4j"
+        if extra_args:
+            exec_cmd += f" {extra_args}"
         print(f"{exec_cmd}")
         return execute_command(context=context, command=f"{exec_cmd}")
 
