@@ -1,0 +1,31 @@
+.github/workflows/update-compose-file-and-chart.yml
+  cb37beae7e69e79d 24
+.github/workflows/bug-agent-test.yml
+  cb37beae7e69e79d 21
+.github/workflows/labels.yml
+  cb37beae7e69e79d 20
+.github/workflows/bug-agent-fix.yml
+  cb37beae7e69e79d 21
+.github/workflows/repository-dispatch.yml
+  cb37beae7e69e79d 65-76,78,82,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "6943053015bc9a83af0ffd5cb4ca1c90bacd30d1",
+  "prompts": {
+    "cb37beae7e69e79d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40fe615f-3e23-4bb8-8327-de79b2082217",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 17,
+      "accepted_lines": 5957,
+      "overriden_lines": 0
+    }
+  }
+}
