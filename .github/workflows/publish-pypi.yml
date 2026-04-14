@@ -37,8 +37,6 @@ jobs:
   prepare-environment:
     permissions:
       contents: read
-      id-token: write
-      attestations: write
     uses: ./.github/workflows/define-versions.yml
   publish_to_pypi:
     permissions:

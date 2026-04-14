@@ -18,11 +18,7 @@ concurrency:
 
 jobs:
   prepare-environment:
-    permissions:
-      id-token: write
-      issues: write
-      contents: write
-      pull-requests: write
+    permissions: {}
     uses: ./.github/workflows/define-versions.yml
 
   # Initial test: triggered by /bug-test command on the issue

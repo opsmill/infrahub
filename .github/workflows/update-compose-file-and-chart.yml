@@ -21,8 +21,7 @@ permissions: {}
 
 jobs:
   prepare-environment:
-    permissions:
-      contents: write
+    permissions: {}
     uses: ./.github/workflows/define-versions.yml
   update-docker-compose:
     permissions:

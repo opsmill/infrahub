@@ -62,15 +62,28 @@ jobs:
           - "INFRAHUB_CUSTOMER3_REPOSITORY"
 
     steps:
+      - name: Resolve repository name
+        id: repo
+        run: |
+          if echo "$MATRIX_REPO" | grep -q '/'; then
+            echo "name=$MATRIX_REPO" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=$SECRET_REPO" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          MATRIX_REPO: ${{ matrix.repo }}
+          SECRET_REPO: ${{ contains(matrix.repo, '/') && matrix.repo || secrets[matrix.repo] }}
+
       - name: Checkout code
+        if: steps.repo.outputs.name != ''
         uses: actions/checkout@v6
 
       - name: Repository Dispatch
+        if: steps.repo.outputs.name != ''
         uses: peter-evans/repository-dispatch@v4
         with:
           token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
-          # if matrix.repo contains a slash, use it literally; otherwise look up the secret named by matrix.repo
-          repository: ${{ contains(matrix.repo, '/') && matrix.repo || secrets[matrix.repo] }}
+          repository: ${{ steps.repo.outputs.name }}
           event-type: trigger-infrahub-update
           client-payload: |
             {"version":"${{ inputs.version }}"}
