@@ -24,7 +24,8 @@ jobs:
       - name: Close if Docusaurus package
         if: contains(steps.metadata.outputs.dependency-names, '@docusaurus/')
         run: |
-          gh pr close "${{ github.event.pull_request.number }}" \
+          gh pr close "$PR_NUMBER" \
             --comment "Closed: Docusaurus updates are managed via the coordinated update process. See opsmill-skills/docusaurus/version.json."
         env:
           GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}

@@ -51,14 +51,11 @@ env:
 
 jobs:
   prepare-environment:
-    permissions:
-      contents: read
-      packages: write
+    permissions: {}
     uses: ./.github/workflows/define-versions.yml
   build:
     permissions:
       contents: read
-      packages: write
     needs: prepare-environment
     env:
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}

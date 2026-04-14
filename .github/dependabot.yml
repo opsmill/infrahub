@@ -25,6 +25,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+      timezone: "Etc/UTC"
     target-branch: stable
     labels:
       - "type/housekeeping"
@@ -37,6 +38,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+      timezone: "Etc/UTC"
     target-branch: stable
     labels:
       - "type/housekeeping"
@@ -49,6 +51,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+      timezone: "Etc/UTC"
     target-branch: stable
     labels:
       - "type/housekeeping"
@@ -61,6 +64,7 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+      timezone: "Etc/UTC"
     target-branch: stable
     labels:
       - "type/housekeeping"

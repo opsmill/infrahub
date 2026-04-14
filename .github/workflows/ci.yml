@@ -1404,8 +1404,7 @@ jobs:
 
   # ------------------------------------------ OpenTelemetry Trace Export  ------------------------------------------
   otel-export-trace:
-    permissions:
-      contents: read
+    permissions: {}
     needs:
       - coverall-report
     if: always() && !cancelled()
