@@ -8,6 +8,8 @@ import { Button } from "@/shared/components/ui/button";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
+import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import { useConfig } from "@/entities/config/ui/config-provider";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { MERGE_STATE } from "@/entities/proposed-changes/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
@@ -19,6 +21,8 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const { merge } = usePcActionsContext();
 
   const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const config = useConfig();
+  const navigateAfterBranchRemoval = useNavigateAfterBranchRemoval();
 
   const { mutate, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
@@ -26,6 +30,13 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change merged!"} />);
+
+      if (config.main.delete_branch_after_merge) {
+        navigateAfterBranchRemoval(
+          "/proposed-changes",
+          proposedChangesDetails.source_branch?.value
+        );
+      }
     },
     onError: () => {
       toast(

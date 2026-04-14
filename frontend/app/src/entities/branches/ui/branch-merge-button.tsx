@@ -15,6 +15,8 @@ import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchAction
 import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
 import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import { useConfig } from "@/entities/config/ui/config-provider";
 import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
 type BranchMergeButtonProps = {
@@ -25,6 +27,8 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   const { isAuthenticated } = useAuth();
   const date = useAtomValue(datetimeAtom);
   const [isMergeRequested, setIsMergeRequested] = useState(false);
+  const config = useConfig();
+  const navigateAfterBranchRemoval = useNavigateAfterBranchRemoval();
 
   const { loading, data, refetch } = useQuery(GET_BRANCH_ACTION_STATE, {
     variables: {
@@ -71,6 +75,11 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch merge requested!" />, {
         toastId: "alert-success",
       });
+
+      if (config.main.delete_branch_after_merge) {
+        navigateAfterBranchRemoval("/branches", branch.name);
+        return;
+      }
 
       await refetch();
     } catch (error) {
