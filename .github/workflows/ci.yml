@@ -54,6 +54,7 @@ jobs:
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
+      observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -195,6 +196,45 @@ jobs:
             echo "  npm run codegen:graphql"
             echo "  git add src/shared/api/graphql/graphql-env.d.ts src/shared/api/graphql/graphql-cache.d.ts"
             echo "  git commit -m 'chore: regenerate GraphQL types'"
+            exit 1
+          fi
+
+  validate-observability-standalone:
+    if: |
+      needs.files-changed.outputs.observability_standalone == 'true'
+    needs: ["files-changed", "prepare-environment"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Regenerate standalone compose file
+        working-directory: development
+        run: uv run python convert_compose_standalone.py
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code development/docker-compose-observability-standalone.yml; then
+            echo "❌ Error: development/docker-compose-observability-standalone.yml is out of sync"
+            echo ""
+            echo "The observability source files have been updated, but the standalone compose file hasn't been regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd development"
+            echo "  uv run python convert_compose_standalone.py"
+            echo "  git add docker-compose-observability-standalone.yml"
+            echo "  git commit -m 'chore: regenerate standalone observability compose'"
             exit 1
           fi
 
