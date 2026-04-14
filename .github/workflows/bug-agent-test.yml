@@ -48,7 +48,7 @@ jobs:
           ANALYST_COMMENT=$(gh api \
             "repos/${{ github.repository }}/issues/${ISSUE_NUMBER}/comments" \
             --paginate \
-            --jq '.[] | select(.user.login == "github-actions[bot]"
+            --jq '.[] | select(.user.login == "claude[bot]"
               and (.body | contains("AGENT_ANALYSIS_COMPLETE")))' \
             | jq -s 'last // empty')
 
@@ -212,7 +212,7 @@ jobs:
       github.event.issue.pull_request &&
       contains(github.event.comment.body, 'AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED') &&
       (
-        github.actor == 'github-actions[bot]' ||
+        github.actor == 'claude[bot]' ||
         github.event.comment.author_association == 'OWNER' ||
         github.event.comment.author_association == 'MEMBER' ||
         github.event.comment.author_association == 'COLLABORATOR'
