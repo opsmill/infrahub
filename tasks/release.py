@@ -440,3 +440,14 @@ def gen_config_env(
     else:
         for var in sorted(env_vars):
             print(f"{var}:")
+
+
+@task
+def validate_dockercomposeenv(context: Context) -> None:
+    """Validate that the generated docker compose environment variables is up to date."""
+    docker_compose_file_path = "docker-compose.yml"
+    gen_config_env(context, docker_compose_file_path, True)
+
+    exec_cmd = f"git diff --exit-code {docker_compose_file_path}"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
