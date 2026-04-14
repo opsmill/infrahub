@@ -807,7 +807,7 @@ jobs:
       - name: Run validation
         run: uv run invoke schema.validate-jsonschema
 
-  docker-compose-env-vars:
+  validate-docker-compose-env-vars:
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
