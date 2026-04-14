@@ -1,12 +1,17 @@
 """Test that the diff includes nodes deleted by a NodeRemoveMigration.
 
 Reproduces a scenario where:
-1. A node is created on the default branch
+1. Nodes (with relationships between them) are created on the default branch
 2. A branch is created
 3. A different object is changed on the branch (so the diff has content)
-4. A NodeRemoveMigration runs on the branch, deleting the node
+4. A NodeRemoveMigration runs on the branch, deleting the nodes of a kind that
+   has active relationships to instances of another kind
 5. The diff is updated
-6. The deleted node should appear in the diff as REMOVED
+6. The deleted nodes should appear in the diff as REMOVED
+
+Note: We delete TestCar (rather than TestPerson) because TestCar.owner is a
+required relationship to TestPerson — removing TestPerson while TestCar instances
+exist would violate that constraint.
 """
 
 from unittest.mock import AsyncMock
@@ -28,6 +33,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
+from tests.helpers.db_validation import verify_graph
 
 
 class TestDiffAfterNodeRemoveMigration:
@@ -41,16 +47,19 @@ class TestDiffAfterNodeRemoveMigration:
         default_branch: Branch,
         car_person_schema: SchemaBranch,
     ) -> None:
-        # Step 1: Create a person on the default branch
+        # Step 1: Create a person and a car (with owner=person) on the default branch
         person = await Node.init(db=db, schema="TestPerson")
         await person.new(db=db, name="BluePerson", height=180)
         await person.save(db=db, user_id="test-user")
+
+        car = await Node.init(db=db, schema="TestCar")
+        await car.new(db=db, name="accord", nbr_seats=5, is_electric=False, owner=person.id)
+        await car.save(db=db, user_id="test-user")
 
         # Step 2: Create a branch
         branch = await create_branch(db=db, branch_name="test-branch")
 
         # Step 3: Make an unrelated change on the branch (so the diff has content)
-        # Update the person's height on the branch — but use a DIFFERENT person
         other_person = await Node.init(db=db, schema="TestPerson", branch=branch)
         await other_person.new(db=db, name="OtherPerson", height=160)
         await other_person.save(db=db, user_id="branch-user")
@@ -65,19 +74,21 @@ class TestDiffAfterNodeRemoveMigration:
             base_branch=default_branch, diff_branch=branch
         )
 
-        # Verify person is NOT in the diff yet (it was created on main, not changed on branch)
+        # Verify car is NOT in the diff yet (it was created on main, not changed on branch)
         enriched_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
-        person_in_diff = [n for n in enriched_diff.nodes if n.uuid == person.id]
-        assert len(person_in_diff) == 0, "Person should not be in the diff before migration"
+        car_in_diff = [n for n in enriched_diff.nodes if n.uuid == car.id]
+        assert len(car_in_diff) == 0, "Car should not be in the diff before migration"
 
-        # Step 5: Run NodeRemoveMigration on the branch to delete TestPerson nodes
-        person_schema = car_person_schema.get(name="TestPerson")
+        # Step 5: Run NodeRemoveMigration on the branch to delete TestCar nodes
+        # TestCar has an active outbound `owner` relationship to TestPerson, so this
+        # exercises the deletion path for nodes with active relationships.
+        car_schema = car_person_schema.get(name="TestCar")
         migration = NodeRemoveMigration(
-            previous_node_schema=person_schema,
+            previous_node_schema=car_schema,
             new_node_schema=None,
-            schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestPerson"),
+            schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestCar"),
         )
         migration_at = Timestamp()
         result = await migration.execute(
@@ -86,22 +97,24 @@ class TestDiffAfterNodeRemoveMigration:
         )
         assert result.success, f"Migration failed: {result.errors}"
 
-        # Verify person is deleted on the branch
-        person_on_branch = await NodeManager.get_one(db=db, branch=branch, id=person.id)
-        assert person_on_branch is None, "Person should be deleted on the branch after migration"
+        # Verify car is deleted on the branch
+        car_on_branch = await NodeManager.get_one(db=db, branch=branch, id=car.id)
+        assert car_on_branch is None, "Car should be deleted on the branch after migration"
+
+        await verify_graph(db=db)
 
         # Step 6: Update the diff again
         enriched_diff_metadata = await diff_coordinator.update_branch_diff(
             base_branch=default_branch, diff_branch=branch
         )
 
-        # Step 7: Verify the deleted person appears in the updated diff
+        # Step 7: Verify the deleted car appears in the updated diff
         enriched_diff = await diff_repository.get_one(
             diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
         )
-        person_in_diff = [n for n in enriched_diff.nodes if n.uuid == person.id]
-        assert len(person_in_diff) == 1, (
-            f"Person should appear in the diff after being deleted by migration. "
+        car_in_diff = [n for n in enriched_diff.nodes if n.uuid == car.id]
+        assert len(car_in_diff) == 1, (
+            f"Car should appear in the diff after being deleted by migration. "
             f"Diff node UUIDs: {[n.uuid for n in enriched_diff.nodes]}"
         )
-        assert person_in_diff[0].action is DiffAction.REMOVED
+        assert car_in_diff[0].action is DiffAction.REMOVED

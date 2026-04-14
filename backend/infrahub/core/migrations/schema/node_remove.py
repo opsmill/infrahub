@@ -3,45 +3,27 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Sequence
 
 from infrahub.core.constants import RelationshipStatus
-from infrahub.core.graph.schema import GraphNodeRelationships, GraphRelDirection
 
 from ..query import MigrationQuery
 from ..shared import SchemaMigration
 
 if TYPE_CHECKING:
-    from pydantic.fields import FieldInfo
-
     from infrahub.database import InfrahubDatabase
 
 
-class NodeRemoveMigrationBaseQuery(MigrationQuery):
-    def render_sub_query_per_rel_type(
-        self,
-        rel_name: str,
-        rel_type: str,
-        rel_def: FieldInfo,
-    ) -> str:
-        subquery = [
-            f"WITH peer_node, {rel_name}, active_node",
-            f'WHERE type({rel_name}) = "{rel_type}"',
-        ]
-        if rel_def.default.direction in [GraphRelDirection.OUTBOUND, GraphRelDirection.EITHER]:
-            subquery.append(f"""
-                CREATE (active_node)-[edge:{rel_type} $rel_props ]->(peer_node)
-                SET edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
-                SET edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
-                """)
-        elif rel_def.default.direction in [GraphRelDirection.INBOUND, GraphRelDirection.EITHER]:
-            subquery.append(f"""
-                CREATE (active_node)<-[edge:{rel_type} $rel_props ]-(peer_node)
-                SET edge.branch = CASE WHEN {rel_name}.branch = "-global-" THEN "-global-" ELSE $branch END
-                SET edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
-                """)
-        subquery.append("RETURN peer_node as p2")
-        return "\n".join(subquery)
+# Cypher fragment to compute the (branch, branch_level) of a new "deleted" edge given an
+# existing edge variable: agnostic edges stay on -global-, otherwise on the migration branch.
+_BRANCH_FROM_EXISTING = (
+    'CASE WHEN {existing}.branch = "-global-" THEN "-global-" ELSE $branch END AS new_branch, '
+    'CASE WHEN {existing}.branch = "-global-" '
+    "THEN {existing}.branch_level ELSE $branch_level END AS new_branch_level"
+)
 
-    def render_node_remove_query(self, branch_filter: str) -> str:
-        raise NotImplementedError()
+
+class NodeRemoveMigrationBaseQuery(MigrationQuery):
+    """Shared parameter setup for node-remove migrations."""
+
+    QUERY_TEMPLATE: str = ""
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
@@ -52,42 +34,16 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
         self.params["branch"] = self.branch.name
         self.params["branch_level"] = self.branch.hierarchy_level
         self.params["user_id"] = self.user_id
-
         self.params["rel_props"] = {
             "status": RelationshipStatus.DELETED.value,
             "from": self.at.to_string(),
             "from_user_id": self.user_id,
         }
-
         # Set metadata for vertex properties on default/global branch
         self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
 
-        node_remove_query = self.render_node_remove_query(branch_filter=branch_filter)
-
-        query = """
-        // Find all the active nodes
-        MATCH (node:%(node_kind)s)
-        CALL (node) {
-            MATCH (root:Root)<-[r:IS_PART_OF]-(node)
-            WHERE %(branch_filter)s
-            RETURN node as n1, r as r1
-            ORDER BY r.branch_level DESC, r.from DESC
-            LIMIT 1
-        }
-        WITH n1 as active_node, r1 as rb
-        WHERE rb.status = "active"
-        %(node_remove_query)s
-        WITH active_node
-        // Set metadata on Node vertex if on default/global branch
-        CALL (active_node) {
-            WITH active_node
-            WHERE $set_metadata
-            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
-        }
-        RETURN DISTINCT active_node
-        """ % {
+        query = self.QUERY_TEMPLATE % {
             "branch_filter": branch_filter,
-            "node_remove_query": node_remove_query,
             "node_kind": self.migration.previous_schema.kind,
         }
         self.add_to_query(query)
@@ -97,104 +53,259 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
 
 
 class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
+    """Close inbound edges that point to nodes of the removed kind.
+
+    Inbound edge types from another Node/Attribute/Relationship to our active_node:
+      - HAS_SOURCE  (Attribute|Relationship -> Node)        : peer is the Attribute/Rel
+      - HAS_OWNER   (Attribute|Relationship -> Node)        : peer is the Attribute/Rel
+      - IS_RELATED  (Node <-> Relationship, either dir)     : peer is the Relationship
+
+    For each such edge we close it on the migration branch and create a matching deleted
+    edge so that downstream branches see the removal.
+
+    For inbound IS_RELATED, the peer is a Relationship vertex that connects active_node
+    and another Node — when active_node is removed, the Relationship is torn down entirely.
+    We close its other sub-edges (IS_PROTECTED, HAS_SOURCE, HAS_OWNER, far-side IS_RELATED)
+    on the same branch.
+
+    For inbound HAS_SOURCE/HAS_OWNER the peer is an Attribute/Relationship belonging to a
+    different Node, so its sub-edges are left alone; only the inbound pointer itself is closed.
+    """
+
     name = "migration_node_remove_in"
     insert_return: bool = False
 
-    def render_node_remove_query(self, branch_filter: str) -> str:
-        sub_query, sub_query_args = self.render_sub_query_in()
-        query = """
-        // Process Inbound Relationship
-        WITH active_node
-        MATCH (active_node)<-[]-(peer)
-        CALL (active_node, peer) {
-            MATCH (active_node)-[r]->(peer)
+    QUERY_TEMPLATE = (
+        """
+    // ----------------------------------------------------------
+    // Find all active nodes of the kind being removed
+    // ----------------------------------------------------------
+    MATCH (node:%(node_kind)s)
+    CALL (node) {
+        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+        WHERE %(branch_filter)s
+        RETURN r AS root_edge
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH node AS active_node, root_edge
+    WHERE root_edge.status = "active"
+
+    // ----------------------------------------------------------
+    // For each inbound edge to active_node, find the latest active edge on the branch
+    // ----------------------------------------------------------
+    MATCH (active_node)<-[r]-(peer)
+    WITH DISTINCT active_node, type(r) AS edge_type, peer
+    CALL (active_node, edge_type, peer) {
+        MATCH (active_node)<-[r:$(edge_type)]-(peer)
+        WHERE %(branch_filter)s
+        RETURN r AS rel_inbound, peer AS peer_node
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH active_node, rel_inbound, peer_node
+    WHERE rel_inbound.status = "active"
+
+    // ----------------------------------------------------------
+    // Set updated metadata on the peer vertex on default/global branch
+    // ----------------------------------------------------------
+    CALL (peer_node) {
+        WITH peer_node
+        WHERE $set_metadata
+        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+    }
+
+    WITH active_node, rel_inbound, peer_node,
+         """
+        + _BRANCH_FROM_EXISTING.format(existing="rel_inbound")
+        + """,
+         startNode(rel_inbound) AS existing_start, endNode(rel_inbound) AS existing_end
+
+    // ----------------------------------------------------------
+    // Create a "deleted" edge of the same type and direction
+    // ----------------------------------------------------------
+    CALL (existing_start, existing_end, rel_inbound, new_branch, new_branch_level) {
+        CREATE (existing_start)-[new_edge:$(type(rel_inbound))]->(existing_end)
+        SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
+    }
+
+    // ----------------------------------------------------------
+    // Close the existing edge if it lives on the migration branch (or is global)
+    // ----------------------------------------------------------
+    CALL (rel_inbound) {
+        WITH rel_inbound
+        WHERE rel_inbound.branch IN ["-global-", $branch]
+        SET rel_inbound.to = $current_time, rel_inbound.to_user_id = $user_id
+    }
+
+    // ----------------------------------------------------------
+    // For inbound IS_RELATED, the Relationship vertex (peer_node) is being torn down.
+    // Close its other sub-edges (IS_PROTECTED, HAS_SOURCE, HAS_OWNER, far-side IS_RELATED)
+    // on the same branch. HAS_SOURCE/HAS_OWNER inbound do NOT need this — their peer
+    // belongs to another Node and stays active.
+    // ----------------------------------------------------------
+    WITH DISTINCT active_node, peer_node, rel_inbound
+    CALL (active_node, peer_node, rel_inbound) {
+        WITH active_node, peer_node
+        WHERE type(rel_inbound) = "IS_RELATED"
+        MATCH (peer_node)-[]-(sub_peer)
+        WHERE NOT (sub_peer = active_node)
+        WITH DISTINCT peer_node, sub_peer
+        CALL (peer_node, sub_peer) {
+            MATCH (peer_node)-[r]-(sub_peer)
             WHERE %(branch_filter)s
-            RETURN active_node as n1, r as rel_inband1, peer as p1
+            RETURN r AS sub_edge
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n1 as active_node, rel_inband1 as rel_inband, p1 as peer_node
-        WHERE rel_inband.status = "active"
-        CALL (peer_node) {
-            WITH peer_node
-            WHERE $set_metadata
-            SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
-        }
-        CALL (%(sub_query_args)s) {
-            %(sub_query)s
-        }
-        WITH p2 as peer_node, rel_inband, active_node
-        FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_inband.to = $current_time, rel_inband.to_user_id = $user_id
-        )
-        """ % {"sub_query": sub_query, "sub_query_args": sub_query_args, "branch_filter": branch_filter}
-        return query
+        WITH peer_node, sub_peer, sub_edge,
+             """
+        + _BRANCH_FROM_EXISTING.format(existing="sub_edge")
+        + """,
+             startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
+        WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
 
-    def render_sub_query_in(self) -> tuple[str, str]:
-        rel_name = "rel_inband"
-        sub_query_in_args = f"peer_node, {rel_name}, active_node"
-        sub_queries_in = [
-            self.render_sub_query_per_rel_type(
-                rel_name=rel_name,
-                rel_type=rel_type,
-                rel_def=rel_def,
-            )
-            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
-        ]
-        sub_query_in = "\nUNION\n".join(sub_queries_in)
-        return sub_query_in, sub_query_in_args
+        CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
+            CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
+            SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
+        }
+
+        CALL (sub_edge) {
+            WITH sub_edge
+            WHERE sub_edge.branch IN ["-global-", $branch]
+            SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
+        }
+    }
+    """
+    )
 
     def get_nbr_migrations_executed(self) -> int:
         return 0
 
 
 class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
-    name = "migration_node_remove_in"
+    """Close outbound edges from nodes of the removed kind, plus their second-level sub-edges.
+
+    Outbound edge types from active_node:
+      - HAS_ATTRIBUTE (Node -> Attribute)
+      - IS_PART_OF    (Node -> Root)
+      - IS_RELATED    (Node <-> Relationship, either dir)
+
+    After closing the parent HAS_ATTRIBUTE/IS_RELATED edge, the Attribute/Relationship
+    vertex is orphaned from active_node's perspective. We must also close any active
+    sub-edges hanging off that Attribute/Relationship (HAS_VALUE, HAS_SOURCE, HAS_OWNER,
+    IS_PROTECTED, far-side IS_RELATED) on the same branch
+    """
+
+    name = "migration_node_remove_out"
     insert_return: bool = False
 
-    def render_node_remove_query(self, branch_filter: str) -> str:
-        sub_query, sub_query_args = self.render_sub_query_out()
-        query = """
-        // Process Outbound Relationship
+    QUERY_TEMPLATE = (
+        """
+    // ----------------------------------------------------------
+    // Find all active nodes of the kind being removed
+    // ----------------------------------------------------------
+    MATCH (node:%(node_kind)s)
+    CALL (node) {
+        MATCH (root:Root)<-[r:IS_PART_OF]-(node)
+        WHERE %(branch_filter)s
+        RETURN r AS root_edge
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH node AS active_node, root_edge
+    WHERE root_edge.status = "active"
+
+    // Set updated metadata on the Node vertex on default/global branch
+    CALL (active_node) {
         WITH active_node
-        MATCH (active_node)-[]->(peer)
-        CALL (active_node, peer) {
-            MATCH (active_node)-[r]->(peer)
+        WHERE $set_metadata
+        SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
+    }
+
+    // ----------------------------------------------------------
+    // For each outbound edge from active_node, find the latest active edge on the branch
+    // ----------------------------------------------------------
+    WITH active_node
+    MATCH (active_node)-[]->(peer)
+    CALL (active_node, peer) {
+        MATCH (active_node)-[r]->(peer)
+        WHERE %(branch_filter)s
+        RETURN r AS rel_outbound, peer AS peer_node
+        ORDER BY r.branch_level DESC, r.from DESC
+        LIMIT 1
+    }
+    WITH active_node, rel_outbound, peer_node
+    WHERE rel_outbound.status = "active"
+
+    // Set updated metadata on the peer vertex on default/global branch
+    CALL (peer_node) {
+        WITH peer_node
+        WHERE $set_metadata
+        SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
+    }
+
+    WITH active_node, rel_outbound, peer_node,
+         """
+        + _BRANCH_FROM_EXISTING.format(existing="rel_outbound")
+        + """,
+         startNode(rel_outbound) AS existing_start, endNode(rel_outbound) AS existing_end
+
+    // Create a "deleted" edge of the same type and direction. Dynamic relationship type
+    // via $(type(rel_outbound)) requires Neo4j 5.26+.
+    CALL (existing_start, existing_end, rel_outbound, new_branch, new_branch_level) {
+        CREATE (existing_start)-[new_edge:$(type(rel_outbound))]->(existing_end)
+        SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
+    }
+
+    // Close the existing parent edge if it lives on the migration branch (or is global)
+    CALL (rel_outbound) {
+        WITH rel_outbound
+        WHERE rel_outbound.branch IN ["-global-", $branch]
+        SET rel_outbound.to = $current_time, rel_outbound.to_user_id = $user_id
+    }
+
+    // ----------------------------------------------------------
+    // Close sub-edges hanging off the Attribute/Relationship peer vertex
+    // ----------------------------------------------------------
+    WITH DISTINCT active_node, peer_node
+    CALL (active_node, peer_node) {
+        WITH active_node, peer_node
+        WHERE peer_node:Attribute OR peer_node:Relationship
+        MATCH (peer_node)-[]-(sub_peer)
+        WHERE NOT (sub_peer = active_node)
+        WITH DISTINCT peer_node, sub_peer
+        CALL (peer_node, sub_peer) {
+            MATCH (peer_node)-[r]-(sub_peer)
             WHERE %(branch_filter)s
-            RETURN active_node as n1, r as rel_outband1, peer as p1
+            RETURN r AS sub_edge
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n1 as active_node, rel_outband1 as rel_outband, p1 as peer_node
-        WHERE rel_outband.status = "active"
-        CALL (peer_node) {
-            WITH peer_node
-            WHERE $set_metadata
-            SET peer_node.updated_at = $current_time, peer_node.updated_by = $user_id
-        }
-        CALL (%(sub_query_args)s) {
-            %(sub_query)s
-        }
-        FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
-            SET rel_outband.to = $current_time, rel_outband.to_user_id = $user_id
-        )
-        """ % {"sub_query": sub_query, "sub_query_args": sub_query_args, "branch_filter": branch_filter}
+        WITH peer_node, sub_peer, sub_edge,
+             """
+        + _BRANCH_FROM_EXISTING.format(existing="sub_edge")
+        + """,
+             startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
+        WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
 
-        return query
+        // Create a deleted sub-edge of the same type and direction.
+        CALL (sub_start, sub_end, sub_edge, new_branch, new_branch_level) {
+            CREATE (sub_start)-[new_edge:$(type(sub_edge))]->(sub_end)
+            SET new_edge = $rel_props, new_edge.branch = new_branch, new_edge.branch_level = new_branch_level
+        }
 
-    def render_sub_query_out(self) -> tuple[str, str]:
-        rel_name = "rel_outband"
-        sub_query_out_args = f"peer_node, {rel_name}, active_node"
-        sub_queries_out = [
-            self.render_sub_query_per_rel_type(
-                rel_name=rel_name,
-                rel_type=rel_type,
-                rel_def=rel_def,
-            )
-            for rel_type, rel_def in GraphNodeRelationships.model_fields.items()
-        ]
-        sub_query_out = "\nUNION\n".join(sub_queries_out)
-        return sub_query_out, sub_query_out_args
+        // Close the existing sub-edge if it lives on the migration branch (or is global)
+        CALL (sub_edge) {
+            WITH sub_edge
+            WHERE sub_edge.branch IN ["-global-", $branch]
+            SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
+        }
+    }
+
+    RETURN DISTINCT active_node
+    """
+    )
 
     def get_nbr_migrations_executed(self) -> int:
         return self.num_of_results
