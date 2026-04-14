@@ -72,7 +72,11 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
         },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch merge requested!" />, {
+      const message = config.main.delete_branch_after_merge
+        ? `Branch merge requested! Branch '${branch.name}' will be automatically deleted.`
+        : "Branch merge requested!";
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />, {
         toastId: "alert-success",
       });
 

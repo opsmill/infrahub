@@ -29,7 +29,11 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message={"Proposed change merged!"} />);
+      const message = config.main.delete_branch_after_merge
+        ? `Proposed change merged! Branch '${proposedChangesDetails.source_branch?.value}' will be automatically deleted.`
+        : "Proposed change merged!";
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
 
       if (config.main.delete_branch_after_merge) {
         navigateAfterBranchRemoval(
