@@ -51,39 +51,43 @@ class TestDisplayLabelBackfillOnSchemaChange(TestInfrahubDockerClient):
     def schema_with_display_label(self) -> dict:
         return {"version": "1.0", "nodes": [COLOR.model_dump()]}
 
+    @pytest.fixture(scope="class")
+    async def color_before(self, client: InfrahubClient, schema_without_display_label: dict) -> str:
+        """Load schema without display_label and create a node."""
+        response = await client.schema.load(schemas=[schema_without_display_label], wait_until_converged=True)
+        assert response.schema_updated
+
+        color = await client.create(kind="TestingColor", name="Red", description="A warm color")
+        await color.save()
+        return color.id
+
+    @pytest.fixture(scope="class")
+    async def color_after(self, client: InfrahubClient, color_before: str, schema_with_display_label: dict) -> str:
+        """Update schema to add display_label and create a second node."""
+        response = await client.schema.load(schemas=[schema_with_display_label], wait_until_converged=True)
+        assert response.schema_updated
+
+        color = await client.create(kind="TestingColor", name="Blue", description="A cool color")
+        await color.save()
+        return color.id
+
     async def _get_display_labels(self, client: InfrahubClient) -> dict[str, str]:
         result = await client.execute_graphql(query=QUERY_DISPLAY_LABELS)
         return {e["node"]["id"]: e["node"]["display_label"] for e in result["TestingColor"]["edges"]}
 
-    async def test_step01_load_schema_without_display_label(
-        self, client: InfrahubClient, schema_without_display_label: dict
-    ) -> None:
-        response = await client.schema.load(schemas=[schema_without_display_label], wait_until_converged=True)
-        assert response.schema_updated
-
-    async def test_step02_create_node_and_verify_no_display_label(self, client: InfrahubClient) -> None:
-        color = await client.create(kind="TestingColor", name="Red", description="A warm color")
-        await color.save()
-
+    async def test_node_created_before_display_label_has_repr(self, client: InfrahubClient, color_before: str) -> None:
+        """A node created without display_label in the schema should fall back to repr()."""
         await wait_for_all_tasks_to_be_completed(client=client)
         labels = await self._get_display_labels(client)
-        # Display label is null, so defaults to repr()
-        assert labels[color.id] == f"TestingColor(ID: {color.id})"
+        assert labels[color_before] == f"TestingColor(ID: {color_before})"
 
-    async def test_step03_load_schema_with_display_label(
-        self, client: InfrahubClient, schema_with_display_label: dict
-    ) -> None:
-        response = await client.schema.load(schemas=[schema_with_display_label], wait_until_converged=True)
-        assert response.schema_updated
-
-    async def test_step04_create_second_node(self, client: InfrahubClient) -> None:
-        color = await client.create(kind="TestingColor", name="Blue", description="A cool color")
-        await color.save()
-
+    async def test_node_created_after_display_label_has_value(self, client: InfrahubClient, color_after: str) -> None:
+        """A node created after display_label is added should have the correct value."""
         labels = await self._get_display_labels(client)
-        assert labels[color.id] == "Blue"
+        assert labels[color_after] == "Blue"
 
-    async def test_step05_display_labels_backfilled(self, client: InfrahubClient) -> None:
+    async def test_backfill_updates_preexisting_node(self, client: InfrahubClient, color_after: str) -> None:
+        """After the async backfill completes, all nodes should have correct display_labels."""
         await wait_for_all_tasks_to_be_completed(client=client)
         labels = await self._get_display_labels(client)
         assert set(labels.values()) == {"Red", "Blue"}
