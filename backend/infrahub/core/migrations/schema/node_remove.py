@@ -232,9 +232,10 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     // For each outbound edge from active_node, find the latest active edge on the branch
     // ----------------------------------------------------------
     WITH active_node
-    MATCH (active_node)-[:HAS_ATTRIBUTE|IS_RELATED|IS_PART_OF]->(peer:Attribute|Relationship|Root)
-    CALL (active_node, peer) {
-        MATCH (active_node)-[r]->(peer)
+    MATCH (active_node)-[e:HAS_ATTRIBUTE|IS_RELATED|IS_PART_OF]->(peer:Attribute|Relationship|Root)
+    WITH DISTINCT active_node, type(e) AS edge_type, peer
+    CALL (active_node, edge_type, peer) {
+        MATCH (active_node)-[r:$(edge_type)]->(peer)
         WHERE %(branch_filter)s
         RETURN r AS rel_outbound, peer AS peer_node
         ORDER BY r.branch_level DESC, r.from DESC
