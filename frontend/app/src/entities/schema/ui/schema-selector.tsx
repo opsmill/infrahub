@@ -9,7 +9,7 @@ import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
 import { SearchInput } from "@/shared/components/inputs/search-input";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
+import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -92,11 +92,13 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
     <Col className={classNames("bg-white", className)}>
       <Row className="sticky top-0 z-1 border-gray-200 border-b bg-white p-4">
         <SearchInput placeholder="Search schema" value={search} onChange={handleSearchChange} />
-        <Button
+        <ButtonWithTooltip
           size="square"
           variant="outline"
           className="size-10 rounded-md border-gray-300"
           onClick={toggleAll}
+          tooltipContent={anyOpen ? "Collapse all" : "Expand all"}
+          tooltipEnabled
           aria-label={anyOpen ? "Collapse all" : "Expand all"}
         >
           {anyOpen ? (
@@ -104,7 +106,7 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
           ) : (
             <ListChevronsUpDown className="size-4" />
           )}
-        </Button>
+        </ButtonWithTooltip>
       </Row>
 
       {Object.entries(schemasPerNamespace).map(([namespace, schemas]) => {
