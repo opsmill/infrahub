@@ -3,11 +3,15 @@
 name: Keyword Scanner
 on: [push, pull_request]
 
+permissions: {}
+
 env:
   KEYWORDS_LIST: "${{ secrets.KEYWORDS_LIST || '' }}"
 
 jobs:
   scan:
+    permissions:
+      contents: read
     if: |
       (github.event_name == 'push' && github.actor != 'dependabot[bot]') ||
       (github.event_name == 'pull_request' &&

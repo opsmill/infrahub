@@ -27,9 +27,29 @@ on:
         required: false
         description: The string to extract semver from.
         default: ''
+    secrets:
+      GH_UPDATE_PACKAGE_OTTO:
+        description: PAT for cross-repo repository dispatch
+        required: true
+      INFRAHUB_PACKER_REPOSITORY:
+        description: Packer repository name
+        required: false
+      INFRAHUB_ENTERPRISE_REPOSITORY:
+        description: Enterprise repository name
+        required: false
+      INFRAHUB_CUSTOMER1_REPOSITORY:
+        description: Customer 1 repository name
+        required: false
+      INFRAHUB_CUSTOMER3_REPOSITORY:
+        description: Customer 3 repository name
+        required: false
+
+permissions: {}
 
 jobs:
   repository-dispatch:
+    permissions:
+      contents: read
     runs-on: ubuntu-22.04
     strategy:
       matrix:

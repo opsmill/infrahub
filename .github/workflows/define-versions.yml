@@ -9,8 +9,11 @@ on:
       PYTHON_VERSION:
         value: "3.13.11"
 
+permissions: {}
+
 jobs:
   prepare:
+    permissions: {}
     runs-on: ubuntu-latest
     steps:
       - run: "true"

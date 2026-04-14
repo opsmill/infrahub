@@ -8,10 +8,17 @@ on:
         type: "string"
         description: "Directory in which uv check will be executed"
         default: "./"
+
+permissions: {}
+
 jobs:
   prepare-environment:
+    permissions:
+      contents: read
     uses: ./.github/workflows/define-versions.yml
   uv_check:
+    permissions:
+      contents: read
     needs: prepare-environment
     runs-on: "ubuntu-latest"
     steps:

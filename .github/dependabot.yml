@@ -10,6 +10,57 @@ updates:
       interval: "weekly"
       day: "monday"
       time: "09:00"
+      timezone: "Etc/UTC"
+    target-branch: stable
+    labels:
+      - "type/housekeeping"
+      - "ci/skip-changelog"
+    cooldown:
+      days: 3
+
+  # Python dependencies (pyproject.toml + uv.lock)
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    target-branch: stable
+    labels:
+      - "type/housekeeping"
+      - "ci/skip-changelog"
+
+  # Documentation dependencies (Docusaurus)
+  - package-ecosystem: "npm"
+    directory: "/docs"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    target-branch: stable
+    labels:
+      - "type/housekeeping"
+      - "ci/skip-changelog"
+
+  # Frontend dependencies
+  - package-ecosystem: "npm"
+    directory: "/frontend/app"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    target-branch: stable
+    labels:
+      - "type/housekeeping"
+      - "ci/skip-changelog"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
     target-branch: stable
     labels:
       - "type/housekeeping"

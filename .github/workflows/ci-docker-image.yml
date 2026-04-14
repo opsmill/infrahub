@@ -2,9 +2,6 @@
 # yamllint disable rule:truthy
 name: Build And Push Docker image
 
-# When calling this workflow, ensure you use
-#   secrets: inherit
-
 on:
   workflow_call:
     inputs:
@@ -35,6 +32,15 @@ on:
         required: false
         description: Comma separated platform list to build the image for
         default: "linux/amd64,linux/arm64"
+    secrets:
+      HARBOR_USERNAME:
+        description: Docker registry username
+        required: true
+      HARBOR_PASSWORD:
+        description: Docker registry password
+        required: true
+
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ inputs.ref }}
@@ -45,8 +51,14 @@ env:
 
 jobs:
   prepare-environment:
+    permissions:
+      contents: read
+      packages: write
     uses: ./.github/workflows/define-versions.yml
   build:
+    permissions:
+      contents: read
+      packages: write
     needs: prepare-environment
     env:
       UV_VERSION: ${{ needs.prepare-environment.outputs.UV_VERSION }}

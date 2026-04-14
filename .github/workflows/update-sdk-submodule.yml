@@ -7,8 +7,12 @@ on:
     types:
       - trigger-submodule-update
 
+permissions: {}
+
 jobs:
   update-dependencies:
+    permissions:
+      contents: write
     strategy:
       matrix:
         branch-name:

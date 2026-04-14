@@ -6,8 +6,12 @@ on:
   schedule:
     - cron: "0 0 * * *"
 
+permissions: {}
+
 jobs:
   meta_data:
+    permissions:
+      contents: read
     runs-on: ubuntu-22.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
@@ -46,8 +50,12 @@ jobs:
 
 
   publish-docker-image:
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci-docker-image.yml
-    secrets: inherit
+    secrets:
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
     needs: meta_data
     with:
       publish: true
@@ -57,6 +65,8 @@ jobs:
       labels: ${{needs.meta_data.outputs.labels}}
 
   meta_data_stable:
+    permissions:
+      contents: read
     runs-on: ubuntu-22.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
@@ -95,8 +105,12 @@ jobs:
 
 
   publish-docker-image-stable:
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci-docker-image.yml
-    secrets: inherit
+    secrets:
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
     needs: meta_data_stable
     with:
       publish: true

@@ -9,6 +9,8 @@ on:
       - stable
       - release-*
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -31,9 +33,13 @@ env:
 
 jobs:
   prepare-environment:
+    permissions:
+      contents: read
     uses: ./.github/workflows/define-versions.yml
   # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
+    permissions:
+      contents: read
     name: Detect which file has changed
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -68,6 +74,8 @@ jobs:
 
   # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
+    permissions:
+      contents: read
     if: |
       needs.files-changed.outputs.yaml == 'true' ||
       needs.files-changed.outputs.infrahub_uv_files == 'true'
@@ -199,6 +207,8 @@ jobs:
           fi
 
   python-lint:
+    permissions:
+      contents: read
     if: |
       needs.files-changed.outputs.backend == 'true' ||
       needs.files-changed.outputs.python == 'true'
@@ -232,6 +242,8 @@ jobs:
         run: "uv run ty check ."
 
   markdown-lint:
+    permissions:
+      contents: read
     if: |
       needs.files-changed.outputs.documentation == 'true' ||
       needs.files-changed.outputs.release == 'true' ||
@@ -250,6 +262,8 @@ jobs:
           globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
 
   action-lint:
+    permissions:
+      contents: read
     if: needs.files-changed.outputs.github_workflows == 'true'
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
@@ -268,6 +282,8 @@ jobs:
           SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004 --exclude=SC2129
 
   infrahub-uv-check:
+    permissions:
+      contents: read
     if: |
       needs.files-changed.outputs.infrahub_uv_files == 'true' ||
       github.ref_name == 'stable' ||
@@ -279,6 +295,8 @@ jobs:
       directory: "./"
 
   infrahub-testcontainers-check:
+    permissions:
+      contents: read
     if: needs.files-changed.outputs.infrahub_uv_files == 'true'
     needs: ["prepare-environment", "files-changed"]
     runs-on: ubuntu-latest
@@ -320,6 +338,8 @@ jobs:
           fi
 
   backend-testcontainers-unit:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -360,6 +380,8 @@ jobs:
         run: "uv run pytest --rootdir=. -c pyproject.toml -vs tests"
 
   infrahub-testcontainers-uv-check:
+    permissions:
+      contents: read
     if: |
       needs.files-changed.outputs.infrahub_uv_files == 'true' ||
       github.ref_name == 'stable' ||
@@ -371,6 +393,8 @@ jobs:
       directory: "./python_testcontainers"
 
   backend-tests-unit:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -415,6 +439,8 @@ jobs:
           parallel: true
 
   backend-tests-component:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -469,6 +495,8 @@ jobs:
       #     githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
   backend-tests-integration:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -516,6 +544,8 @@ jobs:
           parallel: true
 
   backend-tests-functional:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -563,6 +593,8 @@ jobs:
           parallel: true
 
   backend-docker-integration:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -670,6 +702,8 @@ jobs:
   #       run: "uv run invoke backend.test-unit"
 
   backend-validate-generated:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -698,6 +732,8 @@ jobs:
         run: "uv run invoke backend.validate-generated"
 
   frontend-tests:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -737,6 +773,8 @@ jobs:
           file: frontend/app/coverage/lcov.info
 
   graphql-schema:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -763,6 +801,8 @@ jobs:
       - name: Run validation
         run: uv run invoke schema.validate-graphqlschema
   json-schema:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -790,6 +830,8 @@ jobs:
         run: uv run invoke schema.validate-jsonschema
 
   documentation:
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./docs
@@ -830,6 +872,8 @@ jobs:
         run: "uv run invoke docs.build"
 
   validate-generated-documentation:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -865,6 +909,8 @@ jobs:
         run: "uv run invoke docs.validate"
 
   validate-dev-guideline-links:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -890,6 +936,8 @@ jobs:
           fail: true
 
   validate-documentation-style:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -917,6 +965,8 @@ jobs:
         run: ./vale --config=./.vale.ini $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 
   validate-release-notes-style:
+    permissions:
+      contents: read
     if: |
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
@@ -943,6 +993,8 @@ jobs:
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
+    permissions:
+      contents: read
     defaults:
       run:
         working-directory: ./frontend/app
@@ -1147,6 +1199,8 @@ jobs:
 
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
+    permissions:
+      contents: read
     needs:
       - prepare-environment
       - frontend-lint
@@ -1227,6 +1281,8 @@ jobs:
 
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
   E2E-testing-version-upgrade:
+    permissions:
+      contents: read
     needs:
       - frontend-lint
       - files-changed
@@ -1242,6 +1298,8 @@ jobs:
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
+    permissions:
+      contents: read
     needs:
       - prepare-environment
       - frontend-lint
@@ -1302,6 +1360,8 @@ jobs:
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
+    permissions:
+      contents: read
     needs:
       - backend-tests-component
       - backend-tests-integration
@@ -1341,3 +1401,22 @@ jobs:
         with:
           carryforward: "backend-unit,backend-integration,frontend-unit,backend-component"
           parallel-finished: true
+
+  # ------------------------------------------ OpenTelemetry Trace Export  ------------------------------------------
+  otel-export-trace:
+    permissions:
+      contents: read
+    needs:
+      - coverall-report
+    if: always() && !cancelled()
+    runs-on:
+      group: huge-runners
+    steps:
+      - name: Export Workflow Trace
+        uses: inception-health/otel-export-trace-action@v1
+        with:
+          otlpEndpoint: ${{ secrets.TRACING_ENDPOINT }}
+          otlpHeaders: ""
+          otelServiceName: CI
+          githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
+          runId: ${{ github.run_id }}

@@ -10,6 +10,8 @@ name: "Bug analyst agent"
   issue_comment:
     types: [created]
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.issue.number }}
   cancel-in-progress: true

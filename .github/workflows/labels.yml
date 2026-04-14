@@ -11,8 +11,12 @@ on:
       - ".github/labels.yml"
       - ".github/workflows/labels.yml"
 
+permissions: {}
+
 jobs:
   labeler:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

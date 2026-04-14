@@ -26,11 +26,25 @@ on:
         description: Whether to publish the package to Pypi
         required: false
         default: false
+    secrets:
+      PYPI_TOKEN:
+        description: PyPI API token (temporary, will be replaced by OIDC Trusted Publishing)
+        required: false
+
+permissions: {}
 
 jobs:
   prepare-environment:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     uses: ./.github/workflows/define-versions.yml
   publish_to_pypi:
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
     name: "Publish Infrahub-Server and Infrahub-Testcontainers to PyPI"
     runs-on: "ubuntu-22.04"
     strategy:

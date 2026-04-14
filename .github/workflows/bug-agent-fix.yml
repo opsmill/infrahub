@@ -10,12 +10,19 @@ name: "Bug fixer agent"
   issue_comment:
     types: [created]
 
+permissions: {}
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.issue.number }}
   cancel-in-progress: true
 
 jobs:
   prepare-environment:
+    permissions:
+      id-token: write
+      issues: write
+      contents: write
+      pull-requests: write
     uses: ./.github/workflows/define-versions.yml
 
   # Initial fix: triggered by /bug-fix command on the PR

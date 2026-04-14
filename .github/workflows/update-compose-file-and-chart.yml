@@ -17,10 +17,16 @@ on:
     types:
       - closed
 
+permissions: {}
+
 jobs:
   prepare-environment:
+    permissions:
+      contents: write
     uses: ./.github/workflows/define-versions.yml
   update-docker-compose:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     needs: prepare-environment
     if: |

@@ -7,10 +7,16 @@ on:
     types:
       - published
 
+permissions: {}
+
 jobs:
   prepare-environment:
+    permissions:
+      contents: read
     uses: ./.github/workflows/define-versions.yml
   check_release:
+    permissions:
+      contents: read
     runs-on: ubuntu-22.04
     needs: prepare-environment
     outputs:
@@ -72,6 +78,8 @@ jobs:
 
 
   meta_data:
+    permissions:
+      contents: read
     needs: check_release
     runs-on: ubuntu-22.04
     outputs:
@@ -94,8 +102,12 @@ jobs:
             latest=${{ needs.check_release.outputs.latest_tag == github.event.release.tag_name }}
 
   publish-docker-image:
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci-docker-image.yml
-    secrets: inherit
+    secrets:
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
     needs: meta_data
     with:
       publish: true
@@ -105,6 +117,8 @@ jobs:
       labels: ${{ needs.meta_data.outputs.labels }}
 
   publish-helm-chart:
+    permissions:
+      contents: read
     needs: check_release
     if: github.event.release.prerelease == false
     uses: opsmill/infrahub-helm/.github/workflows/publish-helm-chart.yml@stable
@@ -114,17 +128,27 @@ jobs:
       chart: infrahub
 
   publish-pypi:
+    permissions:
+      contents: read
     needs: check_release
     uses: ./.github/workflows/publish-pypi.yml
-    secrets: inherit
+    secrets:
+      PYPI_TOKEN: ${{ secrets.PYPI_TOKEN }}
     with:
       publish: true
 
   repository-dispatch:
+    permissions:
+      contents: read
     needs:
       - check_release
       - publish-docker-image
     uses: ./.github/workflows/repository-dispatch.yml
-    secrets: inherit
+    secrets:
+      GH_UPDATE_PACKAGE_OTTO: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+      INFRAHUB_PACKER_REPOSITORY: ${{ secrets.INFRAHUB_PACKER_REPOSITORY }}
+      INFRAHUB_ENTERPRISE_REPOSITORY: ${{ secrets.INFRAHUB_ENTERPRISE_REPOSITORY }}
+      INFRAHUB_CUSTOMER1_REPOSITORY: ${{ secrets.INFRAHUB_CUSTOMER1_REPOSITORY }}
+      INFRAHUB_CUSTOMER3_REPOSITORY: ${{ secrets.INFRAHUB_CUSTOMER3_REPOSITORY }}
     with:
       version: ${{ needs.check_release.outputs.version }}

@@ -5,8 +5,12 @@ on:
   release:
     types: [published]
 
+permissions: {}
+
 jobs:
   github-releases-to-discord:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

@@ -25,8 +25,12 @@ on:
         default: ''
         required: false
 
+permissions: {}
+
 jobs:
   meta_data:
+    permissions:
+      contents: read
     runs-on:
       group: huge-runners
     outputs:
@@ -36,11 +40,15 @@ jobs:
       short_ref: ${{ steps.short_ref.outputs.short_ref }}
     steps:
       - name: Set GIT ref
-        run: echo "ref=${{ inputs.commit == '' && github.sha || inputs.commit }} " >> $GITHUB_OUTPUT
+        run: echo "ref=${COMMIT_INPUT:-$GITHUB_SHA}" >> "$GITHUB_OUTPUT"
         id: ref
+        env:
+          COMMIT_INPUT: ${{ inputs.commit }}
       - name: Set GIT short ref
-        run: echo "short_ref=$(echo ${{ steps.ref.outputs.ref }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "short_ref=$(echo "$GIT_REF" | cut -c1-7)" >> "$GITHUB_OUTPUT"
         id: short_ref
+        env:
+          GIT_REF: ${{ steps.ref.outputs.ref }}
       - name: Set docker image meta data
         id: meta
         uses: docker/metadata-action@v6
@@ -58,9 +66,13 @@ jobs:
 
 
   publish-docker-image:
+    permissions:
+      contents: read
     uses: ./.github/workflows/ci-docker-image.yml
     needs: meta_data
-    secrets: inherit
+    secrets:
+      HARBOR_USERNAME: ${{ secrets.HARBOR_USERNAME }}
+      HARBOR_PASSWORD: ${{ secrets.HARBOR_PASSWORD }}
     with:
       publish: ${{ inputs.publish }}
       version: dev-${{ needs.meta_data.outputs.short_ref }}

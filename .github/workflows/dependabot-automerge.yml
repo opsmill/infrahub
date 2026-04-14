@@ -1,0 +1,37 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Dependabot Auto-Merge
+
+on:
+  # zizmor: ignore[dangerous-triggers] -- no code checkout; only merges verified dependabot PRs
+  pull_request_target:
+
+permissions: {}
+
+jobs:
+  automerge:
+    permissions:
+      contents: write
+      pull-requests: write
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ github.token }}
+
+      - name: Skip if Docusaurus package
+        if: contains(steps.metadata.outputs.dependency-names, '@docusaurus/')
+        run: |
+          echo "Skipping automerge - Docusaurus managed by coordinated process"
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+        id: docusaurus_check
+
+      - name: Enable auto-merge for patch updates
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' && steps.docusaurus_check.outputs.skip != 'true'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ github.token }}
