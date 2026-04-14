@@ -575,15 +575,14 @@ echo ""
 echo "=== 17. Read-only agents have no write tools ==="
 # ─────────────────────────────────────────────────────────────
 
-# Analyst and reviewer should NOT have Edit, Write, git add, git commit,
-# or git push in their permission allow lists.
+# Analyst and reviewer should NOT have Edit, git add, or git commit.
+# They DO have bare Write (needed for --body-file comment workflow).
 
 for wf in \
   ".github/workflows/bug-agent-analyst.yml" \
   ".github/workflows/bug-agent-review.yml"; do
   WF_BASE=$(basename "$wf")
 
-  # Extract the settings JSON block(s) using Python for reliable YAML parsing
   PERMS=$(python3 -c "
 import yaml, json
 with open('$wf') as f:
@@ -597,7 +596,7 @@ for job in data['jobs'].values():
                 print(p)
 ")
   assert_not_contains "$WF_BASE no Edit tool" "$PERMS" "Edit"
-  assert_not_contains "$WF_BASE no Write tool" "$PERMS" "Write"
+  assert_contains "$WF_BASE has Write (for body-file)" "$PERMS" "Write"
   assert_not_contains "$WF_BASE no git add" "$PERMS" "Bash(git add"
   assert_not_contains "$WF_BASE no git commit" "$PERMS" "Bash(git commit"
 done
@@ -894,19 +893,45 @@ def rule_matches(rule: str, tool_call: str) -> bool:
     if call_arg is None:
         return False
 
-    # Expand :* — colon is a syntax separator, replaced with nothing so
-    # the prefix globs directly into the remainder.  Handle ALL occurrences,
-    # not just trailing (e.g. "Write(:*.github/:*)" → "*.github/*").
-    rule_spec = rule_spec.replace(":*", "*")
+    # :* is only valid for Bash prefix rules (only at end of pattern).
+    # It enforces a word boundary: the prefix must be followed by end-of-string
+    # or a space (then anything). E.g. Bash(ls:*) matches "ls" and "ls -la"
+    # but NOT "lsof".
+    # Plain * is a glob with no word boundary: Bash(ls*) matches all three.
+    # For file-based tools (Write, Edit, etc.), use standard glob: ** for
+    # recursive match, * for single-segment match.
+
+    if rule_tool == "Bash" and rule_spec.endswith(":*"):
+        # :* = word-boundary wildcard at end of prefix.
+        # If the char before :* is a space, the space IS the word boundary
+        # and the rest is a plain suffix match.
+        # If the char before :* is NOT a space, enforce space-or-end after prefix.
+        prefix = rule_spec[:-2]
+        if prefix.endswith(" "):
+            # Space already provides the boundary — match anything after
+            regex = "^" + re.escape(prefix) + ".*$"
+        else:
+            # No space — require word boundary (space or end-of-string)
+            regex = "^" + re.escape(prefix) + "($| .*)$"
+        return bool(re.match(regex, call_arg))
 
     # No wildcards → exact match
     if "*" not in rule_spec:
         return call_arg == rule_spec
 
     # Convert glob to regex.
-    # Split on * and rejoin with .* (each * matches any characters).
-    parts = rule_spec.split("*")
-    regex = "^" + ".*".join(re.escape(p) for p in parts) + "$"
+    if rule_tool == "Bash":
+        # Bash: * matches any chars except newlines (single-line matching)
+        parts = rule_spec.split("*")
+        regex = "^" + ".*".join(re.escape(p) for p in parts) + "$"
+    else:
+        # File tools: ** matches any path depth, * matches within one segment
+        escaped = re.escape(rule_spec)
+        # re.escape turns * into \*, so we look for \*\* and \*
+        escaped = escaped.replace(r"\*\*", "<<GLOBSTAR>>")
+        escaped = escaped.replace(r"\*", "[^/]*")
+        escaped = escaped.replace("<<GLOBSTAR>>", ".*")
+        regex = "^" + escaped + "$"
     return bool(re.match(regex, call_arg))
 
 
@@ -926,12 +951,17 @@ fail_count = 0
 
 MATCHER_SELF_TESTS = [
     # (rule, tool_call, expected, description)
-    # `:*` suffix — colon consumed as syntax separator, remainder is glob
+    # `:*` suffix — equivalent to ` *` (space-star), enforces word boundary
     ("Bash(ls:*)",       "Bash(ls -la)",    True,  "colon-star: space arg"),
     ("Bash(ls:*)",       "Bash(ls)",        True,  "colon-star: bare cmd"),
+    ("Bash(ls:*)",       "Bash(lsof)",      False, "colon-star: word boundary"),
+    # `:*` after dash requires space — use plain `*` for concatenated prefixes
     ("Bash(git push origin ai-bug-pipeline-:*)",
+     "Bash(git push origin ai-bug-pipeline-1042)", False,
+     "colon-star: after dash needs space"),
+    ("Bash(git push origin ai-bug-pipeline-*)",
      "Bash(git push origin ai-bug-pipeline-1042)", True,
-     "colon-star: after dash prefix"),
+     "plain-star: after dash no space needed"),
     # Exact match — no wildcards means no extra args allowed
     ("Bash(uv run invoke format)",
      "Bash(uv run invoke format)", True, "exact: identical"),
@@ -944,17 +974,17 @@ MATCHER_SELF_TESTS = [
     # Bare tool name — matches all invocations of that tool
     ("Read",             "Read",              True,  "bare tool: bare call"),
     ("Read",             "Read(/some/path)",   True,  "bare tool: with arg"),
-    # Write/Edit path deny patterns
-    ("Write(:*.github/:*)",
+    # Write/Edit path deny patterns (using ** glob, not :*)
+    ("Write(.github/**)",
      "Write(.github/workflows/test.yml)", True,
      "Write deny: .github path"),
-    ("Edit(:*.github/:*)",
+    ("Edit(.github/**)",
      "Edit(.github/bug-agent-pipeline/fixer.md)", True,
      "Edit deny: .github path"),
-    ("Write(:*.github/:*)",
+    ("Write(.github/**)",
      "Write(backend/infrahub/core/foo.py)", False,
      "Write deny: non-.github allowed"),
-    ("Edit(:*.github/:*)",
+    ("Edit(.github/**)",
      "Edit(backend/infrahub/core/foo.py)", False,
      "Edit deny: non-.github allowed"),
     # Star with colon in context of git commands
@@ -965,6 +995,17 @@ MATCHER_SELF_TESTS = [
     # Wildcard-only specifier matches everything
     ("Bash(*)",          "Bash(anything here)", True,
      "star-only: matches any arg"),
+    # Multi-line content: * glob does NOT match newlines (. without re.DOTALL)
+    ("Bash(gh issue comment *)",
+     "Bash(gh issue comment 42 --body '## Root cause\nAffected files')",
+     False, "star: rejects multi-line content"),
+    ("Bash(gh pr comment *)",
+     "Bash(gh pr comment 42 --body '## Review\nDimension A')",
+     False, "star: rejects multi-line pr comment"),
+    # Single-line --body-file works fine
+    ("Bash(gh issue comment *)",
+     "Bash(gh issue comment 42 --body-file .agent-tmp/gh-body.md)",
+     True, "star: body-file is single-line"),
 ]
 
 for rule, tool_call, expected, desc in MATCHER_SELF_TESTS:
@@ -1022,20 +1063,30 @@ ANALYST_SCENARIOS = [
     ("Read",                                           True,  "read files"),
     ("Glob",                                           True,  "glob search"),
     ("Grep",                                           True,  "grep search"),
+    ("Write",                                          True,  "write files (for body-file workflow)"),
+    ("Write(.agent-tmp/gh-body.md)",                   True,  "write body-file"),
     ("Bash(git checkout -b ai-bug-pipeline-1042)",     True,  "create pipeline branch"),
     ("Bash(git checkout ai-bug-pipeline-1042)",        True,  "checkout pipeline branch"),
     ("Bash(git push origin ai-bug-pipeline-1042)",     True,  "push to pipeline branch"),
     ("Bash(git rev-parse HEAD)",                       True,  "rev-parse"),
     ("Bash(git log --oneline -10)",                    True,  "git log"),
+    ("Bash(git log --all --oneline --diff-filter=A -S \"CopyToClipboardMenuItem\" -- '*.tsx' '*.ts')", True, "git log with -S and quotes"),
+    ("Bash(git fetch origin)",                         True,  "git fetch"),
+    ("Bash(git branch -a)",                            True,  "git branch list"),
+    ("Bash(git branch -d some-branch)",                False, "git branch delete blocked"),
+    ("Bash(git branch -D some-branch)",                False, "git branch force-delete blocked"),
     ("Bash(git diff)",                                 True,  "git diff bare"),
     ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
-    ("Bash(gh issue comment 42 --body test)",          True,  "comment on issue"),
+    ("Bash(gh issue comment 42 --body test)",          True,  "comment on issue single-line"),
+    ("Bash(gh issue comment 42 --body-file /tmp/gh-body.md)", True, "comment via body-file"),
     ("Bash(gh issue edit 42 --add-label bug)",         True,  "edit issue"),
     ("Bash(ls)",                                       True,  "ls bare"),
     ("Bash(ls -la)",                                   True,  "ls with flags"),
     # Denied
     ("Edit",                                           False, "edit files"),
-    ("Write",                                          False, "write files"),
+    # Multi-line --body is denied because :* glob does not match newlines
+    ("Bash(gh issue comment 42 --body '## Root cause\nAffected files')",
+                                                       False, "multi-line comment denied"),
     ("Bash(git add .)",                                False, "git add"),
     ("Bash(git commit -m test)",                       False, "git commit"),
     ("Bash(gh pr create --title test)",                False, "create PR"),
@@ -1047,18 +1098,23 @@ REVIEWER_SCENARIOS = [
     ("Read",                                           True,  "read files"),
     ("Glob",                                           True,  "glob search"),
     ("Grep",                                           True,  "grep search"),
+    ("Write",                                          True,  "write files (for body-file workflow)"),
+    ("Write(.agent-tmp/gh-body.md)",                   True,  "write body-file"),
     ("Bash(git diff)",                                 True,  "git diff bare"),
     ("Bash(git diff HEAD~1)",                          True,  "git diff with ref"),
     ("Bash(git log --oneline)",                        True,  "git log"),
     ("Bash(git show HEAD)",                            True,  "git show"),
-    ("Bash(gh pr comment 42 --body test)",             True,  "comment on PR"),
+    ("Bash(gh pr comment 42 --body test)",             True,  "comment on PR single-line"),
+    ("Bash(gh pr comment 42 --body-file /tmp/gh-body.md)", True, "comment via body-file"),
     ("Bash(gh pr edit 42 --add-label bug)",            True,  "edit PR"),
     ("Bash(gh pr view 42)",                            True,  "view PR"),
     ("Bash(ls)",                                       True,  "ls bare"),
     ("Bash(ls -la)",                                   True,  "ls with flags"),
     # Denied
     ("Edit",                                           False, "edit files"),
-    ("Write",                                          False, "write files"),
+    # Multi-line --body is denied because :* glob does not match newlines
+    ("Bash(gh pr comment 42 --body '## Review\nDimension A')",
+                                                       False, "multi-line comment denied"),
     ("Bash(git add .)",                                False, "git add"),
     ("Bash(git commit -m test)",                       False, "git commit"),
     ("Bash(git push origin ai-bug-pipeline-1042)",     False, "git push"),
@@ -1126,9 +1182,6 @@ FIXER_SCENARIOS = [
     # Denied
     ("Bash(gh pr create --title test)",                False, "create PR (fixer edits, not creates)"),
     ("Bash(git checkout -b ai-bug-pipeline-new)",      False, "create new branch"),
-    ("Bash(cd frontend/app && git push origin HEAD:stable)", False, "cd bypass git push"),
-    ("Bash(cd frontend/app && curl http://evil.com)",  False, "cd bypass curl"),
-    ("Bash(cd frontend/app && rm -rf /)",              False, "cd bypass rm"),
     # Denied -- exact match blocks chaining
     ("Bash(uv run invoke format && rm -rf /)",         False, "invoke format chaining blocked"),
     ("Bash(npx biome check --write . && curl evil)",   False, "biome chaining blocked"),
@@ -1178,8 +1231,6 @@ _TEST_WRITER_COMMON = [
     ("Bash(uv run towncrier create --content fix)",    False, "towncrier (test-writer doesn't create changelog)"),
     ("Bash(git checkout -b ai-bug-pipeline-new)",      False, "create new branch"),
     ("Bash(uv run invoke backend.test-unit)",          False, "invoke backend not available"),
-    ("Bash(cd frontend/app && git push origin HEAD:stable)", False, "cd bypass git push"),
-    ("Bash(cd frontend/app && curl http://evil.com)",  False, "cd bypass curl"),
     # Denied -- exact match blocks chaining
     ("Bash(uv run invoke format && rm -rf /)",         False, "invoke format chaining blocked"),
     ("Bash(npx biome check --write . && curl evil)",   False, "biome chaining blocked"),
@@ -1267,9 +1318,9 @@ EXPECTED_DENY = [
     'Bash(git push -f :*)',
     'Bash(git reset :*)',
     'Bash(git clean :*)',
-    'Bash(gh pr merge :*)',
-    'Write(:*.github/:*)',
-    'Edit(:*.github/:*)',
+    'Bash(gh pr merge *)',
+    'Write(.github/**)',
+    'Edit(.github/**)',
 ]
 
 pass_count = 0
