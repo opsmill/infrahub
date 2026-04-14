@@ -27,6 +27,9 @@ if TYPE_CHECKING:
     from httpx import Response
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython
+    from prefect.automations import AutomationCore
+    from prefect.client.orchestration import PrefectClient
+    from prefect.events.schemas.automations import Automation
 
     from infrahub.core.protocols import CoreWebhook
     from infrahub.services.adapters.http import InfrahubHTTP
@@ -103,6 +106,65 @@ class WebhookTriggerDefinition(TriggerDefinition):
 
     def generate_name(self) -> str:
         return generate_webhook_automation_name(self.id)
+
+
+class WebhookAutomation:
+    """A webhook's desired automation state in Prefect."""
+
+    def __init__(self, trigger_definition: WebhookTriggerDefinition, active: bool) -> None:
+        self._trigger_definition = trigger_definition
+        self._active = active
+
+    @property
+    def name(self) -> str:
+        return self._trigger_definition.generate_name()
+
+    @property
+    def webhook_id(self) -> str:
+        return self._trigger_definition.id
+
+    @property
+    def active(self) -> bool:
+        return self._active
+
+    async def apply(self, client: PrefectClient) -> None:
+        """Ensure Prefect matches desired state: create, update, or delete."""
+        existing = await self._find_existing(client)
+
+        if not self._active:
+            if existing:
+                await client.delete_automation(automation_id=existing.id)
+            return
+
+        automation = await self._as_prefect_automation(client)
+        if existing:
+            await client.update_automation(automation_id=existing.id, automation=automation)
+        else:
+            await client.create_automation(automation=automation)
+
+    async def _find_existing(self, client: PrefectClient) -> Automation | None:
+        from infrahub.trigger.setup import gather_all_automations
+
+        all_automations = await gather_all_automations(client=client)
+        matches = [a for a in all_automations if a.name == self.name]
+        return matches[0] if matches else None
+
+    async def _as_prefect_automation(self, client: PrefectClient) -> AutomationCore:
+        from prefect.automations import AutomationCore as _AutomationCore
+
+        deployment_name = self._trigger_definition.get_deployment_names()[0]
+        deployment = await client.read_deployment_by_name(name=f"{deployment_name}/{deployment_name}")
+        return _AutomationCore(
+            name=self.name,
+            description=self._trigger_definition.get_description(),
+            enabled=True,
+            trigger=self._trigger_definition.trigger.get_prefect(),
+            actions=[
+                action.get(deployment.id)
+                for action in self._trigger_definition.actions
+                if isinstance(action, ExecuteWorkflow)
+            ],
+        )
 
 
 class EventContext(BaseModel):
