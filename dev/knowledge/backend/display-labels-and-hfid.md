@@ -92,6 +92,29 @@ if self._existing:
 2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label` for those sources, plus always-on computed attribute extra filters via `computed_attributes.get_registered_jinja2_node`)
 3. `_update()` checks `needs_update(fields)` for each property; recomputes and persists if needed
 
+### Query-Time Resolution (`get_display_label`)
+
+`Node.get_display_label(db)` returns the display label for a node during GraphQL queries. It distinguishes between saved and virtual nodes:
+
+1. **Stored value exists** (`_display_label` set with a non-empty value): return it directly.
+2. **Stored attribute is empty** (`_display_label` set but value is null): return `""`. The async backfill workflow is responsible for populating stored values after schema changes. Computing on the fly here would cause the backfill to detect no difference and skip the update (IFC-2459).
+3. **No `display_label` template** in schema: return `repr(self)`.
+4. **No stored attribute at all** (virtual nodes like IPAM available nodes that are never saved): compute on the fly using `DisplayLabel.compute()`.
+
+### Async Backfill After Schema Changes
+
+When a schema is updated to add or change a `display_label`, the async Prefect workflow chain updates existing nodes:
+
+```
+SchemaUpdatedEvent
+  -> display_labels_setup_jinja2 (gathers triggers, detects new/changed templates)
+  -> trigger_update_display_labels (iterates all nodes of the kind)
+  -> process_display_label (queries node via GraphQL, renders template)
+  -> display_label_jinja2_update_value (compares rendered vs stored, writes if different)
+```
+
+The trigger definitions and gathering logic live in `backend/infrahub/display_labels/`.
+
 ### Manual Override
 
 `set_display_label(value)` and `set_human_friendly_id(value)` set `manually_assigned=True`, which causes `compute()` to no-op on future calls.
