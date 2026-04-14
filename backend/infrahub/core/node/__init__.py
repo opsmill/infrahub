@@ -218,15 +218,15 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._human_friendly_id.compute(db=db, node=self)
 
     async def get_display_label(self, db: InfrahubDatabase) -> str:
-        if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
-            return value
+        if self._display_label is not None:
+            if value := self._display_label.get_value(node=self, at=self._at):
+                return value
+            # Stored value is empty do not compute on the fly to avoid recomputation trigger issues
+            if self._schema.display_label:
+                return ""
 
         if not self._schema.display_label:
             return repr(self)
-
-        if self._display_label is not None:
-            # Stored value is empty do not compute on the fly to avoid recomputation trigger issues
-            return ""
 
         # This should only happens for "virtual" nodes (that never exist inside the db)
         display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
