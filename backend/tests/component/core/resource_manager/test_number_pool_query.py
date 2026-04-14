@@ -191,11 +191,7 @@ async def test_NumberPoolGetAllocated_includes_allocation_active_on_other_branch
     default_branch: Branch,
     run_number_pool_validation: None,
 ) -> None:
-    """When a node created on main is deleted on a branch, NumberPoolGetAllocated still returns it.
-
-    The allocation is still active on main (HAS_SOURCE edge remains active there),
-    so it should appear in the allocated list regardless of the branch-local deletion.
-    """
+    """When a node created on main is deleted on a branch, NumberPoolGetAllocated still returns it."""
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
     incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
     pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
@@ -223,13 +219,7 @@ async def test_NumberPoolGetAllocated_includes_allocation_when_source_cleared_on
     default_branch: Branch,
     run_number_pool_validation: None,
 ) -> None:
-    """When HAS_SOURCE is cleared on a branch, the allocation still appears because it is active on main.
-
-    Setup: 3 incidents allocated on default branch → values [1, 2, 3].
-    Then on br1, clear the source of incident #2's number attribute.
-    The default branch still has an active HAS_SOURCE edge for incident #2,
-    so the allocation remains visible — it is still allocated from the pool's perspective.
-    """
+    """When HAS_SOURCE is cleared on a branch, the allocation still appears because it is active on main."""
     incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
     incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
     pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
