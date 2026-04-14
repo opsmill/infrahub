@@ -14,7 +14,7 @@
 #     Confirms a random-hex delimiter survives hostile content that contains
 #     the delimiter prefix, with exactly one open/close pair in the output.
 #  3. jq analyst-comment extraction
-#     Finds the last github-actions[bot] comment containing
+#     Finds the last claude[bot] comment containing
 #     AGENT_ANALYSIS_COMPLETE; returns empty when none match.
 #  4. PR marker validation (fixer workflow)
 #     Gates fixer execution: blocks without AGENT_TEST_COMPLETE, blocks if
@@ -203,11 +203,11 @@ echo "=== 3. jq analyst-comment extraction ==="
 
 COMMENTS_JSON='[
   {"user":{"login":"octocat"},"body":"random comment"},
-  {"user":{"login":"github-actions[bot]"},"body":"## Root cause analysis\n\n<!-- AGENT_ANALYSIS_COMPLETE -->"},
-  {"user":{"login":"github-actions[bot]"},"body":"Updated analysis\n\n<!-- AGENT_ANALYSIS_COMPLETE -->"}
+  {"user":{"login":"claude[bot]"},"body":"## Root cause analysis\n\n<!-- AGENT_ANALYSIS_COMPLETE -->"},
+  {"user":{"login":"claude[bot]"},"body":"Updated analysis\n\n<!-- AGENT_ANALYSIS_COMPLETE -->"}
 ]'
 
-ANALYST_COMMENT=$(echo "$COMMENTS_JSON" | jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("AGENT_ANALYSIS_COMPLETE")))]' | jq -s '.[0] | last // empty')
+ANALYST_COMMENT=$(echo "$COMMENTS_JSON" | jq '[.[] | select(.user.login == "claude[bot]" and (.body | contains("AGENT_ANALYSIS_COMPLETE")))]' | jq -s '.[0] | last // empty')
 BODY=$(echo "$ANALYST_COMMENT" | jq -r '.body')
 
 assert_contains "finds last analyst comment" "$BODY" "Updated analysis"
@@ -215,7 +215,7 @@ assert_contains "has marker" "$BODY" "AGENT_ANALYSIS_COMPLETE"
 
 # Simulate no analyst comment found
 EMPTY_RESULT=$(echo '[{"user":{"login":"octocat"},"body":"no analysis here"}]' \
-  | jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("AGENT_ANALYSIS_COMPLETE")))]' \
+  | jq '[.[] | select(.user.login == "claude[bot]" and (.body | contains("AGENT_ANALYSIS_COMPLETE")))]' \
   | jq -s '.[0] | last // empty')
 assert_eq "empty when no analyst comment" "" "$EMPTY_RESULT"
 
@@ -281,16 +281,16 @@ echo "=== 6. TEST_APPROVED count check ==="
 # Simulates the fixer's check for TEST_APPROVED in bot comments.
 
 COMMENTS_WITH_APPROVAL='[
-  {"user":{"login":"github-actions[bot]"},"body":"<!-- AGENT_REVIEW_VERDICT: TEST_APPROVED -->"},
+  {"user":{"login":"claude[bot]"},"body":"<!-- AGENT_REVIEW_VERDICT: TEST_APPROVED -->"},
   {"user":{"login":"octocat"},"body":"LGTM"},
-  {"user":{"login":"github-actions[bot]"},"body":"some other comment"}
+  {"user":{"login":"claude[bot]"},"body":"some other comment"}
 ]'
 
-APPROVED_COUNT=$(echo "$COMMENTS_WITH_APPROVAL" | jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
+APPROVED_COUNT=$(echo "$COMMENTS_WITH_APPROVAL" | jq '[.[] | select(.user.login == "claude[bot]" and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
 assert_eq "finds approval" "1" "$APPROVED_COUNT"
 
 NO_APPROVAL='[{"user":{"login":"octocat"},"body":"not a bot"}]'
-ZERO_COUNT=$(echo "$NO_APPROVAL" | jq '[.[] | select(.user.login == "github-actions[bot]" and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
+ZERO_COUNT=$(echo "$NO_APPROVAL" | jq '[.[] | select(.user.login == "claude[bot]" and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
 assert_eq "no approval found" "0" "$ZERO_COUNT"
 
 # ─────────────────────────────────────────────────────────────
