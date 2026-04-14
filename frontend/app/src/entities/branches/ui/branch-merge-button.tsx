@@ -72,7 +72,9 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
         },
       });
 
-      const message = config.main.delete_branch_after_merge
+      const deleteBranchAfterMerge = config.main.delete_branch_after_merge;
+
+      const message = deleteBranchAfterMerge
         ? `Branch merge requested! Branch '${branch.name}' will be automatically deleted.`
         : "Branch merge requested!";
 
@@ -80,7 +82,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
         toastId: "alert-success",
       });
 
-      if (config.main.delete_branch_after_merge) {
+      if (deleteBranchAfterMerge) {
         navigateAfterBranchRemoval("/branches", branch.name);
         return;
       }
