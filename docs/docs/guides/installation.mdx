@@ -423,6 +423,63 @@ sudo docker compose -p infrahub down -v
 </TabItem>
 </Tabs>
 
+#### Enable observability
+
+To deploy Infrahub with a built-in observability stack (Grafana, Prometheus, Loki, Alloy), add the `?observability=true` query parameter to the URL. This can be combined with existing parameters like `size`:
+
+<Tabs groupId="os" queryString>
+<TabItem value="macOS" default>
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+sudo docker compose -p infrahub up -d
+```
+
+</TabItem>
+</Tabs>
+
+Combined with a sizing preset:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
+```
+
+Once running, Grafana is accessible at [http://localhost:3500](http://localhost:3500) with default credentials `admin` / `admin`.
+
+:::warning Upgrading the observability stack
+
+When upgrading to a new compose file, services that use Docker Compose `configs` will not pick up configuration changes on a regular `up -d`. You must use `--force-recreate` on the affected services to reload the embedded config content:
+
+```bash
+docker compose -p infrahub up -d --force-recreate alloy loki tempo grafana
+```
+
+:::
+
+:::tip Enable distributed tracing
+
+To enable distributed tracing, set the following environment variables so that Infrahub exports traces to the Tempo instance via gRPC. Add them to a `.env` file alongside the compose file:
+
+```bash
+INFRAHUB_TRACE_ENABLE=true
+INFRAHUB_TRACE_EXPORTER_TYPE=otlp
+INFRAHUB_TRACE_EXPORTER_PROTOCOL=grpc
+INFRAHUB_TRACE_EXPORTER_ENDPOINT=tempo:4317
+INFRAHUB_TRACE_INSECURE=true
+```
+
+Traces will appear in Grafana under the Tempo datasource.
+
+:::
+
 </TabItem>
 <TabItem value="Kubernetes with Helm">
 
