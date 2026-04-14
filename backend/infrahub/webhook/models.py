@@ -134,13 +134,18 @@ class WebhookAutomation:
         if not self._active:
             if existing:
                 await client.delete_automation(automation_id=existing.id)
+                logger.info("Automation %s deleted (webhook disabled)", self.name)
+            else:
+                logger.info("Webhook %s is disabled, no automation to delete", self.name)
             return
 
         automation = await self._as_prefect_automation(client)
         if existing:
             await client.update_automation(automation_id=existing.id, automation=automation)
+            logger.info("Automation %s updated", self.name)
         else:
             await client.create_automation(automation=automation)
+            logger.info("Automation %s created", self.name)
 
     async def _find_existing(self, client: PrefectClient) -> Automation | None:
         from infrahub.trigger.setup import gather_all_automations

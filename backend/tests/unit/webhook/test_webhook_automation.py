@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import timedelta
 from unittest.mock import create_autospec
 from uuid import uuid4
@@ -88,20 +89,26 @@ class TestWebhookAutomationProperties:
 
 
 class TestWebhookAutomationApply:
-    async def test_active_no_existing_creates(self, prefect_client: PrefectClient) -> None:
+    async def test_active_no_existing_creates(
+        self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
         trigger_def = _make_trigger_definition()
         automation = WebhookAutomation(trigger_definition=trigger_def, active=True)
 
         _stub_no_automations(prefect_client)
         _stub_deployment(prefect_client)
 
-        await automation.apply(prefect_client)
+        with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
+            await automation.apply(prefect_client)
 
         prefect_client.create_automation.assert_called_once()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.delete_automation.assert_not_called()  # type: ignore[attr-defined]
+        assert f"Automation {automation.name} created" in caplog.text
 
-    async def test_active_with_existing_updates(self, prefect_client: PrefectClient) -> None:
+    async def test_active_with_existing_updates(
+        self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
         trigger_def = _make_trigger_definition()
         automation = WebhookAutomation(trigger_definition=trigger_def, active=True)
 
@@ -109,33 +116,43 @@ class TestWebhookAutomationApply:
         _stub_existing_automation(prefect_client, existing)
         _stub_deployment(prefect_client)
 
-        await automation.apply(prefect_client)
+        with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
+            await automation.apply(prefect_client)
 
         prefect_client.create_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_called_once()  # type: ignore[attr-defined]
         prefect_client.delete_automation.assert_not_called()  # type: ignore[attr-defined]
+        assert f"Automation {automation.name} updated" in caplog.text
 
-    async def test_inactive_with_existing_deletes(self, prefect_client: PrefectClient) -> None:
+    async def test_inactive_with_existing_deletes(
+        self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
         trigger_def = _make_trigger_definition()
         automation = WebhookAutomation(trigger_definition=trigger_def, active=False)
 
         existing = _make_existing_automation(automation.name)
         _stub_existing_automation(prefect_client, existing)
 
-        await automation.apply(prefect_client)
+        with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
+            await automation.apply(prefect_client)
 
         prefect_client.create_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.delete_automation.assert_called_once_with(automation_id=existing.id)  # type: ignore[attr-defined]
+        assert f"Automation {automation.name} deleted (webhook disabled)" in caplog.text
 
-    async def test_inactive_no_existing_is_noop(self, prefect_client: PrefectClient) -> None:
+    async def test_inactive_no_existing_is_noop(
+        self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
         trigger_def = _make_trigger_definition()
         automation = WebhookAutomation(trigger_definition=trigger_def, active=False)
 
         _stub_no_automations(prefect_client)
 
-        await automation.apply(prefect_client)
+        with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
+            await automation.apply(prefect_client)
 
         prefect_client.create_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.delete_automation.assert_not_called()  # type: ignore[attr-defined]
+        assert "is disabled, no automation to delete" in caplog.text

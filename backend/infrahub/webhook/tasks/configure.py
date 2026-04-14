@@ -115,8 +115,6 @@ async def _configure_one(
     If the webhook is inactive, deletes the existing automation instead.
     Always invalidates the webhook cache to ensure fresh config on next execution.
     """
-    log = get_run_logger()
-
     database = await get_database()
     webhook_node = await NodeManager.get_one(id=webhook_id, db=database, kind=CoreWebhookNode, raise_on_error=True)
 
@@ -128,7 +126,6 @@ async def _configure_one(
     async with get_prefect_client(sync_client=False) as prefect_client:
         await automation.apply(prefect_client)
 
-    log.info(f"Automation {automation.name} {'applied' if automation.active else 'removed (webhook inactive)'}")
     await invalidate_webhook_cache(webhook_ids={webhook_id})
 
 
