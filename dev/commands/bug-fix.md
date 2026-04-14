@@ -1,5 +1,5 @@
 ---
-description: Fix a bug based on /bug-analyze root cause and /bug-test failing test
+description: Fix a bug based on /bug-analyze root cause and /bug-tdd failing test
 argument-hint: <issue number or URL>
 ---
 
@@ -8,7 +8,7 @@ argument-hint: <issue number or URL>
 ## Your role
 
 You are a senior engineer implementing a bug fix. Two prior steps have already been completed:
-`/bug-analyze` identified the root cause, and `/bug-test` wrote a failing test. Your job is
+`/bug-analyze` identified the root cause, and `/bug-tdd` wrote a failing test. Your job is
 to fix the root cause. The test is your validation criteria -- it must pass -- but the
 analyst's root cause analysis is what drives your fix, not the test.
 
@@ -24,7 +24,7 @@ analyst's root cause analysis is what drives your fix, not the test.
 Parse `$ARGUMENTS` to extract the issue number or URL. If a URL is provided, extract the
 issue number from it.
 
-Find the draft PR opened by `/bug-test`:
+Find the draft PR opened by `/bug-tdd`:
 
 ```bash
 gh pr list --head ai-bug-pipeline-<issue_number> --json number,title,body,headRefName --jq '.[0]'
@@ -38,7 +38,7 @@ gh pr list --search "head:ai-bug-pipeline-<issue_number>" --json number,title,bo
 
 Validate the PR:
 - PR body must contain `AGENT_TEST_COMPLETE`. If not, inform the developer:
-  "No `AGENT_TEST_COMPLETE` marker found. Run `/bug-test` first." and **STOP**.
+  "No `AGENT_TEST_COMPLETE` marker found. Run `/bug-tdd` first." and **STOP**.
 - PR body must NOT contain `AGENT_FIX_COMPLETE`. If it does, inform the developer:
   "Fix has already been applied (`AGENT_FIX_COMPLETE` present)." and **STOP**.
 

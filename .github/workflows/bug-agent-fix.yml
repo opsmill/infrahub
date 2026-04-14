@@ -50,7 +50,7 @@ jobs:
           # Validate required markers in PR body
           if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
             gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
-              --body "Cannot run \`/bug-fix\` -- no \`AGENT_TEST_COMPLETE\` marker. Run \`/bug-test\` first."
+              --body "Cannot run \`/bug-fix\` -- no \`AGENT_TEST_COMPLETE\` marker. Run \`/bug-tdd\` first."
             echo "skip=true" >> $GITHUB_OUTPUT
             exit 0
           fi

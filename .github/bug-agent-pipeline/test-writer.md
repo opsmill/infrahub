@@ -45,7 +45,7 @@ Bad examples that WILL be denied:
 
 Determine which mode you are in:
 
-- **Initial test mode:** You were triggered by a `/bug-test` command. The analyst's comment
+- **Initial test mode:** You were triggered by a `/bug-tdd` command. The analyst's comment
   (containing `AGENT_ANALYSIS_COMPLETE`) is provided in the metadata below. No PR exists yet.
   Follow the "Initial test" section below.
 - **Revision mode:** You were triggered by a PR review requesting changes. A draft PR

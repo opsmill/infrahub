@@ -1,6 +1,6 @@
 ---
 # .github/workflows/bug-agent-test.yml
-# Triggered when someone posts "/bug-test" on a bug issue (requires prior /bug-analyze).
+# Triggered when someone posts "/bug-tdd" on a bug issue (requires prior /bug-analyze).
 # Also re-triggered when the reviewer requests changes on the test PR.
 # Responsibility: write a failing test that reproduces the bug and open a draft PR.
 
@@ -18,12 +18,12 @@ jobs:
   prepare-environment:
     uses: ./.github/workflows/define-versions.yml
 
-  # Initial test: triggered by /bug-test command on the issue
+  # Initial test: triggered by /bug-tdd command on the issue
   write-test:
     needs: prepare-environment
     if: |
       !github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/bug-test') &&
+      startsWith(github.event.comment.body, '/bug-tdd') &&
       contains(github.event.issue.labels.*.name, 'type/bug') &&
       (
         github.event.comment.author_association == 'OWNER' ||
@@ -56,7 +56,7 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
             gh issue comment "$ISSUE_NUMBER" \
               --repo "${{ github.repository }}" \
-              --body "Cannot run \`/bug-test\` -- no analyst comment found. Run \`/bug-analyze\` first."
+              --body "Cannot run \`/bug-tdd\` -- no analyst comment found. Run \`/bug-analyze\` first."
             exit 0
           fi
 

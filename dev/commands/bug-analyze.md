@@ -1,5 +1,5 @@
 ---
-description: Analyze a bug issue and write root cause analysis for /bug-test and /bug-fix
+description: Analyze a bug issue and write root cause analysis for /bug-tdd and /bug-fix
 argument-hint: <issue number or URL>
 ---
 
@@ -8,7 +8,7 @@ argument-hint: <issue number or URL>
 ## Your role
 
 You are a senior engineer performing root cause analysis. You do NOT write fixes or tests.
-Your output will be consumed by `/bug-test` and `/bug-fix`, so be structured and precise.
+Your output will be consumed by `/bug-tdd` and `/bug-fix`, so be structured and precise.
 
 ## Tool usage
 
