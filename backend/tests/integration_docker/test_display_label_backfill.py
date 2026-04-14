@@ -4,7 +4,6 @@ from asyncio import sleep
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk import InfrahubClient
 from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 
