@@ -36,7 +36,7 @@ CALL (update) {
 } IN TRANSACTIONS OF 500 ROWS
 """
 
-INDEX_HFID_VALUES_QUERY = """
+INDEX_EXCLUSIVE_HFID_VALUES_QUERY = """
 MATCH (attr:Attribute {name: "human_friendly_id"})-[:HAS_VALUE]->(av:AttributeValue)
 WHERE NOT av:AttributeValueIndexed
     AND size(av.value) < $max_length
@@ -47,6 +47,24 @@ WHERE NOT av:AttributeValueIndexed
 CALL (av) {
     SET av:AttributeValueIndexed
 } IN TRANSACTIONS OF 1000 ROWS
+"""
+
+INDEX_SHARED_HFID_VALUES_QUERY = """
+MATCH (attr:Attribute {name: "human_friendly_id"})-[old_r:HAS_VALUE]->(av:AttributeValue)
+WHERE NOT av:AttributeValueIndexed
+    AND size(av.value) < $max_length
+    AND EXISTS {
+        MATCH (other:Attribute)-[:HAS_VALUE]->(av)
+        WHERE other.name <> "human_friendly_id"
+    }
+CALL (attr, old_r, av) {
+    MERGE (new_av:AttributeValue:AttributeValueIndexed {value: av.value, is_default: av.is_default})
+    WITH attr, old_r, new_av
+    LIMIT 1
+    CREATE (attr)-[new_r:HAS_VALUE]->(new_av)
+    SET new_r = properties(old_r)
+    DELETE old_r
+} IN TRANSACTIONS OF 500 ROWS
 """
 
 
@@ -127,9 +145,12 @@ class Migration070(ArbitraryMigration):
     async def _index_hfid_values(self, db: InfrahubDatabase) -> None:
         """Add AttributeValueIndexed label to HFID values within the index size limit.
 
-        Only indexes values that are not shared with non-HFID attributes.
+        Exclusive values (only used by HFID attributes) get the label added in-place.
+        Shared values (also used by non-HFID attributes) get a new AttributeValueIndexed
+        node created, with HAS_VALUE edges transferred from the old node.
         """
-        await db.execute_query(query=INDEX_HFID_VALUES_QUERY, params={"max_length": MAX_STRING_LENGTH})
+        await db.execute_query(query=INDEX_EXCLUSIVE_HFID_VALUES_QUERY, params={"max_length": MAX_STRING_LENGTH})
+        await db.execute_query(query=INDEX_SHARED_HFID_VALUES_QUERY, params={"max_length": MAX_STRING_LENGTH})
         console.log("Added AttributeValueIndexed label to HFID values")
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
