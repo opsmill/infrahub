@@ -1,6 +1,5 @@
 from typing import Any
 
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.node import Node

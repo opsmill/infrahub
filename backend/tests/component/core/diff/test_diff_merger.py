@@ -25,7 +25,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError
-from tests.helpers.db_validation import verify_graph_after_merge
+from tests.helpers.db_validation import verify_graph
 
 
 class TestMergeDiffFallback:
@@ -107,7 +107,7 @@ class TestMergeDiffFallback:
         else:
             assert before_main_update < updated_person._get_updated_at() < after_main_update
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection,expect_deleted",
@@ -157,7 +157,7 @@ class TestMergeDiffFallback:
             assert updated_person is not None
             assert updated_person.height.value == 200
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -209,4 +209,4 @@ class TestMergeDiffFallback:
         else:
             assert owner_rel.peer_id == person_alfred_main.id
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)

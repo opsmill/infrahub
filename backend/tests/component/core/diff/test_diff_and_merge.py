@@ -36,7 +36,7 @@ from infrahub.dependencies.registry import get_component_registry
 from infrahub.exceptions import NodeNotFoundError, SchemaNotFoundError
 from tests.component.conftest import _build_hierarchical_location_data
 from tests.component.core.test_utils import verify_all_linked_edges_deleted
-from tests.helpers.db_validation import verify_graph_after_merge
+from tests.helpers.db_validation import verify_graph
 from tests.node_creation import create_and_save
 
 from .get_one_node import get_one_diff_node
@@ -102,7 +102,7 @@ class TestDiffAndMerge:
         # updated_at/updated_by should reflect the merge
         assert mylist_attr._get_updated_at() == merge_at
         assert mylist_attr._get_updated_by() == "branch-user"
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_diff_and_merge_schema_with_default_values(
         self,
@@ -150,7 +150,7 @@ class TestDiffAndMerge:
         assert "num_cupholders" not in attribute_names
         assert "is_cool" not in attribute_names
         assert "nickname" not in attribute_names
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize(
         "base_action,diff_action,selection,expect_deleted",
@@ -257,7 +257,7 @@ class TestDiffAndMerge:
             assert updated_person._get_created_at() == person_created_at
             assert updated_person._get_created_by() == person_created_by
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection,expected_value",
@@ -340,7 +340,7 @@ class TestDiffAndMerge:
         # After rollback, Attribute metadata should be restored
         assert before_main_update < rolled_back_john.name._get_updated_at() < after_main_update
         assert rolled_back_john.name._get_updated_by() == "main-user"
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -421,7 +421,7 @@ class TestDiffAndMerge:
         # After rollback, Relationship metadata should be restored
         assert before_main_update < owner_rel._get_updated_at() < after_main_update
         assert owner_rel._get_updated_by() == "main-user"
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -502,7 +502,7 @@ class TestDiffAndMerge:
         # After rollback, Attribute metadata should be restored
         assert before_main_update < rolled_back_john.name._get_updated_at() < after_main_update
         assert rolled_back_john.name._get_updated_by() == "main-user"
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize(
         "conflict_selection",
@@ -601,7 +601,7 @@ class TestDiffAndMerge:
         # After rollback, Node metadata should be restored to pre-merge state
         assert before_main_update < rolled_back_car._get_updated_at() < after_main_update
         assert rolled_back_car._get_updated_by() == "main-user"
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize("new_height", (0, 1000, None))
     async def test_single_attribute_update(
@@ -667,7 +667,7 @@ class TestDiffAndMerge:
         assert name_attr._get_updated_at() == person_created_at
         assert name_attr._get_updated_by() == person_created_by
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     @pytest.mark.parametrize("new_property", [True, False])
     async def test_single_property_update(
@@ -793,7 +793,7 @@ class TestDiffAndMerge:
         assert owner_rel_with_meta._get_updated_at() == at
         assert owner_rel_with_meta._get_updated_by() == "branch-user-2"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
         # Rollback verification
         await diff_merger.rollback(at=at)
@@ -820,7 +820,7 @@ class TestDiffAndMerge:
         assert before_car_source_update < rolled_back_car._get_updated_at() < after_car_source_update
         assert rolled_back_car._get_updated_by() == car_created_by
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_one_many_relationship_added(
         self,
@@ -900,7 +900,7 @@ class TestDiffAndMerge:
         assert new_car_rel._get_updated_at() == merge_at
         assert new_car_rel._get_updated_by() == "branch-user"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
         # Rollback the merge
         await diff_merger.rollback(at=merge_at)
@@ -921,7 +921,7 @@ class TestDiffAndMerge:
         rolled_back_new_car_rel = next((r for r in rolled_back_cars_rels if r.peer_id == branch_car.id), None)
         assert rolled_back_new_car_rel is None
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_relationship_set_to_null(
         self,
@@ -1024,7 +1024,7 @@ class TestDiffAndMerge:
         assert friend_rel_to_dog.updated_at == merge_at
         assert friend_rel_to_dog.updated_by == "branch-user"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
         # Rollback the merge
         await diff_merger.rollback(at=merge_at)
@@ -1055,7 +1055,7 @@ class TestDiffAndMerge:
         assert before_friend_create < rolled_back_friend._get_updated_at() < after_friend_create
         assert rolled_back_friend._get_updated_by() == "main-user-friend"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_local_and_aware_nodes_added_on_branch(
         self,
@@ -1154,7 +1154,7 @@ class TestDiffAndMerge:
         assert owner_rels[0]._get_created_by() == "branch-user-car"
         assert before_car_create < owner_rels[0]._get_updated_at() < after_car_create
         assert owner_rels[0]._get_updated_by() == "branch-user-car"
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_agnostic_and_aware_nodes_added_on_branch(
         self,
@@ -1306,7 +1306,7 @@ class TestDiffAndMerge:
         assert owner_rels[0]._get_created_by() == "branch-user-car"
         assert before_car_create < owner_rels[0]._get_updated_at() < after_car_create
         assert owner_rels[0]._get_updated_by() == "branch-user-car"
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_update_individual_relationship_properties_one_at_a_time(
         self,
@@ -1392,7 +1392,7 @@ class TestDiffAndMerge:
         assert owner_rel_with_metadata._get_created_by() == SYSTEM_USER_ID
         assert owner_rel_with_metadata._get_updated_at() < before_test_start
         assert owner_rel_with_metadata._get_updated_by() == SYSTEM_USER_ID
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_branch_delete_with_added_base_relationship(
         self,
@@ -1557,7 +1557,7 @@ class TestDiffAndMerge:
         assert rolled_back_car_with_metadata._get_created_at() == car_created_at
         assert rolled_back_car_with_metadata._get_updated_by() == "main-user-2"
         assert before_owner_rel_resolved < rolled_back_car_with_metadata._get_updated_at() < after_owner_rel_resolved
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_base_delete_with_added_branch_relationship(
         self,
@@ -1726,7 +1726,7 @@ class TestDiffAndMerge:
         assert john_rel_to_car_after_rollback.updated_by == "main-user"
         assert before_main_delete < john_rel_to_car_after_rollback.updated_at < after_main_delete
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_delete_with_many_relationship_added(
         self, db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
@@ -1792,7 +1792,7 @@ class TestDiffAndMerge:
         # including the relationship connecting car_1 and person_1 is deleted,
         # requires a special query b/c TestCar has no relationship to TestPerson in the schema
         await verify_all_linked_edges_deleted(db=db, node_uuid=person_1.id, branch_name=default_branch.name)
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
         node_metadata_query = await NodeMetadataDefaultBranchQuery.init(
             db=db,
@@ -1957,7 +1957,7 @@ class TestDiffAndMerge:
             assert before_main_update < updated_person_with_metadata.height._get_updated_at() < after_main_update
             assert updated_person_with_metadata.height._get_updated_by() == "main-user"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_hierarchy_preserved(
         self,
@@ -2019,7 +2019,7 @@ class TestDiffAndMerge:
         # Merged nodes should have updated_at set to merge time
         assert europe_with_metadata._get_updated_at() == at
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
     async def test_diff_and_merge_with_migrated_node_kind(
         self,
@@ -2218,7 +2218,7 @@ class TestDiffAndMerge:
             assert rel.updated_at == merge_at
             assert rel.updated_by == "branch-user-delete"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
         await diff_merger.rollback(at=merge_at)
 
@@ -2501,7 +2501,7 @@ class TestDiffAndMerge:
             assert rel.updated_at == merge_at
             assert rel.updated_by == "branch-user-delete"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
         await diff_merger.rollback(at=merge_at)
 
@@ -2768,7 +2768,7 @@ class TestDiffAndMerge:
             assert rel.updated_at == merge_at
             assert rel.updated_by == "branch-user-delete"
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
 
         await diff_merger.rollback(at=merge_at)
 
@@ -2916,4 +2916,4 @@ class TestDiffAndMerge:
         owner_rel = await updated_car.owner.get(db=db)
         assert owner_rel.peer_id == person_jane_main.id
 
-        await verify_graph_after_merge(db=db)
+        await verify_graph(db=db)
