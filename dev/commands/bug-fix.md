@@ -27,12 +27,6 @@ issue number from it.
 Find the draft PR opened by `/bug-tdd`:
 
 ```bash
-gh pr list --head ai-bug-pipeline-<issue_number> --json number,title,body,headRefName --jq '.[0]'
-```
-
-If no PR is found, try a broader search:
-
-```bash
 gh pr list --search "head:ai-bug-pipeline-<issue_number>" --json number,title,body,headRefName --jq '.[0]'
 ```
 
