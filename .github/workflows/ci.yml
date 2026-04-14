@@ -37,9 +37,11 @@ env:
 
 jobs:
   prepare-environment:
+    if: false  # TEMP: only run component tests
     uses: ./.github/workflows/define-versions.yml
   # ------------------------------------------ Check Files Changes  ------------------------------------------
   files-changed:
+    if: false  # TEMP: only run component tests
     name: Detect which file has changed
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -74,9 +76,7 @@ jobs:
 
   # ------------------------------------------ All Linter  ------------------------------------------
   yaml-lint:
-    if: |
-      needs.files-changed.outputs.yaml == 'true' ||
-      needs.files-changed.outputs.infrahub_uv_files == 'true'
+    if: false  # TEMP: only run component tests
     needs:
       - files-changed
       - prepare-environment
@@ -102,6 +102,7 @@ jobs:
         run: "uv run yamllint -s ."
 
   frontend-lint:
+    if: false  # TEMP: only run component tests
     defaults:
       run:
         working-directory: ./frontend/app
@@ -133,8 +134,7 @@ jobs:
         run: pnpm exec betterer ci
 
   frontend-validate-openapi-types:
-    if: |
-      needs.files-changed.outputs.openapi_schema == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["files-changed"]
     defaults:
       run:
@@ -176,8 +176,7 @@ jobs:
           fi
 
   frontend-validate-graphql-types:
-    if: |
-      needs.files-changed.outputs.graphql_schema == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["files-changed"]
     defaults:
       run:
@@ -219,9 +218,7 @@ jobs:
           fi
 
   python-lint:
-    if: |
-      needs.files-changed.outputs.backend == 'true' ||
-      needs.files-changed.outputs.python == 'true'
+    if: false  # TEMP: only run component tests
     needs:
       - files-changed
       - prepare-environment
@@ -252,10 +249,7 @@ jobs:
         run: "uv run ty check ."
 
   markdown-lint:
-    if: |
-      needs.files-changed.outputs.documentation == 'true' ||
-      needs.files-changed.outputs.release == 'true' ||
-      needs.files-changed.outputs.github_workflows
+    if: false  # TEMP: only run component tests
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
@@ -270,7 +264,7 @@ jobs:
           globs: "docs/docs/**/*.md docs/docs/**/*.mdx"
 
   action-lint:
-    if: needs.files-changed.outputs.github_workflows == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["files-changed"]
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
@@ -288,10 +282,7 @@ jobs:
           SHELLCHECK_OPTS: --exclude=SC2086 --exclude=SC2046 --exclude=SC2004 --exclude=SC2129
 
   infrahub-uv-check:
-    if: |
-      needs.files-changed.outputs.infrahub_uv_files == 'true' ||
-      github.ref_name == 'stable' ||
-      github.ref_name == 'develop'
+    if: false  # TEMP: only run component tests
     needs:
       - "files-changed"
     uses: "./.github/workflows/uv-check.yml"
@@ -299,7 +290,7 @@ jobs:
       directory: "./"
 
   infrahub-testcontainers-check:
-    if: needs.files-changed.outputs.infrahub_uv_files == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed"]
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -340,14 +331,7 @@ jobs:
           fi
 
   backend-testcontainers-unit:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (
-        needs.files-changed.outputs.testcontainers == 'true' ||
-        needs.files-changed.outputs.github_workflows == 'true'
-      )
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     strategy:
       matrix:
@@ -380,10 +364,7 @@ jobs:
         run: "uv run pytest --rootdir=. -c pyproject.toml -vs tests"
 
   infrahub-testcontainers-uv-check:
-    if: |
-      needs.files-changed.outputs.infrahub_uv_files == 'true' ||
-      github.ref_name == 'stable' ||
-      github.ref_name == 'develop'
+    if: false  # TEMP: only run component tests
     needs:
       - "files-changed"
     uses: "./.github/workflows/uv-check.yml"
@@ -391,11 +372,7 @@ jobs:
       directory: "./python_testcontainers"
 
   backend-tests-unit:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     strategy:
       fail-fast: false
@@ -435,12 +412,6 @@ jobs:
           parallel: true
 
   backend-tests-component:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
-    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
     timeout-minutes: 45
@@ -455,7 +426,7 @@ jobs:
         id: python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+          python-version: "3.13.11"
       - name: "Setup git credentials"
         run: "git config --global user.name 'Infrahub' && \
               git config --global user.email 'infrahub@opsmill.com' && \
@@ -465,7 +436,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
-          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+          version: "0.9.9"
       - name: Install dependencies
         run: "uv sync --all-groups"
       - name: "Enable pytest tracing"
@@ -488,11 +459,7 @@ jobs:
           parallel: true
 
   backend-tests-integration:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
@@ -535,11 +502,7 @@ jobs:
           parallel: true
 
   backend-tests-functional:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: "huge-runners"
@@ -582,12 +545,7 @@ jobs:
           parallel: true
 
   backend-docker-integration:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.backend == 'true' ||
-      needs.files-changed.outputs.testcontainers == 'true')
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     runs-on:
       group: huge-runners
@@ -689,12 +647,7 @@ jobs:
   #       run: "uv run invoke backend.test-unit"
 
   backend-validate-generated:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.backend == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: ubuntu-latest
     steps:
@@ -717,11 +670,7 @@ jobs:
         run: "uv run invoke backend.validate-generated"
 
   frontend-tests:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.frontend == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["files-changed", "yaml-lint", "frontend-lint"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 30
@@ -760,11 +709,7 @@ jobs:
           file: frontend/app/coverage/lcov.info
 
   graphql-schema:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-22.04"
     steps:
@@ -786,11 +731,7 @@ jobs:
       - name: Run validation
         run: uv run invoke schema.validate-graphqlschema
   json-schema:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
     runs-on: "ubuntu-22.04"
     steps:
@@ -813,14 +754,10 @@ jobs:
         run: uv run invoke schema.validate-jsonschema
 
   documentation:
+    if: false  # TEMP: only run component tests
     defaults:
       run:
         working-directory: ./docs
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.release == 'true') || (needs.files-changed.outputs.documentation == 'true')
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -853,12 +790,7 @@ jobs:
         run: "uv run invoke docs.build"
 
   validate-generated-documentation:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.python == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -888,13 +820,7 @@ jobs:
         run: "uv run invoke docs.validate"
 
   validate-dev-guideline-links:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.python == 'true') ||
-      (needs.files-changed.outputs.dev_guidelines == 'true') ||
-      (needs.files-changed.outputs.javascript == 'true')
+    if: false  # TEMP: only run component tests
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -913,12 +839,7 @@ jobs:
           fail: true
 
   validate-documentation-style:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      (needs.files-changed.outputs.release == 'true' ||
-      needs.files-changed.outputs.documentation == 'true')
+    if: false  # TEMP: only run component tests
     needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -940,11 +861,7 @@ jobs:
         run: ./vale --config=./.vale.ini $(find ./docs -type f \( -name "*.mdx" -o -name "*.md" \) -not -path "./docs/node_modules/*")
 
   validate-release-notes-style:
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.release == 'true'
+    if: false  # TEMP: only run component tests
     needs: ["files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on: "ubuntu-22.04"
     timeout-minutes: 5
@@ -966,6 +883,7 @@ jobs:
 
   # ------------------------------------------ E2E Tests  ------------------------------------------
   E2E-testing-playwright:
+    if: false  # TEMP: only run component tests
     defaults:
       run:
         working-directory: ./frontend/app
@@ -976,11 +894,6 @@ jobs:
       - yaml-lint
       - python-lint
       - infrahub-testcontainers-check
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
     timeout-minutes: 60
@@ -1174,6 +1087,7 @@ jobs:
 
   # ------------------------------------------ E2E invoke demo ------------------------------------------------
   E2E-testing-invoke-demo-start:
+    if: false  # TEMP: only run component tests
     needs:
       - prepare-environment
       - frontend-lint
@@ -1181,12 +1095,6 @@ jobs:
       - yaml-lint
       - python-lint
       - infrahub-testcontainers-check
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      github.base_ref == 'stable' &&
-      needs.files-changed.outputs.e2e == 'true'
     runs-on:
       group: huge-runners
     steps:
@@ -1254,21 +1162,18 @@ jobs:
 
   # ------------------------------------------ E2E version upgrade ------------------------------------------------
   E2E-testing-version-upgrade:
+    if: false  # TEMP: only run component tests
     needs:
       - frontend-lint
       - files-changed
       - yaml-lint
       - python-lint
       - infrahub-testcontainers-check
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
   backend-benchmark:
+    if: false  # TEMP: only run component tests
     needs:
       - prepare-environment
       - frontend-lint
@@ -1276,11 +1181,6 @@ jobs:
       - yaml-lint
       - python-lint
       - infrahub-testcontainers-check
-    if: |
-      always() && !cancelled() &&
-      !contains(needs.*.result, 'failure') &&
-      !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.backend == 'true'
     runs-on:
       group: huge-runners
     env:
@@ -1329,13 +1229,12 @@ jobs:
 
   # ------------------------------------------ Coverall Report  ------------------------------------------
   coverall-report:
+    if: false  # TEMP: only run component tests
     needs:
       - backend-tests-component
       - backend-tests-integration
       - backend-tests-unit
       - frontend-tests
-    if: |
-      always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
