@@ -16,8 +16,6 @@ exist would violate that constraint.
 
 from unittest.mock import AsyncMock
 
-import pytest
-
 from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction, SchemaPathType
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -37,14 +35,11 @@ from tests.helpers.db_validation import verify_graph
 
 
 class TestDiffAfterNodeRemoveMigration:
-    @pytest.fixture(autouse=True)
-    async def _setup_core_schema(self, register_core_models_schema: SchemaBranch) -> None:
-        return
-
     async def test_deleted_node_appears_in_diff(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
         car_person_schema: SchemaBranch,
     ) -> None:
         # Step 1: Create a person and a car (with owner=person) on the default branch

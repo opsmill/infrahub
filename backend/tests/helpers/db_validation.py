@@ -207,7 +207,6 @@ RETURN DISTINCT
     """
     params = {
         "default_branch": registry.default_branch,
-        "global_branch": GLOBAL_BRANCH_NAME,
     }
     records = await db.execute_query(query=query, params=params)
     for record in records:

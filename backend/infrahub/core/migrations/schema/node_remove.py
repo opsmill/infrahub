@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core.constants import RelationshipStatus
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, RelationshipStatus
 
 from ..query import MigrationQuery
 from ..shared import SchemaMigration
@@ -11,42 +11,36 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-# Cypher fragment to compute the (branch, branch_level) of a new "deleted" edge given an
-# existing edge variable: agnostic edges stay on -global-, otherwise on the migration branch.
-_BRANCH_FROM_EXISTING = (
-    'CASE WHEN {existing}.branch = "-global-" THEN "-global-" ELSE $branch END AS new_branch, '
-    'CASE WHEN {existing}.branch = "-global-" '
-    "THEN {existing}.branch_level ELSE $branch_level END AS new_branch_level"
-)
-
-
 class NodeRemoveMigrationBaseQuery(MigrationQuery):
     """Shared parameter setup for node-remove migrations."""
 
-    QUERY_TEMPLATE: str = ""
+    def _branch_from_existing(self, existing: str) -> str:
+        """Return a Cypher fragment that computes (new_branch, new_branch_level) for a new
+        "deleted" edge based on an existing edge variable. Agnostic edges stay on the global
+        branch; all others go on the migration branch."""
+        return (
+            f"CASE WHEN {existing}.branch = $global_branch THEN $global_branch ELSE $branch END AS new_branch, "
+            f"CASE WHEN {existing}.branch = $global_branch "
+            f"THEN {existing}.branch_level ELSE $branch_level END AS new_branch_level"
+        )
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
-        self.params.update(branch_params)
-
-        self.params["current_time"] = self.at.to_string()
-        self.params["branch_name"] = self.branch.name
-        self.params["branch"] = self.branch.name
-        self.params["branch_level"] = self.branch.hierarchy_level
-        self.params["user_id"] = self.user_id
-        self.params["rel_props"] = {
-            "status": RelationshipStatus.DELETED.value,
-            "from": self.at.to_string(),
-            "from_user_id": self.user_id,
+    def _build_params(self) -> dict[str, Any]:
+        """Return shared Cypher parameters for node-remove migration queries."""
+        return {
+            "current_time": self.at.to_string(),
+            "branch_name": self.branch.name,
+            "branch": self.branch.name,
+            "branch_level": self.branch.hierarchy_level,
+            "user_id": self.user_id,
+            "global_branch": GLOBAL_BRANCH_NAME,
+            "rel_props": {
+                "status": RelationshipStatus.DELETED.value,
+                "from": self.at.to_string(),
+                "from_user_id": self.user_id,
+            },
+            # Set metadata for vertex properties on default/global branch
+            "set_metadata": self.branch.is_default or self.branch.is_global,
         }
-        # Set metadata for vertex properties on default/global branch
-        self.params["set_metadata"] = self.branch.is_default or self.branch.is_global
-
-        query = self.QUERY_TEMPLATE % {
-            "branch_filter": branch_filter,
-            "node_kind": self.migration.previous_schema.kind,
-        }
-        self.add_to_query(query)
 
     def get_nbr_migrations_executed(self) -> int:
         return self.stats.get_counter(name="nodes_created")
@@ -75,8 +69,13 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     name = "migration_node_remove_in"
     insert_return: bool = False
 
-    QUERY_TEMPLATE = (
-        """
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params.update(self._build_params())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+
+        query = (
+            """
     // ----------------------------------------------------------
     // Find all active nodes of the kind being removed
     // ----------------------------------------------------------
@@ -116,9 +115,9 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     }
 
     WITH active_node, rel_inbound, peer_node,
-         """
-        + _BRANCH_FROM_EXISTING.format(existing="rel_inbound")
-        + """
+            """
+            + self._branch_from_existing("rel_inbound")
+            + """
 
     // ----------------------------------------------------------
     // Create a "deleted" edge of the same type and direction
@@ -133,7 +132,7 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     CALL (rel_inbound) {
         WITH rel_inbound
-        WHERE rel_inbound.branch IN ["-global-", $branch]
+        WHERE rel_inbound.branch IN [$global_branch, $branch]
         SET rel_inbound.to = $current_time, rel_inbound.to_user_id = $user_id
     }
 
@@ -158,8 +157,8 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     }
     WITH peer_node, sub_peer, sub_edge,
             """
-        + _BRANCH_FROM_EXISTING.format(existing="sub_edge")
-        + """,
+            + self._branch_from_existing("sub_edge")
+            + """,
             startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
     WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
 
@@ -176,11 +175,15 @@ class NodeRemoveMigrationQueryIn(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     CALL (sub_edge) {
         WITH sub_edge
-        WHERE sub_edge.branch IN ["-global-", $branch]
+        WHERE sub_edge.branch IN [$global_branch, $branch]
         SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
     }
     """
-    )
+        ) % {
+            "branch_filter": branch_filter,
+            "node_kind": self.migration.previous_schema.kind,
+        }
+        self.add_to_query(query)
 
     def get_nbr_migrations_executed(self) -> int:
         return 0
@@ -203,8 +206,13 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     name = "migration_node_remove_out"
     insert_return: bool = False
 
-    QUERY_TEMPLATE = (
-        """
+    async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
+        self.params.update(self._build_params())
+        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
+        self.params.update(branch_params)
+
+        query = (
+            """
     // ----------------------------------------------------------
     // Find all active nodes of the kind being removed
     // ----------------------------------------------------------
@@ -254,9 +262,9 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     }
 
     WITH active_node, rel_outbound, peer_node,
-         """
-        + _BRANCH_FROM_EXISTING.format(existing="rel_outbound")
-        + """
+            """
+            + self._branch_from_existing("rel_outbound")
+            + """
 
     // ----------------------------------------------------------
     // Create a "deleted" edge of the same type and direction
@@ -271,7 +279,7 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     CALL (rel_outbound) {
         WITH rel_outbound
-        WHERE rel_outbound.branch IN ["-global-", $branch]
+        WHERE rel_outbound.branch IN [$global_branch, $branch]
         SET rel_outbound.to = $current_time, rel_outbound.to_user_id = $user_id
     }
 
@@ -291,8 +299,8 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     }
     WITH active_node, peer_node, sub_peer, sub_edge,
             """
-        + _BRANCH_FROM_EXISTING.format(existing="sub_edge")
-        + """,
+            + self._branch_from_existing("sub_edge")
+            + """,
             startNode(sub_edge) AS sub_start, endNode(sub_edge) AS sub_end
     WHERE sub_edge.status = "active" AND sub_edge.to IS NULL
 
@@ -309,13 +317,17 @@ class NodeRemoveMigrationQueryOut(NodeRemoveMigrationBaseQuery):
     // ----------------------------------------------------------
     CALL (sub_edge) {
         WITH sub_edge
-        WHERE sub_edge.branch IN ["-global-", $branch]
+        WHERE sub_edge.branch IN [$global_branch, $branch]
         SET sub_edge.to = $current_time, sub_edge.to_user_id = $user_id
     }
 
     RETURN DISTINCT active_node
     """
-    )
+        ) % {
+            "branch_filter": branch_filter,
+            "node_kind": self.migration.previous_schema.kind,
+        }
+        self.add_to_query(query)
 
     def get_nbr_migrations_executed(self) -> int:
         """Only in the outbound query b/c only the outbound query is guaranteed to run"""
