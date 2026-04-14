@@ -224,6 +224,11 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         if not self._schema.display_label:
             return repr(self)
 
+        if self._display_label is not None:
+            # Stored value is empty do not compute on the fly to avoid recomputation trigger issues
+            return ""
+
+        # This should only happens for "virtual" nodes (that never exist inside the db)
         display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
         await display_label.compute(db=db, node=self)
         return display_label.get_value(node=self, at=self._at) or ""
