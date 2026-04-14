@@ -29,17 +29,18 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
       queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
-      const message = config.main.delete_branch_after_merge
-        ? `Proposed change merged! Branch '${proposedChangesDetails.source_branch?.value}' will be automatically deleted.`
-        : "Proposed change merged!";
+      const deleteBranchAfterMerge = config.main.delete_branch_after_merge;
+      const sourceBranch: string | undefined = proposedChangesDetails.source_branch?.value;
+
+      const message =
+        deleteBranchAfterMerge && sourceBranch
+          ? `Proposed change merged! Branch '${sourceBranch}' will be automatically deleted.`
+          : "Proposed change merged!";
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
 
-      if (config.main.delete_branch_after_merge) {
-        navigateAfterBranchRemoval(
-          "/proposed-changes",
-          proposedChangesDetails.source_branch?.value
-        );
+      if (deleteBranchAfterMerge) {
+        navigateAfterBranchRemoval("/proposed-changes", sourceBranch);
       }
     },
     onError: () => {

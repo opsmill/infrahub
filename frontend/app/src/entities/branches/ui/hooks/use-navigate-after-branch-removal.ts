@@ -6,10 +6,10 @@ import { QSP } from "@/shared/config/qsp";
 export function useNavigateAfterBranchRemoval() {
   const navigate = useNavigate();
 
-  return (listPath: string, deletedBranchName: string) => {
+  return (listPath: string, deletedBranchName?: string) => {
     const currentBranch = getCurrentQsp().get(QSP.BRANCH);
     const path =
-      currentBranch === deletedBranchName
+      deletedBranchName && currentBranch === deletedBranchName
         ? constructPath(listPath, [{ name: QSP.BRANCH, exclude: true }])
         : constructPath(listPath);
 
