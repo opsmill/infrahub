@@ -1412,6 +1412,7 @@ jobs:
       group: huge-runners
     steps:
       - name: Export Workflow Trace
+        continue-on-error: true
         uses: inception-health/otel-export-trace-action@v1
         with:
           otlpEndpoint: ${{ secrets.TRACING_ENDPOINT }}

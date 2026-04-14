@@ -15,8 +15,6 @@ updates:
     labels:
       - "type/housekeeping"
       - "ci/skip-changelog"
-    cooldown:
-      days: 3
 
   # Python dependencies (pyproject.toml + uv.lock)
   - package-ecosystem: "uv"
