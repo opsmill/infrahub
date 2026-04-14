@@ -45,5 +45,5 @@ Read `.github/bug-agent-pipeline/shared/test-writing.md` and follow all steps (1
 ### Escalation
 
 When the shared test-writing instructions say to "STOP and escalate":
-- Inform the developer explaining what was tried. Do NOT open a PR or include the
+- Inform the developer explaining what was tried and **STOP**. Do NOT open a PR or include the
   `AGENT_TEST_COMPLETE` marker.
