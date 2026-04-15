@@ -42,8 +42,8 @@ When the shared investigation instructions say to "STOP and escalate":
 
 ### Output
 
-Write the analysis to `.bug-analysis.md` in the repo root using the template from the
-shared investigation file.
+Write the analysis to `.bug-analysis-<issue_number>.md` in the repo root using the
+analysis template from the shared investigation file.
 
 This file is gitignored -- it is a local working-tree artifact, not committed.
 

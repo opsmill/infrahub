@@ -26,7 +26,8 @@ issue number from it.
 Read `.bug-analysis.md` from the repo root. If the file is missing, inform the developer:
 "Run `/bug-analyze <issue>` first." and **STOP**.
 
-Extract the **Branch** field from the analysis file and check out that branch:
+Read `.bug-analysis-<issue_number>.md` from the repo root. If the file is missing, inform the
+developer: "Run `/bug-analyze <issue>` first." and **STOP**.
 
 ```bash
 git fetch origin

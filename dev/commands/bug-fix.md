@@ -43,7 +43,7 @@ git fetch origin
 git checkout <branch name from PR>
 ```
 
-Read `.bug-analysis.md` from the repo root for the root cause and fix strategy.
+Read `.bug-analysis-<issue_number>.md` from the repo root for the root cause and fix strategy.
 If the file is missing, inform the developer: "Run `/bug-analyze <issue>` first." and **STOP**.
 
 Read the PR diff to understand the failing test.
