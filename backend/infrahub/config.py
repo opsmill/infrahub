@@ -881,12 +881,13 @@ class PolicySettings(BaseSettings):
     required_proposed_change_approvals: int = Field(
         default=0,
         ge=0,
-        description="Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)",
+        description="Number of approvals required for proposed changes.",
+        json_schema_extra={"enterprise": True},
     )
     revoke_proposed_change_approvals: bool = Field(
         default=False,
-        description="Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals."
-        " (Enterprise only: not available in the community version.)",
+        description="Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals.",
+        json_schema_extra={"enterprise": True},
     )
 
     @property
