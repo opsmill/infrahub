@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from pydantic import ValidationError
 
-from infrahub.config import SETTINGS, GitSettings, HTTPSettings, StorageSettings, UserInfoMethod, load
+from infrahub.config import SETTINGS, GitSettings, HTTPSettings, PolicySettings, StorageSettings, UserInfoMethod, load
 from tests.conftest import TestHelper
 
 TEST_DATA_DIR = Path(__file__).parent / "test_data"
@@ -137,3 +137,18 @@ def test_http_settings_get_tls_context__ca_bundle_long_string_triggers_oserror()
     context_verified = settings.get_tls_context(force_verify=True)
     assert context_verified.verify_mode == ssl.CERT_REQUIRED
     assert context_verified.check_hostname is True
+
+
+ENTERPRISE_FIELD_NAMES = [
+    "required_proposed_change_approvals",
+    "revoke_proposed_change_approvals",
+]
+
+
+@pytest.mark.parametrize("field_name", ENTERPRISE_FIELD_NAMES)
+def test_policy_settings_enterprise_fields_have_structured_flag(field_name: str) -> None:
+    """Enterprise-only fields must carry json_schema_extra={'enterprise': True} for generator filtering."""
+    field_info = PolicySettings.model_fields[field_name]
+    extra = field_info.json_schema_extra
+    assert isinstance(extra, dict), f"Field '{field_name}' is missing json_schema_extra"
+    assert extra.get("enterprise") is True, f"Field '{field_name}' does not have enterprise=True in json_schema_extra"
