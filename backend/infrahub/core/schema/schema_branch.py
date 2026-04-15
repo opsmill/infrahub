@@ -676,6 +676,16 @@ class SchemaBranch:
         self.process_dropdowns()
         self.process_relationships()
         self.process_human_friendly_id()
+        # process_human_friendly_id appends HFID-derived entries to uniqueness_constraints
+        # run sync_uniqueness_constraints_and_unique_attributes again to sync attribute uniqueness
+        self.sync_uniqueness_constraints_and_unique_attributes()
+        # newly unique attribute need to be excluded from templates and profiles
+        self.manage_object_template_schemas()
+        self.manage_object_template_relationships()
+        self.manage_profile_schemas()
+        self.manage_profile_relationships()
+        # regenerated templates/profiles start with no order_weight; assign them.
+        self.generate_weight()
         self.register_human_friendly_id()
 
     def _generate_identifier_string(self, node_kind: str, peer_kind: str) -> str:
