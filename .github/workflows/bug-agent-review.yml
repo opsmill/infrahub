@@ -19,7 +19,11 @@ jobs:
   review:
     if: |
       startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-') &&
-      github.event.pull_request.user.login == 'claude[bot]' &&
+      (
+        github.event.pull_request.user.login == 'claude[bot]' ||
+        github.event.pull_request.author_association == 'OWNER' ||
+        github.event.pull_request.author_association == 'MEMBER'
+      ) &&
       (
         contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') ||
         contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
