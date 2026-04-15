@@ -18,7 +18,6 @@ Rate the clarity:
 - **UNCLEAR**: the intent and reproduction scenario are not understandable.
 
 If the bug is UNCLEAR, **STOP** here and escalate as described in your main prompt.
-Do NOT create a branch or produce any analysis output.
 
 ## Investigate the codebase
 
@@ -30,7 +29,7 @@ Do NOT create a branch or produce any analysis output.
 
 3. Identify the most likely root cause(s) -- point to specific files and lines.
    - If you **cannot** identify a root cause after exploration, **STOP** and escalate
-     as described in your main prompt. Do NOT create a branch or produce any analysis output.
+     as described in your main prompt.
 
 4. Formulate a fix strategy. This is NOT the exact code -- it is the recommended approach:
    - **Approach:** What should the fixer do and where? Reference existing functions/methods
@@ -38,20 +37,6 @@ Do NOT create a branch or produce any analysis output.
    - **Scope:** Which files/functions need changes? How large should the change be?
    - **Do NOT:** List common wrong approaches (e.g., adding a guard clause when the real
      fix is a missing validation, creating new abstractions when an existing one should be reused).
-
-## Create working branch
-
-Create a working branch from `origin/stable`:
-
-```bash
-git fetch origin stable
-git checkout -b ai-bug-pipeline-<issue_number>-<short-slug> origin/stable
-```
-
-- Name: `ai-bug-pipeline-<issue_number>-<short-slug>` (lowercase, hyphens only, max 50 chars total).
-- If the branch already exists, check it out instead of creating a new one.
-- Record the commit SHA of `origin/stable` that the branch was created from (`git rev-parse origin/stable`).
-- Push the working branch to origin: `git push -u origin <branch>`.
 
 ## Analysis template
 
@@ -61,7 +46,6 @@ Write the analysis output using this structure (replace all `<placeholders>`):
 ## Root cause analysis for #<issue_number>
 
 **Issue:** <issue title>
-**Branch:** `ai-bug-pipeline-<issue_number>-<short-slug>`
 **Based on:** `<commit SHA of origin/stable>`
 **Bug clarity:** CLEAR
 **Code identification:** RESOLVED | EXPLORATION REQUIRED

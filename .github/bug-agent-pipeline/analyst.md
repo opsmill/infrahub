@@ -51,11 +51,11 @@ Read `.github/bug-agent-pipeline/shared/investigation.md` and follow all section
 
 When the shared investigation instructions say to "STOP and escalate":
 - If the issue is **UNCLEAR**: post a comment asking the reporter for clarification,
-  add the label `state/need-more-info`, and **STOP**. Do NOT create a branch, push,
-  or include the `AGENT_ANALYSIS_COMPLETE` marker.
+  add the label `state/need-more-info`, and **STOP**. Do NOT include the
+  `AGENT_ANALYSIS_COMPLETE` marker.
 - If you **cannot identify a root cause**: post a comment asking the reporter for more details,
-  add the label `state/need-more-info`, and **STOP**. Do NOT create a branch, push,
-  or include the `AGENT_ANALYSIS_COMPLETE` marker.
+  add the label `state/need-more-info`, and **STOP**. Do NOT include the
+  `AGENT_ANALYSIS_COMPLETE` marker.
 
 ### Output
 
@@ -63,5 +63,3 @@ Post the analysis as a **comment on the issue** using the template from the shar
 investigation file.
 
 Add `<!-- AGENT_ANALYSIS_COMPLETE -->` as the **last line** of the comment.
-
-Use the **exact branch name** in the comment -- the test-writer agent will check it out by name.

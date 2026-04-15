@@ -36,14 +36,14 @@ Read `.github/bug-agent-pipeline/shared/investigation.md` and follow all section
 
 When the shared investigation instructions say to "STOP and escalate":
 - If the issue is **UNCLEAR**: inform the developer what information is missing and **STOP**.
-  Do NOT create a branch or write the analysis file.
 - If you **cannot identify a root cause**: inform the developer and **STOP**.
-  Do NOT create a branch or write the analysis file.
 
 ### Output
 
 Write the analysis to `.bug-analysis-<issue_number>.md` in the repo root using the
 analysis template from the shared investigation file.
+
+Fill the **Based on** field with the current `origin/stable` SHA (`git rev-parse origin/stable`).
 
 This file is gitignored -- it is a local working-tree artifact, not committed.
 

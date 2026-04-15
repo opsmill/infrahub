@@ -53,16 +53,13 @@ Determine which mode you are in:
 
 ### Initial test -- setup
 
-1. The analyst's comment (provided in the metadata below) contains a **Branch** field. Check out that branch:
-   `git checkout <branch name from analyst comment>`
-2. Read the analyst's full comment to understand the root cause and affected files.
-3. If the branch does not exist or the analyst's comment is missing required fields
-   (Root cause, Affected files, Branch), post a comment explaining the problem,
-   add the label `state/needs-human-test`, and **STOP**.
+1. Read the analyst's full comment to understand the root cause and affected files.
+2. If the analyst's comment is missing required fields (Root cause, Affected files),
+   post a comment explaining the problem, add the label `state/needs-human-test`, and **STOP**.
 
 ## Initial test
 
-Read `.github/bug-agent-pipeline/shared/test-writing.md` and follow all steps (1 through 10).
+Read `.github/bug-agent-pipeline/shared/test-writing.md` and follow all steps (0 through 10).
 
 ### Escalation
 

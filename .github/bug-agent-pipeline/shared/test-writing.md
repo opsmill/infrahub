@@ -5,7 +5,18 @@ Read this file when directed by your main prompt.
 
 Before starting, you should already have:
 - The root cause analysis (root cause, affected files, fix strategy)
-- The working branch checked out
+
+## Step 0: Create working branch
+
+Create a working branch from `origin/stable`:
+
+```bash
+git fetch origin stable
+git checkout -b ai-bug-pipeline-<issue_number>-<short-slug> origin/stable
+```
+
+- Name: `ai-bug-pipeline-<issue_number>-<short-slug>` (lowercase, hyphens only, max 50 chars total).
+- If the branch already exists, check it out instead of creating a new one.
 
 ## Step 1: Read testing documentation
 

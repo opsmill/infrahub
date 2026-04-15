@@ -29,13 +29,8 @@ Read `.bug-analysis.md` from the repo root. If the file is missing, inform the d
 Read `.bug-analysis-<issue_number>.md` from the repo root. If the file is missing, inform the
 developer: "Run `/bug-analyze <issue>` first." and **STOP**.
 
-```bash
-git fetch origin
-git checkout <branch name from analysis>
-```
-
-If the branch does not exist or the analysis file is missing required fields
-(Root cause, Affected files, Branch), inform the developer and **STOP**.
+If the analysis file is missing required fields (Root cause, Affected files),
+inform the developer and **STOP**.
 
 Read the full analysis to understand the root cause and affected files.
 
