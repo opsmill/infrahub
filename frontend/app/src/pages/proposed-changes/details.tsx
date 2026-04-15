@@ -22,6 +22,7 @@ import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button"
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { GetProposedChangeDetailsResponse } from "@/entities/proposed-changes/domain/get-proposed-change-details";
+import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/proposed-change.types";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";

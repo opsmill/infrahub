@@ -30,7 +30,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         predicate: (query) => query.queryKey.includes(proposedChangesDetails.id),
       });
       const deleteBranchAfterMerge = config.main.delete_branch_after_merge;
-      const sourceBranch: string | undefined = proposedChangesDetails.source_branch?.value;
+      const sourceBranch = proposedChangesDetails.source_branch?.value;
 
       const message =
         deleteBranchAfterMerge && sourceBranch
