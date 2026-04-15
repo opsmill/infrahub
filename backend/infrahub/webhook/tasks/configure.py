@@ -94,17 +94,17 @@ async def _configure_webhook_on_failure(flow: Flow, flow_run: FlowRun, state: St
 class SingleWebhookConfigurer:
     """Configures a single webhook's Prefect automation."""
 
-    def __init__(self, webhook: CoreWebhookNode) -> None:
+    def __init__(
+        self,
+        webhook: CoreWebhookNode,
+        automation: WebhookAutomation,
+    ) -> None:
         self._webhook = webhook
+        self.automation = automation
 
-    async def apply(self) -> None:
+    async def configure(self) -> None:
         """Ensure the webhook's Prefect automation matches desired state and invalidate cache."""
-        async with get_prefect_client(sync_client=False) as prefect_client:
-            automation = WebhookAutomation(
-                trigger_definition=WebhookTriggerDefinitionBuilder(registry.default_branch).build(self._webhook),
-                prefect_client=prefect_client,
-            )
-            await automation.apply(active=self._webhook.active.value)
+        await self.automation.apply(active=self._webhook.active.value)
         await invalidate_webhook_cache(webhook_ids={self._webhook.id})
 
 
@@ -122,12 +122,18 @@ async def configure_webhook(
 
     match parsed.action:
         case WebhookAction.CONFIGURE:
-            database = await get_database()
             webhook_node = await NodeManager.get_one(
-                id=parsed.required_webhook_id, db=database, kind=CoreWebhookNode, raise_on_error=True
+                id=parsed.required_webhook_id, db=await get_database(), kind=CoreWebhookNode, raise_on_error=True
             )
-            configurer = SingleWebhookConfigurer(webhook=webhook_node)
-            await configurer.apply()
+            async with get_prefect_client(sync_client=False) as prefect_client:
+                configurer = SingleWebhookConfigurer(
+                    webhook=webhook_node,
+                    automation=WebhookAutomation(
+                        trigger_definition=WebhookTriggerDefinitionBuilder(registry.default_branch).build(webhook_node),
+                        prefect_client=prefect_client,
+                    ),
+                )
+                await configurer.configure()
         case WebhookAction.DELETE:
             await _delete_automation(webhook_id=parsed.required_webhook_id)
         case WebhookAction.RECONCILE_ALL:
