@@ -133,8 +133,11 @@ Push the branch and open a **draft Pull Request**:
 
 ```bash
 git push -u origin <branch>
-gh pr create --draft --base stable --title "<title>" --body "<body>"
+gh pr create --draft --base stable --title "<title>" --body-file .agent-tmp/gh-body.md
 ```
+
+Write the PR body to `.agent-tmp/gh-body.md` first (using the Write tool), then pass it
+via `--body-file`.
 
 - Title: `test: failing test for #<issue_number> -- <short description>`
 - Target branch: `stable`
