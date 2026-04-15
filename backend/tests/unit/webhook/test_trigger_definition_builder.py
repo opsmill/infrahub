@@ -73,7 +73,9 @@ class TestWebhookTriggerDefinition:
         assert trigger.trigger.match == {"infrahub.node.kind": "BuiltinTag"}
 
     def test_node_kind_none(self) -> None:
-        trigger = WebhookTriggerDefinitionBuilder("main").build(_make_webhook(event_type="infrahub.node.created", node_kind=None))
+        trigger = WebhookTriggerDefinitionBuilder("main").build(
+            _make_webhook(event_type="infrahub.node.created", node_kind=None)
+        )
         assert trigger.trigger.match == {}
 
     def test_workflow_parameters(self) -> None:

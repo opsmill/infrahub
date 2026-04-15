@@ -110,9 +110,9 @@ class WebhookTriggerDefinition(TriggerDefinition):
 class WebhookAutomation:
     """A webhook's desired automation state in Prefect."""
 
-    def __init__(self, trigger_definition: WebhookTriggerDefinition, active: bool) -> None:
+    def __init__(self, trigger_definition: WebhookTriggerDefinition, prefect_client: PrefectClient) -> None:
         self._trigger_definition = trigger_definition
-        self._active = active
+        self._client = prefect_client
 
     @property
     def name(self) -> str:
@@ -122,42 +122,38 @@ class WebhookAutomation:
     def webhook_id(self) -> str:
         return self._trigger_definition.id
 
-    @property
-    def active(self) -> bool:
-        return self._active
-
-    async def apply(self, client: PrefectClient) -> None:
+    async def apply(self, active: bool) -> None:
         """Ensure Prefect matches desired state: create, update, or delete."""
-        existing = await self._find_existing(client)
+        existing = await self._find_existing()
 
-        if not self._active:
+        if not active:
             if existing:
-                await client.delete_automation(automation_id=existing.id)
+                await self._client.delete_automation(automation_id=existing.id)
                 logger.info("Automation %s deleted (webhook disabled)", self.name)
             else:
                 logger.info("Webhook %s is disabled, no automation to delete", self.name)
             return
 
-        automation = await self._as_prefect_automation(client)
+        automation = await self._as_prefect_automation()
         if existing:
-            await client.update_automation(automation_id=existing.id, automation=automation)
+            await self._client.update_automation(automation_id=existing.id, automation=automation)
             logger.info("Automation %s updated", self.name)
         else:
-            await client.create_automation(automation=automation)
+            await self._client.create_automation(automation=automation)
             logger.info("Automation %s created", self.name)
 
-    async def _find_existing(self, client: PrefectClient) -> Automation | None:
+    async def _find_existing(self) -> Automation | None:
         from infrahub.trigger.setup import gather_all_automations
 
-        all_automations = await gather_all_automations(client=client)
+        all_automations = await gather_all_automations(client=self._client)
         matches = [a for a in all_automations if a.name == self.name]
         return matches[0] if matches else None
 
-    async def _as_prefect_automation(self, client: PrefectClient) -> AutomationCore:
+    async def _as_prefect_automation(self) -> AutomationCore:
         from prefect.automations import AutomationCore as _AutomationCore
 
         deployment_name = self._trigger_definition.get_deployment_names()[0]
-        deployment = await client.read_deployment_by_name(name=f"{deployment_name}/{deployment_name}")
+        deployment = await self._client.read_deployment_by_name(name=f"{deployment_name}/{deployment_name}")
         return _AutomationCore(
             name=self.name,
             description=self._trigger_definition.get_description(),
