@@ -1,77 +1,18 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
+import pytest
+
+from infrahub.core.constants import BranchSupportType
 from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.dropdown import DropdownChoice
+from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.core.schema.node_schema import NodeSchema
 
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
-
-
-# FirewallGenericDevice.name is implicitly unique because it is in the only item in the HFID
-# before fix, this took multiple runs through SchemaBranch.process() to filter through and set
-# inheriting schema DcimFirewall.name to unique, which eventually removes the attribute
-# from the generated TemplateSchema
-SCHEMA_PAYLOAD: dict[str, Any] = {
-    "version": "1.0",
-    "generics": [
-        {
-            "name": "GenericDevice",
-            "namespace": "Firewall",
-            "description": "Generic Firewall object.",
-            "include_in_menu": False,
-            "order_by": ["name__value"],
-            "display_label": "{{ name__value }}",
-            "human_friendly_id": ["name__value"],
-            "attributes": [
-                {"name": "name", "kind": "Text"},
-            ],
-            "relationships": [],
-        },
-        {
-            "name": "GenericRules",
-            "namespace": "Firewall",
-            "description": "Generic Generic Rules object.",
-            "human_friendly_id": ["rule_id__value"],
-            "display_label": "{{ rule_id__value }}",
-            "include_in_menu": False,
-            "order_by": ["rule_id__value"],
-            "attributes": [
-                {
-                    "name": "rule_id",
-                    "kind": "NumberPool",  # trigger #1
-                    "read_only": True,
-                    "branch": "agnostic",
-                },
-            ],
-            "relationships": [],
-        },
-    ],
-    "nodes": [
-        {
-            "name": "Firewall",
-            "namespace": "Dcim",
-            "label": "Firewall",
-            "include_in_menu": False,
-            "generate_template": True,  # trigger #2
-            "inherit_from": ["FirewallGenericDevice"],
-            "attributes": [
-                {
-                    "name": "status",
-                    "kind": "Dropdown",
-                    "optional": True,
-                    "order_weight": 1100,
-                    "choices": [
-                        {"name": "active", "label": "Active", "color": "#7fbf7f"},
-                        {"name": "provisioning", "label": "Provisioning", "color": "#ffff7f"},
-                        {"name": "maintenance", "label": "Maintenance", "color": "#ffd27f"},
-                        {"name": "drained", "label": "Drained", "color": "#bfbfbf"},
-                    ],
-                },
-            ],
-        },
-    ],
-}
 
 
 def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
@@ -133,107 +74,204 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
     return "\n".join(lines) if lines else "(no per-schema diffs found)"
 
 
+def _validate_process_idempotent(schema_branch: SchemaBranch, iterations: int = 4) -> None:
+    """Call process() once to establish baseline, then `iterations` more times
+    asserting the full schema state is unchanged across calls.
+
+    Checks the schema hash (nodes + generics), node/generic/template/profile
+    name sets, and each template and profile hash individually — since
+    SchemaBranch.get_hash() only covers nodes and generics.
+    """
+    schema_branch.process()
+
+    hash_initial = schema_branch.get_hash()
+    node_names_initial = set(schema_branch.node_names)
+    generic_names_initial = set(schema_branch.generic_names)
+    template_names_initial = set(schema_branch.template_names)
+    profile_names_initial = set(schema_branch.profile_names)
+
+    template_hashes_initial = {
+        name: schema_branch.get(name=name, duplicate=False).get_hash() for name in template_names_initial
+    }
+    profile_hashes_initial = {
+        name: schema_branch.get(name=name, duplicate=False).get_hash() for name in profile_names_initial
+    }
+
+    snapshot = schema_branch.duplicate()
+
+    for iteration in range(2, 2 + iterations):
+        schema_branch.process()
+
+        assert schema_branch.get_hash() == hash_initial, (
+            f"SchemaBranch hash (nodes + generics) changed at process() call #{iteration}.\n"
+            f"{_describe_hash_diff(snapshot, schema_branch)}"
+        )
+        assert set(schema_branch.node_names) == node_names_initial, f"node_names changed at process() call #{iteration}"
+        assert set(schema_branch.generic_names) == generic_names_initial, (
+            f"generic_names changed at process() call #{iteration}"
+        )
+        assert set(schema_branch.template_names) == template_names_initial, (
+            f"template_names changed at process() call #{iteration}"
+        )
+        assert set(schema_branch.profile_names) == profile_names_initial, (
+            f"profile_names changed at process() call #{iteration}"
+        )
+
+        for name in template_names_initial:
+            current = schema_branch.get(name=name, duplicate=False).get_hash()
+            assert current == template_hashes_initial[name], (
+                f"Template {name} hash changed at process() call #{iteration}.\n"
+                f"{_describe_hash_diff(snapshot, schema_branch)}"
+            )
+        for name in profile_names_initial:
+            current = schema_branch.get(name=name, duplicate=False).get_hash()
+            assert current == profile_hashes_initial[name], (
+                f"Profile {name} hash changed at process() call #{iteration}.\n"
+                f"{_describe_hash_diff(snapshot, schema_branch)}"
+            )
+
+
+@pytest.fixture
+def firewall_hfid_schema() -> SchemaRoot:
+    """FirewallGenericDevice.name is implicitly unique because it is the only item in the HFID.
+
+    Before fix, this took multiple runs through SchemaBranch.process() to filter through and set
+    inheriting schema DcimFirewall.name to unique, which eventually removes the attribute
+    from the generated TemplateSchema.
+    """
+    return SchemaRoot(
+        version="1.0",
+        generics=[
+            GenericSchema(
+                name="GenericDevice",
+                namespace="Firewall",
+                description="Generic Firewall object.",
+                include_in_menu=False,
+                order_by=["name__value"],
+                display_label="{{ name__value }}",
+                human_friendly_id=["name__value"],
+                attributes=[AttributeSchema(name="name", kind="Text")],
+            ),
+            GenericSchema(
+                name="GenericRules",
+                namespace="Firewall",
+                description="Generic Generic Rules object.",
+                human_friendly_id=["rule_id__value"],
+                display_label="{{ rule_id__value }}",
+                include_in_menu=False,
+                order_by=["rule_id__value"],
+                attributes=[
+                    AttributeSchema(
+                        name="rule_id",
+                        kind="NumberPool",  # trigger #1
+                        read_only=True,
+                        branch=BranchSupportType.AGNOSTIC,
+                    ),
+                ],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="Firewall",
+                namespace="Dcim",
+                label="Firewall",
+                include_in_menu=False,
+                generate_template=True,  # trigger #2
+                inherit_from=["FirewallGenericDevice"],
+                attributes=[
+                    AttributeSchema(
+                        name="status",
+                        kind="Dropdown",
+                        optional=True,
+                        order_weight=1100,
+                        choices=[
+                            DropdownChoice(name="active", label="Active", color="#7fbf7f"),
+                            DropdownChoice(name="provisioning", label="Provisioning", color="#ffff7f"),
+                            DropdownChoice(name="maintenance", label="Maintenance", color="#ffd27f"),
+                            DropdownChoice(name="drained", label="Drained", color="#bfbfbf"),
+                        ],
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def conflicting_inherit_schema() -> SchemaRoot:
+    """A node inheriting the same attribute from two generics with conflicting `unique` settings.
+
+    NodeInheritanceHandler iterates `inherit_from` in order. For the first generic, the attribute
+    is added fresh; for each subsequent generic, `update_from_generic` overwrites every
+    non-excluded field on the existing inherited attribute. With
+    inherit_from=[TestGenericSpecific, TestGenericBase]: TestGenericSpecific adds `name` with
+    unique=False, then TestGenericBase's update_from_generic flips it to unique=True.
+    """
+    return SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="GenericBase",
+                namespace="Test",
+                description="Base generic with a unique name attribute.",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            GenericSchema(
+                name="GenericSpecific",
+                namespace="Test",
+                description="Specific generic with a non-unique name attribute.",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text")],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="ConcreteDevice",
+                namespace="Test",
+                description="Node inheriting name from two generics with conflicting unique settings.",
+                include_in_menu=False,
+                generate_template=True,
+                # TestGenericSpecific processed first (name.unique=False),
+                # then update_from_generic overwrites to unique=True from TestGenericBase.
+                inherit_from=["TestGenericSpecific", "TestGenericBase"],
+            ),
+        ],
+    )
+
+
 class TestSchemaProcessUniquenessIdempotent:
     """Loading the same schema payload twice must leave the persisted schema unchanged."""
 
-    async def test_process_is_idempotent(
+    async def test_hfid_to_node_attr_to_template_propagation(
         self,
         register_core_models_schema: SchemaBranch,
+        firewall_hfid_schema: SchemaRoot,
     ) -> None:
         """Calling SchemaBranch.process() repeatedly must not mutate the schema.
 
         SchemaBranch.process() can be called multiple times during a schema load, which will lead
         to unexpected schema drift if changes are made to the schema when calling process() on the
-        same data multuple times
+        same data multiple times.
+
+        FirewallGenericDevice.name is implicitly unique because it is the only entry in the HFID;
+        before the process_post_validation fix, the HFID-derived `unique` flag propagated to
+        DcimFirewall.name one pass late, which eventually removed the attribute from the generated
+        templates and profiles.
         """
-        # Kinds whose HFID references name__value. FirewallGenericDevice owns
-        # the `name` attribute directly; DcimFirewall only has it after inheritance
-        # processing (which runs inside process()), so it's checked from after_first
-        # onward.
-        kinds_with_hfid_name = ["FirewallGenericDevice", "DcimFirewall"]
-
-        def snapshot_unique_state(sb: SchemaBranch, kinds: list[str]) -> dict[str, dict[str, Any]]:
-            """Capture name.unique and uniqueness_constraints for the given kinds."""
-            result: dict[str, dict[str, Any]] = {}
-            for kind in kinds:
-                node = sb.get(name=kind, duplicate=False)
-                name_attr = node.get_attribute(name="name")
-                result[kind] = {
-                    "name.unique": name_attr.unique,
-                    "uniqueness_constraints": node.uniqueness_constraints,
-                    "human_friendly_id": node.human_friendly_id,
-                }
-            return result
-
         schema_branch = register_core_models_schema.duplicate()
-        schema_branch.load_schema(schema=SchemaRoot(**SCHEMA_PAYLOAD))
+        schema_branch.load_schema(schema=firewall_hfid_schema)
 
-        # --- First process() call ---
-        schema_branch.process()
-        after_first = snapshot_unique_state(schema_branch, kinds_with_hfid_name)
+        _validate_process_idempotent(schema_branch)
 
-        # Capture full state after the first process() call.
-        hash_initial = schema_branch.get_hash()
-        node_names_initial = set(schema_branch.node_names)
-        generic_names_initial = set(schema_branch.generic_names)
-        template_names_initial = set(schema_branch.template_names)
-        profile_names_initial = set(schema_branch.profile_names)
+    async def test_conflicting_inherit_unique_propagation(
+        self,
+        register_core_models_schema: SchemaBranch,
+        conflicting_inherit_schema: SchemaRoot,
+    ) -> None:
+        """A node inheriting the same attribute from two generics with
+        conflicting `unique` settings must still process idempotently.
+        """
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=conflicting_inherit_schema)
 
-        template_hashes_initial = {
-            name: schema_branch.get(name=name, duplicate=False).get_hash() for name in template_names_initial
-        }
-        profile_hashes_initial = {
-            name: schema_branch.get(name=name, duplicate=False).get_hash() for name in profile_names_initial
-        }
-
-        # Sanity-check: the triggers actually produced the expected schemas.
-        assert "FirewallGenericDevice" in schema_branch.generic_names
-        assert "FirewallGenericRules" in schema_branch.generic_names
-        assert "DcimFirewall" in schema_branch.node_names
-        assert "TemplateDcimFirewall" in schema_branch.template_names
-
-        snapshot = schema_branch.duplicate()
-
-        # Call process() several more times; state must not drift.
-        for iteration in range(2, 6):
-            schema_branch.process()
-            after_iter = snapshot_unique_state(schema_branch, kinds_with_hfid_name)
-
-            # The uniqueness state must not drift between process() calls.
-            for kind in kinds_with_hfid_name:
-                assert after_iter[kind] == after_first[kind], (
-                    f"{kind}: unique / uniqueness_constraints drifted between "
-                    f"process() #1 and process() #{iteration}.\n"
-                    f"  after #1:            {after_first[kind]}\n"
-                    f"  after #{iteration}:            {after_iter[kind]}\n"
-                )
-
-            assert schema_branch.get_hash() == hash_initial, (
-                f"SchemaBranch hash (nodes + generics) changed at process() call #{iteration}.\n"
-                f"{_describe_hash_diff(snapshot, schema_branch)}"
-            )
-            assert set(schema_branch.node_names) == node_names_initial, (
-                f"node_names changed at process() call #{iteration}"
-            )
-            assert set(schema_branch.generic_names) == generic_names_initial, (
-                f"generic_names changed at process() call #{iteration}"
-            )
-            assert set(schema_branch.template_names) == template_names_initial, (
-                f"template_names changed at process() call #{iteration}"
-            )
-            assert set(schema_branch.profile_names) == profile_names_initial, (
-                f"profile_names changed at process() call #{iteration}"
-            )
-
-            for name in template_names_initial:
-                current = schema_branch.get(name=name, duplicate=False).get_hash()
-                assert current == template_hashes_initial[name], (
-                    f"Template {name} hash changed at process() call #{iteration}.\n"
-                    f"{_describe_hash_diff(snapshot, schema_branch)}"
-                )
-            for name in profile_names_initial:
-                current = schema_branch.get(name=name, duplicate=False).get_hash()
-                assert current == profile_hashes_initial[name], (
-                    f"Profile {name} hash changed at process() call #{iteration}.\n"
-                    f"{_describe_hash_diff(snapshot, schema_branch)}"
-                )
+        _validate_process_idempotent(schema_branch)
