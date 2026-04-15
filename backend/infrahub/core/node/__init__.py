@@ -243,7 +243,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
         await self._display_label.compute(db=db, node=self)
 
-    async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
+    async def get_path_value(self, db: InfrahubDatabase, path: str) -> Any:
         schema_path = self._schema.parse_schema_path(
             path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
         )
