@@ -1,9 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
+import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
@@ -20,6 +22,7 @@ export interface BranchesToolbarProps {
 
 export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [searchParams] = useSearchParams();
   const { mutateAsync: deleteBranches, isPending: isDeleting } = useDeleteBranchesMutation();
   const { clearBranchIfCurrent } = useNavigateAfterBranchRemoval();
 
@@ -28,8 +31,9 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
   const handleDelete = async (deleteFromGit: boolean) => {
     const branchNames = deletableBranches.map((branch) => branch.name);
 
-    for (const name of branchNames) {
-      clearBranchIfCurrent(name);
+    const currentBranch = searchParams.get(QSP.BRANCH);
+    if (currentBranch && branchNames.includes(currentBranch)) {
+      clearBranchIfCurrent(currentBranch);
     }
 
     try {
