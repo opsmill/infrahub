@@ -122,8 +122,9 @@ async def configure_webhook(
 
     match parsed.action:
         case WebhookAction.CONFIGURE:
+            database = await get_database()
             webhook_node = await NodeManager.get_one(
-                id=parsed.required_webhook_id, db=get_database(), kind=CoreWebhookNode, raise_on_error=True
+                id=parsed.required_webhook_id, db=database, kind=CoreWebhookNode, raise_on_error=True
             )
             configurer = SingleWebhookConfigurer(webhook=webhook_node)
             await configurer.apply()
