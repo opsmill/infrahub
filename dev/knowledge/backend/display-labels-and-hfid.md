@@ -103,6 +103,8 @@ if self._existing:
 2. `Node.save()` -> `resolve_relationships()` (loads peers with extra_filters) -> `_create()`
 3. `_create()` -> `add_human_friendly_id()` / `add_display_label()` (compute and persist)
 
+**Note:** `NodeCreateAllQuery` (`core/query/node.py` ~lines 169-180) routes HFID and display_label attributes based on their `get_db_node_type()`. The `IndexedListAttribute` used for HFID returns `INDEXED` when within size limits, so the value lands in the `attributes_indexed` bucket and gets the `AttributeValueIndexed` label. Oversized values fall back to `DEFAULT` (no index).
+
 ### Update
 
 1. `Node.load()` receives `human_friendly_id` and `display_label` kwargs, wraps them in property objects
