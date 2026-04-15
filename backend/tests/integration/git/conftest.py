@@ -10,6 +10,7 @@ import pytest
 from testcontainers.core.container import DockerContainer
 
 from infrahub import config
+from tests.helpers.git import GogsServer
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -63,17 +64,35 @@ def gogs_clone_url(base_url: str, repo_name: str) -> str:
     return f"{auth_base}/{GOGS_ADMIN}/{repo_name}.git"
 
 
-def create_gogs_repo(base_url: str, token: str, repo_name: str, container: DockerContainer) -> str:
+def bad_credentials_clone_url(base_url: str, repo_name: str) -> str:
+    """Return an HTTP clone URL with a non-existent user and wrong password.
+
+    Using a username that does not exist in the system credential store prevents
+    any cached credentials from being substituted, so git always presents the
+    embedded (bad) credentials to the server.
+    """
+    parsed = urlparse(base_url)
+    netloc_with_auth = f"baduser:wrongpassword@{parsed.netloc}"
+    auth_base = urlunparse(parsed._replace(netloc=netloc_with_auth))
+    return f"{auth_base}/{GOGS_ADMIN}/{repo_name}.git"
+
+
+def create_gogs_repo(
+    base_url: str, token: str, repo_name: str, container: DockerContainer, private: bool = False
+) -> str:
     """Create a Gogs repository and return its clone URL.
 
     Gogs 0.13.0 initialises repos with 'master' as the default branch; Infrahub
     expects 'main'.  The branch-create API endpoint was added after 0.13.0, so we
     create the 'main' branch directly in the container's bare repository via git exec.
+
+    Pass private=True to create a private repository (required when testing auth failures,
+    since public repos allow anonymous clone access and never present credentials to the server).
     """
     resp = httpx.post(
         f"{base_url}/api/v1/user/repos",
         headers={"Authorization": f"token {token}"},
-        json={"name": repo_name, "auto_init": True, "readme": "Default"},
+        json={"name": repo_name, "auto_init": True, "readme": "Default", "private": private},
         timeout=5.0,
     )
     assert resp.status_code in (200, 201), f"Repo creation failed ({resp.status_code}): {resp.text}"
@@ -107,12 +126,9 @@ def create_gogs_repo(base_url: str, token: str, repo_name: str, container: Docke
     return gogs_clone_url(base_url, repo_name)
 
 
-@pytest.fixture(scope="module")
-def gogs_server() -> Generator[dict, None, None]:
-    """Start a Gogs container, initialize it, and yield connection info.
-
-    Yields a dict with keys: base_url, port, token, admin, password.
-    """
+@pytest.fixture(scope="session")
+def gogs_server() -> Generator[GogsServer, None, None]:
+    """Start a Gogs container, initialize it, and yield connection info."""
     os.environ.setdefault("GIT_TERMINAL_PROMPT", "0")
 
     container = DockerContainer(GOGS_IMAGE).with_exposed_ports(3000)
@@ -174,14 +190,14 @@ def gogs_server() -> Generator[dict, None, None]:
 
         token = _create_api_token(base_url)
 
-        yield {
-            "base_url": base_url,
-            "port": port,
-            "token": token,
-            "admin": GOGS_ADMIN,
-            "password": GOGS_PASSWORD,
-            "container": container,
-        }
+        yield GogsServer(
+            base_url=base_url,
+            port=port,
+            token=token,
+            admin=GOGS_ADMIN,
+            password=GOGS_PASSWORD,
+            container=container,
+        )
     finally:
         container.stop()
 
