@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.core.branch import Branch
-    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
@@ -46,7 +45,7 @@ class ErroringBranchMerger(BranchMerger):
     async def merge(
         self,
         at: str | Timestamp | None = None,
-    ) -> EnrichedDiffRoot:
+    ) -> None:
         raise ValueError("This will always fail")
 
 

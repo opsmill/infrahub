@@ -4,12 +4,10 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
-from infrahub.core.diff.query.cypher_merge import (
-    CypherMergeAffectedNodeUUIDsQuery,
-    CypherMergeExclusionQuery,
-    CypherMergeNodeExistenceQuery,
-    CypherMergePropertyEdgesQuery,
-    CypherMergeRelationshipEdgesQuery,
+from infrahub.core.diff.query.bulk_merge import (
+    BulkMergeNodeExistenceQuery,
+    BulkMergePropertyEdgesQuery,
+    BulkMergeRelationshipEdgesQuery,
 )
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.query.merge import (
@@ -23,7 +21,6 @@ from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
-    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
@@ -34,16 +31,12 @@ log = get_logger()
 
 
 class DiffMerger:
-    """Merges a source branch into a target branch using Cypher-first operations.
+    """Merges a source branch into a target branch (default branch only)
 
     1. Queries the diff graph for conflict UUIDs
     2. Runs bulk Cypher merge queries that discover changes from data-graph edge properties
     3. Handles conflicted nodes via the existing DiffMergeSerializer fallback path
     4. Updates metadata and supports rollback
-
-    Migrated-kind nodes are handled by the bulk queries directly. Migrations create
-    explicit source-branch edges for both old and new Node vertices, and the
-    `to IS NULL` filter naturally selects the correct final state.
     """
 
     metadata_batch_size = 500
@@ -63,21 +56,17 @@ class DiffMerger:
         self.serializer = serializer
         self._affected_node_uuids: list[str] = []
 
-    async def merge_graph(self, at: Timestamp) -> EnrichedDiffRoot:
+    async def merge_graph(self, at: Timestamp) -> None:
         tracking_id = BranchTrackingId(name=self.source_branch.name)
 
         # ------------------------------------------------------------------
         # Step 1: Query the diff graph for conflict UUIDs
         # ------------------------------------------------------------------
         log.info("Querying diff graph for merge exclusions")
-        exclusion_query = await CypherMergeExclusionQuery.init(
-            db=self.db,
-            branch=self.source_branch,
+        conflict_uuids = await self.diff_repository.get_conflicted_node_uuids(
             diff_branch_name=self.source_branch.name,
-            tracking_id=tracking_id.serialize(),
+            tracking_id=tracking_id,
         )
-        await exclusion_query.execute(db=self.db)
-        conflict_uuids = exclusion_query.get_conflict_uuids()
         excluded_uuids = list(conflict_uuids)
         log.info(f"Merge exclusions: {len(conflict_uuids)} conflicted")
 
@@ -98,7 +87,7 @@ class DiffMerger:
         # ------------------------------------------------------------------
         if conflict_uuids:
             log.info(f"Handling {len(conflict_uuids)} conflicted nodes via fallback path")
-            await self._merge_fallback_nodes(
+            await self._run_merge_fallback(
                 at=at,
                 conflict_uuids=conflict_uuids,
                 tracking_id=tracking_id,
@@ -108,15 +97,12 @@ class DiffMerger:
         # Step 4: Discover affected node UUIDs and update metadata
         # ------------------------------------------------------------------
         log.info("Discovering affected node UUIDs for metadata update")
-        affected_uuids_query = await CypherMergeAffectedNodeUUIDsQuery.init(
-            db=self.db,
-            branch=self.source_branch,
-            at=at,
+        affected_node_uuids = await self.diff_repository.get_affected_node_uuids(
+            source_branch=self.source_branch,
             target_branch=self.destination_branch,
-            tracking_id=tracking_id.serialize(),
+            at=at,
+            tracking_id=tracking_id,
         )
-        await affected_uuids_query.execute(db=self.db)
-        affected_node_uuids = affected_uuids_query.get_node_uuids()
         self._affected_node_uuids = affected_node_uuids
 
         if affected_node_uuids:
@@ -140,29 +126,11 @@ class DiffMerger:
         await self.source_branch.save(db=self.db)
         registry.branch[self.source_branch.name] = self.source_branch
 
-        # ------------------------------------------------------------------
-        # Step 6: Load and return EnrichedDiffRoot for backward compatibility
-        # ------------------------------------------------------------------
-        log.info("Loading diff for return value (backward compat)")
-        enriched_diffs = await self.diff_repository.get_roots_metadata(
-            diff_branch_names=[self.source_branch.name],
-            base_branch_names=[self.destination_branch.name],
-            tracking_id=tracking_id,
-        )
-        latest_diff = None
-        for diff in enriched_diffs:
-            if latest_diff is None or (diff.to_time > latest_diff.to_time):
-                latest_diff = diff
-        if latest_diff is None:
-            raise RuntimeError(f"Missing diff for branch {self.source_branch.name}")
-        enriched_diff = await self.diff_repository.get_one(
-            diff_branch_name=self.source_branch.name, diff_id=latest_diff.uuid
-        )
-        return enriched_diff
+        log.info("Graph merge complete")
 
     @retry_db_transaction(name="bulk_merge_node_existence")
     async def _bulk_merge_node_existence(self, at: Timestamp, excluded_uuids: list[str]) -> None:
-        query = await CypherMergeNodeExistenceQuery.init(
+        query = await BulkMergeNodeExistenceQuery.init(
             db=self.db,
             branch=self.source_branch,
             at=at,
@@ -173,7 +141,7 @@ class DiffMerger:
 
     @retry_db_transaction(name="bulk_merge_property_edges")
     async def _bulk_merge_property_edges(self, at: Timestamp, excluded_uuids: list[str]) -> None:
-        query = await CypherMergePropertyEdgesQuery.init(
+        query = await BulkMergePropertyEdgesQuery.init(
             db=self.db,
             branch=self.source_branch,
             at=at,
@@ -184,7 +152,7 @@ class DiffMerger:
 
     @retry_db_transaction(name="bulk_merge_relationship_edges")
     async def _bulk_merge_relationship_edges(self, at: Timestamp, excluded_uuids: list[str]) -> None:
-        query = await CypherMergeRelationshipEdgesQuery.init(
+        query = await BulkMergeRelationshipEdgesQuery.init(
             db=self.db,
             branch=self.source_branch,
             at=at,
@@ -193,13 +161,13 @@ class DiffMerger:
         )
         await query.execute(db=self.db)
 
-    async def _merge_fallback_nodes(
+    async def _run_merge_fallback(
         self,
         at: Timestamp,
         conflict_uuids: set[str],
         tracking_id: BranchTrackingId,
     ) -> None:
-        """Load conflicted nodes from the diff and merge them via the existing serializer path."""
+        """Load conflicted nodes from the diff and merge them via the old serializer path."""
         enriched_diff = await self.diff_repository.get_one(
             diff_branch_name=self.source_branch.name,
             tracking_id=tracking_id,

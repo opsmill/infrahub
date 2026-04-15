@@ -347,8 +347,10 @@ async def _do_merge_branch(
             diff_locker=DiffLocker(),
             workflow=workflow,
         )
-        branch_diff = await merger.merge(at=merge_at)
+        await merger.merge(at=merge_at)
 
+    log.info("Loading enriched diff for changelog collection")
+    branch_diff = await diff_repository.get_one(diff_branch_name=obj.name, tracking_id=BranchTrackingId(name=obj.name))
     changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=obj, db=db)
     node_events = changelog_collector.collect_changelogs()
 
