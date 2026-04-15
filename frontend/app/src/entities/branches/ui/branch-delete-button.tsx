@@ -31,12 +31,11 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
       <ModalDeleteBranch
         branches={[branch]}
         onDelete={async (scope) => {
+          navigateToPage("/branches", branch.name);
           await deleteBranch({
             name: branch.name,
             deleteFromGit: scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE,
           });
-
-          navigateToPage("/branches", branch.name);
         }}
         isOpen={displayModal}
         onOpenChange={setDisplayModal}
