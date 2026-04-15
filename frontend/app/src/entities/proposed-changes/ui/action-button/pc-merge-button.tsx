@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useQueryState } from "nuqs";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -8,8 +7,8 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
-import { QSP } from "@/shared/config/qsp";
 
+import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { MERGE_STATE } from "@/entities/proposed-changes/constants";
@@ -23,7 +22,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
   const proposedChangesDetails = useAtomValue(proposedChangedState);
   const config = useConfig();
-  const [branchInQueryString, setBranchInQueryString] = useQueryState(QSP.BRANCH);
+  const { clearBranchIfCurrent } = useNavigateAfterBranchRemoval();
 
   const { mutate, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
@@ -40,8 +39,8 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
 
       toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />);
 
-      if (deleteBranchAfterMerge && sourceBranch && branchInQueryString === sourceBranch) {
-        setBranchInQueryString(null);
+      if (deleteBranchAfterMerge && sourceBranch) {
+        clearBranchIfCurrent(sourceBranch);
       }
     },
     onError: () => {

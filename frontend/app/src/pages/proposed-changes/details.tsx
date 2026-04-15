@@ -40,7 +40,7 @@ const ProposedChangeDetailsContent = (props: GetProposedChangeDetailsResponse) =
     `${proposedChange ? `${getNodeLabel(proposedChange)} - ` : ""}Proposed change - Infrahub`
   );
 
-  if (proposedChangeData) setProposedChange(proposedChangeData);
+  if (proposedChangeData) setProposedChange(proposedChangeData as ProposedChangeDetail);
 
   switch (qspTab) {
     case DIFF_TABS.FILES:

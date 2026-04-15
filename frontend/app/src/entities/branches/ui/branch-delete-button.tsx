@@ -16,7 +16,7 @@ type BranchDeleteButtonProps = {
 export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
   const { isAuthenticated } = useAuth();
   const [displayModal, setDisplayModal] = useState(false);
-  const navigateAfterBranchRemoval = useNavigateAfterBranchRemoval();
+  const { navigateToPage } = useNavigateAfterBranchRemoval();
   const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
   const isDisabled = !isAuthenticated || !!branch.is_default || isDeleting;
@@ -36,7 +36,7 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
             deleteFromGit: scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE,
           });
 
-          navigateAfterBranchRemoval("/branches", branch.name);
+          navigateToPage("/branches", branch.name);
         }}
         isOpen={displayModal}
         onOpenChange={setDisplayModal}

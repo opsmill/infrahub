@@ -27,8 +27,9 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   const { isAuthenticated } = useAuth();
   const date = useAtomValue(datetimeAtom);
   const [isMergeRequested, setIsMergeRequested] = useState(false);
+  const [pendingRedirect, setPendingRedirect] = useState(false);
   const config = useConfig();
-  const navigateAfterBranchRemoval = useNavigateAfterBranchRemoval();
+  const { navigateToPage } = useNavigateAfterBranchRemoval();
 
   const { loading, data, refetch } = useQuery(GET_BRANCH_ACTION_STATE, {
     variables: {
@@ -45,9 +46,13 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   // Reset local state when server confirms no ongoing merge task
   useEffect(() => {
     if (!loading && !hasOngoingTask) {
+      if (pendingRedirect) {
+        navigateToPage("/branches", branch.name);
+        return;
+      }
       setIsMergeRequested(false);
     }
-  }, [loading, hasOngoingTask]);
+  }, [loading, hasOngoingTask, pendingRedirect, navigateToPage, branch.name]);
 
   const isDisabled =
     !isAuthenticated ||
@@ -83,8 +88,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
       });
 
       if (deleteBranchAfterMerge) {
-        navigateAfterBranchRemoval("/branches", branch.name);
-        return;
+        setPendingRedirect(true);
       }
 
       await refetch();
