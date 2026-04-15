@@ -5627,14 +5627,16 @@
                         "type": "integer",
                         "minimum": 0.0,
                         "title": "Required Proposed Change Approvals",
-                        "description": "Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)",
-                        "default": 0
+                        "description": "Number of approvals required for proposed changes.",
+                        "default": 0,
+                        "enterprise": true
                     },
                     "revoke_proposed_change_approvals": {
                         "type": "boolean",
                         "title": "Revoke Proposed Change Approvals",
-                        "description": "Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals. (Enterprise only: not available in the community version.)",
-                        "default": false
+                        "description": "Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals.",
+                        "default": false,
+                        "enterprise": true
                     }
                 },
                 "additionalProperties": false,

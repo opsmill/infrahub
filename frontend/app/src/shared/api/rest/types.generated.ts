@@ -1991,13 +1991,13 @@ export interface components {
         PolicySettings: {
             /**
              * Required Proposed Change Approvals
-             * @description Number of approvals required for proposed changes. (Enterprise only: not available in the community version.)
+             * @description Number of approvals required for proposed changes.
              * @default 0
              */
             required_proposed_change_approvals: number;
             /**
              * Revoke Proposed Change Approvals
-             * @description Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals. (Enterprise only: not available in the community version.)
+             * @description Boolean indicating whether performing changes on a proposed change branch should revoke existing approvals.
              * @default false
              */
             revoke_proposed_change_approvals: boolean;
