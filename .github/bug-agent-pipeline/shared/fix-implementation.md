@@ -63,13 +63,15 @@ uv run invoke docs.format
 
 If Phase 1 changed any source files, you must re-run from Phase 2.
 
-**Phase 2 -- Regenerate & lint (run all in parallel):**
-- `uv run invoke main.lint`
-- `uv run invoke backend.lint`
+**Phase 2a -- Regenerate schemas (run in parallel):**
 - `uv run invoke backend.generate`
 - `uv run invoke schema.generate-graphqlschema`
 - `uv run invoke schema.generate-jsonschema`
 - `uv run invoke docs.generate`
+
+**Phase 2b -- Lint & frontend codegen (run in parallel, after 2a completes):**
+- `uv run invoke main.lint`
+- `uv run invoke backend.lint`
 - `uv run invoke docs.lint`
 - `(cd frontend/app && npm run codegen:graphql)`
 - `(cd frontend/app && npm run codegen:openapi)`
