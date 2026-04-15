@@ -60,6 +60,7 @@ from infrahub.core.schema.attribute_parameters import (
     TextAttributeParameters,
 )
 from infrahub.core.schema.attribute_schema import get_attribute_schema_class_for_kind
+from infrahub.core.schema.basenode_schema import UniquenessConstraintType
 from infrahub.core.schema.definitions.core import core_profile_schema_definition
 from infrahub.core.validators import CONSTRAINT_VALIDATOR_MAP
 from infrahub.core.validators.schema_branch.hierarchical_nodes_restricted_words_validator import (
@@ -827,7 +828,17 @@ class SchemaBranch:
             if not node_schema.unique_attributes and not node_schema.uniqueness_constraints:
                 continue
 
-            unique_attrs_in_constraints = set()
+            # unique_attrs_to_promote: attributes that should have unique=True promoted from a
+            #   constraint. Excludes HFID-exact constraints: process_human_friendly_id() writes
+            #   the HFID path into uniqueness_constraints for DB lookups, but that does not
+            #   mean the schema author declared the attribute globally unique. Promoting from
+            #   such constraints silently flips unique=False → True across reload cycles, which
+            #   then drops the attribute from generated templates (support_templates becomes False).
+            # unique_attrs_covered_by_constraints: all single-attribute constraints (including
+            #   HFID-exact ones). Used to determine whether a unique attr already has a
+            #   matching constraint present, preventing duplicate constraint entries.
+            unique_attrs_to_promote: set[str] = set()
+            unique_attrs_covered_by_constraints: set[str] = set()
             for constraint_paths in node_schema.uniqueness_constraints or []:
                 if len(constraint_paths) > 1:
                     continue
@@ -839,21 +850,36 @@ class SchemaBranch:
                         f"{node_schema.kind}: Requested unique constraint not found within node. (`{constraint_path}`)"
                     ) from exc
 
-                if (
+                if not (
                     schema_attribute_path.is_type_attribute
                     and schema_attribute_path.attribute_property_name == "value"
                     and schema_attribute_path.attribute_schema
                 ):
-                    unique_attrs_in_constraints.add(schema_attribute_path.attribute_schema.name)
+                    continue
 
+                attr_name = schema_attribute_path.attribute_schema.name
+                unique_attrs_covered_by_constraints.add(attr_name)
+
+                # HFID-exact constraints are written by process_human_friendly_id() and must
+                # not cause unique promotion. All other constraint types (SUBSET_OF_HFID,
+                # STANDARD) represent explicit uniqueness requirements and should promote.
+                if (
+                    node_schema.get_uniqueness_constraint_type(
+                        uniqueness_constraint=set(constraint_paths), schema_branch=self
+                    )
+                    != UniquenessConstraintType.HFID
+                ):
+                    unique_attrs_to_promote.add(attr_name)
+
+            unique_attrs_in_constraints = unique_attrs_to_promote
             unique_attrs_in_attrs = {
                 attr_schema.name for attr_schema in node_schema.unique_attributes if not attr_schema.inherited
             }
-            if unique_attrs_in_attrs == unique_attrs_in_constraints:
-                continue
 
             attrs_to_make_unique = unique_attrs_in_constraints - unique_attrs_in_attrs
-            attrs_to_add_to_constraints = unique_attrs_in_attrs - unique_attrs_in_constraints
+            attrs_to_add_to_constraints = unique_attrs_in_attrs - unique_attrs_covered_by_constraints
+            if not attrs_to_make_unique and not attrs_to_add_to_constraints:
+                continue
             node_schema = self.get(name=name, duplicate=True)
 
             for attr_name in attrs_to_make_unique:

@@ -193,7 +193,20 @@ class AttributeSchema(GeneratedAttributeSchema):
         return data
 
     def update_from_generic(self, other: AttributeSchema) -> None:
-        fields_to_exclude = ("id", "order_weight", "branch", "inherited")
+        fields_to_exclude = (
+            "id",
+            "order_weight",
+            "branch",
+            "inherited",
+            # unique is a constraint owned by the attribute's source generic.
+            # When a node inherits from multiple generics that both define the same attribute
+            # with different unique settings, the first listed generic's value must win:
+            # process_inheritance() applies generics in inherit_from order, so the first
+            # generic's attribute sets unique on the node via append(). Subsequent generics
+            # must not overwrite it — doing so silently changes support_templates, which
+            # then drops the attribute from generated templates.
+            "unique",
+        )
         for name in self.__class__.model_fields:
             if name in fields_to_exclude:
                 continue
