@@ -157,7 +157,7 @@ MATCH (n:Node)-[src:HAS_ATTRIBUTE]->(a:Attribute)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
 AND NOT n.uuid IN $excluded_uuids
-AND n.branch_support <> "aware"
+AND n.branch_support = "aware"
 // ------------------------------
 // Skip attributes created and deleted on the same branch
 // ------------------------------
@@ -240,6 +240,11 @@ class BulkMergePropertyEdgesQuery(Query):
         }
         query = """
 // ==============================
+// TODO: ensure we don't add status=active edges to deleted attributes or relationships
+// should add tests for this as well
+// ==============================
+
+// ==============================
 // Merge property edges: Attribute properties + Relationship properties
 // ==============================
 CALL () {
@@ -283,7 +288,7 @@ WITH field, child, src, type(src) AS edge_type, src.status AS prop_status, src.f
 // close any active target edge of same type from same field pointing to different child
 // -------------------------
 CALL (field, child, edge_type, prop_from_user_id) {
-    MATCH (field)-[tgt:$(edge_type)]->(other_child)
+    OPTIONAL MATCH (field)-[tgt:$(edge_type)]->(other_child)
     WHERE tgt.branch = $target_branch
     AND tgt.status = "active"
     AND tgt.to IS NULL
@@ -367,21 +372,6 @@ AND n.uuid <> peer.uuid
 // -------------------------
 AND elementId(n) < elementId(peer)
 // -------------------------
-// Both nodes must be alive on the target branch
-// -------------------------
-AND EXISTS {
-    MATCH (n)-[n_ipo:IS_PART_OF]->(:Root)
-    WHERE n_ipo.branch IN [$target_branch, $global_branch]
-    AND n_ipo.status = "active"
-    AND n_ipo.to IS NULL
-}
-AND EXISTS {
-    MATCH (peer)-[p_ipo:IS_PART_OF]->(:Root)
-    WHERE p_ipo.branch IN [$target_branch, $global_branch]
-    AND p_ipo.status = "active"
-    AND p_ipo.to IS NULL
-}
-// -------------------------
 // determine directions and hierarchy from source edges
 // -------------------------
 WITH n, rel, peer, src1, src2,
@@ -407,51 +397,68 @@ CALL (n, rel, peer, related_rel_status, r1_from_user_id, r2_from_user_id) {
     SET tgt2.to = $at, tgt2.to_user_id = r2_from_user_id
 }
 // -------------------------
-// check for existing IS_RELATED pair on target branch
+// For active rows, both n and peer must be alive on the target branch.
+// Deleted rows can be created regardless (they record the historical relationship).
+// Filtering at the row level prevents orphan rel1/rel2 (one side without the other).
 // -------------------------
-CALL (n, rel, peer, related_rel_status) {
-    OPTIONAL MATCH (n)
-        -[existing1:IS_RELATED {branch: $target_branch, status: related_rel_status}]
-        -(rel)
-        -[existing2:IS_RELATED {branch: $target_branch, status: related_rel_status}]
-        -(peer)
-    WHERE existing1.to IS NULL
-    AND existing2.to IS NULL
-    RETURN existing1 IS NOT NULL AND existing2 IS NOT NULL AS existing_rel
-}
-WITH n, rel, peer, r1_dir, r2_dir, r1_hierarchy, r2_hierarchy,
-    r1_from_user_id, r2_from_user_id, related_rel_status
-WHERE existing_rel = FALSE
+WITH *
+WHERE related_rel_status = "deleted"
+   OR (
+       EXISTS {
+           MATCH (n)-[ipo:IS_PART_OF]->(:Root)
+           WHERE ipo.branch IN [$target_branch, $global_branch]
+           AND ipo.status = "active"
+           AND ipo.to IS NULL
+       }
+       AND EXISTS {
+           MATCH (peer)-[ipo:IS_PART_OF]->(:Root)
+           WHERE ipo.branch IN [$target_branch, $global_branch]
+           AND ipo.status = "active"
+           AND ipo.to IS NULL
+       }
+   )
 // -------------------------
-// create IS_RELATED edges with correct direction
+// create IS_RELATED edges with correct direction (only if not already existing)
 // -------------------------
 CALL (n, rel, r1_dir, r1_hierarchy, related_rel_status, r1_from_user_id) {
-    WITH n, rel, r1_dir, r1_hierarchy, related_rel_status, r1_from_user_id
+    WITH *
     WHERE r1_dir = "r"
+    AND NOT EXISTS {
+        MATCH (n)-[:IS_RELATED {branch: $target_branch, status: related_rel_status}]->(rel)
+    }
     CREATE (n)-[:IS_RELATED {
         branch: $target_branch, branch_level: $branch_level, from: $at,
         status: related_rel_status, hierarchy: r1_hierarchy, from_user_id: r1_from_user_id
     }]->(rel)
 }
 CALL (n, rel, r1_dir, r1_hierarchy, related_rel_status, r1_from_user_id) {
-    WITH n, rel, r1_dir, r1_hierarchy, related_rel_status, r1_from_user_id
+    WITH *
     WHERE r1_dir = "l"
+    AND NOT EXISTS {
+        MATCH (n)<-[:IS_RELATED {branch: $target_branch, status: related_rel_status}]-(rel)
+    }
     CREATE (n)<-[:IS_RELATED {
         branch: $target_branch, branch_level: $branch_level, from: $at,
         status: related_rel_status, hierarchy: r1_hierarchy, from_user_id: r1_from_user_id
     }]-(rel)
 }
 CALL (rel, peer, r2_dir, r2_hierarchy, related_rel_status, r2_from_user_id) {
-    WITH rel, peer, r2_dir, r2_hierarchy, related_rel_status, r2_from_user_id
+    WITH *
     WHERE r2_dir = "r"
+    AND NOT EXISTS {
+        MATCH (rel)-[:IS_RELATED {branch: $target_branch, status: related_rel_status}]->(peer)
+    }
     CREATE (rel)-[:IS_RELATED {
         branch: $target_branch, branch_level: $branch_level, from: $at,
         status: related_rel_status, hierarchy: r2_hierarchy, from_user_id: r2_from_user_id
     }]->(peer)
 }
 CALL (rel, peer, r2_dir, r2_hierarchy, related_rel_status, r2_from_user_id) {
-    WITH rel, peer, r2_dir, r2_hierarchy, related_rel_status, r2_from_user_id
+    WITH *
     WHERE r2_dir = "l"
+    AND NOT EXISTS {
+        MATCH (rel)<-[:IS_RELATED {branch: $target_branch, status: related_rel_status}]-(peer)
+    }
     CREATE (rel)<-[:IS_RELATED {
         branch: $target_branch, branch_level: $branch_level, from: $at,
         status: related_rel_status, hierarchy: r2_hierarchy, from_user_id: r2_from_user_id

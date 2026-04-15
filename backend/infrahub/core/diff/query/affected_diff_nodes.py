@@ -39,6 +39,7 @@ class AffectedDiffNodeUUIDsQuery(Query):
 MATCH (root:DiffRoot)-[:DIFF_HAS_NODE]->(dn:DiffNode)
 WHERE root.diff_branch = $source_branch
 AND root.tracking_id = $tracking_id
+AND dn.action <> "unchanged"
 WITH DISTINCT dn.uuid AS uuid
         """
         self.return_labels = ["uuid"]
