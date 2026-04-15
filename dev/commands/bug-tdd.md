@@ -1,6 +1,6 @@
 ---
 description: Write a failing test reproducing a bug analyzed by /bug-analyze
-argument-hint: <issue number or URL>
+argument-hint: <issue number or URL> [pr]
 ---
 
 # Bug test-writer
@@ -20,11 +20,10 @@ that fails on the current code, proving the bug exists.
 
 ## Input and setup
 
-Parse `$ARGUMENTS` to extract the issue number or URL. If a URL is provided, extract the
-issue number from it.
-
-Read `.bug-analysis.md` from the repo root. If the file is missing, inform the developer:
-"Run `/bug-analyze <issue>` first." and **STOP**.
+Parse `$ARGUMENTS` to extract:
+- The **issue number or URL**. If a URL is provided, extract the issue number from it.
+- An optional **`pr`** flag. If the word `pr` appears anywhere in the arguments (case-insensitive),
+  set `OPEN_PR=true`. Otherwise `OPEN_PR=false`.
 
 Read `.bug-analysis-<issue_number>.md` from the repo root. If the file is missing, inform the
 developer: "Run `/bug-analyze <issue>` first." and **STOP**.
@@ -36,7 +35,11 @@ Read the full analysis to understand the root cause and affected files.
 
 ## Write the test
 
-Read `.github/bug-agent-pipeline/shared/test-writing.md` and follow all steps (1 through 10).
+Read `.github/bug-agent-pipeline/shared/test-writing.md` and follow steps **0 through 9**.
+
+**Step 10 (draft PR) is only executed if `OPEN_PR=true`.**
+If `OPEN_PR=false`, push the branch (`git push -u origin <branch>`) and stop after step 9.
+Display the test results and the branch name to the developer.
 
 ### Escalation
 
