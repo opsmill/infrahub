@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -13,6 +13,9 @@ from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.fixture
