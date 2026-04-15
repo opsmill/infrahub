@@ -437,7 +437,7 @@ jobs:
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
-    timeout-minutes: 45
+    timeout-minutes: 50
     env:
       INFRAHUB_DB_TYPE: neo4j
     steps:
@@ -806,6 +806,33 @@ jobs:
         run: "uv sync --all-groups"
       - name: Run validation
         run: uv run invoke schema.validate-jsonschema
+
+  validate-docker-compose-env-vars:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: Check out repository code
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Run validation
+        run: uv run invoke release.validate-dockercomposeenv
 
   documentation:
     defaults:
