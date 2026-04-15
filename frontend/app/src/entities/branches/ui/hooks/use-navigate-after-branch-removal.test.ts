@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
 
-import { buildClearBranchIfCurrent, buildNavigateToPage } from "./use-navigate-after-branch-removal";
+import {
+  buildClearBranchIfCurrent,
+  buildNavigateToPage,
+} from "./use-navigate-after-branch-removal";
 
 vi.mock("@/shared/api/rest/fetch", () => ({
   constructPath: vi.fn(),
@@ -93,21 +96,18 @@ describe("buildClearBranchIfCurrent", () => {
     // GIVEN
     const navigate = vi.fn();
     getCurrentQspMock.mockReturnValue(new URLSearchParams("branch=feature-1"));
-    constructPathMock.mockReturnValue("/proposed-changes/123");
-    Object.defineProperty(window, "location", {
-      value: { pathname: "/proposed-changes/123" },
-      writable: true,
-    });
+    const currentPathname = window.location.pathname;
+    constructPathMock.mockReturnValue(currentPathname);
     const clearBranchIfCurrent = buildClearBranchIfCurrent(navigate);
 
     // WHEN
     clearBranchIfCurrent("feature-1");
 
     // THEN
-    expect(constructPathMock).toHaveBeenCalledWith("/proposed-changes/123", [
+    expect(constructPathMock).toHaveBeenCalledWith(currentPathname, [
       { name: "branch", exclude: true },
     ]);
-    expect(navigate).toHaveBeenCalledWith("/proposed-changes/123", { replace: true });
+    expect(navigate).toHaveBeenCalledWith(currentPathname, { replace: true });
   });
 
   it("should not navigate when deleted branch does not match current branch", () => {
