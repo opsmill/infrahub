@@ -1,7 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -41,12 +41,6 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
 
   const taskData = data?.[TASK_OBJECT];
   const hasOngoingTask = !!taskData?.count && taskData.count > 0;
-
-  useEffect(() => {
-    if (!loading && !hasOngoingTask) {
-      setIsMergeRequested(false);
-    }
-  }, [loading, hasOngoingTask]);
 
   const isDisabled =
     !isAuthenticated ||
