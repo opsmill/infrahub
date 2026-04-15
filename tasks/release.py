@@ -421,6 +421,8 @@ def gen_config_env(
             if issubclass(field_inst.__class__, BaseSettings):
                 fetch_fields(field_inst)
             else:
+                if isinstance(field.json_schema_extra, dict) and field.json_schema_extra.get("enterprise"):
+                    continue
                 for _, field_env_name, _ in env_settings._extract_field_info(field, field_name):
                     env_vars.add(field_env_name.upper())
                     env_defaults[field_env_name.upper()] = field.get_default()

@@ -5,6 +5,7 @@ from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
+from pydantic_settings.sources import EnvSettingsSource
 
 from infrahub.config import SETTINGS, GitSettings, HTTPSettings, PolicySettings, StorageSettings, UserInfoMethod, load
 from tests.conftest import TestHelper
@@ -152,3 +153,22 @@ def test_policy_settings_enterprise_fields_have_structured_flag(field_name: str)
     extra = field_info.json_schema_extra
     assert isinstance(extra, dict), f"Field '{field_name}' is missing json_schema_extra"
     assert extra.get("enterprise") is True, f"Field '{field_name}' does not have enterprise=True in json_schema_extra"
+
+
+def test_enterprise_fields_excluded_from_env_var_generation() -> None:
+    """Enterprise fields must be skipped when generating env vars for docker-compose."""
+    env_settings = EnvSettingsSource(
+        PolicySettings,
+        env_prefix=PolicySettings.model_config.get("env_prefix"),
+    )
+
+    env_vars: set[str] = set()
+    for field_name, field in PolicySettings.model_fields.items():
+        if isinstance(field.json_schema_extra, dict) and field.json_schema_extra.get("enterprise"):
+            continue
+        env_vars.update(
+            field_env_name.upper() for _, field_env_name, _ in env_settings._extract_field_info(field, field_name)
+        )
+
+    assert "INFRAHUB_POLICY_REQUIRED_PROPOSED_CHANGE_APPROVALS" not in env_vars
+    assert "INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS" not in env_vars
