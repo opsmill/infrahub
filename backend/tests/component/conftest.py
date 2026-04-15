@@ -141,16 +141,6 @@ def git_sources_dir(default_branch: Branch, tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def git_repos_dir(tmp_path: Path) -> Path:
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-
-    config.SETTINGS.git.repositories_directory = str(repos_dir)
-
-    return repos_dir
-
-
-@pytest.fixture
 def reset_graphql_schema_between_tests() -> Generator:
     """This fixture can be used when testing with GraphQL enums as the schema looks completely different."""
     graphql_registry.clear_cache()

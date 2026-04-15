@@ -5,7 +5,6 @@ from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config
-from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
@@ -19,7 +18,6 @@ async def test_has_conflicting_changes_no_false_positive(
     file content contains conflict marker characters like '======='."""
     repos_dir = tmp_path / "repositories"
     repos_dir.mkdir()
-    monkeypatch.setattr(registry, "_default_branch", "main")
     monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
 
     sources_dir = tmp_path / "source"
