@@ -35,20 +35,19 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.http import InfrahubHTTP
 
 
-class WebhookTrigger:
-    """Wraps a CoreWebhook and knows how to produce its own TriggerDefinition."""
+class WebhookTriggerDefinitionBuilder:
+    """Builds a WebhookTriggerDefinition from a CoreWebhook."""
 
-    def __init__(self, webhook: CoreWebhook, default_branch: str) -> None:
-        self._webhook = webhook
+    def __init__(self, default_branch: str) -> None:
         self._default_branch = default_branch
 
-    def definition(self) -> WebhookTriggerDefinition:
-        event_type = self._webhook.event_type.value.value
-        branch_scope = self._webhook.branch_scope.value
-        node_kind = self._webhook.node_kind.value
-        webhook_id = self._webhook.id
-        webhook_name = self._webhook.name.value
-        webhook_kind = self._webhook.get_kind()
+    def build(self, webhook: CoreWebhook) -> WebhookTriggerDefinition:
+        event_type = webhook.event_type.value.value
+        branch_scope = webhook.branch_scope.value
+        node_kind = webhook.node_kind.value
+        webhook_id = webhook.id
+        webhook_name = webhook.name.value
+        webhook_kind = webhook.get_kind()
 
         event_trigger = EventTrigger()
 

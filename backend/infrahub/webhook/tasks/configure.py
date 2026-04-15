@@ -18,7 +18,12 @@ from infrahub.workers.dependencies import get_database
 
 from ..constants import EVENT_TO_ACTION, WebhookAction
 from ..gather import gather_trigger_webhook
-from ..models import WebhookAutomation, WebhookTrigger, WebhookTriggerDefinition, generate_webhook_automation_name
+from ..models import (
+    WebhookAutomation,
+    WebhookTriggerDefinition,
+    WebhookTriggerDefinitionBuilder,
+    generate_webhook_automation_name,
+)
 from .cache import invalidate_webhook_cache
 
 if TYPE_CHECKING:
