@@ -13,7 +13,7 @@ async def test_migration_070_normalizes_and_indexes(db: InfrahubDatabase, defaul
     create_test_data_query = """
     CREATE (n1:Node {uuid: "node-1"})
     CREATE (attr1:Attribute {name: "human_friendly_id", uuid: "attr-1"})
-    CREATE (av1:AttributeValue {value: '["*","*","view","4"]', is_default: false})
+    CREATE (av1:AttributeValue {value: '["*","*","view",4]', is_default: false})
     CREATE (n1)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(attr1)
     CREATE (attr1)-[:HAS_VALUE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(av1)
 
