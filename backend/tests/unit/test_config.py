@@ -141,5 +141,6 @@ def test_http_settings_get_tls_context__ca_bundle_long_string_triggers_oserror()
 
 def test_security_settings_requires_secret_key() -> None:
     """SecuritySettings must reject instantiation when secret_key is not provided."""
-    with pytest.raises(ValidationError, match="secret_key"):
-        SecuritySettings()
+    env_clean = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
+    with patch.dict(os.environ, env_clean, clear=True), pytest.raises(ValidationError, match="secret_key"):
+        SecuritySettings()  # type: ignore[missing-argument]

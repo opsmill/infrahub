@@ -10,7 +10,6 @@ from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
-from infrahub_sdk.utils import generate_uuid
 from pydantic import (
     AliasChoices,
     BaseModel,
@@ -746,9 +745,7 @@ class SecuritySettings(BaseSettings):
     refresh_token_lifetime: int = Field(
         default=THIRTY_DAYS_IN_SECONDS, description="Lifetime of refresh token in seconds"
     )
-    secret_key: str = Field(
-        default_factory=generate_uuid, description="The secret key used to validate authentication tokens"
-    )
+    secret_key: str = Field(description="The secret key used to validate authentication tokens")
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
     oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)
     oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
@@ -1177,7 +1174,7 @@ class Settings(BaseSettings):
     analytics: AnalyticsSettings = AnalyticsSettings()
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
-    security: SecuritySettings = SecuritySettings()
+    security: SecuritySettings = Field(default_factory=SecuritySettings)
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
