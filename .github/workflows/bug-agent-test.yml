@@ -184,12 +184,15 @@ jobs:
                   "Bash(uv run pytest :*)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
                   "Bash(npm run test :*)",
+                  "Bash(npm --prefix :* run biome:fix)",
                   "Bash(npx biome check --write .)",
+                  "Bash(npx --prefix :* biome check --write :*)",
                   "Bash(npx playwright test :*)",
                   "Bash(cd frontend/app && npm run test :*)",
                   "Bash(cd frontend/app && npx biome check --write .)",
                   "Bash(cd frontend/app && npx playwright test :*)",
-                  "Bash(ls)", "Bash(ls :*)"
+                  "Bash(ls)", "Bash(ls *)",
+                  "Bash(mkdir -p *)"
                 ],
                 "deny": [
                   "Bash(git push --force :*)", "Bash(git push -f :*)",
@@ -382,7 +385,9 @@ jobs:
                   "Bash(uv run pytest :*)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
                   "Bash(npm run test :*)",
+                  "Bash(npm --prefix :* run biome:fix)",
                   "Bash(npx biome check --write .)",
+                  "Bash(npx --prefix :* biome check --write :*)",
                   "Bash(npx playwright test :*)",
                   "Bash(cd frontend/app && npm run test :*)",
                   "Bash(cd frontend/app && npx biome check --write .)",
