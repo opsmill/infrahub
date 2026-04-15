@@ -43,7 +43,12 @@ When the shared investigation instructions say to "STOP and escalate":
 Write the analysis to `.bug-analysis-<issue_number>.md` in the repo root using the
 analysis template from the shared investigation file.
 
-Fill the **Based on** field with the current `origin/stable` SHA (`git rev-parse origin/stable`).
+Fetch the latest remote state and fill the **Based on** field with the current `origin/stable` SHA:
+
+```bash
+git fetch origin stable
+git rev-parse origin/stable
+```
 
 This file is gitignored -- it is a local working-tree artifact, not committed.
 
