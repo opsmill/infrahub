@@ -461,6 +461,7 @@ async def delete_branch(
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
             meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            proposed_change_id=proposed_change_id,
         )
 
         await get_workflow().submit_workflow(
