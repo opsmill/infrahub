@@ -22,9 +22,7 @@ export function useNavigateAfterBranchRemoval() {
     clearBranchIfCurrent: (deletedBranchName?: string) => {
       const currentBranch = getCurrentQsp().get(QSP.BRANCH);
       if (deletedBranchName && currentBranch === deletedBranchName) {
-        const path = constructPath(window.location.pathname, [
-          { name: QSP.BRANCH, exclude: true },
-        ]);
+        const path = constructPath(window.location.pathname, [{ name: QSP.BRANCH, exclude: true }]);
         navigate(path, { replace: true });
       }
     },
