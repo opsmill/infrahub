@@ -17,16 +17,16 @@ console = get_migration_console()
 FETCH_HFID_VALUES_QUERY = """
 MATCH (attr:Attribute {name: "human_friendly_id"})-[:HAS_VALUE]->(av:AttributeValue)
 WHERE av.value IS NOT NULL
-RETURN elementId(av) AS element_id, av.value AS value, av:AttributeValueIndexed AS is_indexed
-ORDER BY elementId(av)
+RETURN DISTINCT elementId(av) AS element_id, av.value AS value, av:AttributeValueIndexed AS is_indexed
+ORDER BY element_id
 SKIP $offset LIMIT $limit
 """
 
 NORMALIZE_VALUES_QUERY = """
 UNWIND $updates AS update
-CALL (update) {
-    MATCH (attr:Attribute {name: "human_friendly_id"})-[old_r:HAS_VALUE]->(old_av)
-    WHERE elementId(old_av) = update.element_id
+MATCH (attr:Attribute {name: "human_friendly_id"})-[old_r:HAS_VALUE]->(old_av)
+WHERE elementId(old_av) = update.element_id
+CALL (update, attr, old_r, old_av) {
     MERGE (new_av:AttributeValue {value: update.new_value, is_default: old_av.is_default})
     WITH attr, old_r, new_av
     LIMIT 1
