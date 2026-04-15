@@ -4,12 +4,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import BranchSupportType, RelationshipCardinality, RelationshipKind
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.dropdown import DropdownChoice
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -239,6 +240,299 @@ def conflicting_inherit_schema() -> SchemaRoot:
     )
 
 
+@pytest.fixture
+def local_override_inherited_schema() -> SchemaRoot:
+    """Node locally declares an attribute that is also defined on an inherited generic.
+
+    Attributes have different values for `unique`
+    """
+    return SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="GenericThing",
+                namespace="Test",
+                description="Generic with a unique name attribute.",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="LocalThing",
+                namespace="Test",
+                description="Node that locally overrides the inherited name attr to be non-unique.",
+                include_in_menu=False,
+                generate_template=True,
+                inherit_from=["TestGenericThing"],
+                # Local declaration of `name` with unique=False — should suppress the
+                # generic's unique=True version of the same attribute.
+                attributes=[AttributeSchema(name="name", kind="Text", unique=False)],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def multi_generic_conflicting_optional_schema() -> SchemaRoot:
+    """Node inherits from two generics that share an attribute with conflicting non-unique fields.
+
+    Different values in the two attributes for `optional`, `default_value`, `branch`,
+    `max_length`
+    """
+    return SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="GenericPermissive",
+                namespace="Test",
+                description="Generic with optional name and a default value.",
+                include_in_menu=False,
+                attributes=[
+                    AttributeSchema(
+                        name="name",
+                        kind="Text",
+                        optional=True,
+                        default_value="permissive-default",
+                        max_length=50,
+                        branch=BranchSupportType.LOCAL,
+                    ),
+                ],
+            ),
+            GenericSchema(
+                name="GenericStrict",
+                namespace="Test",
+                description="Generic with mandatory name and no default value.",
+                include_in_menu=False,
+                attributes=[
+                    AttributeSchema(
+                        name="name",
+                        kind="Text",
+                        optional=False,
+                        max_length=10,
+                        branch=BranchSupportType.AGNOSTIC,
+                    ),
+                ],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="Combined",
+                namespace="Test",
+                description="Node inheriting `name` from two generics with conflicting non-unique fields.",
+                include_in_menu=False,
+                generate_template=True,
+                # GenericPermissive processed first; GenericStrict's update_from_generic
+                # then overwrites optional, default_value, max_length, branch.
+                inherit_from=["TestGenericPermissive", "TestGenericStrict"],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def read_only_attribute_schema() -> SchemaRoot:
+    """Node with `generate_template=True` inheriting an attribute marked `read_only=True`.
+
+    `read_only` affects attribute inclusion in Template and Profile schemas. this test case
+    ensures there is no drift like we have seen with the `unique` property
+    """
+    return SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="GenericReadable",
+                namespace="Test",
+                description="Generic with a read-only attribute.",
+                include_in_menu=False,
+                attributes=[
+                    AttributeSchema(name="serial", kind="Text", read_only=True),
+                    AttributeSchema(name="description", kind="Text", optional=True),
+                ],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="ReadOnlyDevice",
+                namespace="Test",
+                description="Node inheriting a read-only attr; templates must exclude it stably.",
+                include_in_menu=False,
+                generate_template=True,
+                inherit_from=["TestGenericReadable"],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def hfid_from_unique_attrs_schema() -> SchemaRoot:
+    """Node has `unique=True` on an attribute but no HFID.
+
+    Unique attribute with no HFID or uniqueness_constraints ensures that HFID, uniqueness
+    constraints, attribute uniqueness, and inheritance don't interact to cause drift
+    """
+    return SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="GenericHasUnique",
+                namespace="Test",
+                description="Generic with a unique attribute and no HFID.",
+                include_in_menu=False,
+                attributes=[
+                    AttributeSchema(name="key", kind="Text", unique=True),
+                    AttributeSchema(name="extra", kind="Text", optional=True),
+                ],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="DerivedFromUnique",
+                namespace="Test",
+                description="Node with no HFID, relying on inherited unique attr to derive one.",
+                include_in_menu=False,
+                generate_template=True,
+                inherit_from=["TestGenericHasUnique"],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def hfid_from_constraints_schema() -> SchemaRoot:
+    """Node has a single-attribute uniqueness_constraint but no HFID and no unique attrs.
+
+    Lone uniqueness_constraint ensures that HFID, uniqueness constraints, attribute
+    uniqueness, and inheritance don't interact to cause drift
+    """
+    return SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="GenericHasConstraint",
+                namespace="Test",
+                description="Generic with a uniqueness_constraint but no HFID.",
+                include_in_menu=False,
+                uniqueness_constraints=[["code__value"]],
+                attributes=[
+                    AttributeSchema(name="code", kind="Text"),
+                    AttributeSchema(name="extra", kind="Text", optional=True),
+                ],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="DerivedFromConstraint",
+                namespace="Test",
+                description="Node with no HFID, deriving one from the inherited constraint.",
+                include_in_menu=False,
+                generate_template=True,
+                inherit_from=["TestGenericHasConstraint"],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def profile_excludes_relationship_in_constraint_schema() -> SchemaRoot:
+    """Node has an HFID that crosses a relationship, putting the rel name in uniqueness_constraints."""
+    return SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Site",
+                namespace="Test",
+                description="Site with a unique name (target of the HFID-traversed relationship).",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            NodeSchema(
+                name="Rack",
+                namespace="Test",
+                description="Rack identified by site + rack_id; the `site` rel must be excluded from its profile.",
+                include_in_menu=False,
+                generate_template=True,
+                human_friendly_id=["site__name__value", "rack_id__value"],
+                attributes=[
+                    AttributeSchema(name="rack_id", kind="Text"),
+                    AttributeSchema(name="description", kind="Text", optional=True),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="site",
+                        peer="TestSite",
+                        kind=RelationshipKind.ATTRIBUTE,
+                        cardinality=RelationshipCardinality.ONE,
+                        optional=False,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
+@pytest.fixture
+def template_relationship_peer_resolution_schema() -> SchemaRoot:
+    """Node with `generate_template=True` and relationships of multiple kinds.
+
+    a template's relationship peer is based on `relationship.kind` and whether `relationship.peer`
+    is in SUBTEMPLATE_EXCLUDED_KINDS:
+      - kind in (ATTRIBUTE, GENERIC) -> peer kept as-is
+      - peer in SUBTEMPLATE_EXCLUDED_KINDS -> peer kept as-is
+      - otherwise (COMPONENT, PARENT) -> peer rewritten to Template{peer}
+
+    Any drift in `relationship.kind` or in the peer's classification between passes
+    would flip which branch is taken. This fixture exercises the rewrite vs keep
+    paths in a single template.
+    """
+    return SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Tag",
+                namespace="Test",
+                description="Tag pointed at by an Attribute relationship (peer kept as-is on template).",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            NodeSchema(
+                name="Interface",
+                namespace="Test",
+                description="Interface — child of Device via a Component relationship (peer rewritten).",
+                include_in_menu=False,
+                generate_template=True,
+                attributes=[AttributeSchema(name="name", kind="Text")],
+                relationships=[
+                    RelationshipSchema(
+                        name="device",
+                        peer="TestDevice",
+                        kind=RelationshipKind.PARENT,
+                        cardinality=RelationshipCardinality.ONE,
+                        optional=False,
+                    ),
+                ],
+            ),
+            NodeSchema(
+                name="Device",
+                namespace="Test",
+                description="Device with a mix of Component, Attribute, and Parent relationships.",
+                include_in_menu=False,
+                generate_template=True,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(
+                        name="interfaces",
+                        peer="TestInterface",
+                        kind=RelationshipKind.COMPONENT,
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                    ),
+                    RelationshipSchema(
+                        name="tags",
+                        peer="TestTag",
+                        kind=RelationshipKind.ATTRIBUTE,
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
 class TestSchemaProcessUniquenessIdempotent:
     """Loading the same schema payload twice must leave the persisted schema unchanged."""
 
@@ -273,5 +567,82 @@ class TestSchemaProcessUniquenessIdempotent:
         """
         schema_branch = register_core_models_schema.duplicate()
         schema_branch.load_schema(schema=conflicting_inherit_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_local_override_of_inherited_attribute(
+        self,
+        register_core_models_schema: SchemaBranch,
+        local_override_inherited_schema: SchemaRoot,
+    ) -> None:
+        """Local attribute declaration wins over an inherited generic's attribute with the same name."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=local_override_inherited_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_multi_generic_inheritance_conflicting_optional(
+        self,
+        register_core_models_schema: SchemaBranch,
+        multi_generic_conflicting_optional_schema: SchemaRoot,
+    ) -> None:
+        """Multi-generic inheritance with conflicting non-unique fields must process idempotently."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=multi_generic_conflicting_optional_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_read_only_attribute_excluded_from_template(
+        self,
+        register_core_models_schema: SchemaBranch,
+        read_only_attribute_schema: SchemaRoot,
+    ) -> None:
+        """Read-only attribute is excluded from the generated template and stays excluded."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=read_only_attribute_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_hfid_derivation_from_unique_attributes(
+        self,
+        register_core_models_schema: SchemaBranch,
+        hfid_from_unique_attrs_schema: SchemaRoot,
+    ) -> None:
+        """HFID gets derived from `unique_attributes` when not explicitly provided."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=hfid_from_unique_attrs_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_hfid_derivation_from_uniqueness_constraints(
+        self,
+        register_core_models_schema: SchemaBranch,
+        hfid_from_constraints_schema: SchemaRoot,
+    ) -> None:
+        """HFID gets derived from a single-attr `uniqueness_constraints` when no HFID and no unique attrs."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=hfid_from_constraints_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_profile_excludes_relationship_in_uniqueness_constraints(
+        self,
+        register_core_models_schema: SchemaBranch,
+        profile_excludes_relationship_in_constraint_schema: SchemaRoot,
+    ) -> None:
+        """A relationship referenced in uniqueness_constraints (via HFID traversal) is excluded from profile."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=profile_excludes_relationship_in_constraint_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_template_relationship_peer_resolution(
+        self,
+        register_core_models_schema: SchemaBranch,
+        template_relationship_peer_resolution_schema: SchemaRoot,
+    ) -> None:
+        """Template relationship peers (rewritten vs kept) must be stable across process() calls."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=template_relationship_peer_resolution_schema)
 
         _validate_process_idempotent(schema_branch)

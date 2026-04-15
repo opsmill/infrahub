@@ -635,14 +635,20 @@ class SchemaBranch:
         self.process_deprecations()
         self._reconcile_legacy_attribute_parameters()
         self.process_cardinality_counts()
+
+        # Finalize HFID-derived state on generics before inheritance copies it to nodes;
+        # scoped to generics because node HFIDs may reference not-yet-inherited attributes.
+        generic_kinds = list(self.generic_names_without_templates)
+        self.process_human_friendly_id(kinds=generic_kinds, raise_parsing_errors=False)
+        self.sync_uniqueness_constraints_and_unique_attributes(kinds=generic_kinds)
+
         self.process_inheritance()
         self.process_hierarchy()
         self.process_branch_support()
 
-        # these methods are duplicated to keep process() idempotent
-        # can add items to uniqueness constraints
-        self.process_human_friendly_id()
-        # update attr.unique values based on previous updates to uniqueness constraints
+        # Re-run on nodes (and generics, no-op) now that they have inherited
+        # attributes, HFIDs, and uniqueness_constraints from their generics.
+        self.process_human_friendly_id(raise_parsing_errors=False)
         self.sync_uniqueness_constraints_and_unique_attributes()
         # set labels to be passed to generated Profiles and Templates
         self.process_labels()
@@ -831,8 +837,9 @@ class SchemaBranch:
 
         return schema_attribute_path
 
-    def sync_uniqueness_constraints_and_unique_attributes(self) -> None:
-        for name in self.generic_names_without_templates + self.node_names:
+    def sync_uniqueness_constraints_and_unique_attributes(self, kinds: list[str] | None = None) -> None:
+        target_names = kinds if kinds is not None else self.generic_names_without_templates + self.node_names
+        for name in target_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.unique_attributes and not node_schema.uniqueness_constraints:
@@ -1592,7 +1599,7 @@ class SchemaBranch:
             if schema_to_update:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
-    def process_human_friendly_id(self) -> None:
+    def process_human_friendly_id(self, kinds: list[str] | None = None, raise_parsing_errors: bool = True) -> None:
         """
         For each schema node, if there is no HFID defined, set it with:
         - The first unique attribute if existing
@@ -1600,7 +1607,11 @@ class SchemaBranch:
 
         Also, HFID is added to the uniqueness constraints.
         """
-        for name in self.generic_names_without_templates + self.node_names:
+        errors_to_suppress = []
+        if not raise_parsing_errors:
+            errors_to_suppress.append(AttributePathParsingError)
+        target_names = kinds if kinds is not None else self.generic_names_without_templates + self.node_names
+        for name in target_names:
             node = self.get(name=name, duplicate=False)
 
             if not node.human_friendly_id:
@@ -1616,7 +1627,8 @@ class SchemaBranch:
                         if len(constraint_paths) > 1:
                             continue
                         constraint_path = constraint_paths[0]
-                        schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                        with contextlib.suppress(*errors_to_suppress):
+                            schema_path = node.parse_schema_path(path=constraint_path, schema=node)
                         if (
                             schema_path.is_type_attribute
                             and schema_path.attribute_property_name == "value"
@@ -1628,7 +1640,8 @@ class SchemaBranch:
                             break
 
             # Add hfid to uniqueness constraint
-            hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
+            with contextlib.suppress(*errors_to_suppress):
+                hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
             if hfid_uniqueness_constraint:
                 node = self.get(name=name, duplicate=True)
                 # Make sure there is no duplicate regarding generics values.
