@@ -299,6 +299,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 log=log,
                 obj=obj,
                 context=context,
+                proposed_change_id=proposed_change_id,
             )
 
         events: list[InfrahubEvent] = [merge_event]
@@ -321,7 +322,11 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
 
 
 async def _do_merge_branch(
-    db: InfrahubDatabase, log: Logger | LoggerAdapter, obj: Branch, context: InfrahubContext
+    db: InfrahubDatabase,
+    log: Logger | LoggerAdapter,
+    obj: Branch,
+    context: InfrahubContext,
+    proposed_change_id: str | None = None,
 ) -> Sequence[tuple[DiffAction, NodeChangelog]]:
     component_registry = get_component_registry()
 
@@ -419,7 +424,7 @@ async def _do_merge_branch(
         await get_workflow().submit_workflow(
             workflow=BRANCH_DELETE,
             context=context,
-            parameters={"branch": obj.name},
+            parameters={"branch": obj.name, "proposed_change_id": proposed_change_id},
         )
 
     # -------------------------------------------------------------
@@ -437,9 +442,10 @@ async def _do_merge_branch(
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(branch: str, context: InfrahubContext, delete_from_git: bool = False) -> None:
-    await add_tags(branches=[branch])
-
+async def delete_branch(
+    branch: str, context: InfrahubContext, delete_from_git: bool = False, proposed_change_id: str | None = None
+) -> None:
+    await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
     async with database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))

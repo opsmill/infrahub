@@ -21,6 +21,7 @@ import {
 import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
 import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
+import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
 import type { ModelSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
@@ -45,10 +46,14 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
 
   const fields: FilterDefinition[] = [
     ...sortByOrderWeight([...(schema.attributes ?? []), ...(schema.relationships ?? [])]).map(
-      (field): FilterDefinition =>
-        "peer" in field
-          ? { type: "relationship", schema: field }
-          : { type: "attribute", schema: field }
+      (field): FilterDefinition => {
+        if ("peer" in field) return { type: "relationship", schema: field };
+
+        const decisionOptions = getDecisionOptions(schema.kind, field.name);
+        return decisionOptions
+          ? { type: "permission-decision", schema: field, options: decisionOptions }
+          : { type: "attribute", schema: field };
+      }
     ),
     ...ALL_METADATA_FILTERS,
   ];

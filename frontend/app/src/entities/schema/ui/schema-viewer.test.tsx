@@ -1,7 +1,11 @@
 import { describe, expect, test } from "vitest";
 
 import { render } from "../../../../tests/components/render";
-import { generateAttributeSchema, generateNodeSchema } from "../../../../tests/fake/schema";
+import {
+  generateAttributeSchema,
+  generateNodeSchema,
+  generateRelationshipSchema,
+} from "../../../../tests/fake/schema";
 import { SchemaViewer } from "./schema-viewer";
 
 describe("SchemaViewer Component", () => {
@@ -60,6 +64,31 @@ describe("SchemaViewer Component", () => {
     await expect.element(component.getByText("test-regex")).toBeVisible();
     await expect.element(component.getByText("Min length1")).toBeVisible();
     await expect.element(component.getByText("Max length10")).toBeVisible();
+  });
+
+  test("displays attribute display value", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      attributes: [
+        generateAttributeSchema({
+          name: "attribute",
+          label: "Attribute",
+          display: "extra",
+        }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Attributes").click();
+    await component.getByText("Attribute Text").click();
+
+    // THEN
+    await expect.element(component.getByText("Display", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("extra", { exact: true }).first()).toBeVisible();
   });
 
   test("displays number pool attribute details", async () => {
@@ -196,5 +225,31 @@ describe("SchemaViewer Component", () => {
     // THEN
     await expect.element(component.getByText("CoreTransformPython")).toBeVisible();
     await expect.element(component.getByText("test-transform").first()).toBeVisible();
+  });
+
+  test("displays relationship display value", async () => {
+    // GIVEN
+    const schema = generateNodeSchema({
+      name: "Node",
+      namespace: "Test",
+      relationships: [
+        generateRelationshipSchema({
+          id: "relationship-id",
+          name: "relationship",
+          label: "Extra Relationship",
+          display: "extra",
+        }),
+      ],
+    });
+
+    const component = await render(<SchemaViewer schema={schema} onClose={() => {}} />);
+
+    // WHEN
+    await component.getByText("Relationships").click();
+    await component.getByText("Extra Relationship").click();
+
+    // THEN
+    await expect.element(component.getByText("Display", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("extra", { exact: true }).first()).toBeVisible();
   });
 });

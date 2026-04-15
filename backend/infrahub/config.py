@@ -8,7 +8,7 @@ import tomllib
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from infrahub_sdk.utils import generate_uuid
 from pydantic import (
@@ -22,7 +22,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
@@ -932,16 +932,73 @@ class LogForwardingDestination(BaseModel):
         return self
 
 
+_DESTINATION_NAME_RE = re.compile(r"^[a-z0-9_]+$")
+
+
+def _load_destination_from_env(name: str) -> LogForwardingDestination:
+    """Build a LogForwardingDestination by scanning os.environ for keys matching
+    INFRAHUB_LOG_FORWARDING_DESTINATION_{NAME_UPPER}_{FIELD_UPPER}.
+    """
+    prefix = f"INFRAHUB_LOG_FORWARDING_DESTINATION_{name.upper()}_"
+    valid_field_names = set(LogForwardingDestination.model_fields.keys()) - {"name"}
+    fields: dict[str, Any] = {"name": name}
+    for env_key, env_val in os.environ.items():
+        if env_key.upper().startswith(prefix):
+            suffix = env_key[len(prefix) :].lower()
+            if suffix in valid_field_names:
+                fields[suffix] = env_val
+    return LogForwardingDestination.model_validate(fields)
+
+
 class LogForwardingSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_LOG_FORWARDING_")
     hostname: str | None = Field(
         default=None,
         description="Hostname to use in syslog message headers. If not set, defaults to the system FQDN.",
     )
+    destination_names: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "Comma-separated list of destination names to load from per-destination environment variables "
+            "(e.g. `INFRAHUB_LOG_FORWARDING_DESTINATION_PRIMARY_HOST` where `PRIMARY` is the destination name). "
+            "Names must match `[a-z0-9_]+`. Mutually exclusive with `destinations`."
+        ),
+    )
     destinations: list[LogForwardingDestination] = Field(
         default_factory=list,
         description="List of log forwarding destinations. (Enterprise only: not available in the community version.)",
     )
+
+    @field_validator("destination_names", mode="before")
+    @classmethod
+    def _split_destination_names(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return [n.strip() for n in v.split(",") if n.strip()]
+        return v
+
+    @model_validator(mode="after")
+    def _materialize_destinations_from_env(self) -> Self:
+        if not self.destination_names:
+            return self
+        # if destinations already exist, they must have been set in infrahub.toml or the DESTINATIONS env var
+        # neither of which is supported in combination with DESTINATION_NAMES
+        if self.destinations:
+            raise ValueError(
+                "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES cannot be combined with explicit `destinations` "
+                "(set via INFRAHUB_LOG_FORWARDING_DESTINATIONS or infrahub.toml). Use one mechanism, not both."
+            )
+        for name in self.destination_names:
+            if not _DESTINATION_NAME_RE.match(name):
+                raise ValueError(
+                    f"Invalid log forwarding destination name '{name}': names configured via "
+                    "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES must match [a-z0-9_]+ (lowercase letters, "
+                    "digits, and underscores only)."
+                )
+        loaded = [_load_destination_from_env(name) for name in self.destination_names]
+        # Re-run uniqueness check (covers duplicates within destination_names itself).
+        self.__class__.validate_unique_names(loaded)
+        self.destinations = loaded
+        return self
 
     @field_validator("destinations")
     @classmethod

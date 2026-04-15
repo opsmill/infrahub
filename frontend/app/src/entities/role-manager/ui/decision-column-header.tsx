@@ -1,19 +1,13 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
-import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
-import { Button } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
-import {
-  FILTER_CONDITION,
-  type FilterCondition,
-  FilterConditionSelect,
-} from "@/entities/nodes/object/ui/filters/filter-condition-select";
+import { DecisionFilterForm } from "@/entities/nodes/object/ui/filters/decision-filter-form";
+import type { DecisionOption } from "@/entities/role-manager/domain/get-decision-options";
 import type { AttributeSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
@@ -22,39 +16,11 @@ export function DecisionColumnHeader({
   options,
 }: {
   attributeSchema: AttributeSchema;
-  options: Array<{ value: number; label: string }>;
+  options: DecisionOption[];
 }) {
-  const [filters, setFilters] = useFilters();
+  const [filters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
   const currentFilter = filters.find((f) => f.name.startsWith(attributeSchema.name));
-  const [condition, setCondition] = useState<FilterCondition>(
-    getCurrentFilterCondition(currentFilter) ?? FILTER_CONDITION.CONTAINS
-  );
-  const [selectedValue, setSelectedValue] = useState<string | null>(() => {
-    if (currentFilter && getCurrentFilterCondition(currentFilter) === FILTER_CONDITION.CONTAINS) {
-      return String(currentFilter.value);
-    }
-    return null;
-  });
-
-  const handleSubmit = () => {
-    const cleanedFilters = filters.filter((f) => !f.name.startsWith(attributeSchema.name));
-
-    if (condition === FILTER_CONDITION.CONTAINS && selectedValue) {
-      setFilters([
-        ...cleanedFilters,
-        { name: `${attributeSchema.name}__value`, value: selectedValue },
-      ]);
-    } else if (condition === FILTER_CONDITION.IS_EMPTY) {
-      setFilters([...cleanedFilters, { name: `${attributeSchema.name}__isnull`, value: true }]);
-    } else if (condition === FILTER_CONDITION.IS_NOT_EMPTY) {
-      setFilters([...cleanedFilters, { name: `${attributeSchema.name}__isnull`, value: false }]);
-    } else {
-      setFilters(cleanedFilters);
-    }
-
-    setShowFilters(false);
-  };
 
   return (
     <Popover open={showFilters} onOpenChange={setShowFilters}>
@@ -73,31 +39,11 @@ export function DecisionColumnHeader({
           Filter by {attributeSchema.label ?? attributeSchema.name}
         </div>
 
-        <div className="flex gap-2 p-2">
-          <div className="inline-flex h-10 items-center">Where</div>
-
-          <FilterConditionSelect
-            filterType="attribute"
-            value={condition}
-            onChange={(key) => setCondition(key as FilterCondition)}
-          />
-
-          {condition === FILTER_CONDITION.CONTAINS && (
-            <Select
-              aria-label="select a decision"
-              placeholder=""
-              value={selectedValue}
-              onChange={(key) => setSelectedValue(key as string)}
-            >
-              <SelectTrigger className="w-33" />
-              <SelectList items={options}>
-                {(item) => <SelectItem id={item.label}>{item.label}</SelectItem>}
-              </SelectList>
-            </Select>
-          )}
-
-          <Button onClick={handleSubmit}>Apply</Button>
-        </div>
+        <DecisionFilterForm
+          attributeSchema={attributeSchema}
+          options={options}
+          onSuccess={() => setShowFilters(false)}
+        />
       </PopoverContent>
     </Popover>
   );
