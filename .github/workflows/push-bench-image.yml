@@ -44,7 +44,7 @@ jobs:
             org.opencontainers.image.source=opsmill/bench
 
       - name: Build and push by digest
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         id: push
         with:
           context: utilities/benchmark
