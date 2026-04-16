@@ -19,13 +19,17 @@ class BranchDeletedEvent(InfrahubEvent):
     branch_name: str = Field(..., description="The name of the branch")
     branch_id: str = Field(..., description="The ID of the mutated node")
     sync_with_git: bool = Field(..., description="Indicates if the branch was extended to Git")
+    proposed_change_id: str | None = Field(default=None, description="Proposed change ID if available")
 
     def get_resource(self) -> dict[str, str]:
-        return {
+        resource = {
             "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
             "infrahub.branch.id": self.branch_id,
             "infrahub.branch.name": self.branch_name,
         }
+        if self.proposed_change_id:
+            resource["infrahub.branch.proposed_change_id"] = self.proposed_change_id
+        return resource
 
     def get_messages(self) -> list[InfrahubMessage]:
         events: list[InfrahubMessage] = [
@@ -38,6 +42,18 @@ class BranchDeletedEvent(InfrahubEvent):
             RefreshRegistryBranches(),
         ]
         return events
+
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        if self.proposed_change_id:
+            related.append(
+                {
+                    "prefect.resource.id": self.proposed_change_id,
+                    "prefect.resource.role": "infrahub.related.node",
+                    "infrahub.node.kind": InfrahubKind.PROPOSEDCHANGE,
+                }
+            )
+        return related
 
 
 class BranchCreatedEvent(InfrahubEvent):

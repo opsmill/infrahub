@@ -57,7 +57,7 @@ class TestAutoDeleteBranchAfterMerge(TestInfrahubApp):
             mock_submit.assert_any_call(
                 workflow=BRANCH_DELETE,
                 context=ANY,
-                parameters={"branch": branch.name},
+                parameters={"branch": branch.name, "proposed_change_id": None},
             )
 
     async def test_branch_not_deleted_after_standard_merge_when_config_disabled(
@@ -113,5 +113,5 @@ class TestAutoDeleteBranchAfterMerge(TestInfrahubApp):
             mock_submit.assert_any_call(
                 workflow=BRANCH_DELETE,
                 context=ANY,
-                parameters={"branch": branch.name},
+                parameters={"branch": branch.name, "proposed_change_id": pc.id},
             )
