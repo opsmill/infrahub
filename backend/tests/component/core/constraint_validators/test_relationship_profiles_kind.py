@@ -40,7 +40,7 @@ class TestRelationshipProfilesKindConstraint(TestInfrahubApp):
                     "name": "Ship",
                     "namespace": "Test",
                     "default_filter": "name__value",
-                    "display_labels": ["name__value", "color__value"],
+                    "display_label": "{{ name__value }} {{ color__value }}",
                     "inherit_from": ["TestGenericSpaceObject"],
                     "branch": BranchSupportType.AWARE.value,
                     "attributes": [

@@ -605,7 +605,7 @@ def do_group_schema(branch: Branch) -> None:
                 "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -620,7 +620,7 @@ def do_group_schema(branch: Branch) -> None:
                 "namespace": "Core",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.GENERICGROUP],
             },
@@ -638,7 +638,7 @@ def do_car_person_schema_unregistered() -> SchemaRoot:
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -677,7 +677,7 @@ def do_car_person_schema_unregistered() -> SchemaRoot:
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
                 "attributes": [
@@ -719,7 +719,7 @@ async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema: 
                 "name": "PersonDF",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text"},
@@ -747,7 +747,7 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
                 name="Car",
                 namespace="Test",
                 default_filter="name__value",
-                display_labels=["name__value", "color__value"],
+                display_label="{{ name__value }} {{ color__value }}",
                 uniqueness_constraints=[["name__value"]],
                 branch=BranchSupportType.LOCAL,
                 attributes=[
@@ -768,7 +768,7 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
                 name="Person",
                 namespace="Test",
                 default_filter="name__value",
-                display_labels=["name__value"],
+                display_label="name__value",
                 branch=BranchSupportType.AWARE,
                 uniqueness_constraints=[["name__value"]],
                 attributes=[
@@ -837,7 +837,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Dog",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value"],
+                "display_label": "{{ name__value }} {{ breed__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -847,7 +847,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
                 "name": "Cat",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value", "color__value"],
+                "display_label": "{{ name__value }} {{ breed__value }} {{ color__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -856,7 +856,7 @@ async def animal_person_schema_unregistered(db: InfrahubDatabase, node_group_sch
             {
                 "name": "Person",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "default_filter": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
@@ -895,7 +895,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
             {
                 "name": "Person",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -906,7 +906,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
             {
                 "name": "Car",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "human_friendly_id": ["owner__name__value", "name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text"},
@@ -926,7 +926,7 @@ async def person_schema_unique_attr_non_hfid_unregistered(
             {
                 "name": "Thing",
                 "namespace": "Test",
-                "display_labels": ["value__value"],
+                "display_label": "value__value",
                 "attributes": [
                     {"name": "value", "kind": "Text"},
                 ],
@@ -1020,7 +1020,7 @@ async def dependent_generics_unregistered(
                 "name": "Dog",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value"],
+                "display_label": "{{ name__value }} {{ breed__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -1030,7 +1030,7 @@ async def dependent_generics_unregistered(
                 "name": "Cat",
                 "namespace": "Test",
                 "inherit_from": ["TestAnimal"],
-                "display_labels": ["name__value", "breed__value", "color__value"],
+                "display_label": "{{ name__value }} {{ breed__value }} {{ color__value }}",
                 "attributes": [
                     {"name": "breed", "kind": "Text", "optional": False},
                     {"name": "color", "kind": "Color", "default_value": "#444444", "optional": True},
@@ -1039,14 +1039,14 @@ async def dependent_generics_unregistered(
             {
                 "name": "Human",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "inherit_from": ["TestPerson"],
                 "human_friendly_id": ["name__value"],
             },
             {
                 "name": "Cylon",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "inherit_from": ["TestPerson"],
                 "human_friendly_id": ["name__value"],
                 "attributes": [
@@ -1083,7 +1083,7 @@ async def node_group_schema(db: InfrahubDatabase, default_branch: Branch, data_s
                 "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "uniqueness_constraints": [["name__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1281,7 +1281,7 @@ def car_person_branch_agnostic_schema() -> dict[str, Any]:
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
                 "attributes": [
@@ -1331,7 +1331,7 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "uniqueness_constraints": [["name__value"], ["owner"]],
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
@@ -1354,7 +1354,7 @@ async def car_person_schema_unique_owner(db: InfrahubDatabase, node_group_schema
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
                 "attributes": [

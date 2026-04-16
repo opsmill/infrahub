@@ -36,7 +36,7 @@ class TestDiffMergeAgnosticPeer:
                     "namespace": "Ipam",
                     "default_filter": "prefix__value",
                     "order_by": ["prefix__value"],
-                    "display_labels": ["prefix__value"],
+                    "display_label": "prefix__value",
                     "inherit_from": [InfrahubKind.IPPREFIX],
                 },
                 {
@@ -44,7 +44,7 @@ class TestDiffMergeAgnosticPeer:
                     "namespace": "Ipam",
                     "default_filter": "address__value",
                     "order_by": ["address__value"],
-                    "display_labels": ["address__value"],
+                    "display_label": "address__value",
                     "inherit_from": [InfrahubKind.IPADDRESS],
                 },
             ]
