@@ -149,6 +149,8 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         node: Node | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
+        # The reason for doing so here is specifically that the proposed changes are of a branch agnostic kind
+        # so it would not be critical to know from which branch they are modified, however under normal circumstances we don't want to do this.
         graphql_context.branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
@@ -452,6 +454,8 @@ class ProposedChangeMerge(Mutation):
         wait_until_completion: bool = True,
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
+        # The reason for doing so here is specifically that the proposed changes are of a branch agnostic kind
+        # so it would not be critical to know from which branch they are modified, however under normal circumstances we don't want to do this.
         graphql_context.branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
         task: dict | None = None
 
