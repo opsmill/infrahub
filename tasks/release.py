@@ -393,53 +393,67 @@ def gen_config_env(
     update_docker_file: bool | None = False,
 ) -> None:
     """Generate list of env vars required for configuration and update docker file.yml if need be."""
+    import os
+
     from pydantic_settings import BaseSettings
     from pydantic_settings.sources import EnvSettingsSource
 
     from infrahub.config import Settings
 
-    enum_mappings = get_enum_mappings()
+    # This task only introspects config fields, it doesn't need a real secret key.
+    # Set a dummy value temporarily and restore the original state afterwards.
+    env_key = "INFRAHUB_SECURITY_SECRET_KEY"
+    original_value = os.environ.get(env_key)
+    os.environ.setdefault(env_key, "not-a-real-secret-key")
 
-    # These are environment variables used outside of Pydantic settings
-    env_vars = {
-        "INFRAHUB_LOG_LEVEL",
-        "INFRAHUB_PRODUCTION",
-        "INFRAHUB_CONFIG",
-        "OTEL_RESOURCE_ATTRIBUTES",
-        "INFRAHUB_ADDRESS",
-    }
-    settings = Settings()
-    env_defaults = {}
+    try:
+        enum_mappings = get_enum_mappings()
 
-    def fetch_fields(subset: BaseSettings) -> None:
-        env_settings = EnvSettingsSource(
-            subset.__class__,
-            env_prefix=subset.model_config.get("env_prefix"),
-        )
-        for field_name, field in subset.__class__.model_fields.items():
-            field_inst = getattr(subset, field_name)
-            if issubclass(field_inst.__class__, BaseSettings):
-                fetch_fields(field_inst)
-            else:
-                for _, field_env_name, _ in env_settings._extract_field_info(field, field_name):
-                    env_vars.add(field_env_name.upper())
-                    env_defaults[field_env_name.upper()] = field.get_default()
+        # These are environment variables used outside of Pydantic settings
+        env_vars = {
+            "INFRAHUB_LOG_LEVEL",
+            "INFRAHUB_PRODUCTION",
+            "INFRAHUB_CONFIG",
+            "OTEL_RESOURCE_ATTRIBUTES",
+            "INFRAHUB_ADDRESS",
+        }
+        settings = Settings()
+        env_defaults = {}
 
-    for subsetting in dict(settings):
-        subsettings = getattr(settings, subsetting)
-        fetch_fields(subsettings)
+        def fetch_fields(subset: BaseSettings) -> None:
+            env_settings = EnvSettingsSource(
+                subset.__class__,
+                env_prefix=subset.model_config.get("env_prefix"),
+            )
+            for field_name, field in subset.__class__.model_fields.items():
+                field_inst = getattr(subset, field_name)
+                if issubclass(field_inst.__class__, BaseSettings):
+                    fetch_fields(field_inst)
+                else:
+                    for _, field_env_name, _ in env_settings._extract_field_info(field, field_name):
+                        env_vars.add(field_env_name.upper())
+                        env_defaults[field_env_name.upper()] = field.get_default()
 
-    env_vars.discard("PATH")
-    if update_docker_file:
-        update_docker_compose_env_vars(
-            env_vars=sorted(env_vars),
-            env_defaults=env_defaults,
-            enum_mappings=enum_mappings,
-            docker_file=docker_file,
-        )
-    else:
-        for var in sorted(env_vars):
-            print(f"{var}:")
+        for subsetting in dict(settings):
+            subsettings = getattr(settings, subsetting)
+            fetch_fields(subsettings)
+
+        env_vars.discard("PATH")
+        if update_docker_file:
+            update_docker_compose_env_vars(
+                env_vars=sorted(env_vars),
+                env_defaults=env_defaults,
+                enum_mappings=enum_mappings,
+                docker_file=docker_file,
+            )
+        else:
+            for var in sorted(env_vars):
+                print(f"{var}:")
+    finally:
+        if original_value is None:
+            os.environ.pop(env_key, None)
+        else:
+            os.environ[env_key] = original_value
 
 
 @task
