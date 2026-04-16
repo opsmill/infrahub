@@ -130,12 +130,12 @@ export const Check = ({ id }: tCheckProps) => {
   return (
     <div
       className={classNames(
-        "flex flex-col rounded-md border border-l-4 bg-gray-50 p-2",
+        "flex min-w-0 flex-col rounded-md border border-l-4 bg-gray-50 p-2",
         getCheckBorderColor(severity?.value)
       )}
     >
-      <div className="mb-2 flex">
-        <div className="flex flex-1 flex-col">
+      <div className="mb-2 flex min-w-0">
+        <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex items-center">
             {getCheckIcon(conclusion?.value)}
 
@@ -157,8 +157,8 @@ export const Check = ({ id }: tCheckProps) => {
           </div>
 
           {message?.value && (
-            <div className="mt-2">
-              <Accordion title={"Message"}>
+            <div className="mt-2 min-w-0">
+              <Accordion title={"Message"} className="min-w-0">
                 <CodeViewer>{message?.value}</CodeViewer>
               </Accordion>
             </div>
