@@ -3,7 +3,6 @@ import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
-import { ErrorBoundary } from "react-error-boundary";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
@@ -21,6 +20,7 @@ import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaO
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -57,9 +57,7 @@ export const SearchNodes = () => {
   return (
     <SearchAnywhereGroup heading="Objects">
       {data.matchingObjects.map((node) => (
-        <ErrorBoundary key={node.id} fallback={null}>
-          <NodesOptions node={node} />
-        </ErrorBoundary>
+        <NodesOptions key={node.id} node={node} />
       ))}
     </SearchAnywhereGroup>
   );
@@ -70,7 +68,45 @@ type NodesOptionsProps = {
 };
 
 const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const { schema } = useSchema(node.kind, { throwIfNotFound: true });
+  const { schema } = useSchema(node.kind);
+
+  if (!schema) {
+    return <SchemaNodeResult node={node} />;
+  }
+
+  return <NodesOptionsDetails node={node} schema={schema} />;
+};
+
+const SchemaNodeResult = ({ node }: NodesOptionsProps) => {
+  const label = node.display_label || node.kind;
+  const url = `/schema?kind=${node.kind}`;
+
+  return (
+    <SearchAnywhereItem to={url} value={url}>
+      <Icon icon="mdi:file-tree-outline" className="px-2 py-0.5 text-custom-blue-700 text-lg" />
+
+      <div className="grow overflow-auto text-sm">
+        <div className="flex justify-between">
+          <span className="mr-1 font-semibold text-custom-blue-800">{label}</span>
+
+          <div className="inline-flex items-center gap-1">
+            <Badge variant="blue" className="py-0 text-xxs">
+              Schema
+            </Badge>
+            <span className="mr-2 font-medium text-xxs">{node.kind}</span>
+          </div>
+        </div>
+      </div>
+    </SearchAnywhereItem>
+  );
+};
+
+type NodesOptionsDetailsProps = {
+  node: ObjectResult;
+  schema: ModelSchema;
+};
+
+const NodesOptionsDetails = ({ node, schema }: NodesOptionsDetailsProps) => {
   const {
     data: objectDetailsData,
     isPending,

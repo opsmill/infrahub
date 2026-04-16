@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 class Node(ObjectType):
     id = Field(String, required=True)
     kind = Field(String, required=True, description="The node kind")
+    display_label = Field(String, required=False, description="Human-readable label for the node")
 
 
 class NodeEdge(ObjectType):
@@ -116,8 +117,9 @@ async def search_resolver(
         matching = await NodeManager.get_one(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
-        if matching and matching.get_schema().namespace not in ("Schema", "Internal"):
-            results.append({"id": matching.id, "kind": matching.get_kind()})
+        if matching:
+            display_label = await matching.get_display_label(db=graphql_context.db)
+            results.append({"id": matching.id, "kind": matching.get_kind(), "display_label": display_label})
     else:
         with contextlib.suppress(ValueError, ipaddress.AddressValueError):
             # Convert any IPv6 address, network or partial address to collapsed format as it might be stored in db.

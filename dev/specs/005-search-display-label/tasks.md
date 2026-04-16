@@ -19,8 +19,8 @@
 
 **Purpose**: No new project setup needed — all changes are to existing files. This phase handles schema regeneration prerequisites.
 
-- [ ] T001 Verify backend dev environment: `uv sync --all-groups`
-- [ ] T002 Verify frontend dev environment: `cd frontend/app && npm install`
+- [x] T001 Verify backend dev environment: `uv sync --all-groups`
+- [x] T002 Verify frontend dev environment: `cd frontend/app && npm install`
 
 ---
 
@@ -30,14 +30,14 @@
 
 **CRITICAL**: No frontend tasks can begin until this phase is complete.
 
-- [ ] T003 Add `display_label` field to `Node` ObjectType in `backend/infrahub/graphql/queries/search.py`
-- [ ] T004 Remove Schema/Internal namespace filter from UUID search path in `backend/infrahub/graphql/queries/search.py`
-- [ ] T005 Compute `display_label` via `node.get_display_label(db)` for UUID matches in `backend/infrahub/graphql/queries/search.py`
-- [ ] T006 Update backend test: rename and rewrite `test_search_anywhere_by_uuid_excludes_internal_nodes` to verify Schema/Internal nodes ARE returned with `display_label` in `backend/tests/component/graphql/queries/test_search.py`
-- [ ] T007 Add backend test: verify `display_label` field is present in UUID search results for regular nodes in `backend/tests/component/graphql/queries/test_search.py`
-- [ ] T008 Add backend test: verify text-based search still excludes Schema/Internal nodes (no regression) in `backend/tests/component/graphql/queries/test_search.py`
-- [ ] T009 Regenerate GraphQL schema: run `uv run invoke backend.generate` to update `schema/schema.graphql`
-- [ ] T010 Run backend linting and formatting: `uv run invoke format && uv run invoke lint`
+- [x] T003 Add `display_label` field to `Node` ObjectType in `backend/infrahub/graphql/queries/search.py`
+- [x] T004 Remove Schema/Internal namespace filter from UUID search path in `backend/infrahub/graphql/queries/search.py`
+- [x] T005 Compute `display_label` via `node.get_display_label(db)` for UUID matches in `backend/infrahub/graphql/queries/search.py`
+- [x] T006 Update backend test: rename and rewrite `test_search_anywhere_by_uuid_excludes_internal_nodes` to verify Schema/Internal nodes ARE returned with `display_label` in `backend/tests/component/graphql/queries/test_search.py`
+- [x] T007 Add backend test: verify `display_label` field is present in UUID search results for regular nodes in `backend/tests/component/graphql/queries/test_search.py`
+- [x] T008 Add backend test: verify text-based search still excludes Schema/Internal nodes (no regression) in `backend/tests/component/graphql/queries/test_search.py`
+- [x] T009 Regenerate GraphQL schema: run `uv run invoke backend.generate` to update `schema/schema.graphql`
+- [x] T010 Run backend linting and formatting: `uv run invoke format && uv run invoke lint`
 
 **Checkpoint**: Backend API returns `display_label` for UUID searches and no longer filters Schema/Internal nodes. All backend tests pass.
 
@@ -51,16 +51,16 @@
 
 ### Implementation for User Story 1
 
-- [ ] T011 [P] [US1] Add `display_label` to GraphQL query selection set in `frontend/app/src/entities/navigation/api/search.ts`
-- [ ] T012 [P] [US1] Add `display_label` to `ObjectResult` type and map it through in `frontend/app/src/entities/navigation/domain/search-anywhere.ts`
-- [ ] T013 [US1] In `NodesOptions` component, when `useSchema(node.kind)` returns null, render a `SchemaNodeResult` component instead of returning null in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.tsx`
-- [ ] T014 [US1] Implement `SchemaNodeResult` component: display `display_label` (fallback to kind), kind badge, link to `/schema?kind={kind}` in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.tsx`
+- [x] T011 [P] [US1] Add `display_label` to GraphQL query selection set in `frontend/app/src/entities/navigation/api/search.ts`
+- [x] T012 [P] [US1] Add `display_label` to `ObjectResult` type and map it through in `frontend/app/src/entities/navigation/domain/search-anywhere.ts`
+- [x] T013 [US1] In `NodesOptions` component, when `useSchema(node.kind)` returns null, render a `SchemaNodeResult` component instead of returning null in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.tsx`
+- [x] T014 [US1] Implement `SchemaNodeResult` component: display `display_label` (fallback to kind), kind badge, link to `/schema?kind={kind}` in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.tsx`
 
 ### Tests for User Story 1
 
-- [ ] T015 [P] [US1] Add test: Schema kind result renders simplified view with `display_label` and kind badge in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx` (new file)
-- [ ] T016 [P] [US1] Add test: Schema kind result links to `/schema?kind={kind}` in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
-- [ ] T017 [P] [US1] Add test: missing `display_label` falls back to showing kind in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
+- [x] T015 [P] [US1] Add test: Schema kind result renders simplified view with `display_label` and kind badge in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx` (new file)
+- [x] T016 [P] [US1] Add test: Schema kind result links to `/schema?kind={kind}` in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
+- [x] T017 [P] [US1] Add test: missing `display_label` falls back to showing kind in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
 
 **Checkpoint**: SchemaNode UUID search returns visible result with label. Click navigates to schema page. US1 fully functional.
 
@@ -78,7 +78,7 @@ No new implementation needed — the `NodesOptions` component already handles re
 
 ### Tests for User Story 2
 
-- [ ] T018 [P] [US2] Add test: regular kind result still renders via full detail path (calls `useGetObject`) in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
+- [x] T018 [P] [US2] Add test: regular kind result still renders via full detail path (calls `useGetObject`) in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
 
 **Checkpoint**: Regular node search is confirmed unchanged. US2 verified.
 
@@ -96,7 +96,7 @@ No additional implementation needed — the `SchemaNodeResult` component from US
 
 ### Tests for User Story 3
 
-- [ ] T019 [US3] Add test: Internal namespace kind result renders same simplified view as Schema kind in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
+- [x] T019 [US3] Add test: Internal namespace kind result renders same simplified view as Schema kind in `frontend/app/src/entities/navigation/ui/search-anywhere/search-nodes.test.tsx`
 
 **Checkpoint**: Internal namespace nodes render and navigate correctly. US3 verified.
 
@@ -106,10 +106,10 @@ No additional implementation needed — the `SchemaNodeResult` component from US
 
 **Purpose**: Lint, format, betterer, and final validation.
 
-- [ ] T020 Run frontend linting and formatting: `cd frontend/app && npm run biome:fix`
-- [ ] T021 Run betterer and update results if needed: `cd frontend/app && npx betterer`
-- [ ] T022 Commit updated `.betterer.results` if changed in `frontend/app/.betterer.results`
-- [ ] T023 Run full frontend test suite: `cd frontend/app && npm run test`
+- [x] T020 Run frontend linting and formatting: `cd frontend/app && npm run biome:fix`
+- [x] T021 Run betterer and update results if needed: `cd frontend/app && npx betterer`
+- [x] T022 Commit updated `.betterer.results` if changed in `frontend/app/.betterer.results`
+- [x] T023 Run full frontend test suite: `cd frontend/app && npm run test`
 - [ ] T024 Run quickstart.md verification commands
 
 ---

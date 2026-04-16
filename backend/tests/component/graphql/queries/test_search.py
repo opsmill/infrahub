@@ -21,6 +21,7 @@ query ($search: String!) {
             node {
                 id
                 kind
+                display_label
             }
         }
     }
@@ -69,16 +70,12 @@ async def test_search_anywhere_by_uuid(
     assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["kind"] == car_accord_main.get_kind()
 
 
-async def test_search_anywhere_by_uuid_excludes_internal_nodes(
+async def test_search_anywhere_by_uuid_includes_schema_internal_nodes(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_core_models_schema: SchemaBranch,
 ) -> None:
-    """UUID search should not return nodes from Schema or Internal namespaces.
-
-    Reproduces the bug where searching for a SchemaNode UUID in the frontend
-    crashed because 'SchemaNode' kind is not in the frontend schema registry.
-    """
+    """UUID search should return nodes from Schema and Internal namespaces with display_label."""
     schema = SchemaRoot(
         nodes=[
             {
@@ -106,7 +103,7 @@ async def test_search_anywhere_by_uuid_excludes_internal_nodes(
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
-    # Internal namespace node should not be returned
+    # Internal namespace node should be returned with display_label
     result = await graphql(
         schema=gql_params.schema,
         source=SEARCH_QUERY,
@@ -117,16 +114,85 @@ async def test_search_anywhere_by_uuid_excludes_internal_nodes(
 
     assert result.errors is None
     assert result.data
-    assert result.data["InfrahubSearchAnywhere"]["count"] == 0
-    assert result.data["InfrahubSearchAnywhere"]["edges"] == []
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 1
+    node_data = result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]
+    assert node_data["id"] == internal_node.id
+    assert node_data["kind"] == "InternalWidget"
+    assert node_data["display_label"] is not None
 
-    # Schema namespace node should not be returned
+    # Schema namespace node should be returned with display_label
     result = await graphql(
         schema=gql_params.schema,
         source=SEARCH_QUERY,
         context_value=gql_params.context,
         root_value=None,
         variable_values={"search": schema_node.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 1
+    node_data = result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]
+    assert node_data["id"] == schema_node.id
+    assert node_data["kind"] == "SchemaGadget"
+    assert node_data["display_label"] is not None
+
+
+async def test_search_anywhere_by_uuid_includes_display_label(
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    branch: Branch,
+) -> None:
+    """UUID search should include display_label for regular nodes."""
+    branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": car_accord_main.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    node_data = result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]
+    assert node_data["display_label"] is not None
+    assert isinstance(node_data["display_label"], str)
+    assert len(node_data["display_label"]) > 0
+
+
+async def test_search_anywhere_text_excludes_schema_internal_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """Text-based search should not return Schema or Internal namespace nodes."""
+    schema = SchemaRoot(
+        nodes=[
+            {
+                "name": "Widget",
+                "namespace": "Internal",
+                "attributes": [{"name": "name", "kind": "Text"}],
+            },
+        ],
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    internal_node = await Node.init(db=db, schema="InternalWidget")
+    await internal_node.new(db=db, name="findable-widget")
+    await internal_node.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": "findable-widget"},
     )
 
     assert result.errors is None

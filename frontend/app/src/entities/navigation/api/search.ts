@@ -11,6 +11,7 @@ const SEARCH = graphql(`
         node {
           id
           kind
+          display_label
         }
       }
     }

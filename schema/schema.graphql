@@ -10617,6 +10617,8 @@ type Node {
   id: String!
   """The node kind"""
   kind: String!
+  """Human-readable label for the node"""
+  display_label: String
 }
 
 type NodeEdge {
