@@ -58,7 +58,7 @@ export const SearchNodes = () => {
     <SearchAnywhereGroup heading="Objects">
       {data.matchingObjects.map((node) => (
         <ErrorBoundary key={node.id} fallback={null}>
-          <NodesOptions  node={node} />
+          <NodesOptions node={node} />
         </ErrorBoundary>
       ))}
     </SearchAnywhereGroup>
