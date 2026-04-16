@@ -101,18 +101,18 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Write", "Glob", "Grep",
-                  "Bash(git rev-parse :*)", "Bash(git log *)",
-                  "Bash(git diff)", "Bash(git diff :*)",
-                  "Bash(git show :*)",
+                  "Bash(git rev-parse *)", "Bash(git log *)",
+                  "Bash(git diff)", "Bash(git diff *)",
+                  "Bash(git show *)",
                   "Bash(git fetch *)", "Bash(git branch -a)",
-                  "Bash(cd :*)",
+                  "Bash(cd *)",
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
-                  "Bash(ls)", "Bash(ls :*)",
-                  "Bash(mkdir -p :*)"
+                  "Bash(ls)", "Bash(ls *)",
+                  "Bash(mkdir -p *)"
                 ],
                 "deny": [
-                  "Bash(git push --force :*)", "Bash(git push -f :*)",
-                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(git push --force *)", "Bash(git push -f *)",
+                  "Bash(git reset *)", "Bash(git clean *)",
                   "Bash(gh pr merge *)",
                   "Write(.github/**)", "Edit(.github/**)",
                   "Write(.git/**)", "Edit(.git/**)"

@@ -1219,7 +1219,10 @@ _TEST_WRITER_COMMON = [
     ("Bash(uv run invoke lint)",                       True,  "invoke lint"),
     # Allowed -- npm/npx
     ("Bash(npm run test path/to/test)",                True,  "npm test"),
+    ("Bash(npm --prefix /path/to/frontend/app run test -- --run src/test.ts)", True, "npm prefix run test"),
+    ("Bash(npm --prefix /path/to/frontend/app run biome:fix)", True, "npm prefix biome:fix"),
     ("Bash(npx biome check --write .)",                True,  "biome check exact"),
+    ("Bash(npx --prefix /path/to/frontend/app biome check --write /path/to/file.ts)", True, "npx prefix biome check"),
     ("Bash(npx playwright test path/to/test)",         True,  "playwright test"),
     # Allowed -- cd frontend (enumerated)
     ("Bash(cd frontend/app && npm run test path/to/test)", True, "cd frontend npm test"),
@@ -1316,10 +1319,10 @@ import json, yaml, glob, os
 # automatically. A renamed job that drops its deny list will be caught.
 
 EXPECTED_DENY = [
-    'Bash(git push --force :*)',
-    'Bash(git push -f :*)',
-    'Bash(git reset :*)',
-    'Bash(git clean :*)',
+    'Bash(git push --force *)',
+    'Bash(git push -f *)',
+    'Bash(git reset *)',
+    'Bash(git clean *)',
     'Bash(gh pr merge *)',
     'Write(.github/**)',
     'Edit(.github/**)',

@@ -19,7 +19,11 @@ jobs:
   review:
     if: |
       startsWith(github.event.pull_request.head.ref, 'ai-bug-pipeline-') &&
-      github.event.pull_request.user.login == 'claude[bot]' &&
+      (
+        github.event.pull_request.user.login == 'claude[bot]' ||
+        github.event.pull_request.author_association == 'OWNER' ||
+        github.event.pull_request.author_association == 'MEMBER'
+      ) &&
       (
         contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') ||
         contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
@@ -91,15 +95,15 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Write", "Glob", "Grep",
-                  "Bash(git diff)", "Bash(git diff :*)",
-                  "Bash(git log :*)", "Bash(git show :*)",
-                  "Bash(cd :*)",
+                  "Bash(git diff)", "Bash(git diff *)",
+                  "Bash(git log *)", "Bash(git show *)",
+                  "Bash(cd *)",
                   "Bash(gh pr comment *)", "Bash(gh pr edit *)", "Bash(gh pr view *)",
-                  "Bash(ls)", "Bash(ls :*)"
+                  "Bash(ls)", "Bash(ls *)"
                 ],
                 "deny": [
-                  "Bash(git push --force :*)", "Bash(git push -f :*)",
-                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(git push --force *)", "Bash(git push -f *)",
+                  "Bash(git reset *)", "Bash(git clean *)",
                   "Bash(gh pr merge *)",
                   "Write(.github/**)", "Edit(.github/**)",
                   "Write(.git/**)", "Edit(.git/**)"
