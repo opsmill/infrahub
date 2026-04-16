@@ -251,7 +251,7 @@ async def sync_remote_repositories() -> None:
             if repo.reinitialized:
                 try:
                     await repo.import_objects_from_files(  # type: ignore[call-overload]
-                        git_branch_name=registry.default_branch, infrahub_branch_name=infrahub_branch
+                        git_branch_name=repo.default_branch, infrahub_branch_name=infrahub_branch
                     )
                 except RepositoryError as exc:
                     log.info(exc.message)
