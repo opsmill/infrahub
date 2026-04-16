@@ -10,12 +10,15 @@ from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.manager import NodeManager
+from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import BranchNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types.context import ContextInput
 from infrahub.log import get_logger
+from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.workflows.catalogue import (
     BRANCH_CREATE,
     BRANCH_DELETE,
@@ -146,6 +149,16 @@ class BranchDelete(Mutation):
             "branch": obj.name,
             "delete_from_git": bool(data.delete_from_git),
         }
+        active_proposed_changes = await NodeManager.query(
+            db=graphql_context.db,
+            schema=CoreProposedChange,
+            filters={
+                "source_branch__value": obj.name,
+                "state__value": ProposedChangeState.OPEN.value,
+            },
+        )
+        if active_proposed_changes:
+            parameters["proposed_change_id"] = active_proposed_changes[0].id
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
