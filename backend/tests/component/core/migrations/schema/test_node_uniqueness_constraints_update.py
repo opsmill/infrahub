@@ -10,8 +10,6 @@ from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
 from infrahub.core.schema import SchemaRoot
-from infrahub.core.schema.definitions.core.template import core_object_template
-from infrahub.core.schema.node_schema import NodeSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -38,26 +36,12 @@ async def car_person_schema(
 
 
 @pytest.fixture
-async def car_person_schema_with_template(
+async def car_person_schema_nbr_seats_in_constraint(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> SchemaBranch:
-    """Schema where nbr_seats is NOT in a uniqueness constraint — profiles and templates include nbr_seats."""
-    registry.schema.register_schema(schema=SchemaRoot(generics=[core_object_template]), branch=default_branch.name)
-    for node in car_person_schema_unregistered.nodes:
-        node.generate_template = True
-    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
-
-
-@pytest.fixture
-async def car_person_schema_nbr_seats_in_constraint_with_template(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
-) -> SchemaBranch:
-    """Schema where nbr_seats IS in a single-attr uniqueness constraint — profiles and templates exclude nbr_seats."""
-    registry.schema.register_schema(schema=SchemaRoot(generics=[core_object_template]), branch=default_branch.name)
+    """Schema where nbr_seats IS in a uniqueness constraint — profiles exclude nbr_seats."""
     car_node = next(n for n in car_person_schema_unregistered.nodes if n.name == "Car")
-    car_node.uniqueness_constraints = [["name__value"], ["nbr_seats__value"]]
-    for node in car_person_schema_unregistered.nodes:
-        node.generate_template = True
+    car_node.uniqueness_constraints = [["name__value", "nbr_seats__value"]]
     return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
 
 
@@ -70,60 +54,26 @@ async def car_profile1_main(db: InfrahubDatabase, default_branch: Branch, car_pe
 
 
 @pytest.fixture
-async def car_profile1_and_template1_with_nbr_seats(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema_with_template: SchemaBranch
-) -> None:
-    """Profile and template nodes created when nbr_seats is included (not in a uniqueness constraint)."""
-    profile = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
-    await profile.new(db=db, profile_name="car-profile1", nbr_seats=5, is_electric=False)
-    await profile.save(db=db)
-
-    template_person = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
-    await template_person.new(db=db, template_name="template-person-1")
-    await template_person.save(db=db)
-
-    template = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
-    await template.new(db=db, template_name="template-car-1", nbr_seats=5, is_electric=False, owner=template_person)
-    await template.save(db=db)
-
-
-@pytest.fixture
-async def car_profile1_and_template1_without_nbr_seats(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema_nbr_seats_in_constraint_with_template: SchemaBranch,
-) -> None:
-    """Profile and template nodes created when nbr_seats is excluded (it's in a uniqueness constraint)."""
+async def car_profile1_no_nbr_seats(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_nbr_seats_in_constraint: SchemaBranch
+) -> Node:
+    """Profile node created when nbr_seats is excluded from profiles (it's in a uniqueness constraint)."""
     profile = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
     await profile.new(db=db, profile_name="car-profile1", is_electric=False)
     await profile.save(db=db)
-
-    template_person = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
-    await template_person.new(db=db, template_name="template-person-1")
-    await template_person.save(db=db)
-
-    template = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
-    await template.new(db=db, template_name="template-car-1", is_electric=False, owner=template_person)
-    await template.save(db=db)
+    return profile
 
 
 async def test_migration_attribute_added_to_uniqueness_constraint(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema_with_template: SchemaBranch,
-    car_profile1_and_template1_with_nbr_seats: None,
+    car_person_schema: SchemaBranch,
+    car_profile1_main: Node,
 ) -> None:
-    """Adding nbr_seats to a single-attr uniqueness constraint removes it from both profile and template nodes."""
+    """Adding nbr_seats to a uniqueness constraint removes it from profile nodes."""
     await assert_attribute_path_status(
         db=db,
         node_label="ProfileTestCar",
-        attr_name="nbr_seats",
-        branch_name=default_branch.name,
-        expected_status="active",
-    )
-    await assert_attribute_path_status(
-        db=db,
-        node_label="TemplateTestCar",
         attr_name="nbr_seats",
         branch_name=default_branch.name,
         expected_status="active",
@@ -134,7 +84,7 @@ async def test_migration_attribute_added_to_uniqueness_constraint(
 
     candidate_schema = schema.duplicate()
     new_car_schema = candidate_schema.get(name="TestCar")
-    new_car_schema.uniqueness_constraints = [["name__value"], ["nbr_seats__value"]]
+    new_car_schema.uniqueness_constraints = [["name__value", "nbr_seats__value"]]
 
     migration = NodeUniquenessConstraintsUpdateMigration(
         previous_node_schema=prev_car_schema,
@@ -149,13 +99,6 @@ async def test_migration_attribute_added_to_uniqueness_constraint(
     await assert_attribute_path_status(
         db=db,
         node_label="ProfileTestCar",
-        attr_name="nbr_seats",
-        branch_name=default_branch.name,
-        expected_status="deleted",
-    )
-    await assert_attribute_path_status(
-        db=db,
-        node_label="TemplateTestCar",
         attr_name="nbr_seats",
         branch_name=default_branch.name,
         expected_status="deleted",
@@ -165,17 +108,16 @@ async def test_migration_attribute_added_to_uniqueness_constraint(
 async def test_migration_attribute_removed_from_uniqueness_constraint(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_person_schema_nbr_seats_in_constraint_with_template: SchemaBranch,
-    car_profile1_and_template1_without_nbr_seats: None,
+    car_person_schema_nbr_seats_in_constraint: SchemaBranch,
+    car_profile1_no_nbr_seats: Node,
 ) -> None:
-    """Removing nbr_seats from a single-attr uniqueness constraint adds it to both profile and template nodes."""
+    """Removing nbr_seats from a uniqueness constraint adds it to profile nodes."""
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
 
     candidate_schema = schema.duplicate()
     new_car_schema = candidate_schema.get(name="TestCar")
     new_car_schema.uniqueness_constraints = [["name__value"]]
-    new_car_schema.get_attribute("nbr_seats").unique = False
 
     migration = NodeUniquenessConstraintsUpdateMigration(
         previous_node_schema=prev_car_schema,
@@ -190,13 +132,6 @@ async def test_migration_attribute_removed_from_uniqueness_constraint(
     await assert_attribute_path_status(
         db=db,
         node_label="ProfileTestCar",
-        attr_name="nbr_seats",
-        branch_name=default_branch.name,
-        expected_status="active",
-    )
-    await assert_attribute_path_status(
-        db=db,
-        node_label="TemplateTestCar",
         attr_name="nbr_seats",
         branch_name=default_branch.name,
         expected_status="active",
@@ -293,31 +228,3 @@ async def test_migration_edge_timestamps(
     assert not execution_result.errors
     after_snapshot = await snapshotter.snapshot()
     assert_edge_timestamps(before_snapshot, after_snapshot, at.to_string())
-
-
-async def test_migration_no_change_for_schema_without_template(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    car_person_schema: SchemaBranch,
-    car_profile1_main: Node,
-) -> None:
-    """Migration does nothing for templates when generate_template=False."""
-    schema = registry.schema.get_schema_branch(name=default_branch.name)
-    prev_car_schema = schema.get(name="TestCar")
-
-    candidate_schema = schema.duplicate()
-    new_car_schema = candidate_schema.get(name="TestCar")
-    assert isinstance(new_car_schema, NodeSchema)
-    new_car_schema.uniqueness_constraints = [["name__value", "nbr_seats__value"]]
-    new_car_schema.generate_template = False
-
-    migration = NodeUniquenessConstraintsUpdateMigration(
-        previous_node_schema=prev_car_schema,
-        new_node_schema=new_car_schema,
-        schema_path=_make_schema_path("TestCar"),
-    )
-
-    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
-
-    # Profile migration still runs, but no template migration
-    assert not execution_result.errors

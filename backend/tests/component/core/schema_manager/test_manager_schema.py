@@ -786,9 +786,7 @@ def test_schema_branch_processes_node_template_schema_weight(register_core_model
     template = schema_branch.get(name="TemplateDcimDevice", duplicate=False)
     dcim_device = schema_branch.get(name="DcimDevice", duplicate=False)
 
-    # `name` is excluded from the template because human_friendly_id=["name__value"]
-    # so it becomes unique=True during schema processing
-    for attr_name in ("description", "os_version"):
+    for attr_name in ("name", "description", "os_version"):
         assert (
             template.get_attribute(name=attr_name).order_weight
             == dcim_device.get_attribute(name=attr_name).order_weight + 10000
@@ -4530,8 +4528,6 @@ async def test_manage_object_templates_with_component_relationships() -> None:
     assert test_interface_template.uniqueness_constraints == [["template_name__value", "device"]]
     test_interface = schema_branch.get(name=TestKind.PHYSICAL_INTERFACE, duplicate=False)
     for attr in test_interface.attributes:
-        if not test_interface.check_if_attr_supports_templates(attribute_schema=attr):
-            continue
         template_attr = test_interface_template.get_attribute(name=attr.name)
         # Optional value in component template should match original's
         assert attr.optional == template_attr.optional
@@ -4542,8 +4538,6 @@ async def test_manage_object_templates_with_component_relationships() -> None:
     test_interface = schema_branch.get(name=TestKind.INTERFACE, duplicate=False)
     assert test_interface.is_generic_schema
     for attr in test_interface.attributes:
-        if not test_interface.check_if_attr_supports_templates(attribute_schema=attr):
-            continue
         template_attr = test_interface_template.get_attribute(name=attr.name)
         assert attr.optional == template_attr.optional
     for rel in test_interface.relationships:
@@ -4688,58 +4682,3 @@ async def test_profile_does_not_contain_optional_unique_attributes() -> None:
 
     with pytest.raises(ValueError, match="Unable to find the attribute year"):
         network_router_profile_2.get_attribute("year")
-
-
-async def test_template_does_not_contain_optional_unique_attributes() -> None:
-    """Templates exclude attributes that are in a single-attr uniqueness constraint or have unique=True,
-    but unlike profiles, they retain optional attributes that appear only in compound constraints."""
-    schema = {
-        "namespace": "Network",
-        "name": "Router",
-        "generate_template": True,
-        "uniqueness_constraints": [["name__value", "age__value"], ["year__value"]],
-        "human_friendly_id": ["name__value"],
-        "display_label": "name__value",
-        "attributes": [
-            {"name": "name", "kind": "Text", "optional": True},
-            {"name": "age", "kind": "Number", "optional": True},
-            {"name": "year", "kind": "Number", "optional": True},
-        ],
-    }
-    schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(
-        schema=SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[schema])
-    )
-    schema_branch.process()
-
-    network_router_template = schema_branch.get(name="TemplateNetworkRouter", duplicate=False)
-
-    # name and age are optional but appear only in a compound constraint — templates include them
-    network_router_template.get_attribute("name")
-    network_router_template.get_attribute("age")
-
-    # year is optional and appears in a single-attr constraint — templates exclude it
-    with pytest.raises(ValueError, match="Unable to find the attribute year"):
-        network_router_template.get_attribute("year")
-
-    schema_2 = copy.deepcopy(schema)
-    schema_2["attributes"][0]["unique"] = True
-    schema_2["attributes"][1]["unique"] = True
-    schema_2["attributes"][2]["unique"] = True
-    schema_2["uniqueness_constraints"] = []
-
-    schema_branch_2 = SchemaBranch(cache={}, name="test2")
-    schema_branch_2.load_schema(
-        schema=SchemaRoot(generics=[core_object_template, core_object_component_template], nodes=[schema_2])
-    )
-    schema_branch_2.process()
-
-    network_router_template_2 = schema_branch_2.get(name="TemplateNetworkRouter", duplicate=False)
-    with pytest.raises(ValueError, match="Unable to find the attribute name"):
-        network_router_template_2.get_attribute("name")
-
-    with pytest.raises(ValueError, match="Unable to find the attribute age"):
-        network_router_template_2.get_attribute("age")
-
-    with pytest.raises(ValueError, match="Unable to find the attribute year"):
-        network_router_template_2.get_attribute("year")

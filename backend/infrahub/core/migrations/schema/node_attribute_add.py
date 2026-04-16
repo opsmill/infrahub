@@ -35,7 +35,7 @@ class NodeAttributeAddMigrationQuery01(AttributeMigrationQuery, AttributeAddQuer
             schema_kinds.append(f"Profile{schema.kind}")
             if isinstance(schema, GenericSchema) and schema.used_by:
                 schema_kinds.extend([f"Profile{kind}" for kind in schema.used_by])
-        if schema.check_if_attr_supports_templates(attribute_schema=new_attribute_schema):
+        if new_attribute_schema.support_templates:
             schema_kinds.append(f"Template{schema.kind}")
             if isinstance(schema, GenericSchema) and schema.used_by:
                 schema_kinds.extend([f"Template{kind}" for kind in schema.used_by])

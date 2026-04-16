@@ -87,7 +87,6 @@ class AttributeSchema(GeneratedAttributeSchema):
 
     @property
     def support_templates(self) -> bool:
-        # use check_if_attr_supports_templates from MainSchemaTypes as that also checks uniqueness constraint
         return self.read_only is False and self.unique is False
 
     def get_id(self) -> str:

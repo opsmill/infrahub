@@ -2545,9 +2545,7 @@ class SchemaBranch:
 
                 self.set(name=node_name, schema=node_schema)
 
-    def _create_attribute_resource_pool_relationship(
-        self, attr: AttributeSchema, node: MainSchemaTypes
-    ) -> RelationshipSchema | None:
+    def _create_attribute_resource_pool_relationship(self, attr: AttributeSchema) -> RelationshipSchema | None:
         """Create a resource pool relationship for a Number attribute on a template.
 
         When a Number attribute supports templates, this creates a corresponding relationship
@@ -2559,7 +2557,7 @@ class SchemaBranch:
         Returns:
             A RelationshipSchema for the resource pool relationship, or None if not applicable
         """
-        if attr.kind != "Number" or not node.check_if_attr_supports_templates(attribute_schema=attr):
+        if attr.kind != "Number" or not attr.support_templates:
             return None
 
         pool_rel_name = f"{attr.name}{RESOURCE_POOL_REL_SUFFIX}"
@@ -2703,7 +2701,7 @@ class SchemaBranch:
 
         # Add resource pool relationships for eligible attributes (e.g., Number → CoreNumberPool)
         for node_attr in node.attributes:
-            attr_pool_relationship = self._create_attribute_resource_pool_relationship(attr=node_attr, node=node)
+            attr_pool_relationship = self._create_attribute_resource_pool_relationship(attr=node_attr)
             if attr_pool_relationship:
                 template_schema.relationships.append(attr_pool_relationship)
 
@@ -2781,7 +2779,7 @@ class SchemaBranch:
                     template.inherit_from.append(self._get_object_template_kind(node_kind=inherited))
 
         for node_attr in node.attributes:
-            if not node.check_if_attr_supports_templates(attribute_schema=node_attr):
+            if not node_attr.support_templates:
                 continue
 
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
