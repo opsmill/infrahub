@@ -51,7 +51,7 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
             if self.new_schema.generate_profile and previous_supports_profiles != new_supports_profiles:
                 queries_to_run.append(
                     ProfilesAttributeRemoveMigrationQuery
-                    if not new_supports_profiles
+                    if new_supports_profiles is False
                     else ProfilesAttributeAddMigrationQuery
                 )
 
@@ -62,7 +62,7 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
             ):
                 queries_to_run.append(
                     TemplatesAttributeRemoveMigrationQuery
-                    if not new_supports_templates
+                    if new_supports_templates is False
                     else TemplatesAttributeAddMigrationQuery
                 )
 
@@ -71,7 +71,7 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
 
             attr_migration = AttributeSchemaMigration(
                 name=f"node.uniqueness_constraints.update.{attr.name}",
-                queries=[],
+                queries=queries_to_run,
                 new_node_schema=self.new_node_schema,
                 previous_node_schema=self.previous_node_schema,
                 schema_path=SchemaPath(
@@ -81,15 +81,9 @@ class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
                 ),
             )
 
-            for query_class in queries_to_run:
-                attr_result = await attr_migration.execute(
-                    migration_input=migration_input, branch=branch, queries=[query_class]
-                )
-                result.errors.extend(attr_result.errors)
-                result.nbr_migrations_executed += attr_result.nbr_migrations_executed
-                if result.errors:
-                    break
-
+            attr_result = await attr_migration.execute(migration_input=migration_input, branch=branch)
+            result.errors.extend(attr_result.errors)
+            result.nbr_migrations_executed += attr_result.nbr_migrations_executed
             if result.errors:
                 break
 
