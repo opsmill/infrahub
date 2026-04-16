@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
 
+import { constructPath } from "@/shared/api/rest/fetch";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -79,7 +80,7 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 
 const SchemaNodeResult = ({ node }: NodesOptionsProps) => {
   const label = node.display_label || node.kind;
-  const url = `/schema?kind=${node.kind}`;
+  const url = constructPath("/schema", [{ name: "kind", value: node.kind }]);
 
   return (
     <SearchAnywhereItem to={url} value={url}>
