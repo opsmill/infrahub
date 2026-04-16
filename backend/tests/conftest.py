@@ -532,16 +532,19 @@ def prefect_class(
         yield server_api_url
 
 
+# Mandatory settings that have no default — tests must provide them explicitly
+_REQUIRED_TEST_CONFIG: dict[str, dict[str, str]] = {"security": {"secret_key": "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"}}
+
+
 @pytest.fixture(scope="session", autouse=True)
 def load_settings_before_session() -> None:
-    os.environ.setdefault("INFRAHUB_SECURITY_SECRET_KEY", "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa")
-    load_and_exit()
+    load_and_exit(config_data=_REQUIRED_TEST_CONFIG)
 
 
 @pytest.fixture(scope="module", autouse=True)
 def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) -> None:
     # Settings need to be reloaded between each test module, as some module might modify settings that might break tests within other modules.
-    load_and_exit()
+    load_and_exit(config_data=_REQUIRED_TEST_CONFIG)
 
     # Other settings
     config.SETTINGS.storage.driver = config.StorageDriver.FileSystemStorage
@@ -551,7 +554,6 @@ def reload_settings_before_each_module(tmpdir_factory: pytest.TempdirFactory) ->
     config.SETTINGS.storage.local.path_ = Path(storage_dir)
 
     config.SETTINGS.miscellaneous.start_background_runner = False
-    config.SETTINGS.security.secret_key = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
     config.SETTINGS.main.internal_address = "http://mock"
     config.OVERRIDE.message_bus = BusRecorder()
 

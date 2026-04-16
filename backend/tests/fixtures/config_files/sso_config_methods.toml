@@ -1,4 +1,5 @@
 [security]
+secret_key = "test-secret-for-sso-config"
 oauth2_providers = ["provider1", "provider2"]
 oidc_providers = ["provider1", "provider2"]
 
