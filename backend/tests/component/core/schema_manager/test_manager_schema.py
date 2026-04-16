@@ -178,8 +178,8 @@ async def test_schema_branch_process_inheritance_node_level(animal_person_schema
     assert dog.human_friendly_id == animal.human_friendly_id
     assert cat.human_friendly_id != animal.human_friendly_id
 
-    assert dog.display_labels == animal.display_labels
-    assert cat.display_labels != animal.display_labels
+    assert dog.display_label == animal.display_label
+    assert cat.display_label != animal.display_label
 
     assert dog.order_by == animal.order_by
     assert cat.order_by != animal.order_by
