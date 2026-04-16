@@ -1,0 +1,36 @@
+dev/specs/005-search-display-label/spec.md
+  376fa329e2185481 2,5,7-9,11-13,15,17-19,23-25,27,29,31,33-35,38-40,42,44,46,48-50,53-57,61-65,74-76,79-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "6951ae70f7f82726ffaf712f8372ed7a8d178bc5",
+  "prompts": {
+    "376fa329e2185481": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a172657-500c-482b-bb9b-84b163488428",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 115,
+      "total_deletions": 0,
+      "accepted_lines": 46,
+      "overriden_lines": 28
+    },
+    "b7d33b2a1890d280": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "21d17be5-72fe-49d2-8985-c793ec95e50a",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 0,
+      "total_deletions": 0,
+      "accepted_lines": 85,
+      "overriden_lines": 0
+    }
+  }
+}
