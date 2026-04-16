@@ -10614,11 +10614,11 @@ type NestedPaginatedProfileIpamNamespace {
 }
 
 type Node {
+  """Human-readable label for the node"""
+  display_label: String
   id: String!
   """The node kind"""
   kind: String!
-  """Human-readable label for the node"""
-  display_label: String
 }
 
 type NodeEdge {
