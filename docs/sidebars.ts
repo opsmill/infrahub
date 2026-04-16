@@ -243,6 +243,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/schema',
                 'topics/order-weight',
+                'topics/schema-display',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
                 'topics/schema-extensions',
