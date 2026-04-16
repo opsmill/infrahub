@@ -106,12 +106,10 @@ export function RepositoryMenuSection({
         </MenuItem>
       )}
 
-      {isReadOnlyRepository && (
-        <MenuItem onAction={() => importCurrentCommit({ repositoryId })}>
-          <Icon icon="mdi:reload" />
-          Reimport current commit
-        </MenuItem>
-      )}
+      <MenuItem onAction={() => importCurrentCommit({ repositoryId })}>
+        <Icon icon="mdi:reload" />
+        Reimport current commit
+      </MenuItem>
     </MenuSection>
   );
 }
