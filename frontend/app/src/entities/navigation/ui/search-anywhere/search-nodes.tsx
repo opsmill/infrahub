@@ -3,6 +3,7 @@ import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
@@ -20,7 +21,6 @@ import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaO
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
-import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -57,7 +57,9 @@ export const SearchNodes = () => {
   return (
     <SearchAnywhereGroup heading="Objects">
       {data.matchingObjects.map((node) => (
-        <NodesOptions key={node.id} node={node} />
+        <ErrorBoundary key={node.id} fallback={null}>
+          <NodesOptions  node={node} />
+        </ErrorBoundary>
       ))}
     </SearchAnywhereGroup>
   );
@@ -67,20 +69,8 @@ type NodesOptionsProps = {
   node: ObjectResult;
 };
 
-export const NodesOptions = ({ node }: NodesOptionsProps) => {
-  const { schema } = useSchema(node.kind);
-
-  if (!schema) return null;
-
-  return <NodesOptionsDetails node={node} schema={schema} />;
-};
-
-type NodesOptionsDetailsProps = {
-  node: ObjectResult;
-  schema: ModelSchema;
-};
-
-const NodesOptionsDetails = ({ node, schema }: NodesOptionsDetailsProps) => {
+const NodesOptions = ({ node }: NodesOptionsProps) => {
+  const { schema } = useSchema(node.kind, { throwIfNotFound: true });
   const {
     data: objectDetailsData,
     isPending,
