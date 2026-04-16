@@ -1607,50 +1607,80 @@ class SchemaBranch:
 
         Also, HFID is added to the uniqueness constraints.
         """
-        errors_to_suppress = []
-        if not raise_parsing_errors:
-            errors_to_suppress.append(AttributePathParsingError)
         target_names = kinds if kinds is not None else self.generic_names_without_templates + self.node_names
         for name in target_names:
-            node = self.get(name=name, duplicate=False)
+            self._derive_human_friendly_id(name=name, raise_parsing_errors=raise_parsing_errors)
+            self._propagate_human_friendly_id_to_constraints(name=name, raise_parsing_errors=raise_parsing_errors)
 
-            if not node.human_friendly_id:
-                if node.unique_attributes:
-                    node = self.get(name=name, duplicate=True)
-                    node.human_friendly_id = [f"{node.unique_attributes[0].name}__value"]
-                    self.set(name=node.kind, schema=node)
+    def _derive_human_friendly_id(self, name: str, raise_parsing_errors: bool) -> None:
+        """Set node.human_friendly_id from unique attributes or single-attribute constraints.
 
-                # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
-                # then use that attribute as the human_friendly_id
-                elif node.uniqueness_constraints:
-                    for constraint_paths in node.uniqueness_constraints:
-                        if len(constraint_paths) > 1:
-                            continue
-                        constraint_path = constraint_paths[0]
-                        with contextlib.suppress(*errors_to_suppress):
-                            schema_path = node.parse_schema_path(path=constraint_path, schema=node)
-                        if (
-                            schema_path.is_type_attribute
-                            and schema_path.attribute_property_name == "value"
-                            and schema_path.attribute_schema
-                        ):
-                            node = self.get(name=name, duplicate=True)
-                            node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
-                            self.set(name=node.kind, schema=node)
-                            break
+        No-op if the node already has an HFID. Tries `unique_attributes` first, then
+        falls back to the first single-attribute entry in `uniqueness_constraints`.
+        Path-parsing failures during the constraint path resolution are re-raised
+        when `raise_parsing_errors=True` and silently skipped otherwise (the error
+        will surface later in process_validate as a structured ValueError).
+        """
+        node = self.get(name=name, duplicate=False)
+        if node.human_friendly_id:
+            return
 
-            # Add hfid to uniqueness constraint
-            with contextlib.suppress(*errors_to_suppress):
-                hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
-            if hfid_uniqueness_constraint:
+        if node.unique_attributes:
+            node = self.get(name=name, duplicate=True)
+            node.human_friendly_id = [f"{node.unique_attributes[0].name}__value"]
+            self.set(name=node.kind, schema=node)
+            return
+
+        # if no human_friendly_id and a uniqueness_constraint with a single attribute exists
+        # then use that attribute as the human_friendly_id
+        if not node.uniqueness_constraints:
+            return
+
+        for constraint_paths in node.uniqueness_constraints:
+            if len(constraint_paths) > 1:
+                continue
+            constraint_path = constraint_paths[0]
+            try:
+                schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+            except AttributePathParsingError:
+                if raise_parsing_errors:
+                    raise
+                continue
+            if (
+                schema_path.is_type_attribute
+                and schema_path.attribute_property_name == "value"
+                and schema_path.attribute_schema
+            ):
                 node = self.get(name=name, duplicate=True)
-                # Make sure there is no duplicate regarding generics values.
-                if node.uniqueness_constraints:
-                    if hfid_uniqueness_constraint not in node.uniqueness_constraints:
-                        node.uniqueness_constraints.append(hfid_uniqueness_constraint)
-                else:
-                    node.uniqueness_constraints = [hfid_uniqueness_constraint]
+                node.human_friendly_id = [f"{schema_path.attribute_schema.name}__value"]
                 self.set(name=node.kind, schema=node)
+                return
+
+    def _propagate_human_friendly_id_to_constraints(self, name: str, raise_parsing_errors: bool) -> None:
+        """Append the HFID-derived constraint to node.uniqueness_constraints if not already present.
+
+        No-op if the node has no HFID or the conversion produces an empty constraint.
+        Path-parsing failures from `convert_hfid_to_uniqueness_constraint` are re-raised
+        when `raise_parsing_errors=True` and silently skipped otherwise.
+        """
+        node = self.get(name=name, duplicate=False)
+        try:
+            hfid_uniqueness_constraint = node.convert_hfid_to_uniqueness_constraint(schema_branch=self)
+        except AttributePathParsingError:
+            if raise_parsing_errors:
+                raise
+            return
+        if not hfid_uniqueness_constraint:
+            return
+
+        node = self.get(name=name, duplicate=True)
+        # Make sure there is no duplicate regarding generics values.
+        if node.uniqueness_constraints:
+            if hfid_uniqueness_constraint not in node.uniqueness_constraints:
+                node.uniqueness_constraints.append(hfid_uniqueness_constraint)
+        else:
+            node.uniqueness_constraints = [hfid_uniqueness_constraint]
+        self.set(name=node.kind, schema=node)
 
     def register_human_friendly_id(self) -> None:
         """Register HFID automations
