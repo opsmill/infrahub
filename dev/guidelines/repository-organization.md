@@ -251,7 +251,7 @@ Each directory in `dev/` serves a specific purpose and follows a content lifecyc
 
 - `_shared.md` - Shared instructions for all flows
 - `new-component.md` - React component creation flow
-- `fix-bug.md` - Bug fixing flow
+- `bug-analyze.md` - Bug root cause analysis
 - `add-docs.md` - Documentation creation flow
 
 **Subdirectories**: None. Keep flat for easy discovery by agents.
