@@ -533,6 +533,115 @@ def template_relationship_peer_resolution_schema() -> SchemaRoot:
     )
 
 
+@pytest.fixture
+def inherited_and_local_relationships_schema() -> SchemaRoot:
+    """Node with `generate_template=True` that has both inherited and local relationships.
+
+    The generic defines an ATTRIBUTE relationship (tags) and a GENERIC relationship
+    (primary_site). The node inherits both and adds its own COMPONENT relationship
+    (interfaces) and another ATTRIBUTE relationship (owner). Template and profile
+    generation must handle the mixed provenance consistently across process() calls:
+      - inherited rels get identifiers from the generic
+      - local rels get auto-generated identifiers
+      - template peer rewriting depends on rel.kind (COMPONENT rewrites, ATTRIBUTE keeps)
+      - profile generation copies rels that pass support_profiles and aren't in constraints
+    """
+    return SchemaRoot(
+        generics=[
+            GenericSchema(
+                name="NetworkElement",
+                namespace="Test",
+                description="Generic with relationships that will be inherited.",
+                include_in_menu=False,
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                ],
+                relationships=[
+                    RelationshipSchema(
+                        name="tags",
+                        peer="TestTag",
+                        kind=RelationshipKind.ATTRIBUTE,
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                    ),
+                    RelationshipSchema(
+                        name="primary_site",
+                        peer="TestSite",
+                        kind=RelationshipKind.GENERIC,
+                        cardinality=RelationshipCardinality.ONE,
+                        optional=True,
+                    ),
+                ],
+            ),
+        ],
+        nodes=[
+            NodeSchema(
+                name="Tag",
+                namespace="Test",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            NodeSchema(
+                name="Site",
+                namespace="Test",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            NodeSchema(
+                name="Person",
+                namespace="Test",
+                include_in_menu=False,
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            NodeSchema(
+                name="Port",
+                namespace="Test",
+                include_in_menu=False,
+                generate_template=True,
+                attributes=[AttributeSchema(name="name", kind="Text")],
+                relationships=[
+                    RelationshipSchema(
+                        name="router",
+                        peer="TestRouter",
+                        kind=RelationshipKind.PARENT,
+                        cardinality=RelationshipCardinality.ONE,
+                        optional=False,
+                    ),
+                ],
+            ),
+            NodeSchema(
+                name="Router",
+                namespace="Test",
+                description="Node with inherited rels from generic + local rels.",
+                include_in_menu=False,
+                generate_template=True,
+                inherit_from=["TestNetworkElement"],
+                attributes=[
+                    AttributeSchema(name="role", kind="Text", optional=True),
+                ],
+                relationships=[
+                    # Local COMPONENT — template rewrites peer to TemplateTestPort
+                    RelationshipSchema(
+                        name="ports",
+                        peer="TestPort",
+                        kind=RelationshipKind.COMPONENT,
+                        cardinality=RelationshipCardinality.MANY,
+                        optional=True,
+                    ),
+                    # Local ATTRIBUTE — template keeps peer as-is
+                    RelationshipSchema(
+                        name="owner",
+                        peer="TestPerson",
+                        kind=RelationshipKind.ATTRIBUTE,
+                        cardinality=RelationshipCardinality.ONE,
+                        optional=True,
+                    ),
+                ],
+            ),
+        ],
+    )
+
+
 class TestSchemaProcessUniquenessIdempotent:
     """Loading the same schema payload twice must leave the persisted schema unchanged."""
 
@@ -644,5 +753,16 @@ class TestSchemaProcessUniquenessIdempotent:
         """Template relationship peers (rewritten vs kept) must be stable across process() calls."""
         schema_branch = register_core_models_schema.duplicate()
         schema_branch.load_schema(schema=template_relationship_peer_resolution_schema)
+
+        _validate_process_idempotent(schema_branch)
+
+    async def test_inherited_and_local_relationships(
+        self,
+        register_core_models_schema: SchemaBranch,
+        inherited_and_local_relationships_schema: SchemaRoot,
+    ) -> None:
+        """Node with a mix of inherited and local relationships must process idempotently."""
+        schema_branch = register_core_models_schema.duplicate()
+        schema_branch.load_schema(schema=inherited_and_local_relationships_schema)
 
         _validate_process_idempotent(schema_branch)
