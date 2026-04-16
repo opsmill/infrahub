@@ -534,6 +534,7 @@ def prefect_class(
 
 @pytest.fixture(scope="session", autouse=True)
 def load_settings_before_session() -> None:
+    os.environ.setdefault("INFRAHUB_SECURITY_SECRET_KEY", "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa")
     load_and_exit()
 
 
