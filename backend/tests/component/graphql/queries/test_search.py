@@ -2,9 +2,11 @@ from typing import Any
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
+from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -65,6 +67,72 @@ async def test_search_anywhere_by_uuid(
     assert result.data["InfrahubSearchAnywhere"]["count"] == 1
     assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["id"] == car_accord_main.id
     assert result.data["InfrahubSearchAnywhere"]["edges"][0]["node"]["kind"] == car_accord_main.get_kind()
+
+
+async def test_search_anywhere_by_uuid_excludes_internal_nodes(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+) -> None:
+    """UUID search should not return nodes from Schema or Internal namespaces.
+
+    Reproduces the bug where searching for a SchemaNode UUID in the frontend
+    crashed because 'SchemaNode' kind is not in the frontend schema registry.
+    """
+    schema = SchemaRoot(
+        nodes=[
+            {
+                "name": "Widget",
+                "namespace": "Internal",
+                "attributes": [{"name": "name", "kind": "Text"}],
+            },
+            {
+                "name": "Gadget",
+                "namespace": "Schema",
+                "attributes": [{"name": "name", "kind": "Text"}],
+            },
+        ],
+    )
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+
+    internal_node = await Node.init(db=db, schema="InternalWidget")
+    await internal_node.new(db=db, name="test-internal")
+    await internal_node.save(db=db)
+
+    schema_node = await Node.init(db=db, schema="SchemaGadget")
+    await schema_node.new(db=db, name="test-schema")
+    await schema_node.save(db=db)
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    # Internal namespace node should not be returned
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": internal_node.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 0
+    assert result.data["InfrahubSearchAnywhere"]["edges"] == []
+
+    # Schema namespace node should not be returned
+    result = await graphql(
+        schema=gql_params.schema,
+        source=SEARCH_QUERY,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"search": schema_node.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    assert result.data["InfrahubSearchAnywhere"]["count"] == 0
+    assert result.data["InfrahubSearchAnywhere"]["edges"] == []
 
 
 async def test_search_anywhere_by_string(

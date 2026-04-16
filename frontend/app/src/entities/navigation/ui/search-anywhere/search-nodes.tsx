@@ -20,6 +20,7 @@ import { getSchemaObjectColumns } from "@/entities/nodes/object-items/getSchemaO
 import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { ATTRIBUTE_KIND } from "@/entities/schema/constants";
+import type { ModelSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
@@ -66,20 +67,30 @@ type NodesOptionsProps = {
   node: ObjectResult;
 };
 
-const NodesOptions = ({ node }: NodesOptionsProps) => {
+export const NodesOptions = ({ node }: NodesOptionsProps) => {
   const { schema } = useSchema(node.kind);
+
+  if (!schema) return null;
+
+  return <NodesOptionsDetails node={node} schema={schema} />;
+};
+
+type NodesOptionsDetailsProps = {
+  node: ObjectResult;
+  schema: ModelSchema;
+};
+
+const NodesOptionsDetails = ({ node, schema }: NodesOptionsDetailsProps) => {
   const {
     data: objectDetailsData,
     isPending,
     error,
   } = useGetObject({
-    objectSchema: schema!,
+    objectSchema: schema,
     objectId: node.id,
     getRelationshipsVisible: (relationships) =>
       relationships.filter((rel) => rel.cardinality === "one"),
   });
-
-  if (!schema) return null;
 
   if (isPending) return <SearchResultNodeSkeleton />;
 

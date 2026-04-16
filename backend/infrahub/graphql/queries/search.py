@@ -116,7 +116,7 @@ async def search_resolver(
         matching = await NodeManager.get_one(
             db=graphql_context.db, branch=graphql_context.branch, at=graphql_context.at, id=q
         )
-        if matching:
+        if matching and matching.get_schema().namespace not in ("Schema", "Internal"):
             results.append({"id": matching.id, "kind": matching.get_kind()})
     else:
         with contextlib.suppress(ValueError, ipaddress.AddressValueError):
