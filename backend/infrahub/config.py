@@ -745,7 +745,7 @@ class SecuritySettings(BaseSettings):
     refresh_token_lifetime: int = Field(
         default=THIRTY_DAYS_IN_SECONDS, description="Lifetime of refresh token in seconds"
     )
-    secret_key: str = Field(description="The secret key used to validate authentication tokens")
+    secret_key: str = Field(default="", description="The secret key used to validate authentication tokens")
     oauth2_providers: list[Oauth2Provider] = Field(default_factory=list, description="The selected OAuth2 providers")
     oauth2_provider_settings: SecurityOAuth2ProviderSettings = Field(default_factory=SecurityOAuth2ProviderSettings)
     oidc_providers: list[OIDCProvider] = Field(default_factory=list, description="The selected OIDC providers")
@@ -759,6 +759,15 @@ class SecuritySettings(BaseSettings):
         default=None,
         description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
     )
+
+    @field_validator("secret_key", mode="after")
+    @classmethod
+    def _validate_secret_key(cls, value: str) -> str:
+        if not value:
+            raise ValueError(
+                "secret_key must be provided via config or INFRAHUB_SECURITY_SECRET_KEY environment variable"
+            )
+        return value
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:

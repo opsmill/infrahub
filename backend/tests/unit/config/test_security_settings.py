@@ -42,7 +42,7 @@ class TestSecretKeyRequired:
     @pytest.mark.usefixtures("_without_secret_key_env")
     def test_security_settings_requires_secret_key(self) -> None:
         with pytest.raises(ValidationError, match="secret_key"):
-            SecuritySettings()  # type: ignore[missing-argument]
+            SecuritySettings()
 
     @pytest.mark.usefixtures("_without_secret_key_env")
     def test_settings_fails_without_secret_key(self) -> None:
@@ -60,7 +60,7 @@ class TestSecretKeyRequired:
 
     def test_security_settings_reads_secret_key_from_env(self) -> None:
         with patch.dict(os.environ, {"INFRAHUB_SECURITY_SECRET_KEY": "from-env"}):
-            settings = SecuritySettings()  # type: ignore[missing-argument]
+            settings = SecuritySettings()
             assert settings.secret_key == "from-env"
 
     def test_settings_from_env(self) -> None:
