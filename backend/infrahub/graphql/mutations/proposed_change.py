@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Self
 from graphene import Boolean, Enum, Field, InputObjectType, List, Mutation, String
 
 from infrahub import lock
+from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
@@ -148,6 +149,7 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
         node: Node | None = None,  # noqa: ARG003
     ) -> tuple[Node, Self]:
         graphql_context: GraphqlContext = info.context
+        graphql_context.branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
 
         obj = await NodeManager.get_one_by_id_or_default_filter(
             db=graphql_context.db,
@@ -450,6 +452,7 @@ class ProposedChangeMerge(Mutation):
         wait_until_completion: bool = True,
     ) -> dict[str, bool]:
         graphql_context: GraphqlContext = info.context
+        graphql_context.branch = await registry.get_branch(db=graphql_context.db, branch=registry.default_branch)
         task: dict | None = None
 
         identifier = data.get("id", "")
