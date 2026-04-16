@@ -1,0 +1,23 @@
+schema/schema.graphql
+  376fa329e2185481 10617-10618
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.0",
+  "base_commit_sha": "b054181b53c5e414429b4ad5a76fda5090031c8d",
+  "prompts": {
+    "376fa329e2185481": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9a172657-500c-482b-bb9b-84b163488428",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Bearchitek",
+      "messages": [],
+      "total_additions": 1277,
+      "total_deletions": 2,
+      "accepted_lines": 10,
+      "overriden_lines": 0
+    }
+  }
+}
