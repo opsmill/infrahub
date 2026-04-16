@@ -5,18 +5,23 @@ from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
+from infrahub import config
 from infrahub.auth import AuthType
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.order import OrderModel
 from infrahub.core.protocols import CoreAccount, CoreNode, InternalAccountToken
+from infrahub.core.schema import NodeSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase, retry_db_transaction
-from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError
+from infrahub.exceptions import NodeNotFoundError, PermissionDeniedError, ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
+from infrahub.graphql.mutations.main import InfrahubMutationMixin
 
 from ..types import InfrahubObjectType
+from .main import DeleteResult, InfrahubMutationOptions
 
 if TYPE_CHECKING:
     from ..initialization import GraphqlContext
@@ -169,3 +174,56 @@ class InfrahubAccountSelfUpdate(AccountMixin, Mutation):
         data = InfrahubAccountUpdateSelfInput(required=True)
 
     ok = Boolean()
+
+
+class InfrahubAccountMutation(InfrahubMutationMixin, Mutation):
+    @classmethod
+    def __init_subclass_with_meta__(
+        cls, schema: NodeSchema, _meta: Any | None = None, **options: dict[str, Any]
+    ) -> None:
+        if not isinstance(schema, NodeSchema):
+            raise ValueError(f"You need to pass a valid NodeSchema in '{cls.__name__}.Meta', received '{schema}'")
+
+        if not _meta:
+            _meta = InfrahubMutationOptions(cls)
+        _meta.schema = schema
+
+        super().__init_subclass_with_meta__(_meta=_meta, **options)
+
+    @classmethod
+    async def mutate_delete(
+        cls,
+        info: GraphQLResolveInfo,
+        data: InputObjectType,
+        branch: Branch,
+    ) -> DeleteResult:
+        graphql_context: GraphqlContext = info.context
+
+        obj = await NodeManager.find_object(
+            db=graphql_context.db,
+            kind=cls._meta.active_schema.kind,
+            id=data.get("id"),
+            hfid=data.get("hfid"),
+            branch=branch,
+        )
+
+        if graphql_context.account_session and graphql_context.account_session.account_id == obj.get_id():
+            raise ValidationError(input_value="You cannot delete your own account.")
+
+        initial_tokens = {
+            t for t in (config.SETTINGS.initial.admin_token, config.SETTINGS.initial.agent_token) if t is not None
+        }
+        if initial_tokens:
+            account_tokens = await NodeManager.query(
+                schema=InternalAccountToken,
+                filters={"account_ids": [obj.get_id()]},
+                db=graphql_context.db,
+                order=OrderModel(disable=True),
+            )
+            for account_token in account_tokens:
+                if account_token.token.value in initial_tokens:
+                    raise ValidationError(
+                        input_value="This account is associated with a system token and cannot be deleted."
+                    )
+
+        return await super().mutate_delete(info=info, data=data, branch=branch)
