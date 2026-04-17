@@ -203,7 +203,13 @@ class DisplayLabelJinja2GraphQL(BaseModel):
                 if relationship.cardinality == RelationshipCardinality.ONE:
                     if field_name not in output:
                         output[field_name] = {"node": {}}
-                    output[field_name]["node"][related_attribute] = {related_value: None}
+                    if relationship.hierarchical and relationship.peer != relationship.hierarchical:
+                        fragment_key = f"... on {relationship.peer}"
+                        if fragment_key not in output[field_name]["node"]:
+                            output[field_name]["node"][fragment_key] = {}
+                        output[field_name]["node"][fragment_key][related_attribute] = {related_value: None}
+                    else:
+                        output[field_name]["node"][related_attribute] = {related_value: None}
         return output
 
     def parse_response(self, response: dict[str, Any]) -> list[DisplayLabelJinja2GraphQLResponse]:
