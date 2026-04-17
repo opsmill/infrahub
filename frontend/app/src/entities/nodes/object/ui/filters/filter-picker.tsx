@@ -148,21 +148,18 @@ function FilterPickerItem({ definition, hasActiveFilter, ref }: FilterPickerItem
     <ListBoxItem
       id={name}
       textValue={label}
+      selectionIndicator="none"
       className={({ isSelected }) => classNames(isSelected && "bg-stone-700/10 text-stone-800")}
       ref={ref}
     >
-      {({ isSelected }) => (
-        <>
-          {definition.type === "relationship" ? (
-            <FieldSchemaIcon fieldSchema={definition.schema} />
-          ) : (
-            <Icon icon={getFilterDefinitionIcon(definition)} />
-          )}
-          <span className="mr-auto">{label}</span>
-          {hasActiveFilter && <ActiveFilterIndicator />}
-          <ChevronRightIcon className={classNames("size-3.5", isSelected && "opacity-0")} />
-        </>
+      {definition.type === "relationship" ? (
+        <FieldSchemaIcon fieldSchema={definition.schema} />
+      ) : (
+        <Icon icon={getFilterDefinitionIcon(definition)} />
       )}
+      <span className="mr-auto">{label}</span>
+      {hasActiveFilter && <ActiveFilterIndicator />}
+      <ChevronRightIcon className={classNames("size-3.5")} />
     </ListBoxItem>
   );
 }

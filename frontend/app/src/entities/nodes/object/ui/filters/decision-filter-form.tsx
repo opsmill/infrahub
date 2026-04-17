@@ -1,7 +1,6 @@
 import { useState } from "react";
 
-import { ListBoxItem } from "@/shared/components/aria/list-box";
-import { Select, SelectList, SelectTrigger } from "@/shared/components/aria/select";
+import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
 import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get-current-filter-condition";
 import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
@@ -84,16 +83,13 @@ export function DecisionFilterForm({
             <Select
               aria-label="select a decision"
               placeholder="Select a decision"
-              selectedKey={field.value ?? null}
-              onSelectionChange={(key) => field.onChange(key)}
+              value={field.value ?? null}
+              onChange={(key) => field.onChange(key)}
             >
-              <SelectTrigger className="min-w-40" />
+              <SelectTrigger className="min-w-40 rounded-xl" />
+
               <SelectList items={options}>
-                {(item) => (
-                  <ListBoxItem id={item.value} textValue={item.label}>
-                    {item.label}
-                  </ListBoxItem>
-                )}
+                {(item) => <SelectItem id={item.value}>{item.label}</SelectItem>}
               </SelectList>
             </Select>
           )}
