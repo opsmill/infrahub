@@ -4,7 +4,7 @@
         {
             "name": "interface",
             "kind": "Interface",
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "attributes": [
                 {"name": "name", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": true},
@@ -24,7 +24,7 @@
             "name": "device",
             "kind": "Device",
             "default_filter": "name__value",
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "attributes": [
                 {"name": "name", "kind": "Text", "unique": true},
                 {"name": "description", "kind": "Text", "optional": true},
@@ -44,7 +44,7 @@
         {
             "name": "interface_l3",
             "kind": "InterfaceL3",
-            "display_labels": ["name__value"],
+            "display_label": "name__value",
             "inherit_from": ["Interface"],
             "relationships": [
                 {
@@ -60,7 +60,7 @@
             "name": "ipaddress",
             "kind": "IPAddress",
             "default_filter": "address__value",
-            "display_labels": ["address__value"],
+            "display_label": "address__value",
             "attributes": [
                 {"name": "address", "kind": "Text"},
                 {"name": "description", "kind": "Text", "optional": true}
