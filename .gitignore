@@ -49,3 +49,4 @@ schema/node_modules/*
 
 # AI and SDD
 **/.worktrees/
+.bug-analysis-*.md
