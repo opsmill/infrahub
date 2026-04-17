@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.9.0b0"
+dynamic = ["version"]
 requires-python = ">=3.10"
 
 description = "Testcontainers instance for Infrahub to easily build integration tests"
@@ -101,6 +101,13 @@ ignore = [
 ]
 
 
+[tool.hatch.version]
+source = "vcs"
+tag-pattern = "^infrahub-v(?P<version>[^+]+)$"
+
+[tool.hatch.version.raw-options]
+search_parent_directories = true
+
 [tool.hatch.build.targets.sdist]
 include = [
     "infrahub_testcontainers",
@@ -118,5 +125,5 @@ include = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"

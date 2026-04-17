@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.0b0"
+dynamic = ["version"]
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -1840,6 +1840,10 @@ include = [
 "python_sdk/infrahub_sdk" = "infrahub_sdk"
 "python_testcontainers/infrahub_testcontainers" = "infrahub_testcontainers"
 
+[tool.hatch.version]
+source = "vcs"
+tag-pattern = "^infrahub-v(?P<version>[^+]+)$"
+
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
