@@ -67,6 +67,7 @@ export function DecisionFilterForm({
   return (
     <FilterFormLayout
       filterType="permission-decision"
+      label={attributeSchema.label}
       condition={condition}
       onConditionChange={setCondition}
       testId="decision-filter-form"
