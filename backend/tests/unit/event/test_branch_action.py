@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import uuid
-from unittest.mock import MagicMock
 
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import InfrahubContext
@@ -12,10 +11,7 @@ from infrahub.events.models import EventMeta
 
 
 def _make_meta() -> EventMeta:
-    branch = MagicMock(spec=Branch)
-    branch.name = "main"
-    branch.uuid = uuid.uuid4()
-    branch.get_uuid.return_value = branch.uuid
+    branch = Branch(name="main", uuid=uuid.uuid4())
     return EventMeta(
         branch=branch,
         context=InfrahubContext.init(
