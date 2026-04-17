@@ -1,44 +1,37 @@
-from collections.abc import Callable
-
-import pytest
-
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.hfid.models import HFIDGraphQL
 
 
+def _build_schema(
+    relationship_name: str = "parent",
+    peer: str = "TestingCountry",
+    hierarchical: str | None = "TestingLocation",
+) -> NodeSchema:
+    return NodeSchema(
+        name="Site",
+        namespace="Testing",
+        attributes=[
+            AttributeSchema(name="shortname", kind="Text"),
+            AttributeSchema(name="slug", kind="Text"),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name=relationship_name,
+                peer=peer,
+                hierarchical=hierarchical,
+                cardinality=RelationshipCardinality.ONE,
+                optional=False,
+            ),
+        ],
+    )
+
+
 class TestQueryFieldsInlineFragment:
-    @pytest.fixture(scope="class")
-    def build_schema(self) -> Callable[..., NodeSchema]:
-        def _build(
-            relationship_name: str = "parent",
-            peer: str = "TestingCountry",
-            hierarchical: str | None = "TestingLocation",
-        ) -> NodeSchema:
-            return NodeSchema(
-                name="Site",
-                namespace="Testing",
-                attributes=[
-                    AttributeSchema(name="shortname", kind="Text"),
-                    AttributeSchema(name="slug", kind="Text"),
-                ],
-                relationships=[
-                    RelationshipSchema(
-                        name=relationship_name,
-                        peer=peer,
-                        hierarchical=hierarchical,
-                        cardinality=RelationshipCardinality.ONE,
-                        optional=False,
-                    ),
-                ],
-            )
-
-        return _build
-
-    def test_uses_fragment_when_peer_differs_from_hierarchical(self, build_schema: Callable[..., NodeSchema]) -> None:
+    def test_uses_fragment_when_peer_differs_from_hierarchical(self) -> None:
         """query_fields wraps attributes in an inline fragment when peer != hierarchical."""
-        schema = build_schema(peer="TestingCountry", hierarchical="TestingLocation")
+        schema = _build_schema(peer="TestingCountry", hierarchical="TestingLocation")
         graphql_obj = HFIDGraphQL(
             filter_key="ids",
             node_schema=schema,
@@ -57,9 +50,9 @@ class TestQueryFieldsInlineFragment:
         rendered = graphql_obj.render_graphql_query(filter_id="abc-123")
         assert "... on TestingCountry" in rendered
 
-    def test_no_fragment_for_non_hierarchical_relationship(self, build_schema: Callable[..., NodeSchema]) -> None:
+    def test_no_fragment_for_non_hierarchical_relationship(self) -> None:
         """query_fields places attributes directly under node when relationship is not hierarchical."""
-        schema = build_schema(relationship_name="owner", peer="TestingCountry", hierarchical=None)
+        schema = _build_schema(relationship_name="owner", peer="TestingCountry", hierarchical=None)
         graphql_obj = HFIDGraphQL(
             filter_key="ids",
             node_schema=schema,
@@ -72,9 +65,9 @@ class TestQueryFieldsInlineFragment:
         assert owner_node["name"] == {"value": None}
         assert not any(k.startswith("... on") for k in owner_node)
 
-    def test_no_fragment_when_peer_equals_hierarchical(self, build_schema: Callable[..., NodeSchema]) -> None:
+    def test_no_fragment_when_peer_equals_hierarchical(self) -> None:
         """query_fields places attributes directly under node when peer is the hierarchy generic itself."""
-        schema = build_schema(peer="TestingLocation", hierarchical="TestingLocation")
+        schema = _build_schema(peer="TestingLocation", hierarchical="TestingLocation")
         graphql_obj = HFIDGraphQL(
             filter_key="ids",
             node_schema=schema,
