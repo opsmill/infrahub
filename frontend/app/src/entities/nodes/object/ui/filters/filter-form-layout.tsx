@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type React from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
@@ -15,7 +15,8 @@ interface FilterFormLayoutProps {
   onConditionChange: (condition: FilterCondition) => void;
   testId: string;
   onSubmit: (formData: Record<string, unknown>) => void;
-  children?: ReactNode;
+  children?: React.ReactNode;
+  label?: React.ReactNode;
 }
 
 export function FilterFormLayout({
@@ -25,11 +26,12 @@ export function FilterFormLayout({
   testId,
   onSubmit,
   children,
+  label,
 }: FilterFormLayoutProps) {
   return (
     <Col className="max-h-[inherit] overflow-hidden p-2">
       <Row className="shrink-0 gap-0">
-        <span className="font-semibold text-sm">Where</span>
+        <span className="font-semibold text-sm">{label}</span>
         <FilterConditionSelect
           filterType={filterType}
           value={condition}
