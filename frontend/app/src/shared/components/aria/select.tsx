@@ -2,14 +2,13 @@ import { ChevronDownIcon } from "lucide-react";
 import {
   Button as AriaButton,
   type ButtonProps as AriaButtonProps,
-  ListBox as AriaListBox,
   type ListBoxProps as AriaListBoxProps,
   Select as AriaSelect,
   SelectValue as AriaSelectValue,
   composeRenderProps,
 } from "react-aria-components";
 
-import { ListBoxItem, type ListBoxItemProps } from "@/shared/components/aria/list-box";
+import { ListBox, ListBoxItem, type ListBoxItemProps } from "@/shared/components/aria/list-box";
 import { Popover, type PopoverProps } from "@/shared/components/aria/popover";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -40,7 +39,7 @@ export const SelectPopover = ({ className, ...props }: PopoverProps) => (
 
 export const SelectList = <T extends object>({ ...props }: AriaListBoxProps<T>) => (
   <SelectPopover>
-    <AriaListBox selectionMode="single" className="p-1" {...props} />
+    <ListBox selectionMode="single" className="p-1" {...props} />
   </SelectPopover>
 );
 
