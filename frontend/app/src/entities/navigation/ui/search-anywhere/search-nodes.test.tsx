@@ -42,12 +42,19 @@ describe("SearchNodes - Schema/Internal node rendering", () => {
     vi.clearAllMocks();
   });
 
-  test("renders simplified view for Schema namespace node with display_label", async () => {
-    // GIVEN
+  test("renders simplified view for SchemaNode using target_kind for label and URL", async () => {
+    // GIVEN — a SchemaNode record describing CoreGroupAction
     useGetSearchAnywhereMock.mockReturnValue({
       data: {
         count: 1,
-        matchingObjects: [{ id: "uuid-1", kind: "SchemaNode", display_label: "InfraDevice" }],
+        matchingObjects: [
+          {
+            id: "uuid-1",
+            kind: "SchemaNode",
+            display_label: "GroupAction",
+            target_kind: "CoreGroupAction",
+          },
+        ],
       },
       isPending: false,
       error: null,
@@ -58,10 +65,10 @@ describe("SearchNodes - Schema/Internal node rendering", () => {
     // WHEN
     const component = await render(<SearchNodes />);
 
-    // THEN
-    await expect.element(component.getByText("InfraDevice")).toBeVisible();
+    // THEN — label shows display_label, badge shows target_kind (not SchemaNode)
+    await expect.element(component.getByText("GroupAction", { exact: true })).toBeVisible();
     await expect.element(component.getByText("Schema", { exact: true })).toBeVisible();
-    await expect.element(component.getByText("SchemaNode", { exact: true })).toBeVisible();
+    await expect.element(component.getByText("CoreGroupAction", { exact: true })).toBeVisible();
   });
 
   test("renders kind as fallback when display_label is missing", async () => {

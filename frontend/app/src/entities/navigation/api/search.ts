@@ -12,6 +12,7 @@ const SEARCH = graphql(`
           id
           kind
           display_label
+          target_kind
         }
       }
     }

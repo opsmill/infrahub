@@ -10619,6 +10619,10 @@ type Node {
   id: String!
   """The node kind"""
   kind: String!
+  """
+  For Schema records (SchemaNode/SchemaGeneric), the kind of the schema they describe so clients can link to that schema's page instead of the generic SchemaNode/SchemaGeneric page.
+  """
+  target_kind: String
 }
 
 type NodeEdge {

@@ -79,8 +79,9 @@ const NodesOptions = ({ node }: NodesOptionsProps) => {
 };
 
 const SchemaNodeResult = ({ node }: NodesOptionsProps) => {
-  const label = node.display_label || node.kind;
-  const url = constructPath("/schema", [{ name: "kind", value: node.kind }]);
+  const schemaKind = node.target_kind || node.kind;
+  const label = node.display_label || schemaKind;
+  const url = constructPath("/schema", [{ name: "kind", value: schemaKind }]);
 
   return (
     <SearchAnywhereItem to={url} value={url}>
@@ -94,7 +95,7 @@ const SchemaNodeResult = ({ node }: NodesOptionsProps) => {
             <Badge variant="blue" className="py-0 text-xxs">
               Schema
             </Badge>
-            <span className="mr-2 font-medium text-xxs">{node.kind}</span>
+            <span className="mr-2 font-medium text-xxs">{schemaKind}</span>
           </div>
         </div>
       </div>

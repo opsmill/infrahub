@@ -5,7 +5,12 @@ import {
 
 export type SearchAnywhereParams = SearchAnywhereFromApiParams;
 
-export type ObjectResult = { id: string; kind: string; display_label?: string | null };
+export type ObjectResult = {
+  id: string;
+  kind: string;
+  display_label?: string | null;
+  target_kind?: string | null;
+};
 
 export type SearchAnywhere = (params: SearchAnywhereParams) => Promise<{
   count: number;
