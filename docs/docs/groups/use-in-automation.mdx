@@ -1,0 +1,74 @@
+---
+title: Use groups in automation
+---
+
+# Use groups in automation
+
+Target a group from an Artifact Definition, Transformation, or Check so that the automation applies to every member without hard-coding a list.
+
+This is the main reason to use groups: they decouple "what to operate on" from "what to do." Instead of listing 50 devices in an Artifact Definition, you target one group, and the group's contents can change independently.
+
+## Target a group from an Artifact Definition
+
+An Artifact Definition has a `targets` field that points to a group. Infrahub generates one artifact per member.
+
+```yaml
+# .infrahub.yml excerpt
+artifact_definitions:
+  - name: "switch-base-config"
+    artifact_name: "base-config"
+    parameters:
+      device: "name__value"
+    content_type: "text/plain"
+    targets: "<group-name>"
+    transformation: "switch-config-template"
+```
+
+When the group's membership changes, the next artifact generation run picks up the new members automatically. See [Artifacts](../topics/artifact.mdx) for the full specification.
+
+## Target a group from a Transformation
+
+Transformations that produce per-object output are wired up through an Artifact Definition pointing at a group (same pattern as above). The Transformation runs once per group member with that member passed as an input parameter.
+
+See [Transformations](../topics/transformation.mdx) for Jinja2 and Python transformation details.
+
+## Scope a Check to a group
+
+A Check Definition can be scoped to a group so the check runs across every member. This lets you write one check and apply it consistently.
+
+```yaml
+# .infrahub.yml excerpt
+check_definitions:
+  - name: "naming-convention"
+    class_name: "NamingConventionCheck"
+    file_path: "checks/naming.py"
+    targets: "<group-name>"
+    parameters:
+      device: "name__value"
+```
+
+See [Checks](../topics/check.mdx) for check authoring.
+
+## Have a Generator own a group
+
+Generators produce objects, and you typically want those objects grouped automatically so downstream automation can find them. A Generator can own a `CoreGeneratorGroup` that it populates as it runs.
+
+This is a common pattern for service instantiation: the Generator creates the interfaces/circuits/endpoints for a service, and the Generator group is then targeted by an Artifact Definition that renders vendor configuration.
+
+See [Generator overview](../topics/generator.mdx) for how to declare the owned group.
+
+## Pattern: chain groups through the pipeline
+
+A typical production setup:
+
+1. A **Query group** selects "all devices at site X" from live data.
+2. A **Generator** targets that Query group, produces per-device service objects, and owns a **Generator group** tracking those objects.
+3. An **Artifact Definition** targets the Generator group and renders per-device configuration.
+4. A **Check Definition** targets the Query group to validate the fleet.
+
+Groups are the glue between each stage — replace any stage without rewiring the rest.
+
+## Next
+
+- [Query group membership](./query-members.mdx) to inspect what each group contains at each stage.
+- [Artifacts](../topics/artifact.mdx), [Transformations](../topics/transformation.mdx), [Checks](../topics/check.mdx), [Generators](../topics/generator.mdx) for feature-specific details.

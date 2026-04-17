@@ -90,8 +90,19 @@ const sidebars: SidebarsConfig = {
         { type: 'doc', id: 'topics/graphql', label: 'GraphQL' },
         { type: 'doc', id: 'guides/graphql-fragment', label: 'GraphQL Fragments' },
         { type: 'doc', id: 'guides/object-load', label: 'Loading Data' },
-        { type: 'doc', id: 'topics/groups', label: 'Groups (Topic)' },
-        { type: 'doc', id: 'guides/groups', label: 'Groups (Guide)' },
+        {
+          type: 'category',
+          label: 'Groups',
+          link: { type: 'doc', id: 'groups/index' }, // hub (explanation)
+          items: [
+            'groups/create',
+            'groups/add-members',
+            'groups/remove-members',
+            'groups/delete',
+            'groups/query-members',
+            'groups/use-in-automation',
+          ],
+        },
         { type: 'doc', id: 'topics/profiles', label: 'Profiles (Topic)' },
         { type: 'doc', id: 'guides/profiles', label: 'Profiles (Guide)' },
         { type: 'doc', id: 'topics/object-template', label: 'Object Templates (Topic)' },
@@ -318,6 +329,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'academy/getting-started/infrahub-introduction',
             'academy/getting-started/deploy-first-configuration',
+            'academy/getting-started/groups',
           ],
         },
       ],
