@@ -11,7 +11,7 @@ from infrahub.events.models import EventMeta
 
 
 def _make_meta() -> EventMeta:
-    branch = Branch(name="main", uuid=uuid.uuid4())
+    branch = Branch(name="test-branch-action-events", uuid=uuid.uuid4())
     return EventMeta(
         branch=branch,
         context=InfrahubContext.init(
