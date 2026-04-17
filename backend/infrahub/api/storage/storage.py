@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 router = APIRouter(prefix="/storage")
 router.include_router(file_object.router)
 
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+
 
 class UploadResponse(BaseModel):
     identifier: str
@@ -49,8 +51,10 @@ async def get_file(
 @router.post("/upload/content")
 def upload_content(item: UploadContentPayload, _: str = Depends(get_current_user)) -> UploadResponse:
     file_content = bytes(item.content, encoding="utf-8")
-    identifier = str(UUIDT())
+    if len(file_content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=413, detail="Uploaded content exceeds maximum allowed size.")
 
+    identifier = str(UUIDT())
     checksum = hashlib.md5(file_content, usedforsecurity=False).hexdigest()
     registry.storage.store(identifier=identifier, content=io.BytesIO(file_content))
     return UploadResponse(identifier=identifier, checksum=checksum)
@@ -61,7 +65,11 @@ def upload_file(file: UploadFile = File(...), _: AccountSession = Depends(get_cu
     identifier = str(UUIDT())
 
     hasher = hashlib.md5(usedforsecurity=False)
+    file_size = 0
     while chunk := file.file.read(65536):
+        file_size += len(chunk)
+        if file_size > MAX_UPLOAD_SIZE:
+            raise HTTPException(status_code=413, detail="Uploaded file exceeds maximum allowed size.")
         hasher.update(chunk)
     checksum = hasher.hexdigest()
 
