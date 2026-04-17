@@ -29,6 +29,8 @@ class BranchDeletedEvent(InfrahubEvent):
         }
         if self.proposed_change_id:
             resource["infrahub.branch.proposed_change_id"] = self.proposed_change_id
+            resource["infrahub.node.id"] = self.proposed_change_id
+            resource["infrahub.node.kind"] = InfrahubKind.PROPOSEDCHANGE
         return resource
 
     def get_messages(self) -> list[InfrahubMessage]:
@@ -42,18 +44,6 @@ class BranchDeletedEvent(InfrahubEvent):
             RefreshRegistryBranches(),
         ]
         return events
-
-    def get_related(self) -> list[dict[str, str]]:
-        related = super().get_related()
-        if self.proposed_change_id:
-            related.append(
-                {
-                    "prefect.resource.id": self.proposed_change_id,
-                    "prefect.resource.role": "infrahub.related.node",
-                    "infrahub.node.kind": InfrahubKind.PROPOSEDCHANGE,
-                }
-            )
-        return related
 
 
 class BranchCreatedEvent(InfrahubEvent):
@@ -97,24 +87,15 @@ class BranchMergedEvent(InfrahubEvent):
     )
 
     def get_resource(self) -> dict[str, str]:
-        return {
+        resource = {
             "prefect.resource.id": f"infrahub.branch.{self.branch_name}",
             "infrahub.branch.id": self.branch_id,
             "infrahub.branch.name": self.branch_name,
         }
-
-    def get_related(self) -> list[dict[str, str]]:
-        related = super().get_related()
         if self.proposed_change_id:
-            related.append(
-                {
-                    "prefect.resource.id": self.proposed_change_id,
-                    "prefect.resource.role": "infrahub.related.node",
-                    "infrahub.node.kind": InfrahubKind.PROPOSEDCHANGE,
-                }
-            )
-
-        return related
+            resource["infrahub.node.id"] = self.proposed_change_id
+            resource["infrahub.node.kind"] = InfrahubKind.PROPOSEDCHANGE
+        return resource
 
     def get_messages(self) -> list[InfrahubMessage]:
         return [RefreshRegistryBranches()]
