@@ -43,7 +43,7 @@ dependencies = [
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
-    "python-multipart==0.0.22", # Required by FastAPI to upload large files
+    "python-multipart==0.0.26", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
     "pyjwt==2.12.1", # Used to manage JWT tokens
@@ -54,7 +54,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
-    "authlib==1.6.9",
+    "authlib==1.6.11",
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
