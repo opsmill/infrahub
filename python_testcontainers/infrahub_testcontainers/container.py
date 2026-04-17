@@ -229,7 +229,6 @@ class InfrahubDockerCompose(DockerCompose):
             up_cmd.append(service_name)
         self._run_command(cmd=up_cmd)
 
-    # TODO would be good to the support for project_name upstream
     @cached_property
     def compose_command_property(self) -> list[str]:
         docker_compose_cmd = [self.docker_command_path or "docker", "compose"]
