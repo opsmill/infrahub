@@ -1065,9 +1065,9 @@ ANALYST_SCENARIOS = [
     ("Grep",                                           True,  "grep search"),
     ("Write",                                          True,  "write files (for body-file workflow)"),
     ("Write(.agent-tmp/gh-body.md)",                   True,  "write body-file"),
-    ("Bash(git checkout -b ai-bug-pipeline-1042)",     True,  "create pipeline branch"),
-    ("Bash(git checkout ai-bug-pipeline-1042)",        True,  "checkout pipeline branch"),
-    ("Bash(git push origin ai-bug-pipeline-1042)",     True,  "push to pipeline branch"),
+    ("Bash(git checkout -b ai-bug-pipeline-1042)",     False, "create pipeline branch (analyst doesn't create branches)"),
+    ("Bash(git checkout ai-bug-pipeline-1042)",        False, "checkout pipeline branch (analyst doesn't checkout branches)"),
+    ("Bash(git push origin ai-bug-pipeline-1042)",     False, "push to pipeline branch (analyst doesn't push)"),
     ("Bash(git rev-parse HEAD)",                       True,  "rev-parse"),
     ("Bash(git log --oneline -10)",                    True,  "git log"),
     ("Bash(git log --all --oneline --diff-filter=A -S \"CopyToClipboardMenuItem\" -- '*.tsx' '*.ts')", True, "git log with -S and quotes"),
@@ -1219,7 +1219,10 @@ _TEST_WRITER_COMMON = [
     ("Bash(uv run invoke lint)",                       True,  "invoke lint"),
     # Allowed -- npm/npx
     ("Bash(npm run test path/to/test)",                True,  "npm test"),
+    ("Bash(npm --prefix /path/to/frontend/app run test -- --run src/test.ts)", True, "npm prefix run test"),
+    ("Bash(npm --prefix /path/to/frontend/app run biome:fix)", True, "npm prefix biome:fix"),
     ("Bash(npx biome check --write .)",                True,  "biome check exact"),
+    ("Bash(npx --prefix /path/to/frontend/app biome check --write /path/to/file.ts)", True, "npx prefix biome check"),
     ("Bash(npx playwright test path/to/test)",         True,  "playwright test"),
     # Allowed -- cd frontend (enumerated)
     ("Bash(cd frontend/app && npm run test path/to/test)", True, "cd frontend npm test"),
@@ -1229,7 +1232,6 @@ _TEST_WRITER_COMMON = [
     ("Bash(ls -la)",                                   True,  "ls with flags"),
     # Denied
     ("Bash(uv run towncrier create --content fix)",    False, "towncrier (test-writer doesn't create changelog)"),
-    ("Bash(git checkout -b ai-bug-pipeline-new)",      False, "create new branch"),
     ("Bash(uv run invoke backend.test-unit)",          False, "invoke backend not available"),
     # Denied -- exact match blocks chaining
     ("Bash(uv run invoke format && rm -rf /)",         False, "invoke format chaining blocked"),
@@ -1237,12 +1239,15 @@ _TEST_WRITER_COMMON = [
     ("Bash(git status --porcelain)",                   False, "git status with flags blocked"),
 ]
 
-# write-test can create PRs; revise-test cannot
+# write-test can create branches, fetch, and create PRs; revise-test cannot
 WRITE_TEST_SCENARIOS = _TEST_WRITER_COMMON + [
+    ("Bash(git checkout -b ai-bug-pipeline-1042)",     True,  "create pipeline branch"),
+    ("Bash(git fetch origin stable)",                  True,  "git fetch"),
     ("Bash(gh pr create --title test-pr)",             True,  "create PR"),
 ]
 
 REVISE_TEST_SCENARIOS = _TEST_WRITER_COMMON + [
+    ("Bash(git checkout -b ai-bug-pipeline-1042)",     False, "create branch (revise uses existing)"),
     ("Bash(gh pr create --title test-pr)",             False, "create PR (revise edits existing PR)"),
 ]
 
@@ -1314,10 +1319,10 @@ import json, yaml, glob, os
 # automatically. A renamed job that drops its deny list will be caught.
 
 EXPECTED_DENY = [
-    'Bash(git push --force :*)',
-    'Bash(git push -f :*)',
-    'Bash(git reset :*)',
-    'Bash(git clean :*)',
+    'Bash(git push --force *)',
+    'Bash(git push -f *)',
+    'Bash(git reset *)',
+    'Bash(git clean *)',
     'Bash(gh pr merge *)',
     'Write(.github/**)',
     'Edit(.github/**)',

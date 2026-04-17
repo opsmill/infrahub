@@ -167,7 +167,7 @@ describe("RepositoryMenuSection", () => {
       .toBeVisible();
   });
 
-  test("does not show Reimport current commit for non-read-only repositories", async () => {
+  test("shows Reimport current commit for non-read-only repositories", async () => {
     // GIVEN
     const component = await render(
       <Menu aria-label="Repository actions">
@@ -181,7 +181,9 @@ describe("RepositoryMenuSection", () => {
     );
 
     // THEN
-    await expect.element(component.baseElement).not.toHaveTextContent("Reimport current commit");
+    await expect
+      .element(component.getByRole("menuitem", { name: /Reimport current commit/i }))
+      .toBeVisible();
   });
 
   test("calls importCurrentCommit mutation when clicking Reimport current commit", async () => {
