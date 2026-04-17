@@ -8,6 +8,7 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
+      "**",
       "!coverage",
       "!dist",
       "!playwright-report",
