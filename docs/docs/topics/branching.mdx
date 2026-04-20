@@ -161,6 +161,12 @@ This approach provides several benefits:
 
 This merge strategy aligns with Infrahub's focus on the current state of infrastructure rather than the historical evolution of individual files, making it particularly well-suited for infrastructure management workflows.
 
+### Automatic branch cleanup after merge
+
+Infrahub can automatically delete a branch after it is successfully merged. This keeps your branch list tidy and avoids the operational overhead of manually pruning branches that have already served their purpose.
+
+This behavior is opt-in. Set `delete_branch_after_merge = true` (or `INFRAHUB_DELETE_BRANCH_AFTER_MERGE=true`) to enable it. To also remove the linked Git branch, set `delete_git_branch_after_merge = true` (`INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE=true`)—this has no effect unless Infrahub branch deletion is also enabled.
+
 ### Rebase operations
 
 Rebasing is a powerful operation that updates a branch with the latest changes from its parent branch. This is essential for maintaining branch health and ensuring smooth integration of changes. Rebasing serves several important purposes:
