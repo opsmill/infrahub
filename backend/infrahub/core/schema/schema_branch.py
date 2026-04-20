@@ -293,7 +293,7 @@ class SchemaBranch:
                         f"'{relationship.peer}' has been removed but is still referenced in '{name}.{relationship.name}'; keep it or delete the "
                         "relationship"
                     )
-            if isinstance(node, BaseNodeSchema):
+            if isinstance(node, (NodeSchema, ProfileSchema, TemplateSchema)):
                 for generic_kind in node.inherit_from or []:
                     if generic_kind in removed_schema_names:
                         raise ValueError(
