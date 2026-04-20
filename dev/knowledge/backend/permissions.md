@@ -122,8 +122,9 @@ Each checker returns `TERMINATE` (stop chain, authorized) or `NEXT_CHECKER` (con
 
 | Category | Behavior | Examples |
 |---|---|---|
-| Gate | May short-circuit or pass. Never raises. | Anonymous, SuperAdmin |
-| Enforcement | Raises if violated, returns NEXT_CHECKER. | DefaultBranch, MergeBranch, AccountManager, RepositoryManager, PermissionManager |
+| Gate | May short-circuit (TERMINATE) or pass (NEXT_CHECKER). Never raises. | SuperAdmin |
+| Pre-filter | Rejects unauthenticated requests with `AuthorizationError`. Runs first in the pipeline. | Anonymous |
+| Enforcement | Raises `PermissionDeniedError` if violated, returns NEXT_CHECKER. | DefaultBranch, MergeBranch, AccountManager, RepositoryManager, PermissionManager |
 | Terminal | Always returns TERMINATE. Must be last. | ObjectPermission |
 
 ## REST API Enforcement

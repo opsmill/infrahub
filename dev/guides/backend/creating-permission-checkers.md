@@ -25,6 +25,7 @@ Before writing a checker, decide which category it falls into:
 
 | Category | When to use | Returns | Raises? |
 |---|---|---|---|
+| **Pre-filter** | Reject unauthenticated requests before the pipeline runs | `NEXT_CHECKER` | `AuthorizationError` |
 | **Gate** | Short-circuit the entire pipeline for a class of users (e.g., super admin bypass) | `TERMINATE` or `NEXT_CHECKER` | Never |
 | **Enforcement** | Validate a specific constraint and block if violated | `NEXT_CHECKER` always | `PermissionDeniedError` on violation |
 | **Terminal** | Final authority — runs last, handles the general case | `TERMINATE` always | `PermissionDeniedError` on violation |
