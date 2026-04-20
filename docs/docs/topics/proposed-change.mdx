@@ -133,7 +133,8 @@ Proposed changes follow a workflow with specific states that track progression f
 
 4. **Merged**: After receiving approval (if required) and passing all automated checks, the change is merged into the target branch. At this point:
    - The changes become part of the target branch.
-   - The source branch will be retained but could be manually deleted.
+   - The source branch transitions to a **frozen state**: all further mutations (create, upsert, update, delete) are blocked on it, the UI disables editing controls, and creating a new Proposed Change against that branch is prevented.
+   - The source branch is retained by default and can be deleted manually. When `delete_branch_after_merge` is enabled in the [configuration](../reference/configuration.mdx), the branch is deleted automatically after the merge completes.
 
 5. **Closed**: A proposed change can be closed without merging if it's determined to be unnecessary, superseded by another change, or otherwise no longer needed. This provides a clean resolution for abandoned changes.
 
