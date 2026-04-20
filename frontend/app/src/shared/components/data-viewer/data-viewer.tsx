@@ -51,10 +51,8 @@ function DataViewerContent({
 
     case "image/svg+xml": {
       return (
-        <ScrollArea scrollX className="rounded-lg bg-white" scrollBarClassName="bg-transparent">
-          <div className="p-4">
-            <Svg value={content} />
-          </div>
+        <ScrollArea scrollX className="bg-white" scrollBarClassName="bg-transparent">
+          <Svg value={content} className="mx-auto" />
         </ScrollArea>
       );
     }
