@@ -25,62 +25,12 @@ from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 from tests.conftest import TestHelper
-from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 
 
 @pytest.fixture
 def client() -> InfrahubClient:
     return InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
-
-
-@pytest.fixture
-def branch01() -> BranchData:
-    return BranchData(
-        id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
-        name="branch01",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def branch02() -> BranchData:
-    return BranchData(
-        id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
-        name="branch02",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def branch99() -> BranchData:
-    return BranchData(
-        id="2e933717-086c-47cf-8242-21421dd3c2bb",
-        name="branch99",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
-    """Git Repository with 4 branches main, branch01, branch02, and clean-branch.
-    There is conflict between branch01 and branch02."""
-
-    name = "infrahub-test-fixture-01"
-    file_repo = FileRepo(name=name, sources_directory=git_sources_dir)
-    return {"name": name, "path": Path(file_repo.path)}
 
 
 @pytest.fixture
@@ -109,22 +59,6 @@ def git_upstream_repo_03(git_upstream_repo_01: dict[str, str | Path]) -> dict[st
         repo.git.branch("-D", str(local_branch))
 
     return git_upstream_repo_01
-
-
-@pytest.fixture
-async def git_repo_01(
-    client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
-) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_01 as remote"""
-
-    repo = await InfrahubRepository.new(
-        id=UUIDT.new(),
-        name=git_upstream_repo_01["name"],
-        location=str(git_upstream_repo_01["path"]),
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-    )
-
-    return repo
 
 
 @pytest.fixture
