@@ -10,7 +10,7 @@ Fix a race condition where artifact generation and repository checks can start b
 ## Technical Context
 
 **Language/Version**: Python 3.12
-**Primary Dependencies**: FastAPI, Prefect (workflow engine), Pydantic 2.10, infrahub-sdk
+**Primary Dependencies**: FastAPI, Prefect (workflow engine), Pydantic >=2.12,<2.13, infrahub-sdk
 **Storage**: Neo4j 5.28 (graph database)
 **Testing**: pytest 9.0 (unit + integration)
 **Target Platform**: Linux server (Docker containers)
@@ -178,13 +178,13 @@ For `CheckType.ALL`, the pipeline must:
 
     # --- Phase 2: Dispatch checks independent of generators (fire-and-forget) ---
 
-    if model.check_type in [CheckType.ALL, CheckType.DATA] and has_node_changes(...):
+    if model.check_type is CheckType.DATA and has_node_changes(...):
         await submit_workflow(DATA_INTEGRITY, ...)
 
     if model.check_type in [CheckType.REPOSITORY, CheckType.USER]:
         await submit_workflow(REPO_CHECKS, ...)
 
-    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(...):
+    if model.check_type is CheckType.SCHEMA and has_data_changes(...):
         await submit_workflow(SCHEMA_INTEGRITY, ...)
 
     if model.check_type in [CheckType.ALL, CheckType.TEST]:
@@ -206,40 +206,49 @@ For `CheckType.ALL`, the pipeline must:
             parameters={"model": model_run_generators},
         )
 
+        # --- Phase 3.5: Recompute diff after generators ---
+        # Generators may have created or modified objects; the pre-generator diff is stale.
+        database = await get_database()
+        async with database.start_session() as dbs:
+            destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
+            source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
+            component_registry = get_component_registry()
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
+            diff_coordinator.set_logger(get_run_logger())
+            await diff_coordinator.update_branch_diff(
+                base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
+            )
+
+        client = get_client()
+        diff_summary = await client.get_diff_summary(branch=model.source_branch)
+        await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
+        branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
+        branch_diff.subscribers.extend(
+            await _get_subscribers_from_diff(diff_summary=diff_summary, branch=model.source_branch, client=client)
+        )
+
     # --- Phase 4: Dispatch generator-dependent checks (fire-and-forget) ---
 
     if model.check_type is CheckType.ALL:
-        request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
-            proposed_change=model.proposed_change,
-            source_branch=model.source_branch,
-            source_branch_sync_with_git=model.source_branch_sync_with_git,
-            destination_branch=model.destination_branch,
-            branch_diff=branch_diff,
-        )
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
-            parameters={"model": request_refresh_artifact_model},
-            context=context,
-        )
+        request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(...)
+        await get_workflow().submit_workflow(workflow=REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS, ...)
 
-        model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(
-            proposed_change=model.proposed_change,
-            source_branch=model.source_branch,
-            source_branch_sync_with_git=model.source_branch_sync_with_git,
-            destination_branch=model.destination_branch,
-            branch_diff=branch_diff,
-        )
-        await get_workflow().submit_workflow(
-            workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
-            context=context,
-            parameters={"model": model_proposed_change_repo_checks},
-        )
+        model_proposed_change_repo_checks = RequestProposedChangeRepositoryChecks(...)
+        await get_workflow().submit_workflow(workflow=REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS, ...)
+
+        if has_node_changes(diff_summary=diff_summary, branch=model.source_branch):
+            await get_workflow().submit_workflow(workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY, ...)
+
+        if has_data_changes(diff_summary=diff_summary, branch=model.source_branch):
+            await get_workflow().submit_workflow(workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY, ...)
 ```
 
 Key points:
 - `CheckType.ARTIFACT` (standalone artifact refresh, no generators involved) remains unchanged at the top
-- Independent checks dispatch before the blocking generator call so they run concurrently
-- `CheckType.ALL` dispatches artifacts and repo checks in Phase 4 — after generators complete
+- Independent checks dispatch before the blocking generator call so they run concurrently (Phase 2); for `CheckType.ALL`, DATA_INTEGRITY and SCHEMA_INTEGRITY are NOT dispatched here
+- `CheckType.ALL` dispatches artifacts, repo checks, data integrity, and schema integrity ONLY in Phase 4 — after generators complete on the refreshed diff
+- `CheckType.DATA` dispatches DATA_INTEGRITY only in Phase 2; `CheckType.SCHEMA` dispatches SCHEMA_INTEGRITY only in Phase 2 (no generators involved for these standalone types)
+- Phase 3.5 recomputes the branch diff after generators finish so subsequent stages see generator-created objects
 - `RequestProposedChangeRunGenerators` no longer carries `refresh_artifacts`/`do_repository_checks`
 
 ### Step 4: Enhance `WorkflowRecorder` for ordered tracking
@@ -280,6 +289,9 @@ Test cases:
 4. **test_pipeline_dispatches_artifacts_after_generators**: Verify that in the `all_calls` log, `REFRESH_ARTIFACTS` appears after `RUN_GENERATORS`
 5. **test_pipeline_generator_only_no_artifacts**: For `CheckType.GENERATOR`, verify no artifact refresh is dispatched
 6. **test_pipeline_artifact_only_no_generators**: For `CheckType.ARTIFACT`, verify artifact refresh is dispatched without waiting for generators
+7. **test_pipeline_diff_recomputed_after_generators**: Verify `update_branch_diff` is called twice — once for initial diff and once post-generator recomputation
+8. **test_pipeline_checks_dispatched_after_generators**: Verify repo checks appear in the call log after `RUN_GENERATORS` (Phase 4 ordering)
+9. **test_pipeline_generator_only_no_phase4_checks**: For `CheckType.GENERATOR`, verify no Phase 4 artifact/repo/data/schema checks are dispatched
 
 ### Step 6: Verify existing tests pass
 

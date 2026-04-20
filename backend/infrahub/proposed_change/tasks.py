@@ -394,7 +394,11 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             )
 
     if generator_check_coroutines:
-        await asyncio.gather(*generator_check_coroutines, return_exceptions=True)
+        results = await asyncio.gather(*generator_check_coroutines, return_exceptions=True)
+        for result in results:
+            if isinstance(result, Exception):
+                log = get_run_logger()
+                log.error(f"Generator check failed: {result}")
 
 
 @flow(name="proposed-changed-schema-integrity", flow_run_name="Process schema integrity")
@@ -1133,6 +1137,39 @@ class DefinitionSelect(IntFlag):
         return "Doesn't require changes due to no relevant modified kinds or file changes in Git"
 
 
+async def _recompute_diff_after_generators(
+    *,
+    model: RequestProposedChangePipeline,
+    repositories: list[Repository],
+) -> tuple[list[NodeDiff], ProposedChangeBranchDiff]:
+    """Recompute the branch diff + summary after generators have run.
+
+    Generators can create or modify objects, so any diff computed before generators ran
+    is stale. This refreshes the diff via DiffCoordinator, updates the cache, and rebuilds
+    the ProposedChangeBranchDiff with current subscribers. Returns the fresh summary and
+    branch_diff for Phase 4 dispatches.
+    """
+    database = await get_database()
+    async with database.start_session() as dbs:
+        destination_branch = await registry.get_branch(db=dbs, branch=model.destination_branch)
+        source_branch = await registry.get_branch(db=dbs, branch=model.source_branch)
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=dbs, branch=source_branch)
+        diff_coordinator.set_logger(get_run_logger())
+        await diff_coordinator.update_branch_diff(
+            base_branch=destination_branch, diff_branch=source_branch, proposed_change_id=model.proposed_change
+        )
+
+    client = get_client()
+    diff_summary = await client.get_diff_summary(branch=model.source_branch)
+    await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
+    branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
+    branch_diff.subscribers.extend(
+        await _get_subscribers_from_diff(diff_summary=diff_summary, branch=model.source_branch, client=client)
+    )
+    return diff_summary, branch_diff
+
+
 @flow(name="proposed-changed-pipeline", flow_run_name="Execute proposed changed pipeline")
 async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, context: InfrahubContext) -> None:
     client = get_client()
@@ -1196,9 +1233,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
 
     # --- Phase 2: Dispatch checks independent of generators (fire-and-forget) ---
 
-    if model.check_type in [CheckType.ALL, CheckType.DATA] and has_node_changes(
-        diff_summary=diff_summary, branch=model.source_branch
-    ):
+    if model.check_type is CheckType.DATA and has_node_changes(diff_summary=diff_summary, branch=model.source_branch):
         model_proposed_change_data_integrity = RequestProposedChangeDataIntegrity(
             proposed_change=model.proposed_change,
             source_branch=model.source_branch,
@@ -1226,9 +1261,7 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_repo_checks},
         )
 
-    if model.check_type in [CheckType.ALL, CheckType.SCHEMA] and has_data_changes(
-        diff_summary=diff_summary, branch=model.source_branch
-    ):
+    if model.check_type is CheckType.SCHEMA and has_data_changes(diff_summary=diff_summary, branch=model.source_branch):
         await get_workflow().submit_workflow(
             workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
             context=context,
@@ -1274,6 +1307,10 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             parameters={"model": model_proposed_change_run_generator},
         )
 
+        # Phase 3.5: Recompute diff after generators — generators may have created or modified
+        # objects, so the pre-generator diff is stale. Fresh diff feeds Phase 4 dispatches below.
+        diff_summary, branch_diff = await _recompute_diff_after_generators(model=model, repositories=repositories)
+
     # --- Phase 4: Dispatch generator-dependent checks (fire-and-forget) ---
 
     if model.check_type is CheckType.ALL:
@@ -1302,6 +1339,36 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
             context=context,
             parameters={"model": model_proposed_change_repo_checks},
         )
+
+        if has_node_changes(diff_summary=diff_summary, branch=model.source_branch):
+            await get_workflow().submit_workflow(
+                workflow=REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
+                context=context,
+                parameters={
+                    "model": RequestProposedChangeDataIntegrity(
+                        proposed_change=model.proposed_change,
+                        source_branch=model.source_branch,
+                        source_branch_sync_with_git=model.source_branch_sync_with_git,
+                        destination_branch=model.destination_branch,
+                        branch_diff=branch_diff,
+                    )
+                },
+            )
+
+        if has_data_changes(diff_summary=diff_summary, branch=model.source_branch):
+            await get_workflow().submit_workflow(
+                workflow=REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
+                context=context,
+                parameters={
+                    "model": RequestProposedChangeSchemaIntegrity(
+                        proposed_change=model.proposed_change,
+                        source_branch=model.source_branch,
+                        source_branch_sync_with_git=model.source_branch_sync_with_git,
+                        destination_branch=model.destination_branch,
+                        branch_diff=branch_diff,
+                    )
+                },
+            )
 
 
 @flow(

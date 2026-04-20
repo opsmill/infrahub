@@ -14,9 +14,11 @@ from infrahub.proposed_change.models import (
 from infrahub.proposed_change.tasks import run_generators, run_proposed_change_pipeline
 from infrahub.workflows.catalogue import (
     REQUEST_GENERATOR_DEFINITION_CHECK,
+    REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY,
     REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS,
     REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS,
     REQUEST_PROPOSED_CHANGE_RUN_GENERATORS,
+    REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY,
 )
 from tests.adapters.workflow import WorkflowRecorder
 
@@ -170,8 +172,11 @@ class TestPipelineSequencing:
             check_type=check_type,
         )
 
+        # Return a non-empty diff so has_node_changes/has_data_changes return True
+        # for Phase 4 conditional dispatches (DATA_INTEGRITY, SCHEMA_INTEGRITY).
+        diff_entry = {"branch": "branch1", "kind": "InfraDevice", "actions": ["update"], "id": "obj-1"}
         mock_client = AsyncMock()
-        mock_client.get_diff_summary = AsyncMock(return_value=[])
+        mock_client.get_diff_summary = AsyncMock(return_value=[diff_entry])
 
         mock_dbs = AsyncMock()
         mock_db = AsyncMock()
@@ -261,3 +266,114 @@ class TestPipelineSequencing:
         workflow_names = [c["workflow"].name for c in recorder.all_calls]
         assert REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS.name in workflow_names
         assert REQUEST_PROPOSED_CHANGE_RUN_GENERATORS.name not in workflow_names
+
+    @pytest.mark.anyio
+    async def test_pipeline_diff_recomputed_after_generators(self, workflow_recorder: WorkflowRecorder) -> None:
+        """T019: For CheckType.ALL, the diff coordinator is called twice — once before generators
+        (initial diff) and once after generators complete (post-generator diff recompute)."""
+        model = RequestProposedChangePipeline(
+            proposed_change="pc-1",
+            source_branch="branch1",
+            source_branch_sync_with_git=True,
+            destination_branch="main",
+            check_type=CheckType.ALL,
+        )
+
+        mock_client = AsyncMock()
+        mock_client.get_diff_summary = AsyncMock(return_value=[])
+
+        mock_dbs = AsyncMock()
+        mock_db = AsyncMock()
+        mock_db.start_session = MagicMock(
+            return_value=AsyncMock(__aenter__=AsyncMock(return_value=mock_dbs), __aexit__=AsyncMock())
+        )
+
+        mock_branch = MagicMock()
+        mock_diff_coordinator = MagicMock()
+        mock_diff_coordinator.set_logger = MagicMock()
+        mock_diff_coordinator.update_branch_diff = AsyncMock()
+
+        mock_component_registry = MagicMock()
+        mock_component_registry.get_component = AsyncMock(return_value=mock_diff_coordinator)
+
+        with (
+            patch("infrahub.proposed_change.tasks.add_tags", new_callable=AsyncMock),
+            patch("infrahub.proposed_change.tasks.get_client", return_value=mock_client),
+            patch("infrahub.proposed_change.tasks.get_workflow", return_value=workflow_recorder),
+            patch("infrahub.proposed_change.tasks.get_cache", new_callable=AsyncMock, return_value=AsyncMock()),
+            patch("infrahub.proposed_change.tasks.get_database", new_callable=AsyncMock, return_value=mock_db),
+            patch("infrahub.proposed_change.tasks.get_run_logger", return_value=MagicMock()),
+            patch(
+                "infrahub.proposed_change.tasks._get_proposed_change_repositories",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "infrahub.proposed_change.tasks._gather_repository_repository_diffs",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "infrahub.proposed_change.tasks._get_subscribers_from_diff",
+                new_callable=AsyncMock,
+                return_value=[],
+            ),
+            patch(
+                "infrahub.proposed_change.tasks.set_diff_summary_cache",
+                new_callable=AsyncMock,
+            ),
+            patch("infrahub.proposed_change.tasks.registry") as mock_registry,
+            patch("infrahub.proposed_change.tasks.get_component_registry", return_value=mock_component_registry),
+        ):
+            mock_registry.get_branch = AsyncMock(return_value=mock_branch)
+            await run_proposed_change_pipeline.fn(model=model, context=MagicMock())
+
+        # update_branch_diff is called once for the initial diff and once after generators complete
+        assert mock_diff_coordinator.update_branch_diff.call_count == 2, (
+            f"Expected 2 diff recomputations (initial + post-generator), got {mock_diff_coordinator.update_branch_diff.call_count}"
+        )
+
+    @pytest.mark.anyio
+    async def test_pipeline_checks_dispatched_after_generators(self, workflow_recorder: WorkflowRecorder) -> None:
+        """T020: For CheckType.ALL, data integrity and schema integrity checks are dispatched ONLY in Phase 4 (after generators), not in Phase 2."""
+        recorder = await self._run_pipeline(workflow_recorder, check_type=CheckType.ALL)
+
+        all_workflow_names = [c["workflow"].name for c in recorder.all_calls]
+
+        gen_idx = all_workflow_names.index(REQUEST_PROPOSED_CHANGE_RUN_GENERATORS.name)
+
+        # Verify repository checks appear after RUN_GENERATORS
+        assert REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS.name in all_workflow_names
+        repo_check_indices = [
+            i for i, name in enumerate(all_workflow_names) if name == REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS.name
+        ]
+        # The Phase 4 (post-generator) repo check must be dispatched after generators complete
+        assert any(idx > gen_idx for idx in repo_check_indices), (
+            "Repository checks must be dispatched after generators complete"
+        )
+
+        # Verify artifact refresh appears after RUN_GENERATORS
+        art_idx = all_workflow_names.index(REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS.name)
+        assert art_idx > gen_idx, "Artifact refresh must appear after generators"
+
+        # DATA_INTEGRITY and SCHEMA_INTEGRITY must each appear EXACTLY ONCE (only in Phase 4)
+        data_indices = [
+            i for i, name in enumerate(all_workflow_names) if name == REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY.name
+        ]
+        schema_indices = [
+            i for i, name in enumerate(all_workflow_names) if name == REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY.name
+        ]
+        assert len(data_indices) == 1, f"DATA_INTEGRITY should dispatch exactly once, got {len(data_indices)}"
+        assert len(schema_indices) == 1, f"SCHEMA_INTEGRITY should dispatch exactly once, got {len(schema_indices)}"
+        assert data_indices[0] > gen_idx, "DATA_INTEGRITY must be dispatched after generators"
+        assert schema_indices[0] > gen_idx, "SCHEMA_INTEGRITY must be dispatched after generators"
+
+    @pytest.mark.anyio
+    async def test_pipeline_generator_only_no_phase4_checks(self, workflow_recorder: WorkflowRecorder) -> None:
+        """T021: For CheckType.GENERATOR (no ALL), Phase 4 artifact/repo checks are NOT dispatched."""
+        recorder = await self._run_pipeline(workflow_recorder, check_type=CheckType.GENERATOR)
+
+        workflow_names = [c["workflow"].name for c in recorder.all_calls]
+        assert REQUEST_PROPOSED_CHANGE_REFRESH_ARTIFACTS.name not in workflow_names
+        assert REQUEST_PROPOSED_CHANGE_REPOSITORY_CHECKS.name not in workflow_names
+        assert REQUEST_PROPOSED_CHANGE_DATA_INTEGRITY.name not in workflow_names
+        assert REQUEST_PROPOSED_CHANGE_SCHEMA_INTEGRITY.name not in workflow_names

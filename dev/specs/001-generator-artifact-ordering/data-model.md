@@ -45,7 +45,7 @@ Artifacts are generated after generators complete. Their definitions determine w
 
 Individual artifact instances. Their `status` transitions through Pending → Processing → Ready/Error during generation.
 
-## Workflow Message Models (No Changes)
+## Workflow Message Models (Updated)
 
 ### RequestProposedChangeRunGenerators
 
@@ -57,11 +57,9 @@ source_branch: str
 source_branch_sync_with_git: bool
 destination_branch: str
 branch_diff: ProposedChangeBranchDiff
-refresh_artifacts: bool          # Controls whether to dispatch artifact refresh
-do_repository_checks: bool       # Controls whether to dispatch repo checks
 ```
 
-No fields are added or modified. The `refresh_artifacts` and `do_repository_checks` flags continue to control whether downstream work is dispatched — the change is only in *when* that dispatch happens (after generators complete vs. immediately).
+The `refresh_artifacts` and `do_repository_checks` fields have been **removed** from this model. Downstream dispatch of artifact refresh and repository checks is now handled directly by `run_proposed_change_pipeline()` after generators complete, rather than being controlled by flags passed to `run_generators()`.
 
 ### RequestGeneratorDefinitionCheck
 
@@ -72,19 +70,29 @@ No changes. This model is passed to `execute_workflow` instead of `submit_workfl
 ## State Transitions (Unchanged)
 
 ```
-Pipeline Start
-  └─ run_generators()
-       ├─ Generator Definition Checks (parallel, now awaited)
-       │    └─ Per-instance: PENDING → READY/ERROR
-       │         └─ GeneratorValidator: QUEUED → IN_PROGRESS → COMPLETED
-       │
-       ├─ [WAIT: all generator validators COMPLETED]  ← NEW BEHAVIOR
-       │
-       ├─ Artifact Refresh (fire-and-forget)
+Pipeline Start (CheckType.ALL)
+  ├─ Phase 2: Independent checks (fire-and-forget, concurrent with generators)
+  │    └─ User Tests
+  │    (Note: for CheckType.ALL, Data Integrity and Schema Integrity are NOT dispatched here;
+  │     they run only in Phase 4 on the post-generator diff)
+  │
+  ├─ Phase 3: run_generators() — BLOCKING
+  │    └─ Generator Definition Checks (parallel, awaited via asyncio.gather)
+  │         └─ Per-instance: PENDING → READY/ERROR
+  │              └─ GeneratorValidator: QUEUED → IN_PROGRESS → COMPLETED
+  │
+  ├─ Phase 3.5: Diff Recomputation  ← NEW BEHAVIOR
+  │    └─ DiffCoordinator.update_branch_diff() — reflects generator-created objects
+  │
+  └─ Phase 4: Generator-dependent checks (fire-and-forget, post-generator diff)  ← NEW BEHAVIOR
+       ├─ Artifact Refresh
        │    └─ Per-artifact: PENDING → READY/ERROR
        │         └─ ArtifactValidator: QUEUED → IN_PROGRESS → COMPLETED
-       │
-       └─ Repository Checks (fire-and-forget)
+       ├─ Repository Checks
+       ├─ Data Integrity Check (post-generator diff — includes generator-created objects)
+       └─ Schema Integrity Check (post-generator diff)
 ```
 
-The state machine for individual generators and artifacts is unchanged. Only the orchestration timing between the two phases changes.
+For `CheckType.DATA` or `CheckType.SCHEMA` (standalone, no generators), the respective check runs in Phase 2 only and generators are never invoked.
+
+The state machine for individual generators and artifacts is unchanged. The orchestration now dispatches data/schema integrity checks ONLY in Phase 4 for `CheckType.ALL`, so they always observe objects created by generators.
