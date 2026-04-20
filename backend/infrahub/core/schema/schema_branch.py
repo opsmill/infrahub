@@ -293,12 +293,13 @@ class SchemaBranch:
                         f"'{relationship.peer}' has been removed but is still referenced in '{name}.{relationship.name}'; keep it or delete the "
                         "relationship"
                     )
-            for generic_kind in getattr(node, "inherit_from", None) or []:
-                if generic_kind in removed_schema_names:
-                    raise ValueError(
-                        f"'{generic_kind}' has been removed but is still referenced in '{name}.inherit_from'; keep it or remove the "
-                        "inherit_from reference"
-                    )
+            if isinstance(node, NodeSchema):
+                for generic_kind in node.inherit_from or []:
+                    if generic_kind in removed_schema_names:
+                        raise ValueError(
+                            f"'{generic_kind}' has been removed but is still referenced in '{name}.inherit_from'; keep it or remove the "
+                            "inherit_from reference"
+                        )
 
     def validate_update(
         self, other: SchemaBranch, diff: SchemaDiff, enforce_update_support: bool = True

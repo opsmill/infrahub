@@ -211,14 +211,7 @@ class TestSchemaUpdateAndRollback:
         default_branch: Branch,
         register_core_schema_db: None,
     ) -> None:
-        """Failures raised by schema.process() after the DB write must trigger rollback.
-
-        Drives SchemaUpdateCoordinator.execute() directly with a candidate schema that
-        passes in-memory processing but is guaranteed to crash in process_inheritance()
-        after the deletion lands in Neo4j (a generic is removed while a child node still
-        declares inherit_from against it). The coordinator must roll back the DB write
-        and restore the registry so the branch is not left wedged.
-        """
+        """Failures raised by schema.process() after the DB write must trigger rollback."""
         parent_child_schema_dict = {
             "generics": [
                 {
