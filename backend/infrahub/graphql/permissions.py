@@ -20,7 +20,9 @@ async def get_permissions(schema: MainSchemaTypes, graphql_context: GraphqlConte
     response: dict[str, Any] = {"count": len(schema_objects), "edges": []}
 
     nodes = await report_schema_permissions(
-        branch=graphql_context.branch, permission_manager=graphql_context.active_permissions.resolver, schemas=schema_objects
+        branch=graphql_context.branch,
+        permission_manager=graphql_context.active_permissions.resolver,
+        schemas=schema_objects,
     )
     response["edges"] = [{"node": node} for node in nodes]
 
