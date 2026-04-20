@@ -75,6 +75,7 @@ export function DateMetadataFilterForm({ definition, onSuccess }: DateMetadataFi
   return (
     <FilterFormLayout
       filterType="metadata-date"
+      label={definition.label}
       condition={condition}
       onConditionChange={setCondition}
       testId="metadata-date-filter-form"

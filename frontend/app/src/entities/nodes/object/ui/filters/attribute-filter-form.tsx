@@ -75,6 +75,7 @@ export function AttributeFilterForm({ attributeSchema, onSuccess }: AttributeFil
   return (
     <FilterFormLayout
       filterType={isDatetime ? "datetime" : "attribute"}
+      label={attributeSchema.label}
       condition={condition}
       onConditionChange={setCondition}
       testId="attribute-filter-form"

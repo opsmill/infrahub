@@ -169,6 +169,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
 
     internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
+    reinitialized: bool = Field(False, description="Re-clone is needed because the local directory was missing")
     infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
     model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 

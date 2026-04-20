@@ -312,8 +312,8 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
 
         assert merge_event["InfrahubEvent"]["count"] == 1
         merge_event_id = merge_event["InfrahubEvent"]["edges"][0]["node"]["id"]
-        assert len(merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"]) == 1
-        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["related_nodes"][0]["id"] == proposed_change.id
+        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["primary_node"] is not None
+        assert merge_event["InfrahubEvent"]["edges"][0]["node"]["primary_node"]["id"] == proposed_change.id
 
         john = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Johnny", kind=TestKind.PERSON)
         richard = await NodeManager.get_one_by_id_or_default_filter(db=db, id="Richard", kind=TestKind.PERSON)
