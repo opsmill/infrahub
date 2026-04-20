@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence
 
-from infrahub.core import registry
 from infrahub.core.constants import infrahubkind
+from infrahub.core.manager import NodeManager
 
 from ..query import MigrationQuery
 from ..query.node_duplicate import NodeDuplicateQuery, SchemaNodeInfo
@@ -71,11 +71,11 @@ class NodeKindUpdateMigration(SchemaMigration):
 
         for pool_kind, attr_name in POOL_NODE_KIND_ATTRIBUTES:
             # Skip if the pool schema isn't registered (e.g., in test environments)
-            if not registry.schema.has(name=pool_kind, branch=branch.name):
+            if not db.schema.has(name=pool_kind, branch=branch.name):
                 continue
 
             # Query for pool nodes where the attribute value matches the old kind
-            pools = await registry.manager.query(
+            pools = await NodeManager.query(
                 db=db,
                 branch=branch,
                 schema=pool_kind,
@@ -90,11 +90,16 @@ class NodeKindUpdateMigration(SchemaMigration):
                 attr.value = new_kind
 
                 # Update the pool name if it follows the auto-generated pattern
-                name_attr = pool.get_attribute(name="name")
-                old_prefix = f"{old_kind}."
-                if name_attr.value.startswith(old_prefix):
-                    name_attr.value = f"{new_kind}.{name_attr.value[len(old_prefix) :]}"
-                    fields_to_save.append("name")
+                try:
+                    name_attr = pool.get_attribute(name="name")
+                except ValueError:
+                    pass
+                else:
+                    old_prefix = f"{old_kind}."
+                    new_prefix = f"{new_kind}."
+                    if name_attr.value.startswith(old_prefix):
+                        name_attr.value = name_attr.value.replace(old_prefix, new_prefix, 1)
+                        fields_to_save.append("name")
 
                 await pool.save(db=db, fields=fields_to_save, at=migration_input.at)
                 result.nbr_migrations_executed += 1

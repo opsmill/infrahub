@@ -1,5 +1,7 @@
 from typing import Any
 
+import pytest
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
@@ -15,6 +17,8 @@ from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration, NodeKindUpdateMigrationQuery01
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
+from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.path import SchemaPath
 from infrahub.core.query.node import NodeGetHierarchyQuery
@@ -341,7 +345,10 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
 
 
 async def test_migration_updates_number_pool_node_reference(
-    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Test that NumberPool.node is updated when the referenced kind is renamed."""
     # 1. Create and register a schema with a NumberPool attribute
@@ -363,8 +370,8 @@ async def test_migration_updates_number_pool_node_reference(
     schema = SchemaRoot(nodes=[device_schema])
     await load_schema(db=db, schema=schema)
 
-    # Register the CoreNumberPool type for pool operations
-    registry.node[InfrahubKind.NUMBERPOOL] = CoreNumberPool
+    # Register the CoreNumberPool type for pool operations (monkeypatched to avoid shared-state pollution)
+    monkeypatch.setitem(registry.node, InfrahubKind.NUMBERPOOL, CoreNumberPool)
 
     # Create a device to trigger pool creation
     device = await Node.init(db=db, schema="Test2Device")
@@ -420,3 +427,118 @@ async def test_migration_updates_number_pool_node_reference(
     )
     assert len(pools_with_new_name) == 1
     assert pools_with_new_name[0].id == pool_id
+
+
+async def test_migration_updates_ip_address_pool_node_reference(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that CoreIPAddressPool.default_address_type is updated when the referenced kind is renamed."""
+    monkeypatch.setitem(registry.node, InfrahubKind.IPADDRESSPOOL, CoreIPAddressPool)
+
+    # 1. Create an IP namespace and a prefix resource required by the pool
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns.new(db=db, name="test-ns-addr")
+    await ns.save(db=db)
+
+    prefix = await Node.init(db=db, schema="IpamIPPrefix")
+    await prefix.new(db=db, prefix="192.168.0.0/24", ip_namespace=ns)
+    await prefix.save(db=db)
+
+    # 2. Create a CoreIPAddressPool whose default_address_type points to "IpamIPAddress"
+    pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    pool = await CoreIPAddressPool.init(schema=pool_schema, db=db)
+    await pool.new(
+        db=db,
+        name="IpamIPAddress.test-addr-pool",
+        resources=[prefix],
+        ip_namespace=ns,
+        default_address_type="IpamIPAddress",
+    )
+    await pool.save(db=db)
+    pool_id = pool.id
+
+    # 3. Run NodeKindUpdateMigration to rename IpamIPAddress -> IpamNewIPAddress
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema_branch.duplicate()
+    old_addr_schema = candidate_schema.get(name="IpamIPAddress")
+    candidate_schema.delete(name="IpamIPAddress")
+    old_addr_schema.name = "NewIPAddress"
+    candidate_schema.set(name="IpamNewIPAddress", schema=old_addr_schema)
+    assert old_addr_schema.kind == "IpamNewIPAddress"
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="IpamIPAddress"),
+        new_node_schema=old_addr_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="IpamNewIPAddress", field_name="name"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    # 4. Verify the pool's default_address_type was updated
+    updated_pool = await NodeManager.get_one(db=db, branch=default_branch, id=pool_id)
+    assert updated_pool.default_address_type.value == "IpamNewIPAddress"
+
+    # 5. Verify the pool name was updated (it starts with the old kind prefix)
+    assert updated_pool.name.value.startswith("IpamNewIPAddress.")
+
+
+async def test_migration_updates_ip_prefix_pool_node_reference(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    register_ipam_schema: SchemaBranch,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that CoreIPPrefixPool.default_prefix_type is updated when the referenced kind is renamed."""
+    monkeypatch.setitem(registry.node, InfrahubKind.IPPREFIXPOOL, CoreIPPrefixPool)
+
+    # 1. Create an IP namespace and a prefix resource required by the pool
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns.new(db=db, name="test-ns-prefix")
+    await ns.save(db=db)
+
+    prefix = await Node.init(db=db, schema="IpamIPPrefix")
+    await prefix.new(db=db, prefix="10.0.0.0/8", ip_namespace=ns)
+    await prefix.save(db=db)
+
+    # 2. Create a CoreIPPrefixPool whose default_prefix_type points to "IpamIPPrefix"
+    pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    pool = await CoreIPPrefixPool.init(schema=pool_schema, db=db)
+    await pool.new(
+        db=db,
+        name="IpamIPPrefix.test-prefix-pool",
+        resources=[prefix],
+        ip_namespace=ns,
+        default_prefix_length=24,
+        default_prefix_type="IpamIPPrefix",
+    )
+    await pool.save(db=db)
+    pool_id = pool.id
+
+    # 3. Run NodeKindUpdateMigration to rename IpamIPPrefix -> IpamNewIPPrefix
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema_branch.duplicate()
+    old_prefix_schema = candidate_schema.get(name="IpamIPPrefix")
+    candidate_schema.delete(name="IpamIPPrefix")
+    old_prefix_schema.name = "NewIPPrefix"
+    candidate_schema.set(name="IpamNewIPPrefix", schema=old_prefix_schema)
+    assert old_prefix_schema.kind == "IpamNewIPPrefix"
+
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="IpamIPPrefix"),
+        new_node_schema=old_prefix_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="IpamNewIPPrefix", field_name="name"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    # 4. Verify the pool's default_prefix_type was updated
+    updated_pool = await NodeManager.get_one(db=db, branch=default_branch, id=pool_id)
+    assert updated_pool.default_prefix_type.value == "IpamNewIPPrefix"
+
+    # 5. Verify the pool name was updated (it starts with the old kind prefix)
+    assert updated_pool.name.value.startswith("IpamNewIPPrefix.")
