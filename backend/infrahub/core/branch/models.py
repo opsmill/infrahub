@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 
 from pydantic import Field, field_validator
 
@@ -34,7 +34,7 @@ class Branch(StandardNode):
     status: BranchStatus = BranchStatus.OPEN
     description: str = ""
     origin_branch: str = "main"
-    branched_from: Optional[str] = Field(default=None, validate_default=True)
+    branched_from: str | None = Field(default=None, validate_default=True)
     hierarchy_level: int = 2
     is_default: bool = False
     is_global: bool = False
@@ -44,8 +44,8 @@ class Branch(StandardNode):
         description="Indicate if the branch should be extended to Git and if Infrahub should merge the branch in Git as part of a proposed change",
     )
     is_isolated: bool = True
-    schema_changed_at: Optional[str] = None
-    schema_hash: Optional[SchemaBranchHash] = None
+    schema_changed_at: str | None = None
+    schema_hash: SchemaBranchHash | None = None
     graph_version: int | None = None
 
     _exclude_attrs: list[str] = ["id", "uuid", "owner"]
@@ -220,7 +220,7 @@ class Branch(StandardNode):
     def isinstance(cls, obj: Any) -> bool:
         return isinstance(obj, cls)
 
-    def get_origin_branch(self) -> Optional[Branch]:
+    def get_origin_branch(self) -> Branch | None:
         """Return the branch Object of the origin_branch."""
         if not self.origin_branch or self.origin_branch == self.name:
             return None
@@ -239,7 +239,7 @@ class Branch(StandardNode):
 
         return [default_branch, self.name]
 
-    def get_branches_and_times_to_query(self, at: Optional[Timestamp] = None) -> dict[frozenset, str]:
+    def get_branches_and_times_to_query(self, at: Timestamp | None = None) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
 
         at = Timestamp(at)
@@ -260,7 +260,7 @@ class Branch(StandardNode):
 
     def get_branches_and_times_to_query_global(
         self,
-        at: Optional[Timestamp] = None,
+        at: Timestamp | None = None,
         is_isolated: bool = True,
     ) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
@@ -330,7 +330,7 @@ class Branch(StandardNode):
         await super().delete(db=db)
 
     def get_query_filter_relationships(
-        self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False
+        self, rel_labels: list, at: Timestamp | None = None, include_outside_parentheses: bool = False
     ) -> tuple[list, dict]:
         """
         Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
@@ -368,7 +368,7 @@ class Branch(StandardNode):
 
     def get_query_filter_path(
         self,
-        at: Optional[Union[Timestamp, str]] = None,
+        at: Timestamp | str | None = None,
         is_isolated: bool = True,
         branch_agnostic: bool = False,
         variable_name: str = "r",

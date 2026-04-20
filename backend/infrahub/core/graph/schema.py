@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
@@ -215,7 +215,7 @@ class GraphBooleanNode(GraphVertex):
 
 class GraphRelationshipIsPartOf(BaseModel):
     from_: str = Field(..., description="Time from which the relationship is valid", alias="from")
-    to_: Optional[str] = Field(None, description="Time until which the relationship is valid", alias="to")
+    to_: str | None = Field(None, description="Time until which the relationship is valid", alias="to")
     status: RelationshipStatus = Field(..., description="status of the relationship")
 
 
@@ -229,9 +229,9 @@ class GraphRelationshipDefault(BaseModel):
         ge=1,
     )
     from_: str = Field(..., description="Time from which the relationship is valid", alias="from")
-    to_: Optional[str] = Field(None, description="Time until which the relationship is valid", alias="to")
+    to_: str | None = Field(None, description="Time until which the relationship is valid", alias="to")
     status: RelationshipStatus = Field(..., description="status of the relationship")
-    hierarchy: Optional[str] = Field(None, description="Name of the hierarchy this relationship is part of")
+    hierarchy: str | None = Field(None, description="Name of the hierarchy this relationship is part of")
 
 
 def get_graph_schema() -> dict[str, dict[str, type[Any]]]:

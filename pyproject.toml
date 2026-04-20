@@ -625,40 +625,11 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/core/branch/models.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "UP007",  # Use X | Y for type annotations
-    "UP045",  # Use X | Y for type annotations
-]
-
-"backend/infrahub/core/graph/**.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "UP045",  # Use X | Y for type annotations
-]
-
 "backend/infrahub/core/node/__init__.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "RET503",  # Missing explicit `return` at the end of function able to return non-`None` value
-]
-
-"backend/infrahub/core/node/standard.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "UP045",  # Use X | Y for type annotations
-]
-
-"backend/infrahub/core/query/**.py" = [
-    ##################################################################################################
-    # Refactor code and remove the ignore rule
-    ##################################################################################################
-    "UP007",  # Use X | Y for type annotations
 ]
 
 "backend/infrahub/core/models.py" = [

@@ -3,7 +3,8 @@ from __future__ import annotations
 import inspect
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Optional, Union, get_args, get_origin
+from types import UnionType
+from typing import TYPE_CHECKING, Any, Union, get_args, get_origin
 from uuid import UUID
 
 import ujson
@@ -45,12 +46,12 @@ class StandardNodeQueryFields:
 
 
 class StandardNode(BaseModel):
-    id: Optional[str] = None
-    uuid: Optional[UUID] = None
-    created_at: Optional[str] = Field(default=None, validate_default=True)
+    id: str | None = None
+    uuid: UUID | None = None
+    created_at: str | None = Field(default=None, validate_default=True)
     created_by: str = Field(default=SYSTEM_USER_ID)
-    updated_by: Optional[str] = Field(default=None)
-    updated_at: Optional[str] = Field(default=None, validate_default=True)
+    updated_by: str | None = Field(default=None)
+    updated_at: str | None = Field(default=None, validate_default=True)
 
     _query: type[StandardNodeQuery] = StandardNodeCreateQuery
     _exclude_attrs: list[str] = ["id", "uuid", "_query"]
@@ -79,9 +80,9 @@ class StandardNode(BaseModel):
         annotation_origin = get_origin(field.annotation)
         annotation_args = get_args(field.annotation)
 
-        if (annotation_origin == Union and len(annotation_args) == 2 and type(None) in annotation_args) or (
-            annotation_origin is list and len(annotation_args)
-        ):
+        if (
+            annotation_origin in (Union, UnionType) and len(annotation_args) == 2 and type(None) in annotation_args
+        ) or (annotation_origin is list and len(annotation_args)):
             return get_origin(annotation_args[0]) or annotation_args[0]
 
         return annotation_origin or field.annotation
@@ -212,7 +213,7 @@ class StandardNode(BaseModel):
         return True
 
     @classmethod
-    async def get(cls, id: str, db: InfrahubDatabase) -> Optional[Self]:
+    async def get(cls, id: str, db: InfrahubDatabase) -> Self | None:
         """Get a node from the database identified by its ID."""
 
         node = await cls._get_item_raw(id=id, db=db)
@@ -233,7 +234,7 @@ class StandardNode(BaseModel):
         return result.get("n")
 
     @classmethod
-    def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
+    def from_db(cls, node: Neo4jNode, extras: dict[str, Any] | None = None) -> Self:
         """Convert a Neo4j Node to a Infrahub StandardNode
 
         Args:
