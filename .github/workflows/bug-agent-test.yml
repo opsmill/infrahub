@@ -99,16 +99,21 @@ jobs:
       - name: Install Python dependencies
         if: steps.analyst.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.analyst.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.analyst.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.analyst.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
 
       - name: Read prompt
         if: steps.analyst.outputs.skip != 'true'
@@ -184,15 +189,17 @@ jobs:
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
                   "Bash(uv run pytest *)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
-                  "Bash(npm run test *)",
-                  "Bash(npm --prefix * run test *)",
-                  "Bash(npm --prefix * run biome:fix)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx --prefix * biome check --write *)",
-                  "Bash(npx playwright test *)",
-                  "Bash(cd frontend/app && npm run test *)",
+                  "Bash(pnpm run test *)",
+                  "Bash(pnpm --dir * run test *)",
+                  "Bash(pnpm --dir * run biome:fix)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx --prefix * biome check --write *)", "Bash(pnpm --dir * exec biome check --write *)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(cd frontend/app && pnpm run test *)",
                   "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
                   "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
                   "Bash(ls)", "Bash(ls *)",
                   "Bash(mkdir -p *)"
                 ],
@@ -288,16 +295,21 @@ jobs:
       - name: Install Python dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.resolve.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.resolve.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -386,15 +398,17 @@ jobs:
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
                   "Bash(uv run pytest *)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
-                  "Bash(npm run test *)",
-                  "Bash(npm --prefix * run test *)",
-                  "Bash(npm --prefix * run biome:fix)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx --prefix * biome check --write *)",
-                  "Bash(npx playwright test *)",
-                  "Bash(cd frontend/app && npm run test *)",
+                  "Bash(pnpm run test *)",
+                  "Bash(pnpm --dir * run test *)",
+                  "Bash(pnpm --dir * run biome:fix)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx --prefix * biome check --write *)", "Bash(pnpm --dir * exec biome check --write *)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(cd frontend/app && pnpm run test *)",
                   "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
                   "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
                   "Bash(ls)", "Bash(ls *)",
                   "Bash(mkdir -p *)"
                 ],
