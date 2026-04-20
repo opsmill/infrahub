@@ -122,10 +122,10 @@ exports[`fix ts error`] = {
     "src/entities/events/ui/branch-events/branch-event-title.tsx:1629228177": [
       [7, 7, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/events/ui/event-details.tsx:3472503684": [
-      [78, 34, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"],
-      [100, 30, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"],
-      [122, 28, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"]
+    "src/entities/events/ui/event-details.tsx:1445632781": [
+      [85, 34, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"],
+      [107, 30, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"],
+      [129, 28, 4, "tsc: Parameter \'node\' implicitly has an \'any\' type.", "2087865285"]
     ],
     "src/entities/events/ui/filters/global-branch-filter.tsx:4154549494": [
       [82, 14, 7, "tsc: Type \'{ label: string; name: string; }[]\' is not assignable to type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; }[] | { id?: string\'.\\n  Property \'state\' is missing in type \'{ label: string; name: string; }\' but required in type \'\\"absent\\"; name: string; description?: string | null | null | null | null | undefined; color?: string | undefined; label?: string | undefined; state: \\"present\\" | undefined; } | { id?: string\'.", "3821181085"]
