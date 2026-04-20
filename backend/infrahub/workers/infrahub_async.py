@@ -92,9 +92,8 @@ class InfrahubWorkerAsync(BaseWorker):
         # by the credential helper is failing.
         os.environ["GIT_TERMINAL_PROMPT"] = "0"
 
-        if not config.SETTINGS.settings:
-            config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
-            config.load_and_exit(config_file_name=config_file)
+        config_file = os.environ.get("INFRAHUB_CONFIG", "infrahub.toml")
+        config.SETTINGS.initialize_and_exit(config_file=config_file)
 
         self._init_logger()
 

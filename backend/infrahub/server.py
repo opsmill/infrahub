@@ -118,6 +118,11 @@ async def lifespan(application: FastAPI) -> AsyncGenerator:
     await shutdown(application)
 
 
+# Validate settings at import time so `uvicorn infrahub.server:app` and
+# `gunicorn infrahub.server:app` fail before binding a socket if configuration
+# is invalid. Without this, failures only surface inside request handling.
+config.SETTINGS.initialize_and_exit()
+
 app = FastAPI(
     title="Infrahub",
     version=__version__,

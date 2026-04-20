@@ -32,14 +32,15 @@ async def _init_prefect() -> None:
 
 
 def create_infrahub_prefect() -> FastAPI:
+    from infrahub import config
+
+    config.SETTINGS.initialize_and_exit()
+
     if (
         os.getenv("PREFECT_API_BLOCKS_REGISTER_ON_START") == "false"
         and os.getenv("PREFECT_API_DATABASE_MIGRATE_ON_START") == "false"
     ):
         # We are probably running distributed mode
-        from infrahub import config
-
-        config.SETTINGS.initialize_and_exit()
         asyncio.run(_init_prefect())
 
     app = create_app()
