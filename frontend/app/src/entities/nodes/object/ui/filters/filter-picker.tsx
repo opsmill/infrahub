@@ -14,13 +14,13 @@ import { classNames } from "@/shared/utils/common";
 
 import {
   type FilterDefinition,
-  getFilterDefinitionIcon,
   getFilterDefinitionLabel,
   getFilterDefinitionName,
 } from "@/entities/nodes/object/domain/filter-definition";
-import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
+import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
 import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
+import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
 import type { ModelSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
