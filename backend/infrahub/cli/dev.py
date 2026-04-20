@@ -3,8 +3,10 @@ from __future__ import annotations
 import importlib
 import json
 import logging
-from pathlib import Path  # noqa: TC003
-from typing import TYPE_CHECKING
+import os
+import tomllib
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import typer
 from graphql import parse, print_ast, print_schema
@@ -31,6 +33,15 @@ if TYPE_CHECKING:
 app = AsyncTyper()
 
 
+def _load_settings_for_offline_codegen(config_file: str) -> None:
+    """Load settings for offline schema-export commands."""
+    config_path = Path(config_file)
+    config_data: dict[str, Any] = tomllib.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
+    if not os.environ.get("INFRAHUB_SECURITY_SECRET_KEY"):
+        config_data.setdefault("security", {}).setdefault("secret_key", "offline-codegen")
+    config.load_and_exit(config_data=config_data)
+
+
 @app.command(name="export-graphql-schema")
 async def export_graphql_schema(
     ctx: typer.Context,  # noqa: ARG001
@@ -38,8 +49,7 @@ async def export_graphql_schema(
     out: Path = typer.Option("schema.graphql"),  # noqa: B008
 ) -> None:
     """Export the Core GraphQL schema to a file."""
-
-    config.load_and_exit(config_file_name=config_file)
+    _load_settings_for_offline_codegen(config_file)
 
     schema = SchemaRoot(**internal_schema)
     full_schema = schema.merge(schema=SchemaRoot(**core_models))
@@ -67,7 +77,7 @@ async def export_json_schema(
     out: Path = typer.Option("openapi.json"),  # noqa: B008
 ) -> None:
     """Export the REST API OpenAPI schema to a file."""
-    config.load_and_exit(config_file_name=config_file)
+    _load_settings_for_offline_codegen(config_file)
     openapi_dict = create_app().openapi()
     openapi_dict["info"]["version"] = "latest"
     content = json.dumps(openapi_dict, indent=4)
@@ -81,7 +91,7 @@ async def export_node_schema(
     out: Path = typer.Option("develop.json"),  # noqa: B008
 ) -> None:
     """Export the repository configuration to a file."""
-    config.load_and_exit(config_file_name=config_file)
+    _load_settings_for_offline_codegen(config_file)
     schema = SchemaLoadAPI.model_json_schema()
     schema["title"] = "InfrahubSchema"
     content = json.dumps(schema, indent=4)
