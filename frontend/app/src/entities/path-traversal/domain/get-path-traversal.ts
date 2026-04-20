@@ -33,7 +33,7 @@ export type GetPathTraversalParams = {
   destinationId: string;
   maxDepth?: number;
   maxPaths?: number;
-  nodeFilter?: string[];
+  kindFilter?: string[];
   relationshipFilter?: string[];
   excludedKinds?: string[];
   branchName?: string;
@@ -48,7 +48,7 @@ export async function getPathTraversal(
     destinationId,
     maxDepth,
     maxPaths,
-    nodeFilter,
+    kindFilter,
     relationshipFilter,
     excludedKinds,
     branchName,
@@ -62,7 +62,7 @@ export async function getPathTraversal(
 
   if (maxDepth !== undefined) dataArgs.max_depth = maxDepth;
   if (maxPaths !== undefined) dataArgs.max_paths = maxPaths;
-  if (nodeFilter?.length) dataArgs.node_filter = nodeFilter;
+  if (kindFilter?.length) dataArgs.kind_filter = kindFilter;
   if (relationshipFilter?.length) dataArgs.relationship_filter = relationshipFilter;
   if (excludedKinds?.length) dataArgs.excluded_kinds = excludedKinds;
 

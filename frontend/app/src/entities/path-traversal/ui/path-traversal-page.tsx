@@ -3,10 +3,10 @@ import { useSearchParams } from "react-router";
 
 import { Spinner } from "@/shared/components/ui/spinner";
 
-import { useGetDependencies } from "../domain/dependencies.query";
-import type { DependencyResponse } from "../domain/get-dependencies";
 import type { PathResult, PathTraversalResponse } from "../domain/get-path-traversal";
+import type { ReachableNodesResponse } from "../domain/get-reachable-nodes";
 import { useGetPathTraversal } from "../domain/path-traversal.query";
+import { useGetReachableNodes } from "../domain/reachable-nodes.query";
 import { DependencySelector } from "./dependency-selector";
 import { NodeSelector } from "./node-selector";
 import { PathFlowGraph } from "./path-flow-graph";
@@ -55,19 +55,18 @@ function getKindCounts(path: PathResult): string {
     .join(", ");
 }
 
-/** Convert dependency response to PathTraversalResponse so PathFlowGraph can render it */
-function dependenciesToPathResponse(deps: DependencyResponse): PathTraversalResponse {
-  // Use the first dependent node as a fake "destination" for the graph
-  const firstDep = deps.dependency_nodes[0];
-  const destination = firstDep
-    ? { id: firstDep.id, kind: firstDep.kind, display_label: firstDep.display_label }
-    : deps.source;
+function reachableNodesToPathResponse(reachable: ReachableNodesResponse): PathTraversalResponse {
+  // Use the first reachable node as a synthetic "destination" for the graph
+  const firstNode = reachable.reachable_nodes[0];
+  const destination = firstNode
+    ? { id: firstNode.id, kind: firstNode.kind, display_label: firstNode.display_label }
+    : reachable.source;
 
   return {
-    paths: deps.paths,
-    source: deps.source,
+    paths: reachable.paths,
+    source: reachable.source,
     destination,
-    total_paths_found: deps.paths.length,
+    total_paths_found: reachable.paths.length,
   };
 }
 
@@ -88,7 +87,7 @@ export function PathTraversalPage() {
   const [destinationId, setDestinationId] = useState(initialDestinationId);
   const [maxDepth, setMaxDepth] = useState(initialDepth);
   const [maxPaths, setMaxPaths] = useState(initialMaxPaths);
-  const [nodeFilter, setNodeFilter] = useState<string[]>([]);
+  const [kindFilter, setKindFilter] = useState<string[]>([]);
   const [excludedKinds, setExcludedKinds] = useState<string[]>([]);
   const [selectedPathIndex, setSelectedPathIndex] = useState(initialSelectedPath);
   const [queryEnabled, setQueryEnabled] = useState(!!initialSourceId && !!initialDestinationId);
@@ -102,7 +101,7 @@ export function PathTraversalPage() {
   const [depsQueryEnabled, setDepsQueryEnabled] = useState(false);
 
   const { data, isLoading, error } = useGetPathTraversal(
-    { sourceId, destinationId, maxDepth, maxPaths, nodeFilter, excludedKinds },
+    { sourceId, destinationId, maxDepth, maxPaths, kindFilter, excludedKinds },
     { enabled: mode === "path" && queryEnabled && !!sourceId && !!destinationId }
   );
 
@@ -110,7 +109,7 @@ export function PathTraversalPage() {
     data: depsData,
     isLoading: depsLoading,
     error: depsError,
-  } = useGetDependencies(
+  } = useGetReachableNodes(
     { sourceId: depsSourceId, targetKinds: depsTargetKinds, maxDepth: depsMaxDepth },
     {
       enabled:
@@ -148,14 +147,14 @@ export function PathTraversalPage() {
     destinationId: string;
     maxDepth: number;
     maxPaths: number;
-    nodeFilter: string[];
+    kindFilter: string[];
     excludedKinds: string[];
   }) {
     setSourceId(params.sourceId);
     setDestinationId(params.destinationId);
     setMaxDepth(params.maxDepth);
     setMaxPaths(params.maxPaths);
-    setNodeFilter(params.nodeFilter);
+    setKindFilter(params.kindFilter);
     setExcludedKinds(params.excludedKinds);
     setSelectedPathIndex(0);
     setQueryEnabled(true);
@@ -197,7 +196,7 @@ export function PathTraversalPage() {
 
       // Arrow up/down to navigate paths
       const totalPaths =
-        mode === "path" ? (data?.paths.length ?? 0) : (depsData?.dependency_nodes.length ?? 0);
+        mode === "path" ? (data?.paths.length ?? 0) : (depsData?.reachable_nodes.length ?? 0);
       if (totalPaths > 0 && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
         e.preventDefault();
         const next =
@@ -429,8 +428,7 @@ export function PathTraversalPage() {
                   initialSourceId={initialSourceId}
                 />
 
-                {/* Dependent nodes list */}
-                {depsData && depsData.dependency_nodes.length > 0 && (
+                {depsData && depsData.reachable_nodes.length > 0 && (
                   <div className="border-gray-200 border-t p-4">
                     <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 p-2">
                       <div className="font-medium text-amber-800 text-xs">
@@ -438,7 +436,7 @@ export function PathTraversalPage() {
                       </div>
                     </div>
                     <div className="space-y-1">
-                      {depsData.dependency_nodes.map((node, index) => (
+                      {depsData.reachable_nodes.map((node, index) => (
                         <button
                           key={node.id}
                           onClick={() => handleSelectPath(index)}
@@ -524,7 +522,7 @@ export function PathTraversalPage() {
 
         {mode === "impact" && depsData && !depsLoading && (
           <PathFlowGraph
-            data={dependenciesToPathResponse(depsData)}
+            data={reachableNodesToPathResponse(depsData)}
             selectedPathIndex={selectedPathIndex}
             onPathSelect={setSelectedPathIndex}
           />

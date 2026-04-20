@@ -5,7 +5,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 import type { PathNode, PathResult } from "./get-path-traversal";
 
-export type DependencyNode = {
+export type ReachableNode = {
   id: string;
   kind: string;
   display_label: string;
@@ -14,14 +14,14 @@ export type DependencyNode = {
   path: PathResult;
 };
 
-export type DependencyResponse = {
+export type ReachableNodesResponse = {
   source: PathNode;
-  dependency_nodes: DependencyNode[];
+  reachable_nodes: ReachableNode[];
   paths: PathResult[];
   total_found: number;
 };
 
-export type GetDependenciesParams = {
+export type GetReachableNodesParams = {
   sourceId: string;
   targetKinds: string[];
   maxDepth?: number;
@@ -30,7 +30,9 @@ export type GetDependenciesParams = {
   atDate?: Date | string | null;
 };
 
-export async function getDependencies(params: GetDependenciesParams): Promise<DependencyResponse> {
+export async function getReachableNodes(
+  params: GetReachableNodesParams
+): Promise<ReachableNodesResponse> {
   const { sourceId, targetKinds, maxDepth, maxResults, branchName, atDate } = params;
 
   const dataArgs: Record<string, unknown> = {
@@ -42,11 +44,11 @@ export async function getDependencies(params: GetDependenciesParams): Promise<De
 
   const queryString = jsonToGraphQLQuery({
     query: {
-      __name: "GetDependencies",
-      InfrahubDependencies: {
+      __name: "GetReachableNodes",
+      InfrahubReachableNodes: {
         __args: { data: dataArgs },
         source: { id: true, kind: true, display_label: true },
-        dependency_nodes: {
+        reachable_nodes: {
           id: true,
           kind: true,
           display_label: true,
@@ -77,5 +79,5 @@ export async function getDependencies(params: GetDependenciesParams): Promise<De
     throw new Error(errors[0]?.message ?? "Unknown error");
   }
 
-  return data.InfrahubDependencies;
+  return data.InfrahubReachableNodes;
 }

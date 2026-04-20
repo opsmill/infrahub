@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
+from infrahub.core import registry
+from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
@@ -14,14 +16,13 @@ class PathNodeData:
     uuid: str
     kind: str
     display_label: str
-    db_id: str
 
 
 @dataclass(frozen=True)
 class PathRelationshipData:
     uuid: str
     name: str
-    direction: str
+    direction: RelationshipDirection
 
 
 @dataclass(frozen=True)
@@ -31,8 +32,6 @@ class PathData:
     depth: int
 
 
-# Namespaces excluded from traversal by default.
-# These contain internal/system nodes that add noise to path results.
 DEFAULT_EXCLUDED_NAMESPACES = (
     "Core",
     "Internal",
@@ -41,6 +40,52 @@ DEFAULT_EXCLUDED_NAMESPACES = (
     "Profile",
     "Template",
 )
+
+
+def extract_path_data(path_obj: Any) -> PathData:
+    """Convert a Neo4j Path object into PathData.
+
+    Paths alternate Node vertex, Relationship vertex, Node vertex, ... where
+    each hop between user-visible nodes is two edges.
+    """
+    raw_nodes = list(path_obj.nodes)
+    raw_rels = list(path_obj.relationships)
+
+    path_nodes: list[PathNodeData] = []
+    path_relationships: list[PathRelationshipData] = []
+
+    for i, vertex in enumerate(raw_nodes):
+        if i % 2 == 0:
+            path_nodes.append(
+                PathNodeData(
+                    uuid=vertex.get("uuid", ""),
+                    kind=vertex.get("kind", ""),
+                    display_label=vertex.get("display_label", vertex.get("kind", "")),
+                )
+            )
+            continue
+
+        direction = RelationshipDirection.OUTBOUND
+        if i > 0 and (i - 1) < len(raw_rels):
+            incoming_edge = raw_rels[i - 1]
+            prior_node = raw_nodes[i - 1]
+            if (
+                incoming_edge is not None
+                and hasattr(incoming_edge, "start_node")
+                and incoming_edge.start_node != prior_node.element_id
+            ):
+                direction = RelationshipDirection.INBOUND
+
+        path_relationships.append(
+            PathRelationshipData(
+                uuid=vertex.get("uuid", ""),
+                name=vertex.get("name", ""),
+                direction=direction,
+            )
+        )
+
+    depth = len(path_nodes) - 1 if len(path_nodes) > 1 else 0
+    return PathData(nodes=path_nodes, relationships=path_relationships, depth=depth)
 
 
 class PathTraversalQuery(Query):
@@ -55,7 +100,7 @@ class PathTraversalQuery(Query):
         destination_id: str,
         max_depth: int = 5,
         max_paths: int = 10,
-        node_filter: list[str] | None = None,
+        kind_filter: list[str] | None = None,
         relationship_filter: list[str] | None = None,
         excluded_namespaces: list[str] | None = None,
         excluded_kinds: list[str] | None = None,
@@ -72,7 +117,7 @@ class PathTraversalQuery(Query):
         self.destination_id = destination_id
         self.max_depth = max_depth
         self.max_paths = max_paths
-        self.node_filter = node_filter or []
+        self.kind_filter = kind_filter or []
         self.relationship_filter = relationship_filter or []
         self.excluded_namespaces = (
             excluded_namespaces if excluded_namespaces is not None else list(DEFAULT_EXCLUDED_NAMESPACES)
@@ -86,29 +131,21 @@ class PathTraversalQuery(Query):
         self.params.update(branch_params)
         self.params["source_uuid"] = self.source_id
         self.params["target_uuid"] = self.destination_id
+        self.params["default_branch"] = registry.default_branch
 
-        # Each user-visible hop is 2 edges (Node->IS_RELATED->Relationship->IS_RELATED->Node)
         max_edge_length = self.max_depth * 2
 
-        # Build WHERE clauses for path filtering
-        # Use branch_filter broadly to find candidate paths, then validate
-        # each edge individually using the latest-edge pattern.
-        where_clauses = [
-            f"all(r IN relationships(path) WHERE ({branch_filter}))",
-        ]
+        where_clauses = [f"all(r IN relationships(path) WHERE ({branch_filter}))"]
 
-        # Namespace exclusion: skip intermediate nodes from system namespaces
-        # Source and target are always allowed through; Relationship vertices are skipped.
         if self.excluded_namespaces:
             self.params["excluded_namespaces"] = self.excluded_namespaces
             where_clauses.append(
                 "all(n IN nodes(path) WHERE "
                 "n.uuid IN [$source_uuid, $target_uuid] "
-                "OR NOT n:Node "  # Allow Relationship vertices through
+                "OR NOT n:Node "
                 "OR NOT n.namespace IN $excluded_namespaces)"
             )
 
-        # Kind exclusion: skip specific kinds from the path
         if self.excluded_kinds:
             self.params["excluded_kinds"] = self.excluded_kinds
             where_clauses.append(
@@ -118,136 +155,94 @@ class PathTraversalQuery(Query):
                 "OR NOT n.kind IN $excluded_kinds)"
             )
 
-        # Node kind filter: allow source/target to be any kind, filter intermediates
-        if self.node_filter:
-            self.params["node_filter"] = self.node_filter
+        if self.kind_filter:
+            # Match against all labels on the node so generic kinds (which are labels
+            # on concrete nodes but not stored as `kind`) are supported.
+            self.params["kind_filter"] = self.kind_filter
             where_clauses.append(
                 "all(n IN nodes(path) WHERE "
                 "n.uuid IN [$source_uuid, $target_uuid] "
-                "OR NOT n:Node "  # Allow Relationship vertices through
-                "OR n.kind IN $node_filter)"
+                "OR NOT n:Node "
+                "OR any(l IN labels(n) WHERE l IN $kind_filter))"
             )
 
-        # Relationship name filter: filter on the Relationship vertex name property
         if self.relationship_filter:
             self.params["relationship_filter"] = self.relationship_filter
-            where_clauses.append(
-                "all(n IN nodes(path) WHERE "
-                "NOT n:Relationship "  # Skip Node vertices for this check
-                "OR n.name IN $relationship_filter)"
-            )
+            where_clauses.append("all(n IN nodes(path) WHERE NOT n:Relationship OR n.name IN $relationship_filter)")
 
         where_str = " AND ".join(where_clauses)
+        query_params: dict[str, Any] = {
+            "max_edge_length": max_edge_length,
+            "where_str": where_str,
+            "max_paths": self.max_paths,
+            "branch_filter": branch_filter,
+        }
 
         if self.branch.is_default:
-            # On the default branch, there are no branch-deleted edges to worry
-            # about. We can filter directly for active status, which is much faster.
-            query = f"""
-            MATCH (source:Node {{ uuid: $source_uuid }}), (target:Node {{ uuid: $target_uuid }})
-            MATCH path = (source)-[:IS_RELATED*2..{max_edge_length}]-(target)
-            WHERE {where_str}
+            # On the default branch we can require every edge to be active AND
+            # verify no twin deleted edge exists between the same pair of vertices
+            # (status="deleted" edges can coexist with status="active" ones when
+            # a relationship has been recreated).
+            query_params["candidate_limit"] = self.max_paths
+            query = (
+                """
+            MATCH (source:Node { uuid: $source_uuid }), (target:Node { uuid: $target_uuid })
+            MATCH path = (source)-[:IS_RELATED*2..%(max_edge_length)s]-(target)
+            WHERE %(where_str)s
             AND all(r IN relationships(path) WHERE r.status = "active")
+            AND none(
+                r IN relationships(path) WHERE exists(
+                    (startNode(r))-[:IS_RELATED {branch: $default_branch, status: "deleted"}]-(endNode(r))
+                )
+            )
             RETURN path, length(path) AS path_length
             ORDER BY path_length ASC
-            LIMIT {self.max_paths}
+            LIMIT %(max_paths)s
             """
+                % query_params
+            )
         else:
-            # On non-default branches, an edge might be active on the default
-            # branch but deleted on this branch. We need to check each edge's
-            # latest version (highest branch_level, most recent from) and only
-            # keep paths where all edges are active at that version.
-            #
-            # Pattern from attribute.py:
-            #   CALL (a, np) {
-            #       MATCH (a)-[r:REL]->(np) WHERE branch_filter
-            #       ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-            #       LIMIT 1
-            #       RETURN r
-            #   }
-            #   WHERE r.status = "active"
-            #
-            # First find a limited set of candidate paths, then validate edges:
-            query = f"""
-            MATCH (source:Node {{ uuid: $source_uuid }}), (target:Node {{ uuid: $target_uuid }})
-            MATCH path = (source)-[:IS_RELATED*2..{max_edge_length}]-(target)
-            WHERE {where_str}
+            # Off the default branch a candidate edge may be active on the default
+            # branch but deleted on this branch. We take the latest-version edge
+            # per (sn, en) pair (pattern mirrored from attribute.py) and require
+            # each hop's latest version to be active.
+            query_params["candidate_limit"] = self.max_paths * 5
+            query = (
+                """
+            MATCH (source:Node { uuid: $source_uuid }), (target:Node { uuid: $target_uuid })
+            MATCH path = (source)-[:IS_RELATED*2..%(max_edge_length)s]-(target)
+            WHERE %(where_str)s
             WITH path, length(path) AS path_length
             ORDER BY path_length ASC
-            LIMIT {self.max_paths * 5}
+            LIMIT %(candidate_limit)s
             WITH path, path_length, relationships(path) AS rels
             UNWIND range(0, size(rels) - 1) AS idx
             WITH path, path_length, startNode(rels[idx]) AS sn, endNode(rels[idx]) AS en
-            CALL (sn, en) {{
+            CALL (sn, en) {
                 MATCH (sn)-[r:IS_RELATED]-(en)
-                WHERE ({branch_filter})
+                WHERE (%(branch_filter)s)
                 RETURN r
                 ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
                 LIMIT 1
-            }}
+            }
             WITH path, path_length, r.status = "active" AS edge_active
             WITH path, path_length, collect(edge_active) AS edge_statuses
             WHERE ALL(s IN edge_statuses WHERE s = true)
             RETURN DISTINCT path, path_length
             ORDER BY path_length ASC
-            LIMIT {self.max_paths}
+            LIMIT %(max_paths)s
             """
+                % query_params
+            )
 
         self.add_to_query(query)
         self.return_labels = ["path", "length(path) AS path_length"]
 
     def get_paths(self) -> list[PathData]:
-        """Extract typed path data from query results."""
         paths: list[PathData] = []
-
         for result in self.get_results():
-            path = result.get_path(label="path")
-            if path is None:
+            path_obj = result.get_path(label="path")
+            if path_obj is None:
                 continue
-
-            raw_nodes = list(path.nodes)
-            raw_rels = list(path.relationships)
-
-            # Extract Node vertices (skip Relationship vertices at odd indices)
-            # Path structure: Node, Rel-vertex, Node, Rel-vertex, Node, ...
-            path_nodes: list[PathNodeData] = []
-            path_relationships: list[PathRelationshipData] = []
-
-            for i, node in enumerate(raw_nodes):
-                if i % 2 == 0:
-                    # This is an actual Node vertex
-                    path_nodes.append(
-                        PathNodeData(
-                            uuid=node.get("uuid", ""),
-                            kind=node.get("kind", ""),
-                            display_label=node.get("display_label", node.get("kind", "")),
-                            db_id=str(node.element_id) if hasattr(node, "element_id") else "",
-                        )
-                    )
-                else:
-                    # This is a Relationship vertex (intermediate)
-                    # Determine direction based on the edges around this vertex
-                    direction = "outbound"
-                    if i < len(raw_rels):
-                        rel = raw_rels[i - 1] if i > 0 else None
-                        if rel and hasattr(rel, "start_node") and rel.start_node != raw_nodes[i - 1].element_id:
-                            direction = "inbound"
-
-                    path_relationships.append(
-                        PathRelationshipData(
-                            uuid=node.get("uuid", ""),
-                            name=node.get("name", ""),
-                            direction=direction,
-                        )
-                    )
-
-            depth = len(path_nodes) - 1 if len(path_nodes) > 1 else 0
-
-            paths.append(
-                PathData(
-                    nodes=path_nodes,
-                    relationships=path_relationships,
-                    depth=depth,
-                )
-            )
-
+            paths.append(extract_path_data(path_obj))
         return paths

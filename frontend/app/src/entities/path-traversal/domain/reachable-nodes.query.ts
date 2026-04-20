@@ -6,21 +6,24 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 
 import {
-  type DependencyResponse,
-  type GetDependenciesParams,
-  getDependencies,
-} from "./get-dependencies";
+  type GetReachableNodesParams,
+  type ReachableNodesResponse,
+  getReachableNodes,
+} from "./get-reachable-nodes";
 
-type UseDependenciesParams = Omit<GetDependenciesParams, "branchName" | "atDate">;
-type UseDependenciesConfig = Partial<UseQueryOptions<DependencyResponse>>;
+type UseReachableNodesParams = Omit<GetReachableNodesParams, "branchName" | "atDate">;
+type UseReachableNodesConfig = Partial<UseQueryOptions<ReachableNodesResponse>>;
 
-export function useGetDependencies(params: UseDependenciesParams, config?: UseDependenciesConfig) {
+export function useGetReachableNodes(
+  params: UseReachableNodesParams,
+  config?: UseReachableNodesConfig
+) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery({
     queryKey: [
-      "dependencies",
+      "reachable-nodes",
       currentBranch.name,
       timeMachineDate,
       params.sourceId,
@@ -28,7 +31,7 @@ export function useGetDependencies(params: UseDependenciesParams, config?: UseDe
       params.maxDepth,
     ],
     queryFn: () =>
-      getDependencies({
+      getReachableNodes({
         branchName: currentBranch.name,
         atDate: timeMachineDate,
         ...params,

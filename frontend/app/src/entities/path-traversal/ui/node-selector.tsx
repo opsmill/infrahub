@@ -11,7 +11,7 @@ type SearchParams = {
   destinationId: string;
   maxDepth: number;
   maxPaths: number;
-  nodeFilter: string[];
+  kindFilter: string[];
   excludedKinds: string[];
 };
 
@@ -77,7 +77,7 @@ export function NodeSelector({
         destinationId,
         maxDepth,
         maxPaths,
-        nodeFilter: selectedKinds,
+        kindFilter: selectedKinds,
         excludedKinds,
       });
     }
