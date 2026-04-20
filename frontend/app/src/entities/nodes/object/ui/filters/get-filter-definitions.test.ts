@@ -35,7 +35,6 @@ describe("getFilterDefinitions", () => {
 
     // THEN
     expect(result).toEqual([
-      "name",
       "action",
       "decision",
       "roles",
