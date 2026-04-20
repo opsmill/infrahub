@@ -86,45 +86,45 @@ function getDefinitionsFromFieldNames(
   ]);
 }
 
+function getFilterDefinitionsFromSchemaFields(schema: ModelSchema): FilterDefinition[] {
+  if (isOfKind(OBJECT_PERMISSION_OBJECT, schema)) {
+    return getDefinitionsFromFieldNames(schema, {
+      attributesVisible: OBJECT_PERMISSION_TABLE_ATTRIBUTES,
+      relationshipsVisible: OBJECT_PERMISSION_TABLE_RELATIONSHIPS,
+    });
+  }
+
+  if (isOfKind(GLOBAL_PERMISSION_OBJECT, schema)) {
+    return getDefinitionsFromFieldNames(schema, {
+      attributesVisible: GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES,
+      relationshipsVisible: GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS,
+    });
+  }
+
+  if (isOfKind(ACCOUNT_ROLE_OBJECT, schema)) {
+    return getDefinitionsFromFieldNames(schema, {
+      attributesVisible: ROLE_TABLE_ATTRIBUTES,
+      relationshipsVisible: ROLE_TABLE_RELATIONSHIPS,
+    });
+  }
+
+  if (isOfKind(ACCOUNT_OBJECT, schema)) {
+    return getDefinitionsFromFieldNames(schema, {
+      attributesVisible: ACCOUNT_TABLE_ATTRIBUTES,
+      relationshipsVisible: ACCOUNT_TABLE_RELATIONSHIPS,
+    });
+  }
+
+  if (isOfKind(ACCOUNT_GROUP_OBJECT, schema)) {
+    return getDefinitionsFromFieldNames(schema, {
+      attributesVisible: GROUP_TABLE_ATTRIBUTES,
+      relationshipsVisible: GROUP_TABLE_RELATIONSHIPS,
+    });
+  }
+
+  return getDefaultObjectFieldDefinitions(schema);
+}
+
 export function getFilterDefinitions(schema: ModelSchema): FilterDefinition[] {
-  const fieldDefinitions = (() => {
-    if (isOfKind(OBJECT_PERMISSION_OBJECT, schema)) {
-      return getDefinitionsFromFieldNames(schema, {
-        attributesVisible: OBJECT_PERMISSION_TABLE_ATTRIBUTES,
-        relationshipsVisible: OBJECT_PERMISSION_TABLE_RELATIONSHIPS,
-      });
-    }
-
-    if (isOfKind(GLOBAL_PERMISSION_OBJECT, schema)) {
-      return getDefinitionsFromFieldNames(schema, {
-        attributesVisible: GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES,
-        relationshipsVisible: GLOBAL_PERMISSIONS_TABLE_RELATIONSHIPS,
-      });
-    }
-
-    if (isOfKind(ACCOUNT_ROLE_OBJECT, schema)) {
-      return getDefinitionsFromFieldNames(schema, {
-        attributesVisible: ROLE_TABLE_ATTRIBUTES,
-        relationshipsVisible: ROLE_TABLE_RELATIONSHIPS,
-      });
-    }
-
-    if (isOfKind(ACCOUNT_OBJECT, schema)) {
-      return getDefinitionsFromFieldNames(schema, {
-        attributesVisible: ACCOUNT_TABLE_ATTRIBUTES,
-        relationshipsVisible: ACCOUNT_TABLE_RELATIONSHIPS,
-      });
-    }
-
-    if (isOfKind(ACCOUNT_GROUP_OBJECT, schema)) {
-      return getDefinitionsFromFieldNames(schema, {
-        attributesVisible: GROUP_TABLE_ATTRIBUTES,
-        relationshipsVisible: GROUP_TABLE_RELATIONSHIPS,
-      });
-    }
-
-    return getDefaultObjectFieldDefinitions(schema);
-  })();
-
-  return [...fieldDefinitions, ...ALL_METADATA_FILTERS];
+  return [...getFilterDefinitionsFromSchemaFields(schema), ...ALL_METADATA_FILTERS];
 }
