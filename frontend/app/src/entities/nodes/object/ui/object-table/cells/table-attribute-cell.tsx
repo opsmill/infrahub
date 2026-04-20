@@ -1,6 +1,6 @@
 import type { Dropdown, TextAttribute } from "@/shared/api/graphql/generated/graphql";
-import { Badge } from "@/shared/components/display/badge";
 import { DateDisplay } from "@/shared/components/display/date-display";
+import { Badge } from "@/shared/components/ui/badge";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
