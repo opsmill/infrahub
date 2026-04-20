@@ -12,7 +12,10 @@ const EXTERNAL_HREF_PREFIXES = ["https://", "http://", "mailto:", "blob:", "data
 
 function useAbsoluteHref(path: To) {
   const relative = useHref(path);
-  if (typeof path === "string" && EXTERNAL_HREF_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+  if (
+    typeof path === "string" &&
+    EXTERNAL_HREF_PREFIXES.some((prefix) => path.startsWith(prefix))
+  ) {
     return path;
   }
   return relative;
