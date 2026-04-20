@@ -286,6 +286,8 @@ class SchemaBranch:
         """Given a diff, check if a deleted node is still used in relationships or inherit_from of other nodes."""
         removed_schema_names = set(diff.removed.keys())
         for name in self.all_names:
+            if name in removed_schema_names:
+                continue
             node = self.get(name=name, duplicate=False)
             for relationship in node.relationships:
                 if relationship.peer in removed_schema_names:
