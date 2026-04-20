@@ -3,6 +3,7 @@ from infrahub.permissions.globals import define_global_permission_from_branch, g
 from infrahub.permissions.local_backend import LocalPermissionBackend
 from infrahub.permissions.manager import PermissionManager
 from infrahub.permissions.report import report_schema_permissions
+from infrahub.permissions.resolver import PermissionResolver
 from infrahub.permissions.types import (
     AssignedPermissions,
     define_object_permission_from_branch,
@@ -14,6 +15,7 @@ __all__ = [
     "LocalPermissionBackend",
     "PermissionBackend",
     "PermissionManager",
+    "PermissionResolver",
     "define_global_permission_from_branch",
     "define_object_permission_from_branch",
     "get_global_permission_for_kind",
