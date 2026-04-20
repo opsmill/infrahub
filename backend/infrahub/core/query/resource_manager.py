@@ -198,17 +198,17 @@ class NumberPoolGetAllocated(Query):
         )
         self.params.update(branch_params)
 
-        hs_branch_filter, hs_branch_params = self.branch.get_query_filter_path(
-            at=self.at.to_string(), branch_agnostic=self.branch_agnostic, variable_name="hs_int"
-        )
-        self.params.update(hs_branch_params)
-
         query = """
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
         MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)-[ir:IS_RESERVED]->(av)
-        CALL (a) {
-            MATCH (a)-[hs_int:HAS_SOURCE]->(pool:%(number_pool_kind)s)
-            WHERE (%(hs_branch_filter)s) AND hs_int.status = "active"
+        CALL (a, pool) {
+            MATCH (a)-[hs_int:HAS_SOURCE]->(pool)
+            WHERE hs_int.status = "active"
+                AND hs_int.to IS NULL
+                AND NOT EXISTS {
+                    MATCH (a)-[hs_deleted:HAS_SOURCE {branch: hs_int.branch, status: "deleted"}]->(pool)
+                    WHERE hs_deleted.from > hs_int.from
+                }
             RETURN true AS hs_active
             LIMIT 1
         }
@@ -224,7 +224,6 @@ class NumberPoolGetAllocated(Query):
             "node": self.pool.node.value,
             "number_pool_kind": InfrahubKind.NUMBERPOOL,
             "branch_filter": branch_filter,
-            "hs_branch_filter": hs_branch_filter,
         }
         self.add_to_query(query)
 

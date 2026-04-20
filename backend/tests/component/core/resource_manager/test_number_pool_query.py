@@ -242,6 +242,74 @@ async def test_NumberPoolGetAllocated_includes_allocation_when_source_cleared_on
     )
 
 
+async def test_NumberPoolGetAllocated_excludes_allocation_when_source_cleared_on_same_branch(
+    db: InfrahubDatabase,
+    register_test_schema: SchemaBranch,
+    default_branch: Branch,
+    run_number_pool_validation: None,
+) -> None:
+    """When HAS_SOURCE is cleared on the same branch it was created on and there are no additional branches which contain
+    this allocation, the allocation must not appear."""
+    incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+    incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+    incident2 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=default_branch)
+    incident2.get_attribute("number").clear_source()
+    await incident2.save(db=db)
+
+    query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True)
+    await query.execute(db=db)
+    results = query.get_data()
+
+    allocated_values = sorted([r.value for r in results])
+    assert allocated_values == [1, 3], (
+        f"Expected allocation (value=2) to be excluded after HAS_SOURCE was cleared on the same branch, "
+        f"got {allocated_values}"
+    )
+
+
+async def test_NumberPoolGetAllocated_requires_to_is_null_after_cross_branch_and_same_branch_clear(
+    db: InfrahubDatabase,
+    register_test_schema: SchemaBranch,
+    default_branch: Branch,
+    run_number_pool_validation: None,
+) -> None:
+    """
+      1. Create incidents on main
+      2. Fork br1 and clear the source on br1
+      3. Clear the source on main
+     """
+    incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+    incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+    pools: list[CoreNumberPool] = await NodeManager.query(db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch)
+    incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+    br1 = await create_branch(db=db, branch_name="br1")
+
+    incident2_on_br1 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=br1)
+    incident2_on_br1.get_attribute("number").clear_source()
+    await incident2_on_br1.save(db=db)
+
+    incident2_on_main = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=default_branch)
+    incident2_on_main.get_attribute("number").clear_source()
+    await incident2_on_main.save(db=db)
+
+    # Resulting state for incident #2's number attribute:
+    #  - main edge:  status="active", to=<cleared_at>
+    #  - br1 edge:   status="deleted", to=NULL
+
+    query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True)
+    await query.execute(db=db)
+    results = query.get_data()
+
+    allocated_values = sorted([r.value for r in results])
+    assert allocated_values == [1, 3], (
+        f"Expected allocation (value=2) to be excluded. Got {allocated_values}."
+    )
+
+
 async def test_PoolChangeReserved(
     db: InfrahubDatabase, register_test_schema: SchemaBranch, default_branch: Branch, run_number_pool_validation: None
 ) -> None:
