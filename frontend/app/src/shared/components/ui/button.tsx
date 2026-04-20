@@ -72,22 +72,24 @@ interface ButtonWithTooltipProps extends ButtonProps {
 }
 
 export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltipProps>(
-  ({ tooltipContent, tooltipEnabled, side = "top", disabled, className, ...props }, ref) => {
-    // When button is disabled, wrap in a span to allow tooltip to work
-    // (disabled buttons have pointer-events-none which prevents tooltips)
-    if (disabled && tooltipEnabled) {
-      return (
-        <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
-          <span className="inline-flex">
-            <Button ref={ref} {...props} className={className} disabled={disabled} />
-          </span>
-        </Tooltip>
-      );
-    }
+  (
+    { tooltipContent, tooltipEnabled, side = "top", disabled, onClick, className, ...props },
+    ref
+  ) => {
+    // Native `disabled` kills pointer events, so the tooltip never fires on the
+    // button itself. Use aria-disabled so the button stays hoverable and the
+    // tooltip anchors directly to it (no extra wrapper that would shift side/align).
+    const isDisabled = !!disabled;
 
     return (
       <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
-        <Button ref={ref} {...props} className={className} disabled={disabled} />
+        <Button
+          ref={ref}
+          {...props}
+          aria-disabled={isDisabled || undefined}
+          onClick={isDisabled ? undefined : onClick}
+          className={classNames(isDisabled && "cursor-not-allowed opacity-60", className)}
+        />
       </Tooltip>
     );
   }
