@@ -323,10 +323,15 @@ class SchemaUpdateCoordinator:
                 f"Schema {phase} failed, beginning rollback",
                 extra={"branch": self.branch.name, "error": str(exception)},
             )
-        else:
+        elif error_msgs:
             self.log.error(
                 f"Schema {phase} returned errors, beginning rollback",
                 extra={"branch": self.branch.name, "errors": error_msgs},
+            )
+        else:
+            self.log.error(
+                f"Schema {phase} failed with no diagnostic information, beginning rollback",
+                extra={"branch": self.branch.name},
             )
 
         await self._rollback(at=at)
