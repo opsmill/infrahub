@@ -1,6 +1,6 @@
 import os
 from collections.abc import Iterator
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from infrahub import config
 from infrahub.config import SecuritySettings, Settings, UserInfoMethod, load
+from infrahub.prefect_server import app as prefect_app_module
 from infrahub.prefect_server.app import create_infrahub_prefect
 from infrahub.server import create_app
 from tests.conftest import TestHelper
@@ -78,51 +79,40 @@ class TestSecretKeyRequired:
 
 
 class TestFactoryValidation:
-    """ASGI factories must validate settings before building the app so the server."""
+    """ASGI factories must validate settings before building the app so the server
+    cannot bind a socket with invalid configuration."""
 
-    @staticmethod
-    def _unload_settings_with_env(env_overrides: dict[str, str] | None = None) -> Iterator[None]:
-        env_clean = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
-        if env_overrides:
-            env_clean.update(env_overrides)
+    @pytest.fixture(autouse=True)
+    def _reset_settings_cache(self) -> Iterator[None]:
+        """Snapshot + restore `config.SETTINGS.settings` around every test so
+        factory calls start from an unloaded cache and never leak into sibling
+        tests (the session-wide autouse fixture in conftest has already loaded
+        a real settings object with a dummy key)."""
         original_settings = config.SETTINGS.settings
         config.SETTINGS.settings = None
         try:
-            with patch.dict(os.environ, env_clean, clear=True):
-                yield
+            yield
         finally:
             config.SETTINGS.settings = original_settings
 
-    @pytest.fixture
-    def _with_unloaded_settings_and_no_env(self) -> Iterator[None]:
-        yield from self._unload_settings_with_env()
-
-    @pytest.fixture
-    def _with_unloaded_settings_and_prefect_distributed_mode(self) -> Iterator[None]:
-        # Single-node Prefect skips Infrahub settings validation; these two env
-        # vars force the distributed-mode branch in `create_infrahub_prefect()`
-        # so the validator runs.
-        yield from self._unload_settings_with_env(
-            {
-                "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
-                "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
-            }
-        )
-
-    @pytest.mark.usefixtures("_with_unloaded_settings_and_no_env")
     def test_create_app_fails_without_secret_key(self, capsys: pytest.CaptureFixture[str]) -> None:
-        with pytest.raises(SystemExit) as excinfo:
+        env_clean = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
+        with patch.dict(os.environ, env_clean, clear=True), pytest.raises(SystemExit) as excinfo:
             create_app()
         assert excinfo.value.code == 1
         output = capsys.readouterr().out
         assert "Configuration not valid, found 1 error(s)" in output
         assert "secret_key must be provided via config or INFRAHUB_SECURITY_SECRET_KEY environment variable" in output
 
-    @pytest.mark.usefixtures("_with_unloaded_settings_and_prefect_distributed_mode")
     def test_create_infrahub_prefect_fails_without_secret_key_in_distributed_mode(
         self, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        with pytest.raises(SystemExit) as excinfo:
+        # Single-node Prefect skips Infrahub settings validation; these two env
+        # vars force the distributed-mode branch so the validator runs.
+        env_clean = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
+        env_clean["PREFECT_API_BLOCKS_REGISTER_ON_START"] = "false"
+        env_clean["PREFECT_API_DATABASE_MIGRATE_ON_START"] = "false"
+        with patch.dict(os.environ, env_clean, clear=True), pytest.raises(SystemExit) as excinfo:
             create_infrahub_prefect()
         assert excinfo.value.code == 1
         output = capsys.readouterr().out
@@ -130,11 +120,35 @@ class TestFactoryValidation:
         assert "secret_key must be provided via config or INFRAHUB_SECURITY_SECRET_KEY environment variable" in output
 
     def test_create_app_succeeds_with_secret_key(self) -> None:
-        original_settings = config.SETTINGS.settings
-        config.SETTINGS.settings = None
-        try:
-            with patch.dict(os.environ, {"INFRAHUB_SECURITY_SECRET_KEY": "test-key"}):
-                app = create_app()
-        finally:
-            config.SETTINGS.settings = original_settings
+        with patch.dict(os.environ, {"INFRAHUB_SECURITY_SECRET_KEY": "test-key"}):
+            app = create_app()
         assert isinstance(app, FastAPI)
+
+    def test_create_infrahub_prefect_succeeds_in_single_node_mode(self) -> None:
+        # Single-node mode (neither PREFECT_API_*_ON_START set to "false") skips
+        # the Infrahub settings validator entirely, so no secret key is needed.
+        env_clean = {
+            k: v
+            for k, v in os.environ.items()
+            if not k.startswith("INFRAHUB_SECURITY_SECRET")
+            and k not in {"PREFECT_API_BLOCKS_REGISTER_ON_START", "PREFECT_API_DATABASE_MIGRATE_ON_START"}
+        }
+        with patch.dict(os.environ, env_clean, clear=True):
+            app = create_infrahub_prefect()
+        assert isinstance(app, FastAPI)
+
+    def test_create_infrahub_prefect_succeeds_with_secret_key_in_distributed_mode(self) -> None:
+        # Distributed mode validates settings and calls `_init_prefect()`, which
+        # touches the cache and lock registry — mock it out so this stays a unit test.
+        env = {
+            "INFRAHUB_SECURITY_SECRET_KEY": "test-key",
+            "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
+            "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
+        }
+        with (
+            patch.dict(os.environ, env),
+            patch.object(prefect_app_module, "_init_prefect", new=AsyncMock()) as mock_init,
+        ):
+            app = create_infrahub_prefect()
+        assert isinstance(app, FastAPI)
+        mock_init.assert_awaited_once()
