@@ -1024,7 +1024,7 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
                 "name": "Choice",
                 "namespace": "Base",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1048,7 +1048,7 @@ async def choices_schema(db: InfrahubDatabase, default_branch: Branch, node_grou
                 "name": "Choice",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "status", "kind": "Text", "enum": ["active", "passive"]},
@@ -1079,7 +1079,7 @@ async def car_person_schema_global(
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1095,7 +1095,7 @@ async def car_person_schema_global(
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AGNOSTIC.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1176,7 +1176,7 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1193,7 +1193,7 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1205,7 +1205,7 @@ async def car_person_manufacturer_schema(db: InfrahubDatabase, default_branch: B
                 "name": "Manufacturer",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1230,7 +1230,7 @@ async def car_person_schema_generics_unregistered(
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "order_by": ["name__value"],
                 "include_in_menu": True,
                 "attributes": [
@@ -1262,7 +1262,7 @@ async def car_person_schema_generics_unregistered(
                 "label": "Group",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1305,7 +1305,7 @@ async def car_person_schema_generics_unregistered(
             {
                 "name": "ElectricCar",
                 "namespace": "Test",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "inherit_from": ["TestCar", "CoreArtifactTarget"],
                 "default_filter": "name__value",
                 "attributes": [
@@ -1315,7 +1315,7 @@ async def car_person_schema_generics_unregistered(
             {
                 "name": "GazCar",
                 "namespace": "Test",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "inherit_from": ["TestCar", "CoreArtifactTarget"],
                 "default_filter": "name__value",
                 "attributes": [
@@ -1326,7 +1326,7 @@ async def car_person_schema_generics_unregistered(
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -1711,7 +1711,7 @@ def do_criticality_schema_root() -> SchemaRoot:
         "name": "Criticality",
         "namespace": "Test",
         "default_filter": "name__value",
-        "display_labels": ["label__value"],
+        "display_label": "label__value",
         "inherit_from": ["TestGenericCriticality"],
         "branch": BranchSupportType.AWARE.value,
         "generate_template": True,
@@ -2042,7 +2042,7 @@ async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
                 "name": "Generic",
                 "namespace": "Location",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "order_by": ["name__value"],
                 "hierarchical": True,
                 "attributes": [
@@ -2084,7 +2084,7 @@ async def hierarchical_location_schema_simple_unregistered() -> SchemaRoot:
                 "name": "Thing",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                 ],
@@ -2297,7 +2297,7 @@ async def organization_schema() -> SchemaRoot:
                 "icon": "mdi:domain",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -2333,7 +2333,7 @@ async def builtin_schema() -> SchemaRoot:
                 "label": "Status",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -2350,7 +2350,7 @@ async def builtin_schema() -> SchemaRoot:
                 "label": "Role",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["label__value"],
+                "display_label": "label__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -2367,7 +2367,7 @@ async def builtin_schema() -> SchemaRoot:
                 "label": "Site",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "optional": True},
@@ -2392,7 +2392,7 @@ async def builtin_schema() -> SchemaRoot:
                 "label": "Criticality",
                 "default_filter": "name__value",
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
@@ -2415,7 +2415,7 @@ async def ipam_schema() -> SchemaRoot:
                 "namespace": "Ipam",
                 "default_filter": "prefix__value",
                 "order_by": ["prefix__value"],
-                "display_labels": ["prefix__value"],
+                "display_label": "prefix__value",
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPPREFIX, InfrahubKind.WEIGHTED_POOL_RESOURCE],
             },
@@ -2424,7 +2424,7 @@ async def ipam_schema() -> SchemaRoot:
                 "namespace": "Ipam",
                 "default_filter": "address__value",
                 "order_by": ["address__value"],
-                "display_labels": ["address__value"],
+                "display_label": "address__value",
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPADDRESS],
             },
@@ -2871,7 +2871,7 @@ async def person_ip_schema_unregistered(
             {
                 "name": "Person",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [{"name": "name", "kind": "Text", "unique": True}],
                 "relationships": [

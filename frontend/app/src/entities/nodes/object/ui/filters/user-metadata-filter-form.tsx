@@ -41,6 +41,7 @@ export function UserMetadataFilterForm({ definition, onSuccess }: UserMetadataFi
   return (
     <FilterFormLayout
       filterType="metadata-user"
+      label={definition.label}
       condition={FILTER_CONDITION.IS_ANY_OF}
       onConditionChange={() => {}}
       testId="metadata-user-filter-form"

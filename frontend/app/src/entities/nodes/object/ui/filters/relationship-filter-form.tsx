@@ -78,6 +78,7 @@ export function RelationshipFilterForm({
   return (
     <FilterFormLayout
       filterType="relationship"
+      label={relationshipSchema.label}
       condition={condition}
       onConditionChange={setCondition}
       testId="relationship-filter-form"

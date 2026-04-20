@@ -1390,7 +1390,7 @@ async def schema_with_ip_address_hfid(
                 "namespace": "Ipam",
                 "default_filter": "address__value",
                 "order_by": ["address__value"],
-                "display_labels": ["address__value"],
+                "display_label": "address__value",
                 "human_friendly_id": ["address__value"],
                 "branch": "aware",
                 "inherit_from": [InfrahubKind.IPADDRESS],
@@ -1398,7 +1398,7 @@ async def schema_with_ip_address_hfid(
             {
                 "name": "Device",
                 "namespace": "Test",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "human_friendly_id": ["name__value"],
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},

@@ -235,9 +235,12 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     ) -> None:
         # Check schema properties
         schema_branch = await registry.schema.load_schema_from_db(db=db, branch=branch_1)
-        # check that unique attribute is correctly synced to uniqueness constraints
+        # check that unique attribute is correctly synced to uniqueness constraints,
+        # both for the locally-declared `name` and for `unique_attr` inherited from
+        # TestingThing — the generic's uniqueness_constraints propagate to the node.
         person_schema = schema_branch.get(name=PERSON_KIND)
-        assert person_schema.uniqueness_constraints == [["name__value"]]
+        assert person_schema.uniqueness_constraints
+        assert sorted(person_schema.uniqueness_constraints) == sorted([["unique_attr__value"], ["name__value"]])
         generic_schema = schema_branch.get(name="TestingThing")
         assert generic_schema.uniqueness_constraints == [["unique_attr__value"]]
 

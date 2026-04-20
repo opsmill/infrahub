@@ -120,6 +120,30 @@ The trigger definitions and gathering logic live in `backend/infrahub/display_la
 `set_display_label(value)` and `set_human_friendly_id(value)` set `manually_assigned=True`, which causes `compute()` to no-op on future calls.
 
 
+## Hierarchical Relationships and Inline Fragments
+
+When a display label, HFID, or computed attribute template references an attribute through a hierarchical relationship (e.g., `parent__name__value`), the GraphQL query must use an **inline fragment** to access attributes that exist on the concrete peer type but not on the hierarchical generic.
+
+**Why:** A hierarchical relationship's GraphQL type resolves to the generic (e.g., `LocationGeneric`), not the concrete peer (e.g., `LocationSite`). Attributes defined only on the concrete type are not queryable directly — they require `... on LocationSite { name { value } }`.
+
+**Condition:** `relationship.hierarchical and relationship.peer != relationship.hierarchical`
+
+This logic lives in the `query_fields` property of all three GraphQL model classes:
+
+- `ComputedAttrJinja2GraphQL` in `computed_attribute/models.py`
+- `DisplayLabelJinja2GraphQL` in `display_labels/models.py`
+- `HFIDGraphQL` in `hfid/models.py`
+
+Example generated query structure:
+
+```graphql
+# Without hierarchy (peer == type):
+parent { node { name { value } } }
+
+# With hierarchy (peer != generic):
+parent { node { ... on LocationSite { name { value } } } }
+```
+
 ## Key Files
 
 | File | What |
@@ -131,4 +155,6 @@ The trigger definitions and gathering logic live in `backend/infrahub/display_la
 | `core/schema/schema_branch.py` | `validate_display_label()`, `process_human_friendly_id()` |
 | `core/schema/basenode_schema.py` | `SchemaAttributePath` (parsed template variables) |
 | `display_labels/models.py` | `DisplayLabelJinja2GraphQL` (GraphQL query generation) |
+| `hfid/models.py` | `HFIDGraphQL` (GraphQL query generation) |
+| `computed_attribute/models.py` | `ComputedAttrJinja2GraphQL` (GraphQL query generation) |
 | `graphql/mutations/display_label.py` | Manual display_label override mutation |

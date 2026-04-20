@@ -1,4 +1,5 @@
 import re
+import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -1147,3 +1148,35 @@ async def test_repo_merge_use_explicit_merge_commit(
     response = await repo.merge(source_branch=branch02.name, dest_branch="main")
     commit = repo.get_git_repo_main().commit(response)
     assert commit.message.strip() == "Merged by Infrahub"
+
+
+async def test_init_reinitialized_after_missing_directory(
+    git_repo_02: InfrahubRepository, git_upstream_repo_02: dict[str, str | Path]
+) -> None:
+    """Verify that when the local clone directory is missing, re-clones from the upstream and sets the reinitialized flag."""
+    original_commit = git_repo_02.get_commit_value(branch_name="main", remote=False)
+    repo_id = git_repo_02.id
+
+    assert not git_repo_02.reinitialized
+
+    shutil.rmtree(git_repo_02.directory_root)
+    assert not git_repo_02.directory_root.exists()
+
+    recovered = await InfrahubRepository.init(
+        id=repo_id,
+        name=git_upstream_repo_02["name"],
+        location=str(git_upstream_repo_02["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert recovered.reinitialized
+    assert recovered.directory_root.is_dir()
+    assert recovered.directory_branches.is_dir()
+    assert recovered.directory_commits.is_dir()
+    assert recovered.has_origin
+
+    assert recovered.get_commit_value(branch_name="main", remote=False) == original_commit
+
+    new_branches, updated_branches = await recovered.compare_local_remote()
+    assert not new_branches
+    assert not updated_branches
