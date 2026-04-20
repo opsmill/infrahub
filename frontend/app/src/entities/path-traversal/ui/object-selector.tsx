@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { NodePicker } from "./node-picker";
+import { ObjectPicker } from "./object-picker";
 import { HIDDEN_NAMESPACES } from "./utils";
 
 type SearchParams = {
@@ -15,7 +15,7 @@ type SearchParams = {
   excludedKinds: string[];
 };
 
-type NodeSelectorProps = {
+type ObjectSelectorProps = {
   onSearch: (params: SearchParams) => void;
   isLoading: boolean;
   initialSourceId?: string;
@@ -28,7 +28,7 @@ type NodeSelectorProps = {
   onExcludedKindsChange?: (kinds: string[]) => void;
 };
 
-export function NodeSelector({
+export function ObjectSelector({
   onSearch,
   isLoading,
   initialSourceId = "",
@@ -39,7 +39,7 @@ export function NodeSelector({
   onMaxDepthChange,
   onMaxPathsChange,
   onExcludedKindsChange,
-}: NodeSelectorProps) {
+}: ObjectSelectorProps) {
   const [sourceId, setSourceId] = useState(initialSourceId);
   const [sourceLabel, setSourceLabel] = useState("");
   const [destinationId, setDestinationId] = useState(initialDestinationId);
@@ -107,8 +107,8 @@ export function NodeSelector({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
-      <NodePicker
-        label="Source Node"
+      <ObjectPicker
+        label="Source Object"
         value={sourceId}
         displayLabel={sourceLabel}
         onChange={(id, label) => {
@@ -127,8 +127,8 @@ export function NodeSelector({
         </button>
       )}
 
-      <NodePicker
-        label="Destination Node"
+      <ObjectPicker
+        label="Destination Object"
         value={destinationId}
         displayLabel={destinationLabel}
         onChange={(id, label) => {

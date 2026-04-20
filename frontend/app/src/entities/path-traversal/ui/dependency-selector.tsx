@@ -3,7 +3,7 @@ import { type FormEvent, useState } from "react";
 
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { NodePicker } from "./node-picker";
+import { ObjectPicker } from "./object-picker";
 import { HIDDEN_NAMESPACES } from "./utils";
 
 type DependencySelectorProps = {
@@ -48,8 +48,8 @@ export function DependencySelector({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
-      <NodePicker
-        label="Source Node"
+      <ObjectPicker
+        label="Source Object"
         value={sourceId}
         displayLabel={sourceLabel}
         onChange={(id, label) => {

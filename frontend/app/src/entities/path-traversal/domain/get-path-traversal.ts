@@ -3,7 +3,7 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-export type PathNode = {
+export type PathObject = {
   id: string;
   kind: string;
   display_label: string;
@@ -16,15 +16,15 @@ export type PathRelationship = {
 };
 
 export type PathResult = {
-  nodes: PathNode[];
+  objects: PathObject[];
   relationships: PathRelationship[];
   depth: number;
 };
 
 export type PathTraversalResponse = {
   paths: PathResult[];
-  source: PathNode;
-  destination: PathNode;
+  source: PathObject;
+  destination: PathObject;
   total_paths_found: number;
 };
 
@@ -66,6 +66,21 @@ export async function getPathTraversal(
   if (relationshipFilter?.length) dataArgs.relationship_filter = relationshipFilter;
   if (excludedKinds?.length) dataArgs.excluded_kinds = excludedKinds;
 
+  const pathFields = {
+    objects: {
+      __aliasFor: "nodes",
+      id: true,
+      kind: true,
+      display_label: true,
+    },
+    relationships: {
+      id: true,
+      name: true,
+      direction: true,
+    },
+    depth: true,
+  };
+
   const queryObj = {
     query: {
       __name: "GetPathTraversal",
@@ -73,19 +88,7 @@ export async function getPathTraversal(
         __args: {
           data: dataArgs,
         },
-        paths: {
-          nodes: {
-            id: true,
-            kind: true,
-            display_label: true,
-          },
-          relationships: {
-            id: true,
-            name: true,
-            direction: true,
-          },
-          depth: true,
-        },
+        paths: pathFields,
         source: {
           id: true,
           kind: true,

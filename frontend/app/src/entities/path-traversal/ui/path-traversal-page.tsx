@@ -4,22 +4,22 @@ import { useSearchParams } from "react-router";
 import { Spinner } from "@/shared/components/ui/spinner";
 
 import type { PathResult, PathTraversalResponse } from "../domain/get-path-traversal";
-import type { ReachableNodesResponse } from "../domain/get-reachable-nodes";
+import type { ReachableObjectsResponse } from "../domain/get-reachable-objects";
 import { useGetPathTraversal } from "../domain/path-traversal.query";
-import { useGetReachableNodes } from "../domain/reachable-nodes.query";
+import { useGetReachableObjects } from "../domain/reachable-objects.query";
 import { DependencySelector } from "./dependency-selector";
-import { NodeSelector } from "./node-selector";
+import { ObjectSelector } from "./object-selector";
 import { PathFlowGraph } from "./path-flow-graph";
 import { formatRelName, getKindColor } from "./utils";
 
 function formatPathAsText(data: PathTraversalResponse, pathIndex: number): string {
   const path = data.paths[pathIndex];
   if (!path) return "";
-  const nodeLabels = path.nodes.map((n) => n.display_label);
+  const objectLabels = path.objects.map((o) => o.display_label);
   const parts: string[] = [];
-  for (let i = 0; i < nodeLabels.length; i++) {
-    parts.push(nodeLabels[i] ?? "");
-    if (i < nodeLabels.length - 1) {
+  for (let i = 0; i < objectLabels.length; i++) {
+    parts.push(objectLabels[i] ?? "");
+    if (i < objectLabels.length - 1) {
       const rel = path.relationships[i];
       if (rel) {
         parts.push(`-[${formatRelName(rel.name)}]->`);
@@ -33,13 +33,13 @@ function formatPathAsText(data: PathTraversalResponse, pathIndex: number): strin
 
 function copyAllPathsAsText(data: PathTraversalResponse): string {
   return data.paths
-    .map((path, i) => `Path ${i + 1}: ${path.nodes.map((n) => n.display_label).join(" → ")}`)
+    .map((path, i) => `Path ${i + 1}: ${path.objects.map((o) => o.display_label).join(" → ")}`)
     .join("\n");
 }
 
-function pathPreview(path: PathResult, maxNodes: number = 3): string {
-  const names = path.nodes.map((n) => n.display_label);
-  if (names.length <= maxNodes) return names.join(" -> ");
+function pathPreview(path: PathResult, maxObjects: number = 3): string {
+  const names = path.objects.map((o) => o.display_label);
+  if (names.length <= maxObjects) return names.join(" -> ");
   const first = names[0];
   const last = names.at(-1);
   return `${first} -> ... -> ${last}`;
@@ -47,19 +47,21 @@ function pathPreview(path: PathResult, maxNodes: number = 3): string {
 
 function getKindCounts(path: PathResult): string {
   const counts = new Map<string, number>();
-  for (const node of path.nodes) {
-    counts.set(node.kind, (counts.get(node.kind) ?? 0) + 1);
+  for (const object of path.objects) {
+    counts.set(object.kind, (counts.get(object.kind) ?? 0) + 1);
   }
   return Array.from(counts.entries())
     .map(([kind, count]) => `${count}x ${kind}`)
     .join(", ");
 }
 
-function reachableNodesToPathResponse(reachable: ReachableNodesResponse): PathTraversalResponse {
-  // Use the first reachable node as a synthetic "destination" for the graph
-  const firstNode = reachable.reachable_nodes[0];
-  const destination = firstNode
-    ? { id: firstNode.id, kind: firstNode.kind, display_label: firstNode.display_label }
+function reachableObjectsToPathResponse(
+  reachable: ReachableObjectsResponse
+): PathTraversalResponse {
+  // Use the first reachable object as a synthetic "destination" for the graph
+  const firstObject = reachable.reachable_objects[0];
+  const destination = firstObject
+    ? { id: firstObject.id, kind: firstObject.kind, display_label: firstObject.display_label }
     : reachable.source;
 
   return {
@@ -109,7 +111,7 @@ export function PathTraversalPage() {
     data: depsData,
     isLoading: depsLoading,
     error: depsError,
-  } = useGetReachableNodes(
+  } = useGetReachableObjects(
     { sourceId: depsSourceId, targetKinds: depsTargetKinds, maxDepth: depsMaxDepth },
     {
       enabled:
@@ -196,7 +198,7 @@ export function PathTraversalPage() {
 
       // Arrow up/down to navigate paths
       const totalPaths =
-        mode === "path" ? (data?.paths.length ?? 0) : (depsData?.reachable_nodes.length ?? 0);
+        mode === "path" ? (data?.paths.length ?? 0) : (depsData?.reachable_objects.length ?? 0);
       if (totalPaths > 0 && (e.key === "ArrowUp" || e.key === "ArrowDown")) {
         e.preventDefault();
         const next =
@@ -265,8 +267,8 @@ export function PathTraversalPage() {
                   </h2>
                   <p className="mt-1 text-gray-500 text-sm">
                     {mode === "path"
-                      ? "Find paths between two nodes in the graph."
-                      : "Find all connected nodes of specific kinds."}
+                      ? "Find paths between two objects in the graph."
+                      : "Find all connected objects of specific kinds."}
                   </p>
                 </div>
                 <button
@@ -316,7 +318,7 @@ export function PathTraversalPage() {
 
             {mode === "path" && (
               <>
-                <NodeSelector
+                <ObjectSelector
                   onSearch={handleSearch}
                   isLoading={isLoading}
                   initialSourceId={initialSourceId}
@@ -428,17 +430,17 @@ export function PathTraversalPage() {
                   initialSourceId={initialSourceId}
                 />
 
-                {depsData && depsData.reachable_nodes.length > 0 && (
+                {depsData && depsData.reachable_objects.length > 0 && (
                   <div className="border-gray-200 border-t p-4">
                     <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 p-2">
                       <div className="font-medium text-amber-800 text-xs">
-                        {depsData.total_found} node{depsData.total_found !== 1 ? "s" : ""} found
+                        {depsData.total_found} object{depsData.total_found !== 1 ? "s" : ""} found
                       </div>
                     </div>
                     <div className="space-y-1">
-                      {depsData.reachable_nodes.map((node, index) => (
+                      {depsData.reachable_objects.map((object, index) => (
                         <button
-                          key={node.id}
+                          key={object.id}
                           onClick={() => handleSelectPath(index)}
                           className={`flex w-full items-center gap-2 rounded-md border p-2 text-left text-xs transition-colors ${
                             selectedPathIndex === index
@@ -448,12 +450,12 @@ export function PathTraversalPage() {
                         >
                           <div
                             className="size-2 flex-shrink-0 rounded-full"
-                            style={{ backgroundColor: getKindColor(node.kind) }}
+                            style={{ backgroundColor: getKindColor(object.kind) }}
                           />
                           <div className="min-w-0 flex-1">
-                            <div className="truncate font-medium">{node.display_label}</div>
+                            <div className="truncate font-medium">{object.display_label}</div>
                             <div className="truncate text-[10px] text-gray-400">
-                              {node.kind} &middot; {node.depth} hop{node.depth !== 1 ? "s" : ""}
+                              {object.kind} &middot; {object.depth} hop{object.depth !== 1 ? "s" : ""}
                             </div>
                           </div>
                         </button>
@@ -494,8 +496,8 @@ export function PathTraversalPage() {
             </svg>
             <span className="text-sm">
               {mode === "path"
-                ? 'Select two nodes and click "Find Paths"'
-                : 'Select a source node, target kinds, and click "Find Dependencies"'}
+                ? 'Select two objects and click "Find Paths"'
+                : 'Select a source object, target kinds, and click "Find Dependencies"'}
             </span>
           </div>
         )}
@@ -522,7 +524,7 @@ export function PathTraversalPage() {
 
         {mode === "impact" && depsData && !depsLoading && (
           <PathFlowGraph
-            data={reachableNodesToPathResponse(depsData)}
+            data={reachableObjectsToPathResponse(depsData)}
             selectedPathIndex={selectedPathIndex}
             onPathSelect={setSelectedPathIndex}
           />

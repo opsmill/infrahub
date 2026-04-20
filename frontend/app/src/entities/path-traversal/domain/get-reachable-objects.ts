@@ -3,9 +3,9 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import type { PathNode, PathResult } from "./get-path-traversal";
+import type { PathObject, PathResult } from "./get-path-traversal";
 
-export type ReachableNode = {
+export type ReachableObject = {
   id: string;
   kind: string;
   display_label: string;
@@ -14,14 +14,14 @@ export type ReachableNode = {
   path: PathResult;
 };
 
-export type ReachableNodesResponse = {
-  source: PathNode;
-  reachable_nodes: ReachableNode[];
+export type ReachableObjectsResponse = {
+  source: PathObject;
+  reachable_objects: ReachableObject[];
   paths: PathResult[];
   total_found: number;
 };
 
-export type GetReachableNodesParams = {
+export type GetReachableObjectsParams = {
   sourceId: string;
   targetKinds: string[];
   maxDepth?: number;
@@ -30,9 +30,9 @@ export type GetReachableNodesParams = {
   atDate?: Date | string | null;
 };
 
-export async function getReachableNodes(
-  params: GetReachableNodesParams
-): Promise<ReachableNodesResponse> {
+export async function getReachableObjects(
+  params: GetReachableObjectsParams
+): Promise<ReachableObjectsResponse> {
   const { sourceId, targetKinds, maxDepth, maxResults, branchName, atDate } = params;
 
   const dataArgs: Record<string, unknown> = {
@@ -42,29 +42,33 @@ export async function getReachableNodes(
   if (maxDepth !== undefined) dataArgs.max_depth = maxDepth;
   if (maxResults !== undefined) dataArgs.max_results = maxResults;
 
+  const pathFields = {
+    objects: {
+      __aliasFor: "nodes",
+      id: true,
+      kind: true,
+      display_label: true,
+    },
+    relationships: { id: true, name: true, direction: true },
+    depth: true,
+  };
+
   const queryString = jsonToGraphQLQuery({
     query: {
-      __name: "GetReachableNodes",
+      __name: "GetReachableObjects",
       InfrahubReachableNodes: {
         __args: { data: dataArgs },
         source: { id: true, kind: true, display_label: true },
-        reachable_nodes: {
+        reachable_objects: {
+          __aliasFor: "reachable_nodes",
           id: true,
           kind: true,
           display_label: true,
           depth: true,
           relationship_name: true,
-          path: {
-            nodes: { id: true, kind: true, display_label: true },
-            relationships: { id: true, name: true, direction: true },
-            depth: true,
-          },
+          path: pathFields,
         },
-        paths: {
-          nodes: { id: true, kind: true, display_label: true },
-          relationships: { id: true, name: true, direction: true },
-          depth: true,
-        },
+        paths: pathFields,
         total_found: true,
       },
     },

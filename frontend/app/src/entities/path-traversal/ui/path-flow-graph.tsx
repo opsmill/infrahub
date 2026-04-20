@@ -194,41 +194,41 @@ export function PathFlowGraph({ data, selectedPathIndex, onExcludeKind }: PathFl
     const edges: Edge[] = [];
 
     const selectedPath = data.paths[selectedPathIndex];
-    const selectedNodeIds = new Set(selectedPath?.nodes.map((n) => n.id) ?? []);
+    const selectedObjectIds = new Set(selectedPath?.objects.map((o) => o.id) ?? []);
     const selectedEdgeKeys = new Set<string>();
 
     if (selectedPath) {
-      for (let i = 0; i < selectedPath.nodes.length - 1; i++) {
-        const currentNode = selectedPath.nodes[i];
-        const nextNode = selectedPath.nodes[i + 1];
-        if (currentNode && nextNode) {
-          selectedEdgeKeys.add(`${currentNode.id}-${nextNode.id}`);
-          selectedEdgeKeys.add(`${nextNode.id}-${currentNode.id}`);
+      for (let i = 0; i < selectedPath.objects.length - 1; i++) {
+        const currentObject = selectedPath.objects[i];
+        const nextObject = selectedPath.objects[i + 1];
+        if (currentObject && nextObject) {
+          selectedEdgeKeys.add(`${currentObject.id}-${nextObject.id}`);
+          selectedEdgeKeys.add(`${nextObject.id}-${currentObject.id}`);
         }
       }
     }
 
     for (const path of data.paths) {
-      for (const node of path.nodes) {
-        if (!nodeMap.has(node.id)) {
-          nodeMap.set(node.id, {
-            id: node.id,
-            label: node.display_label,
-            kind: node.kind,
-            nodeId: node.id,
-            isSource: node.id === data.source.id,
-            isDestination: node.id === data.destination.id,
-            highlighted: selectedNodeIds.has(node.id),
+      for (const object of path.objects) {
+        if (!nodeMap.has(object.id)) {
+          nodeMap.set(object.id, {
+            id: object.id,
+            label: object.display_label,
+            kind: object.kind,
+            nodeId: object.id,
+            isSource: object.id === data.source.id,
+            isDestination: object.id === data.destination.id,
+            highlighted: selectedObjectIds.has(object.id),
           });
         }
       }
 
-      for (let i = 0; i < path.nodes.length - 1; i++) {
-        const sourceNode = path.nodes[i];
-        const targetNode = path.nodes[i + 1];
-        if (!sourceNode || !targetNode) continue;
-        const sourceId = sourceNode.id;
-        const targetId = targetNode.id;
+      for (let i = 0; i < path.objects.length - 1; i++) {
+        const sourceObject = path.objects[i];
+        const targetObject = path.objects[i + 1];
+        if (!sourceObject || !targetObject) continue;
+        const sourceId = sourceObject.id;
+        const targetId = targetObject.id;
         const edgeKey = `${sourceId}-${targetId}`;
 
         if (!edgeSet.has(edgeKey)) {

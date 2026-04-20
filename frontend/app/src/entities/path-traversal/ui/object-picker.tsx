@@ -19,7 +19,7 @@ import type { RelationshipNode } from "@/entities/nodes/relationships/domain/typ
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-type NodePickerProps = {
+type ObjectPickerProps = {
   label: string;
   value: string;
   displayLabel?: string;
@@ -45,20 +45,20 @@ async function resolveUuid(
     context: { branch: branchName },
   });
 
-  const node = data?.CoreNode?.edges?.[0]?.node;
-  if (!node) return null;
+  const result = data?.CoreNode?.edges?.[0]?.node;
+  if (!result) return null;
 
   return {
-    kind: node.__typename ?? "",
-    displayLabel: node.display_label ?? node.__typename ?? "",
+    kind: result.__typename ?? "",
+    displayLabel: result.display_label ?? result.__typename ?? "",
   };
 }
 
-export function NodePicker({ label, value, displayLabel, onChange }: NodePickerProps) {
+export function ObjectPicker({ label, value, displayLabel, onChange }: ObjectPickerProps) {
   const [mode, setMode] = useState<"search" | "uuid">("search");
   const [selectedKind, setSelectedKind] = useState("");
   const [kindOpen, setKindOpen] = useState(false);
-  const [nodeOpen, setNodeOpen] = useState(false);
+  const [objectOpen, setObjectOpen] = useState(false);
   const [uuidInput, setUuidInput] = useState(value);
   const [isResolving, setIsResolving] = useState(false);
 
@@ -80,10 +80,10 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
     }
   }, []); // Only on mount
 
-  function handleSelectNode(node: RelationshipNode) {
-    const nodeLabel = getNodeLabel(node);
-    onChange(node.id, nodeLabel);
-    setNodeOpen(false);
+  function handleSelectObject(object: RelationshipNode) {
+    const objectLabel = getNodeLabel(object);
+    onChange(object.id, objectLabel);
+    setObjectOpen(false);
   }
 
   async function handleUuidSubmit() {
@@ -137,7 +137,7 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
             onKeyDown={(e) => {
               if (e.key === "Enter") handleUuidSubmit();
             }}
-            placeholder="Paste node UUID..."
+            placeholder="Paste object UUID..."
             className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           />
           {isResolving && (
@@ -167,7 +167,7 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
                     onSelect={() => {
                       setSelectedKind(schema.kind as string);
                       setKindOpen(false);
-                      setNodeOpen(true);
+                      setObjectOpen(true);
                     }}
                   >
                     <span className="truncate">{schema.label ?? schema.kind}</span>
@@ -179,19 +179,19 @@ export function NodePicker({ label, value, displayLabel, onChange }: NodePickerP
           </Combobox>
 
           {selectedKind && (
-            <Combobox open={nodeOpen} onOpenChange={setNodeOpen}>
+            <Combobox open={objectOpen} onOpenChange={setObjectOpen}>
               <ComboboxTrigger className="w-full">
                 {value ? (
                   <span className="truncate">{selectedDisplay}</span>
                 ) : (
-                  <span className="text-gray-400">Select a node...</span>
+                  <span className="text-gray-400">Select an object...</span>
                 )}
               </ComboboxTrigger>
               <ComboboxContent>
                 <RelationshipComboboxList
                   peer={selectedKind}
                   value={value ? ({ id: value } as RelationshipNode) : null}
-                  onSelect={handleSelectNode}
+                  onSelect={handleSelectObject}
                 />
               </ComboboxContent>
             </Combobox>

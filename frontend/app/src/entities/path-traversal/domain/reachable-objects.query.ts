@@ -6,24 +6,24 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 
 import {
-  type GetReachableNodesParams,
-  type ReachableNodesResponse,
-  getReachableNodes,
-} from "./get-reachable-nodes";
+  type GetReachableObjectsParams,
+  type ReachableObjectsResponse,
+  getReachableObjects,
+} from "./get-reachable-objects";
 
-type UseReachableNodesParams = Omit<GetReachableNodesParams, "branchName" | "atDate">;
-type UseReachableNodesConfig = Partial<UseQueryOptions<ReachableNodesResponse>>;
+type UseReachableObjectsParams = Omit<GetReachableObjectsParams, "branchName" | "atDate">;
+type UseReachableObjectsConfig = Partial<UseQueryOptions<ReachableObjectsResponse>>;
 
-export function useGetReachableNodes(
-  params: UseReachableNodesParams,
-  config?: UseReachableNodesConfig
+export function useGetReachableObjects(
+  params: UseReachableObjectsParams,
+  config?: UseReachableObjectsConfig
 ) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
   return useQuery({
     queryKey: [
-      "reachable-nodes",
+      "reachable-objects",
       currentBranch.name,
       timeMachineDate,
       params.sourceId,
@@ -31,7 +31,7 @@ export function useGetReachableNodes(
       params.maxDepth,
     ],
     queryFn: () =>
-      getReachableNodes({
+      getReachableObjects({
         branchName: currentBranch.name,
         atDate: timeMachineDate,
         ...params,
