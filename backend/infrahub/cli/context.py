@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class CliContext:
-    application: str = "infrahub.server:app"
+    application: str = "infrahub.server:create_app"
 
     # This method is inherited for Infrahub Enterprise.
     @staticmethod

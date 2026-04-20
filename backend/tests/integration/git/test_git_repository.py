@@ -17,13 +17,13 @@ from infrahub.core.schema import SchemaRoot
 from infrahub.core.utils import count_relationships, delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
-from infrahub.server import app, lifespan
+from infrahub.server import lifespan
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
 from infrahub.workers.dependencies import build_database
 from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
-from tests.helpers.test_app import TestInfrahubApp
+from tests.helpers.test_app import TestInfrahubApp, app
 from tests.helpers.test_client import InfrahubTestClient
 from tests.integration.conftest import IntegrationHelper
 

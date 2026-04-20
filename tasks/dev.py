@@ -190,7 +190,7 @@ def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = Fals
         # Need to use `uvicorn` instead of `gunicorn` for reload option because of this issue:
         # https://github.com/benoitc/gunicorn/issues/2339
         os.environ["INFRAHUB_SERVER_COMMAND"] = (
-            "uvicorn infrahub.server:app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive 90 --reload"
+            "uvicorn --factory infrahub.server:create_app --host 0.0.0.0 --port 8000 --workers 4 --timeout-keep-alive 90 --reload"
         )
 
     start_services(context=context, database=database, namespace=NAMESPACE, wait=wait)

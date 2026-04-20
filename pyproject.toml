@@ -156,6 +156,8 @@ junit_duration_report = "call"
 PREFECT_LOGGING_LEVEL = "CRITICAL"
 INFRAHUB_LOG_LEVEL = "CRITICAL"
 INFRAHUB_PRODUCTION = false
+# Fake key here so pytest collection never fails on a developer laptop or CI
+INFRAHUB_SECURITY_SECRET_KEY = "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa"
 
 [tool.mypy]
 pretty = true

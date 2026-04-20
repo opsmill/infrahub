@@ -1,13 +1,15 @@
 import os
-import subprocess
-import sys
 from collections.abc import Iterator
 from unittest.mock import patch
 
 import pytest
+from fastapi import FastAPI
 from pydantic import ValidationError
 
+from infrahub import config
 from infrahub.config import SecuritySettings, Settings, UserInfoMethod, load
+from infrahub.prefect_server.app import create_infrahub_prefect
+from infrahub.server import create_app
 from tests.conftest import TestHelper
 
 
@@ -75,53 +77,45 @@ class TestSecretKeyRequired:
         assert settings.security.secret_key == "from-toml"
 
 
-class TestImportTimeValidation:
-    """ASGI entry-point modules must validate settings at import time so the
-    server refuses to bind a socket when configuration is invalid. Regression
-    guard for the bug where gunicorn/uvicorn started listening and failures
-    only surfaced as HTTP 500 inside request handlers.
-    """
+class TestFactoryValidation:
+    """ASGI factories must validate settings before building the app so the
+    server."""
 
-    @staticmethod
-    def _run_import(module: str, *, secret_key: str | None) -> subprocess.CompletedProcess[str]:
-        env = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
-        if secret_key is not None:
-            env["INFRAHUB_SECURITY_SECRET_KEY"] = secret_key
-        return subprocess.run(
-            [sys.executable, "-c", f"import {module}"],
-            env=env,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+    @pytest.fixture
+    def _with_unloaded_settings_and_no_env(self) -> Iterator[None]:
+        env_clean = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
+        original_settings = config.SETTINGS.settings
+        config.SETTINGS.settings = None
+        try:
+            with patch.dict(os.environ, env_clean, clear=True):
+                yield
+        finally:
+            config.SETTINGS.settings = original_settings
 
-    def test_server_import_fails_without_secret_key(self) -> None:
-        result = self._run_import("infrahub.server", secret_key=None)
-        assert result.returncode != 0, (
-            f"infrahub.server must fail to import without a secret key, got exit 0.\n"
-            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
-        )
-        assert "secret_key" in (result.stdout + result.stderr)
+    @pytest.mark.usefixtures("_with_unloaded_settings_and_no_env")
+    def test_create_app_fails_without_secret_key(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as excinfo:
+            create_app()
+        assert excinfo.value.code == 1
+        output = capsys.readouterr().out
+        assert "Configuration not valid, found 1 error(s)" in output
+        assert "secret_key must be provided via config or INFRAHUB_SECURITY_SECRET_KEY environment variable" in output
 
-    def test_server_import_succeeds_with_secret_key(self) -> None:
-        result = self._run_import("infrahub.server", secret_key="test-key")
-        assert result.returncode == 0, (
-            f"infrahub.server must import cleanly with secret key set.\n"
-            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
-        )
+    @pytest.mark.usefixtures("_with_unloaded_settings_and_no_env")
+    def test_create_infrahub_prefect_fails_without_secret_key(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as excinfo:
+            create_infrahub_prefect()
+        assert excinfo.value.code == 1
+        output = capsys.readouterr().out
+        assert "Configuration not valid, found 1 error(s)" in output
+        assert "secret_key must be provided via config or INFRAHUB_SECURITY_SECRET_KEY environment variable" in output
 
-    def test_prefect_server_factory_fails_without_secret_key(self) -> None:
-        env = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
-        result = subprocess.run(
-            [
-                sys.executable,
-                "-c",
-                "from infrahub.prefect_server.app import create_infrahub_prefect; create_infrahub_prefect()",
-            ],
-            env=env,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        assert result.returncode != 0
-        assert "secret_key" in (result.stdout + result.stderr)
+    def test_create_app_succeeds_with_secret_key(self) -> None:
+        original_settings = config.SETTINGS.settings
+        config.SETTINGS.settings = None
+        try:
+            with patch.dict(os.environ, {"INFRAHUB_SECURITY_SECRET_KEY": "test-key"}):
+                app = create_app()
+        finally:
+            config.SETTINGS.settings = original_settings
+        assert isinstance(app, FastAPI)

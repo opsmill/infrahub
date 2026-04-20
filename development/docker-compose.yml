@@ -180,7 +180,7 @@ services:
       INFRAHUB_DB_PROTOCOL: bolt
       INFRAHUB_STORAGE_DRIVER: local
       # INFRAHUB_SERVER_COMMAND is defined while running with reload option as it requires to run server using `uvicorn`.
-      COMMAND: ${INFRAHUB_SERVER_COMMAND:- gunicorn --config backend/infrahub/serve/gunicorn_config.py -w ${WEB_CONCURRENCY:-4} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app}
+      COMMAND: ${INFRAHUB_SERVER_COMMAND:- gunicorn --config backend/infrahub/serve/gunicorn_config.py -w ${WEB_CONCURRENCY:-4} --logger-class infrahub.serve.log.GunicornLogger "infrahub.server:create_app()"}
     command: >
       sh -c "$$COMMAND"
     depends_on:

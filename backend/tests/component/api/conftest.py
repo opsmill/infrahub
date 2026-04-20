@@ -25,7 +25,9 @@ def client(
     dependency_provider: Provider, nats: dict[int, int] | None, redis: dict[int, int] | None
 ) -> Generator[TestClient, None, None]:
     # In order to mock some methods later we can't load app by default because it will automatically load all import in main.py as well
-    from infrahub.server import app
+    from infrahub.server import create_app
+
+    app = create_app()
 
     async def _db(singleton: bool = True) -> InfrahubDatabase:
         return await build_database(singleton=False)

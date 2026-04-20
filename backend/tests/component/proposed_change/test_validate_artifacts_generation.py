@@ -21,11 +21,10 @@ from infrahub.message_bus.types import (
 from infrahub.proposed_change.branch_diff import set_diff_summary_cache
 from infrahub.proposed_change.models import RequestArtifactDefinitionCheck
 from infrahub.proposed_change.tasks import _get_subscribers_from_diff, validate_artifacts_generation
-from infrahub.server import app
 from infrahub.workers.dependencies import build_client, build_workflow
 from tests.adapters.workflow import WorkflowRecorder
 from tests.helpers.schema import load_schema
-from tests.helpers.test_app import TestInfrahubAppBase
+from tests.helpers.test_app import TestInfrahubAppBase, app
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Generator

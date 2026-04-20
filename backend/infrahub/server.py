@@ -48,6 +48,17 @@ from infrahub.workers.dependencies import (
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 
+FRONTEND_DIRECTORY = Path(os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", "frontend/app")).resolve()
+FRONTEND_ASSET_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "assets"
+FRONTEND_FAVICONS_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "favicons"
+
+DOCS_DIRECTORY = Path(os.environ.get("INFRAHUB_DOCS_DIRECTORY", Path("docs").resolve()))
+DOCS_BUILD_DIRECTORY = DOCS_DIRECTORY / "build"
+
+log = get_logger()
+
+templates = Jinja2Templates(directory=FRONTEND_DIRECTORY / "dist")
+
 
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
     config.SETTINGS.initialize_and_exit()
@@ -118,45 +129,11 @@ async def lifespan(application: FastAPI) -> AsyncGenerator:
     await shutdown(application)
 
 
-# Validate settings at import time so `uvicorn infrahub.server:app` and
-# `gunicorn infrahub.server:app` fail before binding a socket if configuration
-# is invalid. Without this, failures only surface inside request handling.
-config.SETTINGS.initialize_and_exit()
-
-app = FastAPI(
-    title="Infrahub",
-    version=__version__,
-    lifespan=lifespan,
-    openapi_url="/api/openapi.json",
-    docs_url=None,
-    redoc_url=None,
-)
-
-
 def server_request_hook(span: Span, scope: dict) -> None:  # noqa: ARG001
     if span and span.is_recording():
         span.set_attribute("worker", WORKER_IDENTITY)
 
 
-FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
-
-FRONTEND_DIRECTORY = Path(os.environ.get("INFRAHUB_FRONTEND_DIRECTORY", "frontend/app")).resolve()
-FRONTEND_ASSET_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "assets"
-FRONTEND_FAVICONS_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "favicons"
-
-DOCS_DIRECTORY = Path(os.environ.get("INFRAHUB_DOCS_DIRECTORY", Path("docs").resolve()))
-DOCS_BUILD_DIRECTORY = DOCS_DIRECTORY / "build"
-
-log = get_logger()
-gunicorn_logger = logging.getLogger("gunicorn.error")
-logger.handlers = gunicorn_logger.handlers
-
-app.include_router(api)
-
-templates = Jinja2Templates(directory=FRONTEND_DIRECTORY / "dist")
-
-
-@app.middleware("http")
 async def logging_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     clear_log_context()
     request_id = correlation_id.get()
@@ -173,7 +150,6 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
     return response
 
 
-@app.middleware("http")
 async def add_process_time_header(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
     start_time = time.time()
     response = await call_next(request)
@@ -182,7 +158,6 @@ async def add_process_time_header(request: Request, call_next: Callable[[Request
     return response
 
 
-@app.middleware("http")
 async def add_telemetry_span_exception(
     request: Request, call_next: Callable[[Request], Awaitable[Response]]
 ) -> Response:
@@ -193,56 +168,10 @@ async def add_telemetry_span_exception(
         raise
 
 
-app.add_middleware(CorrelationIdMiddleware)
-app.add_middleware(
-    PrometheusMiddleware,
-    app_name="infrahub",
-    group_paths=True,
-    prefix="infrahub",
-    buckets=[0.1, 0.25, 0.5],
-    skip_paths=["/health"],
-)
-app.add_middleware(InfrahubCORSMiddleware)
-app.add_middleware(
-    ConditionalGZipMiddleware,
-    minimum_size=100_000,
-    compresslevel=1,
-    include_paths=(
-        "/assets",
-        "/favicons",
-        "/docs",
-        "/api/schema",
-    ),
-)
-
-app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
-app.add_exception_handler(Error, generic_api_exception_handler)
-app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
-app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
-
-app.add_route(path="/metrics", route=handle_metrics)
-app.include_router(graphql_router)
-
-app.mount("/api-static", StaticFiles(directory=CURRENT_DIRECTORY / "api" / "static"), name="static")
-
-if FRONTEND_ASSET_DIRECTORY.exists() and FRONTEND_ASSET_DIRECTORY.is_dir():
-    app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
-
-
-if FRONTEND_FAVICONS_DIRECTORY.exists() and FRONTEND_FAVICONS_DIRECTORY.is_dir():
-    app.mount("/favicons", StaticFiles(directory=FRONTEND_FAVICONS_DIRECTORY), "favicons")
-
-
-if DOCS_BUILD_DIRECTORY.exists() and DOCS_BUILD_DIRECTORY.is_dir():
-    app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
-
-
-@app.get("/docs", include_in_schema=False)
 async def documentation() -> RedirectResponse:
     return RedirectResponse("/docs/")
 
 
-@app.get("/{rest_of_path:path}", include_in_schema=False)
 async def react_app(req: Request, rest_of_path: str) -> Response:  # noqa: ARG001
     return templates.TemplateResponse("index.html", {"request": req})
 
@@ -254,3 +183,79 @@ def _validate_feature_selection(configuration: config.Settings) -> None:
             raise ValidationError(
                 f"Enterprise features [{','.join(configuration.enterprise_features)}] are not supported when running Infrahub 'community'."
             )
+
+
+def create_app() -> FastAPI:
+    """Build the Infrahub API FastAPI application.
+
+    Settings are validated first; a `ValidationError` aborts the process via
+    `sys.exit(1)` before the app is constructed, so the ASGI server cannot
+    bind a socket with invalid configuration.
+    """
+    config.SETTINGS.initialize_and_exit()
+
+    app = FastAPI(
+        title="Infrahub",
+        version=__version__,
+        lifespan=lifespan,
+        openapi_url="/api/openapi.json",
+        docs_url=None,
+        redoc_url=None,
+    )
+
+    FastAPIInstrumentor().instrument_app(app, excluded_urls=".*/metrics", server_request_hook=server_request_hook)
+
+    gunicorn_logger = logging.getLogger("gunicorn.error")
+    logger.handlers = gunicorn_logger.handlers
+
+    app.include_router(api)
+
+    app.middleware("http")(logging_middleware)
+    app.middleware("http")(add_process_time_header)
+    app.middleware("http")(add_telemetry_span_exception)
+
+    app.add_middleware(CorrelationIdMiddleware)
+    app.add_middleware(
+        PrometheusMiddleware,
+        app_name="infrahub",
+        group_paths=True,
+        prefix="infrahub",
+        buckets=[0.1, 0.25, 0.5],
+        skip_paths=["/health"],
+    )
+    app.add_middleware(InfrahubCORSMiddleware)
+    app.add_middleware(
+        ConditionalGZipMiddleware,
+        minimum_size=100_000,
+        compresslevel=1,
+        include_paths=(
+            "/assets",
+            "/favicons",
+            "/docs",
+            "/api/schema",
+        ),
+    )
+
+    app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
+    app.add_exception_handler(Error, generic_api_exception_handler)
+    app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
+    app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))
+
+    app.add_route(path="/metrics", route=handle_metrics)
+    app.include_router(graphql_router)
+
+    app.mount("/api-static", StaticFiles(directory=CURRENT_DIRECTORY / "api" / "static"), name="static")
+
+    if FRONTEND_ASSET_DIRECTORY.exists() and FRONTEND_ASSET_DIRECTORY.is_dir():
+        app.mount("/assets", StaticFiles(directory=FRONTEND_ASSET_DIRECTORY), "assets")
+
+    if FRONTEND_FAVICONS_DIRECTORY.exists() and FRONTEND_FAVICONS_DIRECTORY.is_dir():
+        app.mount("/favicons", StaticFiles(directory=FRONTEND_FAVICONS_DIRECTORY), "favicons")
+
+    if DOCS_BUILD_DIRECTORY.exists() and DOCS_BUILD_DIRECTORY.is_dir():
+        app.mount("/docs", StaticFiles(directory=DOCS_BUILD_DIRECTORY, html=True, check_dir=True), name="infrahub-docs")
+
+    app.get("/docs", include_in_schema=False)(documentation)
+    app.get("/{rest_of_path:path}", include_in_schema=False)(react_app)
+
+    return app

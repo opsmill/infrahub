@@ -27,7 +27,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.utils import delete_all_nodes
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.registry import registry as graphql_registry
-from infrahub.server import app, lifespan
+from infrahub.server import create_app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_cache, build_client, build_database, build_message_bus, build_workflow
@@ -37,6 +37,9 @@ from tests.adapters.message_bus import BusSimulator
 from tests.helpers.events import query_events_by_name
 
 from .test_client import InfrahubTestClient
+
+# Module-level singleton shared by test_client and service fixtures
+app = create_app()
 
 
 class TestInfrahub:

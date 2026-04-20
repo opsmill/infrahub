@@ -252,7 +252,7 @@ services:
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
       -w ${WEB_CONCURRENCY:-4}
       --logger-class infrahub.serve.log.GunicornLogger
-      infrahub.server:app
+      "infrahub.server:create_app()"
     depends_on:
       database:
         condition: service_healthy

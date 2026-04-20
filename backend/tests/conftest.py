@@ -9,10 +9,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, AsyncGenerator, Generator, TypeVar
 
-# Must be set before any `infrahub` import so module-level
-# `config.SETTINGS.initialize_and_exit()` calls (e.g. in `infrahub.server`) pass.
-os.environ.setdefault("INFRAHUB_SECURITY_SECRET_KEY", "4e26b3d9-b84f-42c9-a03f-fee3ada3b2fa")
-
 import pytest
 import pytest_asyncio
 import ujson

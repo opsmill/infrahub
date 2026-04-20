@@ -23,7 +23,7 @@ from infrahub.core.utils import delete_all_nodes
 from infrahub.graphql.manager import GraphQLSchemaManager
 from infrahub.graphql.schema_sort import sort_schema_ast
 from infrahub.log import get_logger
-from infrahub.server import app as server_app
+from infrahub.server import create_app
 
 if TYPE_CHECKING:
     from infrahub.cli.context import CliContext
@@ -63,10 +63,12 @@ async def export_graphql_schema(
 @app.command(name="export-json-schema")
 async def export_json_schema(
     ctx: typer.Context,  # noqa: ARG001
+    config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
     out: Path = typer.Option("openapi.json"),  # noqa: B008
 ) -> None:
     """Export the REST API OpenAPI schema to a file."""
-    openapi_dict = server_app.openapi()
+    config.load_and_exit(config_file_name=config_file)
+    openapi_dict = create_app().openapi()
     openapi_dict["info"]["version"] = "latest"
     content = json.dumps(openapi_dict, indent=4)
     out.write_text(content)
