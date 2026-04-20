@@ -259,9 +259,9 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/object-table/cells/dropdown-cell.tsx:2293255857": [
       [0, 30, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/nodes/object/ui/object-table/cells/table-attribute-cell.tsx:3168273197": [
+    "src/entities/nodes/object/ui/object-table/cells/table-attribute-cell.tsx:2501932942": [
       [0, 45, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"],
-      [70, 25, 13, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2521665873"]
+      [79, 25, 13, "tsc: Argument of type \'\\"NodeKind\\"\' is not assignable to parameter of type \'never\'.", "2521665873"]
     ],
     "src/entities/nodes/object/ui/object-table/cells/url-cell.tsx:148904263": [
       [2, 35, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
