@@ -266,9 +266,11 @@ async def process_jinja2(
         )
 
         for id_filter in resolved.node_filters:
-            query = attribute_graphql.render_graphql_query(query_filter=id_filter, filter_id=object_id)
+            query = attribute_graphql.render_graphql_query(query_filter=id_filter)
             try:
-                response = await client.execute_graphql(query=query, branch_name=branch_name)
+                response = await client.execute_graphql(
+                    query=query, variables={"filter_id": object_id}, branch_name=branch_name
+                )
             except URLNotFoundError:
                 log.warning(
                     f"Process computed attributes for {computed_attribute_kind}.{computed_attribute_name} failed for branch {branch_name} (not found)"

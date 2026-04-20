@@ -106,8 +106,8 @@ async def process_display_label(
         node_schema=node_schema, variables=variables, filter_key=display_label_template.filter_key
     )
 
-    query = display_label_graphql.render_graphql_query(filter_id=object_id)
-    response = await client.execute_graphql(query=query, branch_name=branch_name)
+    query = display_label_graphql.render_graphql_query()
+    response = await client.execute_graphql(query=query, variables={"filter_id": object_id}, branch_name=branch_name)
     update_candidates = display_label_graphql.parse_response(response=response)
 
     if not update_candidates:

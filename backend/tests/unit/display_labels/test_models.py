@@ -54,7 +54,7 @@ class TestQueryFieldsInlineFragment:
         )
         assert parent_node["... on TestingCountry"]["slug"] == {"value": None}
 
-        rendered = graphql_obj.render_graphql_query(filter_id="abc-123")
+        rendered = graphql_obj.render_graphql_query()
         assert "... on TestingCountry" in rendered
 
     def test_no_fragment_for_non_hierarchical_relationship(self, build_schema: Callable[..., NodeSchema]) -> None:

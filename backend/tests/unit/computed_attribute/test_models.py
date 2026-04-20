@@ -117,7 +117,7 @@ class TestQueryFieldsInlineFragment:
         )
         assert parent_node["... on TestingCountry"]["slug"] == {"value": None}
 
-        rendered = graphql_obj.render_graphql_query(query_filter="ids", filter_id="abc-123")
+        rendered = graphql_obj.render_graphql_query(query_filter="ids")
         assert "... on TestingCountry" in rendered
 
     def test_no_fragment_for_non_hierarchical_relationship(self, build_schema: Callable[..., NodeSchema]) -> None:
@@ -135,7 +135,7 @@ class TestQueryFieldsInlineFragment:
         assert owner_node["name"] == {"value": None}
         assert not any(k.startswith("... on") for k in owner_node)
 
-        rendered = graphql_obj.render_graphql_query(query_filter="ids", filter_id="abc-123")
+        rendered = graphql_obj.render_graphql_query(query_filter="ids")
         assert "... on" not in rendered
 
     def test_no_fragment_when_peer_equals_hierarchical(self, build_schema: Callable[..., NodeSchema]) -> None:
@@ -153,5 +153,5 @@ class TestQueryFieldsInlineFragment:
         assert parent_node["name"] == {"value": None}
         assert not any(k.startswith("... on") for k in parent_node)
 
-        rendered = graphql_obj.render_graphql_query(query_filter="ids", filter_id="abc-123")
+        rendered = graphql_obj.render_graphql_query(query_filter="ids")
         assert "... on" not in rendered

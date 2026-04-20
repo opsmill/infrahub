@@ -105,8 +105,8 @@ async def process_hfid(
         node_schema=node_schema, variables=hfid_definition.hfid, filter_key=hfid_definition.filter_key
     )
 
-    query = hfid_graphql.render_graphql_query(filter_id=object_id)
-    response = await client.execute_graphql(query=query, branch_name=branch_name)
+    query = hfid_graphql.render_graphql_query()
+    response = await client.execute_graphql(query=query, variables={"filter_id": object_id}, branch_name=branch_name)
     update_candidates = hfid_graphql.parse_response(response=response)
 
     if not update_candidates:

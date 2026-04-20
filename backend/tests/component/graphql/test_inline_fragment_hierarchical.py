@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
@@ -100,11 +100,15 @@ CITY = NodeSchema(
 
 
 async def assert_correct_graphql_structure(
-    db: InfrahubDatabase, default_branch: Branch, rendered_query: str, expected_value: str
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    rendered_query: str,
+    expected_value: str,
+    variables: dict[str, Any] | None = None,
 ) -> None:
     assert "... on TestingCountry" in rendered_query
 
-    result = await graphql_query(query=rendered_query, db=db, branch=default_branch)
+    result = await graphql_query(query=rendered_query, db=db, branch=default_branch, variables=variables)
 
     assert result.errors is None
     edges = result.data["TestingCity"]["edges"]
@@ -167,8 +171,10 @@ async def test_computed_attr_graphql_query_executes_successfully(
         variables=variables,
     )
 
-    rendered_query = graphql_obj.render_graphql_query(query_filter="parent__ids", filter_id=country.id)
-    await assert_correct_graphql_structure(db, default_branch, rendered_query, expected_country_code)
+    rendered_query = graphql_obj.render_graphql_query(query_filter="parent__ids")
+    await assert_correct_graphql_structure(
+        db, default_branch, rendered_query, expected_country_code, variables={"filter_id": country.id}
+    )
 
 
 async def test_display_label_graphql_query_executes_successfully(
@@ -199,8 +205,10 @@ async def test_display_label_graphql_query_executes_successfully(
         variables=["parent__country_code__value", "shortname__value"],
     )
 
-    rendered_query = graphql_obj.render_graphql_query(filter_id=city.id)
-    await assert_correct_graphql_structure(db, default_branch, rendered_query, expected_country_code)
+    rendered_query = graphql_obj.render_graphql_query()
+    await assert_correct_graphql_structure(
+        db, default_branch, rendered_query, expected_country_code, variables={"filter_id": city.id}
+    )
 
 
 async def test_hfid_graphql_query_executes_successfully(
@@ -232,5 +240,7 @@ async def test_hfid_graphql_query_executes_successfully(
         variables=["parent__country_code__value", "shortname__value"],
     )
 
-    rendered_query = graphql_obj.render_graphql_query(filter_id=city.id)
-    await assert_correct_graphql_structure(db, default_branch, rendered_query, expected_country_code)
+    rendered_query = graphql_obj.render_graphql_query()
+    await assert_correct_graphql_structure(
+        db, default_branch, rendered_query, expected_country_code, variables={"filter_id": city.id}
+    )

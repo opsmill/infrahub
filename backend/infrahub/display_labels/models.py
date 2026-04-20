@@ -174,7 +174,7 @@ class DisplayLabelJinja2GraphQL(BaseModel):
     node_schema: NodeSchema = Field(..., description="The node kind where the computed attribute is defined")
     variables: list[str] = Field(..., description="The list of variable names used within the computed attribute")
 
-    def render_graphql_query(self, filter_id: str) -> str:
+    def render_graphql_query(self) -> str:
         query_fields = self.query_fields
         query_fields["id"] = None
         query_fields["display_label"] = None
@@ -182,10 +182,11 @@ class DisplayLabelJinja2GraphQL(BaseModel):
             name="DisplayLabelFilter",
             query={
                 self.node_schema.kind: {
-                    "@filters": {self.filter_key: filter_id},
+                    "@filters": {self.filter_key: "$filter_id"},
                     "edges": {"node": query_fields},
                 }
             },
+            variables={"filter_id": str},
         )
 
         return query.render()

@@ -125,11 +125,14 @@ async def add_node_to_group(
 
     mutation = Mutation(
         mutation="RelationshipAdd",
-        input_data={"data": {"id": group_id, "name": "members", "nodes": [{"id": node_id}]}},
+        input_data={"data": {"id": "$group_id", "name": "members", "nodes": [{"id": "$node_id"}]}},
         query={"ok": None},
+        variables={"group_id": str, "node_id": str},
     )
 
-    await service.client.execute_graphql(query=mutation.render(), branch_name=branch_name)
+    await service.client.execute_graphql(
+        query=mutation.render(), variables={"group_id": group_id, "node_id": node_id}, branch_name=branch_name
+    )
 
 
 @flow(
@@ -147,11 +150,14 @@ async def remove_node_from_group(
 
     mutation = Mutation(
         mutation="RelationshipRemove",
-        input_data={"data": {"id": group_id, "name": "members", "nodes": [{"id": node_id}]}},
+        input_data={"data": {"id": "$group_id", "name": "members", "nodes": [{"id": "$node_id"}]}},
         query={"ok": None},
+        variables={"group_id": str, "node_id": str},
     )
 
-    await service.client.execute_graphql(query=mutation.render(), branch_name=branch_name)
+    await service.client.execute_graphql(
+        query=mutation.render(), variables={"group_id": group_id, "node_id": node_id}, branch_name=branch_name
+    )
 
 
 @flow(

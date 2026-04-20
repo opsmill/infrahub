@@ -345,7 +345,7 @@ class ComputedAttrJinja2GraphQL(BaseModel):
     attribute_schema: AttributeSchema = Field(..., description="The computed attribute")
     variables: list[str] = Field(..., description="The list of variable names used within the computed attribute")
 
-    def render_graphql_query(self, query_filter: str, filter_id: str) -> str:
+    def render_graphql_query(self, query_filter: str) -> str:
         query_fields = self.query_fields
         query_fields["id"] = None
         query_fields[self.attribute_schema.name] = {"value": None}
@@ -353,10 +353,11 @@ class ComputedAttrJinja2GraphQL(BaseModel):
             name="ComputedAttributeFilter",
             query={
                 self.node_schema.kind: {
-                    "@filters": {query_filter: filter_id},
+                    "@filters": {query_filter: "$filter_id"},
                     "edges": {"node": query_fields},
                 }
             },
+            variables={"filter_id": str},
         )
 
         return query.render()
