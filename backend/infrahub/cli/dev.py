@@ -38,8 +38,12 @@ def _load_settings_for_offline_codegen(config_file: str) -> None:
     config_path = Path(config_file)
     config_data: dict[str, Any] = tomllib.loads(config_path.read_text(encoding="utf-8")) if config_path.exists() else {}
     if not os.environ.get("INFRAHUB_SECURITY_SECRET_KEY"):
-        config_data.setdefault("security", {}).setdefault("secret_key", "offline-codegen")
-    config.load_and_exit(config_data=config_data)
+        security_config = config_data.get("security")
+        if not isinstance(security_config, dict):
+            security_config = {}
+            config_data["security"] = security_config
+        security_config.setdefault("secret_key", "offline-codegen")
+    config.load_and_exit(config_file_name=config_file, config_data=config_data)
 
 
 @app.command(name="export-graphql-schema")

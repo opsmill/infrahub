@@ -34,6 +34,12 @@ Allocating more CPU cores to the Neo4j database will only improve performance on
 
 :::
 
+:::warning Required configuration
+
+`INFRAHUB_SECURITY_SECRET_KEY` must be explicitly set — the server refuses to start without it. Use a strong value and share it across every replica so authentication tokens issued by one instance validate on the others. See the [Security reference](../reference/configuration.mdx#security) for details.
+
+:::
+
 <div style={{ textAlign: 'center' }}>
   <VideoPlayer url='https://www.youtube.com/watch?v=onVhaTVFkrM' light />
 </div>

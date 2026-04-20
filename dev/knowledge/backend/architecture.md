@@ -46,7 +46,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 
 ## Entry Points
 
-- **Server:** `server.py` - FastAPI application factory
+- **Server:** `server.py` - `create_app()` FastAPI factory (see [server-startup.md](server-startup.md))
 - **Config:** `config.py` - Pydantic settings management
 - **Database:** `database/__init__.py` - `InfrahubDatabase` client
 - **Registry:** `core/__init__.py` - Central node class registry
@@ -55,6 +55,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 
 ### Related Knowledge
 
+- [Server Startup](server-startup.md) - Entry points, settings validation, factory pattern
 - [Testing](testing.md) - Testing infrastructure and patterns
 - [Events System](events.md) - Event-driven architecture
 - [Async Tasks](async-tasks.md) - Background task processing
