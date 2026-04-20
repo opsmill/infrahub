@@ -222,7 +222,7 @@ class StandardNode(BaseModel):
         return None
 
     @classmethod
-    async def _get_item_raw(cls, id: str, db: InfrahubDatabase) -> Neo4jNode:
+    async def _get_item_raw(cls, id: str, db: InfrahubDatabase) -> Neo4jNode | None:
         query: Query = await StandardNodeGetItemQuery.init(db=db, node_id=id, node_type=cls.get_type())
         await query.execute(db=db)
 
@@ -230,7 +230,7 @@ class StandardNode(BaseModel):
         if not result:
             return None
 
-        return result.get("n")
+        return result.get_node("n")
 
     @classmethod
     def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
@@ -243,7 +243,7 @@ class StandardNode(BaseModel):
             StandardNode: Proper StandardNode object
         """
 
-        attrs = {}
+        attrs: dict[str, Any] = {}
         node_data = dict(node)
         extras = extras or {}
         node_data.update(extras)
@@ -304,7 +304,7 @@ class StandardNode(BaseModel):
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> list[Self]:
         node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await StandardNodeGetListQuery.init(
@@ -312,4 +312,4 @@ class StandardNode(BaseModel):
         )
         await query.execute(db=db)
 
-        return [cls.from_db(result.get("n")) for result in query.get_results()]
+        return [cls.from_db(result.get_node("n")) for result in query.get_results()]
