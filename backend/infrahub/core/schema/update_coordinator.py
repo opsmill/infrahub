@@ -164,15 +164,25 @@ class SchemaUpdateCoordinator:
         # Step 1: Update schema in DB and/or registry
         updated_hash: str | None = None
         if update_db or update_registry:
-            updated_hash = await self._update_schema(
-                candidate_schema=candidate_schema,
-                at=at,
-                diff=diff,
-                limit=limit,
-                update_db=update_db,
-                update_registry=update_registry,
-                user_id=user_id,
-            )
+            try:
+                updated_hash = await self._update_schema(
+                    candidate_schema=candidate_schema,
+                    at=at,
+                    diff=diff,
+                    limit=limit,
+                    update_db=update_db,
+                    update_registry=update_registry,
+                    user_id=user_id,
+                )
+            except Exception as exc:
+                self.log.error(
+                    "Schema update failed, beginning rollback",
+                    extra={"branch": self.branch.name, "error": str(exc)},
+                )
+                await self._rollback(at=at)
+                await self._restore_registry_state()
+                self.log.info("Schema rollback completed", extra={"branch": self.branch.name})
+                raise
 
         if not migrations:
             return updated_hash
