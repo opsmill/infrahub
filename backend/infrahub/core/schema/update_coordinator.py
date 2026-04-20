@@ -188,10 +188,12 @@ class SchemaUpdateCoordinator:
             user_id=user_id,
         )
 
-        if not error_msgs and exception is None:
-            return updated_hash
+        if error_msgs or exception is not None:
+            await self._handle_failure_and_rollback(
+                at=at, phase="migration", exception=exception, error_msgs=error_msgs
+            )
 
-        await self._handle_failure_and_rollback(at=at, phase="migration", exception=exception, error_msgs=error_msgs)
+        return updated_hash
 
     async def _update_schema(
         self,
