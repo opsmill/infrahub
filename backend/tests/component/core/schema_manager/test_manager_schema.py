@@ -2823,11 +2823,23 @@ async def test_schema_branch_validate_node_deletion(
 async def test_schema_branch_validate_node_deletion_inherit_from(
     db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
-    """Deleting a generic that is still listed in another node's inherit_from must be rejected."""
+    """Deleting a generic that is still listed in another node's inherit_from must be rejected.
+
+    The schema also contains an unrelated generic that is kept across the diff — the
+    validator must iterate over every schema kind (including generics) without
+    touching attributes that only exist on nodes/profiles/templates.
+    """
     FULL_SCHEMA = {
         "generics": [
             {
                 "name": "Parent",
+                "namespace": "Testing",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
+            {
+                "name": "KeptGeneric",
                 "namespace": "Testing",
                 "attributes": [
                     {"name": "name", "kind": "Text", "label": "Name", "unique": True},
