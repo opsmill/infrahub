@@ -78,12 +78,13 @@ class TestSecretKeyRequired:
 
 
 class TestFactoryValidation:
-    """ASGI factories must validate settings before building the app so the
-    server."""
+    """ASGI factories must validate settings before building the app so the server."""
 
-    @pytest.fixture
-    def _with_unloaded_settings_and_no_env(self) -> Iterator[None]:
+    @staticmethod
+    def _unload_settings_with_env(env_overrides: dict[str, str] | None = None) -> Iterator[None]:
         env_clean = {k: v for k, v in os.environ.items() if not k.startswith("INFRAHUB_SECURITY_SECRET")}
+        if env_overrides:
+            env_clean.update(env_overrides)
         original_settings = config.SETTINGS.settings
         config.SETTINGS.settings = None
         try:
@@ -91,6 +92,22 @@ class TestFactoryValidation:
                 yield
         finally:
             config.SETTINGS.settings = original_settings
+
+    @pytest.fixture
+    def _with_unloaded_settings_and_no_env(self) -> Iterator[None]:
+        yield from self._unload_settings_with_env()
+
+    @pytest.fixture
+    def _with_unloaded_settings_and_prefect_distributed_mode(self) -> Iterator[None]:
+        # Single-node Prefect skips Infrahub settings validation; these two env
+        # vars force the distributed-mode branch in `create_infrahub_prefect()`
+        # so the validator runs.
+        yield from self._unload_settings_with_env(
+            {
+                "PREFECT_API_BLOCKS_REGISTER_ON_START": "false",
+                "PREFECT_API_DATABASE_MIGRATE_ON_START": "false",
+            }
+        )
 
     @pytest.mark.usefixtures("_with_unloaded_settings_and_no_env")
     def test_create_app_fails_without_secret_key(self, capsys: pytest.CaptureFixture[str]) -> None:
@@ -101,8 +118,10 @@ class TestFactoryValidation:
         assert "Configuration not valid, found 1 error(s)" in output
         assert "secret_key must be provided via config or INFRAHUB_SECURITY_SECRET_KEY environment variable" in output
 
-    @pytest.mark.usefixtures("_with_unloaded_settings_and_no_env")
-    def test_create_infrahub_prefect_fails_without_secret_key(self, capsys: pytest.CaptureFixture[str]) -> None:
+    @pytest.mark.usefixtures("_with_unloaded_settings_and_prefect_distributed_mode")
+    def test_create_infrahub_prefect_fails_without_secret_key_in_distributed_mode(
+        self, capsys: pytest.CaptureFixture[str]
+    ) -> None:
         with pytest.raises(SystemExit) as excinfo:
             create_infrahub_prefect()
         assert excinfo.value.code == 1

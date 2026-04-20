@@ -188,9 +188,8 @@ def _validate_feature_selection(configuration: config.Settings) -> None:
 def create_app() -> FastAPI:
     """Build the Infrahub API FastAPI application.
 
-    Settings are validated first; a `ValidationError` aborts the process via
-    `sys.exit(1)` before the app is constructed, so the ASGI server cannot
-    bind a socket with invalid configuration.
+    Settings are validated first; a `ValidationError` aborts the process before the app is constructed,
+    so the ASGI server cannot bind a socket with invalid configuration.
     """
     config.SETTINGS.initialize_and_exit()
 

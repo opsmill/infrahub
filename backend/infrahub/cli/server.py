@@ -79,4 +79,4 @@ def start(
         )
 
 
-# gunicorn "infrahub.server:create_app()" --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+# gunicorn infrahub.serve.app:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
