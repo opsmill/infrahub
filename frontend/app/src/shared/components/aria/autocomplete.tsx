@@ -7,13 +7,18 @@ import {
   type InputProps as AriaInputProps,
   SearchField as AriaSearchField,
   type SearchFieldProps as AriaSearchFieldProps,
+  useFilter,
 } from "react-aria-components";
 
 import { classNames } from "@/shared/utils/common";
 
-export function Autocomplete({ children, ...props }: AriaAutocompleteProps) {
+export function Autocomplete({ filter, onInputChange, children, ...props }: AriaAutocompleteProps) {
+  const { contains } = useFilter({ sensitivity: "base" });
+  // When onInputChange is provided, items are controlled externally (server-side search) — skip client-side filtering.
+  const resolvedFilter = filter ?? (onInputChange ? undefined : contains);
+
   return (
-    <AriaAutocomplete {...props}>
+    <AriaAutocomplete filter={resolvedFilter} onInputChange={onInputChange} {...props}>
       <div className="max-h-[inherit] overflow-hidden">
         <AutocompleteSearchField placeholder="Search..." />
         {children}

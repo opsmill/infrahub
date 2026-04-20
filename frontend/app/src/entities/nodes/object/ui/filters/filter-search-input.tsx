@@ -41,7 +41,7 @@ export const FilterSearchInput = ({ schema, className, ...props }: FilterSearchI
   }
   return (
     <SearchInput
-      className="h-8"
+      className="h-8 max-w-xs rounded-xl"
       value={inputValue}
       onChange={setInputValue}
       placeholder={"Search " + (schema?.label ?? schema?.name)}

@@ -1,5 +1,3 @@
-import { gql } from "@apollo/client";
-
 import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -7,7 +5,7 @@ import { LoadingIndicator } from "@/shared/components/loading/loading-indicator"
 import { Pagination } from "@/shared/components/ui/pagination";
 import usePagination from "@/shared/hooks/usePagination";
 
-import { getValidatorDetails } from "@/entities/diff/api/getValidatorDetails";
+import { GET_VALIDATOR_DETAILS } from "@/entities/diff/api/getValidatorDetails";
 
 import { Check } from "./check";
 
@@ -18,24 +16,13 @@ type tValidatorDetails = {
 export const ValidatorDetails = ({ id }: tValidatorDetails) => {
   const [pagination] = usePagination();
 
-  const filtersString = [
-    // Add pagination filters
-    ...[
-      { name: "offset", value: pagination?.offset },
-      { name: "limit", value: pagination?.limit },
-    ].map((row: any) => `${row.name}: ${row.value}`),
-  ].join(",");
-
-  const queryString = getValidatorDetails({
-    id,
-    filters: filtersString,
+  const { loading, error, data } = useQuery(GET_VALIDATOR_DETAILS, {
+    variables: {
+      ids: [id],
+      checksOffset: pagination?.offset,
+      checksLimit: pagination?.limit,
+    },
   });
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data } = useQuery(query);
 
   if (loading) {
     return <LoadingIndicator className="p-4" />;

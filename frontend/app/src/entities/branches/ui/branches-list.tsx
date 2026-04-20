@@ -5,7 +5,7 @@ import Content from "@/shared/components/layout/content";
 import useFilters from "@/shared/hooks/useFilters";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
+import { BRANCH_FILTER_DEFINITIONS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchesTable } from "@/entities/branches/ui/branches-table/branches-table";
 import { branchesQueryKeys } from "@/entities/branches/ui/queries/branch.query-keys";
 import { useGetBranchesCount } from "@/entities/branches/ui/queries/get-branches-count.query";
@@ -36,14 +36,14 @@ function BranchesListToolbar() {
     <Col className="gap-0">
       <BranchesListHeader />
 
-      <Row className="items-center gap-2 px-3">
-        <div className="max-w-56 py-3">
-          <FilterSearchInput placeholder="Search branches" />
-        </div>
+      <Row className="px-3 py-2">
+        <FilterSearchInput placeholder="Search branches" />
+
         <ActiveFilterTags
           filters={filters}
           setFilters={setFilters}
-          fieldSchemas={BRANCH_FIELD_SCHEMAS}
+          filterDefinitions={BRANCH_FILTER_DEFINITIONS}
+          className="p-0"
         />
       </Row>
     </Col>

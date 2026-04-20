@@ -1,4 +1,4 @@
-import { graphql } from "gql.tada";
+import { gql } from "@apollo/client";
 
 import useQuery from "@/shared/api/graphql/useQuery";
 import { Clipboard } from "@/shared/components/buttons/clipboard";
@@ -19,7 +19,7 @@ type tId = {
 };
 
 export const Id = ({ id, kind = NODE_OBJECT, preventCopy, branch, date }: tId) => {
-  const { loading, error, data } = useQuery(graphql(getObjectDisplayLabel({ kind })), {
+  const { loading, error, data } = useQuery(gql(getObjectDisplayLabel({ kind })), {
     variables: { ids: [id] },
     context: { uri: CONFIG.GRAPHQL_URL(branch, date) },
   });

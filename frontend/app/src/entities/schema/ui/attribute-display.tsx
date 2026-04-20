@@ -61,6 +61,7 @@ export const AttributeDisplay = ({
 
       <div>
         <PropertyRow title="Branch" value={attribute.branch} />
+        <PropertyRow title="Display" value={attribute.display} />
         <PropertyRow title="Order weight" value={attribute.order_weight} />
       </div>
 

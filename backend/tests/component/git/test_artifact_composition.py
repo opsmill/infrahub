@@ -31,9 +31,9 @@ async def git_repo_filter_tests(git_upstream_repo_02: dict[str, str | Path], git
 
     templates = {
         # Untrusted filter
-        "template_safe.tpl.j2": '{% for item in data["items"] %}{{ item | safe }}\n{% endfor %}\n',
+        "template_untrusted.tpl.j2": '{% for item in data["items"] %}{{ item | fqdn_to_ip }}\n{% endfor %}\n',
         # Trusted filter
-        "template_upper.tpl.j2": '{% for item in data["items"] %}{{ item | upper }}\n{% endfor %}\n',
+        "template_trusted.tpl.j2": '{% for item in data["items"] %}{{ item | upper }}\n{% endfor %}\n',
     }
 
     for name, content in templates.items():
@@ -67,14 +67,16 @@ def _make_message(repo: InfrahubRepository, template: str) -> TransformJinjaTemp
 async def test_worker_rejects_local_only_filter(
     git_repo_filter_tests: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None
 ) -> None:
-    with pytest.raises(TransformError, match="'safe' filter isn't allowed to be used"):
-        await transform_render_jinja2_template(message=_make_message(git_repo_filter_tests, "template_safe.tpl.j2"))
+    with pytest.raises(TransformError, match="'fqdn_to_ip' filter isn't allowed to be used"):
+        await transform_render_jinja2_template(
+            message=_make_message(git_repo_filter_tests, "template_untrusted.tpl.j2")
+        )
 
 
 async def test_worker_allows_trusted_filters(
     git_repo_filter_tests: InfrahubRepository, init_service: InfrahubServices, prefect_test_fixture: None
 ) -> None:
     result = await transform_render_jinja2_template(
-        message=_make_message(git_repo_filter_tests, "template_upper.tpl.j2")
+        message=_make_message(git_repo_filter_tests, "template_trusted.tpl.j2")
     )
     assert result == "ONE\nTWO\n"

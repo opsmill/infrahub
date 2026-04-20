@@ -153,7 +153,10 @@ class PrefectEventData(PrefectEventModel):
         return {"created_branch": self._get_branch_name_from_resource()}
 
     def _return_branch_deleted(self) -> dict[str, Any]:
-        return {"deleted_branch": self._get_branch_name_from_resource()}
+        return {
+            "deleted_branch": self._get_branch_name_from_resource(),
+            "proposed_change_id": self.resource.get("infrahub.branch.proposed_change_id", ""),
+        }
 
     def _return_branch_merged(self) -> dict[str, Any]:
         return {"source_branch": self._get_branch_name_from_resource()}

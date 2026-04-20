@@ -28,7 +28,7 @@ def _format_ruff(context: Context) -> None:
 
 @task(name="format", default=True)
 def format_all(context: Context) -> None:
-    """This will run all formatters."""
+    """Format tasks, models, utilities, and test container Python files with ruff."""
 
     _format_ruff(context)
 
@@ -47,7 +47,7 @@ def _lint_ruff(context: Context) -> None:
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linters."""
+    """Run ruff linter against tasks, models, utilities, and test container files."""
 
     _lint_ruff(context)
 
