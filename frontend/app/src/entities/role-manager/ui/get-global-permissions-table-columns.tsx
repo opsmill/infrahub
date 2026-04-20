@@ -23,8 +23,8 @@ const columnHelper = createColumnHelper<NodeObject>();
 export function getGlobalPermissionsTableColumns(
   schema: ModelSchema
 ): Array<ColumnDef<NodeObject>> {
-  const allAttributesVisible = (schema.attributes ?? []).filter(
-    ({ name }) => GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES.includes(name) && name !== "name"
+  const allAttributesVisible = (schema.attributes ?? []).filter(({ name }) =>
+    GLOBAL_PERMISSIONS_TABLE_ATTRIBUTES.includes(name)
   );
   const [decisionAttributes, attributesVisible] = partition(
     allAttributesVisible,
