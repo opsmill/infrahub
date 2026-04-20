@@ -2820,6 +2820,49 @@ async def test_schema_branch_validate_node_deletion(
         schema_branch.validate_node_deletions(diff=diff)
 
 
+async def test_schema_branch_validate_node_deletion_inherit_from(
+    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
+) -> None:
+    """Deleting a generic that is still listed in another node's inherit_from must be rejected."""
+    FULL_SCHEMA = {
+        "generics": [
+            {
+                "name": "Parent",
+                "namespace": "Testing",
+                "attributes": [
+                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
+                ],
+            },
+        ],
+        "nodes": [
+            {
+                "name": "Child",
+                "namespace": "Testing",
+                "inherit_from": ["TestingParent"],
+                "attributes": [
+                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
+                ],
+            },
+        ],
+    }
+    schema = SchemaRoot(**FULL_SCHEMA)
+    schema.generate_uuid()
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=schema)
+
+    FULL_SCHEMA["generics"].pop(0)
+
+    broken_schema = SchemaRoot(**FULL_SCHEMA)
+    broken_schema_branch = SchemaBranch(cache={}, name="test-broken")
+    broken_schema_branch.load_schema(schema=broken_schema)
+
+    diff = schema_branch.diff(other=broken_schema_branch)
+    assert "TestingParent" in diff.removed
+
+    with pytest.raises(ValueError, match="'TestingParent' has been removed but is still referenced"):
+        schema_branch.validate_node_deletions(diff=diff)
+
+
 async def test_schema_branch_validate_add_node_relationships(
     db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
