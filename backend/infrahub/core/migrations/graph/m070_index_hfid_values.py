@@ -44,6 +44,7 @@ WHERE NOT av:AttributeValueIndexed
         MATCH (other:Attribute)-[:HAS_VALUE]->(av)
         WHERE other.name <> "human_friendly_id"
     }
+WITH DISTINCT av
 CALL (av) {
     SET av:AttributeValueIndexed
 } IN TRANSACTIONS OF 1000 ROWS
