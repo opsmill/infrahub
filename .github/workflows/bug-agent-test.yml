@@ -109,6 +109,9 @@ jobs:
       - name: Install frontend dependencies
         if: steps.analyst.outputs.skip != 'true'
         run: cd frontend/app && npm ci
+      - name: Install Playwright browsers
+        if: steps.analyst.outputs.skip != 'true'
+        run: cd frontend/app && npx playwright install chromium
 
       - name: Read prompt
         if: steps.analyst.outputs.skip != 'true'
@@ -298,6 +301,9 @@ jobs:
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: cd frontend/app && npm ci
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && npx playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
