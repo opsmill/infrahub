@@ -45,18 +45,9 @@ const AccountLoggedOutEventDetails = ({ event }: { event: AccountLoggedOutEventT
   );
 };
 
-export const EventDetails = ({
-  id,
-  event,
-  branch,
-  occurred_at,
-  account_id,
-  primary_node,
-  related_nodes,
-  ancestors,
-  members,
-  ...props
-}: EventType) => {
+export const EventDetails = (props: EventType) => {
+  const { id, event, branch, occurred_at, account_id, primary_node, related_nodes } = props;
+
   const displayedBranch =
     branch ??
     ("deleted_branch" in props ? props.deleted_branch : undefined) ??
