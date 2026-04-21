@@ -1,1 +1,1 @@
-Fixed pagination offset being ignored when querying branches
+Fixed pagination offset being ignored when querying InfrahubBranch
