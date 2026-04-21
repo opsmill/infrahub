@@ -2914,11 +2914,7 @@ async def test_schema_branch_validate_node_deletion_iterates_generics_safely(
 async def test_schema_branch_validate_node_deletion_removes_generic_and_child_together(
     db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
-    """Removing a generic AND the nodes that inherit from it in the same diff must be accepted.
-
-    The inherit_from reference is harmless because the referencing node is also being deleted.
-    Mirrors the three-schema drop in test_numberpool_assignment_from_generic.
-    """
+    """Removing a generic AND the nodes that inherit from it in the same diff must be accepted."""
     FULL_SCHEMA = {
         "generics": [
             {
