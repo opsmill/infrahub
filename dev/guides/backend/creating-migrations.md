@@ -111,29 +111,9 @@ CALL (n) {
 
 `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — move all matching up front.
 
-### Step 4: Handle Shared `AttributeValue` Nodes
+### Step 4: Beware of Shared Nodes
 
-`AttributeValue` nodes are de-duplicated via `MERGE` on `value` + `is_default`. Multiple attributes often share the same node. Migrations that modify the `value` property or add labels must not corrupt unrelated attributes.
-
-Two safe approaches:
-
-1. **Filter out shared nodes** — only modify when no other attribute references the value.
-2. **Create a new node and transfer edges** — works in all cases:
-
-```cypher
-MATCH (attr)-[old_r:HAS_VALUE]->(old_av)
-WHERE <condition>
-CALL (attr, old_r, old_av) {
-    MERGE (new_av:AttributeValue {value: new_value, is_default: old_av.is_default})
-    WITH attr, old_r, new_av
-    LIMIT 1
-    CREATE (attr)-[new_r:HAS_VALUE]->(new_av)
-    SET new_r = properties(old_r)
-    DELETE old_r
-} IN TRANSACTIONS OF 500 ROWS
-```
-
-Use `MERGE` (not `CREATE`) for the new `AttributeValue` to match the normal storage pattern. The `LIMIT 1` after `WITH` prevents duplicate edges if the `MERGE` binds to multiple rows.
+Some nodes in the graph are de-duplicated via `MERGE` (e.g., `AttributeValue` on `value` + `is_default`). Multiple relationships from different parents can point to the same node. Before modifying a node's properties or labels, verify it isn't shared — or create a new node and transfer the relevant edges. See [Database Schema — AttributeValue](../../knowledge/backend/database-schema.md) for details.
 
 ### Step 5: Idempotency
 
@@ -144,9 +124,11 @@ Every migration must be safe to run twice. After a successful run, a second run 
 
 ### Step 6: Write a Component Test
 
-Create `backend/tests/component/core/migrations/graph/test_m{NNN}_{name}.py`. Test data is inserted with raw Cypher, the migration runs, and post-state is verified.
+Create `backend/tests/component/core/migrations/graph/test_{NNN}_{name}.py`.
 
-Include an idempotency check (run the migration twice and verify the result).
+Prefer inserting test data with `Node.init()` / `Node.new()` / `Node.save()` so the graph state matches what production code produces. Use raw Cypher only when you need to set up intentionally malformed or legacy data that the normal API wouldn't create.
+
+Run the migration, verify the post-state, and include an idempotency check (run the migration twice and verify the result is unchanged).
 
 ### Step 7: Verify the Build
 
