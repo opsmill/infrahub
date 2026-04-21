@@ -18,6 +18,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 
 * `migrate`: Check the current format of the internal...
 * `check-inheritance`: Check the database for any vertices with...
+* `reset-deployment-id`: Reset the internal deployment_id on the...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Check the current format of the internal...
 * `constraint`: Manage Database Constraints
@@ -64,6 +65,29 @@ $ infrahub db check-inheritance [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--fix / --no-fix`: Fix the inheritance of any invalid nodes.  [default: no-fix]
+* `--help`: Show this message and exit.
+
+## `infrahub db reset-deployment-id`
+
+Reset the internal deployment_id on the Root node.
+
+Running Infrahub server and worker processes cache this value at startup and
+must be restarted after this command to pick up the new value.
+
+**Usage**:
+
+```console
+$ infrahub db reset-deployment-id [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--deployment-id TEXT`: Set an explicit UUID instead of generating a random one.
+* `-y, --yes`: Skip the confirmation prompt.
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-duplicate-schema-fields`
