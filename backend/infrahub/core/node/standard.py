@@ -301,6 +301,7 @@ class StandardNode(BaseModel):
         cls,
         db: InfrahubDatabase,
         limit: int = 1000,
+        offset: int | None = None,
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
@@ -308,7 +309,14 @@ class StandardNode(BaseModel):
     ) -> list[Self]:
         node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await StandardNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, node_ordering=node_ordering, **kwargs
+            db=db,
+            node_class=cls,
+            ids=ids,
+            node_name=name,
+            limit=limit,
+            offset=offset,
+            node_ordering=node_ordering,
+            **kwargs,
         )
         await query.execute(db=db)
 
