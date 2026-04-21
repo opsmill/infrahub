@@ -86,7 +86,6 @@ dev = [
     "ipython>=8,<9",
     "pytest-asyncio>=1.3,<1.4",
     "pytest-clarity>=1.0,<1.1",
-    "pytest-cov==7.1.0",
     "pytest-xdist>=3.4,<3.5",
     "types-python-slugify>=8.0.0.3,<9",
     "types-ujson",
@@ -111,7 +110,7 @@ dev = [
     "jwcrypto==1.5.7",
     "ty==0.0.14",
     "prek>=0.3.0",
-    "coverage==7.13.5",
+    "slipcover==1.0.18",
 ]
 
 # test-scale = [
@@ -133,12 +132,6 @@ infrahubctl = "infrahub_sdk.ctl.cli:app"
 [project.entry-points."prefect.collections"]
 "infrahubasync" = "infrahub.workers.infrahub_async"
 
-[tool.coverage.run]
-branch = true
-
-[tool.coverage.report]
-exclude_lines = ["if TYPE_CHECKING:", "raise NotImplementedError()"]
-
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
@@ -150,7 +143,7 @@ filterwarnings = [
     "ignore:Deprecated call to",
     "ignore:pkg_resources is deprecated as an API",          # Remove on https://github.com/open-telemetry/opentelemetry-python-contrib/pull/2181 has been fixed
 ]
-addopts = "-v --cov-report term-missing --cov-report xml --dist loadscope --junitxml=pytest-junit.xml"
+addopts = "-v --dist loadscope --junitxml=pytest-junit.xml"
 junit_duration_report = "call"
 
 [tool.pytest_env]

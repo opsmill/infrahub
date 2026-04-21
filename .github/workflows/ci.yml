@@ -413,6 +413,7 @@ jobs:
         with:
           flag-name: backend-unit
           parallel: true
+          file: coverage.xml
 
   backend-tests-component:
     if: |
@@ -458,6 +459,7 @@ jobs:
         with:
           flag-name: backend-component
           parallel: true
+          file: coverage.xml
       # - name: Generate tracing spans
       #   if: always() && github.event.pull_request.head.repo.fork == false && github.actor != 'dependabot[bot]'
       #   uses: inception-health/otel-upload-test-artifact-action@v1
@@ -551,6 +553,7 @@ jobs:
         with:
           flag-name: backend-integration
           parallel: true
+          file: coverage.xml
 
   backend-tests-functional:
     if: |
@@ -598,6 +601,7 @@ jobs:
         with:
           flag-name: backend-functional
           parallel: true
+          file: coverage.xml
 
   backend-docker-integration:
     if: |

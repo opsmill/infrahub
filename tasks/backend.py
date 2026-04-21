@@ -15,6 +15,10 @@ from .utils import ESCAPED_REPO_PATH
 MAIN_DIRECTORY = "backend"
 NAMESPACE = "BACKEND"
 
+SLIPCOVER_PREFIX = (
+    f"uv run python -m slipcover --branch --source {MAIN_DIRECTORY}/infrahub --xml --out coverage.xml -m pytest"
+)
+
 
 # ----------------------------------------------------------------------------
 # Formatting tasks
@@ -94,7 +98,7 @@ def lint(context: Context) -> None:
 def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     """Run backend component tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
+        exec_cmd = f"{SLIPCOVER_PREFIX} -n {NBR_WORKERS} -v {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -105,7 +109,7 @@ def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Resul
 def test_unit(context: Context) -> Result | None:
     """Run backend unit tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
+        exec_cmd = f"{SLIPCOVER_PREFIX} {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
         return execute_command(context=context, command=f"{exec_cmd}")
 
@@ -114,7 +118,7 @@ def test_unit(context: Context) -> Result | None:
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     """Run backend core component tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component/core"
+        exec_cmd = f"{SLIPCOVER_PREFIX} -n {NBR_WORKERS} -v {MAIN_DIRECTORY}/tests/component/core"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -125,7 +129,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     """Run backend integration tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
+        exec_cmd = f"{SLIPCOVER_PREFIX} -n {NBR_WORKERS} -v {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
@@ -136,7 +140,7 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Res
 def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
     """Run backend functional tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
+        exec_cmd = f"{SLIPCOVER_PREFIX} -n {NBR_WORKERS} -v {MAIN_DIRECTORY}/tests/functional"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd=}")
