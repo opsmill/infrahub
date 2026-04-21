@@ -111,6 +111,7 @@ dev = [
     "jwcrypto==1.5.7",
     "ty==0.0.14",
     "prek>=0.3.0",
+    "coverage==7.13.5",
 ]
 
 # test-scale = [
