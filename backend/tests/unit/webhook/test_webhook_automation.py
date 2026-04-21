@@ -74,12 +74,12 @@ def prefect_client() -> PrefectClient:
 class TestWebhookAutomationProperties:
     def test_name(self) -> None:
         trigger_def = _make_trigger_definition(webhook_id="wh-42")
-        automation = WebhookAutomation(trigger_definition=trigger_def)
+        automation = WebhookAutomation(trigger_definition=trigger_def, active=True)
         assert automation.name == "webhook::wh-42"
 
     def test_webhook_id(self) -> None:
         trigger_def = _make_trigger_definition(webhook_id="wh-42")
-        automation = WebhookAutomation(trigger_definition=trigger_def)
+        automation = WebhookAutomation(trigger_definition=trigger_def, active=True)
         assert automation.webhook_id == "wh-42"
 
 
@@ -87,14 +87,14 @@ class TestWebhookAutomationSyncer:
     async def test_active_no_existing_creates(
         self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
     ) -> None:
-        automation = WebhookAutomation(trigger_definition=_make_trigger_definition())
+        automation = WebhookAutomation(trigger_definition=_make_trigger_definition(), active=True)
         syncer = WebhookAutomationPrefectSyncer(prefect_client=prefect_client)
 
         _stub_no_automations(prefect_client)
         _stub_deployment(prefect_client)
 
         with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
-            await syncer.apply(automation, active=True)
+            await syncer.apply(automation)
 
         prefect_client.create_automation.assert_called_once()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_not_called()  # type: ignore[attr-defined]
@@ -104,7 +104,7 @@ class TestWebhookAutomationSyncer:
     async def test_active_with_existing_updates(
         self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
     ) -> None:
-        automation = WebhookAutomation(trigger_definition=_make_trigger_definition())
+        automation = WebhookAutomation(trigger_definition=_make_trigger_definition(), active=True)
         syncer = WebhookAutomationPrefectSyncer(prefect_client=prefect_client)
 
         existing = _make_existing_automation(automation.name)
@@ -112,7 +112,7 @@ class TestWebhookAutomationSyncer:
         _stub_deployment(prefect_client)
 
         with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
-            await syncer.apply(automation, active=True)
+            await syncer.apply(automation)
 
         prefect_client.create_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_called_once()  # type: ignore[attr-defined]
@@ -122,14 +122,14 @@ class TestWebhookAutomationSyncer:
     async def test_inactive_with_existing_deletes(
         self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
     ) -> None:
-        automation = WebhookAutomation(trigger_definition=_make_trigger_definition())
+        automation = WebhookAutomation(trigger_definition=_make_trigger_definition(), active=False)
         syncer = WebhookAutomationPrefectSyncer(prefect_client=prefect_client)
 
         existing = _make_existing_automation(automation.name)
         _stub_existing_automation(prefect_client, existing)
 
         with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
-            await syncer.apply(automation, active=False)
+            await syncer.apply(automation)
 
         prefect_client.create_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_not_called()  # type: ignore[attr-defined]
@@ -139,13 +139,13 @@ class TestWebhookAutomationSyncer:
     async def test_inactive_no_existing_is_noop(
         self, prefect_client: PrefectClient, caplog: pytest.LogCaptureFixture
     ) -> None:
-        automation = WebhookAutomation(trigger_definition=_make_trigger_definition())
+        automation = WebhookAutomation(trigger_definition=_make_trigger_definition(), active=False)
         syncer = WebhookAutomationPrefectSyncer(prefect_client=prefect_client)
 
         _stub_no_automations(prefect_client)
 
         with caplog.at_level(logging.INFO, logger="infrahub.webhook.models"):
-            await syncer.apply(automation, active=False)
+            await syncer.apply(automation)
 
         prefect_client.create_automation.assert_not_called()  # type: ignore[attr-defined]
         prefect_client.update_automation.assert_not_called()  # type: ignore[attr-defined]

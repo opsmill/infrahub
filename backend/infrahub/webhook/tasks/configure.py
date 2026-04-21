@@ -105,8 +105,11 @@ class SingleWebhookConfigurer:
 
     async def configure(self, webhook: CoreWebhookNode) -> None:
         """Ensure the webhook's Prefect automation matches desired state and invalidate cache."""
-        automation = WebhookAutomation(trigger_definition=self._trigger_definition_builder.build(webhook))
-        await self._syncer.apply(automation, active=webhook.active.value)
+        automation = WebhookAutomation(
+            trigger_definition=self._trigger_definition_builder.build(webhook),
+            active=webhook.active.value,
+        )
+        await self._syncer.apply(automation)
         await invalidate_webhook_cache(webhook_ids={webhook.id})
 
 

@@ -110,8 +110,9 @@ class WebhookTriggerDefinition(TriggerDefinition):
 class WebhookAutomation:
     """A webhook's desired automation state in Prefect."""
 
-    def __init__(self, trigger_definition: WebhookTriggerDefinition) -> None:
+    def __init__(self, trigger_definition: WebhookTriggerDefinition, active: bool) -> None:
         self._trigger_definition = trigger_definition
+        self._active = active
 
     @property
     def name(self) -> str:
@@ -120,6 +121,10 @@ class WebhookAutomation:
     @property
     def webhook_id(self) -> str:
         return self._trigger_definition.id
+
+    @property
+    def active(self) -> bool:
+        return self._active
 
     @property
     def deployment_name(self) -> str:
@@ -145,11 +150,11 @@ class WebhookAutomationPrefectSyncer:
     def __init__(self, prefect_client: PrefectClient) -> None:
         self._client = prefect_client
 
-    async def apply(self, automation: WebhookAutomation, active: bool) -> None:
+    async def apply(self, automation: WebhookAutomation) -> None:
         """Ensure Prefect matches desired state: create, update, or delete."""
         existing = await self._find_existing(name=automation.name)
 
-        if not active:
+        if not automation.active:
             if existing:
                 await self._client.delete_automation(automation_id=existing.id)
                 logger.info("Automation %s deleted (webhook disabled)", automation.name)
