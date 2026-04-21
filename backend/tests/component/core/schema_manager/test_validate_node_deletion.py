@@ -1,6 +1,7 @@
 import pytest
 
 from infrahub.core.branch import Branch
+from infrahub.core.constants import HashableModelState
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
@@ -48,18 +49,15 @@ async def test_schema_branch_validate_node_deletion(
     schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
+    schema_branch.process()
 
-    FULL_SCHEMA["nodes"].pop(1)
+    candidate_schema = schema_branch.duplicate()
+    tag = candidate_schema.get(name="TestingTag", duplicate=True)
+    tag.state = HashableModelState.ABSENT
+    candidate_schema.set(name="TestingTag", schema=tag)
 
-    broken_schema = SchemaRoot(**FULL_SCHEMA)
-    broken_schema_branch = SchemaBranch(cache={}, name="test-broken")
-    broken_schema_branch.load_schema(schema=broken_schema)
-
-    diff = schema_branch.diff(other=broken_schema_branch)
-    assert "TestingTag" in diff.removed
-
-    with pytest.raises(ValueError, match="'TestingTag' has been removed but is still referenced"):
-        schema_branch.validate_node_deletions(diff=diff)
+    with pytest.raises(ValueError, match="Relationship 'tags' is referring an invalid peer 'TestingTag'"):
+        candidate_schema.process()
 
 
 async def test_schema_branch_validate_node_deletion_inherit_from(
@@ -91,18 +89,19 @@ async def test_schema_branch_validate_node_deletion_inherit_from(
     schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
+    schema_branch.process()
 
-    FULL_SCHEMA["generics"].pop(0)
+    candidate_schema = schema_branch.duplicate()
+    parent = candidate_schema.get(name="TestingParent", duplicate=True)
+    parent.state = HashableModelState.ABSENT
+    candidate_schema.set(name="TestingParent", schema=parent)
+    candidate_schema.process()
 
-    broken_schema = SchemaRoot(**FULL_SCHEMA)
-    broken_schema_branch = SchemaBranch(cache={}, name="test-broken")
-    broken_schema_branch.load_schema(schema=broken_schema)
-
-    diff = schema_branch.diff(other=broken_schema_branch)
-    assert "TestingParent" in diff.removed
+    schema_diff = schema_branch.diff(other=candidate_schema)
+    assert "TestingParent" in schema_diff.removed
 
     with pytest.raises(ValueError, match="'TestingParent' has been removed but is still referenced"):
-        schema_branch.validate_node_deletions(diff=diff)
+        candidate_schema.validate_node_deletions(diff=schema_diff)
 
 
 async def test_schema_branch_validate_node_deletion_iterates_generics_safely(
@@ -140,17 +139,18 @@ async def test_schema_branch_validate_node_deletion_iterates_generics_safely(
     schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
+    schema_branch.process()
 
-    FULL_SCHEMA["nodes"].pop(0)
+    candidate_schema = schema_branch.duplicate()
+    alpha = candidate_schema.get(name="TestingAlpha", duplicate=True)
+    alpha.state = HashableModelState.ABSENT
+    candidate_schema.set(name="TestingAlpha", schema=alpha)
+    candidate_schema.process()
 
-    updated_schema = SchemaRoot(**FULL_SCHEMA)
-    updated_schema_branch = SchemaBranch(cache={}, name="test-updated")
-    updated_schema_branch.load_schema(schema=updated_schema)
+    schema_diff = schema_branch.diff(other=candidate_schema)
+    assert "TestingAlpha" in schema_diff.removed
 
-    diff = schema_branch.diff(other=updated_schema_branch)
-    assert "TestingAlpha" in diff.removed
-
-    schema_branch.validate_node_deletions(diff=diff)
+    candidate_schema.validate_node_deletions(diff=schema_diff)
 
 
 async def test_schema_branch_validate_node_deletion_removes_generic_and_child_together(
@@ -190,13 +190,16 @@ async def test_schema_branch_validate_node_deletion_removes_generic_and_child_to
     schema.generate_uuid()
     schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
+    schema_branch.process()
 
-    EMPTY_SCHEMA: dict[str, list[dict]] = {"generics": [], "nodes": []}
-    updated_schema = SchemaRoot(**EMPTY_SCHEMA)
-    updated_schema_branch = SchemaBranch(cache={}, name="test-updated")
-    updated_schema_branch.load_schema(schema=updated_schema)
+    candidate_schema = schema_branch.duplicate()
+    for kind in ("TestingParent", "TestingChild", "TestingSibling"):
+        node = candidate_schema.get(name=kind, duplicate=True)
+        node.state = HashableModelState.ABSENT
+        candidate_schema.set(name=kind, schema=node)
+    candidate_schema.process()
 
-    diff = schema_branch.diff(other=updated_schema_branch)
-    assert {"TestingParent", "TestingChild", "TestingSibling"}.issubset(diff.removed.keys())
+    schema_diff = schema_branch.diff(other=candidate_schema)
+    assert {"TestingParent", "TestingChild", "TestingSibling"}.issubset(schema_diff.removed.keys())
 
-    schema_branch.validate_node_deletions(diff=diff)
+    candidate_schema.validate_node_deletions(diff=schema_diff)
