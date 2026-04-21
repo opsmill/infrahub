@@ -131,11 +131,6 @@ def _extract_variables(template: str) -> list[str]:
     return InfrahubJinja2Template(template=template).get_variables()
 
 
-# ---------------------------------------------------------------------------
-# Tests
-# ---------------------------------------------------------------------------
-
-
 async def test_computed_attr_graphql_query_executes_successfully(
     db: InfrahubDatabase,
     default_branch: Branch,
