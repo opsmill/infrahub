@@ -267,7 +267,7 @@ graphql_fragments:
     file_path: "fragments/interface_fields.gql"
 ```
 
-When Infrahub imports a query from a Git repository, it checks for fragment spread references (`...fragmentName`). If any are found, the corresponding fragment definitions are resolved from the declared fragment files and inlined into the query before it is stored in the database.
+When Infrahub imports a query from a Git repository, it checks for fragment spread references (`...fragmentName`). If any are found, the corresponding fragment definitions are resolved from the declared fragment files and included inline in the query before it is stored in the database.
 
 ### Fragment resolution behavior
 

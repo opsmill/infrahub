@@ -92,7 +92,7 @@ query DeviceInterfaces($device_name: String!) {
 }
 ```
 
-When Infrahub imports this query from the repository, it detects the `...interfaceFields` spread, resolves it against the declared fragment files, and stores the complete query with the fragment definition inlined.
+When Infrahub imports this query from the repository, it detects the `...interfaceFields` spread, resolves it against the declared fragment files, and stores the complete query with the fragment definition included inline.
 
 ## 4. Sync the repository
 
@@ -106,7 +106,7 @@ infrahubctl render device_config_transform device_name=router01
 
 ## 5. Verify the result
 
-Open the GraphQL query in the Infrahub web interface or query it via the API. The stored query contains the fragment definition inlined alongside the operation, so it executes without any additional resolution at runtime.
+Open the GraphQL query in the Infrahub web interface or query it via the API. The stored query contains the fragment definition included inline alongside the operation, so it executes without any additional resolution at runtime.
 
 ```shell
 curl -s "https://<host>/api/query/device_interfaces_query?device_name=router01" | python -m json.tool
