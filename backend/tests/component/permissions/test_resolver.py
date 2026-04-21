@@ -1,19 +1,19 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import patch
 
 import pytest
 
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import GlobalPermissions, PermissionDecision
-from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
+from infrahub.core.registry import registry
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
 from infrahub.permissions.resolver import PermissionResolver
 
 if TYPE_CHECKING:
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.permissions.types import AssignedPermissions
 
 
@@ -34,13 +34,8 @@ def empty_resolver() -> PermissionResolver:
 
 
 @pytest.fixture
-def branch() -> Branch:
-    return Branch(name="main", status=BranchStatus.OPEN)
-
-
-@pytest.fixture
-def node() -> GenericSchema:
-    return GenericSchema(namespace="Infra", name="Device")
+def node(register_core_models_schema: None) -> MainSchemaTypes:
+    return registry.schema.get(name=InfrahubKind.TAG)
 
 
 class TestComputeSpecificity:
@@ -348,13 +343,7 @@ class TestBuildGlobalReport:
 
 
 class TestGetBranchDecision:
-    @pytest.fixture(autouse=True)
-    def _set_default_branch(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        from infrahub.core.registry import registry as _registry
-
-        monkeypatch.setattr(_registry, "_default_branch", "main")
-
-    def test_merged_branch_denies_mutations_even_super_admin(self, node: GenericSchema) -> None:
+    def test_merged_branch_denies_mutations_even_super_admin(self, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
@@ -364,9 +353,12 @@ class TestGetBranchDecision:
             ]
         )
         branch = Branch(name="merged-branch", status=BranchStatus.MERGED)
-        assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.DENY
+        assert (
+            resolver.get_branch_decision(branch=branch, node=node, action="create")
+            == BranchRelativePermissionDecision.DENY
+        )
 
-    def test_merged_branch_allows_view(self, node: GenericSchema) -> None:
+    def test_merged_branch_allows_view(self, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
@@ -376,13 +368,19 @@ class TestGetBranchDecision:
             ]
         )
         branch = Branch(name="merged-branch", status=BranchStatus.MERGED)
-        assert resolver.get_branch_decision(branch, node, "view") == BranchRelativePermissionDecision.ALLOW
+        assert (
+            resolver.get_branch_decision(branch=branch, node=node, action="view")
+            == BranchRelativePermissionDecision.ALLOW
+        )
 
-    def test_need_rebase_denies_mutations(self, empty_resolver: PermissionResolver, node: GenericSchema) -> None:
+    def test_need_rebase_denies_mutations(self, empty_resolver: PermissionResolver, node: MainSchemaTypes) -> None:
         branch = Branch(name="rebase-branch", status=BranchStatus.NEED_REBASE)
-        assert empty_resolver.get_branch_decision(branch, node, "update") == BranchRelativePermissionDecision.DENY
+        assert (
+            empty_resolver.get_branch_decision(branch=branch, node=node, action="update")
+            == BranchRelativePermissionDecision.DENY
+        )
 
-    def test_super_admin_allows_on_open_branch(self, node: GenericSchema) -> None:
+    def test_super_admin_allows_on_open_branch(self, default_branch: Branch, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
@@ -391,10 +389,14 @@ class TestGetBranchDecision:
                 )
             ]
         )
-        branch = Branch(name="main", status=BranchStatus.OPEN)
-        assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.ALLOW
+        assert (
+            resolver.get_branch_decision(branch=default_branch, node=node, action="create")
+            == BranchRelativePermissionDecision.ALLOW
+        )
 
-    def test_manage_accounts_required_and_granted(self, branch: Branch) -> None:
+    def test_manage_accounts_required_and_granted(
+        self, register_core_models_schema: None, default_branch: Branch
+    ) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
@@ -403,78 +405,85 @@ class TestGetBranchDecision:
                 )
             ]
         )
-        node = GenericSchema(namespace="Core", name="AccountGroup")
-        with patch(
-            "infrahub.permissions.resolver.get_global_permission_for_kind",
-            return_value=GlobalPermissions.MANAGE_ACCOUNTS,
-        ):
-            result = resolver.get_branch_decision(branch, node, "create")
+        node = registry.schema.get(name=InfrahubKind.ACCOUNTGROUP)
+        result = resolver.get_branch_decision(branch=default_branch, node=node, action="create")
         assert result == BranchRelativePermissionDecision.ALLOW
 
-    def test_manage_accounts_required_but_denied(self, empty_resolver: PermissionResolver, branch: Branch) -> None:
-        node = GenericSchema(namespace="Core", name="AccountGroup")
-        with patch(
-            "infrahub.permissions.resolver.get_global_permission_for_kind",
-            return_value=GlobalPermissions.MANAGE_ACCOUNTS,
-        ):
-            result = empty_resolver.get_branch_decision(branch, node, "update")
+    def test_manage_accounts_required_but_denied(
+        self, register_core_models_schema: None, empty_resolver: PermissionResolver, default_branch: Branch
+    ) -> None:
+        node = registry.schema.get(name=InfrahubKind.ACCOUNTGROUP)
+        result = empty_resolver.get_branch_decision(branch=default_branch, node=node, action="update")
         assert result == BranchRelativePermissionDecision.DENY
 
-    def test_manage_accounts_not_required_for_view(self, branch: Branch) -> None:
+    def test_manage_accounts_not_required_for_view(
+        self, register_core_models_schema: None, default_branch: Branch
+    ) -> None:
         """View action should skip the kind-specific global check entirely."""
         resolver = _make_resolver(
             object_permissions=[
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_ALL.value)
             ]
         )
-        node = GenericSchema(namespace="Core", name="AccountGroup")
-        with patch(
-            "infrahub.permissions.resolver.get_global_permission_for_kind",
-            return_value=GlobalPermissions.MANAGE_ACCOUNTS,
-        ):
-            result = resolver.get_branch_decision(branch, node, "view")
+        node = registry.schema.get(name=InfrahubKind.ACCOUNTGROUP)
+        result = resolver.get_branch_decision(branch=default_branch, node=node, action="view")
         assert result == BranchRelativePermissionDecision.ALLOW
 
-    def test_allow_default_on_default_branch(self, node: GenericSchema) -> None:
+    def test_allow_default_on_default_branch(self, default_branch: Branch, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             object_permissions=[
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_DEFAULT.value)
             ]
         )
-        branch = Branch(name="main", status=BranchStatus.OPEN)
-        assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.ALLOW
+        assert (
+            resolver.get_branch_decision(branch=default_branch, node=node, action="create")
+            == BranchRelativePermissionDecision.ALLOW
+        )
 
-    def test_allow_default_on_other_branch(self, node: GenericSchema) -> None:
+    def test_allow_default_on_other_branch(self, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             object_permissions=[
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_DEFAULT.value)
             ]
         )
         branch = Branch(name="feature-123", status=BranchStatus.OPEN)
-        assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.ALLOW_DEFAULT
+        assert (
+            resolver.get_branch_decision(branch=branch, node=node, action="create")
+            == BranchRelativePermissionDecision.ALLOW_DEFAULT
+        )
 
-    def test_allow_other_on_other_branch(self, node: GenericSchema) -> None:
+    def test_allow_other_on_other_branch(self, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             object_permissions=[
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_OTHER.value)
             ]
         )
         branch = Branch(name="feature-123", status=BranchStatus.OPEN)
-        assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.ALLOW
+        assert (
+            resolver.get_branch_decision(branch=branch, node=node, action="create")
+            == BranchRelativePermissionDecision.ALLOW
+        )
 
-    def test_allow_other_on_default_branch(self, node: GenericSchema) -> None:
+    def test_allow_other_on_default_branch(self, default_branch: Branch, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             object_permissions=[
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_OTHER.value)
             ]
         )
-        branch = Branch(name="main", status=BranchStatus.OPEN)
-        assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.ALLOW_OTHER
+        assert (
+            resolver.get_branch_decision(branch=default_branch, node=node, action="create")
+            == BranchRelativePermissionDecision.ALLOW_OTHER
+        )
 
-    def test_no_permissions_deny(self, empty_resolver: PermissionResolver, branch: Branch, node: GenericSchema) -> None:
-        assert empty_resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.DENY
+    def test_no_permissions_deny(
+        self, empty_resolver: PermissionResolver, default_branch: Branch, node: MainSchemaTypes
+    ) -> None:
+        assert (
+            empty_resolver.get_branch_decision(branch=default_branch, node=node, action="create")
+            == BranchRelativePermissionDecision.DENY
+        )
 
-    def test_allow_all_on_any_branch(self, node: GenericSchema) -> None:
+    def test_allow_all_on_any_branch(self, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             object_permissions=[
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_ALL.value)
@@ -482,23 +491,29 @@ class TestGetBranchDecision:
         )
         for branch_name in ("main", "feature-123"):
             branch = Branch(name=branch_name, status=BranchStatus.OPEN)
-            assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.ALLOW
+            assert (
+                resolver.get_branch_decision(branch=branch, node=node, action="create")
+                == BranchRelativePermissionDecision.ALLOW
+            )
 
     def test_precomputed_global_report(
-        self, empty_resolver: PermissionResolver, branch: Branch, node: GenericSchema
+        self, empty_resolver: PermissionResolver, default_branch: Branch, node: MainSchemaTypes
     ) -> None:
         report: dict[GlobalPermissions, bool] = dict.fromkeys(GlobalPermissions, False)
         report[GlobalPermissions.SUPER_ADMIN] = True
         assert (
-            empty_resolver.get_branch_decision(branch, node, "create", global_report=report)
+            empty_resolver.get_branch_decision(branch=default_branch, node=node, action="create", global_report=report)
             == BranchRelativePermissionDecision.ALLOW
         )
 
-    def test_global_branch_name_treated_as_default(self, node: GenericSchema) -> None:
+    def test_global_branch_name_treated_as_default(self, node: MainSchemaTypes) -> None:
         resolver = _make_resolver(
             object_permissions=[
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_DEFAULT.value)
             ]
         )
         branch = Branch(name="-global-", status=BranchStatus.OPEN)
-        assert resolver.get_branch_decision(branch, node, "create") == BranchRelativePermissionDecision.ALLOW
+        assert (
+            resolver.get_branch_decision(branch=branch, node=node, action="create")
+            == BranchRelativePermissionDecision.ALLOW
+        )
