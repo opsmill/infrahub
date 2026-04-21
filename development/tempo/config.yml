@@ -15,6 +15,7 @@ distributor:
       protocols:
         http:
         grpc:
+          endpoint: 0.0.0.0:4317
 
 ingester:
   max_block_duration: 30m
