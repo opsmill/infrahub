@@ -2353,12 +2353,9 @@ class NodeGetHierarchyQuery(Query):
 
         query = """
         MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
-        WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
-        WITH n, collect(last(nodes(path))) AS peers_with_duplicates
-        CALL (peers_with_duplicates) {
-            UNWIND peers_with_duplicates AS pwd
-            RETURN DISTINCT pwd AS peer
-        }
+        WHERE $hierarchy IN LABELS(peer) AND all(r IN relationships(path) WHERE (%(branch_filter)s))
+        WITH n, collect(DISTINCT last(nodes(path))) AS peers
+        UNWIND peers AS peer
 
         """ % {"filter": filter_str, "branch_filter": branch_filter}
 
