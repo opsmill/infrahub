@@ -800,6 +800,52 @@ nodes:
       - "InfraAsset"
 ```
 
+#### Restricting inheritance by namespace
+
+The `restricted_namespaces` property on a generic limits which namespaces are allowed to define nodes that inherit from it. When set, any node with `inherit_from` referencing that generic must belong to one of the listed namespaces — schema validation fails otherwise.
+
+This is useful when a generic is designed to be implemented only by a specific, known set of nodes. Without the restriction, the generic appears available to anyone, which can mislead schema authors into creating node types that look valid but behave incorrectly at runtime.
+
+```yaml
+generics:
+  - name: GenericService
+    namespace: Customer
+    restricted_namespaces:
+      - Customer
+    attributes:
+      - name: service_name
+        kind: Text
+        unique: true
+      - name: customer_account
+        kind: Text
+
+nodes:
+  - name: SingleSiteService
+    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+    attributes:
+      - name: site_name
+        kind: Text
+
+  - name: CloudService
+    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+
+  - name: HttpService
+    namespace: Dcim         # Error — Dcim is not in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+
+```
+
+:::info
+`restricted_namespaces` is optional. When not set on a generic, nodes from any namespace can inherit from it.
+:::
+
+Infrahub uses this same mechanism on several of its own built-in generics — for example `CoreGenericRepository`, `CoreValidator`, `CoreCheck`, `CoreWebhook`, `CoreComment`, and `CoreThread` — to prevent accidental extension of types that rely on specific internal code. Nodes inheriting from these generics must belong to the `Core` namespace.
+
 ### Inherited properties
 
 #### List of inheritable properties
