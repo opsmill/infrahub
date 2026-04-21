@@ -205,6 +205,10 @@ class NumberPoolGetAllocated(Query):
             MATCH (a)-[hs_int:HAS_SOURCE]->(pool)
             WHERE hs_int.status = "active"
                 AND hs_int.to IS NULL
+                AND NOT EXISTS {
+                    MATCH (a)-[hs_deleted:HAS_SOURCE {branch: hs_int.branch, status: "deleted"}]->(pool)
+                    WHERE hs_deleted.from > hs_int.from
+                }
             RETURN true AS hs_active
             LIMIT 1
         }

@@ -1,8 +1,13 @@
+from unittest.mock import AsyncMock
+
 import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
+from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -15,7 +20,9 @@ from infrahub.core.query.resource_manager import (
 )
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
+from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from infrahub.pools.schema_number_pool_synchronizer import SchemaNumberPoolSynchronizer
 from infrahub.pools.schema_number_pool_upserter import SchemaNumberPoolUpserter
 
@@ -379,6 +386,48 @@ class TestNumberPoolGetAllocated:
         assert allocated_values == [1, 2, 3], (
             f"Expected allocation (value=2) to be counted after being re-assigned to the pool on br1; "
             f"got {allocated_values}"
+        )
+
+    async def test_NumberPoolGetAllocated_excludes_allocation_after_merging_cleared_source(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """Fork a branch from main, clear the source on forked branch. Merge the forked branch back into main. The value
+        should not be allocated anymore."""
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+        pools: list[CoreNumberPool] = await NodeManager.query(
+            db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch
+        )
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+        # Fork br1 and clear the source on br1.
+        br1 = await create_branch(db=db, branch_name="br1-clear-then-merge")
+        incident2_on_br1 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=br1)
+        incident2_on_br1.get_attribute("number").clear_source()
+        await incident2_on_br1.save(db=db)
+
+        # Merge br1 back into main.
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=br1)
+        diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=br1)
+        diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=br1)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        query = await NumberPoolGetAllocated.init(
+            db=db, pool=incident_pool, branch=default_branch, branch_agnostic=True
+        )
+        await query.execute(db=db)
+        results = query.get_data()
+
+        allocated_values = sorted([r.value for r in results])
+        assert allocated_values == [1, 3], (
+            f"Expected allocation (value=2) to be excluded after merging the HAS_SOURCE removal "
+            f"from br1 into main; got {allocated_values}"
         )
 
 
