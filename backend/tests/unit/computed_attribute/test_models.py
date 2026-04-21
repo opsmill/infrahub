@@ -1,8 +1,6 @@
 import uuid
-from collections.abc import Callable
 from datetime import timedelta
 
-import pytest
 from prefect.events.schemas.automations import Automation, EventTrigger, Posture
 
 from infrahub.computed_attribute.constants import (
@@ -15,6 +13,30 @@ from infrahub.computed_attribute.models import ComputedAttributeAutomations, Com
 from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+
+
+def _build_schema(
+    relationship_name: str = "parent",
+    peer: str = "TestingCountry",
+    hierarchical: str | None = "TestingLocation",
+) -> NodeSchema:
+    return NodeSchema(
+        name="Site",
+        namespace="Testing",
+        attributes=[
+            AttributeSchema(name="shortname", kind="Text"),
+            AttributeSchema(name="slug", kind="Text"),
+        ],
+        relationships=[
+            RelationshipSchema(
+                name=relationship_name,
+                peer=peer,
+                hierarchical=hierarchical,
+                cardinality=RelationshipCardinality.ONE,
+                optional=False,
+            ),
+        ],
+    )
 
 
 def generate_automation(
@@ -72,36 +94,9 @@ async def test_load_from_prefect() -> None:
 
 
 class TestQueryFieldsInlineFragment:
-    @pytest.fixture(scope="class")
-    def build_schema(self) -> Callable[..., NodeSchema]:
-        def _build(
-            relationship_name: str = "parent",
-            peer: str = "TestingCountry",
-            hierarchical: str | None = "TestingLocation",
-        ) -> NodeSchema:
-            return NodeSchema(
-                name="Site",
-                namespace="Testing",
-                attributes=[
-                    AttributeSchema(name="shortname", kind="Text"),
-                    AttributeSchema(name="slug", kind="Text"),
-                ],
-                relationships=[
-                    RelationshipSchema(
-                        name=relationship_name,
-                        peer=peer,
-                        hierarchical=hierarchical,
-                        cardinality=RelationshipCardinality.ONE,
-                        optional=False,
-                    ),
-                ],
-            )
-
-        return _build
-
-    def test_uses_fragment_when_peer_differs_from_hierarchical(self, build_schema: Callable[..., NodeSchema]) -> None:
+    def test_uses_fragment_when_peer_differs_from_hierarchical(self) -> None:
         """query_fields wraps attributes in an inline fragment when peer != hierarchical."""
-        schema = build_schema(peer="TestingCountry", hierarchical="TestingLocation")
+        schema = _build_schema(peer="TestingCountry", hierarchical="TestingLocation")
         graphql_obj = ComputedAttrJinja2GraphQL(
             node_schema=schema,
             attribute_schema=schema.get_attribute(name="slug"),
@@ -120,9 +115,9 @@ class TestQueryFieldsInlineFragment:
         rendered = graphql_obj.render_graphql_query(query_filter="ids", filter_id="abc-123")
         assert "... on TestingCountry" in rendered
 
-    def test_no_fragment_for_non_hierarchical_relationship(self, build_schema: Callable[..., NodeSchema]) -> None:
+    def test_no_fragment_for_non_hierarchical_relationship(self) -> None:
         """query_fields places attributes directly under node when relationship is not hierarchical."""
-        schema = build_schema(relationship_name="owner", peer="TestingCountry", hierarchical=None)
+        schema = _build_schema(relationship_name="owner", peer="TestingCountry", hierarchical=None)
         graphql_obj = ComputedAttrJinja2GraphQL(
             node_schema=schema,
             attribute_schema=schema.get_attribute(name="slug"),
@@ -138,9 +133,9 @@ class TestQueryFieldsInlineFragment:
         rendered = graphql_obj.render_graphql_query(query_filter="ids", filter_id="abc-123")
         assert "... on" not in rendered
 
-    def test_no_fragment_when_peer_equals_hierarchical(self, build_schema: Callable[..., NodeSchema]) -> None:
+    def test_no_fragment_when_peer_equals_hierarchical(self) -> None:
         """query_fields places attributes directly under node when peer is the hierarchy generic itself."""
-        schema = build_schema(peer="TestingLocation", hierarchical="TestingLocation")
+        schema = _build_schema(peer="TestingLocation", hierarchical="TestingLocation")
         graphql_obj = ComputedAttrJinja2GraphQL(
             node_schema=schema,
             attribute_schema=schema.get_attribute(name="slug"),

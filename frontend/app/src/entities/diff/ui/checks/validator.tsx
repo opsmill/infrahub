@@ -95,8 +95,8 @@ export const Validator = ({ validator }: tValidatorProps) => {
 
   const row = {
     values: {
-      id: id.value,
-      display_label: display_label.value,
+      id,
+      display_label,
       started_at: <DateDisplay date={started_at.value} />,
       completed_at: <DateDisplay date={completed_at.value} />,
       conclusion: conclusion.value,
