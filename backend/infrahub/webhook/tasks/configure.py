@@ -20,6 +20,7 @@ from ..constants import EVENT_TO_ACTION, WebhookAction
 from ..gather import gather_trigger_webhook
 from ..models import (
     WebhookAutomation,
+    WebhookAutomationPrefectSyncer,
     WebhookTriggerDefinition,
     WebhookTriggerDefinitionBuilder,
     generate_webhook_automation_name,
@@ -98,13 +99,15 @@ class SingleWebhookConfigurer:
         self,
         webhook: CoreWebhookNode,
         automation: WebhookAutomation,
+        syncer: WebhookAutomationPrefectSyncer,
     ) -> None:
         self._webhook = webhook
-        self.automation = automation
+        self._automation = automation
+        self._syncer = syncer
 
     async def configure(self) -> None:
         """Ensure the webhook's Prefect automation matches desired state and invalidate cache."""
-        await self.automation.apply(active=self._webhook.active.value)
+        await self._syncer.apply(self._automation, active=self._webhook.active.value)
         await invalidate_webhook_cache(webhook_ids={self._webhook.id})
 
 
@@ -130,8 +133,8 @@ async def configure_webhook(
                     webhook=webhook_node,
                     automation=WebhookAutomation(
                         trigger_definition=WebhookTriggerDefinitionBuilder(registry.default_branch).build(webhook_node),
-                        prefect_client=prefect_client,
                     ),
+                    syncer=WebhookAutomationPrefectSyncer(prefect_client=prefect_client),
                 )
                 await configurer.configure()
         case WebhookAction.DELETE:
