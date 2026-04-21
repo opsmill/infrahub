@@ -261,8 +261,8 @@ exports[`fix ts error`] = {
     "src/entities/role-manager/ui/permission-combobox.tsx:231819180": [
       [93, 64, 9, "tsc: Type \'(relationship: PermissionNode) => void\' is not assignable to type \'(newObject: NodeCore) => void\'.\\n  Types of parameters \'relationship\' and \'newObject\' are incompatible.\\n    Type \'NodeCore\' is not assignable to type \'PermissionNode\'.\\n      Property \'identifier\' is missing in type \'NodeCore\' but required in type \'{ identifier: { value: string; }; }\'.", "3172999"]
     ],
-    "src/entities/schema/ui/computed-attribute-display.tsx:2447319862": [
-      [38, 14, 8, "tsc: Type \'{ title: string; fileName: string; data: string; }\' is not assignable to type \'IntrinsicAttributes & DataViewerProps\'.\\n  Property \'fileName\' does not exist on type \'IntrinsicAttributes & DataViewerProps\'.", "3193632964"]
+    "src/entities/schema/ui/computed-attribute-display.tsx:126058563": [
+      [40, 14, 8, "tsc: Type \'{ title: string; fileName: string; data: string; }\' is not assignable to type \'IntrinsicAttributes & DataViewerProps\'.\\n  Property \'fileName\' does not exist on type \'IntrinsicAttributes & DataViewerProps\'.", "3193632964"]
     ],
     "src/entities/tasks/domain/is-task-running-on-branch/is-task-running-on-branch.test.ts:298753925": [
       [60, 8, 24, "tsc: Type \'null\' is not assignable to type \'{ count: number; }\'.", "1753184293"]
