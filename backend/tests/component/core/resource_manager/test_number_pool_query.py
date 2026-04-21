@@ -337,6 +337,50 @@ class TestNumberPoolGetAllocated:
         allocated_values = sorted([r.value for r in results])
         assert allocated_values == [1, 3], f"Expected allocation (value=2) to be excluded. Got {allocated_values}."
 
+    async def test_NumberPoolGetAllocated_includes_allocation_when_source_cleared_then_reassigned_on_branch(
+        self,
+        db: InfrahubDatabase,
+        register_test_schema: SchemaBranch,
+        default_branch: Branch,
+        run_number_pool_validation: None,
+    ) -> None:
+        """Scenario: on a child branch, source=pool -> source=null -> source=pool again; then the
+        main-branch active edge is closed so that it cannot satisfy the query on its own."""
+
+        # Step 1: creation on main.
+        incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
+        incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
+        pools: list[CoreNumberPool] = await NodeManager.query(
+            db=db, schema=InfrahubKind.NUMBERPOOL, branch=default_branch
+        )
+        incident_pool = next(pool for pool in pools if pool.get_attribute("node").value == INCIDENT.kind)
+
+        # Step 2: fork br1 and clear the source on br1
+        br1 = await create_branch(db=db, branch_name="br1")
+        incident2_on_br1 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=br1)
+        incident2_on_br1.get_attribute("number").clear_source()
+        await incident2_on_br1.save(db=db)
+
+        # Step 3: re-assign the source back to the pool on br1
+        incident2_on_br1 = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=br1)
+        incident2_on_br1.get_attribute("number").set_source(incident_pool.get_id())
+        await incident2_on_br1.save(db=db)
+
+        # Step 4: close the main-branch active edge by clearing the source on main
+        incident2_on_main = await NodeManager.get_one(db=db, id=incidents[1].get_id(), branch=default_branch)
+        incident2_on_main.get_attribute("number").clear_source()
+        await incident2_on_main.save(db=db)
+
+        query = await NumberPoolGetAllocated.init(db=db, pool=incident_pool, branch=br1, branch_agnostic=True)
+        await query.execute(db=db)
+        results = query.get_data()
+
+        allocated_values = sorted([r.value for r in results])
+        assert allocated_values == [1, 2, 3], (
+            f"Expected allocation (value=2) to be counted after being re-assigned to the pool on br1; "
+            f"got {allocated_values}"
+        )
+
 
 class TestPoolChangeReserved:
     async def test_PoolChangeReserved(
