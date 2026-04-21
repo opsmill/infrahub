@@ -118,6 +118,7 @@ class CoreGenericAccount(CoreNode):
     account_type: Enum
     status: Dropdown
     tokens: RelationshipManager
+    external_identities: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
@@ -586,6 +587,13 @@ class InternalAccountToken(CoreNode):
     name: StringOptional
     token: String
     expiration: DateTimeOptional
+    account: RelationshipManager
+
+
+class InternalExternalIdentity(CoreNode):
+    sub: String
+    provider_name: String
+    protocol: String
     account: RelationshipManager
 
 
