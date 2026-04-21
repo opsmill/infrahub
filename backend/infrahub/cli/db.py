@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
+from uuid import UUID
 
 import typer
 import ujson
@@ -35,7 +36,7 @@ from infrahub.core.graph.schema import (
     GraphRelationshipIsPartOf,
     GraphRelationshipProperties,
 )
-from infrahub.core.initialization import get_root_node, initialize_registry
+from infrahub.core.initialization import get_root_node, initialize_registry, reset_deployment_id
 from infrahub.core.migrations.exceptions import MigrationFailureError
 from infrahub.core.migrations.graph import get_graph_migrations, get_migration_by_number
 from infrahub.core.migrations.shared import MigrationInput, get_migration_console
@@ -167,6 +168,62 @@ async def check_inheritance_cmd(
         raise typer.Exit(code=1)
 
     await dbdriver.close()
+
+
+@app.command(name="reset-deployment-id")
+async def reset_deployment_id_cmd(
+    ctx: typer.Context,
+    deployment_id: str | None = typer.Option(
+        None, "--deployment-id", help="Set an explicit UUID instead of generating a random one."
+    ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
+) -> None:
+    """Reset the internal deployment_id on the Root node.
+
+    Running Infrahub server and worker processes cache this value at startup and
+    must be restarted after this command to pick up the new value.
+    """
+    logging.getLogger("infrahub").setLevel(logging.WARNING)
+    logging.getLogger("neo4j").setLevel(logging.ERROR)
+    logging.getLogger("prefect").setLevel(logging.ERROR)
+
+    console = Console()
+
+    if deployment_id is not None:
+        try:
+            UUID(deployment_id)
+        except ValueError:
+            console.print(f"[red]{deployment_id!r} is not a valid UUID.[/red]")
+            raise typer.Exit(code=1) from None
+
+    config.load_and_exit(config_file_name=config_file)
+
+    context: CliContext = ctx.obj
+    dbdriver = await context.init_db(retry=1)
+
+    try:
+        root = await get_root_node(db=dbdriver)
+        current = str(root.get_uuid())
+        console.print(f"Current deployment_id: [bold]{current}[/bold]")
+
+        if not yes and not typer.confirm("Reset the deployment_id?"):
+            console.print("Aborted.")
+            raise typer.Exit(code=1)
+
+        try:
+            old_uuid, new_uuid = await reset_deployment_id(db=dbdriver, new_uuid=deployment_id)
+        except ValueError as exc:
+            console.print(f"[red]{exc}[/red]")
+            raise typer.Exit(code=1) from exc
+
+        console.print(f"New deployment_id:     [bold green]{new_uuid}[/bold green]")
+        console.print(f"(was {old_uuid})")
+        console.print(
+            "[yellow]Restart all running Infrahub server and worker processes to pick up the new value.[/yellow]"
+        )
+    finally:
+        await dbdriver.close()
 
 
 @app.command(name="check-duplicate-schema-fields")
