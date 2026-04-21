@@ -1462,12 +1462,13 @@ class NodeGetByHFIDQuery(Query):
 
         query = """
         // --------------------------
-        // Start from matching HFID values and traverse back to nodes
-        // Uses AttributeValueIndexed for index-backed lookups; HFIDs larger
-        // than MAX_STRING_LENGTH are not indexed and thus not searchable.
+        // Start from the indexed HFID value to ensure the query planner
+        // uses the AttributeValueIndexed index. HFIDs larger than
+        // MAX_STRING_LENGTH are not indexed and thus not searchable.
         // --------------------------
-        MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
+        MATCH (av:AttributeValueIndexed)
         WHERE av.value IN $hfid_values
+        MATCH (av)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
         WITH DISTINCT n, attr, av
         // --------------------------
         // Filter IS_PART_OF edges to ensure node is active
