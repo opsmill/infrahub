@@ -19,7 +19,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Fixed
 
-- Schema deletions are now rejected when a generic is still referenced by another node's inherit_from, and partial schema writes are rolled back if loading the updated schema fails. ([#8988](https://github.com/opsmill/infrahub/issues/8988))
+- Schema deletions are now rejected when a generic is still referenced by another node's `inherit_from`, and partial schema writes are rolled back if loading the updated schema fails. ([#8988](https://github.com/opsmill/infrahub/issues/8988))
 - Fix branch name display in event details popover for branch deletion events.
 - Fix check messages overflowing outside their container in proposed changes.
 
