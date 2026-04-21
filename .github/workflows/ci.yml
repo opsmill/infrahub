@@ -468,6 +468,43 @@ jobs:
       #     type: "junit"
       #     githubToken: ${{ secrets.GH_TRACING_REPO_TOKEN }}
 
+  backend-tests-component-no-coverage:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
+    runs-on:
+      group: huge-runners
+    timeout-minutes: 45
+    env:
+      INFRAHUB_DB_TYPE: neo4j
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: "Setup git credentials"
+        run: "git config --global user.name 'Infrahub' && \
+              git config --global user.email 'infrahub@opsmill.com' && \
+              git config --global --add safe.directory '*' && \
+              git config --global credential.usehttppath true && \
+              git config --global credential.helper '/usr/bin/env infrahub-git-credential'"
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: "Component Tests (no coverage)"
+        run: "uv run pytest -n ${PYTEST_XDIST_WORKER_COUNT} -v backend/tests/component --neo4j"
+
   backend-tests-integration:
     if: |
       always() && !cancelled() &&
