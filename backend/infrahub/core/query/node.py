@@ -2327,7 +2327,7 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002,PLR0915
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -2356,28 +2356,19 @@ class NodeGetHierarchyQuery(Query):
         WHERE $hierarchy IN LABELS(peer) AND all(r IN relationships(path) WHERE (%(branch_filter)s))
         WITH n, collect(DISTINCT last(nodes(path))) AS peers
         UNWIND peers AS peer
-
-        """ % {"filter": filter_str, "branch_filter": branch_filter}
-
-        if not self.branch.is_default:
-            query += """
         CALL (n, peer) {
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s
-            RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+            RETURN peer AS peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
             LIMIT 1
         }
-        WITH peer1 as peer, is_active
-            """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
-        else:
-            query += """
-        WITH peer
-            """
+        WITH peer1 AS peer, is_active
+        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
 
         self.add_to_query(query)
-        where_clause = ["is_active = TRUE"] if not self.branch.is_default else []
+        where_clause = ["is_active = TRUE"]
 
         clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
