@@ -97,18 +97,17 @@ class SingleWebhookConfigurer:
 
     def __init__(
         self,
-        webhook: CoreWebhookNode,
-        automation: WebhookAutomation,
         syncer: WebhookAutomationPrefectSyncer,
+        trigger_definition_builder: WebhookTriggerDefinitionBuilder,
     ) -> None:
-        self._webhook = webhook
-        self._automation = automation
         self._syncer = syncer
+        self._trigger_definition_builder = trigger_definition_builder
 
-    async def configure(self) -> None:
+    async def configure(self, webhook: CoreWebhookNode) -> None:
         """Ensure the webhook's Prefect automation matches desired state and invalidate cache."""
-        await self._syncer.apply(self._automation, active=self._webhook.active.value)
-        await invalidate_webhook_cache(webhook_ids={self._webhook.id})
+        automation = WebhookAutomation(trigger_definition=self._trigger_definition_builder.build(webhook))
+        await self._syncer.apply(automation, active=webhook.active.value)
+        await invalidate_webhook_cache(webhook_ids={webhook.id})
 
 
 @flow(name="webhook-configure", flow_run_name=_configure_webhook_run_name, on_failure=[_configure_webhook_on_failure])
@@ -130,13 +129,10 @@ async def configure_webhook(
             )
             async with get_prefect_client(sync_client=False) as prefect_client:
                 configurer = SingleWebhookConfigurer(
-                    webhook=webhook_node,
-                    automation=WebhookAutomation(
-                        trigger_definition=WebhookTriggerDefinitionBuilder(registry.default_branch).build(webhook_node),
-                    ),
                     syncer=WebhookAutomationPrefectSyncer(prefect_client=prefect_client),
+                    trigger_definition_builder=WebhookTriggerDefinitionBuilder(registry.default_branch),
                 )
-                await configurer.configure()
+                await configurer.configure(webhook_node)
         case WebhookAction.DELETE:
             await _delete_automation(webhook_id=parsed.required_webhook_id)
         case WebhookAction.RECONCILE_ALL:
