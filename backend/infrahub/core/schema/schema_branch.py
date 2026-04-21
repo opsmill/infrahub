@@ -283,9 +283,11 @@ class SchemaBranch:
             self.set(name=item_kind, schema=other_item)
 
     def validate_node_deletions(self, diff: SchemaDiff) -> None:
-        """Given a diff, check if a deleted node is still used in relationships of other nodes."""
+        """Given a diff, check if a deleted node is still used in relationships or inherit_from of other nodes."""
         removed_schema_names = set(diff.removed.keys())
         for name in self.all_names:
+            if name in removed_schema_names:
+                continue
             node = self.get(name=name, duplicate=False)
             for relationship in node.relationships:
                 if relationship.peer in removed_schema_names:
@@ -293,6 +295,13 @@ class SchemaBranch:
                         f"'{relationship.peer}' has been removed but is still referenced in '{name}.{relationship.name}'; keep it or delete the "
                         "relationship"
                     )
+            if isinstance(node, (NodeSchema, ProfileSchema, TemplateSchema)):
+                for generic_kind in node.inherit_from or []:
+                    if generic_kind in removed_schema_names:
+                        raise ValueError(
+                            f"'{generic_kind}' has been removed but is still referenced in '{name}.inherit_from'; keep it or remove the "
+                            "inherit_from reference"
+                        )
 
     def validate_update(
         self, other: SchemaBranch, diff: SchemaDiff, enforce_update_support: bool = True
