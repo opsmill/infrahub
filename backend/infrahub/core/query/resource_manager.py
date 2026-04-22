@@ -19,14 +19,6 @@ class NumberPoolIdentifierData:
     value: int
     identifier: str
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> NumberPoolIdentifierData:
-        """Convert raw QueryResult to typed dataclass."""
-        return cls(
-            value=result.get_as_type("value", return_type=int),
-            identifier=result.get_as_type("identifier", return_type=str),
-        )
-
 
 @dataclass(frozen=True)
 class PoolIdentifierResult:
@@ -60,14 +52,8 @@ class NumberPoolAllocatedResult:
     value: int
     """The allocated number value."""
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> NumberPoolAllocatedResult:
-        """Convert raw QueryResult to typed dataclass."""
-        return cls(
-            id=result.get_as_type("id", str),
-            branch=result.get_as_type("branch", str),
-            value=result.get_as_type("value", int),
-        )
+    identifier: str
+    """Identifier used for the reservation."""
 
 
 @dataclass(frozen=True)
@@ -214,14 +200,26 @@ class NumberPoolGetAllocated(Query):
 
         query = """
         MATCH (n:%(node)s)-[ha:HAS_ATTRIBUTE]-(a:Attribute {name: $node_attribute})-[hv:HAS_VALUE]-(av:AttributeValueIndexed)
-        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)
+        MATCH (a)-[hs:HAS_SOURCE]-(pool:%(number_pool_kind)s)-[ir:IS_RESERVED]->(av)
+        CALL (a, pool) {
+            MATCH (a)-[hs_int:HAS_SOURCE]->(pool)
+            WHERE hs_int.status = "active"
+                AND hs_int.to IS NULL
+                AND NOT EXISTS {
+                    MATCH (a)-[hs_deleted:HAS_SOURCE {branch: hs_int.branch, status: "deleted"}]->(pool)
+                    WHERE hs_deleted.from > hs_int.from
+                }
+            RETURN true AS hs_active
+            LIMIT 1
+        }
+        WITH n, ha, a, hv, av, hs, pool, ir, hs_active
         WHERE
-            pool.uuid = $pool_id
+            hs_active = TRUE
+            AND pool.uuid = $pool_id
             AND av.value >= $start_range and av.value <= $end_range
             AND all(r in [ha, hv, hs] WHERE (%(branch_filter)s))
             AND ha.status = "active"
             AND hv.status = "active"
-            AND hs.status = "active"
         """ % {
             "node": self.pool.node.value,
             "number_pool_kind": InfrahubKind.NUMBERPOOL,
@@ -229,7 +227,12 @@ class NumberPoolGetAllocated(Query):
         }
         self.add_to_query(query)
 
-        self.return_labels = ["n.uuid as id", "hv.branch as branch", "av.value as value"]
+        self.return_labels = [
+            "DISTINCT n.uuid as id",
+            "hv.branch as branch",
+            "av.value as value",
+            "ir.identifier as identifier",
+        ]
         self.order_by = ["av.value"]
 
     def get_data(self) -> list[NumberPoolAllocatedResult]:
@@ -238,7 +241,15 @@ class NumberPoolGetAllocated(Query):
         Returns:
             List of NumberPoolAllocatedResult containing allocated number info.
         """
-        return [NumberPoolAllocatedResult.from_db(result) for result in self.get_results()]
+        return [
+            NumberPoolAllocatedResult(
+                id=result.get_as_type("id", str),
+                branch=result.get_as_type("branch", str),
+                value=result.get_as_type("value", int),
+                identifier=result.get_as_type("identifier", str),
+            )
+            for result in self.get_results()
+        ]
 
 
 class NumberPoolGetReserved(Query):
@@ -302,7 +313,13 @@ class NumberPoolGetReserved(Query):
         Returns:
             List of NumberPoolIdentifierData containing value and identifier.
         """
-        return [NumberPoolIdentifierData.from_db(result) for result in self.get_results()]
+        return [
+            NumberPoolIdentifierData(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
+            for result in self.get_results()
+        ]
 
     def get_reservations(self) -> Generator[NumberPoolIdentifierData]:
         """Yield reservations as typed dataclass instances.
@@ -433,7 +450,10 @@ class NumberPoolGetUsed(Query):
             NumberPoolIdentifierData for each used value in the pool.
         """
         for result in self.get_results():
-            yield NumberPoolIdentifierData.from_db(result)
+            yield NumberPoolIdentifierData(
+                value=result.get_as_type("value", return_type=int),
+                identifier=result.get_as_type("identifier", return_type=str),
+            )
 
 
 class NumberPoolGetFree(Query):
