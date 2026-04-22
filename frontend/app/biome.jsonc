@@ -162,7 +162,7 @@
         "noExplicitAny": "off",
         "noGlobalIsNan": "off",
         "noImplicitAnyLet": "off",
-        "noReactForwardRef": "off",
+        "noReactForwardRef": "error",
         "noReactSpecificProps": "off",
         "useIterableCallbackReturn": "off",
         "noSkippedTests": "off",
