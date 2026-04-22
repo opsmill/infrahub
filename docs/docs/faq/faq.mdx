@@ -89,11 +89,11 @@ Capacity depends heavily on the schema you define, so we publish sizing tiers ra
 
 If you want to evaluate Infrahub against your own schema and dataset size, reach out on [Discord](https://discord.gg/opsmill) or at [contact@opsmill.com](mailto:contact@opsmill.com), and we happy to help.
 
-### How is Infrahub architected for high availability?
+### How is Infrahub architectured for high availability?
 
 A production Infrahub deployment runs as a single clustered instance with component-level redundancy: database clustering with automatic leader election, cache failover, and mirrored message queues. This is the default topology we recommend for most organisations, and it is what the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page describes under the HA tiers.
 
-Keeping a single logical instance keeps operations simple — one schema, one resource allocation authority for IPs, prefixes, and identifiers, and one upgrade target.
+Running a single logical instance means one schema, one resource allocation authority for IPs, prefixes, and identifiers, and one target for monitoring and upgrades.
 
 ### Can I run Infrahub across multiple regions or multiple instances?
 
@@ -105,9 +105,9 @@ This pattern adds regional failure isolation: an issue in one instance has no im
 
 Database backup is a routine, automated operation, with native support for S3-compatible object storage. Compressed backups for large production deployments typically fall in the single-digit to tens of gigabytes range. See the [database backup and restore topic](../topics/database-backup.mdx) for step-by-step guidance and scheduling recommendations.
 
-### What are realistic RPO and RTO targets for Infrahub?
+### What are realistic recovery targets for Infrahub?
 
-With hourly backups, RPO is one hour. RTO for restoring a large instance is also about one hour, mainly driven by restoring the task manager database.
+With hourly backups, the recovery point objective (RPO) is one hour. The recovery time objective (RTO) for restoring a large instance is also about one hour, mainly driven by restoring the task manager database.
 
 In deployment patterns where data-plane agents enforce their last-known desired state rather than querying Infrahub directly, the effective data-plane RTO during an Infrahub outage is zero — running infrastructure keeps operating, and only the build pipeline pauses until Infrahub is available again.
 
@@ -119,9 +119,9 @@ We recommend a full database backup before every upgrade and validation in a sta
 
 ### What monitoring and observability does Infrahub provide?
 
-Infrahub ships with built-in observability. OpenTelemetry distributed tracing is supported natively, with configurable push-based metrics export to any OTLP-compatible backend (Jaeger, Zipkin, Datadog, and others). A pull-based Prometheus `/metrics` endpoint is also available. See the [configuration reference](../reference/configuration.mdx) for the relevant environment variables.
+Infrahub exposes a metrics endpoint by default, and the Infrahub Exporter provides Prometheus-format scraping and OTLP push to monitoring systems such as Prometheus and OpenTelemetry collectors. Workflow orchestration runs on Prefect, which provides task-level observability. 
 
-In production, the signals most commonly watched are API request latency, task manager queue depth, database connection pool usage, and disk utilisation.
+In production, the most commonly monitored signals are API request latency, task manager queue depth, database connection pool usage, and disk utilisation.
 
 ### How does Infrahub handle authentication and access control?
 
@@ -139,7 +139,7 @@ See the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) compari
 
 Across production deployments, we have found that Generator execution is more often the build-pipeline bottleneck than GraphQL query latency. The two highest-impact tuning levers are using targeted field selection in your queries rather than eager relationship loading, and increasing pagination size where appropriate. These are the same query patterns any downstream build system should use.
 
-Core engine performance is an ongoing investment rather than a fixed milestone — recent work moving branch-merge logic into the database layer, for example, produced about a 4x improvement in merge times on datasets ranging from tens of thousands to hundreds of thousands of objects.
+Core engine performance is an ongoing investment, not a fixed milestone — recent work in v1.8 moved branch-merge logic into the database layer, delivering about a 4x improvement in merge times on datasets ranging from tens to hundreds of thousands of objects.
 
 ### How can I get involved?
 
