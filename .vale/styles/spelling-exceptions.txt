@@ -250,3 +250,16 @@ YAML
 yamllint
 YouTube
 AIOps
+backoff
+codec
+connectionless
+Datadog
+enqueues
+Filebeat
+Logstash
+QRadar
+rsyslog
+sourcetype
+Splunk
+syslog
+Syslog
