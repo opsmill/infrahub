@@ -980,13 +980,6 @@ class LogForwardingSettings(BaseSettings):
     def _materialize_destinations_from_env(self) -> Self:
         if not self.destination_names:
             return self
-        # if destinations already exist, they must have been set in infrahub.toml or the DESTINATIONS env var
-        # neither of which is supported in combination with DESTINATION_NAMES
-        if self.destinations:
-            raise ValueError(
-                "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES cannot be combined with explicit `destinations` "
-                "(set via INFRAHUB_LOG_FORWARDING_DESTINATIONS or infrahub.toml). Use one mechanism, not both."
-            )
         for name in self.destination_names:
             if not _DESTINATION_NAME_RE.match(name):
                 raise ValueError(
@@ -997,6 +990,16 @@ class LogForwardingSettings(BaseSettings):
         loaded = [_load_destination_from_env(name) for name in self.destination_names]
         # Re-run uniqueness check (covers duplicates within destination_names itself).
         self.__class__.validate_unique_names(loaded)
+        # in case destinations have already been loaded
+        if self.destinations == loaded:
+            return self
+        # if destinations already exist and != loaded, they must have be set in different places
+        # with different values
+        if self.destinations:
+            raise ValueError(
+                "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES cannot be combined with explicit `destinations` "
+                "(set via INFRAHUB_LOG_FORWARDING_DESTINATIONS or infrahub.toml). Use one mechanism, not both."
+            )
         self.destinations = loaded
         return self
 
