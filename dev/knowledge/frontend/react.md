@@ -15,16 +15,16 @@ Write simple code; the compiler optimizes it.
 
 ## React 19: No forwardRef
 
-`ref` is a regular prop in React 19. Enforced by biome rule `noReactForwardRef`.
+`ref` is a regular prop in React 19.
 
 ```tsx
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   ref?: React.Ref<HTMLInputElement>;
 }
 
-const Input = ({ ref, ...props }: InputProps) => {
+function Input({ ref, ...props }: InputProps) {
   return <input ref={ref} {...props} />;
-};
+}
 ```
 
 ## Rules of React
