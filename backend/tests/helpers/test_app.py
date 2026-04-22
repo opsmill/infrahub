@@ -34,6 +34,7 @@ from infrahub.workers.dependencies import build_cache, build_client, build_datab
 from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
+from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
 from tests.helpers.events import query_events_by_name
 
 from .test_client import InfrahubTestClient
@@ -123,6 +124,7 @@ class TestInfrahubAppBase(TestInfrahub):
     @pytest.fixture(scope="class")
     async def test_client(
         self,
+        request: pytest.FixtureRequest,
         dependency_provider: Provider,
         db: InfrahubDatabase,
         db_class: InfrahubDatabase,
@@ -139,8 +141,15 @@ class TestInfrahubAppBase(TestInfrahub):
             return db_class
 
         with dependency_provider.scope(build_database, _db):
-            async with lifespan(app):
-                yield InfrahubTestClient(app=app, base_url="http://testserver")
+            try:
+                async with lifespan(app):
+                    yield InfrahubTestClient(app=app, base_url="http://testserver")
+            except RuntimeError as exc:
+                # If the fixture teardown hits the "Event loop is closed"
+                # race dump the pool state so CI logs have something to correlate with.
+                if "Event loop is closed" in str(exc):
+                    dump_event_loop_closed_diagnostic(getattr(request.node, "nodeid", "<unknown>"), exc)
+                raise
 
     @pytest.fixture(scope="class")
     async def client(
