@@ -190,7 +190,7 @@ TLS adds encryption on top of TCP. It is only valid with TCP — configuring TLS
 
 Log forwarding works with any syslog-compatible receiver. Brief guidance for common platforms:
 
-- **Splunk**: Configure a TCP or UDP syslog input on a Heavy Forwarder or Universal Forwarder. Set the sourcetype to `syslog` or a custom type.
+- **Splunk**: Configure a TCP or UDP syslog input on a Heavy Forwarder or Universal Forwarder. Set the sourcetype to `syslog` or a custom type. RFC 5424 enables structured field extraction.
 - **Datadog**: Use the Datadog Agent's syslog input or configure a syslog-to-Datadog pipeline. Point Infrahub at the agent's syslog listening port.
 - **Elastic (ELK)**: Configure Logstash with a `syslog` input plugin or use the Filebeat syslog input for a lighter footprint. RFC 5424 works well with the Logstash syslog codec.
 - **IBM QRadar / ArcSight**: Use standard syslog ingestion. RFC 5424 is recommended. Configure a log source pointing to Infrahub's hostname.
