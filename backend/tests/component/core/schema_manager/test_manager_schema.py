@@ -786,7 +786,9 @@ def test_schema_branch_processes_node_template_schema_weight(register_core_model
     template = schema_branch.get(name="TemplateDcimDevice", duplicate=False)
     dcim_device = schema_branch.get(name="DcimDevice", duplicate=False)
 
-    for attr_name in ("name", "description", "os_version"):
+    # `name` is excluded from the template because human_friendly_id=["name__value"]
+    # so it becomes unique=True during schema processing
+    for attr_name in ("description", "os_version"):
         assert (
             template.get_attribute(name=attr_name).order_weight
             == dcim_device.get_attribute(name=attr_name).order_weight + 10000

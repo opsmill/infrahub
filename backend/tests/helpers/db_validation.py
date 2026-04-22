@@ -351,3 +351,14 @@ async def assert_attribute_path_status(
         assert record["has_val_status"] == expected_status, (
             f"Node {record['node_id']}: HAS_VALUE status is {record['has_val_status']!r}, expected {expected_status!r}"
         )
+
+
+async def assert_attribute_absent(
+    db: InfrahubDatabase,
+    node_label: str,
+    attr_name: str,
+    branch_name: str,
+) -> None:
+    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
+    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
+    assert len(results) == 0, f"Expected no active/deleted {node_label}.{attr_name} edges, found {len(results)}"

@@ -8,9 +8,10 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.node import Node
 from infrahub.database.validation import verify_no_duplicate_relationships, verify_no_edges_added_after_node_delete
-from tests.helpers.db_validation import LATEST_ATTRIBUTE_PATH_STATUS_QUERY, assert_attribute_path_status
+from tests.helpers.db_validation import assert_attribute_absent, assert_attribute_path_status
 from tests.integration.profiles.validation import assert_no_virtual_schema_relationships_in_db
 
 from ..shared import load_schema
@@ -21,17 +22,6 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-
-
-async def assert_attribute_absent(
-    db: InfrahubDatabase,
-    node_label: str,
-    attr_name: str,
-    branch_name: str,
-) -> None:
-    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
-    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
-    assert len(results) == 0, f"Expected no active/deleted {node_label}.{attr_name} edges, found {len(results)}"
 
 
 CAR_KIND = "TestingCar"
@@ -90,7 +80,7 @@ class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
         default_branch: Branch,
         initial_dataset: None,
     ) -> None:
-        """Baseline: profile's nbr_seats attribute is active before any uniqueness constraint change."""
+        """Baseline: profile's nbr_seats attribute is active and readable before any constraint change."""
         await assert_attribute_path_status(
             db=db,
             node_label=PROFILE_CAR_KIND,
@@ -98,6 +88,13 @@ class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
             branch_name=default_branch.name,
             expected_status="active",
         )
+
+        profiles = await registry.manager.query(
+            db=db, schema=PROFILE_CAR_KIND, filters={"profile_name__value": "car-profile-1"}
+        )
+        assert len(profiles) == 1
+        assert hasattr(profiles[0], "nbr_seats")
+        assert profiles[0].nbr_seats.value == 4
 
     async def test_step02_check_detects_uniqueness_constraint_change(
         self,
@@ -131,6 +128,12 @@ class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
             expected_status="deleted",
         )
 
+        profiles = await registry.manager.query(
+            db=db, schema=PROFILE_CAR_KIND, filters={"profile_name__value": "car-profile-1"}
+        )
+        assert len(profiles) == 1
+        assert not hasattr(profiles[0], "nbr_seats")
+
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
@@ -159,21 +162,13 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
         }
 
     @pytest.fixture(scope="class")
-    def schema_car_name_unique_no_compound(self) -> dict[str, Any]:
+    def schema_car_name_unique_no_compound(self, schema_car_compound_constraint_only: dict[str, Any]) -> dict[str, Any]:
         """Car schema — name is individually unique, no compound constraint.
         nbr_seats is free to be included in profiles."""
-        return {
-            "name": "Car",
-            "namespace": "Testing",
-            "include_in_menu": True,
-            "label": "Car",
-            "uniqueness_constraints": [],
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "nbr_seats", "kind": "Number", "optional": True},
-                {"name": "color", "kind": "Text", "optional": True},
-            ],
-        }
+        schema = copy.deepcopy(schema_car_compound_constraint_only)
+        schema["uniqueness_constraints"] = []
+        schema["attributes"][0]["unique"] = True
+        return schema
 
     @pytest.fixture(scope="class")
     def schema_step_01(self, schema_car_compound_constraint_only: dict[str, Any]) -> dict[str, Any]:
@@ -212,6 +207,12 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
             branch_name=default_branch.name,
         )
 
+        profiles = await registry.manager.query(
+            db=db, schema=PROFILE_CAR_KIND, filters={"profile_name__value": "car-profile-1"}
+        )
+        assert len(profiles) == 1
+        assert not hasattr(profiles[0], "nbr_seats")
+
     async def test_step02_check_detects_uniqueness_constraint_change(
         self,
         client: InfrahubClient,
@@ -243,6 +244,27 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
             branch_name=default_branch.name,
             expected_status="active",
         )
+
+        profiles = await registry.manager.query(
+            db=db, schema=PROFILE_CAR_KIND, filters={"profile_name__value": "car-profile-1"}
+        )
+        assert len(profiles) == 1
+
+        profile = profiles[0]
+        assert hasattr(profile, "nbr_seats")
+        assert profile.nbr_seats.value is None
+
+        profile.nbr_seats.value = 87
+        await profile.save(db=db)
+
+        profiles = await registry.manager.query(
+            db=db, schema=PROFILE_CAR_KIND, filters={"profile_name__value": "car-profile-1"}
+        )
+        assert len(profiles) == 1
+
+        profile = profiles[0]
+        assert hasattr(profile, "nbr_seats")
+        assert profile.nbr_seats.value == 87
 
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
