@@ -29,7 +29,7 @@ exports[`fix ts error`] = {
       [134, 51, 6, "tsc: Argument of type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is not assignable to parameter of type \'Branch\'.\\n  Type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is missing 6 properties from type \'Branch\'", "1513838097"]
     ],
     "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:2250610657": [
-      [8, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
+      [8, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
       [30, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
       [325, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
       [327, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
@@ -46,7 +46,7 @@ exports[`fix ts error`] = {
       [31, 40, 4, "tsc: Argument of type \'string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "2088095368"]
     ],
     "src/entities/diff/ui/file-diff/file-content-diff.tsx:477325029": [
-      [24, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
+      [24, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
       [43, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
       [348, 19, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
       [350, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
@@ -347,6 +347,9 @@ exports[`fix ts error`] = {
     ],
     "src/pages/resource-manager/resource-pool-details.tsx:1875631934": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
+    ],
+    "src/pages/schema/graph.tsx:1281391245": [
+      [0, 60, 28, "tsc: Cannot find module \'infrahub-schema-visualizer\' or its corresponding type declarations.", "2368953193"]
     ],
     "src/shared/api/graphql/graphqlClientApollo.tsx:4179510492": [
       [56, 33, 44, "tsc: Not all code paths return a value.", "2633054574"]

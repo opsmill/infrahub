@@ -44,7 +44,7 @@ jobs:
             org.opencontainers.image.source=opsmill/bench
 
       - name: Build and push by digest
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         id: push
         with:
           context: utilities/benchmark
@@ -64,7 +64,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bench-digests-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
           path: /tmp/digests/*
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: bench-digests-*

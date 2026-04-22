@@ -157,6 +157,7 @@ class Branch(StandardNode):
         cls,
         db: InfrahubDatabase,
         limit: int = 1000,
+        offset: int | None = None,
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
@@ -180,6 +181,7 @@ class Branch(StandardNode):
             branch_filters=branch_filters,
             exclude_global=exclude_global,
             limit=limit,
+            offset=offset,
             node_ordering=node_ordering,
         )
         await query.execute(db=db)
