@@ -20,6 +20,7 @@ from infrahub.events.utils import get_all_infrahub_node_kind_events
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
+from infrahub.trigger.setup import gather_all_automations
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
 
 logger = logging.getLogger(__name__)
@@ -174,8 +175,6 @@ class WebhookAutomationPrefectSyncer:
             logger.info("Automation %s created", automation.name)
 
     async def _find_existing(self, name: str) -> Automation | None:
-        from infrahub.trigger.setup import gather_all_automations
-
         all_automations = await gather_all_automations(client=self._client)
         matches = [a for a in all_automations if a.name == name]
         return matches[0] if matches else None
