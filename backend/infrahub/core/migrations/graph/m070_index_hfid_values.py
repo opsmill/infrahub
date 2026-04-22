@@ -24,7 +24,7 @@ SKIP $offset LIMIT $limit
 
 NORMALIZE_VALUES_QUERY = """
 UNWIND $updates AS update
-MATCH (attr:Attribute {name: "human_friendly_id"})-[old_r:HAS_VALUE]->(old_av)
+MATCH (attr:Attribute {name: "human_friendly_id"})-[old_r:HAS_VALUE]->(old_av:AttributeValue&!AttributeValueIndexed)
 WHERE elementId(old_av) = update.element_id
 CALL (update, attr, old_r, old_av) {
     MERGE (new_av:AttributeValue {value: update.new_value, is_default: old_av.is_default})
