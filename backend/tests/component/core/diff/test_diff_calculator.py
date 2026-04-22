@@ -13,6 +13,7 @@ from infrahub.core.constants import BranchSupportType, DiffAction, InfrahubKind,
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.calculator import DiffCalculator
 from infrahub.core.diff.model.field_specifiers_map import NodeFieldSpecifierMap
+from infrahub.core.diff.model.path import DiffRoot
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.query.relationship_duplicate import RelationshipDuplicateQuery, SchemaRelationshipInfo
@@ -4655,3 +4656,180 @@ async def test_diff_attribute_single_source_property_change(
         assert source_prop.new_value == person_jane_main.get_id()
     else:
         assert source_prop.new_value is None
+
+
+async def test_relationship_property_added_on_source_branch_kind_migration(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_alfred_main: Node,
+) -> None:
+    """Validate diff for relationship when peer kind is migrated on the branch after branch forks
+    and the source property is updated on the branch"""
+    branch = await create_branch(db=db, branch_name="branch-src-migration-rel-prop")
+    from_time = Timestamp(branch.created_at)
+
+    # Migrate TestCar -> Test2NewCar on the branch.
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    new_car_schema = schema.get(name="TestCar", duplicate=True)
+    new_car_schema.name = "NewCar"
+    new_car_schema.namespace = "Test2"
+    assert new_car_schema.kind == "Test2NewCar"
+    registry.schema.set(name="Test2NewCar", schema=new_car_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    assert not (await migration.execute(migration_input=MigrationInput(db=db), branch=branch)).errors
+
+    # Set car_accord.owner.source = alfred on the branch (branch owns the HAS_SOURCE edge).
+    migrated_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await migrated_car.owner.update(db=db, data={"id": person_john_main.id, "_relation__source": person_alfred_main.id})
+    await migrated_car.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    # Must not raise DiffNoPeerIdError.
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    car_nodes = [n for n in branch_diff.nodes if n.uuid == car_accord_main.id]
+    assert car_nodes, "branch diff should include the car node whose owner source was set"
+    owner_rel_diffs = [r for car in car_nodes for r in car.relationships if r.name == "owner"]
+    assert owner_rel_diffs, "branch diff for car should include the owner relationship change"
+    # The peer must be resolvable — i.e. the IS_RELATED peer row was emitted.
+    found_peer_with_source = False
+    for rel in owner_rel_diffs:
+        for elem in rel.relationships:
+            # The single_relationship's peer_id is populated from the IS_RELATED property row.
+            assert elem.peer_id, (
+                "peer_id must be set on the owner relationship element — missing IS_RELATED peer "
+                "row would have triggered DiffNoPeerIdError during parse"
+            )
+            prop_types = {p.property_type for p in elem.properties}
+            if DatabaseEdgeType.HAS_SOURCE in prop_types:
+                assert DatabaseEdgeType.IS_RELATED in prop_types, (
+                    "HAS_SOURCE property change must be accompanied by an IS_RELATED peer row"
+                )
+                found_peer_with_source = True
+                assert elem.peer_id == person_john_main.id
+    assert found_peer_with_source, "expected at least one owner relationship element with a HAS_SOURCE change"
+
+
+async def test_relationship_property_branch_change_with_target_branch_kind_migration(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_alfred_main: Node,
+) -> None:
+    """Validate diff for relationship source when one of the peers is migrated to a new kind on the target branch
+    after branch forks"""
+    branch = await create_branch(db=db, branch_name="branch-tgt-migration-rel-prop")
+    from_time = Timestamp(branch.created_at)
+
+    # Target-branch migration: TestCar -> Test2NewCar on the default branch AFTER the fork.
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    new_car_schema = schema.get(name="TestCar", duplicate=True)
+    new_car_schema.name = "NewCar"
+    new_car_schema.namespace = "Test2"
+    assert new_car_schema.kind == "Test2NewCar"
+    registry.schema.set(name="Test2NewCar", schema=new_car_schema, branch=default_branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    assert not (await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)).errors
+
+    # On the diff branch (still sees TestCar), set owner.source = alfred.
+    branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    await branch_car.owner.update(db=db, data={"id": person_john_main.id, "_relation__source": person_alfred_main.id})
+    await branch_car.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    # Every DiffNode for car_accord.id must carry a resolvable peer on the owner relationship.
+    for node in branch_diff.nodes:
+        if node.uuid != car_accord_main.id:
+            continue
+        for rel in node.relationships:
+            if rel.name != "owner":
+                continue
+            for elem in rel.relationships:
+                prop_types = {p.property_type for p in elem.properties}
+                if DatabaseEdgeType.HAS_SOURCE not in prop_types:
+                    continue
+                assert DatabaseEdgeType.IS_RELATED in prop_types, (
+                    f"DiffNode(uuid={node.uuid}, kind={node.kind}): owner property group has "
+                    f"HAS_SOURCE but no IS_RELATED peer row"
+                )
+                assert elem.peer_id, f"DiffNode(uuid={node.uuid}, kind={node.kind}): peer_id must be set"
+
+
+async def test_attribute_property_new_value_differs_per_branch_on_multi_change_node(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_alfred_main: Node,
+) -> None:
+    """Validate diff for conflicting source updates on relationships"""
+    branch = await create_branch(db=db, branch_name="branch-prop-new-value-per-branch")
+    from_time = Timestamp(branch.created_at)
+
+    # Branch changes: color=#RED and name.source = alfred
+    branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    branch_car.color.value = "#RED"
+    branch_car.name.source = person_alfred_main
+    await branch_car.save(db=db)
+
+    # Main changes (after branch fork): color=#BAD and name.source = john
+    main_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    main_car.color.value = "#BAD"
+    main_car.name.source = person_john_main
+    await main_car.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    def _name_source_new_value(diff_root: DiffRoot) -> str | None:
+        for node in diff_root.nodes:
+            if node.uuid != car_accord_main.id:
+                continue
+            for attr in node.attributes:
+                if attr.name != "name":
+                    continue
+                for prop in attr.properties:
+                    if prop.property_type is DatabaseEdgeType.HAS_SOURCE:
+                        return prop.new_value
+        return None
+
+    base_new = _name_source_new_value(calculated_diffs.base_branch_diff)
+    branch_new = _name_source_new_value(calculated_diffs.diff_branch_diff)
+
+    assert base_new == person_john_main.id, f"base-branch diff should report name.source.new_value=john, got {base_new}"
+    assert branch_new == person_alfred_main.id, (
+        f"diff-branch diff should report name.source.new_value=alfred, got {branch_new}"
+    )

@@ -703,8 +703,9 @@ class DiffQueryParser:
                 base_diff_property = base_diff_attribute.properties_by_type.get(property_type)
                 if not base_diff_property:
                     return
+                # only apply as a previous value if it predates the branched_from time
                 base_previous_diff_value = base_diff_property.earliest_diff_value
-                if base_previous_diff_value:
+                if base_previous_diff_value and base_previous_diff_value.changed_at < self.diff_branched_from_time:
                     diff_property.add_value(diff_value=base_previous_diff_value)
 
     def _apply_relationship_previous_values(

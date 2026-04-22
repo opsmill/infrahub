@@ -190,8 +190,6 @@ CALL (penultimate_path) {
     AND %(id_func)s(peer_r_node) = %(id_func)s(r_node)
     AND [%(id_func)s(n), type(peer_r_node)] <> [%(id_func)s(peer), type(r_peer)]
     AND r_peer.from < $to_time
-    // filter out paths where a base branch edge follows a branch edge
-    AND (peer_r_node.branch = $base_branch_name OR r_peer.branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
     AND (peer_r_node.status = "active" OR r_peer.status = "deleted")
     // require adjacent edge pairs to have overlapping times, but only if on the same branch
@@ -199,6 +197,16 @@ CALL (penultimate_path) {
         peer_r_node.branch <> r_peer.branch
         OR peer_r_node.to IS NULL
         OR peer_r_node.to >= r_peer.from
+    )
+    // ------------------------
+    // special handling for if a peer kind was migrated on the base branch after the diff branch forked
+    // if diffing across branches AND this edge is on the base branch,
+    // then make sure to pick the peer that was active before the branched_from time
+    // ------------------------
+    AND (
+        $branch_name = $base_branch_name
+        OR r_peer.branch = $branch_name
+        OR (r_peer.status = "active" AND r_peer.from <= $branch_from_time)
     )
     // ------------------------
     // special handling for nodes that had their kind updated,
