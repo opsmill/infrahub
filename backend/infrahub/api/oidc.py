@@ -17,6 +17,8 @@ from infrahub.api.event_builder import make_event_meta, make_login_event
 from infrahub.auth import (
     AccountSession,
     AuthType,
+    ExternalAuthProtocol,
+    ExternalIdentity,
     SSOStateCache,
     get_groups_from_provider,
     signin_sso_account,
@@ -202,10 +204,24 @@ async def token(
     if not sso_groups and config.SETTINGS.security.sso_user_default_group:
         sso_groups = [config.SETTINGS.security.sso_user_default_group]
 
+    sub = user_info.get("sub")
+    if not sub:
+        raise ProcessingError(
+            message="SSO provider did not return a 'sub' claim. Ensure 'openid' is included in the configured scopes."
+        )
+
+    external_identity = ExternalIdentity(
+        sub=sub,
+        provider_name=provider_name,
+        protocol=ExternalAuthProtocol.OIDC,
+        display_name=user_info["name"],
+        email=user_info["email"],
+    )
+
     with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
         span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
         span.set_attribute("sso_groups", sso_groups)
-        auth_result = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
+        auth_result = await signin_sso_account(db=db, external_identity=external_identity, sso_groups=sso_groups)
 
     response.set_cookie(
         "access_token",

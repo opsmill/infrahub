@@ -133,6 +133,9 @@ jobs:
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -353,6 +356,9 @@ jobs:
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'

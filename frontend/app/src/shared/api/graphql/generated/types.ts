@@ -364,6 +364,8 @@ export type BranchDeletedEvent = EventNodeInterface & {
   payload: Scalars['GenericScalar']['output'];
   /** The primary Infrahub node this event is associated with. */
   primary_node: Maybe<RelatedNode>;
+  /** Proposed change ID if available */
+  proposed_change_id: Maybe<Scalars['String']['output']>;
   /** Related Infrahub nodes this event is associated with. */
   related_nodes: Array<RelatedNode>;
 };
@@ -16903,6 +16905,13 @@ export type EdgedInternalAccountToken = {
   node_metadata: Maybe<InfrahubNodeMetadata>;
 };
 
+/** External authentication provider identity linked to an account */
+export type EdgedInternalExternalIdentity = {
+  __typename: 'EdgedInternalExternalIdentity';
+  node: Maybe<InternalExternalIdentity>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+};
+
 /** IPv4 or IPv6 prefix also referred as network which has not been allocated yet */
 export type EdgedInternalIpPrefixAvailable = {
   __typename: 'EdgedInternalIPPrefixAvailable';
@@ -17437,6 +17446,91 @@ export type InternalAccountTokenMember_Of_GroupsArgs = {
 
 /** Token for User Account */
 export type InternalAccountTokenSubscriber_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+/** External authentication provider identity linked to an account */
+export type InternalExternalIdentity = CoreNode & {
+  __typename: 'InternalExternalIdentity';
+  account: NestedEdgedCoreGenericAccount;
+  display_label: Maybe<Scalars['String']['output']>;
+  /** Human friendly identifier */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  /** Unique identifier */
+  id: Scalars['String']['output'];
+  member_of_groups: NestedPaginatedCoreGroup;
+  /** The authentication protocol used, e.g. 'oidc', 'oauth2', 'ldap' (required) */
+  protocol: Maybe<TextAttribute>;
+  /** The provider name as configured in Infrahub, e.g. 'google', 'provider1' (required) */
+  provider_name: Maybe<TextAttribute>;
+  /** The provider-issued subject identifier (required) */
+  sub: Maybe<TextAttribute>;
+  subscriber_of_groups: NestedPaginatedCoreGroup;
+};
+
+
+/** External authentication provider identity linked to an account */
+export type InternalExternalIdentityMember_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+
+/** External authentication provider identity linked to an account */
+export type InternalExternalIdentitySubscriber_Of_GroupsArgs = {
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -21535,6 +21629,15 @@ export type NestedEdgedInternalAccountToken = {
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
 
+/** External authentication provider identity linked to an account */
+export type NestedEdgedInternalExternalIdentity = {
+  __typename: 'NestedEdgedInternalExternalIdentity';
+  node: Maybe<InternalExternalIdentity>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+  properties: Maybe<RelationshipProperty>;
+  relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
+};
+
 /** IPv4 or IPv6 prefix also referred as network which has not been allocated yet */
 export type NestedEdgedInternalIpPrefixAvailable = {
   __typename: 'NestedEdgedInternalIPPrefixAvailable';
@@ -22266,6 +22369,14 @@ export type NestedPaginatedInternalAccountToken = {
   __typename: 'NestedPaginatedInternalAccountToken';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalAccountToken>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** External authentication provider identity linked to an account */
+export type NestedPaginatedInternalExternalIdentity = {
+  __typename: 'NestedPaginatedInternalExternalIdentity';
+  count: Scalars['Int']['output'];
+  edges: Array<NestedEdgedInternalExternalIdentity>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23141,6 +23252,14 @@ export type PaginatedInternalAccountToken = {
   __typename: 'PaginatedInternalAccountToken';
   count: Scalars['Int']['output'];
   edges: Array<EdgedInternalAccountToken>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** External authentication provider identity linked to an account */
+export type PaginatedInternalExternalIdentity = {
+  __typename: 'PaginatedInternalExternalIdentity';
+  count: Scalars['Int']['output'];
+  edges: Array<EdgedInternalExternalIdentity>;
   permissions: PaginatedObjectPermission;
 };
 
