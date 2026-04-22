@@ -89,7 +89,7 @@ Capacity depends heavily on the schema you define, so we publish sizing tiers ra
 
 If you want to evaluate Infrahub against your own schema and dataset size, reach out on [Discord](https://discord.gg/opsmill) or at [contact@opsmill.com](mailto:contact@opsmill.com), and we happy to help.
 
-### How is Infrahub architectured for high availability?
+### What does a high-availability Infrahub deployment look like?
 
 A production Infrahub deployment runs as a single clustered instance with component-level redundancy: database clustering with automatic leader election, cache failover, and mirrored message queues. This is the default topology we recommend for most organisations, and it is what the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page describes under the HA tiers.
 
