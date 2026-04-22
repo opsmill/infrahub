@@ -251,14 +251,6 @@ disable_error_code = [
 ]
 
 [[tool.mypy.overrides]]
-module = "infrahub.core.node.standard"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "return-value",
-]
-
-[[tool.mypy.overrides]]
 module = "infrahub.core.query"
 disable_error_code = [
     "arg-type",
@@ -572,8 +564,6 @@ allow-dunder-method-names = [
     "FIX",      # flake8-fixme
     "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
     "INP001",   # File is part of an implicit namespace package
-    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
-    "FURB140",  # Use `itertools.starmap` instead of the generator
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
     "PERF401",  # Use a list comprehension to create a transformed list

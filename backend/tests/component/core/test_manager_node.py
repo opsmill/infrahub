@@ -3,6 +3,7 @@ import copy
 import pytest
 from infrahub_sdk.uuidt import UUIDT
 
+from infrahub.core.attribute import MAX_STRING_LENGTH
 from infrahub.core.branch import Branch
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
@@ -278,6 +279,31 @@ async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branc
 
     with pytest.raises(NodeNotFoundError, match=r"HFID does not contain the same number of elements"):
         await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.DEVICE, hfid=device_hfid + ["foo"])
+
+
+async def test_create_node_with_oversized_hfid(
+    db: InfrahubDatabase, branch: Branch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Creating a node whose HFID exceeds MAX_STRING_LENGTH should save successfully with a non-indexed HFID."""
+    schema = copy.deepcopy(DEVICE_SCHEMA)
+    schema.nodes[0].human_friendly_id = ["name__value"]
+    schema.nodes[0].generate_template = False
+
+    registry.schema.register_schema(schema=schema, branch=branch.name)
+
+    char_count = MAX_STRING_LENGTH - 7
+    device = await Node.init(db=db, schema=TestKind.DEVICE, branch=branch)
+    await device.new(db=db, name="x" * char_count, manufacturer="Juniper", height=1, weight=6, airflow="Front to rear")
+
+    with caplog.at_level("WARNING", logger="infrahub"):
+        await device.save(db=db)
+
+    assert "List attribute value exceeds maximum indexed string length, storing without index" in caplog.text
+
+    retrieved = await NodeManager.get_one(id=device.id, db=db, branch=branch)
+    assert retrieved is not None
+    assert retrieved.id == device.id
+    assert await retrieved.get_hfid(db=db) == ["x" * char_count]
 
 
 async def test_get_many(

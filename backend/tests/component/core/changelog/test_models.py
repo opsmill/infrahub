@@ -210,7 +210,7 @@ async def test_node_changelog_creation_without_display_label(
         attributes={
             "human_friendly_id": AttributeChangelog(
                 name="human_friendly_id",
-                value=["Something broke", None],
+                value=["Something broke", "None"],
                 value_previous=None,
                 properties={"is_protected": PropertyChangelog(name="is_protected", value=False, value_previous=None)},
                 kind="List",
