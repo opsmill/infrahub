@@ -85,21 +85,21 @@ For teams preparing a production rollout, the [production deployment guide](../g
 
 ### How much data can Infrahub handle right now?
 
-Capacity depends heavily on the schema you define, so we publish sizing tiers rather than a single number. The [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page documents recommended resource allocations across deployment profiles, from moderate environments up to tens of thousands of device-class objects. Production deployments today manage datasets well into the hundreds of thousands of managed objects on a single instance.
+Capacity depends heavily on the schema you define, so we publish sizing tiers rather than one number. The [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page documents recommended resource allocations across deployment profiles, from moderate environments up to tens of thousands of device-class objects. Production deployments today manage datasets well into the hundreds of thousands of managed objects on a single instance.
 
-If you want to evaluate Infrahub against your own schema and dataset size, reach out on [Discord](https://discord.gg/opsmill) or at [contact@opsmill.com](mailto:contact@opsmill.com) and we can help you set up a benchmark.
+If you want to evaluate Infrahub against your own schema and dataset size, reach out on [Discord](https://discord.gg/opsmill) or at [contact@opsmill.com](mailto:contact@opsmill.com), and we happy to help.
 
 ### How is Infrahub architected for high availability?
 
-A production Infrahub deployment runs as a single clustered instance with component-level redundancy: database clustering with automatic leader election, cache failover, and mirrored message queues. That is the default topology we recommend for most organizations, and it is what the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page describes under the HA tiers.
+A production Infrahub deployment runs as a single clustered instance with component-level redundancy: database clustering with automatic leader election, cache failover, and mirrored message queues. This is the default topology we recommend for most organisations, and it is what the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page describes under the HA tiers.
 
 Keeping a single logical instance keeps operations simple — one schema, one resource allocation authority for IPs, prefixes, and identifiers, and one upgrade target.
 
 ### Can I run Infrahub across multiple regions or multiple instances?
 
-Yes. Some organizations have operational or regulatory reasons to run regionally independent infrastructure, and Infrahub supports a multi-instance model where each region runs its own HA topology and no state is shared between them.
+Yes. Some organisations have operational or regulatory reasons to run regionally independent infrastructure, and Infrahub supports a multi-instance model where each region runs its own HA topology and no state is shared between them.
 
-This pattern adds regional failure isolation: an issue in one instance has no impact on the others, and upgrades can follow a canary pattern region-by-region. The trade-off is that each instance manages its own resource allocation. It is a good fit when the organization already has regional operational boundaries.
+This pattern adds regional failure isolation: an issue in one instance has no impact on the others, and upgrades can follow a canary pattern region by region. The trade-off is that each instance manages its own resource allocation. It is a good fit when the organisation already has regional operational boundaries.
 
 ### How do I back up and restore Infrahub?
 
@@ -107,13 +107,13 @@ Database backup is a routine, automated operation, with native support for S3-co
 
 ### What are realistic RPO and RTO targets for Infrahub?
 
-With hourly backups, RPO is one hour. RTO for restoring a large instance is also approximately one hour, dominated by restoring the task manager database.
+With hourly backups, RPO is one hour. RTO for restoring a large instance is also about one hour, mainly driven by restoring the task manager database.
 
 In deployment patterns where data-plane agents enforce their last-known desired state rather than querying Infrahub directly, the effective data-plane RTO during an Infrahub outage is zero — running infrastructure keeps operating, and only the build pipeline pauses until Infrahub is available again.
 
 ### How do I upgrade Infrahub?
 
-The `infrahub upgrade` command handles schema and database migrations. On Kubernetes, Helm runs the upgrade as a job during the release update and manages rolling pod updates for you. For VM-based deployments, documented procedures codify the stop/upgrade/restart sequence with safety checks.
+The `infrahub upgrade` command handles schema and database migrations. On Kubernetes, Helm runs the upgrade as a job during the release update and manages rolling pod updates. For VM-based deployments, documented procedures define the stop/upgrade/restart sequence with safety checks.
 
 We recommend a full database backup before every upgrade and validation in a staging environment that mirrors production topology. The [upgrade guide](../guides/upgrade.mdx) has the detailed steps.
 
@@ -121,7 +121,7 @@ We recommend a full database backup before every upgrade and validation in a sta
 
 Infrahub ships with built-in observability. OpenTelemetry distributed tracing is supported natively, with configurable push-based metrics export to any OTLP-compatible backend (Jaeger, Zipkin, Datadog, and others). A pull-based Prometheus `/metrics` endpoint is also available. See the [configuration reference](../reference/configuration.mdx) for the relevant environment variables.
 
-In production, the signals most commonly watched are API request latency, task manager queue depth, database connection pool usage, and disk utilization.
+In production, the signals most commonly watched are API request latency, task manager queue depth, database connection pool usage, and disk utilisation.
 
 ### How does Infrahub handle authentication and access control?
 
@@ -131,15 +131,15 @@ The RBAC model provides pre-configured roles (Admin, Standard User, Anonymous Us
 
 ### If I start with Community, can I move to Enterprise later?
 
-Yes. Community and Enterprise share the same core engine, the same data model, and the same APIs, so moving from one to the other does not require a data migration or re-architecture — your schema, data, integrations, and Generators carry over. Enterprise capabilities are enabled on top of the same platform.
+Yes. Community and Enterprise share the same core engine, data model, and APIs, so moving from one to the other does not require a data migration or re-architecture — your schema, data, integrations, and Generators carry over. Enterprise capabilities are enabled on top of the same platform.
 
 See the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) comparison for the full breakdown of what each edition includes.
 
 ### What drives Infrahub performance at scale, and what can I tune?
 
-Across production deployments we've found that Generator execution is more often the build-pipeline bottleneck than GraphQL query latency. The two highest-impact tuning levers are using targeted field selection in your queries rather than eager relationship loading, and increasing pagination size where appropriate. These are the same query patterns any downstream build system should use.
+Across production deployments, we have found that Generator execution is more often the build-pipeline bottleneck than GraphQL query latency. The two highest-impact tuning levers are using targeted field selection in your queries rather than eager relationship loading, and increasing pagination size where appropriate. These are the same query patterns any downstream build system should use.
 
-Core engine performance is an ongoing investment rather than a fixed milestone — recent work moving branch-merge logic into the database layer, for example, produced roughly a 4x improvement in merge times on datasets ranging from tens of thousands to hundreds of thousands of objects.
+Core engine performance is an ongoing investment rather than a fixed milestone — recent work moving branch-merge logic into the database layer, for example, produced about a 4x improvement in merge times on datasets ranging from tens of thousands to hundreds of thousands of objects.
 
 ### How can I get involved?
 
