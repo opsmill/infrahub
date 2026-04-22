@@ -41,6 +41,39 @@ class TestProfiles(TestInfrahubDockerClient):
         current_value = getattr(node, attribute).value
         pytest.fail(f"Expected {attribute}={expected_value} but got {current_value} after {max_retries} seconds")
 
+    async def wait_for_attribute_source(
+        self,
+        client: InfrahubClient,
+        kind: str,
+        node_id: str,
+        attribute: str,
+        expected_source_id: str | None,
+        max_retries: int = 20,
+    ) -> None:
+        """Poll until the attribute's source.id matches the expected value.
+
+        Profile refreshes update `.value` and `.source` separately, so tests that
+        assert on `.source.id` (or `.is_from_profile`) right after waiting on
+        `.value` can race. Use this helper after `wait_for_attribute_value` when
+        the assertion depends on source metadata.
+        """
+
+        def _source_id(node: InfrahubNode) -> str | None:
+            attr_value = getattr(node, attribute)
+            source = getattr(attr_value, "source", None)
+            return source.id if source is not None else None
+
+        for _ in range(max_retries):
+            node = await client.get(kind=kind, id=node_id, property=True)
+            if _source_id(node) == expected_source_id:
+                return
+            await sleep(1)
+
+        node = await client.get(kind=kind, id=node_id, property=True)
+        pytest.fail(
+            f"Expected {attribute}.source.id={expected_source_id} but got {_source_id(node)} after {max_retries} seconds"
+        )
+
     async def wait_for_relationship_peer(
         self,
         client: InfrahubClient,
@@ -180,6 +213,13 @@ class TestProfiles(TestInfrahubDockerClient):
         await self.wait_for_attribute_value(
             client=client, kind="TestingDevice", node_id=device.id, attribute="weight", expected_value=50
         )
+        await self.wait_for_attribute_source(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="weight",
+            expected_source_id=profile_low.id,
+        )
 
         device_updated = await client.get(kind="TestingDevice", id=device.id, property=True)
         assert device_updated.weight.value == 50
@@ -214,6 +254,13 @@ class TestProfiles(TestInfrahubDockerClient):
 
         await self.wait_for_attribute_value(
             client=client, kind="TestingDevice", node_id=device.id, attribute="height", expected_value=None
+        )
+        await self.wait_for_attribute_source(
+            client=client,
+            kind="TestingDevice",
+            node_id=device.id,
+            attribute="height",
+            expected_source_id=None,
         )
         device_after_delete = await client.get(kind="TestingDevice", id=device.id, property=True)
         assert device_after_delete.height.value is None
