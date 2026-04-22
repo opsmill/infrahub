@@ -77,7 +77,7 @@ Destination names must match `[a-z0-9_]+` (lowercase letters, digits, and unders
 
 :::warning
 
-`INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES` and `INFRAHUB_LOG_FORWARDING_DESTINATIONS` are mutually exclusive. Use one or the other, not both. If both are set, Infrahub will raise a validation error on startup.
+`INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES` and `INFRAHUB_LOG_FORWARDING_DESTINATIONS` should not both be set unless they define the exact same destinations. Mixing the two approaches is not recommended — pick one method and use it consistently.
 
 :::
 
@@ -170,7 +170,7 @@ Destination names must be unique. Duplicate names are rejected during configurat
 
 ## Enabling application log forwarding
 
-By default, only audit events are forwarded. Application log forwarding adds exception events such as permission denied (`infrahub.permission.denied`) to the forwarded stream. These are sent as `APPLICATION_LOG` messages through the `forward_exception()` path and require explicit opt-in per destination:
+By default, only audit events are forwarded. Enabling application log forwarding adds permission denied events (`infrahub.permission.denied`) to the forwarded stream. These are the only events currently sent through this channel. They require explicit opt-in per destination:
 
 ```toml
 [[log_forwarding.destinations]]
@@ -179,12 +179,9 @@ type = "syslog"
 host = "syslog.example.com"
 protocol = "tcp"
 forward_application_logs = true
-min_log_severity = "WARNING"
 ```
 
-The `min_log_severity` field filters which messages are forwarded. Options are: `DEBUG`, `INFO`, `WARNING` (default), `ERROR`, `CRITICAL`.
-
-Application log messages use syslog facility `LOG_LOCAL0` (16), while audit events use `LOG_AUTH` (4). This distinction helps receivers separate and route the two categories independently.
+Permission denied events use syslog facility `LOG_LOCAL0` (16), while audit events use `LOG_AUTH` (4). This distinction helps receivers separate and route the two categories independently.
 
 :::warning
 

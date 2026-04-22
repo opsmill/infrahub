@@ -36,14 +36,14 @@ Log forwarding uses a queue-based, non-blocking architecture to ensure event pro
 
 The data flow is:
 
-1. An action in Infrahub generates an `InfrahubEvent` (or a `ForwardableError` for permission denials)
-2. The `LogForwardingService` converts it to a `SyslogMessage` and enqueues it
+1. An action in Infrahub generates an event (or a permission denied exception)
+2. The log forwarding service converts it to a syslog message and enqueues it
 3. Each configured destination has its own independent async queue (bounded by `queue_size`, default 10,000)
 4. A per-destination consumer task reads from the queue and transmits over the configured protocol
 5. TCP connections use exponential backoff reconnection (capped at `max_reconnect_interval`)
 6. On graceful shutdown, queues are drained up to `shutdown_drain_timeout` seconds before connections close
 
-In the Community Edition, the `LogForwardingServiceCommunity` stub replaces the enterprise implementation. All methods return immediately with zero overhead.
+In the Community Edition, a no-op stub replaces the enterprise implementation. All methods return immediately with zero overhead.
 
 :::note
 
@@ -56,7 +56,7 @@ The syslog header hostname defaults to `socket.getfqdn()`. In Docker environment
 Log forwarding handles two categories of messages, each mapped to a different syslog facility:
 
 - **Audit events** (`AUDIT_EVENT`): Generated from Infrahub events representing user and system actions. Uses syslog facility `LOG_AUTH` (4). Always forwarded when a destination is configured.
-- **Application logs** (`APPLICATION_LOG`): Used for forwarding exception events such as permission denials. Uses syslog facility `LOG_LOCAL0` (16). Opt-in per destination via `forward_application_logs` with severity filtering via `min_log_severity`.
+- **Application logs** (`APPLICATION_LOG`): Currently used exclusively for forwarding permission denied exceptions. Uses syslog facility `LOG_LOCAL0` (16). Opt-in per destination via `forward_application_logs`.
 
 The facility distinction allows receivers to separate and route audit events independently from application-level messages.
 
@@ -190,7 +190,7 @@ TLS adds encryption on top of TCP. It is only valid with TCP — configuring TLS
 
 Log forwarding works with any syslog-compatible receiver. Brief guidance for common platforms:
 
-- **Splunk**: Configure a TCP or UDP syslog input on a Heavy Forwarder or Universal Forwarder. Set the sourcetype to `syslog` or a custom type. RFC 5424 enables structured field extraction.
+- **Splunk**: Configure a TCP or UDP syslog input on a Heavy Forwarder or Universal Forwarder. Set the sourcetype to `syslog` or a custom type.
 - **Datadog**: Use the Datadog Agent's syslog input or configure a syslog-to-Datadog pipeline. Point Infrahub at the agent's syslog listening port.
 - **Elastic (ELK)**: Configure Logstash with a `syslog` input plugin or use the Filebeat syslog input for a lighter footprint. RFC 5424 works well with the Logstash syslog codec.
 - **IBM QRadar / ArcSight**: Use standard syslog ingestion. RFC 5424 is recommended. Configure a log source pointing to Infrahub's hostname.
