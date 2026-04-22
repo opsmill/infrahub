@@ -137,9 +137,7 @@ export const FormMessage = ({
   );
 };
 
-interface FormSubmitProps extends ButtonProps {
-  ref?: React.Ref<HTMLButtonElement>;
-}
+interface FormSubmitProps extends ButtonProps {}
 
 export const FormSubmit = ({ children, ref, ...props }: FormSubmitProps) => {
   const { formState } = useFormContext();
