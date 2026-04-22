@@ -8523,7 +8523,6 @@ type InternalAccountToken implements CoreNode {
 
 """External authentication provider identity linked to an account"""
 type InternalExternalIdentity implements CoreNode {
-  _updated_at: DateTime @deprecated(reason: "Query the node_metadata field instead. Will be removed in Infrahub 1.9")
   account: NestedEdgedCoreGenericAccount!
   display_label: String
   """Human friendly identifier"""
