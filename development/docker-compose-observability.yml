@@ -6,8 +6,11 @@ services:
   #  - Tempo to receive traces
   #  - Grafana to visualize metrics, logs, and traces
   #  - Loki to receive and store logs
+  #
+  # Services are prefixed with "infrahub-" to avoid DNS collisions with any
+  # pre-existing "prometheus", "grafana", etc. services a user may already run.
   # --------------------------------------------------------------------------------
-  alloy:
+  infrahub-alloy:
     profiles: [debug]
     image: grafana/alloy:v1.15.0
     volumes:
@@ -27,10 +30,10 @@ services:
     ports:
       - "12345:12345"
     depends_on:
-      - loki
-      - prometheus
+      - infrahub-loki
+      - infrahub-prometheus
 
-  loki:
+  infrahub-loki:
     profiles: [debug]
     image: grafana/loki:3.7.1
     command:
@@ -45,7 +48,7 @@ services:
     ports:
       - "3100:3100"
 
-  init:
+  infrahub-tempo-init:
     profiles: [trace]
     image: busybox:latest
     user: root
@@ -56,7 +59,7 @@ services:
     volumes:
       - tempo_data:/var/tempo
 
-  tempo:
+  infrahub-tempo:
     profiles: [trace]
     image: grafana/tempo:2.10.3
     volumes:
@@ -70,9 +73,9 @@ services:
     ports:
       - "3200:3200"
     depends_on:
-      - init
+      - infrahub-tempo-init
 
-  task-manager-exporter:
+  infrahub-task-manager-exporter:
     profiles: [debug]
     image: prefecthq/prometheus-prefect-exporter:3.3.0
     environment:
@@ -87,7 +90,7 @@ services:
       namespace: "prefect"
       pod: "prefect-exporter"
 
-  prometheus:
+  infrahub-prometheus:
     profiles: [debug]
     image: prom/prometheus:v3.11.0
     volumes:
@@ -111,7 +114,7 @@ services:
     ports:
       - "9090:9090"
 
-  node-exporter:
+  infrahub-node-exporter:
     profiles: [debug]
     image: prom/node-exporter:v1.10.2
     volumes:
@@ -131,7 +134,7 @@ services:
     ports:
       - "9100:9100"
 
-  cadvisor:
+  infrahub-cadvisor:
     profiles: [debug]
     image: gcr.io/cadvisor/cadvisor:v0.52.1
     privileged: true
@@ -150,7 +153,7 @@ services:
     ports:
       - "8080:8080"
 
-  grafana:
+  infrahub-grafana:
     profiles: [debug]
     image: grafana/grafana:11.4.0
     volumes:
@@ -172,8 +175,8 @@ services:
     ports:
       - "3500:3000"
     depends_on:
-      - prometheus
-      - loki
+      - infrahub-prometheus
+      - infrahub-loki
 
 volumes:
   grafana_data:
