@@ -49,6 +49,7 @@ jobs:
       yaml: ${{ steps.changes.outputs.yaml_all }}
       infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
@@ -1286,7 +1287,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
+      (needs.files-changed.outputs.e2e == 'true' ||
+      needs.files-changed.outputs.version_upgrade_workflow == 'true')
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------
