@@ -241,12 +241,22 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
     async def _run_git_config_global(self, *args: str, setting_name: str) -> None:
+        # Set GIT_DIR so git skips repository auto-discovery from the current
+        # working directory. In dev the worker's cwd is /source, which is a
+        # bind mount of the host checkout; when the host is a git worktree,
+        # /source/.git is a stub file pointing at a host-only path, and git's
+        # discovery walk fails with "fatal: not a git repository" before our
+        # --global write is even attempted. GIT_DIR is ignored by
+        # `git config --global`; its only role here is to short-circuit
+        # discovery. No repo is read or written.
+        env = {**os.environ, "GIT_DIR": "/tmp"}
         proc = await asyncio.create_subprocess_exec(
             "git",
             "config",
             "--global",
             setting_name,
             *args,
+            env=env,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
