@@ -118,16 +118,24 @@ jobs:
       - name: Install Python dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.resolve.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.resolve.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -218,21 +226,27 @@ jobs:
                   "Bash(uv run invoke schema.generate-jsonschema)",
                   "Bash(uv run invoke docs.generate)",
                   "Bash(uv run invoke docs.lint)",
-                  "Bash(npm run test)", "Bash(npm run test *)",
-                  "Bash(npm run codegen:graphql)", "Bash(npm run codegen:openapi)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx playwright test *)", "Bash(npx betterer --update)",
-                  "Bash(cd frontend/app && npm run test)",
-                  "Bash(cd frontend/app && npm run test *)",
-                  "Bash(cd frontend/app && npm run codegen:graphql)",
-                  "Bash(cd frontend/app && npm run codegen:openapi)",
+                  "Bash(pnpm run test)", "Bash(pnpm run test *)",
+                  "Bash(pnpm run codegen:graphql)", "Bash(pnpm run codegen:openapi)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(npx betterer --update)", "Bash(pnpm exec betterer --update)",
+                  "Bash(cd frontend/app && pnpm run test)",
+                  "Bash(cd frontend/app && pnpm run test *)",
+                  "Bash(cd frontend/app && pnpm run codegen:graphql)",
+                  "Bash(cd frontend/app && pnpm run codegen:openapi)",
                   "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
                   "Bash(cd frontend/app && npx betterer --update)",
+                  "Bash(cd frontend/app && pnpm exec betterer --update)",
                   "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
                   "Bash((cd frontend/app && npx biome check --write .))",
-                  "Bash((cd frontend/app && npm run codegen:graphql))",
-                  "Bash((cd frontend/app && npm run codegen:openapi))",
+                  "Bash((cd frontend/app && pnpm exec biome check --write .))",
+                  "Bash((cd frontend/app && pnpm run codegen:graphql))",
+                  "Bash((cd frontend/app && pnpm run codegen:openapi))",
                   "Bash((cd frontend/app && npx betterer --update))",
+                  "Bash((cd frontend/app && pnpm exec betterer --update))",
                   "Bash(ls)", "Bash(ls *)"
                 ],
                 "deny": [
@@ -327,16 +341,24 @@ jobs:
       - name: Install Python dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.resolve.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.resolve.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -434,21 +456,27 @@ jobs:
                   "Bash(uv run invoke schema.generate-jsonschema)",
                   "Bash(uv run invoke docs.generate)",
                   "Bash(uv run invoke docs.lint)",
-                  "Bash(npm run test)", "Bash(npm run test *)",
-                  "Bash(npm run codegen:graphql)", "Bash(npm run codegen:openapi)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx playwright test *)", "Bash(npx betterer --update)",
-                  "Bash(cd frontend/app && npm run test)",
-                  "Bash(cd frontend/app && npm run test *)",
-                  "Bash(cd frontend/app && npm run codegen:graphql)",
-                  "Bash(cd frontend/app && npm run codegen:openapi)",
+                  "Bash(pnpm run test)", "Bash(pnpm run test *)",
+                  "Bash(pnpm run codegen:graphql)", "Bash(pnpm run codegen:openapi)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(npx betterer --update)", "Bash(pnpm exec betterer --update)",
+                  "Bash(cd frontend/app && pnpm run test)",
+                  "Bash(cd frontend/app && pnpm run test *)",
+                  "Bash(cd frontend/app && pnpm run codegen:graphql)",
+                  "Bash(cd frontend/app && pnpm run codegen:openapi)",
                   "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
                   "Bash(cd frontend/app && npx betterer --update)",
+                  "Bash(cd frontend/app && pnpm exec betterer --update)",
                   "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
                   "Bash((cd frontend/app && npx biome check --write .))",
-                  "Bash((cd frontend/app && npm run codegen:graphql))",
-                  "Bash((cd frontend/app && npm run codegen:openapi))",
+                  "Bash((cd frontend/app && pnpm exec biome check --write .))",
+                  "Bash((cd frontend/app && pnpm run codegen:graphql))",
+                  "Bash((cd frontend/app && pnpm run codegen:openapi))",
                   "Bash((cd frontend/app && npx betterer --update))",
+                  "Bash((cd frontend/app && pnpm exec betterer --update))",
                   "Bash(ls)", "Bash(ls *)"
                 ],
                 "deny": [

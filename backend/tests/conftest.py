@@ -44,6 +44,7 @@ from infrahub.core.schema.definitions.core import (
     core_account_token,
     core_generic_account,
     core_profile_schema_definition,
+    internal_external_identity,
 )
 from infrahub.core.schema.definitions.core.propose_change import core_proposed_change
 from infrahub.core.schema.manager import SchemaManager
@@ -582,7 +583,7 @@ def do_data_schema(branch: Branch) -> None:
             core_profile_schema_definition,
             core_generic_account,
         ],
-        "nodes": [core_account_token],
+        "nodes": [core_account_token, internal_external_identity],
     }
 
     schema = SchemaRoot(**SCHEMA)

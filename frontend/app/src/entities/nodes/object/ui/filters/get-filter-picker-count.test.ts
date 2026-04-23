@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import type { Filter } from "@/shared/hooks/useFilters";
 
-import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
+import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
 
 import {
   generateAttributeSchema,
   generateNodeSchema,
   generateRelationshipSchema,
-} from "../../../../../tests/fake/schema";
+} from "../../../../../../tests/fake/schema";
 
 describe("getFilterPickerCount", () => {
   it("counts filters matching schema attributes", () => {

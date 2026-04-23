@@ -10,18 +10,17 @@ import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
-import { classNames, sortByOrderWeight } from "@/shared/utils/common";
+import { classNames } from "@/shared/utils/common";
 
 import {
   type FilterDefinition,
-  getFilterDefinitionIcon,
   getFilterDefinitionLabel,
   getFilterDefinitionName,
 } from "@/entities/nodes/object/domain/filter-definition";
-import { getFilterPickerCount } from "@/entities/nodes/object/domain/get-filter-picker-count";
-import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import { FieldFilterForm } from "@/entities/nodes/object/ui/filters/field-filter-form";
-import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
+import { getFilterDefinitionIcon } from "@/entities/nodes/object/ui/filters/get-filter-definition-icon";
+import { getFilterDefinitions } from "@/entities/nodes/object/ui/filters/get-filter-definitions";
+import { getFilterPickerCount } from "@/entities/nodes/object/ui/filters/get-filter-picker-count";
 import type { ModelSchema } from "@/entities/schema/types";
 import { FieldSchemaIcon } from "@/entities/schema/ui/field-schema-icon";
 
@@ -44,19 +43,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
     setSelectedField(null);
   };
 
-  const fields: FilterDefinition[] = [
-    ...sortByOrderWeight([...(schema.attributes ?? []), ...(schema.relationships ?? [])]).map(
-      (field): FilterDefinition => {
-        if ("peer" in field) return { type: "relationship", schema: field };
-
-        const decisionOptions = getDecisionOptions(schema.kind, field.name);
-        return decisionOptions
-          ? { type: "permission-decision", schema: field, options: decisionOptions }
-          : { type: "attribute", schema: field };
-      }
-    ),
-    ...ALL_METADATA_FILTERS,
-  ];
+  const fields: FilterDefinition[] = getFilterDefinitions(schema);
 
   const activeFieldDefinition = fields.find((f) => getFilterDefinitionName(f) === selectedField);
 

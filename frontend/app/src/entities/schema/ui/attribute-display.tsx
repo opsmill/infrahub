@@ -13,9 +13,11 @@ import { AccordionStyled, NullDisplay, PropertyRow, PropertyTitle } from "./styl
 
 export const AttributeDisplay = ({
   attribute,
+  onKindClick,
   defaultOpen = false,
 }: {
   attribute: components["schemas"]["AttributeSchema-Output"];
+  onKindClick?: (kind: string) => void;
   defaultOpen?: boolean;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -43,7 +45,12 @@ export const AttributeDisplay = ({
         <PropertyRow title="Kind" value={attribute.kind} />
         <PropertyRow
           title="Computed attribute"
-          value={<ComputedAttributeDisplay computedAttribute={attribute.computed_attribute} />}
+          value={
+            <ComputedAttributeDisplay
+              computedAttribute={attribute.computed_attribute}
+              onKindClick={onKindClick}
+            />
+          }
         />
         <PropertyRow title="Name" value={attribute.name} />
         <PropertyRow title="Label" value={attribute.label} />

@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import React, { forwardRef, type HTMLAttributes, useState } from "react";
+import React from "react";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
@@ -23,15 +23,15 @@ import { DROPDOWN_ADD_MUTATION, DROPDOWN_REMOVE_MUTATION } from "@/entities/sche
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 
-export type DropdownOption = {
+export interface DropdownOption {
   value: string;
   label: string;
   badge?: string;
   color?: string;
   description?: string;
-};
+}
 
-export interface DropdownProps extends Omit<HTMLAttributes<HTMLButtonElement>, "onChange"> {
+export interface DropdownProps extends Omit<React.HTMLAttributes<HTMLButtonElement>, "onChange"> {
   value?: DropdownOption["value"] | null;
   items: Array<DropdownOption>;
   className?: string;
@@ -39,6 +39,7 @@ export interface DropdownProps extends Omit<HTMLAttributes<HTMLButtonElement>, "
   schema?: ModelSchema;
   field?: AttributeSchema;
   defaultOpen?: boolean;
+  ref?: React.Ref<HTMLButtonElement>;
 }
 
 export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof ComboboxItem> {
@@ -48,13 +49,19 @@ export interface DropdownItemProps extends React.ComponentPropsWithoutRef<typeof
   schema?: ModelSchema;
   onDelete: (item: DropdownOption) => void;
   item: DropdownOption;
+  ref?: React.Ref<React.ComponentRef<typeof CommandItem>>;
 }
 
-export const DropdownItem = React.forwardRef<
-  React.ElementRef<typeof CommandItem>,
-  DropdownItemProps
->(({ fieldSchema, schema, onDelete, className, item, ...props }, ref) => {
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
+export const DropdownItem = ({
+  fieldSchema,
+  schema,
+  onDelete,
+  className,
+  item,
+  ref,
+  ...props
+}: DropdownItemProps) => {
+  const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [removeDropdownOption, { loading }] = useMutation(DROPDOWN_REMOVE_MUTATION);
 
   return (
@@ -132,7 +139,7 @@ export const DropdownItem = React.forwardRef<
       )}
     </ComboboxItem>
   );
-});
+};
 
 interface DropdownAddActionProps {
   schema: ModelSchema;
@@ -140,13 +147,9 @@ interface DropdownAddActionProps {
   addOption: (item: DropdownOption) => void;
 }
 
-export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
-  schema,
-  field,
-  addOption,
-}) => {
+export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActionProps) => {
   const namespace = useNamespace(schema.namespace);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = React.useState(false);
   const [addDropdownItem] = useMutation(DROPDOWN_ADD_MUTATION);
 
   return (
@@ -222,63 +225,70 @@ export const DropdownAddAction: React.FC<DropdownAddActionProps> = ({
   );
 };
 
-export const Dropdown = forwardRef<HTMLButtonElement, DropdownProps>(
-  ({ items, onChange, value, schema, field, defaultOpen, ...props }, ref) => {
-    const [localItems, setLocalItems] = useState(items);
-    const [open, setOpen] = useState(!!defaultOpen);
+export const Dropdown = ({
+  items,
+  onChange,
+  value,
+  schema,
+  field,
+  defaultOpen,
+  ref,
+  ...props
+}: DropdownProps) => {
+  const [localItems, setLocalItems] = React.useState(items);
+  const [open, setOpen] = React.useState(!!defaultOpen);
 
-    const handleAddOption = (newOption: DropdownOption) => {
-      setLocalItems([...localItems, newOption]);
-      onChange(newOption.value);
-    };
+  const handleAddOption = (newOption: DropdownOption) => {
+    setLocalItems([...localItems, newOption]);
+    onChange(newOption.value);
+  };
 
-    const handleDeleteOption = (deletedItem: DropdownOption) => {
-      setLocalItems(localItems.filter((item) => item.value !== deletedItem.value));
-      if (value === deletedItem.value) {
-        onChange(null);
-      }
-    };
+  const handleDeleteOption = (deletedItem: DropdownOption) => {
+    setLocalItems(localItems.filter((item) => item.value !== deletedItem.value));
+    if (value === deletedItem.value) {
+      onChange(null);
+    }
+  };
 
-    const selectItem = localItems.find((item) => item.value === value);
+  const selectItem = localItems.find((item) => item.value === value);
 
-    return (
-      <Combobox open={open} onOpenChange={setOpen}>
-        <ComboboxTrigger ref={ref} style={getDropdownStyle(selectItem?.color)} {...props}>
-          <div className="flex w-full items-center justify-between">
-            {selectItem?.label}
+  return (
+    <Combobox open={open} onOpenChange={setOpen}>
+      <ComboboxTrigger ref={ref} style={getDropdownStyle(selectItem?.color)} {...props}>
+        <div className="flex w-full items-center justify-between">
+          {selectItem?.label}
 
-            {selectItem?.badge && <Badge>{selectItem?.badge}</Badge>}
-          </div>
-        </ComboboxTrigger>
+          {selectItem?.badge && <Badge>{selectItem?.badge}</Badge>}
+        </div>
+      </ComboboxTrigger>
 
-        <ComboboxContent fitTriggerWidth={false}>
-          <ComboboxList>
-            <ComboboxEmpty>No dropdown found.</ComboboxEmpty>
-            {localItems.map((item) => (
-              <DropdownItem
-                key={item.value}
-                schema={schema}
-                fieldSchema={field}
-                value={item.value}
-                selectedValue={selectItem?.value}
-                onSelect={() => {
-                  onChange(item.value === value ? null : item.value);
-                  setOpen(false);
-                }}
-                item={item}
-                onDelete={handleDeleteOption}
-              />
-            ))}
-          </ComboboxList>
+      <ComboboxContent fitTriggerWidth={false}>
+        <ComboboxList>
+          <ComboboxEmpty>No dropdown found.</ComboboxEmpty>
+          {localItems.map((item) => (
+            <DropdownItem
+              key={item.value}
+              schema={schema}
+              fieldSchema={field}
+              value={item.value}
+              selectedValue={selectItem?.value}
+              onSelect={() => {
+                onChange(item.value === value ? null : item.value);
+                setOpen(false);
+              }}
+              item={item}
+              onDelete={handleDeleteOption}
+            />
+          ))}
+        </ComboboxList>
 
-          {schema && field && (
-            <DropdownAddAction schema={schema} field={field} addOption={handleAddOption} />
-          )}
-        </ComboboxContent>
-      </Combobox>
-    );
-  }
-);
+        {schema && field && (
+          <DropdownAddAction schema={schema} field={field} addOption={handleAddOption} />
+        )}
+      </ComboboxContent>
+    </Combobox>
+  );
+};
 
 export function getDropdownStyle(color?: string | null) {
   if (!color) return;

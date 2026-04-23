@@ -1,5 +1,5 @@
 import { useQueryState } from "nuqs";
-import { forwardRef, useImperativeHandle, useState } from "react";
+import React from "react";
 import { useParams } from "react-router";
 
 import useQuery from "@/shared/api/graphql/useQuery";
@@ -32,9 +32,13 @@ export const getStateBadge: { [key: string]: any } = {
   CANCELLING: <Badge variant={"gray"}>CANCELLING</Badge>,
 };
 
-export const TaskItemDetails = forwardRef((_, ref) => {
+interface TaskItemDetailsProps {
+  ref?: React.Ref<{ refetch: () => void }>;
+}
+
+export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
   const [idFromQsp] = useQueryState(QSP.TASK_ID);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = React.useState("");
 
   const { task: idFromParams } = useParams();
 
@@ -43,7 +47,7 @@ export const TaskItemDetails = forwardRef((_, ref) => {
   const { loading, error, data = {}, refetch } = useQuery(TASK_DETAILS, { variables: { ids } });
 
   // Provide refetch function to parent
-  useImperativeHandle(ref, () => ({ refetch }));
+  React.useImperativeHandle(ref, () => ({ refetch }));
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
@@ -158,4 +162,4 @@ export const TaskItemDetails = forwardRef((_, ref) => {
       </div>
     </div>
   );
-});
+};

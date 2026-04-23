@@ -251,12 +251,14 @@ class TestBranchQuery(TestInfrahubApp):
             }
         """
         gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+
+        # Query all branches without pagination
         all_branches = await graphql(
             schema=gql_params.schema,
             source=query,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={"offset": 2, "limit": 5},
+            variable_values={},
         )
         assert all_branches.errors is None
         assert all_branches.data
@@ -285,6 +287,19 @@ class TestBranchQuery(TestInfrahubApp):
         )
 
         assert all_branches.data["InfrahubBranch"]["default_branch"]["name"]["value"] == "main"
+
+        # Query with offset and limit to verify pagination works
+        paginated_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"offset": 2, "limit": 5},
+        )
+        assert paginated_branches.errors is None
+        assert paginated_branches.data
+        assert paginated_branches.data["InfrahubBranch"]["count"] == 12  # count reflects total, not paginated
+        assert len(paginated_branches.data["InfrahubBranch"]["edges"]) == 5
 
         name_branches = await graphql(
             schema=gql_params.schema,
