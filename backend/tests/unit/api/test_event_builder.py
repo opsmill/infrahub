@@ -1,10 +1,3 @@
-"""Builder-level coverage for login/logout activity event construction.
-
-Complements the REST-level tests in ``tests/component/api/test_auth_events.py``
-by exercising ``make_login_event`` / ``make_logout_event`` directly — they are
-shared by the password, OAuth2 and OIDC endpoints.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any

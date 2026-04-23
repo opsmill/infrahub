@@ -1,15 +1,3 @@
-"""Admin-only visibility for account events in the InfrahubEvent GraphQL query.
-
-Non-admin users must not be able to see login/logout activity. The resolver in
-``backend/infrahub/graphql/queries/event.py`` enforces this via the
-``MANAGE_ACCOUNTS`` global permission:
-
-* An explicit filter on an ``infrahub.account.*`` event type raises
-  ``PermissionDeniedError``.
-* An unfiltered query silently excludes the account prefix for non-admins.
-* An admin passes both checks.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
