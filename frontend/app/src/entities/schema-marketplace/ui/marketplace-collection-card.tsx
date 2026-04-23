@@ -69,7 +69,7 @@ export function MarketplaceCollectionCard({
       <footer className="flex flex-wrap items-center gap-1.5 pt-1 text-xs">
         <span className="text-gray-500">{collection.namespace}</span>
         {collection.tags.slice(0, 4).map((tag) => (
-          <Badge key={tag.id} variant="lightgray-outline">
+          <Badge key={tag.id ?? tag.name} variant="lightgray-outline">
             {tag.name}
           </Badge>
         ))}

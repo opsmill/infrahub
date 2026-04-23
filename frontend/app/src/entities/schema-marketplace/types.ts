@@ -6,12 +6,12 @@
 export type MarketplaceItemKind = "schema" | "collection";
 
 export interface MarketplaceTag {
-  id: string;
+  id: string | null;
   name: string;
 }
 
 export interface MarketplaceTagCount {
-  id: string;
+  id: string | null;
   name: string;
   count: number;
 }

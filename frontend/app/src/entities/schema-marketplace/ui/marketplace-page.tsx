@@ -175,7 +175,7 @@ export function MarketplacePage() {
             const active = selectedTags.includes(tag.name);
             return (
               <button
-                key={tag.id}
+                key={tag.id ?? tag.name}
                 type="button"
                 onClick={() =>
                   setSelectedTags((prev) =>

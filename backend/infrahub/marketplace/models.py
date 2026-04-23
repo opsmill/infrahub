@@ -12,15 +12,15 @@ _SEMVER_RE = r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
 
 class MarketplaceTag(BaseModel):
     model_config = ConfigDict(frozen=True)
-    id: str
+    id: str | None = None
     name: str
 
 
 class MarketplaceTagCount(BaseModel):
     model_config = ConfigDict(frozen=True)
-    id: str
+    id: str | None = None
     name: str
-    count: int
+    count: int = 0
 
 
 class MarketplaceAuthor(BaseModel):
