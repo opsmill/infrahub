@@ -844,7 +844,7 @@ nodes:
 `restricted_namespaces` is optional. When not set on a generic, nodes from any namespace can inherit from it.
 :::
 
-Infrahub uses this same mechanism on several of its own built-in generics — for example `CoreGenericRepository`, `CoreValidator`, `CoreCheck`, `CoreWebhook`, `CoreComment`, and `CoreThread` — to prevent accidental extension of types that rely on specific internal code. Nodes inheriting from these generics must belong to the `Core` namespace.
+Infrahub uses this same mechanism on several of its own built-in generics — for example `CoreGenericRepository` and `CoreWebhook` — to prevent accidental extension of types that rely on specific internal code. Nodes inheriting from these generics must belong to the `Core` namespace.
 
 ### Inherited properties
 
