@@ -108,6 +108,7 @@ const sidebars: SidebarsConfig = {
             'guides/jinja2-transform',
             'guides/python-transform',
             'guides/artifact',
+            'guides/graphql-fragment',
             'guides/object-storage',
           ],
         },
