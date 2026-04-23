@@ -133,6 +133,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/events-rules-actions',
             'guides/webhooks',
+            'guides/log-forwarding',
           ],
         },
         {
@@ -310,6 +311,7 @@ const sidebars: SidebarsConfig = {
                 'topics/event-actions',
                 'topics/tasks',
                 'topics/webhooks',
+                'topics/log-forwarding',
               ],
             },
             {
