@@ -3,6 +3,8 @@ import asyncio
 from prefect.server.database import provide_database_interface
 from prefect.server.models.block_registration import run_block_auto_registration
 
+from .indexes import create_custom_indexes
+
 
 async def init_prefect() -> None:
     db = provide_database_interface()
@@ -12,6 +14,7 @@ async def init_prefect() -> None:
 
     async with session:
         await run_block_auto_registration(session=session)
+        await create_custom_indexes(session=session)
 
 
 if __name__ == "__main__":
