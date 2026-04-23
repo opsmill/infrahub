@@ -1221,7 +1221,8 @@ All elements of the schema are identified by a human readable identifier that al
 Since `namespace` & `name` are used to identify the elements of the schema, if you need to update them after loading the schema an additional step will be required.
 
 In order to update the human readable identifier, it's required to temporarily provide the internal identifier of the element directly in the configuration.
-All Node, Generic, Attribute or Relationship have their unique identifier that can be find easily in the schema explorer in the frontend [http://localhost:8000/schema](http://localhost:8000/schema)
+All Node, Generic, Attribute or Relationship have their unique identifier that can be find easily in the schema explorer in the frontend [http://localhost:8000/schema](http://localhost:8000/schema).
+The schema explorer provides two complementary views: a **list view** for browsing models and inspecting their full definition, and an interactive **graph view** that visualizes the relationships between models. Toggle between them using the switch at the top-right of the schema page.
 The internal identifier should be an UUID4, with 36 characters.
 
 <Tabs groupId="schema-version" queryString>
