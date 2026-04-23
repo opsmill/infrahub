@@ -130,6 +130,38 @@ plus the chip-list for selected/excluded kinds.
 **Action:** extract `KindMultiSelect` (chip list + searchable combobox) and reuse it in
 both; extract the advanced-options block as well.
 
+### 9. Extract the schema-viewer card shell into the shared UI design system
+
+Both features render the same visual "card" pattern but neither goes through a shared
+component:
+
+- `frontend/app/src/entities/schema/ui/schema-viewer.tsx:82-111` — a `<section>` with
+  `rounded-md border border-gray-200 bg-white p-4 shadow-lg`, a header row (badges +
+  close button), a title block (icon + label + description), and a body slot.
+- `frontend/app/src/entities/path-traversal/ui/infra-node.tsx` — the React Flow node
+  renders the same shell (bordered rounded panel, header with kind badge, title, body
+  content).
+
+Both reimplement the classNames and layout. Infrahub already has a `Card` primitive at
+`frontend/app/src/shared/components/ui/card.tsx` — the schema-viewer and path-traversal
+cards should use it instead of hand-rolled `<section>` markup.
+
+**Action:**
+
+1. Audit `shared/components/ui/card.tsx` for the slots these two call sites need
+   (header with right-aligned actions, icon + title + description block, body).
+   Extend it if needed (e.g. a `CardHeader` that supports trailing actions, a
+   `CardTitle` variant that takes an icon + description).
+2. Refactor `schema-viewer.tsx` to render with `Card` / `CardHeader` / `CardContent`
+   instead of the inline `<section>` with hardcoded Tailwind classes.
+3. Refactor `infra-node.tsx` to use the same shared `Card`, so graph nodes and the
+   schema viewer share identical visual language.
+4. Make sure the shared component keeps the `data-testid="schema-viewer"` hook (or
+   allow callers to pass `data-testid`) so existing screenshot/E2E tests keep working.
+
+This removes two copies of the same visual pattern and guarantees the next feature that
+needs a bordered content card doesn't reinvent it either.
+
 ## Smaller nits
 
 - `path-traversal.query-keys.ts` spreads params positionally into the cache key. A single
