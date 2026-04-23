@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import type React from "react";
 import DateTimePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 import { isValid } from "date-fns";
-import { forwardRef } from "react";
 
 import { Button } from "@/shared/components/ui/button";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -16,20 +16,19 @@ interface CustomInputProps {
   disabled?: boolean;
   className?: string;
   onClick?: () => void;
+  ref?: React.Ref<HTMLInputElement>;
 }
 
-const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
-  ({ id, value, disabled, className, onClick }, ref) => (
-    <input
-      id={id}
-      onClick={onClick}
-      ref={ref}
-      value={value}
-      readOnly
-      className={classNames(inputStyle, "cursor-pointer pr-10", className)}
-      disabled={disabled}
-    />
-  )
+const CustomInput = ({ id, value, disabled, className, onClick, ref }: CustomInputProps) => (
+  <input
+    id={id}
+    onClick={onClick}
+    ref={ref}
+    value={value}
+    readOnly
+    className={classNames(inputStyle, "cursor-pointer pr-10", className)}
+    disabled={disabled}
+  />
 );
 
 interface DatePickerProps {

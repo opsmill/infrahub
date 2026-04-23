@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { toast } from "react-toastify";
 
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -13,58 +13,65 @@ export interface ListProps
   defaultValue?: string[];
   value?: string[];
   onChange?: (value: string[]) => void;
+  ref?: React.Ref<HTMLInputElement>;
 }
 
-export const List = React.forwardRef<HTMLInputElement, ListProps>(
-  ({ defaultValue = [], value, onChange, className, disabled, ...props }, ref) => {
-    const [internalValue, setInternalValue] = useState<string[]>(defaultValue);
-    const items = value ?? internalValue;
+export const List = ({
+  defaultValue = [],
+  value,
+  onChange,
+  className,
+  disabled,
+  ref,
+  ...props
+}: ListProps) => {
+  const [internalValue, setInternalValue] = React.useState<string[]>(defaultValue);
+  const items = value ?? internalValue;
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        event.stopPropagation();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      event.stopPropagation();
 
-        const trimmedItem = event.currentTarget.value.trim();
-        if (!trimmedItem) return;
+      const trimmedItem = event.currentTarget.value.trim();
+      if (!trimmedItem) return;
 
-        if (items.includes(trimmedItem)) {
-          toast(<Alert message="Item already exists in the list" type={ALERT_TYPES.INFO} />);
-          return;
-        }
-
-        const newValue = [...items, trimmedItem];
-        onChange?.(newValue);
-        setInternalValue(newValue);
-
-        event.currentTarget.value = "";
+      if (items.includes(trimmedItem)) {
+        toast(<Alert message="Item already exists in the list" type={ALERT_TYPES.INFO} />);
+        return;
       }
-    };
 
-    const handleDelete = (itemToDelete: string) => {
-      if (disabled) return;
-
-      const newValue = items.filter((item) => item !== itemToDelete);
+      const newValue = [...items, trimmedItem];
       onChange?.(newValue);
       setInternalValue(newValue);
-    };
 
-    return (
-      <div>
-        <Input
-          ref={ref}
-          placeholder="Add a new item + hit 'enter'"
-          className={classNames("mb-1", className)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          {...props}
-        />
+      event.currentTarget.value = "";
+    }
+  };
 
-        <ListItems items={items} disabled={disabled} onDelete={handleDelete} />
-      </div>
-    );
-  }
-);
+  const handleDelete = (itemToDelete: string) => {
+    if (disabled) return;
+
+    const newValue = items.filter((item) => item !== itemToDelete);
+    onChange?.(newValue);
+    setInternalValue(newValue);
+  };
+
+  return (
+    <div>
+      <Input
+        ref={ref}
+        placeholder="Add a new item + hit 'enter'"
+        className={classNames("mb-1", className)}
+        onKeyDown={handleKeyDown}
+        disabled={disabled}
+        {...props}
+      />
+
+      <ListItems items={items} disabled={disabled} onDelete={handleDelete} />
+    </div>
+  );
+};
 
 const ListItems = ({
   items,

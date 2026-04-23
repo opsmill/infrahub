@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { forwardRef, useState } from "react";
+import React from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -57,16 +57,20 @@ export const RelationshipHierarchicalContent = ({
 
 export interface RelationshipHierarchicalInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
+  ref?: React.Ref<HTMLButtonElement>;
   onChange?: (value: RelationshipNode | null) => void;
   value?: RelationshipNode | null;
   peer: string;
 }
 
-export const RelationshipHierarchicalInput = forwardRef<
-  HTMLButtonElement,
-  RelationshipHierarchicalInputProps
->(({ value, onChange, peer, ...props }, ref) => {
-  const [open, setOpen] = useState(false);
+export const RelationshipHierarchicalInput = ({
+  ref,
+  value,
+  onChange,
+  peer,
+  ...props
+}: RelationshipHierarchicalInputProps) => {
+  const [open, setOpen] = React.useState(false);
 
   const handleSelect = (relationship: RelationshipNode) => {
     onChange?.(relationship.id === value?.id ? null : relationship);
@@ -82,20 +86,25 @@ export const RelationshipHierarchicalInput = forwardRef<
       <RelationshipHierarchicalContent peer={peer} onSelect={handleSelect} value={value} />
     </Combobox>
   );
-});
+};
 
 export interface RelationshipHierarchicalManyInputProps
   extends Omit<ComboboxTriggerProps, "value" | "onChange"> {
+  ref?: React.Ref<HTMLButtonElement>;
   onChange: (value: RelationshipNode[]) => void;
   value?: RelationshipNode[] | null;
   peer: string;
 }
 
-export const RelationshipHierarchicalManyInput = forwardRef<
-  HTMLButtonElement,
-  RelationshipHierarchicalManyInputProps
->(({ value, onChange, peer, className, ...props }, ref) => {
-  const [open, setOpen] = useState(false);
+export const RelationshipHierarchicalManyInput = ({
+  ref,
+  value,
+  onChange,
+  peer,
+  className,
+  ...props
+}: RelationshipHierarchicalManyInputProps) => {
+  const [open, setOpen] = React.useState(false);
 
   const handleSelect = (relationship: Node) => {
     onChange(value ? [...value, relationship] : [relationship]);
@@ -153,4 +162,4 @@ export const RelationshipHierarchicalManyInput = forwardRef<
       />
     </Combobox>
   );
-});
+};

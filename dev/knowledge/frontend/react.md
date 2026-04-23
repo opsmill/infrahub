@@ -18,9 +18,8 @@ Write simple code; the compiler optimizes it.
 `ref` is a regular prop in React 19.
 
 ```tsx
-// Don't use forwardRef
-interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
-  ref?: Ref<HTMLInputElement>;
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  ref?: React.Ref<HTMLInputElement>;
 }
 
 function Input({ ref, ...props }: InputProps) {

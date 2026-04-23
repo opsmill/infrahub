@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from "class-variance-authority";
-import { type ButtonHTMLAttributes, forwardRef } from "react";
+import type React from "react";
 import { Link, type LinkProps } from "react-router";
 
 import { Spinner } from "@/shared/components/ui/spinner";
@@ -39,31 +39,39 @@ const buttonVariants = cva(
 );
 
 export interface ButtonProps
-  extends ButtonHTMLAttributes<HTMLButtonElement>,
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
+  ref?: React.Ref<HTMLButtonElement>;
   isLoading?: boolean;
 }
 
-export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, type = "button", children, isLoading, ...props }, ref) => {
-    return (
-      <button
-        type={type}
-        className={classNames(
-          "relative",
-          focusVisibleStyle,
-          buttonVariants({ variant, size, className }),
-          isLoading && "text-transparent"
-        )}
-        ref={ref}
-        {...props}
-      >
-        {isLoading && <Spinner className="absolute" />}
-        {children}
-      </button>
-    );
-  }
-);
+export function Button({
+  className,
+  variant,
+  size,
+  type = "button",
+  children,
+  isLoading,
+  ref,
+  ...props
+}: ButtonProps) {
+  return (
+    <button
+      type={type}
+      className={classNames(
+        "relative",
+        focusVisibleStyle,
+        buttonVariants({ variant, size, className }),
+        isLoading && "text-transparent"
+      )}
+      ref={ref}
+      {...props}
+    >
+      {isLoading && <Spinner className="absolute" />}
+      {children}
+    </button>
+  );
+}
 
 interface ButtonWithTooltipProps extends ButtonProps {
   tooltipContent?: TooltipProps["content"];
@@ -71,40 +79,44 @@ interface ButtonWithTooltipProps extends ButtonProps {
   side?: TooltipProps["side"];
 }
 
-export const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltipProps>(
-  (
-    { tooltipContent, tooltipEnabled, side = "top", disabled, onClick, className, ...props },
-    ref
-  ) => {
-    // Native `disabled` kills pointer events, so the tooltip never fires on the
-    // button itself. Use aria-disabled so the button stays hoverable and the
-    // tooltip anchors directly to it (no extra wrapper that would shift side/align).
-    const isDisabled = !!disabled;
+export function ButtonWithTooltip({
+  tooltipContent,
+  tooltipEnabled,
+  side = "top",
+  disabled,
+  onClick,
+  className,
+  ref,
+  ...props
+}: ButtonWithTooltipProps) {
+  // Native `disabled` kills pointer events, so the tooltip never fires on the
+  // button itself. Use aria-disabled so the button stays hoverable and the
+  // tooltip anchors directly to it (no extra wrapper that would shift side/align).
+  const isDisabled = !!disabled;
 
-    return (
-      <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
-        <Button
-          ref={ref}
-          {...props}
-          aria-disabled={isDisabled || undefined}
-          onClick={isDisabled ? undefined : onClick}
-          className={classNames(isDisabled && "cursor-not-allowed opacity-60", className)}
-        />
-      </Tooltip>
-    );
-  }
-);
-
-export interface LinkButtonProps extends LinkProps, VariantProps<typeof buttonVariants> {}
-
-export const LinkButton = forwardRef<HTMLAnchorElement, LinkButtonProps>(
-  ({ className, variant, size, ...props }, ref) => {
-    return (
-      <Link
+  return (
+    <Tooltip enabled={tooltipEnabled} content={tooltipContent} side={side}>
+      <Button
         ref={ref}
-        className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
         {...props}
+        aria-disabled={isDisabled || undefined}
+        onClick={isDisabled ? undefined : onClick}
+        className={classNames(isDisabled && "cursor-not-allowed opacity-60", className)}
       />
-    );
-  }
-);
+    </Tooltip>
+  );
+}
+
+export interface LinkButtonProps extends LinkProps, VariantProps<typeof buttonVariants> {
+  ref?: React.Ref<HTMLAnchorElement>;
+}
+
+export function LinkButton({ className, variant, size, ref, ...props }: LinkButtonProps) {
+  return (
+    <Link
+      ref={ref}
+      className={classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))}
+      {...props}
+    />
+  );
+}
