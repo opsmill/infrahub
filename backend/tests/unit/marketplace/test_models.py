@@ -80,3 +80,29 @@ def test_install_request_repository_target_rejects_empty_repository_id() -> None
             branch_name="main",
             items=[MarketplaceInstallItem(kind="schema", namespace="ns", name="s")],
         )
+
+
+@pytest.mark.parametrize(
+    "bad_branch",
+    [
+        "-flag",  # leading hyphen — parseable as git CLI flag
+        "..",  # path traversal
+        "path/../other",  # embedded path traversal
+        "",  # empty
+        "has space",  # whitespace
+        "has\ttab",  # control char
+        "--upload-pack=/evil",  # flag injection attempt
+        "/absolute",  # leading slash reserved
+    ],
+)
+def test_install_request_rejects_unsafe_branch_name(bad_branch: str) -> None:
+    item = MarketplaceInstallItem(kind="schema", namespace="ns", name="foo", semver=None)
+    with pytest.raises(ValidationError):
+        MarketplaceInstallRequest(target="direct", branch_name=bad_branch, items=[item])
+
+
+@pytest.mark.parametrize("good_branch", ["main", "develop", "feature/foo", "release-1.2", "v1.0.0", "a"])
+def test_install_request_accepts_normal_branch_names(good_branch: str) -> None:
+    item = MarketplaceInstallItem(kind="schema", namespace="ns", name="foo", semver=None)
+    req = MarketplaceInstallRequest(target="direct", branch_name=good_branch, items=[item])
+    assert req.branch_name == good_branch

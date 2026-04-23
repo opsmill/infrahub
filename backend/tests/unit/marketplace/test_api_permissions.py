@@ -15,7 +15,10 @@ import pytest
 
 from infrahub.api.marketplace import _raise_for_install_permissions
 from infrahub.core import registry
-from infrahub.core.account import GlobalPermission, ObjectPermission
+from infrahub.core.account import (  # noqa: TC001  -- used at runtime by _StubPermissionManager.raise_for_permission
+    GlobalPermission,
+    ObjectPermission,
+)
 from infrahub.core.constants import GlobalPermissions
 from infrahub.exceptions import PermissionDeniedError
 
@@ -34,9 +37,7 @@ class _StubPermissionManager:
         self.allowed_actions = allowed_actions
         self.checked: list[str] = []
 
-    def raise_for_permission(
-        self, permission: GlobalPermission | ObjectPermission, message: str = ""
-    ) -> None:
+    def raise_for_permission(self, permission: GlobalPermission | ObjectPermission, message: str = "") -> None:
         action = getattr(permission, "action", None)
         self.checked.append(str(action))
         if action not in self.allowed_actions:

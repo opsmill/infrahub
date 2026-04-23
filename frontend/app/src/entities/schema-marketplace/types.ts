@@ -156,4 +156,6 @@ export type InstallDrawerState =
   | { phase: "idle" }
   | { phase: "submitting" }
   | { phase: "pending"; taskId: string }
+  | { phase: "running"; taskId: string; progress?: number | null }
+  | { phase: "completed"; taskId: string }
   | { phase: "failed"; taskId: string; error: string };

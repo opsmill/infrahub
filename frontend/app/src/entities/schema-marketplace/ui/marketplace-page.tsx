@@ -30,8 +30,12 @@ import type {
 
 type BrowseTab = "schemas" | "collections";
 
-function keyOf(item: MarketplaceInstallItem): string {
-  return `${item.kind}:${item.namespace}/${item.name}@${item.semver ?? "latest"}`;
+// Selection identity is `kind:namespace/name`, excluding semver — clicking a
+// card twice must toggle the same selection even if the upstream cache
+// flipped `latest_version.semver` between clicks. The version to install is
+// captured on the payload (`MarketplaceInstallItem.semver`), not the key.
+function keyOf(item: Pick<MarketplaceInstallItem, "kind" | "namespace" | "name">): string {
+  return `${item.kind}:${item.namespace}/${item.name}`;
 }
 
 export function MarketplacePage() {
@@ -129,12 +133,24 @@ export function MarketplacePage() {
       )}
 
       {showConnectivityError && !showConfigError && (
-        <div className="rounded-md bg-yellow-50 p-3 text-yellow-800 text-sm">
-          <p className="mb-1 font-semibold">Marketplace is unreachable</p>
-          <p>
-            The Infrahub backend can't reach the configured Marketplace. Listings below may be
-            stale or empty. Retry or contact your administrator.
-          </p>
+        <div className="flex items-start justify-between gap-3 rounded-md bg-yellow-50 p-3 text-yellow-800 text-sm">
+          <div>
+            <p className="mb-1 font-semibold">Marketplace is unreachable</p>
+            <p>
+              The Infrahub backend can't reach the configured Marketplace. Listings below may be
+              stale or empty. Retry or contact your administrator.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="xs"
+            onClick={() => status.refetch()}
+            disabled={status.isFetching}
+          >
+            <Icon icon="mdi:refresh" className="mr-1" />
+            {status.isFetching ? "Retrying…" : "Retry"}
+          </Button>
         </div>
       )}
 
@@ -265,7 +281,7 @@ function SchemaList({ isPending, error, items, onSelect, selectionMap }: SchemaL
   return (
     <div className="grid gap-3 md:grid-cols-2">
       {items.map((schema) => {
-        const selected = selectionMap.has(`schema:${schema.namespace}/${schema.name}@${schema.latest_version?.semver ?? "latest"}`);
+        const selected = selectionMap.has(keyOf({ kind: "schema", namespace: schema.namespace, name: schema.name }));
         return (
           <MarketplaceSchemaCard
             key={schema.id}
@@ -301,7 +317,7 @@ function CollectionList({ isPending, error, items, onSelect, selectionMap }: Col
     <div className="grid gap-3 md:grid-cols-2">
       {items.map((collection) => {
         const selected = selectionMap.has(
-          `collection:${collection.namespace}/${collection.name}@latest`
+          keyOf({ kind: "collection", namespace: collection.namespace, name: collection.name })
         );
         return (
           <MarketplaceCollectionCard

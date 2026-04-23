@@ -9,6 +9,7 @@ import { classNames } from "@/shared/utils/common";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { installFromMarketplace } from "@/entities/schema-marketplace/api/marketplace.queries";
+import { useInstallTaskStatus } from "@/entities/schema-marketplace/hooks/use-install-task-status";
 import type { WritableRepositorySummary } from "@/entities/schema-marketplace/hooks/use-writable-repositories";
 import type {
   InstallDrawerState,
@@ -171,18 +172,27 @@ export function InstallDrawer({
   const [branchEdited, setBranchEdited] = useState(false);
   const [state, setState] = useState<InstallDrawerState>({ phase: "idle" });
 
-  // Track the top-bar Infrahub branch: whenever the user switches branches,
-  // retarget the install unless they've already edited the field manually.
+  // Each effect below owns exactly one derived bit of state and reads/writes
+  // a disjoint set — no shared writes, no interleaving order dependency.
+  // They're intentionally kept as three small effects rather than collapsed
+  // into a single reducer because the lifecycles differ:
+  //   1. `branchName` follows the top-bar branch (external prop).
+  //   2. `repositoryId` seeds from the query result (external fetch).
+  //   3. `target` falls back to "direct" when the derived capability vanishes.
+
   useEffect(() => {
+    // 1. When the user switches the top-bar Infrahub branch, retarget the
+    //    install. A manual Override (branchEdited=true) takes precedence.
     if (!branchEdited) {
       setBranchName(currentBranch.name);
     }
   }, [currentBranch.name, branchEdited]);
 
-  // Once writable repositories load (or change), default the repo selection
-  // to the first one. Do NOT override branchName here -- the top-bar branch
-  // takes precedence over the repo's default_branch.
   useEffect(() => {
+    // 2. When writable repositories load (or the current selection disappears
+    //    because the user deleted the repo in another tab), default to the
+    //    first one. Does not touch branchName — the top-bar branch wins over
+    //    `default_branch` as the install target.
     const first = writableRepositories[0];
     if (!first) return;
     const stillValid = writableRepositories.some((r) => r.id === repositoryId);
@@ -191,12 +201,11 @@ export function InstallDrawer({
     }
   }, [writableRepositories, repositoryId]);
 
-  // Fall back to direct when the repository target becomes unavailable:
-  //  - writable repos disappear (rare), OR
-  //  - user switches the top-bar to an Infrahub branch without git sync.
-  // Repository installs without git sync would leave an orphaned Git branch
-  // not mapped to any Infrahub branch, so we gate the UI here.
   useEffect(() => {
+    // 3. Fall back to direct when the repository target becomes unavailable:
+    //    writable repos disappeared, or the user switched to a non-synced
+    //    Infrahub branch. Repository installs without git sync would leave
+    //    an orphaned Git branch not mapped to any Infrahub branch.
     if (!canUseRepositoryTarget && target === "repository") {
       setTarget("direct");
     }
@@ -219,6 +228,34 @@ export function InstallDrawer({
     onError: (err: Error) =>
       setState({ phase: "failed", taskId: "", error: err.message || "Install failed" }),
   });
+
+  // Poll the workflow's task until it reaches a terminal state. Only active
+  // while we have a task_id and the drawer hasn't moved to completed/failed
+  // — the hook's own refetchInterval also stops on terminal server states.
+  const pollingTaskId =
+    state.phase === "pending" || state.phase === "running" ? state.taskId : null;
+  const taskStatus = useInstallTaskStatus(pollingTaskId);
+
+  useEffect(() => {
+    if (!pollingTaskId) return;
+    const snapshot = taskStatus.data;
+    if (!snapshot || !snapshot.found) return;
+    if (snapshot.state === "RUNNING" || snapshot.state === "PENDING" || snapshot.state === "SCHEDULED") {
+      setState({ phase: "running", taskId: pollingTaskId, progress: snapshot.progress });
+      return;
+    }
+    if (snapshot.state === "COMPLETED") {
+      setState({ phase: "completed", taskId: pollingTaskId });
+      return;
+    }
+    if (snapshot.state === "FAILED" || snapshot.state === "CRASHED" || snapshot.state === "CANCELLED") {
+      setState({
+        phase: "failed",
+        taskId: pollingTaskId,
+        error: `Task ${snapshot.state.toLowerCase()} — check the Tasks page for details.`,
+      });
+    }
+  }, [pollingTaskId, taskStatus.data]);
 
   const canInstall =
     selection.length > 0 &&
@@ -382,15 +419,37 @@ export function InstallDrawer({
       </Button>
 
       {state.phase === "pending" && (
-        <p className="text-gray-500 text-sm">
-          Queued as task <span className="font-mono">{state.taskId}</span>. Check the Tasks page
-          for progress.
+        <p className="flex items-center gap-1.5 text-gray-500 text-sm">
+          <Icon icon="mdi:loading" className="animate-spin" />
+          Queued as task <span className="font-mono">{state.taskId.slice(0, 8)}</span>… waiting
+          for worker.
         </p>
+      )}
+      {state.phase === "running" && (
+        <p className="flex items-center gap-1.5 text-gray-500 text-sm">
+          <Icon icon="mdi:loading" className="animate-spin" />
+          Installing{typeof state.progress === "number" ? ` (${state.progress}%)` : "…"}
+        </p>
+      )}
+      {state.phase === "completed" && (
+        <div className="rounded-md bg-green-50 p-3 text-green-800 text-sm">
+          <p className="flex items-center gap-1.5 font-semibold">
+            <Icon icon="mdi:check-circle" /> Install completed
+          </p>
+          <p className="mt-0.5">
+            Task <span className="font-mono">{state.taskId.slice(0, 8)}</span> finished successfully.
+          </p>
+        </div>
       )}
       {state.phase === "failed" && (
         <div className="rounded-md bg-red-50 p-3 text-red-700 text-sm">
           <p className="mb-1 font-semibold">Install failed</p>
           <p>{state.error}</p>
+          {state.taskId && (
+            <p className="mt-1 text-red-600 text-xs">
+              Task <span className="font-mono">{state.taskId.slice(0, 8)}</span>
+            </p>
+          )}
         </div>
       )}
     </Card>

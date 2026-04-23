@@ -3,30 +3,26 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
-
-from prefect import flow, task
-from prefect.cache_policies import NONE
-from prefect.logging import get_run_logger
 
 import yaml
+from git import Actor
+from prefect import flow, task
+from prefect.cache_policies import NONE
 
+from infrahub import lock
+from infrahub.log import get_logger
 from infrahub.marketplace.client import (
     MarketplaceClient,
     MarketplaceNotFoundError,
     MarketplaceTimeoutError,
     MarketplaceUnreachableError,
-    make_marketplace_client,
 )
-from infrahub.marketplace.models import (
+from infrahub.marketplace.models import (  # noqa: TC001  -- Prefect resolves flow parameter types at runtime
     MarketplaceInstallDirectPayload,
     MarketplaceInstallItem,
     MarketplaceInstallPayload,
 )
 from infrahub.workers.dependencies import get_client
-
-if TYPE_CHECKING:
-    pass
 
 
 class MarketplaceInstallError(RuntimeError):
@@ -45,7 +41,7 @@ async def install_marketplace_schemas(payload: MarketplaceInstallPayload) -> dic
     ephemeral per-branch; GitPython's `index.commit` only affects the local
     clone until `push()` actually transmits it.
     """
-    log = get_run_logger()
+    log = get_logger()
 
     schema_files = await _fetch_all_items(marketplace_url=payload.marketplace_url, items=payload.items)
     if not schema_files:
@@ -70,7 +66,7 @@ async def install_marketplace_schemas_direct(payload: MarketplaceInstallDirectPa
     transactional per request (either all schemas in the payload apply or none
     do -- see backend/infrahub/api/schema.py).
     """
-    log = get_run_logger()
+    log = get_logger()
 
     schema_files = await _fetch_all_items(marketplace_url=payload.marketplace_url, items=payload.items)
     if not schema_files:
@@ -93,33 +89,37 @@ async def install_marketplace_schemas_direct(payload: MarketplaceInstallDirectPa
     return {"applied": len(parsed)}
 
 
-async def _fetch_all_items(
-    *, marketplace_url: str, items: list[MarketplaceInstallItem]
-) -> list[tuple[str, str]]:
+async def _fetch_all_items(*, marketplace_url: str, items: list[MarketplaceInstallItem]) -> list[tuple[str, str]]:
     """Download every item. Returns (relative_path, content) tuples.
 
     Raises MarketplaceInstallError on any fetch failure.
     """
-    log = get_run_logger()
+    log = get_logger()
     results: list[tuple[str, str]] = []
     async with MarketplaceClient(base_url=marketplace_url) as client:
         for item in items:
             try:
                 fetched = await _fetch_one_item(client=client, item=item)
             except MarketplaceNotFoundError as exc:
-                raise MarketplaceInstallError(f"marketplace item not found: {item.kind}:{item.namespace}/{item.name}") from exc
+                raise MarketplaceInstallError(
+                    f"marketplace item not found: {item.kind}:{item.namespace}/{item.name}"
+                ) from exc
             except (MarketplaceUnreachableError, MarketplaceTimeoutError) as exc:
-                raise MarketplaceInstallError(f"marketplace unreachable while fetching {item.namespace}/{item.name}") from exc
+                raise MarketplaceInstallError(
+                    f"marketplace unreachable while fetching {item.namespace}/{item.name}"
+                ) from exc
             results.extend(fetched)
             log.info("fetched marketplace item: %s/%s (%d files)", item.namespace, item.name, len(fetched))
     return results
 
 
-@task(name="fetch-marketplace-item", cache_policy=NONE)
-async def _fetch_one_item(
-    client: MarketplaceClient, item: MarketplaceInstallItem
-) -> list[tuple[str, str]]:
-    """Return (relative_path, content) tuples for a single item (schema or collection)."""
+async def _fetch_one_item(client: MarketplaceClient, item: MarketplaceInstallItem) -> list[tuple[str, str]]:
+    """Return (relative_path, content) tuples for a single item (schema or collection).
+
+    Kept as a plain async function rather than a Prefect ``@task`` so the live
+    ``httpx.AsyncClient`` argument doesn't need to cross a serialization
+    boundary if this flow is ever moved to a distributed executor.
+    """
     if item.kind == "schema":
         text, _resolved = await client.fetch_schema_content_by_ref(
             namespace=item.namespace, name=item.name, semver=item.semver
@@ -138,40 +138,11 @@ async def _fetch_one_item(
     raise MarketplaceInstallError(f"unknown item kind: {item.kind!r}")
 
 
-@task(name="commit-schemas-to-repo", cache_policy=NONE)
-async def _commit_and_push(
-    payload: MarketplaceInstallPayload, schema_files: list[tuple[str, str]]
-) -> str:
-    """Write files, stage, commit, and push. Raise on any step — nothing is pushed on failure."""
-    from infrahub.git.repository import InfrahubRepository
+def _write_schema_files_to_worktree(worktree_path: Path, schema_files: list[tuple[str, str]]) -> list[str]:
+    """Write schema YAML into `<worktree>/schemas/`; seed `.infrahub.yml` if absent.
 
-    log = get_run_logger()
-    sdk = get_client()
-    repo_node = await sdk.get(kind="CoreRepository", id=payload.repository_id)
-    repo_name = repo_node.name.value  # type: ignore[union-attr]
-
-    repo = await InfrahubRepository.init(id=payload.repository_id, name=repo_name, client=sdk)
-
-    # Ensure the target branch exists locally (and is pushed to origin if we
-    # have a remote). create_branch_in_git is idempotent -- it's a no-op when
-    # the branch is already present. Covers the "Infrahub branch created with
-    # sync_with_git=False" and "user typed a freeform branch name" cases
-    # without a separate UI prompt.
-    try:
-        await repo.create_branch_in_git(branch_name=payload.branch_name, push_origin=True)
-    except Exception as exc:  # noqa: BLE001
-        raise MarketplaceInstallError(
-            f"couldn't prepare git branch {payload.branch_name!r} on repository {repo_name!r}: {exc}"
-        ) from exc
-
-    git_repo = repo.get_git_repo_worktree(identifier=payload.branch_name)
-    if git_repo is None:
-        raise MarketplaceInstallError(f"no local worktree for branch {payload.branch_name!r}")
-    worktree = repo.get_worktree(identifier=payload.branch_name)
-    if worktree is None:
-        raise MarketplaceInstallError(f"no worktree registered for branch {payload.branch_name!r}")
-
-    worktree_path = Path(worktree.directory)
+    Returns the list of absolute file paths to stage in the git index.
+    """
     schemas_dir = worktree_path / "schemas"
     schemas_dir.mkdir(parents=True, exist_ok=True)
 
@@ -186,23 +157,87 @@ async def _commit_and_push(
     if not infrahub_yml.exists():
         infrahub_yml.write_text("---\nschemas:\n  - schemas\n", encoding="utf-8")
         files_to_add.append(str(infrahub_yml))
+    return files_to_add
 
+
+def _build_commit_message(payload: MarketplaceInstallPayload, n_files: int) -> str:
     item_summary = ", ".join(f"{item.namespace}/{item.name}" for item in payload.items)
-    commit_message = (
-        f"Add {len(schema_files)} marketplace schema file(s) via Schema Marketplace\n"
+    return (
+        f"Add {n_files} marketplace schema file(s) via Schema Marketplace\n"
         f"\n"
         f"Items: {item_summary}\n"
         f"Installed by: {payload.initiator_username}\n"
     )
-    git_repo.index.add(files_to_add)
-    commit = git_repo.index.commit(commit_message)
-    commit_sha = str(commit)
-    log.info("committed %d files as %s", len(schema_files), commit_sha)
 
-    pushed = await repo.push(branch_name=payload.branch_name)
-    if not pushed:
-        # Remote push didn't happen — treat as a failure so the repo-sync does not
-        # erroneously pick up a never-pushed commit from the local worktree.
-        raise MarketplaceInstallError("repository has no remote origin; refusing to leave local-only commit")
-    log.info("pushed branch %s", payload.branch_name)
-    return commit_sha
+
+@task(name="commit-schemas-to-repo", cache_policy=NONE)
+async def _commit_and_push(payload: MarketplaceInstallPayload, schema_files: list[tuple[str, str]]) -> str:
+    """Write files, stage, commit, and push. Raise on any step — nothing is pushed on failure.
+
+    Serialized per ``(repository_id, branch_name)`` via the Infrahub lock
+    registry so two concurrent installs against the same target can't race
+    on the shared on-disk worktree.
+    """
+    from infrahub.git.repository import InfrahubRepository
+
+    log = get_logger()
+    sdk = get_client()
+    repo_node = await sdk.get(kind="CoreRepository", id=payload.repository_id)
+    repo_name = repo_node.name.value  # type: ignore[union-attr]
+
+    repo = await InfrahubRepository.init(id=payload.repository_id, name=repo_name, client=sdk)
+
+    # create_branch_in_git is idempotent — covers "Infrahub branch created with
+    # sync_with_git=False" and "user typed a freeform branch name" without a
+    # separate UI prompt.
+    try:
+        await repo.create_branch_in_git(branch_name=payload.branch_name, push_origin=True)
+    except Exception as exc:
+        raise MarketplaceInstallError(
+            f"couldn't prepare git branch {payload.branch_name!r} on repository {repo_name!r}: {exc}"
+        ) from exc
+
+    git_repo = repo.get_git_repo_worktree(identifier=payload.branch_name)
+    if git_repo is None:
+        raise MarketplaceInstallError(f"no local worktree for branch {payload.branch_name!r}")
+    worktree = repo.get_worktree(identifier=payload.branch_name)
+    if worktree is None:
+        raise MarketplaceInstallError(f"no worktree registered for branch {payload.branch_name!r}")
+
+    worktree_path = Path(worktree.directory)
+
+    lock_name = f"{payload.repository_id}-{payload.branch_name}"
+    async with lock.registry.get(name=lock_name, namespace="marketplace-install"):
+        files_to_add = _write_schema_files_to_worktree(worktree_path, schema_files)
+        commit_message = _build_commit_message(payload, len(schema_files))
+        actor = Actor(name=payload.initiator_username, email=f"{payload.initiator_account_id}@infrahub.local")
+
+        # Snapshot the pre-commit ref so we can roll the worktree back on any
+        # failure. Without this, a failed push leaves the local worktree ahead
+        # of origin — next use of the same branch would either push the stale
+        # commit during an unrelated operation or confuse subsequent diffs.
+        try:
+            pre_commit_ref: str | None = git_repo.head.commit.hexsha
+        except Exception:
+            # Orphan branch / empty repo — nothing to reset to.
+            pre_commit_ref = None
+
+        try:
+            git_repo.index.add(files_to_add)
+            commit = git_repo.index.commit(commit_message, author=actor, committer=actor)
+            commit_sha = str(commit)
+            log.info("committed %d files as %s", len(schema_files), commit_sha)
+
+            pushed = await repo.push(branch_name=payload.branch_name)
+            if not pushed:
+                raise MarketplaceInstallError("repository has no remote origin; refusing to leave local-only commit")
+        except Exception:
+            if pre_commit_ref is not None:
+                try:
+                    git_repo.head.reset(commit=pre_commit_ref, index=True, working_tree=True)
+                    log.info("rolled worktree back to %s after install failure", pre_commit_ref)
+                except Exception as reset_exc:
+                    log.warning("failed to roll worktree back after install failure: %s", reset_exc)
+            raise
+        log.info("pushed branch %s", payload.branch_name)
+        return commit_sha

@@ -65,7 +65,9 @@ _cache_collections_list: TTLCache[tuple, MarketplaceCollectionsListResponse] = T
     maxsize=_CACHE_MAX_ENTRIES, ttl=_CACHE_TTL_SECONDS
 )
 _cache_tags: TTLCache[str, MarketplaceTagsResponse] = TTLCache(maxsize=1, ttl=_CACHE_TTL_SECONDS)
-_cache_status: TTLCache[str, MarketplaceStatus] = TTLCache(maxsize=1, ttl=_CACHE_TTL_SECONDS)
+# /status is intentionally uncached: the upstream ping is a single sub-2s
+# HTTP call, and caching it at the server prevents a user-clicked "Retry"
+# from observing recovery until the TTL expires.
 
 
 def _map_upstream_error(exc: Exception) -> HTTPException:
@@ -96,6 +98,23 @@ async def _assert_writable_repo(repository_id: str) -> None:
         raise HTTPException(status_code=404, detail="repository_not_found")
 
 
+async def _assert_branch_sync_with_git(db: InfrahubDatabase, branch_name: str) -> None:
+    """Raise 409 if the target branch has no git sync enabled.
+
+    Installing to a repository from a non-synced Infrahub branch would push
+    a Git branch that's not mapped to any Infrahub branch — the orphaned-
+    branch foot-gun the UI explicitly disables. The UI gate is advisory
+    (the frontend gates on ``currentBranch.sync_with_git``); this enforces
+    it for non-UI callers (curl, SDK, stale tab).
+    """
+    branch = await registry.get_branch(db=db, branch=branch_name)
+    if not branch.sync_with_git:
+        raise HTTPException(
+            status_code=409,
+            detail="branch_not_sync_with_git",
+        )
+
+
 async def _resolve_account_name(db: InfrahubDatabase, account_id: str) -> str:
     """Look up the account's name for audit trails (commit author, flow artifact).
 
@@ -107,7 +126,7 @@ async def _resolve_account_name(db: InfrahubDatabase, account_id: str) -> str:
 
     try:
         account = await NodeManager.get_one(db=db, kind=CoreGenericAccount, id=account_id)
-    except Exception:  # noqa: BLE001
+    except Exception:
         log.warning("marketplace_install_account_lookup_failed", account_id=account_id)
         return account_id
     if account is None:
@@ -123,10 +142,6 @@ async def get_status(
     _: AccountSession = Depends(get_current_user),
 ) -> MarketplaceStatus:
     """Report proxy configuration + upstream reachability (contracts §7)."""
-    cached = _cache_status.get("status")
-    if cached is not None:
-        return cached
-
     url = (config.SETTINGS.marketplace.url or "").strip()
     url_configured = bool(url)
     url_scheme_valid = url_configured and url.startswith(("http://", "https://"))
@@ -137,15 +152,13 @@ async def get_status(
                 upstream_reachable = await client.ping()
         except MarketplaceMisconfiguredError:
             url_scheme_valid = False
-    result = MarketplaceStatus(
+    return MarketplaceStatus(
         marketplace_url=url,
         url_configured=url_configured,
         url_scheme_valid=url_scheme_valid,
         upstream_reachable=upstream_reachable,
         checked_at=datetime.now(UTC),
     )
-    _cache_status["status"] = result
-    return result
 
 
 @router.get("/schemas", response_model=MarketplaceSchemasListResponse)
@@ -325,31 +338,32 @@ async def install(
         if not request.repository_id:
             raise HTTPException(status_code=400, detail="repository_id_required_for_repository_target")
         await _assert_writable_repo(request.repository_id)
+        await _assert_branch_sync_with_git(db=db, branch_name=request.branch_name)
 
         repo_payload = MarketplaceInstallPayload(
             marketplace_url=config.SETTINGS.marketplace.url,
+            initiator_account_id=session.account_id,
             initiator_username=initiator_username,
-            initiator_user_id=session.account_id,
             repository_id=request.repository_id,
             branch_name=request.branch_name,
             items=list(request.items),
         )
         info = await workflow.submit_workflow(
             workflow=MARKETPLACE_SCHEMA_INSTALL,
-            parameters={"payload": repo_payload.model_dump(mode="json")},
+            parameters={"payload": repo_payload},
         )
         message = "Install queued; poll task status for progress."
     else:  # target == "direct"
         direct_payload = MarketplaceInstallDirectPayload(
             marketplace_url=config.SETTINGS.marketplace.url,
+            initiator_account_id=session.account_id,
             initiator_username=initiator_username,
-            initiator_user_id=session.account_id,
             branch_name=request.branch_name,
             items=list(request.items),
         )
         info = await workflow.submit_workflow(
             workflow=MARKETPLACE_SCHEMA_INSTALL_DIRECT,
-            parameters={"payload": direct_payload.model_dump(mode="json")},
+            parameters={"payload": direct_payload},
         )
         message = "Direct install queued; schemas will be applied via the schema-load API."
 

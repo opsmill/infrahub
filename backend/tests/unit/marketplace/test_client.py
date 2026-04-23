@@ -45,8 +45,6 @@ def test_resolve_base_url_rejects_empty() -> None:
         client_mod.config.SETTINGS = original
 
 
-
-
 @pytest.mark.asyncio
 async def test_list_schemas_parses_response() -> None:
     calls: list[httpx.Request] = []
@@ -205,6 +203,79 @@ async def test_client_timeout_raises_timeout_error() -> None:
     )
     try:
         with pytest.raises(MarketplaceTimeoutError):
+            await client.list_schemas()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_response_exceeding_size_cap_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Upstream bodies larger than MAX_RESPONSE_BYTES must be rejected."""
+    monkeypatch.setattr(client_mod, "MAX_RESPONSE_BYTES", 128)
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        # 1 KiB body, well over the 128-byte cap
+        return httpx.Response(200, content=b"x" * 1024)
+
+    client = MarketplaceClient(
+        base_url="https://example.com",
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    try:
+        with pytest.raises(MarketplaceUnreachableError, match="exceed"):
+            await client.list_schemas()
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_collection_bundle_schema_count_capped(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Collection bundles with too many schemas must be rejected."""
+    monkeypatch.setattr(client_mod, "MAX_COLLECTION_SCHEMAS", 2)
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "schemas": [
+                    {"name": "a", "content": "x"},
+                    {"name": "b", "content": "x"},
+                    {"name": "c", "content": "x"},
+                ]
+            },
+        )
+
+    client = MarketplaceClient(
+        base_url="https://example.com",
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    try:
+        with pytest.raises(MarketplaceUnreachableError, match="exceeding the 2-schema cap"):
+            await client.fetch_collection_bundle(namespace="ns", name="bundle")
+    finally:
+        await client.close()
+
+
+@pytest.mark.asyncio
+async def test_content_length_header_enforced_without_reading_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """An upstream that *declares* a too-large Content-Length must be rejected early."""
+    monkeypatch.setattr(client_mod, "MAX_RESPONSE_BYTES", 128)
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b"ok",
+            headers={"content-length": "99999"},  # lie about the size
+        )
+
+    client = MarketplaceClient(
+        base_url="https://example.com",
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    try:
+        with pytest.raises(MarketplaceUnreachableError, match="content-length"):
             await client.list_schemas()
     finally:
         await client.close()
