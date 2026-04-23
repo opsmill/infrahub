@@ -1,4 +1,5 @@
 import { fetchUrl } from "@/shared/api/rest/fetch";
+import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 
 import type {
   CliSnippetResponse,
@@ -13,7 +14,7 @@ import type {
   MarketplaceVersionContent,
 } from "@/entities/schema-marketplace/types";
 
-const BASE = "/api/marketplace";
+const BASE = `${INFRAHUB_API_SERVER_URL}/api/marketplace`;
 
 function qs(params: Record<string, string | number | undefined | null>): string {
   const usp = new URLSearchParams();
