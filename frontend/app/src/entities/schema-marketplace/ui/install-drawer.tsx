@@ -36,6 +36,7 @@ interface BranchFieldProps {
   setBranchEdited: (value: boolean) => void;
   inputId: string;
   placeholder: string;
+  target: MarketplaceInstallTarget;
 }
 
 function BranchField({
@@ -46,11 +47,24 @@ function BranchField({
   setBranchEdited,
   inputId,
   placeholder,
+  target,
 }: BranchFieldProps) {
   const reset = () => {
     setBranchEdited(false);
     setBranchName(currentBranchName);
   };
+
+  // Icon + badge semantics differ per target:
+  //  - direct target: the branch is an Infrahub branch, not a Git branch -- the
+  //    Git source-branch icon would be misleading, so we use the lightning
+  //    icon matching the Direct toggle and label it "Infrahub branch".
+  //  - repository target: show the Git source-branch icon and a "Git branch"
+  //    badge. A "(will create if missing)" hint is shown in the helper line
+  //    since we can't currently detect existence client-side; the backend
+  //    auto-creates from default_branch if absent.
+  const isDirect = target === "direct";
+  const branchIcon = isDirect ? "mdi:lightning-bolt" : "mdi:source-branch";
+  const badgeLabel = isDirect ? "Infrahub branch" : "Git branch";
 
   return (
     <>
@@ -60,8 +74,9 @@ function BranchField({
       {!branchEdited ? (
         <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm">
           <div className="flex items-center gap-1.5 truncate">
-            <Icon icon="mdi:source-branch" className="text-gray-500" />
+            <Icon icon={branchIcon} className="text-gray-500" />
             <span className="truncate font-mono">{branchName}</span>
+            <Badge variant="lightgray-outline">{badgeLabel}</Badge>
             <Badge variant="lightgray-outline">Tracking</Badge>
           </div>
           <Button
@@ -76,6 +91,7 @@ function BranchField({
         </div>
       ) : (
         <div className="flex items-center gap-2">
+          <Icon icon={branchIcon} className="text-gray-500" />
           <input
             id={inputId}
             className="flex-1 rounded-md border border-gray-200 p-2 text-sm"
@@ -98,10 +114,12 @@ function BranchField({
       {!branchEdited ? (
         <p className="text-gray-500 text-xs">
           Tracks the Infrahub branch from the top bar. Switch branches up there and this updates.
+          {!isDirect && " Git branch is created from the repository's default branch if missing."}
         </p>
       ) : (
         <p className="text-gray-500 text-xs">
-          Custom branch. Reset to track the top bar again.
+          Custom {isDirect ? "Infrahub" : "Git"} branch. Reset to track the top bar again.
+          {!isDirect && " Will be created from the repository's default branch if missing."}
         </p>
       )}
     </>
@@ -289,6 +307,7 @@ export function InstallDrawer({
             setBranchEdited={setBranchEdited}
             inputId="schema-marketplace-target-branch"
             placeholder={selectedRepo?.default_branch ?? currentBranch.name}
+            target={target}
           />
         </div>
       )}
@@ -303,6 +322,7 @@ export function InstallDrawer({
             setBranchEdited={setBranchEdited}
             inputId="schema-marketplace-direct-branch"
             placeholder={currentBranch.name}
+            target={target}
           />
         </div>
       )}
