@@ -7,8 +7,11 @@ services:
   #  - Tempo to receive traces
   #  - Grafana to visualize metrics, logs, and traces
   #  - Loki to receive and store logs
+  #
+  # Services are prefixed with "infrahub-" to avoid DNS collisions with any
+  # pre-existing "prometheus", "grafana", etc. services a user may already run.
   # --------------------------------------------------------------------------------
-  alloy:
+  infrahub-alloy:
     image: grafana/alloy:v1.15.0
     volumes:
     - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -26,13 +29,13 @@ services:
     ports:
     - "12345:12345"
     depends_on:
-    - loki
-    - prometheus
+    - infrahub-loki
+    - infrahub-prometheus
 
     configs:
     - source: alloy_config_alloy
       target: /etc/alloy/config.alloy
-  loki:
+  infrahub-loki:
     image: grafana/loki:3.7.1
     command:
     - '-config.file=/etc/loki/config.yml'
@@ -45,7 +48,7 @@ services:
     configs:
     - source: loki_config_yml
       target: /etc/loki/config.yml
-  init:
+  infrahub-tempo-init:
     image: busybox:latest
     user: root
     entrypoint:
@@ -55,7 +58,7 @@ services:
     volumes:
     - tempo_data:/var/tempo
 
-  tempo:
+  infrahub-tempo:
     image: grafana/tempo:2.10.3
     volumes:
     - tempo_data:/tmp/tempo
@@ -64,12 +67,12 @@ services:
     ports:
     - "3200:3200"
     depends_on:
-    - init
+    - infrahub-tempo-init
 
     configs:
     - source: tempo_config_yml
       target: /etc/tempo.yaml
-  task-manager-exporter:
+  infrahub-task-manager-exporter:
     image: prefecthq/prometheus-prefect-exporter:3.3.0
     environment:
       PREFECT_API_URL: http://task-manager:4200/api
@@ -83,7 +86,7 @@ services:
       namespace: "prefect"
       pod: "prefect-exporter"
 
-  prometheus:
+  infrahub-prometheus:
     image: prom/prometheus:v3.11.0
     volumes:
     - prometheus_data:/prometheus
@@ -106,7 +109,7 @@ services:
     ports:
     - "9090:9090"
 
-  node-exporter:
+  infrahub-node-exporter:
     image: prom/node-exporter:v1.10.2
     volumes:
     - /proc:/host/proc:ro
@@ -125,7 +128,7 @@ services:
     ports:
     - "9100:9100"
 
-  cadvisor:
+  infrahub-cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.52.1
     privileged: true
     volumes:
@@ -143,7 +146,7 @@ services:
     ports:
     - "8080:8080"
 
-  grafana:
+  infrahub-grafana:
     image: grafana/grafana:11.4.0
     volumes:
     - grafana_data:/var/lib/grafana
@@ -163,8 +166,8 @@ services:
     ports:
     - "3500:3000"
     depends_on:
-    - prometheus
-    - loki
+    - infrahub-prometheus
+    - infrahub-loki
 
     configs:
     - source: grafana_provisioning_dashboards_container_resources_json
@@ -210,7 +213,7 @@ configs:
 
       loki.write "loki" {
       	endpoint {
-      		url = "http://loki:3100/loki/api/v1/push"
+      		url = "http://infrahub-loki:3100/loki/api/v1/push"
       	}
       }
 
@@ -364,7 +367,7 @@ configs:
       		}
       	}
 
-      	// Parse logfmt fields from extracted data
+      	// Parse logfmt fields from the raw log line
       	stage.logfmt {
       		mapping = {
       			app        = "",
@@ -372,7 +375,6 @@ configs:
       			branch     = "",
       			trace_id   = "",
       		}
-      		source = "tmp_msg"
       	}
 
       	// --- Server container logs (JSON/production mode) ---
@@ -450,14 +452,14 @@ configs:
 
       prometheus.remote_write "prometheus" {
       	endpoint {
-      		url = "http://prometheus:9090/api/v1/write"
+      		url = "http://infrahub-prometheus:9090/api/v1/write"
       	}
       }
 
       // --- Prometheus self-monitoring ---
       prometheus.scrape "prometheus" {
       	targets = [
-      		{"__address__" = "prometheus:9090"},
+      		{"__address__" = "infrahub-prometheus:9090"},
       	]
       	forward_to      = [prometheus.remote_write.prometheus.receiver]
       	job_name        = "prometheus"
@@ -512,22 +514,22 @@ configs:
       	scrape_interval = "15s"
       }
 
-      // --- Task manager exporter ---
-      prometheus.scrape "task_manager" {
+      // --- Task manager exporter (Prefect API poller) ---
+      prometheus.scrape "task_manager_exporter" {
       	targets = [
-      		{"__address__" = "task-manager-exporter:8000"},
+      		{"__address__" = "infrahub-task-manager-exporter:8000"},
       	]
       	honor_timestamps = false
       	forward_to       = [prometheus.remote_write.prometheus.receiver]
-      	job_name         = "task-manager"
+      	job_name         = "task-manager-exporter"
       	scrape_interval  = "15s"
       }
 
       // --- Logs infrastructure (Loki + Alloy self-monitoring) ---
       prometheus.scrape "logs" {
       	targets = [
-      		{"__address__" = "loki:3100"},
-      		{"__address__" = "alloy:12345"},
+      		{"__address__" = "infrahub-loki:3100"},
+      		{"__address__" = "infrahub-alloy:12345"},
       	]
       	forward_to      = [prometheus.remote_write.prometheus.receiver]
       	job_name        = "logs"
@@ -537,7 +539,7 @@ configs:
       // --- Node exporter ---
       prometheus.scrape "node_exporter" {
       	targets = [
-      		{"__address__" = "node-exporter:9100"},
+      		{"__address__" = "infrahub-node-exporter:9100"},
       	]
       	forward_to      = [prometheus.remote_write.prometheus.receiver]
       	job_name        = "node-exporter"
@@ -560,20 +562,20 @@ configs:
 
       prometheus.scrape "cadvisor" {
       	targets = [
-      		{"__address__" = "cadvisor:8080"},
+      		{"__address__" = "infrahub-cadvisor:8080"},
       	]
       	forward_to      = [prometheus.relabel.cadvisor.receiver]
       	job_name        = "cadvisor"
       	scrape_interval = "15s"
       }
 
-      // --- Prefect task worker ---
+      // --- Task manager (Prefect server) ---
       prometheus.scrape "prefect" {
       	targets = [
       		{"__address__" = "prefect-server:4200"},
       	]
       	forward_to      = [prometheus.remote_write.prometheus.receiver]
-      	job_name        = "task-worker"
+      	job_name        = "task-manager"
       	metrics_path    = "/api/metrics"
       	scrape_interval = "15s"
       }
@@ -682,7 +684,7 @@ configs:
         storage:
           path: /tmp/tempo/generator/wal
           remote_write:
-            - url: http://prometheus:9090/api/v1/write
+            - url: http://infrahub-prometheus:9090/api/v1/write
               send_exemplars: true
 
       storage:
@@ -18461,10 +18463,10 @@ configs:
             {
               "current": {
                 "text": [
-                  "loki:3100"
+                  "infrahub-loki:3100"
                 ],
                 "value": [
-                  "loki:3100"
+                  "infrahub-loki:3100"
                 ]
               },
               "datasource": {
@@ -34773,14 +34775,14 @@ configs:
           uid: localprometheus
           access: proxy
           orgId: 1
-          url: http://prometheus:9090
+          url: http://infrahub-prometheus:9090
           basicAuth: false
           editable: true
 
         - name: Loki (Local)
           type: loki
           uid: localloki
-          url: http://loki:3100
+          url: http://infrahub-loki:3100
           editable: true
           jsonData:
             derivedFields:
@@ -34798,7 +34800,7 @@ configs:
         - name: Tempo (Local)
           type: tempo
           uid: localtempo
-          url: http://tempo:3200
+          url: http://infrahub-tempo:3200
           access: proxy
           basicAuth: false
           jsonData:
