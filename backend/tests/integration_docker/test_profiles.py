@@ -133,12 +133,7 @@ class TestProfiles(TestInfrahubDockerClient):
         expected_is_from_profile: bool,
         max_retries: int = 20,
     ) -> None:
-        """Poll until the relationship's `is_from_profile` flag matches.
-
-        Profile refreshes set peer and source/`is_from_profile` in separate steps,
-        mirroring the attribute race. Use this after `wait_for_relationship_peer`
-        when the assertion depends on profile provenance.
-        """
+        """Poll until the relationship's `is_from_profile` flag matches."""
         for _ in range(max_retries):
             node = await client.get(kind=kind, id=node_id, property=True, include=[relationship])
             rel: RelatedNode = getattr(node, relationship)
@@ -151,6 +146,34 @@ class TestProfiles(TestInfrahubDockerClient):
         pytest.fail(
             f"Expected {relationship}.is_from_profile={expected_is_from_profile} "
             f"but got {rel.is_from_profile} after {max_retries} seconds"
+        )
+
+    async def wait_for_relationship(
+        self,
+        client: InfrahubClient,
+        kind: str,
+        node_id: str,
+        relationship: str,
+        expected_peer_id: str | None,
+        expected_is_from_profile: bool,
+        max_retries: int = 20,
+    ) -> None:
+        """Poll for both the relationship peer and its profile provenance."""
+        await self.wait_for_relationship_peer(
+            client=client,
+            kind=kind,
+            node_id=node_id,
+            relationship=relationship,
+            expected_peer_id=expected_peer_id,
+            max_retries=max_retries,
+        )
+        await self.wait_for_relationship_from_profile(
+            client=client,
+            kind=kind,
+            node_id=node_id,
+            relationship=relationship,
+            expected_is_from_profile=expected_is_from_profile,
+            max_retries=max_retries,
         )
 
     async def wait_for_relationship_peers(
@@ -609,18 +632,12 @@ class TestProfiles(TestInfrahubDockerClient):
         )
         await device.save()
 
-        await self.wait_for_relationship_peer(
+        await self.wait_for_relationship(
             client=client,
             kind="TestingDevice",
             node_id=device.id,
             relationship="manufacturer",
             expected_peer_id=manufacturer.id,
-        )
-        await self.wait_for_relationship_from_profile(
-            client=client,
-            kind="TestingDevice",
-            node_id=device.id,
-            relationship="manufacturer",
             expected_is_from_profile=True,
         )
 
@@ -712,12 +729,13 @@ class TestProfiles(TestInfrahubDockerClient):
         device_to_update.manufacturer = manufacturer_from_user
         await device_to_update.save()
 
-        await self.wait_for_relationship_peer(
+        await self.wait_for_relationship(
             client=client,
             kind="TestingDevice",
             node_id=device.id,
             relationship="manufacturer",
             expected_peer_id=manufacturer_from_user.id,
+            expected_is_from_profile=False,
         )
 
         device_after_update = await client.get(
