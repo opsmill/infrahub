@@ -614,12 +614,10 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
 // -------------------------------------
 // Identify properties added/removed on branch
 // -------------------------------------
-MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(p)-[diff_rel {branch: $branch_name}]->(q)
+MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)
+    -[r_node:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
+    -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->(q:Boolean|Node|AttributeValue)
 WHERE p.branch_support = $branch_aware
-AND any(l in labels(p) WHERE l in ["Attribute", "Relationship"])
-AND type(diff_rel) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
-AND any(l in labels(q) WHERE l in ["Boolean", "Node", "AttributeValue"])
-AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
 // node ID and field name filtering first pass
 AND (
     (
@@ -732,11 +730,16 @@ AND ALL(
     AND (r_pair[0]).from <= (r_pair[1]).from
     // if both are deleted, then the deeper edge must have been deleted first
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "active" OR (r_pair[0]).from >= (r_pair[1].from))
+    // if only the deeper edge is deleted, shallower edge must have been active for the delete
     AND (
         (r_pair[0]).status = (r_pair[1]).status
         OR (
             (r_pair[0]).from <= (r_pair[1]).from
-            AND ((r_pair[0]).to IS NULL OR (r_pair[0]).to >= (r_pair[1]).from)
+            AND (
+                (r_pair[0]).to IS NULL
+                OR ((r_pair[0]).branch = $branch_name AND (r_pair[0]).to >= (r_pair[1]).from)
+                OR ((r_pair[0]).branch = $base_branch_name AND (r_pair[0]).to >= $branch_from_time)
+            )
         )
     )
     // require adjacent edge pairs to have overlapping times, but only if on the same branch

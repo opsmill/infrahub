@@ -4833,3 +4833,67 @@ async def test_attribute_property_new_value_differs_per_branch_on_multi_change_n
     assert branch_new == person_alfred_main.id, (
         f"diff-branch diff should report name.source.new_value=alfred, got {branch_new}"
     )
+
+
+async def test_cleared_attribute_property_with_target_branch_kind_migration(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_accord_main: Node,
+    person_john_main: Node,
+    person_alfred_main: Node,
+) -> None:
+    """A pre-fork HAS_SOURCE that the branch clears must surface in the diff
+    even when the target branch ran a node-kind migration after the fork.
+    """
+    # Set name.source = alfred on main before fork so the branch has a
+    # pre-existing source to clear.
+    main_car = await NodeManager.get_one(db=db, branch=default_branch, id=car_accord_main.id)
+    main_car.name.source = person_alfred_main
+    await main_car.save(db=db)
+
+    branch = await create_branch(db=db, branch_name="branch-tgt-migration-cleared-prop")
+    from_time = Timestamp(branch.created_at)
+
+    # Target-branch migration: TestCar -> Test2NewCar on the default branch AFTER the fork.
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    new_car_schema = schema.get(name="TestCar", duplicate=True)
+    new_car_schema.name = "NewCar"
+    new_car_schema.namespace = "Test2"
+    assert new_car_schema.kind == "Test2NewCar"
+    registry.schema.set(name="Test2NewCar", schema=new_car_schema, branch=default_branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema.get(name="TestCar"),
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="Test2NewCar", field_name="namespace"),
+    )
+    assert not (await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)).errors
+
+    # Clear name.source on the diff branch.
+    branch_car = await NodeManager.get_one(db=db, branch=branch, id=car_accord_main.id)
+    branch_car.name.clear_source()
+    await branch_car.save(db=db)
+
+    diff_calculator = DiffCalculator(db=db)
+    calculated_diffs = await diff_calculator.calculate_diff(
+        base_branch=default_branch,
+        diff_branch=branch,
+        from_time=from_time,
+        to_time=Timestamp(),
+        include_unchanged=False,
+    )
+
+    branch_diff = calculated_diffs.diff_branch_diff
+    car_nodes = [n for n in branch_diff.nodes if n.uuid == car_accord_main.id]
+    assert car_nodes, "branch diff should include the car node whose name.source was cleared"
+
+    name_attrs = [a for car in car_nodes for a in car.attributes if a.name == "name"]
+    assert name_attrs, "branch diff for car should include the ``name`` attribute"
+
+    has_source_props = [p for a in name_attrs for p in a.properties if p.property_type is DatabaseEdgeType.HAS_SOURCE]
+    assert has_source_props, "branch diff for name attribute should include a HAS_SOURCE property change"
+    prop = has_source_props[0]
+    assert prop.action is DiffAction.REMOVED, f"expected HAS_SOURCE action=REMOVED, got {prop.action}"
+    assert prop.previous_value == person_alfred_main.id, (
+        f"expected HAS_SOURCE previous_value=alfred, got {prop.previous_value}"
+    )
+    assert prop.new_value is None, f"expected HAS_SOURCE new_value=None, got {prop.new_value}"
