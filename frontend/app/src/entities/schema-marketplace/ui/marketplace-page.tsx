@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@iconify-icon/react";
 import { useMemo, useState } from "react";
 
+import Content from "@/shared/components/layout/content";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
@@ -108,7 +109,7 @@ export function MarketplacePage() {
   const showConnectivityError = !!status.data && !status.data.upstream_reachable;
 
   return (
-    <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 p-4">
+    <Content className="flex flex-col gap-4 p-4">
       <header className="flex items-center justify-between gap-2">
         <div>
           <h1 className="font-bold text-2xl">Schema Marketplace</h1>
@@ -251,7 +252,7 @@ export function MarketplacePage() {
           )}
         </aside>
       </div>
-    </div>
+    </Content>
   );
 }
 

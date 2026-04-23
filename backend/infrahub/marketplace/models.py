@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 MarketplaceItemKind = Literal["schema", "collection"]
 
@@ -42,7 +42,7 @@ class MarketplaceVersionSummary(BaseModel):
 
 
 class MarketplaceSchemaSummary(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True)
     id: str
     namespace: str
     name: str
@@ -54,8 +54,10 @@ class MarketplaceSchemaSummary(BaseModel):
     fork_count: int = 0
     viewer_has_upvoted: bool = False
     created_at: datetime
-    updated_at: datetime
-    author: MarketplaceAuthor
+    updated_at: datetime | None = None
+    author: MarketplaceAuthor | None = Field(
+        default=None, validation_alias=AliasChoices("author", "created_by")
+    )
     tags: list[MarketplaceTag] = Field(default_factory=list)
     latest_version: MarketplaceVersionSummary | None = None
     already_installed: bool = False
@@ -84,7 +86,7 @@ class MarketplaceCollectionItem(BaseModel):
 
 
 class MarketplaceCollectionSummary(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, populate_by_name=True)
     id: str
     namespace: str
     name: str
@@ -92,7 +94,9 @@ class MarketplaceCollectionSummary(BaseModel):
     description: str | None = None
     schema_count: int = 0
     download_count: int = 0
-    author: MarketplaceAuthor
+    author: MarketplaceAuthor | None = Field(
+        default=None, validation_alias=AliasChoices("author", "created_by")
+    )
     tags: list[MarketplaceTag] = Field(default_factory=list)
     already_installed: bool = False
 
