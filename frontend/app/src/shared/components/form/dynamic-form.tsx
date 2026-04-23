@@ -1,4 +1,4 @@
-import { forwardRef } from "react";
+import type React from "react";
 
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";
@@ -31,34 +31,40 @@ export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   onCancel?: () => void;
   submitLabel?: string;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
+  ref?: React.Ref<FormRef>;
 }
 
-const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
-  ({ fields, onCancel, submitLabel, isBulkUpdate, ...props }, ref) => {
-    const formDefaultValues = fields.reduce(
-      (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
-      {}
-    );
+const DynamicForm = ({
+  fields,
+  onCancel,
+  submitLabel,
+  isBulkUpdate,
+  ref,
+  ...props
+}: DynamicFormProps) => {
+  const formDefaultValues = fields.reduce(
+    (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
+    {}
+  );
 
-    return (
-      <Form ref={ref} {...props} defaultValues={formDefaultValues}>
-        {fields.map((field) => (
-          <DynamicField key={`${field.type}_${field.name}`} {...field} />
-        ))}
+  return (
+    <Form ref={ref} {...props} defaultValues={formDefaultValues}>
+      {fields.map((field) => (
+        <DynamicField key={`${field.type}_${field.name}`} {...field} />
+      ))}
 
-        <div className="text-right">
-          {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <div className="text-right">
+        {onCancel && (
+          <Button variant="outline" className="mr-2" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-        </div>
-      </Form>
-    );
-  }
-);
+        <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
+      </div>
+    </Form>
+  );
+};
 
 export const DynamicField = (props: DynamicFieldProps) => {
   switch (props.type) {

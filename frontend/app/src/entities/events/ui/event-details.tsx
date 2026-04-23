@@ -48,6 +48,13 @@ const AccountLoggedOutEventDetails = ({ event }: { event: AccountLoggedOutEventT
 export const EventDetails = (props: EventType) => {
   const { id, event, branch, occurred_at, account_id, primary_node, related_nodes } = props;
 
+  const displayedBranch =
+    branch ??
+    ("deleted_branch" in props ? props.deleted_branch : undefined) ??
+    ("created_branch" in props ? props.created_branch : undefined) ??
+    ("rebased_branch" in props ? props.rebased_branch : undefined) ??
+    ("source_branch" in props ? props.source_branch : undefined);
+
   return (
     <div className="divide-y divide-gray-200">
       <PropertyRow
@@ -61,7 +68,7 @@ export const EventDetails = (props: EventType) => {
 
       <PropertyRow title="Event" value={event} />
 
-      <PropertyRow title="Branch" value={branch} />
+      <PropertyRow title="Branch" value={displayedBranch} />
 
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
 

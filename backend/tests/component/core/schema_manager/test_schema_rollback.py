@@ -204,3 +204,90 @@ class TestSchemaUpdateAndRollback:
         # Verify status attribute is gone (rolled back)
         with pytest.raises(ValueError, match="status is not an attribute"):
             loaded_car.get_attribute(name="status")
+
+    async def test_schema_update_rolls_back_on_post_write_process_failure(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_schema_db: None,
+    ) -> None:
+        """Failures raised by schema.process() after the DB write must trigger rollback."""
+        parent_child_schema_dict = {
+            "generics": [
+                {
+                    "name": "Parent",
+                    "namespace": "Testing",
+                    "attributes": [{"name": "name", "kind": "Text", "unique": True}],
+                },
+            ],
+            "nodes": [
+                {
+                    "name": "Child",
+                    "namespace": "Testing",
+                    "inherit_from": ["TestingParent"],
+                    "attributes": [{"name": "description", "kind": "Text", "optional": True}],
+                },
+            ],
+        }
+        seed_schema = registry.schema.get_schema_branch(name=default_branch.name).duplicate()
+        seed_schema.load_schema(schema=SchemaRoot(**parent_child_schema_dict))
+        seed_schema.process()
+        registry.schema.set_schema_branch(name=default_branch.name, schema=seed_schema)
+        await registry.schema.load_schema_to_db(schema=seed_schema, branch=default_branch, db=db, at=Timestamp())
+
+        original_schema_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        registry.schema.set_schema_branch(name=default_branch.name, schema=original_schema_branch)
+        origin_schema_copy = original_schema_branch.duplicate()
+
+        parent_generic = original_schema_branch.get(name="TestingParent")
+        assert parent_generic.id is not None, "Generic should have a persisted id after load_schema_to_db"
+
+        absent_generic_dict = {
+            "version": "1.0",
+            "generics": [
+                {
+                    "id": parent_generic.id,
+                    "name": "Parent",
+                    "namespace": "Testing",
+                    "state": "absent",
+                },
+            ],
+        }
+        candidate_schema = original_schema_branch.duplicate()
+        candidate_schema.load_schema(schema=SchemaRoot(**absent_generic_dict))
+        candidate_schema.process()
+
+        diff = original_schema_branch.diff(other=candidate_schema)
+        assert "TestingParent" in diff.removed
+
+        coordinator = SchemaUpdateCoordinator(
+            db=db,
+            branch=default_branch,
+            schema_manager=registry.schema,
+            origin_schema=origin_schema_copy,
+            migration_executor=MigrationExecutor.DIRECT,
+        )
+        with pytest.raises(ValueError, match="Unable to find the generic"):
+            await coordinator.execute(
+                candidate_schema=candidate_schema,
+                at=Timestamp(),
+                diff=diff,
+                update_db=True,
+                update_registry=True,
+            )
+
+        try:
+            reloaded_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+        except ValueError as exc:
+            pytest.fail(
+                "Rollback did not run: loading schema from DB after the coordinator exception still "
+                f"raises {exc!r}. The coordinator must call _rollback and _restore_registry_state "
+                "when schema.process() fails after the DB write."
+            )
+
+        assert reloaded_schema.has(name="TestingParent"), (
+            "Rollback should have restored the TestingParent generic after the post-write process_inheritance failure."
+        )
+        assert reloaded_schema.has(name="TestingChild"), (
+            "Rollback should leave TestingChild intact after the post-write process_inheritance failure."
+        )

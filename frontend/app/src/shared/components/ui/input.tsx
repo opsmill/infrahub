@@ -1,10 +1,12 @@
-import { forwardRef, type InputHTMLAttributes } from "react";
+import type React from "react";
 
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {}
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  ref?: React.Ref<HTMLInputElement>;
+}
 
-export const Input = forwardRef<HTMLInputElement, InputProps>(({ className, ...props }, ref) => {
+export function Input({ className, ref, ...props }: InputProps) {
   return <input ref={ref} className={classNames(inputStyle, className)} {...props} />;
-});
+}

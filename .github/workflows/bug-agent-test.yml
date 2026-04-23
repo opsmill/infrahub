@@ -1,6 +1,6 @@
 ---
 # .github/workflows/bug-agent-test.yml
-# Triggered when someone posts "/bug-test" on a bug issue (requires prior /bug-analyze).
+# Triggered when someone posts "/bug-tdd" on a bug issue (requires prior /bug-analyze).
 # Also re-triggered when the reviewer requests changes on the test PR.
 # Responsibility: write a failing test that reproduces the bug and open a draft PR.
 
@@ -18,12 +18,12 @@ jobs:
   prepare-environment:
     uses: ./.github/workflows/define-versions.yml
 
-  # Initial test: triggered by /bug-test command on the issue
+  # Initial test: triggered by /bug-tdd command on the issue
   write-test:
     needs: prepare-environment
     if: |
       !github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/bug-test') &&
+      startsWith(github.event.comment.body, '/bug-tdd') &&
       contains(github.event.issue.labels.*.name, 'type/bug') &&
       (
         github.event.comment.author_association == 'OWNER' ||
@@ -56,7 +56,7 @@ jobs:
             echo "skip=true" >> $GITHUB_OUTPUT
             gh issue comment "$ISSUE_NUMBER" \
               --repo "${{ github.repository }}" \
-              --body "Cannot run \`/bug-test\` -- no analyst comment found. Run \`/bug-analyze\` first."
+              --body "Cannot run \`/bug-tdd\` -- no analyst comment found. Run \`/bug-analyze\` first."
             exit 0
           fi
 
@@ -99,16 +99,24 @@ jobs:
       - name: Install Python dependencies
         if: steps.analyst.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.analyst.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.analyst.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.analyst.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.analyst.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.analyst.outputs.skip != 'true'
@@ -172,28 +180,35 @@ jobs:
               "permissions": {
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
-                  "Bash(git checkout ai-bug-pipeline-*)",
-                  "Bash(git add :*)", "Bash(git commit -m :*)",
+                  "Bash(git checkout -b ai-bug-pipeline-*)", "Bash(git checkout ai-bug-pipeline-*)",
+                  "Bash(git add *)", "Bash(git commit -m *)",
                   "Bash(git push origin ai-bug-pipeline-*)",
-                  "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
-                  "Bash(git show :*)",
+                  "Bash(git diff)", "Bash(git diff *)", "Bash(git log *)",
+                  "Bash(git show *)",
                   "Bash(git status)",
-                  "Bash(cd :*)",
+                  "Bash(git fetch *)",
+                  "Bash(cd *)",
                   "Bash(gh pr create *)", "Bash(gh pr edit *)",
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
-                  "Bash(uv run pytest :*)",
+                  "Bash(uv run pytest *)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
-                  "Bash(npm run test :*)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx playwright test :*)",
-                  "Bash(cd frontend/app && npm run test :*)",
+                  "Bash(pnpm run test *)",
+                  "Bash(pnpm --dir * run test *)",
+                  "Bash(pnpm --dir * run biome:fix)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx --prefix * biome check --write *)", "Bash(pnpm --dir * exec biome check --write *)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(cd frontend/app && pnpm run test *)",
                   "Bash(cd frontend/app && npx biome check --write .)",
-                  "Bash(cd frontend/app && npx playwright test :*)",
-                  "Bash(ls)", "Bash(ls :*)"
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
+                  "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
+                  "Bash(ls)", "Bash(ls *)",
+                  "Bash(mkdir -p *)"
                 ],
                 "deny": [
-                  "Bash(git push --force :*)", "Bash(git push -f :*)",
-                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(git push --force *)", "Bash(git push -f *)",
+                  "Bash(git reset *)", "Bash(git clean *)",
                   "Bash(gh pr merge *)",
                   "Write(.github/**)", "Edit(.github/**)",
                   "Write(.git/**)", "Edit(.git/**)"
@@ -283,16 +298,24 @@ jobs:
       - name: Install Python dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.resolve.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.resolve.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -371,27 +394,33 @@ jobs:
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
                   "Bash(git checkout ai-bug-pipeline-*)",
-                  "Bash(git add :*)", "Bash(git commit -m :*)",
+                  "Bash(git add *)", "Bash(git commit -m *)",
                   "Bash(git push origin ai-bug-pipeline-*)",
-                  "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
-                  "Bash(git show :*)",
+                  "Bash(git diff)", "Bash(git diff *)", "Bash(git log *)",
+                  "Bash(git show *)",
                   "Bash(git status)",
-                  "Bash(cd :*)",
+                  "Bash(cd *)",
                   "Bash(gh pr edit *)",
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
-                  "Bash(uv run pytest :*)",
+                  "Bash(uv run pytest *)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
-                  "Bash(npm run test :*)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx playwright test :*)",
-                  "Bash(cd frontend/app && npm run test :*)",
+                  "Bash(pnpm run test *)",
+                  "Bash(pnpm --dir * run test *)",
+                  "Bash(pnpm --dir * run biome:fix)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx --prefix * biome check --write *)", "Bash(pnpm --dir * exec biome check --write *)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(cd frontend/app && pnpm run test *)",
                   "Bash(cd frontend/app && npx biome check --write .)",
-                  "Bash(cd frontend/app && npx playwright test :*)",
-                  "Bash(ls)", "Bash(ls :*)"
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
+                  "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
+                  "Bash(ls)", "Bash(ls *)",
+                  "Bash(mkdir -p *)"
                 ],
                 "deny": [
-                  "Bash(git push --force :*)", "Bash(git push -f :*)",
-                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(git push --force *)", "Bash(git push -f *)",
+                  "Bash(git reset *)", "Bash(git clean *)",
                   "Bash(gh pr merge *)",
                   "Write(.github/**)", "Edit(.github/**)",
                   "Write(.git/**)", "Edit(.git/**)"

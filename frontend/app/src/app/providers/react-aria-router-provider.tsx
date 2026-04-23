@@ -8,11 +8,13 @@ declare module "react-aria-components" {
   }
 }
 
+const EXTERNAL_HREF_PREFIXES = ["https://", "http://", "mailto:", "blob:", "data:"];
+
 function useAbsoluteHref(path: To) {
   const relative = useHref(path);
   if (
     typeof path === "string" &&
-    (path.startsWith("https://") || path.startsWith("http://") || path.startsWith("mailto:"))
+    EXTERNAL_HREF_PREFIXES.some((prefix) => path.startsWith(prefix))
   ) {
     return path;
   }

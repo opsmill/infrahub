@@ -166,5 +166,47 @@ core_generic_account = GenericSchema(
             default_value=AccountStatus.ACTIVE.value,
         ),
     ],
-    relationships=[Rel(name="tokens", peer=InfrahubKind.ACCOUNTTOKEN, optional=True, cardinality=Cardinality.MANY)],
+    relationships=[
+        Rel(name="tokens", peer=InfrahubKind.ACCOUNTTOKEN, optional=True, cardinality=Cardinality.MANY),
+        Rel(
+            name="external_identities",
+            peer=InfrahubKind.EXTERNALIDENTITY,
+            optional=True,
+            cardinality=Cardinality.MANY,
+            identifier="account__external_identity",
+        ),
+    ],
+)
+
+internal_external_identity = NodeSchema(
+    name="ExternalIdentity",
+    namespace="Internal",
+    description="External authentication provider identity linked to an account",
+    include_in_menu=False,
+    label="External Identity",
+    display_label="{{ protocol__value }}:{{ provider_name__value }}:{{ sub__value }}",
+    human_friendly_id=["protocol__value", "provider_name__value", "sub__value"],
+    generate_profile=False,
+    branch=BranchSupportType.AGNOSTIC,
+    uniqueness_constraints=[["sub__value", "provider_name__value", "protocol__value"]],
+    attributes=[
+        Attr(name="sub", kind="Text", description="The provider-issued subject identifier"),
+        Attr(
+            name="provider_name",
+            kind="Text",
+            description="The provider name as configured in Infrahub, e.g. 'google', 'provider1'",
+        ),
+        Attr(
+            name="protocol", kind="Text", description="The authentication protocol used, e.g. 'oidc', 'oauth2', 'ldap'"
+        ),
+    ],
+    relationships=[
+        Rel(
+            name="account",
+            peer=InfrahubKind.GENERICACCOUNT,
+            optional=False,
+            cardinality=Cardinality.ONE,
+            identifier="account__external_identity",
+        ),
+    ],
 )

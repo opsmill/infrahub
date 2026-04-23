@@ -108,6 +108,7 @@ const sidebars: SidebarsConfig = {
             'guides/jinja2-transform',
             'guides/python-transform',
             'guides/artifact',
+            'guides/graphql-fragment',
             'guides/object-storage',
           ],
         },
@@ -243,6 +244,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/schema',
                 'topics/order-weight',
+                'topics/schema-display',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
                 'topics/schema-extensions',
@@ -431,6 +433,8 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_8_6',
+            'release-notes/infrahub/release-1_8_5',
             'release-notes/infrahub/release-1_8_4',
             'release-notes/infrahub/release-1_8_3',
             'release-notes/infrahub/release-1_8_2',

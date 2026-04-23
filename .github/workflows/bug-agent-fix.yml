@@ -50,7 +50,7 @@ jobs:
           # Validate required markers in PR body
           if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
             gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" \
-              --body "Cannot run \`/bug-fix\` -- no \`AGENT_TEST_COMPLETE\` marker. Run \`/bug-test\` first."
+              --body "Cannot run \`/bug-fix\` -- no \`AGENT_TEST_COMPLETE\` marker. Run \`/bug-tdd\` first."
             echo "skip=true" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -118,16 +118,24 @@ jobs:
       - name: Install Python dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.resolve.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.resolve.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -199,15 +207,15 @@ jobs:
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
                   "Bash(git checkout ai-bug-pipeline-*)",
-                  "Bash(git add :*)", "Bash(git commit -m :*)",
+                  "Bash(git add *)", "Bash(git commit -m *)",
                   "Bash(git push origin ai-bug-pipeline-*)",
-                  "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
-                  "Bash(git show :*)",
+                  "Bash(git diff)", "Bash(git diff *)", "Bash(git log *)",
+                  "Bash(git show *)",
                   "Bash(git status)",
-                  "Bash(cd :*)",
+                  "Bash(cd *)",
                   "Bash(gh pr edit *)",
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
-                  "Bash(uv run pytest :*)", "Bash(uv run towncrier create :*)",
+                  "Bash(uv run pytest *)", "Bash(uv run towncrier create *)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
                   "Bash(uv run invoke docs.format)",
                   "Bash(uv run invoke main.lint)",
@@ -218,26 +226,32 @@ jobs:
                   "Bash(uv run invoke schema.generate-jsonschema)",
                   "Bash(uv run invoke docs.generate)",
                   "Bash(uv run invoke docs.lint)",
-                  "Bash(npm run test)", "Bash(npm run test :*)",
-                  "Bash(npm run codegen:graphql)", "Bash(npm run codegen:openapi)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx playwright test :*)", "Bash(npx betterer --update)",
-                  "Bash(cd frontend/app && npm run test)",
-                  "Bash(cd frontend/app && npm run test :*)",
-                  "Bash(cd frontend/app && npm run codegen:graphql)",
-                  "Bash(cd frontend/app && npm run codegen:openapi)",
+                  "Bash(pnpm run test)", "Bash(pnpm run test *)",
+                  "Bash(pnpm run codegen:graphql)", "Bash(pnpm run codegen:openapi)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(npx betterer --update)", "Bash(pnpm exec betterer --update)",
+                  "Bash(cd frontend/app && pnpm run test)",
+                  "Bash(cd frontend/app && pnpm run test *)",
+                  "Bash(cd frontend/app && pnpm run codegen:graphql)",
+                  "Bash(cd frontend/app && pnpm run codegen:openapi)",
                   "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
                   "Bash(cd frontend/app && npx betterer --update)",
-                  "Bash(cd frontend/app && npx playwright test :*)",
+                  "Bash(cd frontend/app && pnpm exec betterer --update)",
+                  "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
                   "Bash((cd frontend/app && npx biome check --write .))",
-                  "Bash((cd frontend/app && npm run codegen:graphql))",
-                  "Bash((cd frontend/app && npm run codegen:openapi))",
+                  "Bash((cd frontend/app && pnpm exec biome check --write .))",
+                  "Bash((cd frontend/app && pnpm run codegen:graphql))",
+                  "Bash((cd frontend/app && pnpm run codegen:openapi))",
                   "Bash((cd frontend/app && npx betterer --update))",
-                  "Bash(ls)", "Bash(ls :*)"
+                  "Bash((cd frontend/app && pnpm exec betterer --update))",
+                  "Bash(ls)", "Bash(ls *)"
                 ],
                 "deny": [
-                  "Bash(git push --force :*)", "Bash(git push -f :*)",
-                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(git push --force *)", "Bash(git push -f *)",
+                  "Bash(git reset *)", "Bash(git clean *)",
                   "Bash(gh pr merge *)",
                   "Write(.github/**)", "Edit(.github/**)",
                   "Write(.git/**)", "Edit(.git/**)"
@@ -327,16 +341,24 @@ jobs:
       - name: Install Python dependencies
         if: steps.resolve.outputs.skip != 'true'
         run: uv sync --all-groups
+      - name: Install pnpm
+        if: steps.resolve.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         if: steps.resolve.outputs.skip != 'true'
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: 'npm'
-          cache-dependency-path: frontend/app/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: Install frontend dependencies
         if: steps.resolve.outputs.skip != 'true'
-        run: cd frontend/app && npm ci
+        run: cd frontend/app && pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        if: steps.resolve.outputs.skip != 'true'
+        run: cd frontend/app && pnpm exec playwright install chromium
 
       - name: Read prompt
         if: steps.resolve.outputs.skip != 'true'
@@ -415,15 +437,15 @@ jobs:
                 "allow": [
                   "Read", "Edit", "Write", "Glob", "Grep",
                   "Bash(git checkout ai-bug-pipeline-*)",
-                  "Bash(git add :*)", "Bash(git commit -m :*)",
+                  "Bash(git add *)", "Bash(git commit -m *)",
                   "Bash(git push origin ai-bug-pipeline-*)",
-                  "Bash(git diff)", "Bash(git diff :*)", "Bash(git log :*)",
-                  "Bash(git show :*)",
+                  "Bash(git diff)", "Bash(git diff *)", "Bash(git log *)",
+                  "Bash(git show *)",
                   "Bash(git status)",
-                  "Bash(cd :*)",
+                  "Bash(cd *)",
                   "Bash(gh pr edit *)",
                   "Bash(gh issue comment *)", "Bash(gh issue edit *)",
-                  "Bash(uv run pytest :*)", "Bash(uv run towncrier create :*)",
+                  "Bash(uv run pytest *)", "Bash(uv run towncrier create *)",
                   "Bash(uv run invoke format)", "Bash(uv run invoke lint)",
                   "Bash(uv run invoke docs.format)",
                   "Bash(uv run invoke main.lint)",
@@ -434,26 +456,32 @@ jobs:
                   "Bash(uv run invoke schema.generate-jsonschema)",
                   "Bash(uv run invoke docs.generate)",
                   "Bash(uv run invoke docs.lint)",
-                  "Bash(npm run test)", "Bash(npm run test :*)",
-                  "Bash(npm run codegen:graphql)", "Bash(npm run codegen:openapi)",
-                  "Bash(npx biome check --write .)",
-                  "Bash(npx playwright test :*)", "Bash(npx betterer --update)",
-                  "Bash(cd frontend/app && npm run test)",
-                  "Bash(cd frontend/app && npm run test :*)",
-                  "Bash(cd frontend/app && npm run codegen:graphql)",
-                  "Bash(cd frontend/app && npm run codegen:openapi)",
+                  "Bash(pnpm run test)", "Bash(pnpm run test *)",
+                  "Bash(pnpm run codegen:graphql)", "Bash(pnpm run codegen:openapi)",
+                  "Bash(npx biome check --write .)", "Bash(pnpm exec biome check --write .)",
+                  "Bash(npx playwright test *)", "Bash(pnpm exec playwright test *)",
+                  "Bash(npx betterer --update)", "Bash(pnpm exec betterer --update)",
+                  "Bash(cd frontend/app && pnpm run test)",
+                  "Bash(cd frontend/app && pnpm run test *)",
+                  "Bash(cd frontend/app && pnpm run codegen:graphql)",
+                  "Bash(cd frontend/app && pnpm run codegen:openapi)",
                   "Bash(cd frontend/app && npx biome check --write .)",
+                  "Bash(cd frontend/app && pnpm exec biome check --write .)",
                   "Bash(cd frontend/app && npx betterer --update)",
-                  "Bash(cd frontend/app && npx playwright test :*)",
+                  "Bash(cd frontend/app && pnpm exec betterer --update)",
+                  "Bash(cd frontend/app && npx playwright test *)",
+                  "Bash(cd frontend/app && pnpm exec playwright test *)",
                   "Bash((cd frontend/app && npx biome check --write .))",
-                  "Bash((cd frontend/app && npm run codegen:graphql))",
-                  "Bash((cd frontend/app && npm run codegen:openapi))",
+                  "Bash((cd frontend/app && pnpm exec biome check --write .))",
+                  "Bash((cd frontend/app && pnpm run codegen:graphql))",
+                  "Bash((cd frontend/app && pnpm run codegen:openapi))",
                   "Bash((cd frontend/app && npx betterer --update))",
-                  "Bash(ls)", "Bash(ls :*)"
+                  "Bash((cd frontend/app && pnpm exec betterer --update))",
+                  "Bash(ls)", "Bash(ls *)"
                 ],
                 "deny": [
-                  "Bash(git push --force :*)", "Bash(git push -f :*)",
-                  "Bash(git reset :*)", "Bash(git clean :*)",
+                  "Bash(git push --force *)", "Bash(git push -f *)",
+                  "Bash(git reset *)", "Bash(git clean *)",
                   "Bash(gh pr merge *)",
                   "Write(.github/**)", "Edit(.github/**)",
                   "Write(.git/**)", "Edit(.git/**)"

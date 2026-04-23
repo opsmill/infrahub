@@ -345,6 +345,66 @@ def test_log_forwarding_destination_names_per_dest_env_validates_tls_udp() -> No
         LogForwardingSettings()
 
 
+def test_log_forwarding_destination_names_rejects_matching_names_from_destinations_env() -> None:
+    """Defining different destinations with the same name using DESTINATIONS and DESTINATION_NAMES raises an error"""
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem_primary",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST": "host-from-env.example.com",
+        "INFRAHUB_LOG_FORWARDING_DESTINATIONS": json.dumps(
+            [{"name": "siem_primary", "host": "host-from-blob.example.com"}]
+        ),
+    }
+    with (
+        patch.dict(os.environ, env, clear=False),
+        pytest.raises(ValidationError, match="cannot be combined with explicit `destinations`"),
+    ):
+        LogForwardingSettings()
+
+
+def test_log_forwarding_destination_names_rejects_matching_names_from_toml_destinations() -> None:
+    """Defining different destinations with the same name using DESTINATION_NAMES (per-dest env) and TOML destinations raises an error"""
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem_primary",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST": "host-from-env.example.com",
+    }
+    with (
+        patch.dict(os.environ, env, clear=False),
+        pytest.raises(ValueError, match="cannot be combined with explicit `destinations`"),
+    ):
+        load(
+            config_data={
+                "log_forwarding": {
+                    "destinations": [
+                        {"name": "siem_primary", "type": "syslog", "host": "host-from-toml.example.com", "port": 514}
+                    ],
+                }
+            }
+        )
+
+
+def test_log_forwarding_destination_names_survives_revalidation() -> None:
+    """Validating the same destinations multiple times succeeds
+
+    This can happen when starting Infrahub"""
+    env = {
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "my_syslog",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_MY_SYSLOG_HOST": "syslog.example.com",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_MY_SYSLOG_PORT": "514",
+        "INFRAHUB_LOG_FORWARDING_DESTINATION_MY_SYSLOG_PROTOCOL": "udp",
+    }
+    with patch.dict(os.environ, env, clear=False):
+        first_pass = LogForwardingSettings()
+        assert [d.name for d in first_pass.destinations] == ["my_syslog"]
+
+        revalidated = LogForwardingSettings.model_validate(first_pass.model_dump())
+
+    assert [d.name for d in revalidated.destinations] == ["my_syslog"]
+    dest = revalidated.destinations[0]
+    assert dest.host == "syslog.example.com"
+    assert dest.port == 514
+    assert dest.protocol is SyslogProtocol.UDP
+
+
 def test_settings_enterprise_features_aggregates_log_forwarding() -> None:
     config_data = {
         "log_forwarding": {"destinations": [{"name": "siem", "type": "syslog", "host": "localhost", "port": 514}]},

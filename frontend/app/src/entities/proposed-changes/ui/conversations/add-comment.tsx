@@ -1,4 +1,4 @@
-import { forwardRef, type ReactElement } from "react";
+import type React from "react";
 import { useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -9,17 +9,18 @@ import { Form, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 
-type CommentFormData = {
+interface CommentFormData {
   comment: string;
-};
+}
 
-type tAddComment = {
+interface AddCommentProps {
+  ref?: React.Ref<FormRef>;
   onSubmit: ({ comment }: CommentFormData) => Promise<void>;
   onCancel?: () => void;
-  additionalButtons?: ReactElement;
-};
+  additionalButtons?: React.ReactElement;
+}
 
-export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel }, ref) => {
+export const AddComment = ({ ref, onSubmit, onCancel }: AddCommentProps) => {
   const location = useLocation();
   const { isAuthenticated } = useAuth();
 
@@ -70,4 +71,4 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
       to be able to add a comment.
     </div>
   );
-});
+};

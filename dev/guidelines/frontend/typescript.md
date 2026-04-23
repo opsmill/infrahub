@@ -56,6 +56,7 @@ if (isUserData(response)) {
 
 - Use `@/` alias: `import { Button } from "@/shared/components/buttons/button"`
 - Biome handles import order (`pnpm biome:fix`)
+- **React imports**: single `import React from "react"` (or `import type React` for type-only files). No named imports — use `React.useState`, `React.Ref`, etc.
 
 ## Constants
 

@@ -107,7 +107,7 @@ export const getStatusFilterValue = (filters?: Filter[]): BranchStatus | undefin
 
 export const getCreatedByFilterValue = (filters?: Filter[]) => {
   const createdByFilter = filters?.find((f) => f.name === "node_metadata__created_by__ids");
-  if (!createdByFilter?.value) return undefined;
+  if (!createdByFilter?.value) return;
 
   const relationships = createdByFilter.value as Array<{ id: string }>;
   // Return first ID since backend expects single ID, not array

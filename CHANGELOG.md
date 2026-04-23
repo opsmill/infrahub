@@ -11,6 +11,32 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.8.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.6) - 2026-04-21
+
+### Changed
+
+- SSO authentication now anchors account identity on the provider-issued `sub` claim rather than the user display name. Existing accounts are linked transparently on first login after upgrade. If a display name collision occurs with another SSO user's account, the email address is used as the account name instead.
+
+### Fixed
+
+- Schema deletions are now rejected when a generic is still referenced by another node's `inherit_from`, and partial schema writes are rolled back if loading the updated schema fails. ([#8988](https://github.com/opsmill/infrahub/issues/8988))
+- Fix branch name display in event details popover for branch deletion events.
+- Fix check messages overflowing outside their container in proposed changes.
+
+## [Infrahub - v1.8.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.5) - 2026-04-17
+
+### Fixed
+
+- Ensure that changes to a password attribute counts as a mutation event for a node. ([#6909](https://github.com/opsmill/infrahub/issues/6909))
+- Add distributed lock around branch creation to prevent race condition ([#8368](https://github.com/opsmill/infrahub/issues/8368))
+- Correct the display label on events sent from the mutations to update computed attributes and HFIDs when the display label contains attributes from related nodes. ([#8837](https://github.com/opsmill/infrahub/issues/8837))
+- Fix false-positive conflict detection during git sync caused by naive string matching of conflict markers in file content. ([#8848](https://github.com/opsmill/infrahub/issues/8848))
+- Prevent non-idempotent behavior when loading a schema that involves generic inheritance, HFIDs, uniqueness constraints, and unique attributes. In certain circumstances these elements could interact to cause unexpected schema drift when an attribute was identified as unique from a single-item uniqueness constraint on a node or generic schema. The schema loading logic is updated to ensure all of these elements are idempotent going forward. ([#8897](https://github.com/opsmill/infrahub/issues/8897))
+- Fixed git sync not importing objects after repository re-clone from a missing local directory ([#8930](https://github.com/opsmill/infrahub/issues/8930))
+- Fixed Jinja2 computed attributes, display labels, and human-friendly IDs failing when referencing attributes on a hierarchical relationship's concrete peer type ([#8943](https://github.com/opsmill/infrahub/issues/8943))
+- Fix bug in schema remove migration that could cause removed instances of the schema to be excluded from the diff. Would not cause a functional issue because the schema remove migration would run on the default branch when merged.
+- Support non-UTC timezones in filters for GraphQL queries
+
 ## [Infrahub - v1.8.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.4) - 2026-04-02
 
 ### Fixed

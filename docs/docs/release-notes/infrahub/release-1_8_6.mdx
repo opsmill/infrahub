@@ -1,0 +1,29 @@
+---
+title: Release 1.8.6
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.8.6</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>April 21st, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.8.6](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.8.6)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Changed
+
+- SSO authentication now anchors account identity on the provider-issued `sub` claim rather than the user display name. Existing accounts are linked transparently on first login after upgrade. If a display name collision occurs with another SSO user's account, the email address is used as the account name instead.
+
+### Fixed
+
+- Schema deletions are now rejected when a generic is still referenced by another node's `inherit_from`, and partial schema writes are rolled back if loading the updated schema fails. ([#8988](https://github.com/opsmill/infrahub/issues/8988))
+- Fix branch name display in event details popover for branch deletion events.
+- Fix check messages overflowing outside their container in proposed changes.

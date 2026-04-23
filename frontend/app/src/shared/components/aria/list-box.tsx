@@ -36,6 +36,7 @@ const listBoxItemBaseStyle =
   "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden";
 export interface ListBoxItemProps<T> extends AriaListBoxItemProps<T> {
   ref?: React.Ref<HTMLDivElement>;
+  selectionIndicator?: "checkmark" | "none";
 }
 
 export function ListBoxItem<T extends object>({
@@ -43,17 +44,19 @@ export function ListBoxItem<T extends object>({
   className,
   textValue,
   ref,
+  selectionIndicator = "checkmark",
   ...props
 }: ListBoxItemProps<T>) {
   return (
     <AriaListBoxItem
       ref={ref}
       textValue={textValue || (typeof children === "string" ? children : undefined)}
-      className={composeRenderProps(className, (className) =>
+      className={composeRenderProps(className, (className, { isSelected, isFocused }) =>
         classNames(
           disabledStyle,
           listBoxItemBaseStyle,
-          "data-focused:bg-stone-700/10 data-focused:text-stone-800",
+          isFocused && "bg-stone-700/10 text-stone-800",
+          isSelected && selectionIndicator === "none" && "bg-stone-700/10",
           className
         )
       )}
@@ -62,7 +65,9 @@ export function ListBoxItem<T extends object>({
       {(renderProps) => (
         <>
           {typeof children === "function" ? children(renderProps) : children}
-          {renderProps.isSelected && <CheckIcon className="absolute right-3 size-4" />}
+          {renderProps.isSelected && selectionIndicator === "checkmark" && (
+            <CheckIcon className={classNames("ml-auto size-4 shrink-0")} />
+          )}
         </>
       )}
     </AriaListBoxItem>

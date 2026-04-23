@@ -1,7 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
@@ -15,6 +15,8 @@ import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchAction
 import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
 import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import { useConfig } from "@/entities/config/ui/config-provider";
 import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
 type BranchMergeButtonProps = {
@@ -24,6 +26,8 @@ type BranchMergeButtonProps = {
 export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   const { isAuthenticated } = useAuth();
   const date = useAtomValue(datetimeAtom);
+  const config = useConfig();
+  const { navigateToPage } = useNavigateAfterBranchRemoval();
   const [isMergeRequested, setIsMergeRequested] = useState(false);
 
   const { loading, data, refetch } = useQuery(GET_BRANCH_ACTION_STATE, {
@@ -37,13 +41,6 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
 
   const taskData = data?.[TASK_OBJECT];
   const hasOngoingTask = !!taskData?.count && taskData.count > 0;
-
-  // Reset local state when server confirms no ongoing merge task
-  useEffect(() => {
-    if (!loading && !hasOngoingTask) {
-      setIsMergeRequested(false);
-    }
-  }, [loading, hasOngoingTask]);
 
   const isDisabled =
     !isAuthenticated ||
@@ -59,18 +56,23 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     try {
       await graphqlClient.mutate({
         mutation: BRANCH_MERGE,
-        variables: {
-          name: branch.name,
-        },
-        context: {
-          branch: branch.name,
-          date,
-        },
+        variables: { name: branch.name },
+        context: { branch: branch.name, date },
       });
 
-      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch merge requested!" />, {
+      const deleteBranchAfterMerge = config.main.delete_branch_after_merge;
+
+      const message = deleteBranchAfterMerge
+        ? `Branch merge requested! Branch '${branch.name}' will be automatically deleted.`
+        : "Branch merge requested!";
+
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message={message} />, {
         toastId: "alert-success",
       });
+
+      if (deleteBranchAfterMerge) {
+        navigateToPage("/branches", branch.name);
+      }
 
       await refetch();
     } catch (error) {
