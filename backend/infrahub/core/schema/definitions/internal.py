@@ -351,7 +351,7 @@ base_node_schema = SchemaNode(
             internal_kind=list[list[str]],
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="documentation",

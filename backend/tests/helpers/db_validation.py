@@ -312,3 +312,53 @@ RETURN node_id, field_name, num_fields
         num_fields = result.get("num_fields")
         errors.append(f"Node '{node_id}' has {num_fields} duplicated attributes with {field_name=}")
     return errors
+
+
+LATEST_ATTRIBUTE_PATH_STATUS_QUERY = """
+MATCH (node:%(label)s)
+CALL (node) {
+    MATCH (node)-[r1:HAS_ATTRIBUTE]->(attr:Attribute {name: $attr_name})
+    WHERE r1.branch = $branch_name
+    RETURN r1, attr
+    ORDER BY r1.branch_level DESC, r1.from DESC
+    LIMIT 1
+}
+CALL (attr) {
+    MATCH (attr)-[r2:HAS_VALUE]->(av)
+    WHERE r2.branch = $branch_name
+    RETURN r2
+    ORDER BY r2.branch_level DESC, r2.from DESC
+    LIMIT 1
+}
+RETURN node.uuid AS node_id, r1.status AS has_attr_status, r2.status AS has_val_status
+"""
+
+
+async def assert_attribute_path_status(
+    db: InfrahubDatabase,
+    node_label: str,
+    attr_name: str,
+    branch_name: str,
+    expected_status: str,
+) -> None:
+    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
+    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
+    assert len(results) > 0, f"No {node_label} nodes found with attribute {attr_name!r}"
+    for record in results:
+        assert record["has_attr_status"] == expected_status, (
+            f"Node {record['node_id']}: HAS_ATTRIBUTE status is {record['has_attr_status']!r}, expected {expected_status!r}"
+        )
+        assert record["has_val_status"] == expected_status, (
+            f"Node {record['node_id']}: HAS_VALUE status is {record['has_val_status']!r}, expected {expected_status!r}"
+        )
+
+
+async def assert_attribute_absent(
+    db: InfrahubDatabase,
+    node_label: str,
+    attr_name: str,
+    branch_name: str,
+) -> None:
+    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
+    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
+    assert len(results) == 0, f"Expected no active/deleted {node_label}.{attr_name} edges, found {len(results)}"
