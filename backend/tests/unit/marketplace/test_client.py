@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 import pytest
 
+from infrahub.marketplace import client as client_mod
 from infrahub.marketplace.client import (
     MarketplaceClient,
     MarketplaceMisconfiguredError,
@@ -23,14 +24,12 @@ def test_resolve_base_url_accepts_http_and_https() -> None:
 
 
 def test_resolve_base_url_rejects_non_http_scheme() -> None:
-    with pytest.raises(MarketplaceMisconfiguredError):
+    with pytest.raises(MarketplaceMisconfiguredError, match="http://"):
         _resolve_base_url("ftp://example.com")
 
 
 def test_resolve_base_url_rejects_empty() -> None:
     # Passing an explicit empty string bypasses fall-through to config.SETTINGS.
-    from infrahub.marketplace import client as client_mod
-
     class _FakeConfigSettings:
         class _FakeMarketplace:
             url = ""
@@ -40,15 +39,12 @@ def test_resolve_base_url_rejects_empty() -> None:
     original = client_mod.config.SETTINGS
     client_mod.config.SETTINGS = _FakeConfigSettings()  # type: ignore[assignment]
     try:
-        with pytest.raises(MarketplaceMisconfiguredError):
+        with pytest.raises(MarketplaceMisconfiguredError, match="not set"):
             _resolve_base_url("")
     finally:
         client_mod.config.SETTINGS = original
 
 
-class _FakeTransport(httpx.MockTransport):
-    def __init__(self, handler) -> None:  # type: ignore[no-untyped-def]
-        super().__init__(handler)
 
 
 @pytest.mark.asyncio
@@ -94,7 +90,7 @@ async def test_list_schemas_parses_response() -> None:
 
     client = MarketplaceClient(
         base_url="https://example.com",
-        http=httpx.AsyncClient(transport=_FakeTransport(handler)),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     try:
         result = await client.list_schemas(limit=10)
@@ -113,7 +109,7 @@ async def test_get_schema_404_raises_not_found() -> None:
 
     client = MarketplaceClient(
         base_url="https://example.com",
-        http=httpx.AsyncClient(transport=_FakeTransport(handler)),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     try:
         with pytest.raises(MarketplaceNotFoundError):
@@ -129,7 +125,7 @@ async def test_list_schemas_5xx_raises_unreachable() -> None:
 
     client = MarketplaceClient(
         base_url="https://example.com",
-        http=httpx.AsyncClient(transport=_FakeTransport(handler)),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     try:
         with pytest.raises(MarketplaceUnreachableError):
@@ -145,7 +141,7 @@ async def test_ping_timeout_returns_false() -> None:
 
     client = MarketplaceClient(
         base_url="https://example.com",
-        http=httpx.AsyncClient(transport=_FakeTransport(handler)),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     try:
         assert await client.ping() is False
@@ -167,12 +163,10 @@ async def test_fetch_schema_content_by_ref_uses_version_endpoint() -> None:
 
     client = MarketplaceClient(
         base_url="https://example.com",
-        http=httpx.AsyncClient(transport=_FakeTransport(handler)),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     try:
-        text, resolved = await client.fetch_schema_content_by_ref(
-            namespace="infrahub", name="foo", semver="1.2.0"
-        )
+        text, resolved = await client.fetch_schema_content_by_ref(namespace="infrahub", name="foo", semver="1.2.0")
     finally:
         await client.close()
     assert text == "type: CoreNode\n"
@@ -190,12 +184,10 @@ async def test_fetch_schema_content_by_ref_latest_endpoint() -> None:
 
     client = MarketplaceClient(
         base_url="https://example.com",
-        http=httpx.AsyncClient(transport=_FakeTransport(handler)),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     try:
-        _, resolved = await client.fetch_schema_content_by_ref(
-            namespace="infrahub", name="foo", semver=None
-        )
+        _, resolved = await client.fetch_schema_content_by_ref(namespace="infrahub", name="foo", semver=None)
     finally:
         await client.close()
     assert resolved == "latest"
@@ -209,7 +201,7 @@ async def test_client_timeout_raises_timeout_error() -> None:
 
     client = MarketplaceClient(
         base_url="https://example.com",
-        http=httpx.AsyncClient(transport=_FakeTransport(handler)),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
     try:
         with pytest.raises(MarketplaceTimeoutError):

@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime
+import re
+from datetime import datetime  # noqa: TC003  -- Pydantic needs this available at runtime for field validation
 from typing import Literal
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator, model_validator
+from typing_extensions import Self
 
 MarketplaceItemKind = Literal["schema", "collection"]
 
-_SEMVER_RE = r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$"
+_SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
 
 
 class MarketplaceTag(BaseModel):
@@ -55,12 +57,9 @@ class MarketplaceSchemaSummary(BaseModel):
     viewer_has_upvoted: bool = False
     created_at: datetime
     updated_at: datetime | None = None
-    author: MarketplaceAuthor | None = Field(
-        default=None, validation_alias=AliasChoices("author", "created_by")
-    )
+    author: MarketplaceAuthor | None = Field(default=None, validation_alias=AliasChoices("author", "created_by"))
     tags: list[MarketplaceTag] = Field(default_factory=list)
     latest_version: MarketplaceVersionSummary | None = None
-    already_installed: bool = False
 
 
 class MarketplaceSchemaDetail(MarketplaceSchemaSummary):
@@ -94,11 +93,8 @@ class MarketplaceCollectionSummary(BaseModel):
     description: str | None = None
     schema_count: int = 0
     download_count: int = 0
-    author: MarketplaceAuthor | None = Field(
-        default=None, validation_alias=AliasChoices("author", "created_by")
-    )
+    author: MarketplaceAuthor | None = Field(default=None, validation_alias=AliasChoices("author", "created_by"))
     tags: list[MarketplaceTag] = Field(default_factory=list)
-    already_installed: bool = False
 
 
 class MarketplaceCollectionDetail(MarketplaceCollectionSummary):
@@ -152,9 +148,7 @@ class MarketplaceInstallItem(BaseModel):
     def _validate_semver(cls, value: str | None) -> str | None:
         if value is None:
             return value
-        import re
-
-        if not re.match(_SEMVER_RE, value):
+        if not _SEMVER_RE.match(value):
             raise ValueError(f"Invalid semver: {value!r}")
         return value
 
@@ -180,13 +174,25 @@ class MarketplaceInstallRequest(BaseModel):
 
     @field_validator("repository_id")
     @classmethod
-    def _repo_id_required_for_repo_target(cls, value: str | None) -> str | None:
-        # Full cross-field validation happens in the router (we need access to
-        # `target` alongside `repository_id`); this just normalizes the empty
-        # string to None.
+    def _normalize_repository_id(cls, value: str | None) -> str | None:
+        """Collapse the empty/whitespace string to None so downstream checks
+        only need to test for None, not for both None and ""."""
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @model_validator(mode="after")
+    def _require_repo_id_for_repo_target(self) -> Self:
+        """target="repository" requires a repository_id; target="direct" ignores it.
+
+        Raising here yields a Pydantic 422 with field-level detail, which is
+        fine for schema-driven clients. The router additionally raises a plain
+        400 for the same case because its callers expect install-level error
+        codes rather than validation-envelope shapes.
+        """
+        if self.target == "repository" and not self.repository_id:
+            raise ValueError("repository_id is required when target is 'repository'")
+        return self
 
 
 class MarketplaceInstallResponse(BaseModel):

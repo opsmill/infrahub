@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Icon } from "@iconify-icon/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import Content from "@/shared/components/layout/content";
 import { Badge } from "@/shared/components/ui/badge";
@@ -74,7 +74,7 @@ export function MarketplacePage() {
     enabled: tab === "collections",
   });
 
-  const selectionMap = useMemo(() => new Set(selection.map(keyOf)), [selection]);
+  const selectionMap = new Set(selection.map(keyOf));
 
   const selectSchema = (schema: MarketplaceSchemaSummary) => {
     const item: MarketplaceInstallItem = {
@@ -225,10 +225,7 @@ export function MarketplacePage() {
             }
           />
           {!repos.isPending && repos.writableRepositories.length === 0 && (
-            <PrerequisiteState
-              hasAnyRepository={repos.hasAnyRepository}
-              hasWritePermission={repos.hasWritePermission}
-            />
+            <PrerequisiteState hasAnyRepository={repos.hasAnyRepository} />
           )}
           {selection.length > 0 && (
             <Card className="flex flex-col gap-2">

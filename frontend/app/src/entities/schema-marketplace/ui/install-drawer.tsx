@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Icon } from "@iconify-icon/react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -202,10 +202,9 @@ export function InstallDrawer({
     }
   }, [canUseRepositoryTarget, target]);
 
-  const selectedRepo = useMemo(
-    () => writableRepositories.find((r) => r.id === repositoryId),
-    [writableRepositories, repositoryId]
-  );
+  // React Compiler memoizes derived values like this automatically — see
+  // dev/knowledge/frontend/react.md. No manual useMemo needed.
+  const selectedRepo = writableRepositories.find((r) => r.id === repositoryId);
 
   const mutation = useMutation({
     mutationFn: () =>
@@ -281,6 +280,9 @@ export function InstallDrawer({
             disabled={!canUseRepositoryTarget}
             onClick={() => setTarget("repository")}
             aria-pressed={target === "repository"}
+            aria-describedby={
+              !canUseRepositoryTarget ? "schema-marketplace-repo-disabled-reason" : undefined
+            }
           >
             <Icon icon="mdi:git" className="mr-1" /> To repository
           </Button>
@@ -296,7 +298,10 @@ export function InstallDrawer({
           </Button>
         </div>
         {!canUseRepositoryTarget && hasWritableRepo && !currentBranchSynced && (
-          <div className="rounded-md bg-yellow-50 p-2 text-yellow-800 text-xs">
+          <div
+            id="schema-marketplace-repo-disabled-reason"
+            className="rounded-md bg-yellow-50 p-2 text-yellow-800 text-xs"
+          >
             <p className="mb-0.5 font-semibold">
               "To repository" requires a git-synced Infrahub branch
             </p>

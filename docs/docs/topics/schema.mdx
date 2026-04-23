@@ -1126,14 +1126,30 @@ Schema files can be loaded into Infrahub through the Schema Marketplace page, wi
 
 The Schema Marketplace page (accessible from the main navigation or from the **Schema Marketplace** tile on the home page) lets you browse the [Infrahub Marketplace](https://marketplace.infrahub.app) and install schemas or collections without leaving the web UI.
 
-Install flow when you have a writable Git repository:
+The install drawer offers two install methods — the same button, a different toggle.
+
+#### To repository (recommended for editable schemas)
+
+Commits the selected schema files to a writable `CoreRepository`.
 
 1. Open **Schema Marketplace** from the home tile or the sidebar.
 2. Pick one or more schemas or collections to select them.
-3. In the install drawer, pick a **CoreRepository** target and a branch, then confirm.
-4. The Infrahub backend downloads the selected items from the Marketplace and commits them to `schemas/` on your chosen branch. Your existing repository-sync pipeline then loads the schema into the graph.
+3. In the install drawer, leave **Install method** on `To repository`, pick a repository, and confirm. The Branch field tracks the Infrahub branch you have selected at the top of the page.
+4. The Infrahub backend downloads the selected items from the Marketplace and commits them to `schemas/` on the chosen Git branch. Your existing repository-sync pipeline then loads the schema into the graph.
 
-If you have no writable `CoreRepository` (no repositories configured, or only read-only ones), the page instead shows a prerequisite panel plus an **Install via infrahubctl** block: copy-pasteable commands that apply the selected schemas directly to your instance using `infrahubctl marketplace download` + `infrahubctl schema load`.
+The "To repository" method requires an Infrahub branch created with **Sync with Git** enabled. A non-synced branch would commit to a Git branch that isn't tracked by any Infrahub branch — the UI disables the toggle when that's the case.
+
+#### Direct (no Git commit)
+
+Applies the selected schemas directly to the target Infrahub branch via the schema-load API — the same endpoint `infrahubctl schema load` uses. No repository, no Git commit, no version history.
+
+Pick **Direct** as the install method when you want to try a schema out quickly, when no writable repository is configured, or when you don't plan to edit the schemas later. Switch to `To repository` later if you decide you want version control.
+
+#### CLI alternative
+
+If no writable `CoreRepository` is configured, the page also renders an **Install via infrahubctl** block: copy-pasteable commands using `infrahubctl marketplace download` + `infrahubctl schema load` so you can run the install against your instance from the terminal.
+
+#### Configuration
 
 The Marketplace URL is configurable via the backend environment variable `INFRAHUB_MARKETPLACE_URL` (default `https://marketplace.infrahub.app`). The same variable is read by `infrahubctl marketplace download`, so a single export points both the UI and the CLI at an internal mirror or staging Marketplace.
 

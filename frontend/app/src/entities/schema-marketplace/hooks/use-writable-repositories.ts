@@ -1,5 +1,4 @@
 import { useAtomValue } from "jotai";
-import { useMemo } from "react";
 
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
@@ -20,20 +19,24 @@ export interface WritableRepositoriesResult {
   isPending: boolean;
   writableRepositories: WritableRepositorySummary[];
   hasAnyRepository: boolean;
-  hasWritePermission: boolean;
 }
 
 /**
- * Returns the list of writable CoreRepository instances plus signals for:
- *  - "any repo exists" so the Marketplace page can distinguish "no repos"
- *    from "read-only only".
+ * Returns the list of writable CoreRepository instances plus a signal for
+ * "any repo exists" so the Marketplace page can distinguish "no repos" from
+ * "read-only only".
  *
- * Note: authorization for the install commit lives server-side
- * (POST /api/marketplace/install re-verifies) — we don't gate the UI here
- * because "can update the CoreRepository node" is a different permission
- * from "can git-push". Keeping the UI liberal + server strict.
+ * Authorization for the install commit lives server-side
+ * (POST /api/marketplace/install enforces MANAGE_SCHEMA / MANAGE_REPOSITORIES
+ * via the PermissionManager). The hook returns all writable repos — the server
+ * is the source of truth on whether the user can actually commit.
  */
 export function useWritableRepositories(): WritableRepositoriesResult {
+  // Subscribe to branch and datetime changes so `useObjects` below re-runs
+  // when the user switches branches or the "view as-of" time changes. The
+  // return values aren't used directly — the subscriptions exist solely to
+  // trigger a re-render of this hook, which drives the query invalidation
+  // inside `useObjects` via its internal dependency tracking.
   useCurrentBranch();
   useAtomValue(datetimeAtom);
 
@@ -58,31 +61,25 @@ export function useWritableRepositories(): WritableRepositoriesResult {
   const readOnlyQuery = useObjects(
     {
       schema: readOnlySchema!,
-      getAttributesVisible: (attributes) =>
-        attributes.filter(({ name }) => name === "name"),
+      getAttributesVisible: (attributes) => attributes.filter(({ name }) => name === "name"),
       getRelationshipsVisible: () => [],
     },
     { enabled: !!readOnlySchema }
   );
 
-  const writableRepositories = useMemo<WritableRepositorySummary[]>(() => {
-    const items = (writableQuery.data?.pages?.flat() ?? []) as Array<{
-      id: string;
-      name?: { value?: string };
-      default_branch?: { value?: string | null };
-    }>;
-    return items.map((r) => ({
-      id: r.id,
-      name: r.name?.value ?? r.id,
-      default_branch: r.default_branch?.value ?? null,
-    }));
-  }, [writableQuery.data]);
+  const writableItems = (writableQuery.data?.pages?.flat() ?? []) as Array<{
+    id: string;
+    name?: { value?: string };
+    default_branch?: { value?: string | null };
+  }>;
+  const writableRepositories: WritableRepositorySummary[] = writableItems.map((r) => ({
+    id: r.id,
+    name: r.name?.value ?? r.id,
+    default_branch: r.default_branch?.value ?? null,
+  }));
 
-  const hasAnyRepository = useMemo(() => {
-    const writableCount = (writableQuery.data?.pages?.flat() ?? []).length;
-    const readOnlyCount = (readOnlyQuery.data?.pages?.flat() ?? []).length;
-    return writableCount + readOnlyCount > 0;
-  }, [writableQuery.data, readOnlyQuery.data]);
+  const readOnlyCount = (readOnlyQuery.data?.pages?.flat() ?? []).length;
+  const hasAnyRepository = writableRepositories.length + readOnlyCount > 0;
 
   const isPending =
     writableQuery.isPending || readOnlyQuery.isPending || !writableSchema || !readOnlySchema;
@@ -91,6 +88,5 @@ export function useWritableRepositories(): WritableRepositoriesResult {
     isPending,
     writableRepositories,
     hasAnyRepository,
-    hasWritePermission: true,
   };
 }

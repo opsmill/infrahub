@@ -378,14 +378,21 @@ class MarketplaceSettings(BaseSettings):
     @field_validator("url")
     @classmethod
     def _validate_url(cls, value: str) -> str:
-        value = (value or "").strip()
-        if not value:
-            return value
-        if not (value.startswith("http://") or value.startswith("https://")):
-            # Do not raise — misconfiguration is surfaced via /api/marketplace/status;
-            # the backend must still be able to boot.
-            pass
-        return value.rstrip("/")
+        # Misconfiguration is surfaced via /api/marketplace/status — the
+        # backend must still boot even with a malformed URL so users can see
+        # the diagnostic in the UI. Log a WARNING at load time so operators
+        # also notice it in server logs, not only when the UI first hits the
+        # status endpoint.
+        cleaned = (value or "").strip().rstrip("/")
+        if cleaned and not cleaned.startswith(("http://", "https://")):
+            import logging
+
+            logging.getLogger("infrahub").warning(
+                "INFRAHUB_MARKETPLACE_URL has an unsupported scheme (must be http:// or https://), got %r. "
+                "The Marketplace proxy will fail until this is corrected.",
+                cleaned,
+            )
+        return cleaned
 
 
 class BrokerSettings(BaseSettings):

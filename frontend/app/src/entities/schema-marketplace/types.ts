@@ -48,7 +48,6 @@ export interface MarketplaceSchemaSummary {
   author: MarketplaceAuthor;
   tags: MarketplaceTag[];
   latest_version: MarketplaceVersionSummary | null;
-  already_installed: boolean;
 }
 
 export interface MarketplaceSchemaDetail extends MarketplaceSchemaSummary {
@@ -73,7 +72,6 @@ export interface MarketplaceCollectionSummary {
   download_count: number;
   author: MarketplaceAuthor;
   tags: MarketplaceTag[];
-  already_installed: boolean;
 }
 
 export interface MarketplaceCollectionDetail extends MarketplaceCollectionSummary {
@@ -156,9 +154,6 @@ export interface CliSnippetResponse {
 // UI-only view model for the install drawer state machine.
 export type InstallDrawerState =
   | { phase: "idle" }
-  | { phase: "selecting"; selection: MarketplaceInstallItem[] }
   | { phase: "submitting" }
   | { phase: "pending"; taskId: string }
-  | { phase: "running"; taskId: string }
-  | { phase: "completed"; taskId: string }
   | { phase: "failed"; taskId: string; error: string };

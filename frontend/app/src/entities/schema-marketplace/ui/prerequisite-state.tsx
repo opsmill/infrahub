@@ -6,35 +6,25 @@ import { constructPath } from "@/shared/api/rest/fetch";
 
 interface PrerequisiteStateProps {
   hasAnyRepository: boolean;
-  hasWritePermission: boolean;
 }
 
 /**
- * Renders the "install is blocked" state shown when the user has no writable
- * CoreRepository configured. Distinguishes three cases per FR-022:
- *  - No repositories at all
- *  - Only read-only repositories
- *  - Writable repos exist but the user has no write permission
+ * Informational card shown when the user has no writable CoreRepository.
+ * Distinguishes two cases:
+ *  - No repositories at all → link to the repo creation flow
+ *  - Some read-only repositories exist → explain why they aren't usable
+ *
+ * Note: actual authorization for the install commit lives server-side in
+ * `POST /api/marketplace/install` — this card is purely a navigation/UX
+ * nudge, not a security gate.
  */
-export function PrerequisiteState({
-  hasAnyRepository,
-  hasWritePermission,
-}: PrerequisiteStateProps) {
-  let heading: string;
-  let description: string;
-  if (!hasAnyRepository) {
-    heading = "Tip: connect a Git repository";
-    description =
-      "Direct install works without a Git repo. Connecting a writable CoreRepository lets you keep schema YAML under version control and edit it later via proposed changes.";
-  } else if (hasAnyRepository && !hasWritePermission) {
-    heading = "Write permission required for repository installs";
-    description =
-      "You don't have write permission on any CoreRepository. You can still install directly via the drawer above, or use the infrahubctl alternative below.";
-  } else {
-    heading = "All repositories are read-only";
-    description =
-      "Read-only repositories can't receive commits. Add a writable CoreRepository to install with version control, or install directly via the drawer above.";
-  }
+export function PrerequisiteState({ hasAnyRepository }: PrerequisiteStateProps) {
+  const heading = hasAnyRepository
+    ? "All repositories are read-only"
+    : "Tip: connect a Git repository";
+  const description = hasAnyRepository
+    ? "Read-only repositories can't receive commits. Add a writable CoreRepository to install with version control, or install directly via the drawer above."
+    : "Direct install works without a Git repo. Connecting a writable CoreRepository lets you keep schema YAML under version control and edit it later via proposed changes.";
 
   return (
     <Card className="flex flex-col gap-3 border-yellow-500/40 bg-yellow-50">
