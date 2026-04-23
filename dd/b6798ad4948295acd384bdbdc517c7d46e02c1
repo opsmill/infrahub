@@ -1,0 +1,25 @@
+docs/docs/guides/artifact-content-composition.mdx
+  561ec9d9319f4129 239
+docs/docs/topics/artifact.mdx
+  561ec9d9319f4129 81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.3.2",
+  "base_commit_sha": "ddb6798ad4948295acd384bdbdc517c7d46e02c1",
+  "prompts": {
+    "561ec9d9319f4129": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc0c8061-7e3c-4171-aa53-481a407b0c9d",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Copier",
+      "messages": [],
+      "total_additions": 2,
+      "total_deletions": 2,
+      "accepted_lines": 28411,
+      "overriden_lines": 0
+    }
+  }
+}
