@@ -14,7 +14,7 @@ logging {
 
 loki.write "loki" {
 	endpoint {
-		url = "http://loki:3100/loki/api/v1/push"
+		url = "http://infrahub-loki:3100/loki/api/v1/push"
 	}
 }
 
@@ -168,7 +168,7 @@ loki.process "pipeline" {
 		}
 	}
 
-	// Parse logfmt fields from extracted data
+	// Parse logfmt fields from the raw log line
 	stage.logfmt {
 		mapping = {
 			app        = "",
@@ -176,7 +176,6 @@ loki.process "pipeline" {
 			branch     = "",
 			trace_id   = "",
 		}
-		source = "tmp_msg"
 	}
 
 	// --- Server container logs (JSON/production mode) ---
@@ -254,14 +253,14 @@ loki.process "pipeline" {
 
 prometheus.remote_write "prometheus" {
 	endpoint {
-		url = "http://prometheus:9090/api/v1/write"
+		url = "http://infrahub-prometheus:9090/api/v1/write"
 	}
 }
 
 // --- Prometheus self-monitoring ---
 prometheus.scrape "prometheus" {
 	targets = [
-		{"__address__" = "prometheus:9090"},
+		{"__address__" = "infrahub-prometheus:9090"},
 	]
 	forward_to      = [prometheus.remote_write.prometheus.receiver]
 	job_name        = "prometheus"
@@ -316,22 +315,22 @@ prometheus.scrape "database" {
 	scrape_interval = "15s"
 }
 
-// --- Task manager exporter ---
-prometheus.scrape "task_manager" {
+// --- Task manager exporter (Prefect API poller) ---
+prometheus.scrape "task_manager_exporter" {
 	targets = [
-		{"__address__" = "task-manager-exporter:8000"},
+		{"__address__" = "infrahub-task-manager-exporter:8000"},
 	]
 	honor_timestamps = false
 	forward_to       = [prometheus.remote_write.prometheus.receiver]
-	job_name         = "task-manager"
+	job_name         = "task-manager-exporter"
 	scrape_interval  = "15s"
 }
 
 // --- Logs infrastructure (Loki + Alloy self-monitoring) ---
 prometheus.scrape "logs" {
 	targets = [
-		{"__address__" = "loki:3100"},
-		{"__address__" = "alloy:12345"},
+		{"__address__" = "infrahub-loki:3100"},
+		{"__address__" = "infrahub-alloy:12345"},
 	]
 	forward_to      = [prometheus.remote_write.prometheus.receiver]
 	job_name        = "logs"
@@ -341,7 +340,7 @@ prometheus.scrape "logs" {
 // --- Node exporter ---
 prometheus.scrape "node_exporter" {
 	targets = [
-		{"__address__" = "node-exporter:9100"},
+		{"__address__" = "infrahub-node-exporter:9100"},
 	]
 	forward_to      = [prometheus.remote_write.prometheus.receiver]
 	job_name        = "node-exporter"
@@ -364,20 +363,20 @@ prometheus.relabel "cadvisor" {
 
 prometheus.scrape "cadvisor" {
 	targets = [
-		{"__address__" = "cadvisor:8080"},
+		{"__address__" = "infrahub-cadvisor:8080"},
 	]
 	forward_to      = [prometheus.relabel.cadvisor.receiver]
 	job_name        = "cadvisor"
 	scrape_interval = "15s"
 }
 
-// --- Prefect task worker ---
+// --- Task manager (Prefect server) ---
 prometheus.scrape "prefect" {
 	targets = [
 		{"__address__" = "prefect-server:4200"},
 	]
 	forward_to      = [prometheus.remote_write.prometheus.receiver]
-	job_name        = "task-worker"
+	job_name        = "task-manager"
 	metrics_path    = "/api/metrics"
 	scrape_interval = "15s"
 }
