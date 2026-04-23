@@ -21,9 +21,10 @@ export const generateRelationshipListQuery = ({
     partial_match: true,
   };
 
-  const args = parent?.value
-    ? { ...defaultArgs, [`${parent.name}__ids`]: [parent.value] }
-    : { ...defaultArgs };
+  const args =
+    parent?.name && parent?.value
+      ? { ...defaultArgs, [`${parent.name}__ids`]: [parent.value] }
+      : { ...defaultArgs };
 
   const request = {
     query: {

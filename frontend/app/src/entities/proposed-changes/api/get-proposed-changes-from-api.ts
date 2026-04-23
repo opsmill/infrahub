@@ -26,7 +26,7 @@ export interface ProposedChangesFromApiParams extends PaginationParams {
 export const getProposedChangesFromApi = async ({
   schema,
   limit = DEFAULT_PAGE_SIZE,
-  offset,
+  offset = 0,
   filters,
   getAttributesVisible = getAttributesVisibleInListView,
   getRelationshipsVisible = getRelationshipsVisibleInListView,
