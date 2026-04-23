@@ -17,46 +17,8 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.db_validation import assert_attribute_path_status
 from tests.helpers.edge_timestamps import assert_edge_timestamps
-
-LATEST_ATTRIBUTE_PATH_STATUS_QUERY = """
-MATCH (node:%(label)s)
-CALL (node) {
-    MATCH (node)-[r1:HAS_ATTRIBUTE]->(attr:Attribute {name: $attr_name})
-    WHERE r1.branch = $branch_name
-    RETURN r1, attr
-    ORDER BY r1.branch_level DESC, r1.from DESC
-    LIMIT 1
-}
-CALL (attr) {
-    MATCH (attr)-[r2:HAS_VALUE]->(av)
-    WHERE r2.branch = $branch_name
-    RETURN r2
-    ORDER BY r2.branch_level DESC, r2.from DESC
-    LIMIT 1
-}
-RETURN node.uuid AS node_id, r1.status AS has_attr_status, r2.status AS has_val_status
-"""
-
-
-async def assert_attribute_path_status(
-    db: InfrahubDatabase,
-    node_label: str,
-    attr_name: str,
-    branch_name: str,
-    expected_status: str,
-) -> None:
-    """Assert that the latest HAS_ATTRIBUTE->HAS_VALUE path has the expected status for all instances."""
-    query = LATEST_ATTRIBUTE_PATH_STATUS_QUERY % {"label": node_label}
-    results = await db.execute_query(query=query, params={"attr_name": attr_name, "branch_name": branch_name})
-    assert len(results) > 0, f"No {node_label} nodes found with attribute {attr_name!r}"
-    for record in results:
-        assert record["has_attr_status"] == expected_status, (
-            f"Node {record['node_id']}: HAS_ATTRIBUTE status is {record['has_attr_status']!r}, expected {expected_status!r}"
-        )
-        assert record["has_val_status"] == expected_status, (
-            f"Node {record['node_id']}: HAS_VALUE status is {record['has_val_status']!r}, expected {expected_status!r}"
-        )
 
 
 @pytest.fixture
