@@ -241,20 +241,12 @@ class InfrahubWorkerAsync(BaseWorker):
         )
 
     async def _run_git_config_global(self, *args: str, setting_name: str) -> None:
-        # Run from the container's /tmp so a stray `.git` file in the worker's
-        # starting cwd (e.g. a worktree stub file accidentally copied into the
-        # image) can't make `git config --global` fail with
-        # "fatal: not a git repository". The --global flag only touches
-        # $GIT_CONFIG_GLOBAL / ~/.gitconfig; the cwd is irrelevant to what gets
-        # written but git still walks up from cwd looking for a repo during
-        # safety checks, so keep it somewhere neutral.
         proc = await asyncio.create_subprocess_exec(
             "git",
             "config",
             "--global",
             setting_name,
             *args,
-            cwd="/tmp",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
