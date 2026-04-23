@@ -37,6 +37,14 @@ interface BranchFieldProps {
   inputId: string;
   placeholder: string;
   target: MarketplaceInstallTarget;
+  /**
+   * Whether the user can override the tracked branch with a freeform name.
+   * - direct target: true -- any Infrahub branch is valid to schema-load against.
+   * - repository target: false -- the install method toggle already gates to
+   *   git-synced branches, so allowing freeform here would re-open the
+   *   orphaned-Git-branch foot-gun we're trying to avoid.
+   */
+  allowOverride: boolean;
 }
 
 function BranchField({
@@ -48,7 +56,17 @@ function BranchField({
   inputId,
   placeholder,
   target,
+  allowOverride,
 }: BranchFieldProps) {
+  // If override was previously engaged and is now disallowed (e.g. user
+  // flipped target back to repository), fall back to tracking.
+  useEffect(() => {
+    if (!allowOverride && branchEdited) {
+      setBranchEdited(false);
+      setBranchName(currentBranchName);
+    }
+  }, [allowOverride, branchEdited, currentBranchName, setBranchEdited, setBranchName]);
+
   const reset = () => {
     setBranchEdited(false);
     setBranchName(currentBranchName);
@@ -65,13 +83,14 @@ function BranchField({
   const isDirect = target === "direct";
   const branchIcon = isDirect ? "mdi:lightning-bolt" : "mdi:source-branch";
   const badgeLabel = isDirect ? "Infrahub branch" : "Git branch";
+  const editable = allowOverride && branchEdited;
 
   return (
     <>
       <label className="text-sm" htmlFor={inputId}>
         Branch
       </label>
-      {!branchEdited ? (
+      {!editable ? (
         <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm">
           <div className="flex items-center gap-1.5 truncate">
             <Icon icon={branchIcon} className="text-gray-500" />
@@ -79,15 +98,17 @@ function BranchField({
             <Badge variant="lightgray-outline">{badgeLabel}</Badge>
             <Badge variant="lightgray-outline">Tracking</Badge>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            onClick={() => setBranchEdited(true)}
-            aria-label="Override branch"
-          >
-            <Icon icon="mdi:pencil" className="mr-1" /> Override
-          </Button>
+          {allowOverride && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              onClick={() => setBranchEdited(true)}
+              aria-label="Override branch"
+            >
+              <Icon icon="mdi:pencil" className="mr-1" /> Override
+            </Button>
+          )}
         </div>
       ) : (
         <div className="flex items-center gap-2">
@@ -111,15 +132,16 @@ function BranchField({
           </Button>
         </div>
       )}
-      {!branchEdited ? (
+      {!editable ? (
         <p className="text-gray-500 text-xs">
-          Tracks the Infrahub branch from the top bar. Switch branches up there and this updates.
-          {!isDirect && " Git branch is created from the repository's default branch if missing."}
+          Tracks the Infrahub branch from the top bar.
+          {isDirect
+            ? " Switch branches up there and this updates."
+            : " Repository installs are limited to git-synced branches; switch branches up top to retarget."}
         </p>
       ) : (
         <p className="text-gray-500 text-xs">
-          Custom {isDirect ? "Infrahub" : "Git"} branch. Reset to track the top bar again.
-          {!isDirect && " Will be created from the repository's default branch if missing."}
+          Custom Infrahub branch. Reset to track the top bar again.
         </p>
       )}
     </>
@@ -138,9 +160,11 @@ export function InstallDrawer({
 }: InstallDrawerProps) {
   const hasWritableRepo = writableRepositories.length > 0;
   const { currentBranch } = useCurrentBranch();
+  const currentBranchSynced = currentBranch.sync_with_git === true;
+  const canUseRepositoryTarget = hasWritableRepo && currentBranchSynced;
 
   const [target, setTarget] = useState<MarketplaceInstallTarget>(
-    hasWritableRepo ? "repository" : "direct"
+    canUseRepositoryTarget ? "repository" : "direct"
   );
   const [repositoryId, setRepositoryId] = useState<string>("");
   const [branchName, setBranchName] = useState<string>(currentBranch.name);
@@ -167,14 +191,16 @@ export function InstallDrawer({
     }
   }, [writableRepositories, repositoryId]);
 
-  // If repos disappear (e.g. user deletes the only writable CoreRepository)
-  // and they were still on "repository" target, fall back to direct so the
-  // primary CTA stays actionable.
+  // Fall back to direct when the repository target becomes unavailable:
+  //  - writable repos disappear (rare), OR
+  //  - user switches the top-bar to an Infrahub branch without git sync.
+  // Repository installs without git sync would leave an orphaned Git branch
+  // not mapped to any Infrahub branch, so we gate the UI here.
   useEffect(() => {
-    if (!hasWritableRepo && target === "repository") {
+    if (!canUseRepositoryTarget && target === "repository") {
       setTarget("direct");
     }
-  }, [hasWritableRepo, target]);
+  }, [canUseRepositoryTarget, target]);
 
   const selectedRepo = useMemo(
     () => writableRepositories.find((r) => r.id === repositoryId),
@@ -252,7 +278,7 @@ export function InstallDrawer({
             variant={target === "repository" ? "primary" : "ghost"}
             size="sm"
             className="flex-1"
-            disabled={!hasWritableRepo}
+            disabled={!canUseRepositoryTarget}
             onClick={() => setTarget("repository")}
             aria-pressed={target === "repository"}
           >
@@ -269,6 +295,18 @@ export function InstallDrawer({
             <Icon icon="mdi:lightning-bolt" className="mr-1" /> Direct
           </Button>
         </div>
+        {!canUseRepositoryTarget && hasWritableRepo && !currentBranchSynced && (
+          <div className="rounded-md bg-yellow-50 p-2 text-yellow-800 text-xs">
+            <p className="mb-0.5 font-semibold">
+              "To repository" requires a git-synced Infrahub branch
+            </p>
+            <p>
+              The current branch <span className="font-mono">{currentBranch.name}</span> has no Git
+              sync, so committing to a repository would leave an orphaned Git branch. Switch to a
+              branch created with <strong>Sync with Git</strong> enabled, or use Direct install.
+            </p>
+          </div>
+        )}
         {target === "direct" && (
           <div className="rounded-md bg-blue-50 p-2 text-custom-blue-700 text-xs">
             <p className="mb-0.5 font-semibold">Recommended: connect a writable Git repository</p>
@@ -308,6 +346,7 @@ export function InstallDrawer({
             inputId="schema-marketplace-target-branch"
             placeholder={selectedRepo?.default_branch ?? currentBranch.name}
             target={target}
+            allowOverride={false}
           />
         </div>
       )}
@@ -323,6 +362,7 @@ export function InstallDrawer({
             inputId="schema-marketplace-direct-branch"
             placeholder={currentBranch.name}
             target={target}
+            allowOverride={true}
           />
         </div>
       )}
