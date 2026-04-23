@@ -236,7 +236,7 @@ The composition filters raise errors in the following situations:
 
 1. **No dependency ordering**: Artifacts may generate in parallel. If artifact B includes content from artifact A, artifact A must already have been generated. There is no built-in mechanism to enforce generation order. Re-running artifact generation resolves this once all source artifacts exist.
 2. **Worker context only**: The `artifact_content` and `file_object_content` family of filters require an active Infrahub client connection. They are not available during local `infrahubctl render` without a server connection.
-3. **Text content only**: Only text-based content can be composed. Binary files (images, PDFs) are not supported by these filters.
+3. **Text content only**: Only text-based content can be composed. Binary files (images, PDF documents) are not supported by these filters.
 4. **Circular references**: If artifact A includes content from artifact B and artifact B includes content from artifact A, the result is undefined. Design composition pipelines as a directed acyclic graph.
 
 :::
