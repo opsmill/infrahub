@@ -50,13 +50,7 @@ class TestProfiles(TestInfrahubDockerClient):
         expected_source_id: str | None,
         max_retries: int = 20,
     ) -> None:
-        """Poll until the attribute's source.id matches the expected value.
-
-        Profile refreshes update `.value` and `.source` separately, so tests that
-        assert on `.source.id` (or `.is_from_profile`) right after waiting on
-        `.value` can race. Use this helper after `wait_for_attribute_value` when
-        the assertion depends on source metadata.
-        """
+        """Poll until the attribute's source.id matches the expected value."""
 
         def _source_id(node: InfrahubNode) -> str | None:
             attr_value = getattr(node, attribute)
