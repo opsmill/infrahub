@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { Icon } from "@iconify-icon/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -36,12 +36,22 @@ export function InstallDrawer({
   className,
   onRemove,
 }: InstallDrawerProps) {
-  const defaultRepoId = writableRepositories[0]?.id ?? "";
-  const [repositoryId, setRepositoryId] = useState<string>(defaultRepoId);
-  const [branchName, setBranchName] = useState<string>(() => {
-    return writableRepositories[0]?.default_branch ?? "main";
-  });
+  const [repositoryId, setRepositoryId] = useState<string>("");
+  const [branchName, setBranchName] = useState<string>("main");
   const [state, setState] = useState<InstallDrawerState>({ phase: "idle" });
+
+  // Once writable repositories load (or change), default the repo selection to
+  // the first one and seed the branch name from its default_branch. Guard on
+  // "no current selection OR current selection is gone" so we don't clobber a
+  // user-made choice.
+  useEffect(() => {
+    if (writableRepositories.length === 0) return;
+    const stillValid = writableRepositories.some((r) => r.id === repositoryId);
+    if (!stillValid) {
+      setRepositoryId(writableRepositories[0].id);
+      setBranchName(writableRepositories[0].default_branch ?? "main");
+    }
+  }, [writableRepositories, repositoryId]);
 
   const selectedRepo = useMemo(
     () => writableRepositories.find((r) => r.id === repositoryId),

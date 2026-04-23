@@ -42,24 +42,37 @@ def get(
     input_str: str = typer.Argument(... if sys.stdin.isatty() else sys.stdin.read().strip()),
     config_file: str = typer.Option("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
+    """Return credentials for a repository if known, or exit cleanly.
+
+    Per git's credential helper protocol, a helper MUST exit 0 when it has no
+    credentials to offer (git then falls back to anonymous or the next
+    helper). Exiting non-zero surfaces the helper's stderr to the caller as a
+    git error, which is only appropriate for genuine failures (e.g. the
+    request format isn't something we understand).
+    """
     config.SETTINGS.initialize_and_exit(config_file=config_file)
 
     try:
         location = parse_helper_get_input(text=input_str)
     except ValueError as exc:
-        print(str(exc))
+        # Malformed input from git — this is a real error.
+        print(str(exc), file=sys.stderr)
         raise typer.Exit(1) from exc
 
     client = InfrahubClientSync(config=Config(address=config.SETTINGS.main.internal_address, insert_tracker=True))
-    repo = client.get(kind=CoreGenericRepository.__name__, location__value=location)
+    repo = client.get(
+        kind=CoreGenericRepository.__name__,
+        location__value=location,
+        raise_when_missing=False,
+    )
 
-    if not repo:
-        print("Repository not found in the database.")
-        raise typer.Exit(1)
-
+    # "No credentials available" is not an error to git. Exit 0 silently so it
+    # can try the request anonymously (matters for public repos and during
+    # check_connectivity before the repo is persisted).
+    if repo is None:
+        raise typer.Exit(0)
     if not repo.credential._id:
-        print("Repository doesn't have credentials defined.")
-        raise typer.Exit(1)
+        raise typer.Exit(0)
 
     repo.credential.fetch()
 

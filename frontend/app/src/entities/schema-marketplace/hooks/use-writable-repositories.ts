@@ -5,7 +5,6 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
-import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 const WRITABLE_REPOSITORY_KIND = "CoreRepository";
@@ -25,14 +24,14 @@ export interface WritableRepositoriesResult {
 }
 
 /**
- * Returns the list of writable CoreRepository instances the current user has
- * write permission on, plus signals for:
+ * Returns the list of writable CoreRepository instances plus signals for:
  *  - "any repo exists" so the Marketplace page can distinguish "no repos"
- *    from "read-only only",
- *  - "user can write to the CoreRepository kind" so the page knows whether
- *    to gate the install UI entirely.
+ *    from "read-only only".
  *
- * Drives FR-021, FR-022, FR-024, FR-026.
+ * Note: authorization for the install commit lives server-side
+ * (POST /api/marketplace/install re-verifies) — we don't gate the UI here
+ * because "can update the CoreRepository node" is a different permission
+ * from "can git-push". Keeping the UI liberal + server strict.
  */
 export function useWritableRepositories(): WritableRepositoriesResult {
   useCurrentBranch();
@@ -60,8 +59,6 @@ export function useWritableRepositories(): WritableRepositoriesResult {
     { enabled: !!readOnlySchema }
   );
 
-  const { data: permission } = useGetObjectPermissions(WRITABLE_REPOSITORY_KIND);
-
   const writableRepositories = useMemo<WritableRepositorySummary[]>(() => {
     const items = (writableQuery.data?.pages?.flat() ?? []) as Array<{
       id: string;
@@ -81,14 +78,13 @@ export function useWritableRepositories(): WritableRepositoriesResult {
     return writableCount + readOnlyCount > 0;
   }, [writableQuery.data, readOnlyQuery.data]);
 
-  const hasWritePermission = Boolean(permission?.update?.isAllowed);
   const isPending =
     writableQuery.isPending || readOnlyQuery.isPending || !writableSchema || !readOnlySchema;
 
   return {
     isPending,
-    writableRepositories: hasWritePermission ? writableRepositories : [],
+    writableRepositories,
     hasAnyRepository,
-    hasWritePermission,
+    hasWritePermission: true,
   };
 }
