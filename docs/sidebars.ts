@@ -133,6 +133,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/events-rules-actions',
             'guides/webhooks',
+            'guides/log-forwarding',
           ],
         },
         {
@@ -244,6 +245,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/schema',
                 'topics/order-weight',
+                'topics/schema-display',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
                 'topics/schema-extensions',
@@ -309,6 +311,7 @@ const sidebars: SidebarsConfig = {
                 'topics/event-actions',
                 'topics/tasks',
                 'topics/webhooks',
+                'topics/log-forwarding',
               ],
             },
             {

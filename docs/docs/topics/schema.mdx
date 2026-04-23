@@ -800,6 +800,52 @@ nodes:
       - "InfraAsset"
 ```
 
+#### Restricting inheritance by namespace
+
+The `restricted_namespaces` property on a generic limits which namespaces are allowed to define nodes that inherit from it. When set, any node with `inherit_from` referencing that generic must belong to one of the listed namespaces — schema validation fails otherwise.
+
+This is useful when a generic is designed to be implemented only by a specific, known set of nodes. Without the restriction, the generic appears available to anyone, which can mislead schema authors into creating node types that look valid but behave incorrectly at runtime.
+
+```yaml
+generics:
+  - name: GenericService
+    namespace: Customer
+    restricted_namespaces:
+      - Customer
+    attributes:
+      - name: service_name
+        kind: Text
+        unique: true
+      - name: customer_account
+        kind: Text
+
+nodes:
+  - name: SingleSiteService
+    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+    attributes:
+      - name: site_name
+        kind: Text
+
+  - name: CloudService
+    namespace: Customer     # Allowed — Customer is in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+
+  - name: HttpService
+    namespace: Dcim         # Error — Dcim is not in restricted_namespaces
+    inherit_from:
+      - CustomerGenericService
+
+```
+
+:::info
+`restricted_namespaces` is optional. When not set on a generic, nodes from any namespace can inherit from it.
+:::
+
+Infrahub uses this same mechanism on several of its own built-in generics — for example `CoreGenericRepository` and `CoreWebhook` — to prevent accidental extension of types that rely on specific internal code. Nodes inheriting from these generics must belong to the `Core` namespace.
+
 ### Inherited properties
 
 #### List of inheritable properties
@@ -1175,7 +1221,8 @@ All elements of the schema are identified by a human readable identifier that al
 Since `namespace` & `name` are used to identify the elements of the schema, if you need to update them after loading the schema an additional step will be required.
 
 In order to update the human readable identifier, it's required to temporarily provide the internal identifier of the element directly in the configuration.
-All Node, Generic, Attribute or Relationship have their unique identifier that can be find easily in the schema explorer in the frontend [http://localhost:8000/schema](http://localhost:8000/schema)
+All Node, Generic, Attribute or Relationship have their unique identifier that can be find easily in the schema explorer in the frontend [http://localhost:8000/schema](http://localhost:8000/schema).
+The schema explorer provides two complementary views: a **list view** for browsing models and inspecting their full definition, and an interactive **graph view** that visualizes the relationships between models. Toggle between them using the switch at the top-right of the schema page.
 The internal identifier should be an UUID4, with 36 characters.
 
 <Tabs groupId="schema-version" queryString>

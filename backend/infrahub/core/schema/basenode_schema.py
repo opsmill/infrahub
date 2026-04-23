@@ -697,6 +697,21 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         return self
 
+    def _check_attr_in_uniqueness_constraint(self, attr: str) -> bool:
+        """Return True if ``attr`` appears in any uniqueness constraint path."""
+        if not self.uniqueness_constraints:
+            return False
+        for constraint_paths in self.uniqueness_constraints:
+            for constraint_path in constraint_paths:
+                if constraint_path.startswith(f"{attr}__") or constraint_path == attr:
+                    return True
+        return False
+
+    def check_if_attr_supports_profiles(self, attribute_schema: AttributeSchema) -> bool:
+        return attribute_schema.support_profiles and not self._check_attr_in_uniqueness_constraint(
+            attr=attribute_schema.name
+        )
+
 
 @dataclass
 class SchemaUniquenessConstraintPath:

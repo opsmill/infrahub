@@ -495,6 +495,8 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         trusted_certificates=trusted_certificates,
         notifications_disabled_classifications=[
             NotificationDisabledClassification.UNRECOGNIZED,
+            # Suppress spurious warnings for optional relationship types not yet in DB schema (HAS_OWNER, HAS_SOURCE, etc.)
+            NotificationDisabledClassification.SCHEMA,
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )

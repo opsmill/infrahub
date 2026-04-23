@@ -2420,7 +2420,7 @@ class SchemaBranch:
             )
 
         for node_attr in node.attributes:
-            if not node_attr.support_profiles:
+            if not node.check_if_attr_supports_profiles(attribute_schema=node_attr):
                 continue
             attr_schema_class = get_attribute_schema_class_for_kind(kind=node_attr.kind)
             attr = attr_schema_class(

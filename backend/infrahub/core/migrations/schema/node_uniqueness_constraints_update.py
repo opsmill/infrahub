@@ -1,0 +1,68 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Sequence
+
+from infrahub.core.constants import SchemaPathType
+from infrahub.core.path import SchemaPath
+from infrahub.core.schema.generic_schema import GenericSchema
+from infrahub.core.schema.node_schema import NodeSchema
+
+from ..query import MigrationBaseQuery  # noqa: TC001
+from ..shared import AttributeSchemaMigration, MigrationInput, MigrationResult, SchemaMigration
+from .attribute_supports_generated_schema import (
+    ProfilesAttributeAddMigrationQuery,
+    ProfilesAttributeRemoveMigrationQuery,
+)
+
+if TYPE_CHECKING:
+    from infrahub.core.branch.models import Branch
+
+
+class NodeUniquenessConstraintsUpdateMigration(SchemaMigration):
+    name: str = "node.uniqueness_constraints.update"
+    queries: Sequence[type[MigrationBaseQuery]] = []
+
+    async def execute(
+        self,
+        migration_input: MigrationInput,
+        branch: Branch,
+        queries: Sequence[type[MigrationBaseQuery]] | None = None,  # noqa: ARG002
+    ) -> MigrationResult:
+        result = MigrationResult()
+
+        if not isinstance(self.new_schema, (NodeSchema, GenericSchema)):
+            return result
+
+        for attr in self.new_schema.attributes:
+            prev_attr = self.previous_schema.get_attribute_or_none(name=attr.name) or attr
+            previous_supports_profiles = self.previous_schema.check_if_attr_supports_profiles(
+                attribute_schema=prev_attr
+            )
+            new_supports_profiles = self.new_schema.check_if_attr_supports_profiles(attribute_schema=attr)
+
+            if not self.new_schema.generate_profile or previous_supports_profiles == new_supports_profiles:
+                continue
+
+            attr_migration = AttributeSchemaMigration(
+                name=f"node.uniqueness_constraints.update.{attr.name}",
+                queries=[
+                    ProfilesAttributeRemoveMigrationQuery
+                    if new_supports_profiles is False
+                    else ProfilesAttributeAddMigrationQuery
+                ],
+                new_node_schema=self.new_node_schema,
+                previous_node_schema=self.previous_node_schema,
+                schema_path=SchemaPath(
+                    path_type=SchemaPathType.ATTRIBUTE,
+                    schema_kind=self.new_schema.kind,
+                    field_name=attr.name,
+                ),
+            )
+
+            attr_result = await attr_migration.execute(migration_input=migration_input, branch=branch)
+            result.errors.extend(attr_result.errors)
+            result.nbr_migrations_executed += attr_result.nbr_migrations_executed
+            if result.errors:
+                break
+
+        return result
