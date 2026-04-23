@@ -28,6 +28,86 @@ function itemLabel(item: MarketplaceInstallItem): string {
   return `${item.kind}: ${item.namespace}/${item.name}${version}`;
 }
 
+interface BranchFieldProps {
+  branchName: string;
+  currentBranchName: string;
+  branchEdited: boolean;
+  setBranchName: (value: string) => void;
+  setBranchEdited: (value: boolean) => void;
+  inputId: string;
+  placeholder: string;
+}
+
+function BranchField({
+  branchName,
+  currentBranchName,
+  branchEdited,
+  setBranchName,
+  setBranchEdited,
+  inputId,
+  placeholder,
+}: BranchFieldProps) {
+  const reset = () => {
+    setBranchEdited(false);
+    setBranchName(currentBranchName);
+  };
+
+  return (
+    <>
+      <label className="text-sm" htmlFor={inputId}>
+        Branch
+      </label>
+      {!branchEdited ? (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm">
+          <div className="flex items-center gap-1.5 truncate">
+            <Icon icon="mdi:source-branch" className="text-gray-500" />
+            <span className="truncate font-mono">{branchName}</span>
+            <Badge variant="lightgray-outline">Tracking</Badge>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={() => setBranchEdited(true)}
+            aria-label="Override branch"
+          >
+            <Icon icon="mdi:pencil" className="mr-1" /> Override
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <input
+            id={inputId}
+            className="flex-1 rounded-md border border-gray-200 p-2 text-sm"
+            type="text"
+            value={branchName}
+            onChange={(event) => setBranchName(event.target.value)}
+            placeholder={placeholder}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={reset}
+            aria-label="Reset to current Infrahub branch"
+          >
+            <Icon icon="mdi:refresh" className="mr-1" /> Reset
+          </Button>
+        </div>
+      )}
+      {!branchEdited ? (
+        <p className="text-gray-500 text-xs">
+          Tracks the Infrahub branch from the top bar. Switch branches up there and this updates.
+        </p>
+      ) : (
+        <p className="text-gray-500 text-xs">
+          Custom branch. Reset to track the top bar again.
+        </p>
+      )}
+    </>
+  );
+}
+
 function itemKey(item: MarketplaceInstallItem): string {
   return `${item.kind}:${item.namespace}/${item.name}@${item.semver ?? "latest"}`;
 }
@@ -201,51 +281,29 @@ export function InstallDrawer({
             ))}
           </select>
 
-          <label className="text-sm" htmlFor="schema-marketplace-target-branch">
-            Branch
-          </label>
-          <input
-            id="schema-marketplace-target-branch"
-            className="rounded-md border border-gray-200 p-2 text-sm"
-            type="text"
-            value={branchName}
-            onChange={(event) => {
-              setBranchEdited(true);
-              setBranchName(event.target.value);
-            }}
+          <BranchField
+            branchName={branchName}
+            currentBranchName={currentBranch.name}
+            branchEdited={branchEdited}
+            setBranchName={setBranchName}
+            setBranchEdited={setBranchEdited}
+            inputId="schema-marketplace-target-branch"
             placeholder={selectedRepo?.default_branch ?? currentBranch.name}
           />
-          {!branchEdited && (
-            <p className="text-gray-500 text-xs">
-              Tracks the current Infrahub branch (<span className="font-mono">{currentBranch.name}</span>
-              ). Edit to override.
-            </p>
-          )}
         </div>
       )}
 
       {target === "direct" && (
         <div className="flex flex-col gap-2">
-          <label className="text-sm" htmlFor="schema-marketplace-direct-branch">
-            Branch
-          </label>
-          <input
-            id="schema-marketplace-direct-branch"
-            className="rounded-md border border-gray-200 p-2 text-sm"
-            type="text"
-            value={branchName}
-            onChange={(event) => {
-              setBranchEdited(true);
-              setBranchName(event.target.value);
-            }}
+          <BranchField
+            branchName={branchName}
+            currentBranchName={currentBranch.name}
+            branchEdited={branchEdited}
+            setBranchName={setBranchName}
+            setBranchEdited={setBranchEdited}
+            inputId="schema-marketplace-direct-branch"
             placeholder={currentBranch.name}
           />
-          {!branchEdited && (
-            <p className="text-gray-500 text-xs">
-              Tracks the current Infrahub branch (<span className="font-mono">{currentBranch.name}</span>
-              ). Edit to override.
-            </p>
-          )}
         </div>
       )}
 
