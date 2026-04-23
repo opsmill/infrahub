@@ -44,7 +44,12 @@ export function useWritableRepositories(): WritableRepositoriesResult {
     {
       // schema is non-null when enabled is true
       schema: writableSchema!,
-      getAttributesVisible: () => [],
+      // Request only the attributes we actually render (name for the dropdown
+      // label, default_branch for seeding the install form). Empty array would
+      // return nodes without any attributes populated, which is why the
+      // repo picker was showing UUIDs.
+      getAttributesVisible: (attributes) =>
+        attributes.filter(({ name }) => name === "name" || name === "default_branch"),
       getRelationshipsVisible: () => [],
     },
     { enabled: !!writableSchema }
@@ -53,7 +58,8 @@ export function useWritableRepositories(): WritableRepositoriesResult {
   const readOnlyQuery = useObjects(
     {
       schema: readOnlySchema!,
-      getAttributesVisible: () => [],
+      getAttributesVisible: (attributes) =>
+        attributes.filter(({ name }) => name === "name"),
       getRelationshipsVisible: () => [],
     },
     { enabled: !!readOnlySchema }
