@@ -7,6 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
+import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { installFromMarketplace } from "@/entities/schema-marketplace/api/marketplace.queries";
 import type { WritableRepositorySummary } from "@/entities/schema-marketplace/hooks/use-writable-repositories";
 import type {
@@ -38,25 +39,33 @@ export function InstallDrawer({
   onRemove,
 }: InstallDrawerProps) {
   const hasWritableRepo = writableRepositories.length > 0;
+  const { currentBranch } = useCurrentBranch();
 
   const [target, setTarget] = useState<MarketplaceInstallTarget>(
     hasWritableRepo ? "repository" : "direct"
   );
   const [repositoryId, setRepositoryId] = useState<string>("");
-  const [branchName, setBranchName] = useState<string>("main");
+  const [branchName, setBranchName] = useState<string>(currentBranch.name);
+  const [branchEdited, setBranchEdited] = useState(false);
   const [state, setState] = useState<InstallDrawerState>({ phase: "idle" });
 
-  // Once writable repositories load (or change), default the repo selection to
-  // the first one and seed the branch name from its default_branch. Guard on
-  // "no current selection OR current selection is gone" so we don't clobber a
-  // user-made choice.
+  // Track the top-bar Infrahub branch: whenever the user switches branches,
+  // retarget the install unless they've already edited the field manually.
+  useEffect(() => {
+    if (!branchEdited) {
+      setBranchName(currentBranch.name);
+    }
+  }, [currentBranch.name, branchEdited]);
+
+  // Once writable repositories load (or change), default the repo selection
+  // to the first one. Do NOT override branchName here -- the top-bar branch
+  // takes precedence over the repo's default_branch.
   useEffect(() => {
     const first = writableRepositories[0];
     if (!first) return;
     const stillValid = writableRepositories.some((r) => r.id === repositoryId);
     if (!stillValid) {
       setRepositoryId(first.id);
-      setBranchName(first.default_branch ?? "main");
     }
   }, [writableRepositories, repositoryId]);
 
@@ -183,12 +192,7 @@ export function InstallDrawer({
             id="schema-marketplace-target-repo"
             className="rounded-md border border-gray-200 p-2 text-sm"
             value={repositoryId}
-            onChange={(event) => {
-              const next = event.target.value;
-              setRepositoryId(next);
-              const repo = writableRepositories.find((r) => r.id === next);
-              setBranchName(repo?.default_branch ?? "main");
-            }}
+            onChange={(event) => setRepositoryId(event.target.value)}
           >
             {writableRepositories.map((repo) => (
               <option key={repo.id} value={repo.id}>
@@ -205,9 +209,18 @@ export function InstallDrawer({
             className="rounded-md border border-gray-200 p-2 text-sm"
             type="text"
             value={branchName}
-            onChange={(event) => setBranchName(event.target.value)}
-            placeholder={selectedRepo?.default_branch ?? "main"}
+            onChange={(event) => {
+              setBranchEdited(true);
+              setBranchName(event.target.value);
+            }}
+            placeholder={selectedRepo?.default_branch ?? currentBranch.name}
           />
+          {!branchEdited && (
+            <p className="text-gray-500 text-xs">
+              Tracks the current Infrahub branch (<span className="font-mono">{currentBranch.name}</span>
+              ). Edit to override.
+            </p>
+          )}
         </div>
       )}
 
@@ -221,9 +234,18 @@ export function InstallDrawer({
             className="rounded-md border border-gray-200 p-2 text-sm"
             type="text"
             value={branchName}
-            onChange={(event) => setBranchName(event.target.value)}
-            placeholder="main"
+            onChange={(event) => {
+              setBranchEdited(true);
+              setBranchName(event.target.value);
+            }}
+            placeholder={currentBranch.name}
           />
+          {!branchEdited && (
+            <p className="text-gray-500 text-xs">
+              Tracks the current Infrahub branch (<span className="font-mono">{currentBranch.name}</span>
+              ). Edit to override.
+            </p>
+          )}
         </div>
       )}
 

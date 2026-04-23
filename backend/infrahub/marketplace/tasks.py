@@ -151,6 +151,19 @@ async def _commit_and_push(
     repo_name = repo_node.name.value  # type: ignore[union-attr]
 
     repo = await InfrahubRepository.init(id=payload.repository_id, name=repo_name, client=sdk)
+
+    # Ensure the target branch exists locally (and is pushed to origin if we
+    # have a remote). create_branch_in_git is idempotent -- it's a no-op when
+    # the branch is already present. Covers the "Infrahub branch created with
+    # sync_with_git=False" and "user typed a freeform branch name" cases
+    # without a separate UI prompt.
+    try:
+        await repo.create_branch_in_git(branch_name=payload.branch_name, push_origin=True)
+    except Exception as exc:  # noqa: BLE001
+        raise MarketplaceInstallError(
+            f"couldn't prepare git branch {payload.branch_name!r} on repository {repo_name!r}: {exc}"
+        ) from exc
+
     git_repo = repo.get_git_repo_worktree(identifier=payload.branch_name)
     if git_repo is None:
         raise MarketplaceInstallError(f"no local worktree for branch {payload.branch_name!r}")
