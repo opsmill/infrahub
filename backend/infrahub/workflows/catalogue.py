@@ -659,6 +659,14 @@ MARKETPLACE_SCHEMA_INSTALL = WorkflowDefinition(
 )
 
 
+MARKETPLACE_SCHEMA_INSTALL_DIRECT = WorkflowDefinition(
+    name="marketplace-schema-install-direct",
+    type=WorkflowType.CORE,
+    module="infrahub.marketplace.tasks",
+    function="install_marketplace_schemas_direct",
+)
+
+
 CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     name="clean-up-deadlocks",
     type=WorkflowType.INTERNAL,
@@ -722,6 +730,7 @@ WORKFLOWS = [
     HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
     MARKETPLACE_SCHEMA_INSTALL,
+    MARKETPLACE_SCHEMA_INSTALL_DIRECT,
     PROFILE_REFRESH,
     PROFILE_REFRESH_MULTIPLE,
     PROFILE_REFRESH_PROCESS,

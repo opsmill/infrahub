@@ -12,6 +12,7 @@ import type { WritableRepositorySummary } from "@/entities/schema-marketplace/ho
 import type {
   InstallDrawerState,
   MarketplaceInstallItem,
+  MarketplaceInstallTarget,
 } from "@/entities/schema-marketplace/types";
 
 interface InstallDrawerProps {
@@ -36,6 +37,11 @@ export function InstallDrawer({
   className,
   onRemove,
 }: InstallDrawerProps) {
+  const hasWritableRepo = writableRepositories.length > 0;
+
+  const [target, setTarget] = useState<MarketplaceInstallTarget>(
+    hasWritableRepo ? "repository" : "direct"
+  );
   const [repositoryId, setRepositoryId] = useState<string>("");
   const [branchName, setBranchName] = useState<string>("main");
   const [state, setState] = useState<InstallDrawerState>({ phase: "idle" });
@@ -45,13 +51,23 @@ export function InstallDrawer({
   // "no current selection OR current selection is gone" so we don't clobber a
   // user-made choice.
   useEffect(() => {
-    if (writableRepositories.length === 0) return;
+    const first = writableRepositories[0];
+    if (!first) return;
     const stillValid = writableRepositories.some((r) => r.id === repositoryId);
     if (!stillValid) {
-      setRepositoryId(writableRepositories[0].id);
-      setBranchName(writableRepositories[0].default_branch ?? "main");
+      setRepositoryId(first.id);
+      setBranchName(first.default_branch ?? "main");
     }
   }, [writableRepositories, repositoryId]);
+
+  // If repos disappear (e.g. user deletes the only writable CoreRepository)
+  // and they were still on "repository" target, fall back to direct so the
+  // primary CTA stays actionable.
+  useEffect(() => {
+    if (!hasWritableRepo && target === "repository") {
+      setTarget("direct");
+    }
+  }, [hasWritableRepo, target]);
 
   const selectedRepo = useMemo(
     () => writableRepositories.find((r) => r.id === repositoryId),
@@ -61,7 +77,8 @@ export function InstallDrawer({
   const mutation = useMutation({
     mutationFn: () =>
       installFromMarketplace({
-        repository_id: repositoryId,
+        target,
+        repository_id: target === "repository" ? repositoryId : null,
         branch_name: branchName,
         items: selection,
       }),
@@ -72,7 +89,16 @@ export function InstallDrawer({
   });
 
   const canInstall =
-    selection.length > 0 && writableRepositories.length > 0 && !!repositoryId && !!branchName;
+    selection.length > 0 &&
+    !!branchName &&
+    (target === "direct" || (hasWritableRepo && !!repositoryId));
+
+  const primaryLabel =
+    state.phase === "submitting"
+      ? "Queuing install…"
+      : target === "repository"
+        ? "Install to repository"
+        : "Install directly to Infrahub";
 
   return (
     <Card className={classNames("flex flex-col gap-3", className)}>
@@ -111,7 +137,44 @@ export function InstallDrawer({
         </ul>
       )}
 
-      {writableRepositories.length > 0 && (
+      <div className="flex flex-col gap-2">
+        <span className="text-sm">Install method</span>
+        <div className="flex rounded-md border border-gray-200 p-0.5">
+          <Button
+            type="button"
+            variant={target === "repository" ? "primary" : "ghost"}
+            size="sm"
+            className="flex-1"
+            disabled={!hasWritableRepo}
+            onClick={() => setTarget("repository")}
+            aria-pressed={target === "repository"}
+          >
+            <Icon icon="mdi:git" className="mr-1" /> To repository
+          </Button>
+          <Button
+            type="button"
+            variant={target === "direct" ? "primary" : "ghost"}
+            size="sm"
+            className="flex-1"
+            onClick={() => setTarget("direct")}
+            aria-pressed={target === "direct"}
+          >
+            <Icon icon="mdi:lightning-bolt" className="mr-1" /> Direct
+          </Button>
+        </div>
+        {target === "direct" && (
+          <div className="rounded-md bg-blue-50 p-2 text-custom-blue-700 text-xs">
+            <p className="mb-0.5 font-semibold">Recommended: connect a writable Git repository</p>
+            <p>
+              Direct install applies schemas to Infrahub immediately without a Git commit. If you
+              plan to edit these schemas later via proposed changes, install into a writable
+              repository instead so the YAML is version-controlled.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {target === "repository" && hasWritableRepo && (
         <div className="flex flex-col gap-2">
           <label className="text-sm" htmlFor="schema-marketplace-target-repo">
             Target repository
@@ -148,13 +211,29 @@ export function InstallDrawer({
         </div>
       )}
 
+      {target === "direct" && (
+        <div className="flex flex-col gap-2">
+          <label className="text-sm" htmlFor="schema-marketplace-direct-branch">
+            Branch
+          </label>
+          <input
+            id="schema-marketplace-direct-branch"
+            className="rounded-md border border-gray-200 p-2 text-sm"
+            type="text"
+            value={branchName}
+            onChange={(event) => setBranchName(event.target.value)}
+            placeholder="main"
+          />
+        </div>
+      )}
+
       <Button
         type="button"
         variant="primary"
         disabled={!canInstall || state.phase === "submitting"}
         onClick={() => mutation.mutate()}
       >
-        {state.phase === "submitting" ? "Queuing install…" : "Install to repository"}
+        {primaryLabel}
       </Button>
 
       {state.phase === "pending" && (

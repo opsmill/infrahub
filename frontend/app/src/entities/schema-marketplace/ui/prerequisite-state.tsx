@@ -23,17 +23,17 @@ export function PrerequisiteState({
   let heading: string;
   let description: string;
   if (!hasAnyRepository) {
-    heading = "No Git repository configured";
+    heading = "Tip: connect a Git repository";
     description =
-      "Installing a schema through the UI requires a writable Git repository. Add one to your instance to unlock one-click installs.";
+      "Direct install works without a Git repo. Connecting a writable CoreRepository lets you keep schema YAML under version control and edit it later via proposed changes.";
   } else if (hasAnyRepository && !hasWritePermission) {
-    heading = "You don't have write permission on any repository";
+    heading = "Write permission required for repository installs";
     description =
-      "Installing schemas through the UI requires write permission on a CoreRepository. Ask an administrator or use the infrahubctl alternative below.";
+      "You don't have write permission on any CoreRepository. You can still install directly via the drawer above, or use the infrahubctl alternative below.";
   } else {
-    heading = "All configured repositories are read-only";
+    heading = "All repositories are read-only";
     description =
-      "Read-only repositories (CoreReadOnlyRepository) cannot receive commits. Add a writable CoreRepository to install schemas through the UI, or use the infrahubctl alternative below.";
+      "Read-only repositories can't receive commits. Add a writable CoreRepository to install with version control, or install directly via the drawer above.";
   }
 
   return (

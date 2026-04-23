@@ -100,9 +100,6 @@ export function MarketplacePage() {
     );
   };
 
-  const showPrerequisite =
-    !repos.isPending && (repos.writableRepositories.length === 0 || !repos.hasWritePermission);
-
   const showConfigError =
     !!status.data && (!status.data.url_scheme_valid || !status.data.url_configured);
 
@@ -220,35 +217,29 @@ export function MarketplacePage() {
         </section>
 
         <aside className="flex flex-col gap-3">
-          {showPrerequisite ? (
-            <>
-              <PrerequisiteState
-                hasAnyRepository={repos.hasAnyRepository}
-                hasWritePermission={repos.hasWritePermission}
-              />
+          <InstallDrawer
+            selection={selection}
+            writableRepositories={repos.writableRepositories}
+            onRemove={(item) =>
+              setSelection((prev) => prev.filter((p) => keyOf(p) !== keyOf(item)))
+            }
+          />
+          {!repos.isPending && repos.writableRepositories.length === 0 && (
+            <PrerequisiteState
+              hasAnyRepository={repos.hasAnyRepository}
+              hasWritePermission={repos.hasWritePermission}
+            />
+          )}
+          {selection.length > 0 && (
+            <Card className="flex flex-col gap-2">
+              <header className="flex items-center gap-2 font-semibold text-sm">
+                <Icon icon="mdi:console" /> CLI alternative
+              </header>
+              <p className="text-gray-500 text-xs">
+                Prefer to apply directly from your machine? Use the commands below.
+              </p>
               <CliAlternative selection={selection} />
-            </>
-          ) : (
-            <>
-              <InstallDrawer
-                selection={selection}
-                writableRepositories={repos.writableRepositories}
-                onRemove={(item) =>
-                  setSelection((prev) => prev.filter((p) => keyOf(p) !== keyOf(item)))
-                }
-              />
-              {selection.length > 0 && (
-                <Card className="flex flex-col gap-2">
-                  <header className="flex items-center gap-2 font-semibold text-sm">
-                    <Icon icon="mdi:console" /> CLI alternative
-                  </header>
-                  <p className="text-gray-500 text-xs">
-                    Prefer to apply directly from your machine? Use the commands below.
-                  </p>
-                  <CliAlternative selection={selection} />
-                </Card>
-              )}
-            </>
+            </Card>
           )}
         </aside>
       </div>

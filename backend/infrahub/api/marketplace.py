@@ -31,6 +31,7 @@ from infrahub.marketplace.models import (
     CliSnippetResponse,
     MarketplaceCollectionDetail,
     MarketplaceCollectionsListResponse,
+    MarketplaceInstallDirectPayload,
     MarketplaceInstallItem,
     MarketplaceInstallPayload,
     MarketplaceInstallRequest,
@@ -42,7 +43,7 @@ from infrahub.marketplace.models import (
     MarketplaceVersionContent,
 )
 from infrahub.workers.dependencies import get_client, get_workflow
-from infrahub.workflows.catalogue import MARKETPLACE_SCHEMA_INSTALL
+from infrahub.workflows.catalogue import MARKETPLACE_SCHEMA_INSTALL, MARKETPLACE_SCHEMA_INSTALL_DIRECT
 
 if TYPE_CHECKING:
     from infrahub.auth import AccountSession
@@ -233,40 +234,62 @@ async def install(
     request: MarketplaceInstallRequest,
     session: "AccountSession" = Depends(get_current_user),
 ) -> MarketplaceInstallResponse:
-    """Start a Prefect workflow that fetches selected items and commits to a writable repo.
+    """Start a Prefect workflow that fetches selected items and applies them.
 
-    Enforces the write-target gate server-side (FR-025, FR-027):
+    Two install paths:
 
-    - 404 if the repository node doesn't resolve.
-    - 409 if the resolved repository is a ``CoreReadOnlyRepository`` (never a valid target).
+    - ``target="repository"`` (default) — clone the target ``CoreRepository``,
+      commit schema files under ``schemas/``, and push. Infrahub's repo-sync
+      then loads the schema into the graph. Version-controlled; requires a
+      writable repo. Enforces the write-target gate server-side (FR-025,
+      FR-027): 404 if the repo doesn't resolve, 409 if it's a
+      ``CoreReadOnlyRepository``.
+    - ``target="direct"`` — apply schemas to the target branch via the
+      schema-load API. No repository, no commit. Faster, no version control;
+      the repository-target path is recommended for users who plan to edit
+      schemas later via proposed changes.
     """
-    repo_node = await _get_repo_node(request.repository_id)
-    if repo_node is None:
-        raise HTTPException(status_code=404, detail="repository_not_found")
-    kind = getattr(repo_node, "_schema", None)
-    kind_name = repo_node._schema.kind if hasattr(repo_node, "_schema") else str(repo_node.__class__.__name__)
-    if kind_name == InfrahubKind.READONLYREPOSITORY:
-        raise HTTPException(status_code=409, detail="repository_not_writable")
-
-    payload = MarketplaceInstallPayload(
-        marketplace_url=config.SETTINGS.marketplace.url,
-        initiator_username=session.account_id,  # TODO: resolve display name via the graph
-        initiator_user_id=session.account_id,
-        repository_id=request.repository_id,
-        branch_name=request.branch_name,
-        items=list(request.items),
-    )
-
     workflow = get_workflow()
-    info = await workflow.submit_workflow(
-        workflow=MARKETPLACE_SCHEMA_INSTALL,
-        parameters={"payload": payload.model_dump(mode="json")},
-    )
+
+    if request.target == "repository":
+        if not request.repository_id:
+            raise HTTPException(status_code=400, detail="repository_id_required_for_repository_target")
+        repo_node = await _get_repo_node(request.repository_id)
+        if repo_node is None:
+            raise HTTPException(status_code=404, detail="repository_not_found")
+        kind_name = repo_node._schema.kind if hasattr(repo_node, "_schema") else str(repo_node.__class__.__name__)
+        if kind_name == InfrahubKind.READONLYREPOSITORY:
+            raise HTTPException(status_code=409, detail="repository_not_writable")
+
+        repo_payload = MarketplaceInstallPayload(
+            marketplace_url=config.SETTINGS.marketplace.url,
+            initiator_username=session.account_id,  # TODO: resolve display name via the graph
+            initiator_user_id=session.account_id,
+            repository_id=request.repository_id,
+            branch_name=request.branch_name,
+            items=list(request.items),
+        )
+        info = await workflow.submit_workflow(
+            workflow=MARKETPLACE_SCHEMA_INSTALL,
+            parameters={"payload": repo_payload.model_dump(mode="json")},
+        )
+        message = "Install queued; poll task status for progress."
+    else:  # target == "direct"
+        direct_payload = MarketplaceInstallDirectPayload(
+            marketplace_url=config.SETTINGS.marketplace.url,
+            initiator_username=session.account_id,
+            initiator_user_id=session.account_id,
+            branch_name=request.branch_name,
+            items=list(request.items),
+        )
+        info = await workflow.submit_workflow(
+            workflow=MARKETPLACE_SCHEMA_INSTALL_DIRECT,
+            parameters={"payload": direct_payload.model_dump(mode="json")},
+        )
+        message = "Direct install queued; schemas will be applied via the schema-load API."
+
     task_id = str(getattr(info, "id", None) or getattr(info, "flow_run_id", None) or UUIDT().new())
-    return MarketplaceInstallResponse(
-        task_id=task_id,
-        message="Install queued; poll task status for progress.",
-    )
+    return MarketplaceInstallResponse(task_id=task_id, message=message)
 
 
 @router.get("/cli-snippet", response_model=CliSnippetResponse)

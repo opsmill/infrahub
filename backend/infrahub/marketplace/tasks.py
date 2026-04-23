@@ -9,6 +9,8 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+import yaml
+
 from infrahub.marketplace.client import (
     MarketplaceClient,
     MarketplaceNotFoundError,
@@ -16,7 +18,11 @@ from infrahub.marketplace.client import (
     MarketplaceUnreachableError,
     make_marketplace_client,
 )
-from infrahub.marketplace.models import MarketplaceInstallItem, MarketplaceInstallPayload
+from infrahub.marketplace.models import (
+    MarketplaceInstallDirectPayload,
+    MarketplaceInstallItem,
+    MarketplaceInstallPayload,
+)
 from infrahub.workers.dependencies import get_client
 
 if TYPE_CHECKING:
@@ -41,7 +47,7 @@ async def install_marketplace_schemas(payload: MarketplaceInstallPayload) -> dic
     """
     log = get_run_logger()
 
-    schema_files = await _fetch_all_items(payload)
+    schema_files = await _fetch_all_items(marketplace_url=payload.marketplace_url, items=payload.items)
     if not schema_files:
         log.warning("marketplace install: no schema files to install")
         return {"commit": None, "files_written": 0}
@@ -50,17 +56,54 @@ async def install_marketplace_schemas(payload: MarketplaceInstallPayload) -> dic
     return {"commit": commit_sha, "files_written": len(schema_files)}
 
 
+@flow(
+    name="marketplace-schema-install-direct",
+    flow_run_name="install-direct-{payload.branch_name}",
+)
+async def install_marketplace_schemas_direct(payload: MarketplaceInstallDirectPayload) -> dict:
+    """Download selected Marketplace items and apply them directly to Infrahub.
+
+    Uses the SDK's ``schema.load`` (POST /api/schema/load) -- no Git repository
+    is touched. The target branch must already exist. On any failure during
+    fetching or parsing the schemas, the Infrahub schema is unchanged; on
+    partial failures during apply, Infrahub's schema-load endpoint is itself
+    transactional per request (either all schemas in the payload apply or none
+    do -- see backend/infrahub/api/schema.py).
+    """
+    log = get_run_logger()
+
+    schema_files = await _fetch_all_items(marketplace_url=payload.marketplace_url, items=payload.items)
+    if not schema_files:
+        log.warning("marketplace direct install: no schema files to apply")
+        return {"applied": 0}
+
+    parsed: list[dict] = []
+    for path, content in schema_files:
+        try:
+            doc = yaml.safe_load(content)
+        except yaml.YAMLError as exc:
+            raise MarketplaceInstallError(f"invalid YAML in marketplace file {path}: {exc}") from exc
+        if not isinstance(doc, dict):
+            raise MarketplaceInstallError(f"marketplace file {path} did not parse to a schema document")
+        parsed.append(doc)
+
+    sdk = get_client()
+    await sdk.schema.load(schemas=parsed, branch=payload.branch_name)
+    log.info("applied %d schema document(s) directly to branch %s", len(parsed), payload.branch_name)
+    return {"applied": len(parsed)}
+
+
 async def _fetch_all_items(
-    payload: MarketplaceInstallPayload,
+    *, marketplace_url: str, items: list[MarketplaceInstallItem]
 ) -> list[tuple[str, str]]:
-    """Download every item in payload.items. Returns (relative_path, content) tuples.
+    """Download every item. Returns (relative_path, content) tuples.
 
     Raises MarketplaceInstallError on any fetch failure.
     """
     log = get_run_logger()
     results: list[tuple[str, str]] = []
-    async with MarketplaceClient(base_url=payload.marketplace_url) as client:
-        for item in payload.items:
+    async with MarketplaceClient(base_url=marketplace_url) as client:
+        for item in items:
             try:
                 fetched = await _fetch_one_item(client=client, item=item)
             except MarketplaceNotFoundError as exc:

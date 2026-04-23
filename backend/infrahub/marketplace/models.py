@@ -159,9 +159,13 @@ class MarketplaceInstallItem(BaseModel):
         return value
 
 
+MarketplaceInstallTarget = Literal["repository", "direct"]
+
+
 class MarketplaceInstallRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
-    repository_id: str
+    target: MarketplaceInstallTarget = "repository"
+    repository_id: str | None = None
     branch_name: str
     items: list[MarketplaceInstallItem]
 
@@ -172,6 +176,16 @@ class MarketplaceInstallRequest(BaseModel):
             raise ValueError("items must not be empty")
         if len(value) > 50:
             raise ValueError("items must not exceed 50 entries")
+        return value
+
+    @field_validator("repository_id")
+    @classmethod
+    def _repo_id_required_for_repo_target(cls, value: str | None) -> str | None:
+        # Full cross-field validation happens in the router (we need access to
+        # `target` alongside `repository_id`); this just normalizes the empty
+        # string to None.
+        if isinstance(value, str) and not value.strip():
+            return None
         return value
 
 
@@ -189,6 +203,21 @@ class MarketplaceInstallPayload(BaseModel):
     initiator_username: str
     initiator_user_id: str
     repository_id: str
+    branch_name: str
+    items: list[MarketplaceInstallItem]
+
+
+class MarketplaceInstallDirectPayload(BaseModel):
+    """Prefect flow parameter payload for `marketplace-schema-install-direct`.
+
+    Direct installs apply schemas to the running Infrahub instance via the
+    schema-load API — no Git commit, no repository required.
+    """
+
+    model_config = ConfigDict(frozen=True)
+    marketplace_url: str
+    initiator_username: str
+    initiator_user_id: str
     branch_name: str
     items: list[MarketplaceInstallItem]
 

@@ -125,8 +125,11 @@ export interface MarketplaceInstallItem {
   semver: string | null;
 }
 
+export type MarketplaceInstallTarget = "repository" | "direct";
+
 export interface MarketplaceInstallRequest {
-  repository_id: string;
+  target: MarketplaceInstallTarget;
+  repository_id?: string | null;
   branch_name: string;
   items: MarketplaceInstallItem[];
 }
