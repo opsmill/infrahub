@@ -360,6 +360,34 @@ class DevelopmentSettings(BaseSettings):
     )
 
 
+class MarketplaceSettings(BaseSettings):
+    """Configuration settings for the Infrahub Marketplace integration.
+
+    The backend proxies `marketplace.infrahub.app` (default) at
+    `/api/marketplace/*`; override ``url`` to point at an internal mirror or a
+    staging Marketplace. The same env var is read by the ``infrahubctl
+    marketplace download`` command so a single export reconfigures both.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_MARKETPLACE_")
+    url: str = Field(
+        default="https://marketplace.infrahub.app",
+        description="Base URL of the Infrahub Marketplace (scheme + host).",
+    )
+
+    @field_validator("url")
+    @classmethod
+    def _validate_url(cls, value: str) -> str:
+        value = (value or "").strip()
+        if not value:
+            return value
+        if not (value.startswith("http://") or value.startswith("https://")):
+            # Do not raise — misconfiguration is surfaced via /api/marketplace/status;
+            # the backend must still be able to boot.
+            pass
+        return value.rstrip("/")
+
+
 class BrokerSettings(BaseSettings):
     """Configuration settings for the message bus."""
 
@@ -1173,6 +1201,7 @@ class Settings(BaseSettings):
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
+    marketplace: MarketplaceSettings = MarketplaceSettings()
     cache: CacheSettings = CacheSettings()
     workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()

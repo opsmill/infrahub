@@ -109,20 +109,16 @@ export const GettingStarted = ({ className }: { className?: string }) => {
 
           <GettingStartedContentItem>
             <GettingStartedContentItem.Title>
-              <Icon icon={"mdi:cloud-json"} className="size-4" />
-              Schema Library
-              <GettingStartedContentItem.Link
-                to={"https://github.com/opsmill/schema-library/"}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Docs
+              <Icon icon={"mdi:store"} className="size-4" />
+              Schema Marketplace
+              <GettingStartedContentItem.Link to={"/schema-marketplace"}>
+                Browse
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
 
             <span className="text-gray-500">
-              Offers a collection of schemas designed to streamline and standardize
-              infrastructure-related data structures.
+              Install ready-made schemas from the Infrahub Marketplace into a Git repository to
+              streamline and standardize infrastructure-related data structures.
             </span>
           </GettingStartedContentItem>
 

@@ -192,6 +192,10 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: "/schema-marketplace",
+                lazy: () => import("@/pages/schema-marketplace"),
+              },
+              {
                 path: "ipam",
                 children: [
                   {

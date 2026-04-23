@@ -5,6 +5,7 @@ import { EventsWidget } from "@/entities/homepage/ui/events-widget";
 import { GettingStarted } from "@/entities/homepage/ui/getting-started";
 import { GitRepositoriesWidget } from "@/entities/homepage/ui/git-repositories-widget";
 import { ProposedChangesWidget } from "@/entities/homepage/ui/proposed-changes-widget";
+import { SchemaMarketplaceWidget } from "@/entities/homepage/ui/schema-marketplace-widget";
 import { TasksWidget } from "@/entities/homepage/ui/tasks-widget";
 
 const Homepage = () => {
@@ -12,6 +13,7 @@ const Homepage = () => {
     <Content className="grid auto-rows-[10rem] gap-3 p-3 lg:grid-cols-3">
       <ProposedChangesWidget className="col-span-1 row-span-2 lg:col-span-2" />
       <GitRepositoriesWidget className="col-span-1 row-span-1" />
+      <SchemaMarketplaceWidget className="col-span-1 row-span-1" />
       <BranchesWidget className="col-span-1 row-span-2 lg:col-span-2" />
       <EventsWidget className="col-span-1 row-span-3 lg:col-start-3 lg:row-start-2" />
       <TasksWidget className="col-span-full row-span-4 lg:row-span-3" />

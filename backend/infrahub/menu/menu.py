@@ -178,6 +178,16 @@ default_menu = [
             ),
             MenuItemDefinition(
                 namespace="Builtin",
+                name="SchemaMarketplace",
+                label="Schema Marketplace",
+                path="/schema-marketplace",
+                icon="mdi:store",
+                protected=True,
+                section=MenuSection.INTERNAL,
+                order_weight=2250,
+            ),
+            MenuItemDefinition(
+                namespace="Builtin",
                 name="GraphqlQuery",
                 label="GraphQL Queries",
                 kind=InfrahubKind.GRAPHQLQUERY,

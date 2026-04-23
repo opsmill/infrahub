@@ -651,6 +651,14 @@ PROFILE_REFRESH_PROCESS = WorkflowDefinition(
 )
 
 
+MARKETPLACE_SCHEMA_INSTALL = WorkflowDefinition(
+    name="marketplace-schema-install",
+    type=WorkflowType.CORE,
+    module="infrahub.marketplace.tasks",
+    function="install_marketplace_schemas",
+)
+
+
 CLEAN_UP_DEADLOCKS = WorkflowDefinition(
     name="clean-up-deadlocks",
     type=WorkflowType.INTERNAL,
@@ -713,6 +721,7 @@ WORKFLOWS = [
     HFID_SETUP,
     HFID_UPDATE_VALUE,
     IPAM_RECONCILIATION,
+    MARKETPLACE_SCHEMA_INSTALL,
     PROFILE_REFRESH,
     PROFILE_REFRESH_MULTIPLE,
     PROFILE_REFRESH_PROCESS,
