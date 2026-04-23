@@ -1138,6 +1138,10 @@ class ConfiguredSettings:
         return self.active_settings.broker
 
     @property
+    def marketplace(self) -> MarketplaceSettings:
+        return self.active_settings.marketplace
+
+    @property
     def cache(self) -> CacheSettings:
         return self.active_settings.cache
 

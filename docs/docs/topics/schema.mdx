@@ -1120,7 +1120,22 @@ The full identifier of the icon must be used. Example `mdi:domain`
 
 ## Load a schema into Infrahub
 
-Schema files can be loaded into Infrahub with the `infrahubctl` command or directly via the Git integration.
+Schema files can be loaded into Infrahub through the Schema Marketplace page, with the `infrahubctl` command, or directly via the Git integration.
+
+### Schema Marketplace page
+
+The Schema Marketplace page (accessible from the main navigation or from the **Schema Marketplace** tile on the home page) lets you browse the [Infrahub Marketplace](https://marketplace.infrahub.app) and install schemas or collections without leaving the web UI.
+
+Install flow when you have a writable Git repository:
+
+1. Open **Schema Marketplace** from the home tile or the sidebar.
+2. Pick one or more schemas or collections to select them.
+3. In the install drawer, pick a **CoreRepository** target and a branch, then confirm.
+4. The Infrahub backend downloads the selected items from the Marketplace and commits them to `schemas/` on your chosen branch. Your existing repository-sync pipeline then loads the schema into the graph.
+
+If you have no writable `CoreRepository` (no repositories configured, or only read-only ones), the page instead shows a prerequisite panel plus an **Install via infrahubctl** block: copy-pasteable commands that apply the selected schemas directly to your instance using `infrahubctl marketplace download` + `infrahubctl schema load`.
+
+The Marketplace URL is configurable via the backend environment variable `INFRAHUB_MARKETPLACE_URL` (default `https://marketplace.infrahub.app`). The same variable is read by `infrahubctl marketplace download`, so a single export points both the UI and the CLI at an internal mirror or staging Marketplace.
 
 ### infrahubctl command
 

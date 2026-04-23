@@ -34,9 +34,9 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 - [ ] T001 Coordinate with SDK PR #952 author to refactor `infrahub_sdk/ctl/marketplace.py` into a public `infrahub_sdk.marketplace` module (class `MarketplaceClient` + list/detail/content helpers per plan.md "SDK coordination"). Track the SDK-side work as a linked issue; do NOT block T002.
 - [ ] T002 Bump the `python_sdk` submodule pointer to the `knotty-dibble` branch HEAD (pre-merge) or the merged commit of PR #952. Commit submodule update separately in `python_sdk` with a message referencing infp-528.
 - [ ] T003 If T001 is not yet landed, create `backend/infrahub/marketplace/sdk_shim.py` implementing the minimal public surface (`MarketplaceClient`, list/detail/content functions, Pydantic response models) locally. Delete when the SDK module is available.
-- [ ] T004 [P] Create backend feature directory: `backend/infrahub/marketplace/__init__.py` (empty) and remove any stale files left over from prior branches if present.
-- [ ] T005 [P] Scaffold frontend entity directory structure: `frontend/app/src/entities/schema-marketplace/{api,domain,hooks,ui,queries}/` with empty `index.ts` files following `dev/knowledge/frontend/entities-structure.md`.
-- [ ] T006 [P] Create Towncrier changelog fragment: `changelog/+schema-marketplace.added.md` with a one-line summary "Added a dedicated Schema Marketplace page with a backend proxy to install schemas from the Infrahub Marketplace."
+- [X] T004 [P] Create backend feature directory: `backend/infrahub/marketplace/__init__.py` (empty) and remove any stale files left over from prior branches if present.
+- [X] T005 [P] Scaffold frontend entity directory structure: `frontend/app/src/entities/schema-marketplace/{api,domain,hooks,ui,queries}/` with empty `index.ts` files following `dev/knowledge/frontend/entities-structure.md`.
+- [X] T006 [P] Create Towncrier changelog fragment: `changelog/+schema-marketplace.added.md` with a one-line summary "Added a dedicated Schema Marketplace page with a backend proxy to install schemas from the Infrahub Marketplace."
 - [ ] T007 [P] Delete stale unit test files from the prior wizard branch if they linger on disk: `backend/tests/unit/marketplace/test_client.py` and `backend/tests/unit/marketplace/test_models.py` (per research.md §R-2 — SDK owns these tests now).
 
 ---
@@ -49,25 +49,25 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 
 ### Backend config & routing
 
-- [ ] T008 Add `MarketplaceSettings` Pydantic settings subclass to `backend/infrahub/config.py` with `url: str = "https://marketplace.infrahub.app"` and `env_prefix="INFRAHUB_MARKETPLACE_"`. Attach as `marketplace: MarketplaceSettings = MarketplaceSettings()` on the top-level `Settings` class. Add a `@field_validator("url")` rejecting non-http(s) schemes with a WARNING (log only; do not raise — broken config still allows the backend to boot and surfaces via `/api/marketplace/status`).
-- [ ] T009 [P] Create `backend/infrahub/marketplace/install_payload.py` with Infrahub-internal install models per data-model.md §1.12–§1.13: `MarketplaceInstallItem`, `MarketplaceInstallRequest`, `MarketplaceInstallResponse`, `MarketplaceInstallPayload` (all frozen; branch_name, repository_id, items; payload mirrors request plus `marketplace_url`, `initiator_username`, `initiator_user_id`).
-- [ ] T010 [P] Create `backend/infrahub/marketplace/client.py` as a thin factory: `def make_marketplace_client(http: httpx.AsyncClient | None = None) -> MarketplaceClient` that resolves `config.SETTINGS.marketplace.url` and instantiates `infrahub_sdk.marketplace.MarketplaceClient` (or the `sdk_shim.py` equivalent). Keep this file small — its only job is URL resolution + wiring.
-- [ ] T011 Create `backend/infrahub/api/marketplace.py` with a FastAPI `APIRouter` (prefix `/api/marketplace`, `get_current_user` dependency on every endpoint). No endpoint bodies yet — just the router + dependency wiring.
-- [ ] T012 Mount the marketplace router from `backend/infrahub/api/__init__.py` (or wherever other routers are registered — check neighboring routers for the pattern).
+- [X] T008 Add `MarketplaceSettings` Pydantic settings subclass to `backend/infrahub/config.py` with `url: str = "https://marketplace.infrahub.app"` and `env_prefix="INFRAHUB_MARKETPLACE_"`. Attach as `marketplace: MarketplaceSettings = MarketplaceSettings()` on the top-level `Settings` class. Add a `@field_validator("url")` rejecting non-http(s) schemes with a WARNING (log only; do not raise — broken config still allows the backend to boot and surfaces via `/api/marketplace/status`).
+- [X] T009 [P] Create `backend/infrahub/marketplace/install_payload.py` with Infrahub-internal install models per data-model.md §1.12–§1.13: `MarketplaceInstallItem`, `MarketplaceInstallRequest`, `MarketplaceInstallResponse`, `MarketplaceInstallPayload` (all frozen; branch_name, repository_id, items; payload mirrors request plus `marketplace_url`, `initiator_username`, `initiator_user_id`).
+- [X] T010 [P] Create `backend/infrahub/marketplace/client.py` as a thin factory: `def make_marketplace_client(http: httpx.AsyncClient | None = None) -> MarketplaceClient` that resolves `config.SETTINGS.marketplace.url` and instantiates `infrahub_sdk.marketplace.MarketplaceClient` (or the `sdk_shim.py` equivalent). Keep this file small — its only job is URL resolution + wiring.
+- [X] T011 Create `backend/infrahub/api/marketplace.py` with a FastAPI `APIRouter` (prefix `/api/marketplace`, `get_current_user` dependency on every endpoint). No endpoint bodies yet — just the router + dependency wiring.
+- [X] T012 Mount the marketplace router from `backend/infrahub/api/__init__.py` (or wherever other routers are registered — check neighboring routers for the pattern).
 
 ### Backend menu entry
 
-- [ ] T013 [P] Locate the backend menu generator (the module that produces the response body for `GET /api/menu` — grep for `menu` under `backend/infrahub/menu/` or similar). Add a top-level Schema Marketplace entry pointing to `/schema-marketplace` with an appropriate icon (e.g., `store` or `package`) at a sensible position in the nav order.
+- [X] T013 [P] Locate the backend menu generator (the module that produces the response body for `GET /api/menu` — grep for `menu` under `backend/infrahub/menu/` or similar). Add a top-level Schema Marketplace entry pointing to `/schema-marketplace` with an appropriate icon (e.g., `store` or `package`) at a sensible position in the nav order.
 
 ### Frontend routing
 
-- [ ] T014 Register a lazy route for `/schema-marketplace` in `frontend/app/src/app/router.tsx` pointing at `src/pages/schema-marketplace/index.tsx` (page file itself is created in a later story phase; route registration is foundational).
-- [ ] T015 [P] Create a placeholder `frontend/app/src/pages/schema-marketplace/index.tsx` that renders a bare "Schema Marketplace" heading — lets the route resolve to a real component during foundation. Later stories replace the body.
+- [X] T014 Register a lazy route for `/schema-marketplace` in `frontend/app/src/app/router.tsx` pointing at `src/pages/schema-marketplace/index.tsx` (page file itself is created in a later story phase; route registration is foundational).
+- [X] T015 [P] Create a placeholder `frontend/app/src/pages/schema-marketplace/index.tsx` that renders a bare "Schema Marketplace" heading — lets the route resolve to a real component during foundation. Later stories replace the body.
 
 ### Shared data layer (no story-specific logic)
 
-- [ ] T016 [P] Create `frontend/app/src/entities/schema-marketplace/api/marketplace.queries.ts` with `fetchUrl`-based REST clients for `GET /api/marketplace/status`, `/schemas`, `/schemas/{ns}/{name}`, `/schemas/versions/{version_id}/content`, `/collections`, `/collections/{ns}/{name}`, `/tags`, plus `POST /api/marketplace/install` and `GET /api/marketplace/cli-snippet`. Types imported from the codegen'd `frontend/app/src/shared/api/rest/types.generated.ts`.
-- [ ] T017 [P] Create `frontend/app/src/entities/schema-marketplace/types.ts` re-exporting generated types plus the hand-written UI view models (`InstallDrawerState`, `CliAlternative`) per data-model.md §2.
+- [X] T016 [P] Create `frontend/app/src/entities/schema-marketplace/api/marketplace.queries.ts` with `fetchUrl`-based REST clients for `GET /api/marketplace/status`, `/schemas`, `/schemas/{ns}/{name}`, `/schemas/versions/{version_id}/content`, `/collections`, `/collections/{ns}/{name}`, `/tags`, plus `POST /api/marketplace/install` and `GET /api/marketplace/cli-snippet`. Types imported from the codegen'd `frontend/app/src/shared/api/rest/types.generated.ts`.
+- [X] T017 [P] Create `frontend/app/src/entities/schema-marketplace/types.ts` re-exporting generated types plus the hand-written UI view models (`InstallDrawerState`, `CliAlternative`) per data-model.md §2.
 
 ### Codegen sweep
 
@@ -76,8 +76,8 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 
 ### Permission helpers (shared across stories)
 
-- [ ] T020 [P] Create `frontend/app/src/entities/schema-marketplace/hooks/use-writable-repositories.ts` — TanStack Query hook returning the list of `CoreRepository` nodes the current user has write permission to (filters out `CoreReadOnlyRepository`, applies `getObjectPermissions({ kind: "CoreRepository", branchName }).update.isAllowed`).
-- [ ] T021 [P] Create `frontend/app/src/entities/schema-marketplace/hooks/use-has-user-schemas.ts` — returns `boolean` indicating whether any user-defined schema nodes exist on the active branch (drives the home-tile onboarding CTA state).
+- [X] T020 [P] Create `frontend/app/src/entities/schema-marketplace/hooks/use-writable-repositories.ts` — TanStack Query hook returning the list of `CoreRepository` nodes the current user has write permission to (filters out `CoreReadOnlyRepository`, applies `getObjectPermissions({ kind: "CoreRepository", branchName }).update.isAllowed`).
+- [X] T021 [P] Create `frontend/app/src/entities/schema-marketplace/hooks/use-has-user-schemas.ts` — returns `boolean` indicating whether any user-defined schema nodes exist on the active branch (drives the home-tile onboarding CTA state).
 
 **Checkpoint**: Foundation ready. All user stories can now proceed. The placeholder page resolves; the menu entry appears; config is in place; the router exists.
 
@@ -91,35 +91,35 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 
 ### Backend — proxy read endpoints
 
-- [ ] T022 [P] [US1] Implement `GET /api/marketplace/status` in `backend/infrahub/api/marketplace.py` per contracts §7: returns `{marketplace_url, url_configured, url_scheme_valid, upstream_reachable, checked_at}`. Performs a 2s health-probe to upstream `/health`; swallows errors into the boolean.
-- [ ] T023 [P] [US1] Implement `GET /api/marketplace/schemas` in `backend/infrahub/api/marketplace.py` per contracts §1: proxies via `make_marketplace_client().list_schemas(search, tags, limit, after)`. 30s in-memory TTL cache keyed on query params. Map upstream errors per contracts "Error taxonomy" (502/504/500).
-- [ ] T024 [P] [US1] Implement `GET /api/marketplace/schemas/{namespace}/{name}` in `backend/infrahub/api/marketplace.py` per contracts §2. No caching. 404 translation when upstream returns 404.
-- [ ] T025 [P] [US1] Implement `GET /api/marketplace/schemas/versions/{version_id}/content` per contracts §3. No caching (avoid download-count undercount per plan.md risk #2).
+- [X] T022 [P] [US1] Implement `GET /api/marketplace/status` in `backend/infrahub/api/marketplace.py` per contracts §7: returns `{marketplace_url, url_configured, url_scheme_valid, upstream_reachable, checked_at}`. Performs a 2s health-probe to upstream `/health`; swallows errors into the boolean.
+- [X] T023 [P] [US1] Implement `GET /api/marketplace/schemas` in `backend/infrahub/api/marketplace.py` per contracts §1: proxies via `make_marketplace_client().list_schemas(search, tags, limit, after)`. 30s in-memory TTL cache keyed on query params. Map upstream errors per contracts "Error taxonomy" (502/504/500).
+- [X] T024 [P] [US1] Implement `GET /api/marketplace/schemas/{namespace}/{name}` in `backend/infrahub/api/marketplace.py` per contracts §2. No caching. 404 translation when upstream returns 404.
+- [X] T025 [P] [US1] Implement `GET /api/marketplace/schemas/versions/{version_id}/content` per contracts §3. No caching (avoid download-count undercount per plan.md risk #2).
 
 ### Backend — install endpoint + workflow
 
-- [ ] T026 [US1] Implement `POST /api/marketplace/install` in `backend/infrahub/api/marketplace.py` per contracts §8. Validation order: (1) Pydantic parse of `MarketplaceInstallRequest`; (2) resolve `repository_id` on the target branch; (3) 409 if resolved kind is `CoreReadOnlyRepository`; (4) 404 if branch missing; (5) 403 if user lacks write permission on the repo; (6) submit Prefect workflow; (7) return 202 with `task_id`.
-- [ ] T027 [P] [US1] Implement `install_marketplace_schemas` flow in `backend/infrahub/marketplace/tasks.py`: `@flow(name="marketplace-schema-install", flow_run_name="install-{items_summary}")`. Accepts `MarketplaceInstallPayload`. Orchestrates fetch → commit → push. Use `@task` sub-units for `fetch-marketplace-item` and `commit-schemas-to-repo`. All names kebab-case per `dev/knowledge/backend/async-tasks.md`.
-- [ ] T028 [US1] Add a `fetch-marketplace-item` `@task` in `backend/infrahub/marketplace/tasks.py` that calls `client.fetch_schema_content(namespace, name, version)` (or `fetch_collection_bundle` for collections) from `infrahub_sdk.marketplace`. Returns parsed YAML bytes + target filename. NO shelling out to `infrahubctl`.
-- [ ] T029 [US1] Add a `commit-schemas-to-repo` `@task` in `backend/infrahub/marketplace/tasks.py` that: obtains an `InfrahubRepository` for `repository_id`, opens a worktree on `branch_name`, writes schema files under `schemas/<name>.yml` (collections go under `schemas/<collection_name>/<schema_name>.yml`), auto-bootstraps `.infrahub.yml` if missing with `{schemas: [schemas]}`, stages + commits with author=initiator, pushes. On any exception: DO NOT push; worktree is cleaned up — repo remote is unchanged (FR-020).
-- [ ] T030 [US1] Register `MARKETPLACE_SCHEMA_INSTALL` in `backend/infrahub/workflows/catalogue.py` with `WorkflowDefinition(name="marketplace-schema-install", type=WorkflowType.CORE, module="infrahub.marketplace.tasks", function="install_marketplace_schemas")`. Confirm any existing stale entry from the prior branch is updated to the new function signature.
+- [X] T026 [US1] Implement `POST /api/marketplace/install` in `backend/infrahub/api/marketplace.py` per contracts §8. Validation order: (1) Pydantic parse of `MarketplaceInstallRequest`; (2) resolve `repository_id` on the target branch; (3) 409 if resolved kind is `CoreReadOnlyRepository`; (4) 404 if branch missing; (5) 403 if user lacks write permission on the repo; (6) submit Prefect workflow; (7) return 202 with `task_id`.
+- [X] T027 [P] [US1] Implement `install_marketplace_schemas` flow in `backend/infrahub/marketplace/tasks.py`: `@flow(name="marketplace-schema-install", flow_run_name="install-{items_summary}")`. Accepts `MarketplaceInstallPayload`. Orchestrates fetch → commit → push. Use `@task` sub-units for `fetch-marketplace-item` and `commit-schemas-to-repo`. All names kebab-case per `dev/knowledge/backend/async-tasks.md`.
+- [X] T028 [US1] Add a `fetch-marketplace-item` `@task` in `backend/infrahub/marketplace/tasks.py` that calls `client.fetch_schema_content(namespace, name, version)` (or `fetch_collection_bundle` for collections) from `infrahub_sdk.marketplace`. Returns parsed YAML bytes + target filename. NO shelling out to `infrahubctl`.
+- [X] T029 [US1] Add a `commit-schemas-to-repo` `@task` in `backend/infrahub/marketplace/tasks.py` that: obtains an `InfrahubRepository` for `repository_id`, opens a worktree on `branch_name`, writes schema files under `schemas/<name>.yml` (collections go under `schemas/<collection_name>/<schema_name>.yml`), auto-bootstraps `.infrahub.yml` if missing with `{schemas: [schemas]}`, stages + commits with author=initiator, pushes. On any exception: DO NOT push; worktree is cleaned up — repo remote is unchanged (FR-020).
+- [X] T030 [US1] Register `MARKETPLACE_SCHEMA_INSTALL` in `backend/infrahub/workflows/catalogue.py` with `WorkflowDefinition(name="marketplace-schema-install", type=WorkflowType.CORE, module="infrahub.marketplace.tasks", function="install_marketplace_schemas")`. Confirm any existing stale entry from the prior branch is updated to the new function signature.
 
 ### Frontend — Marketplace page (list + install)
 
-- [ ] T031 [P] [US1] Create `frontend/app/src/entities/schema-marketplace/ui/marketplace-schema-card.tsx` — a tile rendering one `MarketplaceSchemaSummary` (name, description, version, tags). Pure; no hooks (per `dev/knowledge/frontend/react.md` — React Compiler handles memoization).
-- [ ] T032 [P] [US1] Create `frontend/app/src/entities/schema-marketplace/ui/install-drawer.tsx` — the repo picker + branch selector + confirm flow. Consumes `use-writable-repositories`; calls `POST /api/marketplace/install`; renders the `InstallDrawerState` machine (idle → submitting → pending → running → completed/failed). Polls task status via the existing task GraphQL query using the returned `task_id`.
-- [ ] T033 [P] [US1] Create `frontend/app/src/entities/schema-marketplace/ui/marketplace-page.tsx` — the main page body: list of `MarketplaceSchemaSummary` rendered as cards, click opens the install drawer. Uses TanStack Query on `fetchSchemas()`.
-- [ ] T034 [US1] Replace the placeholder in `frontend/app/src/pages/schema-marketplace/index.tsx` with a component that renders `<MarketplacePage/>` from `entities/schema-marketplace/ui`. Wrap in route-level suspense + error boundary.
+- [X] T031 [P] [US1] Create `frontend/app/src/entities/schema-marketplace/ui/marketplace-schema-card.tsx` — a tile rendering one `MarketplaceSchemaSummary` (name, description, version, tags). Pure; no hooks (per `dev/knowledge/frontend/react.md` — React Compiler handles memoization).
+- [X] T032 [P] [US1] Create `frontend/app/src/entities/schema-marketplace/ui/install-drawer.tsx` — the repo picker + branch selector + confirm flow. Consumes `use-writable-repositories`; calls `POST /api/marketplace/install`; renders the `InstallDrawerState` machine (idle → submitting → pending → running → completed/failed). Polls task status via the existing task GraphQL query using the returned `task_id`.
+- [X] T033 [P] [US1] Create `frontend/app/src/entities/schema-marketplace/ui/marketplace-page.tsx` — the main page body: list of `MarketplaceSchemaSummary` rendered as cards, click opens the install drawer. Uses TanStack Query on `fetchSchemas()`.
+- [X] T034 [US1] Replace the placeholder in `frontend/app/src/pages/schema-marketplace/index.tsx` with a component that renders `<MarketplacePage/>` from `entities/schema-marketplace/ui`. Wrap in route-level suspense + error boundary.
 
 ### Frontend — home tile + repoint legacy link
 
-- [ ] T035 [P] [US1] Create `frontend/app/src/entities/homepage/ui/schema-marketplace-widget.tsx` — a `HomeCard` tile. Uses `use-has-user-schemas`: default label "Browse the Schema Marketplace"; when false, renders the onboarding-CTA state "Get started — install your first schema" (FR-003, FR-004). Links to `/schema-marketplace`.
-- [ ] T036 [P] [US1] Register the new widget in the home page layout file (`frontend/app/src/pages/homepage.tsx` or equivalent — grep for imports of `ProposedChangesWidget`, `GitRepositoriesWidget`). Place the tile in a reasonable grid slot matching existing `col-span-1` widgets.
-- [ ] T037 [US1] Modify `frontend/app/src/entities/homepage/ui/getting-started.tsx:115` — change the "Schema Library" link's `to` prop from `https://github.com/opsmill/schema-library/` to the internal route `/schema-marketplace`. Update the label too if it needs to track the Marketplace name (keep "Schema Library" or rename to "Schema Marketplace" — match the widget's label).
+- [X] T035 [P] [US1] Create `frontend/app/src/entities/homepage/ui/schema-marketplace-widget.tsx` — a `HomeCard` tile. Uses `use-has-user-schemas`: default label "Browse the Schema Marketplace"; when false, renders the onboarding-CTA state "Get started — install your first schema" (FR-003, FR-004). Links to `/schema-marketplace`.
+- [X] T036 [P] [US1] Register the new widget in the home page layout file (`frontend/app/src/pages/homepage.tsx` or equivalent — grep for imports of `ProposedChangesWidget`, `GitRepositoriesWidget`). Place the tile in a reasonable grid slot matching existing `col-span-1` widgets.
+- [X] T037 [US1] Modify `frontend/app/src/entities/homepage/ui/getting-started.tsx:115` — change the "Schema Library" link's `to` prop from `https://github.com/opsmill/schema-library/` to the internal route `/schema-marketplace`. Update the label too if it needs to track the Marketplace name (keep "Schema Library" or rename to "Schema Marketplace" — match the widget's label).
 
 ### Tests — US1
 
-- [ ] T038 [P] [US1] Unit test `backend/tests/unit/marketplace/test_install_payload.py` — validates `MarketplaceInstallRequest` (empty items rejected, >50 items rejected, malformed semver rejected, `kind` enum enforced).
+- [X] T038 [P] [US1] Unit test `backend/tests/unit/marketplace/test_install_payload.py` — validates `MarketplaceInstallRequest` (empty items rejected, >50 items rejected, malformed semver rejected, `kind` enum enforced).
 - [ ] T039 [P] [US1] Functional test `backend/tests/functional/marketplace/test_api_marketplace_reads.py` — covers `GET /status`, `GET /schemas`, `GET /schemas/{ns}/{name}`, `GET /schemas/versions/{vid}/content`. Patch `infrahub_sdk.marketplace.MarketplaceClient` with an async adapter double (not a mock per Principle IV); assert error translation (502/504/404).
 - [ ] T040 [P] [US1] Functional test `backend/tests/functional/marketplace/test_api_marketplace_install.py` — covers `POST /install` success (202 + task_id), 400 (empty items), 404 (missing repo), 409 (read-only repo), 403 (no write permission), 502 (upstream unreachable during pre-validation). Use real Prefect test harness; invoke the flow via `.fn` per testing.md:344-352.
 - [ ] T041 [P] [US1] Functional test `backend/tests/functional/marketplace/test_install_task.py` — exercises the install flow on a test repository fixture: success writes files + commits + pushes; failure during fetch leaves repo untouched; failure during push leaves repo untouched (rollback invariant).
@@ -141,7 +141,7 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 ### Already-installed detection
 
 - [ ] T046 [US2] Extend `backend/infrahub/api/marketplace.py` with a helper that, given a list of Marketplace identifiers, determines which are already committed under `schemas/` in any configured `CoreRepository` the user has read access to. Expose via a new field on the schema summary / detail responses (`already_installed: bool`, optional `installed_in: list[{repository_id, branch_name, path}]`). Per contracts §1-2.
-- [ ] T047 [P] [US2] Update `frontend/app/src/entities/schema-marketplace/ui/marketplace-schema-card.tsx` to render an "Already installed" badge and disable the install action when `already_installed=true`. FR-009.
+- [X] T047 [P] [US2] Update `frontend/app/src/entities/schema-marketplace/ui/marketplace-schema-card.tsx` to render an "Already installed" badge and disable the install action when `already_installed=true`. FR-009.
 - [ ] T048 [P] [US2] Update `install-drawer.tsx` to short-circuit: if the user clicks install on an already-installed schema, show a warning dialog instead of proceeding. FR-009.
 
 ### Tests — US2
@@ -161,15 +161,15 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 
 ### Backend — list/collection endpoints
 
-- [ ] T051 [P] [US3] Implement `GET /api/marketplace/collections` in `backend/infrahub/api/marketplace.py` per contracts §4 (cursor pagination, tag/search filtering).
-- [ ] T052 [P] [US3] Implement `GET /api/marketplace/collections/{namespace}/{name}` per contracts §5.
-- [ ] T053 [P] [US3] Implement `GET /api/marketplace/tags` per contracts §6 (returns `{tags: [{id, name, count}]}`).
+- [X] T051 [P] [US3] Implement `GET /api/marketplace/collections` in `backend/infrahub/api/marketplace.py` per contracts §4 (cursor pagination, tag/search filtering).
+- [X] T052 [P] [US3] Implement `GET /api/marketplace/collections/{namespace}/{name}` per contracts §5.
+- [X] T053 [P] [US3] Implement `GET /api/marketplace/tags` per contracts §6 (returns `{tags: [{id, name, count}]}`).
 
 ### Frontend — browse UX
 
-- [ ] T054 [P] [US3] Create `frontend/app/src/entities/schema-marketplace/ui/marketplace-collection-card.tsx` — card variant for `MarketplaceCollectionSummary`.
+- [X] T054 [P] [US3] Create `frontend/app/src/entities/schema-marketplace/ui/marketplace-collection-card.tsx` — card variant for `MarketplaceCollectionSummary`.
 - [ ] T055 [P] [US3] Create `frontend/app/src/entities/schema-marketplace/ui/marketplace-detail.tsx` — detail drawer/route showing full description, version list, and the file list that would be committed (FR-008).
-- [ ] T056 [US3] Extend `marketplace-page.tsx` with: (a) tag-filter sidebar driven by `/api/marketplace/tags`, (b) text search box wired to `/api/marketplace/schemas?search=`, (c) a tab or toggle for Schemas vs Collections, (d) cursor-based "Load more" pagination (do not use page numbers).
+- [X] T056 [US3] Extend `marketplace-page.tsx` with: (a) tag-filter sidebar driven by `/api/marketplace/tags`, (b) text search box wired to `/api/marketplace/schemas?search=`, (c) a tab or toggle for Schemas vs Collections, (d) cursor-based "Load more" pagination (do not use page numbers).
 
 ### Tests — US3
 
@@ -189,18 +189,18 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 
 ### Backend — CLI snippet generator
 
-- [ ] T060 [US4] Implement `GET /api/marketplace/cli-snippet` in `backend/infrahub/api/marketplace.py` per contracts §9. Input: repeated `items` query param as `kind:ns/name@semver` + optional `branch_name` + optional `output_dir`. Output: `{downloads[], load_command, rendered}`. Generation rules: one `infrahubctl marketplace download <ns>/<name> [-v <semver>]` per schema; collections omit `-v`; all commands share `-o <dir>` only if non-default; trailing `infrahubctl schema load <dir> --branch <branch>`; inject `--marketplace-url <url>` if `INFRAHUB_MARKETPLACE_URL` differs from default.
+- [X] T060 [US4] Implement `GET /api/marketplace/cli-snippet` in `backend/infrahub/api/marketplace.py` per contracts §9. Input: repeated `items` query param as `kind:ns/name@semver` + optional `branch_name` + optional `output_dir`. Output: `{downloads[], load_command, rendered}`. Generation rules: one `infrahubctl marketplace download <ns>/<name> [-v <semver>]` per schema; collections omit `-v`; all commands share `-o <dir>` only if non-default; trailing `infrahubctl schema load <dir> --branch <branch>`; inject `--marketplace-url <url>` if `INFRAHUB_MARKETPLACE_URL` differs from default.
 
 ### Frontend — prerequisite state + CLI alternative block
 
-- [ ] T061 [P] [US4] Create `frontend/app/src/entities/schema-marketplace/ui/prerequisite-state.tsx` — renders two distinct states based on `use-writable-repositories`: (a) "no repositories configured" with link to repo creation, (b) "all repositories are read-only" with distinct copy. Both states link to the repo management page. FR-022.
-- [ ] T062 [P] [US4] Create `frontend/app/src/entities/schema-marketplace/ui/cli-alternative.tsx` — fetches `/api/marketplace/cli-snippet` based on selection; renders per-line + full-block copy actions; includes the inline explanation from FR-033 about how the CLI path bypasses the Git commit requirement.
-- [ ] T063 [US4] Integrate prerequisite state + CLI alternative into `marketplace-page.tsx`: when `use-writable-repositories` returns an empty list, disable all install controls (install buttons hidden or disabled with tooltip), render `<PrerequisiteState/>` and `<CliAlternative selection={...}/>`. FR-019, FR-020, FR-021.
-- [ ] T064 [US4] Ensure the repository picker inside `install-drawer.tsx` filters out `CoreReadOnlyRepository` (FR-020) and repos the user lacks write permission on (FR-021). Read-only repos MAY appear in the picker as disabled with a tooltip "read-only — cannot install", but MUST NOT be selectable.
+- [X] T061 [P] [US4] Create `frontend/app/src/entities/schema-marketplace/ui/prerequisite-state.tsx` — renders two distinct states based on `use-writable-repositories`: (a) "no repositories configured" with link to repo creation, (b) "all repositories are read-only" with distinct copy. Both states link to the repo management page. FR-022.
+- [X] T062 [P] [US4] Create `frontend/app/src/entities/schema-marketplace/ui/cli-alternative.tsx` — fetches `/api/marketplace/cli-snippet` based on selection; renders per-line + full-block copy actions; includes the inline explanation from FR-033 about how the CLI path bypasses the Git commit requirement.
+- [X] T063 [US4] Integrate prerequisite state + CLI alternative into `marketplace-page.tsx`: when `use-writable-repositories` returns an empty list, disable all install controls (install buttons hidden or disabled with tooltip), render `<PrerequisiteState/>` and `<CliAlternative selection={...}/>`. FR-019, FR-020, FR-021.
+- [X] T064 [US4] Ensure the repository picker inside `install-drawer.tsx` filters out `CoreReadOnlyRepository` (FR-020) and repos the user lacks write permission on (FR-021). Read-only repos MAY appear in the picker as disabled with a tooltip "read-only — cannot install", but MUST NOT be selectable.
 
 ### Tests — US4
 
-- [ ] T065 [P] [US4] Functional test `backend/tests/functional/marketplace/test_cli_snippet.py` — exercises contracts §9 happy paths (single schema, multiple schemas, collection, custom output_dir, custom marketplace_url injection), rejects empty/oversize/malformed inputs with 400.
+- [X] T065 [P] [US4] Functional test `backend/tests/functional/marketplace/test_cli_snippet.py` — exercises contracts §9 happy paths (single schema, multiple schemas, collection, custom output_dir, custom marketplace_url injection), rejects empty/oversize/malformed inputs with 400.
 - [ ] T066 [P] [US4] Frontend unit test `frontend/app/src/entities/schema-marketplace/ui/prerequisite-state.test.tsx` — asserts the three branches: no repos, read-only-only, install-enabled. Assert distinct copy per branch.
 - [ ] T067 [P] [US4] Frontend unit test `frontend/app/src/entities/schema-marketplace/ui/cli-alternative.test.tsx` — asserts per-line and full-block copy actions, rendering of `--version`, `-o`, `--marketplace-url` flags, and the FR-033 explanation block.
 - [ ] T068 [P] [US4] Playwright E2E `frontend/app/tests/e2e/schema-marketplace-cli-alternative.spec.ts` — no-repos state: page shows prerequisite state + CLI block; select schemas and assert generated command matches expected pattern; copy to clipboard works. Read-only-only state: prerequisite copy distinguishes. Once a writable repo is added, install controls become enabled.
@@ -217,14 +217,14 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 
 ### Backend — error taxonomy audit
 
-- [ ] T069 [P] [US5] Audit all endpoints in `backend/infrahub/api/marketplace.py` for compliance with the contracts "Error taxonomy" table: every error path returns a JSON body with `{detail: "<machine-readable-code>"}`; error messages never leak tracebacks, DB structure, or upstream internals (Principle VI).
+- [X] T069 [P] [US5] Audit all endpoints in `backend/infrahub/api/marketplace.py` for compliance with the contracts "Error taxonomy" table: every error path returns a JSON body with `{detail: "<machine-readable-code>"}`; error messages never leak tracebacks, DB structure, or upstream internals (Principle VI).
 - [ ] T070 [P] [US5] Verify the Prefect install flow's failure mode emits a Prefect artifact capturing the failure reason + step, so the UI's task-status poll receives useful context (data-model.md §6).
 
 ### Frontend — error states
 
-- [ ] T071 [P] [US5] Create a connectivity-error state in `marketplace-page.tsx` triggered by 502/504 from `/api/marketplace/schemas`. Render within 10s (assert in T073).
-- [ ] T072 [P] [US5] Create a configuration-error state in `marketplace-page.tsx` triggered by `/api/marketplace/status` reporting `url_scheme_valid: false` or `url_configured: false`.
-- [ ] T073 [P] [US5] Update `install-drawer.tsx` to render a failure panel on task `FAILED` state, surfacing the Prefect artifact's failure context + a "retry" action.
+- [X] T071 [P] [US5] Create a connectivity-error state in `marketplace-page.tsx` triggered by 502/504 from `/api/marketplace/schemas`. Render within 10s (assert in T073).
+- [X] T072 [P] [US5] Create a configuration-error state in `marketplace-page.tsx` triggered by `/api/marketplace/status` reporting `url_scheme_valid: false` or `url_configured: false`.
+- [X] T073 [P] [US5] Update `install-drawer.tsx` to render a failure panel on task `FAILED` state, surfacing the Prefect artifact's failure context + a "retry" action.
 
 ### Tests — US5
 
@@ -240,9 +240,9 @@ description: "Task breakdown for infp-528 Schema Marketplace Integration"
 
 **Purpose**: Documentation, docs site updates, final lint/format/type passes, and cross-story validation.
 
-- [ ] T077 [P] Add a "Schema Marketplace" section to `docs/docs/topics/schema.mdx` covering: what the Marketplace is, the home tile, how to install via UI, how to install via CLI for no-writable-repo scenarios (pointing to the new `infrahubctl marketplace download` command), and the `INFRAHUB_MARKETPLACE_URL` operator override.
+- [X] T077 [P] Add a "Schema Marketplace" section to `docs/docs/topics/schema.mdx` covering: what the Marketplace is, the home tile, how to install via UI, how to install via CLI for no-writable-repo scenarios (pointing to the new `infrahubctl marketplace download` command), and the `INFRAHUB_MARKETPLACE_URL` operator override.
 - [ ] T078 [P] Add a Docusaurus reference entry for the env var `INFRAHUB_MARKETPLACE_URL` alongside other `INFRAHUB_*` settings in `docs/docs/reference/configuration.mdx`.
-- [ ] T079 [P] Update the changelog fragment `changelog/+schema-marketplace.added.md` with the final user-facing description (not the internal scope).
+- [X] T079 [P] Update the changelog fragment `changelog/+schema-marketplace.added.md` with the final user-facing description (not the internal scope).
 - [ ] T080 Run `uv run invoke format` and `uv run invoke lint` — fix any issues. Zero ruff / mypy errors per constitution.
 - [ ] T081 Run `cd frontend/app && pnpm biome:fix && pnpm typecheck` — zero Biome or TS errors.
 - [ ] T082 Run the full quickstart walkthrough end-to-end manually (quickstart.md §§1–9). Any discrepancy is a task to fix, not a doc patch.
