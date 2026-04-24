@@ -25,6 +25,7 @@ interface InstallDrawerProps {
   writableRepositories: WritableRepositorySummary[];
   className?: string;
   onRemove?: (item: MarketplaceInstallItem) => void;
+  onClearSelection?: () => void;
 }
 
 type TaskLinkTone = "default" | "success" | "danger";
@@ -173,6 +174,7 @@ export function InstallDrawer({
   writableRepositories,
   className,
   onRemove,
+  onClearSelection,
 }: InstallDrawerProps) {
   const hasWritableRepo = writableRepositories.length > 0;
   const { currentBranch } = useCurrentBranch();
@@ -487,13 +489,27 @@ export function InstallDrawer({
         </div>
       )}
       {state.phase === "completed" && (
-        <div className="rounded-md bg-green-50 p-3 text-green-800 text-sm">
+        <div className="flex flex-col gap-2 rounded-md bg-green-50 p-3 text-green-800 text-sm">
           <div className="flex items-center justify-between gap-2">
             <p className="flex items-center gap-1.5 font-semibold">
               <Icon icon="mdi:check-circle" /> Install completed
             </p>
             <TaskLink taskId={state.taskId} tone="success" />
           </div>
+          {onClearSelection && (
+            <Button
+              type="button"
+              variant="active-outline"
+              size="xs"
+              onClick={() => {
+                onClearSelection();
+                setState({ phase: "idle" });
+              }}
+              className="self-start"
+            >
+              <Icon icon="mdi:plus" className="mr-1" /> Install another
+            </Button>
+          )}
         </div>
       )}
       {state.phase === "failed" && (

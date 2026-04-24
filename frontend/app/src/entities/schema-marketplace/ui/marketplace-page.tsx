@@ -286,6 +286,7 @@ export function MarketplacePage() {
             selection={selection}
             writableRepositories={repos.writableRepositories}
             onRemove={removeSelection}
+            onClearSelection={() => setSelection([])}
           />
           {!repos.isPending && repos.writableRepositories.length === 0 && (
             <PrerequisiteState hasAnyRepository={repos.hasAnyRepository} />
