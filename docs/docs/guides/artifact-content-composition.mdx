@@ -175,11 +175,33 @@ raw = await self.client.object_store.get(identifier=storage_id)
 parsed = json.loads(raw)
 ```
 
-You can also retrieve file object content through additional methods on the object store:
+You can also retrieve file object content in a Python Transformation. The object store provides methods to fetch files by storage ID, node ID, or human-friendly identifier:
 
-- `await self.client.object_store.get_file_by_storage_id(storage_id=...)`
-- `await self.client.object_store.get_file_by_id(node_id=...)`
-- `await self.client.object_store.get_file_by_hfid(kind=..., hfid=[...])`
+```python
+from infrahub_sdk.transforms import InfrahubTransform
+
+
+class DeviceConfigWithBanner(InfrahubTransform):
+    query = "device_with_banner_query"
+
+    async def transform(self, data):
+        device = data["InfraDevice"]["edges"][0]["node"]
+        hostname = device["name"]["value"]
+
+        # Fetch a file object by its storage_id
+        banner_storage_id = device["banner_file"]["node"]["storage_id"]["value"]
+        banner = await self.client.object_store.get_file_by_storage_id(
+            storage_id=banner_storage_id
+        )
+
+        # Alternatively, fetch by node ID or human-friendly identifier
+        # banner = await self.client.object_store.get_file_by_id(node_id="...")
+        # banner = await self.client.object_store.get_file_by_hfid(
+        #     kind="CoreFileObject", hfid=["my-banner-file"]
+        # )
+
+        return f"hostname {hostname}\nbanner motd {banner}\n"
+```
 
 ## 5. Register the composite Transformation
 
