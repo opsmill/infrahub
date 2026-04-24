@@ -1,4 +1,5 @@
 import { BRANCH_STATUS } from "@/entities/branches/constants";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export const BRANCH_FIELD_SCHEMAS = {
@@ -39,3 +40,26 @@ export const BRANCH_FIELD_SCHEMAS = {
     kind: "Text",
   } as AttributeSchema,
 } as const;
+
+export const BRANCH_FILTER_DEFINITIONS: Record<string, FilterDefinition> = {
+  name: { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.name },
+  status: { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.status },
+  branched_from: { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.branched_from },
+  node_metadata__updated_at: {
+    type: "metadata-date",
+    name: "node_metadata__updated_at",
+    label: "Last Update",
+  },
+  node_metadata__created_at: {
+    type: "metadata-date",
+    name: "node_metadata__created_at",
+    label: "Created At",
+  },
+  node_metadata__created_by: {
+    type: "metadata-user",
+    name: "node_metadata__created_by",
+    label: "Created By",
+    peer: "CoreAccount",
+  },
+  proposed_changes: { type: "attribute", schema: BRANCH_FIELD_SCHEMAS.proposed_changes },
+};

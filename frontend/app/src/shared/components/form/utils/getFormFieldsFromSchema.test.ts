@@ -1,22 +1,27 @@
 import { describe, expect, it } from "vitest";
 
+import {
+  FROM_RESOURCE_POOL_SUFFIX,
+  RELATIONSHIP_BULK_ADD_PREFIX,
+  RELATIONSHIP_BULK_REMOVE_PREFIX,
+} from "@/shared/components/form/constants";
 import { getFormFieldsFromSchema } from "@/shared/components/form/utils/getFormFieldsFromSchema";
 import { store } from "@/shared/stores";
 
 import type { AuthContextType } from "@/entities/authentication/ui/useAuth";
 import { currentBranchAtom } from "@/entities/branches/stores";
-import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { NodeCore, NodeFieldsWithMetadata } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
+import { generateNodeAttributeWithMetadata } from "../../../../../tests/fake/node";
 import {
   generateAttributeSchema,
   generateRelationshipSchema,
 } from "../../../../../tests/fake/schema";
-import {
-  FROM_RESOURCE_POOL_SUFFIX,
-  RELATIONSHIP_BULK_ADD_PREFIX,
-  RELATIONSHIP_BULK_REMOVE_PREFIX,
-} from "../constants";
+
+function buildOwner(id: string, displayLabel: string): NodeCore {
+  return { id, display_label: displayLabel, hfid: null, __typename: "CoreAccount" };
+}
 
 describe("getFormFieldsFromSchema", () => {
   it("returns no fields if schema has no attributes nor relationships", () => {
@@ -305,19 +310,12 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: Partial<AttributeType> } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
-          display_label: "Architecture Team",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("17dd42a7-d547-60af-3111-c51b4b2fc72e", "Architecture Team"),
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     const auth: AuthContextType = {
@@ -362,19 +360,12 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: AttributeType } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "1",
-          display_label: "Architecture Team",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("1", "Architecture Team"),
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     const auth: AuthContextType = {
@@ -419,22 +410,13 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: Partial<AttributeType> } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
-          display_label: "Architecture Team",
-        },
-        permissions: {
-          update_value: "DENY",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("17dd42a7-d547-60af-3111-c51b4b2fc72e", "Architecture Team"),
+        permissions: { __typename: "PermissionType", update_value: "DENY" },
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     // WHEN
@@ -467,22 +449,13 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: Partial<AttributeType> } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
-          display_label: "Architecture Team",
-        },
-        permissions: {
-          update_value: "ALLOW",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("17dd42a7-d547-60af-3111-c51b4b2fc72e", "Architecture Team"),
+        permissions: { __typename: "PermissionType", update_value: "ALLOW" },
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     // WHEN
@@ -515,22 +488,13 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: Partial<AttributeType> } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
-          display_label: "Architecture Team",
-        },
-        permissions: {
-          update_value: "ALLOW_DEFAULT",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("17dd42a7-d547-60af-3111-c51b4b2fc72e", "Architecture Team"),
+        permissions: { __typename: "PermissionType", update_value: "ALLOW_DEFAULT" },
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     store.set(currentBranchAtom, {
@@ -576,22 +540,13 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: Partial<AttributeType> } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
-          display_label: "Architecture Team",
-        },
-        permissions: {
-          update_value: "ALLOW_DEFAULT",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("17dd42a7-d547-60af-3111-c51b4b2fc72e", "Architecture Team"),
+        permissions: { __typename: "PermissionType", update_value: "ALLOW_DEFAULT" },
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     store.set(currentBranchAtom, {
@@ -637,22 +592,13 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: Partial<AttributeType> } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
-          display_label: "Architecture Team",
-        },
-        permissions: {
-          update_value: "ALLOW_OTHER",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("17dd42a7-d547-60af-3111-c51b4b2fc72e", "Architecture Team"),
+        permissions: { __typename: "PermissionType", update_value: "ALLOW_OTHER" },
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     store.set(currentBranchAtom, {
@@ -698,22 +644,13 @@ describe("getFormFieldsFromSchema", () => {
       attributes: [attribute],
     } as ModelSchema;
 
-    const initialObject: { name: Partial<AttributeType> } = {
-      name: {
-        is_from_profile: false,
+    const initialObject: NodeFieldsWithMetadata = {
+      name: generateNodeAttributeWithMetadata({
         is_protected: true,
-        owner: {
-          id: "17dd42a7-d547-60af-3111-c51b4b2fc72e",
-          display_label: "Architecture Team",
-        },
-        permissions: {
-          update_value: "ALLOW_OTHER",
-        },
-        source: null,
-        updated_at: "2024-07-15T09:32:01.363787+00:00",
+        owner: buildOwner("17dd42a7-d547-60af-3111-c51b4b2fc72e", "Architecture Team"),
+        permissions: { __typename: "PermissionType", update_value: "ALLOW_OTHER" },
         value: "test-value",
-        __typename: "TextAttribute",
-      },
+      }),
     };
 
     store.set(currentBranchAtom, {

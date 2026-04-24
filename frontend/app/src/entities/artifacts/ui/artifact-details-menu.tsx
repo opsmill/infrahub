@@ -10,10 +10,10 @@ import {
   CopyToClipboardMenuItem,
   Menu,
   MenuItem,
-  MenuPopover,
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
+import { Popover } from "@/shared/components/aria/popover";
 import { Button } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
@@ -36,7 +36,7 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
         </Button>
       </Pressable>
 
-      <MenuPopover placement="bottom end">
+      <Popover placement="bottom end">
         <Menu>
           <MenuSection title="Actions">
             <CopyToClipboardMenuItem textToCopy={artifact.id}>Copy ID</CopyToClipboardMenuItem>
@@ -119,7 +119,7 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
             )}
           </MenuSection>
         </Menu>
-      </MenuPopover>
+      </Popover>
     </MenuTrigger>
   );
 }

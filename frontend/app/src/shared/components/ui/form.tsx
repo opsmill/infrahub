@@ -1,13 +1,5 @@
 import { Slot } from "@radix-ui/react-slot";
-import React, {
-  createContext,
-  type FormHTMLAttributes,
-  type HTMLAttributes,
-  use,
-  useEffect,
-  useId,
-  useImperativeHandle,
-} from "react";
+import React from "react";
 import {
   Controller,
   type ControllerProps,
@@ -26,62 +18,69 @@ import { classNames } from "@/shared/utils/common";
 
 export type FormRef = ReturnType<typeof useForm>;
 
-export interface FormProps extends Omit<FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
+export interface FormProps extends Omit<React.FormHTMLAttributes<HTMLFormElement>, "onSubmit"> {
   onSubmit?: (v: Record<string, any>) => void;
   defaultValues?: Partial<Record<string, unknown>>;
   form?: UseFormReturn;
+  ref?: React.Ref<FormRef>;
 }
 
-export const Form = React.forwardRef<FormRef, FormProps>(
-  ({ form, defaultValues, className, children, onSubmit, ...props }: FormProps, ref) => {
-    const currentForm = form ?? useForm({ defaultValues });
+export const Form = ({
+  form,
+  defaultValues,
+  className,
+  children,
+  onSubmit,
+  ref,
+  ...props
+}: FormProps) => {
+  const currentForm = form ?? useForm({ defaultValues });
 
-    const slideOverContext = use(SlideOverContext);
+  const slideOverContext = React.use(SlideOverContext);
 
-    useImperativeHandle(ref, () => currentForm);
+  React.useImperativeHandle(ref, () => currentForm);
 
-    useEffect(() => {
-      if (!form) currentForm.reset(defaultValues);
-    }, [JSON.stringify(defaultValues)]);
+  React.useEffect(() => {
+    if (!form) currentForm.reset(defaultValues);
+  }, [JSON.stringify(defaultValues)]);
 
-    useEffect(() => {
-      // Stop logic if there is no context to prevent the slide over close
-      if (!slideOverContext?.setPreventClose) return;
+  React.useEffect(() => {
+    // Stop logic if there is no context to prevent the slide over close
+    if (!slideOverContext?.setPreventClose) return;
 
-      slideOverContext.setPreventClose(currentForm.formState.isDirty);
-    }, [currentForm.formState.isDirty]);
+    slideOverContext.setPreventClose(currentForm.formState.isDirty);
+  }, [currentForm.formState.isDirty]);
 
-    return (
-      <FormProvider {...currentForm}>
-        <form
-          onSubmit={(event) => {
-            if (event && event.stopPropagation) {
-              event.stopPropagation();
-            }
+  return (
+    <FormProvider {...currentForm}>
+      <form
+        onSubmit={(event) => {
+          if (event && event.stopPropagation) {
+            event.stopPropagation();
+          }
 
-            if (onSubmit) {
-              currentForm.handleSubmit(async (data) => {
-                await onSubmit(data);
-                currentForm.reset(data);
-              })(event);
-            }
-          }}
-          className={classNames("space-y-4", className)}
-          {...props}
-        >
-          {children}
-        </form>
-      </FormProvider>
-    );
-  }
-);
+          if (onSubmit) {
+            currentForm.handleSubmit(async (data) => {
+              await onSubmit(data);
+              currentForm.reset(data);
+            })(event);
+          }
+        }}
+        className={classNames("space-y-4", className)}
+        {...props}
+      >
+        {children}
+      </form>
+    </FormProvider>
+  );
+};
 
 type FormFieldContextType = { id: string; name: string };
-const FormFieldContext = createContext<FormFieldContextType>({} as FormFieldContextType);
+const FormFieldContext = React.createContext<FormFieldContextType>({} as FormFieldContextType);
 
 export const FormField = (props: ControllerProps) => {
   const { control } = useFormContext();
-  const id = useId();
+  const id = React.useId();
 
   return (
     <FormFieldContext value={{ id, name: props.name }}>
@@ -91,17 +90,16 @@ export const FormField = (props: ControllerProps) => {
 };
 
 export const FormLabel = ({ ...props }: LabelProps) => {
-  const { id } = use(FormFieldContext);
+  const { id } = React.use(FormFieldContext);
 
   return <Label htmlFor={id} {...props} />;
 };
 
-export const FormInput = React.forwardRef<
-  React.ElementRef<typeof Slot>,
-  React.ComponentPropsWithoutRef<typeof Slot>
->(({ className, ...props }, ref) => {
+interface FormInputProps extends React.ComponentProps<typeof Slot> {}
+
+export const FormInput = ({ className, ref, ...props }: FormInputProps) => {
   const { getFieldState, formState } = useFormContext();
-  const { id, name } = use(FormFieldContext);
+  const { id, name } = React.use(FormFieldContext);
   const { error } = getFieldState(name, formState);
 
   return (
@@ -113,15 +111,15 @@ export const FormInput = React.forwardRef<
       {...props}
     />
   );
-});
+};
 
 export const FormMessage = ({
   children,
   className,
   ...props
-}: HTMLAttributes<HTMLParagraphElement>) => {
+}: React.HTMLAttributes<HTMLParagraphElement>) => {
   const { getFieldState, formState } = useFormContext();
-  const { name } = use(FormFieldContext);
+  const { name } = React.use(FormFieldContext);
 
   const { error } = getFieldState(name, formState);
 
@@ -139,17 +137,17 @@ export const FormMessage = ({
   );
 };
 
-export const FormSubmit = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ children, ...props }, ref) => {
-    const { formState } = useFormContext();
+interface FormSubmitProps extends ButtonProps {}
 
-    const isLoading = formState.isSubmitting || formState.isValidating;
+export const FormSubmit = ({ children, ref, ...props }: FormSubmitProps) => {
+  const { formState } = useFormContext();
 
-    return (
-      <Button ref={ref} disabled={isLoading} {...props} type="submit">
-        <span className={classNames(isLoading && "invisible")}>{children}</span>
-        {isLoading && <Spinner className="absolute" />}
-      </Button>
-    );
-  }
-);
+  const isLoading = formState.isSubmitting || formState.isValidating;
+
+  return (
+    <Button ref={ref} disabled={isLoading} {...props} type="submit">
+      <span className={classNames(isLoading && "invisible")}>{children}</span>
+      {isLoading && <Spinner className="absolute" />}
+    </Button>
+  );
+};

@@ -178,8 +178,8 @@ async def test_schema_branch_process_inheritance_node_level(animal_person_schema
     assert dog.human_friendly_id == animal.human_friendly_id
     assert cat.human_friendly_id != animal.human_friendly_id
 
-    assert dog.display_labels == animal.display_labels
-    assert cat.display_labels != animal.display_labels
+    assert dog.display_label == animal.display_label
+    assert cat.display_label != animal.display_label
 
     assert dog.order_by == animal.order_by
     assert cat.order_by != animal.order_by
@@ -723,7 +723,7 @@ def test_schema_branch_processes_node_template_schema_weight(register_core_model
                 "icon": "mdi:server",
                 "human_friendly_id": ["name__value"],
                 "order_by": ["name__value"],
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "generate_template": True,
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True, "order_weight": 7000},
@@ -1778,7 +1778,7 @@ async def test_validate_exception_ipam_ip_namespace(
                 "namespace": "Ipam",
                 "default_filter": "prefix__value",
                 "order_by": ["prefix__value"],
-                "display_labels": ["prefix__value"],
+                "display_label": "prefix__value",
                 "human_friendly_id": ["ip_namespace__name__value", "prefix__value"],
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPPREFIX],
@@ -1788,7 +1788,7 @@ async def test_validate_exception_ipam_ip_namespace(
                 "namespace": "Ipam",
                 "default_filter": "address__value",
                 "order_by": ["address__value"],
-                "display_labels": ["address__value"],
+                "display_label": "address__value",
                 "uniqueness_constraints": [["ip_namespace", "address__value"]],
                 "branch": BranchSupportType.AWARE.value,
                 "inherit_from": [InfrahubKind.IPADDRESS],
@@ -3843,7 +3843,7 @@ INHERITED_RELATIONSHIPS_TEST_CASES = [
                         "description": "Generic Network Interface",
                         "label": "Interface",
                         "include_in_menu": False,
-                        "display_labels": ["name__value"],
+                        "display_label": "name__value",
                         "order_by": ["device__name__value", "name__value"],
                         "uniqueness_constraints": [["device", "name__value"]],
                         "human_friendly_id": ["device__name__value", "name__value"],
@@ -3995,7 +3995,7 @@ INHERITED_RELATIONSHIPS_TEST_CASES = [
                     "description": "Generic Network Interface",
                     "label": "Interface",
                     "include_in_menu": False,
-                    "display_labels": ["name__value"],
+                    "display_label": "name__value",
                     "order_by": ["device__name__value", "name__value"],
                     "uniqueness_constraints": [["device", "name__value"]],
                     "human_friendly_id": ["device__name__value", "name__value"],
@@ -4194,7 +4194,7 @@ async def test_schema_branch_processes_nodes_state(
                 "namespace": "Test",
                 "label": "Widget",
                 "state": "absent",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text"},
@@ -4235,7 +4235,7 @@ async def test_schema_branch_processes_attributes_state(
                 "name": "Widget",
                 "namespace": "Test",
                 "label": "Widget",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text", "state": "absent"},
@@ -4267,7 +4267,7 @@ async def test_schema_branch_processes_attributes_state(
                 "name": "Widget",
                 "namespace": "Test",
                 "label": "Widget",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "attributes": [
                     {"name": "name", "kind": "Text", "unique": True},
                     {"name": "description", "kind": "Text"},

@@ -19,23 +19,12 @@ core_propose_change_comment = GenericSchema(
     description="A comment on a Proposed Change",
     label="Comment",
     display_labels=["text__value"],
-    order_by=["created_at__value"],
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
     attributes=[
         Attr(name="text", kind="TextArea", description="Content of the comment", unique=False, optional=False),
-        Attr(name="created_at", kind="DateTime", description="Timestamp when the comment was created", optional=True),
     ],
-    relationships=[
-        Rel(
-            name="created_by",
-            peer=InfrahubKind.GENERICACCOUNT,
-            optional=True,
-            branch=BranchSupportType.AGNOSTIC,
-            cardinality=Cardinality.ONE,
-            identifier="comment__account",
-        ),
-    ],
+    relationships=[],
 )
 
 core_thread = GenericSchema(
@@ -43,7 +32,6 @@ core_thread = GenericSchema(
     namespace="Core",
     description="A thread on a Proposed Change",
     label="Thread",
-    order_by=["created_at__value"],
     branch=BranchSupportType.AGNOSTIC,
     include_in_menu=False,
     attributes=[
@@ -54,7 +42,6 @@ core_thread = GenericSchema(
             description="Whether the thread has been marked as resolved",
             default_value=False,
         ),
-        Attr(name="created_at", kind="DateTime", description="Timestamp when the thread was created", optional=True),
     ],
     relationships=[
         Rel(
@@ -73,14 +60,6 @@ core_thread = GenericSchema(
             optional=True,
             cardinality=Cardinality.MANY,
             on_delete=RelationshipDeleteBehavior.CASCADE,
-        ),
-        Rel(
-            name="created_by",
-            peer=InfrahubKind.GENERICACCOUNT,
-            identifier="thread__account",
-            optional=True,
-            branch=BranchSupportType.AGNOSTIC,
-            cardinality=Cardinality.ONE,
         ),
     ],
 )

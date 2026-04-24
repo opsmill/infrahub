@@ -537,6 +537,27 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return branches
 
+    def origin_has_branch(self, branch_name: str) -> bool:
+        """Return True if branch_name exists as a remote branch on origin."""
+        return branch_name in self.get_branches_from_remote()
+
+    async def delete_remote_branch(self, branch_name: str) -> None:
+        """Delete branch_name from origin."""
+        if not self.has_origin:
+            return
+        repo = self.get_git_repo_main()
+        repo.git.push("origin", "--delete", branch_name)
+
+    async def delete_local_branch(self, branch_name: str) -> None:
+        """Remove any worktrees and the local tracking ref for branch_name."""
+        repo = self.get_git_repo_main()
+        for worktree in self.get_worktrees():
+            if worktree.branch == branch_name:
+                repo.git.worktree("remove", "--force", str(worktree.directory))
+        local_branches = self.get_branches_from_local(include_worktree=False)
+        if branch_name in local_branches:
+            repo.delete_head(branch_name, force=True)
+
     @abstractmethod
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:
         raise NotImplementedError()

@@ -2,9 +2,9 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
+import { useGetEvents } from "@/entities/events/ui/queries/get-events.query";
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 
-import { useGetEvents } from "../domain/get-events.query";
 import { EventCard } from "./event-card";
 
 const MAX_EVENTS = 10;

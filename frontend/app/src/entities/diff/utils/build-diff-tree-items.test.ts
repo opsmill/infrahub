@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 import { store } from "@/shared/stores";
 
-import type { DiffNode } from "@/entities/diff/node-diff/types";
+import type { DiffNode } from "@/entities/diff/ui/node-diff/types";
 import { buildDiffTreeItems, type DiffTreeItem } from "@/entities/diff/utils/build-diff-tree-items";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 

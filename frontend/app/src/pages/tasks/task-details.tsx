@@ -1,4 +1,3 @@
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { useParams } from "react-router";
 
@@ -11,20 +10,16 @@ import { Link } from "@/shared/components/ui/link";
 import { TASK_OBJECT } from "@/shared/config/constants";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { getTaskItemDetailsTitle } from "@/entities/tasks/api/getTasksItemDetailsTitle";
+import { GET_TASK_DETAILS_TITLE } from "@/entities/tasks/api/getTasksItemDetailsTitle";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 
 const TaskDetailsPage = () => {
   useTitle("Task Details");
   const { task: taskId } = useParams();
 
-  const query = gql(
-    getTaskItemDetailsTitle({
-      kind: TASK_OBJECT,
-      id: taskId,
-    })
-  );
-  const { loading, error, data, refetch } = useQuery(query);
+  const { loading, error, data, refetch } = useQuery(GET_TASK_DETAILS_TITLE, {
+    variables: { ids: [taskId!] },
+  });
 
   if (error) {
     return <ErrorScreen message="An error occurred while fetching task details." />;
@@ -35,6 +30,10 @@ const TaskDetailsPage = () => {
   }
 
   const taskData = data?.[TASK_OBJECT]?.edges?.[0]?.node;
+
+  if (!taskData) {
+    return <ErrorScreen message={`Task with ID ${taskId} not found.`} />;
+  }
 
   const title = (
     <div className="flex items-center gap-2">
@@ -47,10 +46,6 @@ const TaskDetailsPage = () => {
       {taskData.title}
     </div>
   );
-
-  if (!taskData) {
-    return <ErrorScreen message={`Task with ID ${taskId} not found.`} />;
-  }
 
   return (
     <Content.Card>

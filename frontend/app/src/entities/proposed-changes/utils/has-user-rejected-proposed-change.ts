@@ -1,14 +1,11 @@
 import type { User } from "@/entities/authentication/types";
-import type { NodeObject } from "@/entities/nodes/types";
+import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/proposed-change.types";
 
-export const hasUserRejectedProposedChange = (proposedChangesDetails: NodeObject, user: User) => {
-  const usersId = proposedChangesDetails?.rejected_by?.edges?.map(
-    ({ node }: { node: NodeObject }) => {
-      return node.id;
-    }
-  );
+export const hasUserRejectedProposedChange = (
+  proposedChangesDetails: ProposedChangeDetail,
+  user: User
+) => {
+  const usersId = proposedChangesDetails.rejected_by?.edges?.map(({ node }) => node?.id);
 
-  const hasRejected = usersId.includes(user?.id);
-
-  return hasRejected;
+  return usersId?.includes(user?.id) ?? false;
 };

@@ -3,7 +3,7 @@ import { useCommandState } from "cmdk";
 import { useQueryState } from "nuqs";
 import { useRef, useState } from "react";
 
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
@@ -19,10 +19,10 @@ import { QSP } from "@/shared/config/qsp";
 import { useIsTruncated } from "@/shared/hooks/useIsTruncated";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useGetBranches } from "@/entities/branches/domain/get-branches.query";
 import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
+import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 
 type DisplayForm = {

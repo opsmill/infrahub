@@ -505,6 +505,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/telemetry/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Telemetry Snapshots */
+        get: operations["get_telemetry_snapshots_api_telemetry_snapshots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/transform/python/{transform_id}": {
         parameters: {
             query?: never;
@@ -674,6 +691,11 @@ export interface components {
              * @description List of Nodes that are referencing this Generic
              */
             used_by?: string[];
+            /**
+             * Restricted Namespaces
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
+             */
+            restricted_namespaces?: string[] | null;
             /** Kind */
             kind?: string | null;
             /** Hash */
@@ -1183,6 +1205,11 @@ export interface components {
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** AttributeSchema */
         "AttributeSchema-Output": {
@@ -1294,13 +1321,15 @@ export interface components {
              * @description Mark attribute as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** BranchDiffArtifact */
@@ -1539,6 +1568,11 @@ export interface components {
              * @description List of Nodes that are referencing this Generic
              */
             used_by?: string[];
+            /**
+             * Restricted Namespaces
+             * @description Nodes inheriting from this Generic schema must belong to one of the listed namespaces
+             */
+            restricted_namespaces?: string[] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -1706,6 +1740,12 @@ export interface components {
              * @default true
              */
             diff_update_after_merge: boolean;
+            /**
+             * Delete Branch After Merge
+             * @description When enabled, the Infrahub branch is automatically deleted after a successful merge.
+             * @default false
+             */
+            delete_branch_after_merge: boolean;
         };
         /** Menu */
         Menu: {
@@ -2145,6 +2185,11 @@ export interface components {
              * @description Mark relationship as deprecated and provide a user-friendly message to display
              */
             deprecation?: string | null;
+            /**
+             * @description Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.
+             * @default default
+             */
+            display: components["schemas"]["SchemaAttributeDisplay"];
         };
         /** RemoteLoggingSettings */
         RemoteLoggingSettings: {
@@ -2160,6 +2205,11 @@ export interface components {
             /** Git Agent Dsn */
             git_agent_dsn?: string | null;
         };
+        /**
+         * RemoteSendStatus
+         * @enum {string}
+         */
+        RemoteSendStatus: "pending" | "sent" | "skipped" | "failed";
         /** SSOInfo */
         SSOInfo: {
             /** Providers */
@@ -2186,6 +2236,11 @@ export interface components {
             /** Token Path */
             readonly token_path: string;
         };
+        /**
+         * SchemaAttributeDisplay
+         * @enum {string}
+         */
+        SchemaAttributeDisplay: "default" | "extra";
         /** SchemaBranchHash */
         SchemaBranchHash: {
             /** Main */
@@ -2327,6 +2382,35 @@ export interface components {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
         };
+        /** TelemetrySnapshotListResponse */
+        TelemetrySnapshotListResponse: {
+            /** Count */
+            count: number;
+            /** Snapshots */
+            snapshots: components["schemas"]["TelemetrySnapshotResponse"][];
+        };
+        /** TelemetrySnapshotResponse */
+        TelemetrySnapshotResponse: {
+            /** Id */
+            id: string;
+            /** Created At */
+            created_at: string;
+            /** Kind */
+            kind: string;
+            /** Payload Format */
+            payload_format: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /** Infrahub Version */
+            infrahub_version: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Checksum */
+            checksum: string;
+            remote_send_status: components["schemas"]["RemoteSendStatus"];
+        };
         /** TextAttributeParameters */
         TextAttributeParameters: {
             /** Id */
@@ -2400,6 +2484,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -3375,6 +3463,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_telemetry_snapshots_api_telemetry_snapshots_get: {
+        parameters: {
+            query?: {
+                /** @description Include snapshots created on or after this date (ISO 8601) */
+                start_date?: string | null;
+                /** @description Include snapshots created on or before this date (ISO 8601) */
+                end_date?: string | null;
+                /** @description Maximum number of snapshots to return */
+                limit?: number;
+                /** @description Number of snapshots to skip */
+                offset?: number;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetrySnapshotListResponse"];
                 };
             };
             /** @description Validation Error */

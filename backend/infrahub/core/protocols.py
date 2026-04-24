@@ -92,8 +92,6 @@ class CoreCheck(CoreNode):
 
 class CoreComment(CoreNode):
     text: String
-    created_at: DateTimeOptional
-    created_by: RelationshipManager
 
 
 class CoreCredential(CoreNode):
@@ -148,6 +146,13 @@ class CoreGroup(CoreNode):
     children: RelationshipManager
 
 
+class CoreKeyValue(CoreNode):
+    name: String
+    key: String
+    description: StringOptional
+    value: String
+
+
 class CoreMenu(CoreNode):
     namespace: String
     name: String
@@ -193,10 +198,8 @@ class CoreTaskTarget(CoreNode):
 class CoreThread(CoreNode):
     label: StringOptional
     resolved: Boolean
-    created_at: DateTimeOptional
     change: RelationshipManager
     comments: RelationshipManager
-    created_by: RelationshipManager
 
 
 class CoreTransformation(CoreNode):
@@ -236,6 +239,7 @@ class CoreWebhook(CoreNode):
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional
+    headers: RelationshipManager
 
 
 class CoreWeightedPoolResource(CoreNode):
@@ -341,6 +345,10 @@ class CoreDataCheck(CoreCheck):
 
 
 class CoreDataValidator(CoreValidator):
+    pass
+
+
+class CoreEnvKeyValue(CoreKeyValue):
     pass
 
 
@@ -546,6 +554,10 @@ class CoreStandardGroup(CoreGroup):
 
 class CoreStandardWebhook(CoreWebhook, CoreTaskTarget):
     shared_key: String
+
+
+class CoreStaticKeyValue(CoreKeyValue):
+    pass
 
 
 class CoreThreadComment(CoreComment):

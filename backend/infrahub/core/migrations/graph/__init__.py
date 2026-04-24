@@ -70,6 +70,7 @@ from .m065_remove_generic_generate_template import Migration065
 from .m066_consolidate_duplicate_number_pools import Migration066
 from .m067_freeze_orphaned_branch_tracking_diffs import Migration067
 from .m068_cleanup_branch_schema_parameters import Migration068
+from .m069_set_comment_thread_created_by_on_node import Migration069
 
 if TYPE_CHECKING:
     from ..shared import MigrationTypes
@@ -144,6 +145,7 @@ MIGRATIONS: list[type[MigrationTypes]] = [
     Migration066,
     Migration067,
     Migration068,
+    Migration069,
 ]
 
 

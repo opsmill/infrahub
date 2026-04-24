@@ -89,12 +89,16 @@ export function DataTable<T extends NodeCore>({
       })}
 
       {allRows.map((row) => {
-        return row.getVisibleCells().map((cell) => {
-          return flexRender(cell.column.columnDef.cell, {
-            ...cell.getContext(),
-            key: cell.id,
-          });
-        });
+        return (
+          <div key={row.id} className="contents" data-testid="data-table-row">
+            {row.getVisibleCells().map((cell) => {
+              return flexRender(cell.column.columnDef.cell, {
+                ...cell.getContext(),
+                key: cell.id,
+              });
+            })}
+          </div>
+        );
       })}
 
       {!isLoading && allRows.length === 0 && renderEmpty?.()}

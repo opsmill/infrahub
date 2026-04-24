@@ -3,7 +3,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { Spinner } from "@/shared/components/ui/spinner";
 
-import { useMenu } from "@/entities/navigation/domain/get-menu.query";
+import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import { SidebarMenuSectionInternal } from "@/entities/navigation/ui/sidebar/sidebar-menu-section-internal";
 import { SidebarMenuSectionObject } from "@/entities/navigation/ui/sidebar/sidebar-menu-section-object";
 

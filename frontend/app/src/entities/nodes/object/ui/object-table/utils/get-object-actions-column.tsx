@@ -7,7 +7,10 @@ import type { Permission } from "@/entities/permission/types";
 
 const columnHelper = createColumnHelper<NodeObject>();
 
-export function getObjectActionsColumn(permission: Permission): ColumnDef<NodeObject> {
+export function getObjectActionsColumn(
+  permission: Permission,
+  options?: { extraRelationshipNames?: string[] }
+): ColumnDef<NodeObject> {
   return columnHelper.display({
     id: "actions",
     header: () => <ActionsHeaderCell />,
@@ -18,6 +21,7 @@ export function getObjectActionsColumn(permission: Permission): ColumnDef<NodeOb
           objectKind={row.original.__typename}
           objectLabel={row.getValue("id")}
           objectId={row.original.id}
+          extraRelationshipNames={options?.extraRelationshipNames}
         />
       );
     },

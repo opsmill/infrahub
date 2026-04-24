@@ -1,10 +1,12 @@
-import { Row } from "@/shared/components/container";
+import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
+import { Row, type RowProps } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
+import { classNames } from "@/shared/utils/common";
 
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 import { ObjectDetailsMenu } from "@/entities/nodes/object/ui/object-details/object-details-menu";
 import { RefreshButton } from "@/entities/nodes/object/ui/object-details/refresh-button";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { DetailsButtons } from "@/entities/nodes/object-item-details/action-buttons/details-buttons";
 import type { Permission } from "@/entities/permission/types";
@@ -36,7 +38,8 @@ export function ObjectDetailsHeader({
 
   return (
     <HeaderContainer>
-      <h2 className="truncate font-semibold text-xl">{getNodeLabel(objectData)}</h2>
+      <h1 className="truncate font-bold text-xl">{getNodeLabel(objectData)}</h1>
+      <CopyToClipboardButton data={getNodeLabel(objectData)} />
       <NodeMetadataPopover objectId={objectId} objectKind={objectSchema.kind!} />
 
       <RefreshButton className="ml-auto" />
@@ -56,10 +59,12 @@ export function ObjectDetailsHeader({
   );
 }
 
-export function HeaderContainer({ children }: { children: React.ReactNode }) {
+export function HeaderContainer({ className, ...props }: RowProps) {
   return (
-    <Row className="w-full p-3 pb-1.5" data-testid="object-header">
-      {children}
-    </Row>
+    <Row
+      className={classNames("w-full p-3 pb-1.5", className)}
+      data-testid="object-header"
+      {...props}
+    />
   );
 }

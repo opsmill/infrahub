@@ -63,17 +63,20 @@ resolve_relationships()
 
 ### Guard Conditions
 
-In `_collect_extra_filters()`, extra filters are only computed when needed:
+In `_collect_extra_filters()`, extra filters are computed for three sources:
 
 ```python
 if not self._existing or self._human_friendly_id:
     # Fetch HFID-related peer attributes
 if not self._existing or self._display_label:
     # Fetch display-label-related peer attributes
+if self._existing:
+    # Fetch peer attributes needed by Jinja2 computed attribute templates
 ```
 
-- **New nodes** (`not self._existing`): Always need extra filters
+- **New nodes** (`not self._existing`): Always need HFID/display_label extra filters
 - **Existing nodes with HFID/display_label set**: Need extra filters for recomputation during updates
+- **Existing nodes (updates)**: Always include peer attributes needed by Jinja2 computed attribute templates (via `computed_attributes.get_registered_jinja2_node`)
 
 ## Lifecycle
 
@@ -86,8 +89,31 @@ if not self._existing or self._display_label:
 ### Update
 
 1. `Node.load()` receives `human_friendly_id` and `display_label` kwargs, wraps them in property objects
-2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label`)
+2. `Node.save()` -> `resolve_relationships()` (extra_filters gated by `self._human_friendly_id` / `self._display_label` for those sources, plus always-on computed attribute extra filters via `computed_attributes.get_registered_jinja2_node`)
 3. `_update()` checks `needs_update(fields)` for each property; recomputes and persists if needed
+
+### Query-Time Resolution (`get_display_label`)
+
+`Node.get_display_label(db)` returns the display label for a node during GraphQL queries. It distinguishes between saved and virtual nodes:
+
+1. **Stored value exists** (`_display_label` set with a non-empty value): return it directly.
+2. **Stored attribute is empty** (`_display_label` set but value is null): return `""`. The async backfill workflow is responsible for populating stored values after schema changes. Computing on the fly here would cause the backfill to detect no difference and skip the update.
+3. **No `display_label` template** in schema: return `repr(self)`.
+4. **No stored attribute at all** (virtual nodes like IPAM available nodes that are never saved): compute on the fly using `DisplayLabel.compute()`.
+
+### Async Backfill After Schema Changes
+
+When a schema is updated to add or change a `display_label`, the async Prefect workflow chain updates existing nodes:
+
+```
+SchemaUpdatedEvent
+  -> display_labels_setup_jinja2 (gathers triggers, detects new/changed templates)
+  -> trigger_update_display_labels (iterates all nodes of the kind)
+  -> process_display_label (queries node via GraphQL, renders template)
+  -> display_label_jinja2_update_value (compares rendered vs stored, writes if different)
+```
+
+The trigger definitions and gathering logic live in `backend/infrahub/display_labels/`.
 
 ### Manual Override
 

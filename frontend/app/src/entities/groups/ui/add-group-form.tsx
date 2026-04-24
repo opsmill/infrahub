@@ -1,6 +1,5 @@
 import { toast } from "react-toastify";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import DynamicForm, { type DynamicFormProps } from "@/shared/components/form/dynamic-form";
 import type {
@@ -10,24 +9,24 @@ import type {
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { pluralize } from "@/shared/utils/string";
 
-import { updateGroupsQuery } from "@/entities/groups/api/updateGroupsQuery";
-import type { NodeSchema } from "@/entities/schema/types";
+import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
+import type { ModelSchema } from "@/entities/schema/types";
 
 interface AddGroupFormProps extends Omit<DynamicFormProps, "fields" | "onSubmit"> {
   objectId: string;
   defaultGroupIds?: FormRelationshipValue;
-  schema: NodeSchema;
+  schema: ModelSchema;
   onUpdateCompleted?: () => void;
 }
 
-export default function AddGroupForm({
+export function AddGroupForm({
   objectId,
   onUpdateCompleted,
   defaultGroupIds,
   schema,
   ...props
 }: AddGroupFormProps) {
-  const [addObjectToGroups] = useMutation(updateGroupsQuery({ schema, objectId }));
+  const { mutateAsync: addRelationships } = useAddRelationships();
 
   const memberOfGroupsRelationship = schema.relationships?.find(
     ({ name }) => name === "member_of_groups"
@@ -39,7 +38,11 @@ export default function AddGroupForm({
 
   async function onSubmit(groupIds: Array<{ id: string }>) {
     try {
-      await addObjectToGroups({ variables: { id: objectId, groupIds } });
+      await addRelationships({
+        objectId,
+        relationshipName: "member_of_groups",
+        relationshipIds: groupIds.map(({ id }) => id),
+      });
 
       toast(
         <Alert

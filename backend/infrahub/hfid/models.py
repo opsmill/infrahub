@@ -10,7 +10,7 @@ from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent
-from infrahub.trigger.constants import NAME_SEPARATOR
+from infrahub.trigger.constants import NAME_SEPARATOR, TRIGGER_PLACEHOLDER_FIELD
 from infrahub.trigger.models import (
     EventTrigger,
     ExecuteWorkflow,
@@ -57,7 +57,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
                     node_kind=node_kind,
                     target_kind=node_kind,
                     fields=[
-                        "_trigger_placeholder"
+                        TRIGGER_PLACEHOLDER_FIELD
                     ],  # Triggers for the nodes themselves are only used to determine if all nodes should be regenerated
                     hfid_hash=hfid_definition.get_hash(),
                     branches_out_of_scope=branches_out_of_scope,

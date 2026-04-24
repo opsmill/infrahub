@@ -26,6 +26,7 @@ core_webhook = GenericSchema(
     include_in_menu=False,
     icon="mdi:webhook",
     branch=BranchSupportType.AGNOSTIC,
+    restricted_namespaces=["Core"],
     uniqueness_constraints=[["name__value"]],
     attributes=[
         Attr(name="name", kind="Text", unique=True, order_weight=1000),
@@ -89,6 +90,18 @@ core_webhook = GenericSchema(
             description="Whether to validate SSL/TLS certificates",
             optional=True,
             order_weight=5000,
+        ),
+    ],
+    relationships=[
+        Rel(
+            name="headers",
+            peer=InfrahubKind.KEYVALUE,
+            kind=RelKind.ATTRIBUTE,
+            identifier="webhook__headers",
+            description="Custom HTTP headers sent with webhook requests",
+            cardinality=Cardinality.MANY,
+            optional=True,
+            order_weight=6000,
         ),
     ],
 )

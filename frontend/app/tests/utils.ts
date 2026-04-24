@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 export const saveScreenshotForDocs = async (page: Page, filename: string) => {
   if (!process.env.UPDATE_DOCS_SCREENSHOTS) return;
@@ -10,20 +10,12 @@ export const saveScreenshotForDocs = async (page: Page, filename: string) => {
   });
 };
 
-export const createBranch = async (page: Page, branchName: string) => {
-  await page.getByTestId("branch-selector-trigger").click();
-  await page.getByTestId("create-branch-button").click();
-  await page.getByLabel("New branch name *").fill(branchName);
-  await page.getByRole("button", { name: "Create a new branch" }).click();
-  await expect(page.getByTestId("branch-selector-trigger")).toContainText(branchName);
-};
-
-export const deleteBranch = async (page: Page, branchName: string) => {
-  await page.goto("/branches/" + branchName);
-  await page.getByRole("button", { name: "Delete" }).click();
-  await page.getByTestId("modal-delete-confirm").click();
-};
-
 export const generateRandomBranchName = (prefix?: string) => {
   return `${prefix ?? ""}${Math.random().toString(36).substring(2, 15)}`;
 };
+
+export function getDataTableRow(page: Page, name: string) {
+  return page
+    .getByTestId("data-table-row")
+    .filter({ has: page.getByRole("link", { name, exact: true }) });
+}

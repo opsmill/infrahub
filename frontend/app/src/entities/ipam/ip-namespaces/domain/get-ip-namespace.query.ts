@@ -1,6 +1,6 @@
 import { IP_NAMESPACE_GENERIC, IP_NAMESPACE_KIND } from "@/entities/ipam/constants";
-import { useGetObject } from "@/entities/nodes/object/domain/get-object.query";
-import { useObjects } from "@/entities/nodes/object/domain/get-objects.query";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import { useObjects } from "@/entities/nodes/object/ui/queries/get-objects.query";
 import type { NodeObject } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 

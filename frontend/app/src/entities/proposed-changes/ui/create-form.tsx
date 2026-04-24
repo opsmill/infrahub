@@ -31,9 +31,9 @@ import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
+import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-import { DRAFT_STATE, OPEN_STATE } from "../constants";
 import { PcStateButton } from "./action-button/pc-state-button";
 
 export const ProposedChangeCreateForm = () => {

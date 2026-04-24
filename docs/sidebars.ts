@@ -108,6 +108,8 @@ const sidebars: SidebarsConfig = {
             'guides/jinja2-transform',
             'guides/python-transform',
             'guides/artifact',
+            'guides/artifact-content-composition',
+            'guides/graphql-fragment',
             'guides/object-storage',
           ],
         },
@@ -132,6 +134,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/events-rules-actions',
             'guides/webhooks',
+            'guides/log-forwarding',
           ],
         },
         {
@@ -243,6 +246,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/schema',
                 'topics/order-weight',
+                'topics/schema-display',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
                 'topics/schema-extensions',
@@ -308,6 +312,7 @@ const sidebars: SidebarsConfig = {
                 'topics/event-actions',
                 'topics/tasks',
                 'topics/webhooks',
+                'topics/log-forwarding',
               ],
             },
             {
@@ -431,6 +436,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_9_0',
             'release-notes/infrahub/release-1_8_6',
             'release-notes/infrahub/release-1_8_5',
             'release-notes/infrahub/release-1_8_4',

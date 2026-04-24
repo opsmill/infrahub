@@ -96,6 +96,7 @@ To help with the development process of a repository configuration file, you can
 | file_path | string | The file within the repository with the transform code. | True |
 | class_name | string | The name of the transform class to run. | False |
 | convert_query_response | boolean | Decide if the transform should convert the result of the GraphQL query to SDK InfrahubNode objects. | False |
+| description | string | Description for this transform | False |
 
 <!-- vale off -->
 ## Generator Definitions
@@ -131,6 +132,20 @@ To help with the development process of a repository configuration file, you can
 | -------- | ---- | ----------- | --------- |
 | name | string | The name of the GraphQL Query | True |
 | file_path | string | The file within the repository with the query code. | True |
+
+<!-- vale off -->
+## Graphql Fragments
+<!-- vale on -->
+
+**Description**: GraphQL fragment files declared for this repository<br/>
+**Key**: graphql_fragments<br/>
+**Type**: array<br/>
+**Item type**: InfrahubRepositoryFragmentConfig<br/>
+
+| Property | Type | Description | Mandatory |
+| -------- | ---- | ----------- | --------- |
+| name | string | Logical name for this fragment file or directory | True |
+| file_path | string | Path to a .gql fragment file or a directory of .gql files, relative to repo root | True |
 
 <!-- vale off -->
 ## Objects

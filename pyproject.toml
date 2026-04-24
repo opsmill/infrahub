@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.8.6"
+version = "1.9.0"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -37,7 +37,7 @@ dependencies = [
     "tomli>=1.1.0; python_version<='3.11'",
     "deepdiff==8.6.2",
     # Dependencies specific to the API Server
-    "fastapi==0.121.1",
+    "fastapi==0.131.0",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",
@@ -627,10 +627,6 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
-"backend/infrahub/config.py" = [
-    "S323", # Allow users to create an SSL context that doesn't validate certificates
-]
-
 "backend/infrahub/core/branch/models.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
@@ -713,6 +709,10 @@ allow-dunder-method-names = [
 
 "backend/infrahub/serve/log.py" = [
     "LOG004",  # `.exception()` call outside exception handlers
+]
+
+"backend/infrahub/tls/context_builder.py" = [
+    "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
 "tasks/__init__.py" = [
@@ -1855,6 +1855,7 @@ no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 unresolved-import = "ignore"
+invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/tests/unit/**"]

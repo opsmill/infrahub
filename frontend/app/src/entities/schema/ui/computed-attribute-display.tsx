@@ -8,12 +8,14 @@ import { DataViewer } from "@/shared/components/data-viewer/data-viewer";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 
-import { ModelDisplay } from "./styled";
+import { SchemaKindDisplay } from "./styled";
 
 export const ComputedAttributeDisplay = ({
   computedAttribute,
+  onKindClick,
 }: {
   computedAttribute?: components["schemas"]["ComputedAttribute-Output"] | null;
+  onKindClick?: (kind: string) => void;
 }) => {
   if (!computedAttribute) {
     return "-";
@@ -24,7 +26,7 @@ export const ComputedAttributeDisplay = ({
 
     return (
       <Row>
-        <ModelDisplay kinds={["CoreTransformJinja2"]} />
+        <SchemaKindDisplay kinds={["CoreTransformJinja2"]} onKindClick={onKindClick} />
 
         <DialogTrigger>
           <Pressable>
@@ -48,7 +50,7 @@ export const ComputedAttributeDisplay = ({
   if (computedAttribute.kind === "TransformPython") {
     return (
       <Row>
-        <ModelDisplay kinds={["CoreTransformPython"]} />
+        <SchemaKindDisplay kinds={["CoreTransformPython"]} onKindClick={onKindClick} />
 
         <Badge variant="gray-outline">{computedAttribute.transform as string}</Badge>
       </Row>

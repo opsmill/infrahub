@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { cellHeaderStyle, cellsStyle } from "@/shared/components/table/style";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import useFilters from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
 
@@ -20,7 +21,7 @@ export interface TableColumnHeaderProps extends PopoverTriggerProps {
 export function TableColumnHeader({ columnSchema, className, ...props }: TableColumnHeaderProps) {
   const [filters] = useFilters();
   const [showFilters, setShowFilters] = useState(false);
-  const currentColumnFilters = filters.find((f) => f.name.startsWith(columnSchema.name));
+  const currentColumnFilters = filters.find((f) => isFieldFiltered(f, columnSchema.name));
 
   const closePopover = () => {
     setShowFilters(false);
@@ -42,7 +43,7 @@ export function TableColumnHeader({ columnSchema, className, ...props }: TableCo
       </PopoverTrigger>
 
       <PopoverContent className="relative rounded-tl-none p-0" align="start">
-        <div className="absolute -top-[1.8rem] -left-px rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
+        <div className="absolute -top-[1.8rem] -left-px whitespace-nowrap rounded-t-md border border-gray-200 border-b-0 bg-white px-2 py-1 font-semibold">
           Filter by {columnSchema.label ?? columnSchema.name}
         </div>
         {"peer" in columnSchema ? (

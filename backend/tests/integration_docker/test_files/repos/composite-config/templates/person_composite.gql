@@ -1,0 +1,23 @@
+query PersonComposite($name: String!) {
+  TestingPerson(name__value: $name) {
+    edges {
+      node {
+        name {
+          value
+        }
+        artifacts {
+          edges {
+            node {
+              name {
+                value
+              }
+              storage_id {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

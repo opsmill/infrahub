@@ -46,7 +46,7 @@ class NodePropertyAttribute[T]:
 
         self.analyze_variables()
 
-    def needs_update(self, fields: list[str] | None) -> bool:
+    def needs_update(self, fields: set[str] | None) -> bool:
         """Tell if this node property attribute must be recomputed given a list of updated fields of a node."""
         if self._manually_assigned or not fields:
             return True
@@ -150,8 +150,9 @@ class DisplayLabel(NodePropertyAttribute[str]):
 
         if not self.is_jinja2_template:
             path_value = await node.get_path_value(db=db, path=self.template)
-            # Use .value for enum to keep compat with old style display label
-            self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
+            if path_value is not None:
+                # Use .value for enum to keep compat with old style display label
+                self.set_value(value=str(path_value if not isinstance(path_value, Enum) else path_value.value))
             return
 
         jinja2_template = InfrahubJinja2Template(template=self.template)

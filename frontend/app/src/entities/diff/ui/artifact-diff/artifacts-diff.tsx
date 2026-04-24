@@ -3,12 +3,12 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
-import { useGetArtifactsDiff } from "@/entities/diff/domain/get-artifacts-diff.query";
 import { ArtifactRepoDiff } from "@/entities/diff/ui/artifact-diff/artifact-repo-diff";
 import {
   DiffBranchNotFound,
   isBranchNotFoundError,
 } from "@/entities/diff/ui/diff-branch-not-found";
+import { useGetArtifactsDiff } from "@/entities/diff/ui/queries/get-artifacts-diff.query";
 
 interface ArtifactsDiffProps {
   branchName: string;

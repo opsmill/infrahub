@@ -8,9 +8,12 @@ ignore: |
   /repositories
   /frontend/**/playwright-report
   **/node_modules
+  **/pnpm-lock.yaml
+  **/pnpm-workspace.yaml
   # https://github.com/sbaudoin/yamllint/issues/16
   /helm/templates
   /python_sdk
+  /frontend/packages/schema-visualizer
 
 rules:
   new-lines: disable

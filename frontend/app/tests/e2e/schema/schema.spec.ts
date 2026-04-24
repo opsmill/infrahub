@@ -5,8 +5,7 @@ import { saveScreenshotForDocs } from "../../utils";
 test.describe("/schema - Schema visualizer", () => {
   test("redirect to schema page using object help menu", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
-    await page.getByRole("button", { name: "?" }).click();
-    await page.getByRole("menuitem", { name: "Schema" }).click();
+    await page.getByRole("link", { name: "Schema" }).click();
     await expect(page.getByTestId("schema-viewer")).toBeVisible();
     await expect(page.getByText("KindInfraInterface")).toBeVisible();
     await expect(page).toHaveURL(/\/schema\?kind=InfraInterface/);
@@ -58,6 +57,15 @@ test.describe("/schema - Schema visualizer", () => {
     await page.getByPlaceholder("Search schema").fill("tag");
     await expect(page.getByRole("heading", { name: "Builtin Tag Node" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Core Account Node" })).not.toBeVisible();
+  });
+
+  test("navigate to schema graph view", async ({ page }) => {
+    await page.goto("/schema");
+    await expect(page.getByRole("heading", { name: "Core Account Node" })).toBeVisible();
+    await page.getByRole("heading", { name: "Core Account Node" }).click();
+    await page.getByRole("link", { name: "View in graph" }).click();
+    await expect(page).toHaveURL(/\/schema\/graph\?highlight=CoreAccount/);
+    await expect(page.getByText("Schema Overview")).toBeVisible();
   });
 
   test("view schema attribute kind numberpool", async ({ page }) => {

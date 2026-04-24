@@ -47,9 +47,11 @@ from infrahub.graphql.mutations.models import BranchCreateModel  # noqa: TC001
 from infrahub.workers.dependencies import get_component, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
     BRANCH_CANCEL_PROPOSED_CHANGES,
+    BRANCH_DELETE,
     BRANCH_MERGE_POST_PROCESS,
     DIFF_REFRESH_ALL,
     DIFF_UPDATE,
+    GIT_REPOSITORIES_DELETE_BRANCH,
     IPAM_RECONCILIATION,
     TRIGGER_ARTIFACT_DEFINITION_GENERATE,
     TRIGGER_GENERATOR_DEFINITION_RUN,
@@ -297,6 +299,7 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
                 log=log,
                 obj=obj,
                 context=context,
+                proposed_change_id=proposed_change_id,
             )
 
         events: list[InfrahubEvent] = [merge_event]
@@ -319,7 +322,11 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
 
 
 async def _do_merge_branch(
-    db: InfrahubDatabase, log: Logger | LoggerAdapter, obj: Branch, context: InfrahubContext
+    db: InfrahubDatabase,
+    log: Logger | LoggerAdapter,
+    obj: Branch,
+    context: InfrahubContext,
+    proposed_change_id: str | None = None,
 ) -> Sequence[tuple[DiffAction, NodeChangelog]]:
     component_registry = get_component_registry()
 
@@ -413,6 +420,13 @@ async def _do_merge_branch(
         parameters={"branch_name": obj.name},
     )
 
+    if config.SETTINGS.main.delete_branch_after_merge and not obj.is_default:
+        await get_workflow().submit_workflow(
+            workflow=BRANCH_DELETE,
+            context=context,
+            parameters={"branch": obj.name, "proposed_change_id": proposed_change_id},
+        )
+
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been merged
     # NOTE: we still need to convert this event and potentially pull
@@ -428,9 +442,10 @@ async def _do_merge_branch(
 
 
 @flow(name="branch-delete", flow_run_name="Delete branch {branch}")
-async def delete_branch(branch: str, context: InfrahubContext) -> None:
-    await add_tags(branches=[branch])
-
+async def delete_branch(
+    branch: str, context: InfrahubContext, delete_from_git: bool = False, proposed_change_id: str | None = None
+) -> None:
+    await add_tags(branches=[branch], nodes=[proposed_change_id] if proposed_change_id else None)
     database = await get_database()
     async with database.start_session() as db:
         obj = await Branch.get_by_name(db=db, name=str(branch))
@@ -446,6 +461,7 @@ async def delete_branch(branch: str, context: InfrahubContext) -> None:
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
             meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            proposed_change_id=proposed_change_id,
         )
 
         await get_workflow().submit_workflow(
@@ -454,6 +470,14 @@ async def delete_branch(branch: str, context: InfrahubContext) -> None:
 
         event_service = await get_event_service()
         await event_service.send(event=event)
+
+    should_delete_git = (config.SETTINGS.git.delete_git_branch_after_merge or delete_from_git) and obj.sync_with_git
+    if should_delete_git:
+        await get_workflow().submit_workflow(
+            workflow=GIT_REPOSITORIES_DELETE_BRANCH,
+            context=context,
+            parameters={"branch": branch},
+        )
 
 
 @flow(

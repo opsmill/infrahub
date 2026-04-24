@@ -7,3 +7,6 @@ export const BRANCH_STATUS = {
 } as const;
 
 export type BranchStatus = (typeof BRANCH_STATUS)[keyof typeof BRANCH_STATUS];
+
+export const BRANCH_MERGED_EVENT = "infrahub.branch.merged";
+export const BRANCH_DELETED_EVENT = "infrahub.branch.deleted";

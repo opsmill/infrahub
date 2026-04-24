@@ -41,7 +41,8 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 | Core | Business logic, domain models | `core/` |
 | Database | Query execution, connection mgmt | `database/` |
 | Workers | Async task processing | `workers/`, `task_manager/` |
-| Events | Pub/sub, triggers, webhooks | `events/`, `message_bus/` |
+| Events | Pub/sub, triggers | `events/`, `message_bus/` |
+| Webhooks | HTTP notification delivery | `webhook/` |
 
 ## Entry Points
 
@@ -58,6 +59,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 - [Events System](events.md) - Event-driven architecture
 - [Async Tasks](async-tasks.md) - Background task processing
 - [Message Bus](message-bus.md) - Inter-service communication
+- [Computed Attributes](computed-attributes.md) - Jinja2 evaluation paths and schema registry
 
 ### Guidelines
 

@@ -26,10 +26,10 @@ async def test_new_user_creates_account_and_identity(
         email="alice@example.com",
     )
 
-    token = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+    auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
-    assert token.access_token
-    assert token.refresh_token
+    assert auth_result.token.access_token
+    assert auth_result.token.refresh_token
 
     accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Alice Baker"})
     assert len(accounts) == 1
@@ -69,9 +69,9 @@ async def test_returning_user_resolves_via_identity_node(
         email="bob@example.com",
     )
 
-    token = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+    auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
-    assert token.access_token
+    assert auth_result.token.access_token
 
     accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Bob Smith"})
     assert len(accounts) == 1
@@ -132,9 +132,9 @@ async def test_transition_fallback_unclaimed_account_is_linked(
         email="eve@example.com",
     )
 
-    token = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+    auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
-    assert token.access_token
+    assert auth_result.token.access_token
 
     accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Eve Turner"})
     assert len(accounts) == 1
@@ -171,9 +171,9 @@ async def test_transition_fallback_claimed_account_uses_email_as_name(
         email="frank@example.com",
     )
 
-    token = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+    auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
-    assert token.access_token
+    assert auth_result.token.access_token
 
     new_accounts = await NodeManager.query(
         db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "frank@example.com"}
@@ -287,9 +287,9 @@ async def test_unknown_group_is_silently_ignored(
         email="jake@example.com",
     )
 
-    token = await signin_sso_account(db=db, external_identity=identity, sso_groups=["nonexistent-group"])
+    auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=["nonexistent-group"])
 
-    assert token.access_token
+    assert auth_result.token.access_token
 
     accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Jake Davis"})
     assert len(accounts) == 1

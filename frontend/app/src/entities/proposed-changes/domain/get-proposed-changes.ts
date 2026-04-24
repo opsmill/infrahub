@@ -12,7 +12,6 @@ export type ProposedChangeNode = {
   name: { value: string };
   state: { value: string };
   is_draft: { value: string };
-  _updated_at: string;
   source_branch: { value: string };
   approved_by: { edges: Array<{ node: NodeCore }> };
   total_comments: { value: number };
