@@ -209,9 +209,15 @@ async def stage_base_conflicts(
 
 
 def _conflicting_value(current: Any, original: Any) -> Any:
-    """Pick a value that differs from both ``current`` (branch-side) and ``original``."""
+    """Pick a value that differs from both ``current`` (branch-side) and ``original``.
+
+    Raises ``ValueError`` for booleans: any value that differs from ``current`` is equal to ``original``
+    """
     if isinstance(current, bool) or isinstance(original, bool):
-        return not bool(current)
+        raise ValueError(
+            f"cannot pick a conflicting bool value: current={current!r}, original={original!r}; "
+            f"bool has only two states so any 'different' value coincides with one of them"
+        )
     if isinstance(current, (int, float)) or isinstance(original, (int, float)):
         base = (current if isinstance(current, (int, float)) else 0) or 0
         return base + 9999
