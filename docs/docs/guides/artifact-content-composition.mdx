@@ -1,0 +1,273 @@
+---
+title: Composing artifact content
+---
+
+# Composing artifact content
+
+This guide shows you how to build a composite [artifact](../topics/artifact.mdx) whose [Transformation](../topics/transformation.mdx) pulls in content from other artifacts or [file objects](../topics/file-object.mdx). This enables modular configuration pipelines where each artifact generates one section of a configuration, and a composite artifact assembles the final result.
+
+For example, you can split a network device's startup configuration into separate NTP, syslog, and interface artifacts — each maintained independently with its own Transformation and query logic — then compose them into a single full configuration artifact.
+
+## Prerequisites
+
+Before starting this guide, ensure you have:
+
+- A running Infrahub instance with task workers
+- At least one source artifact already generating content
+- An [external repository](../topics/repository.mdx) connected to Infrahub
+- Familiarity with [creating a Jinja2 Transformation](./jinja2-transform.mdx) or [creating a Python Transformation](./python-transform.mdx)
+- Familiarity with [generating artifacts](./artifact.mdx)
+
+## 1. Understand the composition model
+
+During artifact generation, your Jinja2 templates have access to Infrahub filters that can fetch content from the [object storage](../topics/object-storage.mdx). To build a composite artifact, your Transformation's GraphQL query retrieves the `storage_id` of another artifact or file object, and your template uses a filter to fetch and include that content inline.
+
+The filters always return content as a raw string. If you need to work with structured data, you can chain the `from_json` or `from_yaml` parsing filters.
+
+:::note
+
+The `artifact_content`, `file_object_content`, `file_object_content_by_id`, and `file_object_content_by_hfid` filters are only available during artifact generation on the task worker. They are not available in [computed attributes](../topics/computed-attributes.mdx) or when rendering locally with `infrahubctl render` without a connected server.
+
+The `from_json` and `from_yaml` filters are available in all contexts.
+
+:::
+
+## 2. Query for artifact storage IDs
+
+Your composite Transformation's GraphQL query needs to return the `storage_id` of any artifacts whose content you want to include. You can use the `artifacts` relationship on any `CoreArtifactTarget` node, or query `CoreArtifact` directly.
+
+```graphql
+query CompositeDeviceConfig($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        name {
+          value
+        }
+        artifacts {
+          edges {
+            node {
+              name {
+                value
+              }
+              storage_id {
+                value
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+This query returns all artifacts for the device, each with its `storage_id`. In your template, you can then select the relevant artifact by name and fetch its content.
+
+## 3. Compose content in a Jinja2 Transformation
+
+### Include raw artifact content
+
+You can use the `artifact_content` filter to fetch an artifact's content by its `storage_id`:
+
+```jinja
+{% set device = data.InfraDevice.edges[0].node %}
+hostname {{ device.name.value }}
+!
+{% for artifact in device.artifacts.edges %}
+{% if artifact.node.name.value == "ntp_config" %}
+{{ artifact.node.storage_id.value | artifact_content }}
+{% endif %}
+{% endfor %}
+```
+
+### Parse structured content
+
+You can chain `artifact_content` with `from_json` or `from_yaml` to work with structured data:
+
+```jinja
+{% set device = data.InfraDevice.edges[0].node %}
+{% for artifact in device.artifacts.edges %}
+{% if artifact.node.name.value == "interface_data" %}
+{% set interfaces = artifact.node.storage_id.value | artifact_content | from_json %}
+{% for intf in interfaces %}
+interface {{ intf.name }}
+  ip address {{ intf.address }} {{ intf.mask }}
+  no shutdown
+!
+{% endfor %}
+{% endif %}
+{% endfor %}
+```
+
+The same approach works for YAML content:
+
+```jinja
+{% set syslog = artifact.node.storage_id.value | artifact_content | from_yaml %}
+{% for server in syslog.servers %}
+logging host {{ server.address }} port {{ server.port }}
+{% endfor %}
+```
+
+### Include file object content
+
+In addition to artifacts, you can also include content from [file objects](../topics/file-object.mdx). There are several filters available depending on how you identify the file:
+
+| Filter | Input | Use when |
+|--------|-------|----------|
+| `artifact_content` | `storage_id` | Fetching artifact content |
+| `file_object_content` | `storage_id` | You have the file's `storage_id` from a query |
+| `file_object_content_by_id` | node UUID | You have the file object's node ID |
+| `file_object_content_by_hfid` | HFID list + `kind` | You want to reference a file by its human-friendly identifier |
+
+Example using `file_object_content`:
+
+```jinja
+{{ file_storage_id | file_object_content }}
+```
+
+Example using `file_object_content_by_hfid`:
+
+```jinja
+{{ ["my-banner-file"] | file_object_content_by_hfid(kind="CoreFileObject") }}
+```
+
+:::info
+
+The `file_object_content_by_hfid` filter requires the `kind` parameter. Omitting it produces an error.
+
+:::
+
+## 4. Compose content in a Python Transformation
+
+If you are using a Python Transformation instead of Jinja2, you can retrieve artifact content using `self.client.object_store.get()`:
+
+```python
+from infrahub_sdk.transforms import InfrahubTransform
+
+
+class CompositeDeviceConfig(InfrahubTransform):
+    query = "composite_device_query"
+
+    async def transform(self, data):
+        import json
+
+        device = data["InfraDevice"]["edges"][0]["node"]
+        hostname = device["name"]["value"]
+
+        sections = []
+        for artifact in device["artifacts"]["edges"]:
+            storage_id = artifact["node"]["storage_id"]["value"]
+            if storage_id:
+                content = await self.client.object_store.get(identifier=storage_id)
+                sections.append(content)
+
+        return f"hostname {hostname}\n!\n" + "\n!\n".join(sections)
+```
+
+If you need to work with structured content, parse the string after retrieval:
+
+```python
+import json
+
+storage_id = artifact["node"]["storage_id"]["value"]
+raw = await self.client.object_store.get(identifier=storage_id)
+parsed = json.loads(raw)
+```
+
+You can also retrieve file object content in a Python Transformation. The object store provides methods to fetch files by storage ID, node ID, or human-friendly identifier:
+
+```python
+from infrahub_sdk.transforms import InfrahubTransform
+
+
+class DeviceConfigWithBanner(InfrahubTransform):
+    query = "device_with_banner_query"
+
+    async def transform(self, data):
+        device = data["InfraDevice"]["edges"][0]["node"]
+        hostname = device["name"]["value"]
+
+        # Fetch a file object by its storage_id
+        banner_storage_id = device["banner_file"]["node"]["storage_id"]["value"]
+        banner = await self.client.object_store.get_file_by_storage_id(
+            storage_id=banner_storage_id
+        )
+
+        # Alternatively, fetch by node ID or human-friendly identifier
+        # banner = await self.client.object_store.get_file_by_id(node_id="...")
+        # banner = await self.client.object_store.get_file_by_hfid(
+        #     kind="CoreFileObject", hfid=["my-banner-file"]
+        # )
+
+        return f"hostname {hostname}\nbanner motd {banner}\n"
+```
+
+## 5. Register the composite Transformation
+
+Once you have created your query and template files, define the query, Transformation, and artifact definition in your [`.infrahub.yml`](../topics/infrahub-yml.mdx) file:
+
+```yaml title=".infrahub.yml"
+# yaml-language-server: $schema=https://schema.infrahub.app/python-sdk/repository-config/latest.json
+---
+queries:
+  - name: composite_device_query
+    file_path: "queries/composite_device.gql"
+
+jinja2_transforms:
+  - name: composite_device_config
+    query: composite_device_query
+    template_path: "templates/composite_device.j2"
+
+artifact_definitions:
+  - name: "Full device configuration"
+    artifact_name: "full_device_config"
+    parameters:
+      device_name: "name__value"
+    content_type: "text/plain"
+    targets: "device_group"
+    transformation: "composite_device_config"
+```
+
+## 6. Handle errors
+
+You should guard against missing `storage_id` values in your templates. A source artifact that has not yet been generated will have a null `storage_id`:
+
+```jinja
+{% set storage_id = artifact.node.storage_id.value %}
+{% if storage_id %}
+{{ storage_id | artifact_content }}
+{% else %}
+! Section not yet available
+{% endif %}
+```
+
+The composition filters raise errors in the following situations:
+
+| Situation | Error | Resolution |
+|-----------|-------|------------|
+| `storage_id` is `None` or empty | Filter error: identifier required | Ensure source artifacts have been generated |
+| Insufficient permissions | Filter error: permission denied | Verify worker authentication configuration |
+| Content is not valid JSON | `from_json` filter error | Verify the source artifact produces valid JSON |
+| Content is not valid YAML | `from_yaml` filter error | Verify the source artifact produces valid YAML |
+| `kind` omitted for `file_object_content_by_hfid` | Filter error: kind is required | Pass the `kind` parameter |
+
+## Known limitations
+
+:::warning
+
+1. **No dependency ordering**: Artifacts may generate in parallel. If artifact B includes content from artifact A, artifact A must already have been generated. There is no built-in mechanism to enforce generation order. Re-running artifact generation resolves this once all source artifacts exist.
+2. **Worker context only**: The `artifact_content` and `file_object_content` family of filters require an active Infrahub client connection. They are not available during local `infrahubctl render` without a server connection.
+3. **Text content only**: Only text-based content can be composed. Binary files (images, PDF documents) are not supported by these filters.
+4. **Circular references**: If artifact A includes content from artifact B and artifact B includes content from artifact A, the result is undefined. Design composition pipelines as a directed acyclic graph.
+
+:::
+
+## Next steps
+
+- [Creating a Jinja2 Transformation](./jinja2-transform.mdx)
+- [Creating a Python Transformation](./python-transform.mdx)
+- [How to generate artifacts](./artifact.mdx)
+- [Using the object storage](./object-storage.mdx)
+- [File objects](../topics/file-object.mdx)
+- [SDK Templating Reference]($(base_url)python-sdk/reference/templating)
