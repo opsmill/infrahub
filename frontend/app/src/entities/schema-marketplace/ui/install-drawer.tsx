@@ -2,7 +2,9 @@ import { useMutation } from "@tanstack/react-query";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
+import { toast } from "react-toastify";
 
+import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
@@ -259,14 +261,22 @@ export function InstallDrawer({
     }
     if (snapshot.state === "COMPLETED") {
       setState({ phase: "completed", taskId: pollingTaskId });
+      toast(<Alert type={ALERT_TYPES.SUCCESS} message="Schema install completed" />, {
+        toastId: `marketplace-install-${pollingTaskId}-success`,
+      });
       return;
     }
     if (snapshot.state === "FAILED" || snapshot.state === "CRASHED" || snapshot.state === "CANCELLED") {
+      const reason = snapshot.state.toLowerCase();
       setState({
         phase: "failed",
         taskId: pollingTaskId,
-        error: `Task ${snapshot.state.toLowerCase()} — check the Tasks page for details.`,
+        error: `Task ${reason} — check the Tasks page for details.`,
       });
+      toast(
+        <Alert type={ALERT_TYPES.ERROR} message={`Schema install ${reason}`} />,
+        { toastId: `marketplace-install-${pollingTaskId}-fail` }
+      );
     }
   }, [pollingTaskId, taskStatus.data]);
 
