@@ -15,6 +15,43 @@ checkout:
   fetch-depth: 0
   submodules: true
 steps:
+  - name: Gate check - require reviewer approval
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.issue.number }}
+      REPO: ${{ github.repository }}
+    run: |
+      set -euo pipefail
+      fail() {
+        echo "::error::$1"
+        echo "### Gate failed" >> "$GITHUB_STEP_SUMMARY"
+        echo "$1" >> "$GITHUB_STEP_SUMMARY"
+        exit 1
+      }
+
+      PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+      PR_BODY=$(echo "$PR_JSON" | jq -r '.body // ""')
+
+      if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
+        REQ=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+          --jq '[.[] | select(.user.login == "claude[bot]"
+            and (.body | contains("AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED")))] | length')
+        if [ "$REQ" = "0" ]; then
+          fail "Cannot run /bug-fix: fix already complete and no FIX_CHANGES_REQUESTED verdict from reviewer."
+        fi
+        exit 0
+      fi
+
+      if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
+        fail "Cannot run /bug-fix: no AGENT_TEST_COMPLETE marker on PR body. Run /bug-tdd first."
+      fi
+
+      APPROVED=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+        --jq '[.[] | select(.user.login == "claude[bot]"
+          and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
+      if [ "$APPROVED" = "0" ]; then
+        fail "Cannot run /bug-fix: test not yet approved by reviewer. Wait for TEST_APPROVED verdict."
+      fi
   - uses: actions/setup-python@v6
     with:
       python-version: "3.12"
@@ -84,14 +121,9 @@ Determine which mode you are in:
   contains `<!-- AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED -->`).
   Skip to the "Revision mode" section below.
 
-### Gate checks (run these first in both modes)
-
-1. Verify the PR body contains `AGENT_TEST_COMPLETE`. If not, post a comment on the PR
-   explaining the test must be created first, and **STOP**.
-2. In initial fix mode: verify at least one prior PR comment contains
-   `<!-- AGENT_REVIEW_VERDICT: TEST_APPROVED -->`. If not, post a comment on the PR
-   saying the test must be approved by the reviewer before `/bug-fix` can run,
-   and **STOP**.
+The workflow has already validated the gate markers (`AGENT_TEST_COMPLETE`,
+prior `TEST_APPROVED` verdict for initial mode, prior `FIX_CHANGES_REQUESTED`
+verdict for revision mode) before invoking you. You may proceed.
 
 ### Initial fix -- setup
 
