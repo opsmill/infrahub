@@ -71,7 +71,6 @@ export interface MarketplaceCollectionSummary {
   schema_count: number;
   download_count: number;
   author: MarketplaceAuthor;
-  tags: MarketplaceTag[];
 }
 
 export interface MarketplaceCollectionDetail extends MarketplaceCollectionSummary {

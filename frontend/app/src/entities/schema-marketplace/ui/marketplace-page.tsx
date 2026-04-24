@@ -19,6 +19,7 @@ import {
 } from "@/entities/schema-marketplace/api/marketplace.queries";
 import { useWritableRepositories } from "@/entities/schema-marketplace/hooks/use-writable-repositories";
 import { CliAlternative } from "@/entities/schema-marketplace/ui/cli-alternative";
+import { CollectionDetailModal } from "@/entities/schema-marketplace/ui/collection-detail-modal";
 import { InstallDrawer } from "@/entities/schema-marketplace/ui/install-drawer";
 import { MarketplaceCollectionCard } from "@/entities/schema-marketplace/ui/marketplace-collection-card";
 import { MarketplaceSchemaCard } from "@/entities/schema-marketplace/ui/marketplace-schema-card";
@@ -50,6 +51,9 @@ export function MarketplacePage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selection, setSelection] = useState<MarketplaceInstallItem[]>([]);
   const [detailSchema, setDetailSchema] = useState<MarketplaceSchemaSummary | null>(null);
+  const [detailCollection, setDetailCollection] = useState<MarketplaceCollectionSummary | null>(
+    null
+  );
   const hasActiveFilters = search.length > 0 || selectedTags.length > 0;
 
   const status = useQuery({
@@ -79,12 +83,13 @@ export function MarketplacePage() {
       }),
   });
 
+  // Collections have no tag taxonomy upstream, so the tag-filter list is not
+  // part of the cache key and is not forwarded to the API.
   const collections = useQuery({
-    queryKey: ["schema-marketplace", "collections", debouncedSearch, selectedTags.join(",")],
+    queryKey: ["schema-marketplace", "collections", debouncedSearch],
     queryFn: () =>
       fetchMarketplaceCollections({
         search: debouncedSearch || undefined,
-        tags: selectedTags.length ? selectedTags : undefined,
       }),
   });
 
@@ -137,173 +142,130 @@ export function MarketplacePage() {
   const showConnectivityError = !!status.data && !status.data.upstream_reachable;
 
   return (
-    <Content className="flex flex-col gap-4 p-4">
-      <header className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-custom-blue-700/10 text-custom-blue-700">
-            <Icon icon="mdi:storefront-outline" className="text-xl" />
-          </span>
-          <div className="flex min-w-0 flex-col">
-            <h1 className="font-bold text-2xl">Schema Marketplace</h1>
-            <p className="text-gray-500 text-sm">
-              Browse and install ready-made schemas — to a Git repository or directly to this
-              instance.
-            </p>
-          </div>
-        </div>
-      </header>
+    <Content className="p-4">
+      <Content.Card className="flex flex-col">
+        <Content.CardTitle
+          title={
+            <span className="flex items-center gap-2">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-custom-blue-700/10 text-custom-blue-700">
+                <Icon icon="mdi:storefront-outline" />
+              </span>
+              Schema Marketplace
+            </span>
+          }
+          description="Browse and install ready-made schemas — to a Git repository or directly to this instance."
+        />
 
-      {showConfigError && (
-        <div className="rounded-md bg-red-50 p-3 text-red-700 text-sm">
-          <p className="mb-1 font-semibold">Marketplace is not configured correctly</p>
-          <p>
-            Check the <code className="font-mono">INFRAHUB_MARKETPLACE_URL</code> backend
-            environment variable; it must start with <code className="font-mono">http://</code> or{" "}
-            <code className="font-mono">https://</code>.
-          </p>
-        </div>
-      )}
-
-      {showConnectivityError && !showConfigError && (
-        <div className="flex items-start justify-between gap-3 rounded-md bg-yellow-50 p-3 text-yellow-800 text-sm">
-          <div>
-            <p className="mb-1 font-semibold">Marketplace is unreachable</p>
-            <p>
-              The Infrahub backend can't reach the configured Marketplace. Listings below may be
-              stale or empty. Retry or contact your administrator.
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="xs"
-            onClick={() => status.refetch()}
-            disabled={status.isFetching}
-          >
-            <Icon icon="mdi:refresh" className="mr-1" />
-            {status.isFetching ? "Retrying…" : "Retry"}
-          </Button>
-        </div>
-      )}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded-md border border-gray-200 p-0.5">
-          <Button
-            type="button"
-            variant={tab === "schemas" ? "primary" : "ghost"}
-            size="sm"
-            onClick={() => setTab("schemas")}
-          >
-            Schemas
-            {typeof schemas.data?.total_count === "number" && (
-              <span className="ml-1.5 text-gray-500 text-xs">{schemas.data.total_count}</span>
-            )}
-          </Button>
-          <Button
-            type="button"
-            variant={tab === "collections" ? "primary" : "ghost"}
-            size="sm"
-            onClick={() => setTab("collections")}
-          >
-            Collections
-            {typeof collections.data?.total_count === "number" && (
-              <span className="ml-1.5 text-gray-500 text-xs">{collections.data.total_count}</span>
-            )}
-          </Button>
-        </div>
-        <div className="relative flex-1">
-          <Icon
-            icon="mdi:magnify"
-            className="-translate-y-1/2 absolute top-1/2 left-2.5 text-gray-400"
-          />
-          <input
-            className="w-full rounded-md border border-gray-200 p-2 pl-8 text-sm"
-            type="search"
-            placeholder="Search the Marketplace…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          {search.length > 0 && search !== debouncedSearch && (
-            <Icon
-              icon="mdi:loading"
-              className="-translate-y-1/2 absolute top-1/2 right-2.5 animate-spin text-gray-400"
-              aria-label="Searching"
-            />
+        <div className="flex flex-col gap-4 p-5">
+          {showConfigError && (
+            <div className="rounded-md bg-red-50 p-3 text-red-700 text-sm">
+              <p className="mb-1 font-semibold">Marketplace is not configured correctly</p>
+              <p>
+                Check the <code className="font-mono">INFRAHUB_MARKETPLACE_URL</code> backend
+                environment variable; it must start with <code className="font-mono">http://</code>{" "}
+                or <code className="font-mono">https://</code>.
+              </p>
+            </div>
           )}
-        </div>
-        {hasActiveFilters && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
+
+          {showConnectivityError && !showConfigError && (
+            <div className="flex items-start justify-between gap-3 rounded-md bg-yellow-50 p-3 text-yellow-800 text-sm">
+              <div>
+                <p className="mb-1 font-semibold">Marketplace is unreachable</p>
+                <p>
+                  The Infrahub backend can't reach the configured Marketplace. Listings below may be
+                  stale or empty. Retry or contact your administrator.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                onClick={() => status.refetch()}
+                disabled={status.isFetching}
+              >
+                <Icon icon="mdi:refresh" className="mr-1" />
+                {status.isFetching ? "Retrying…" : "Retry"}
+              </Button>
+            </div>
+          )}
+
+          <Toolbar
+            tab={tab}
+            onTabChange={setTab}
+            schemaCount={schemas.data?.total_count}
+            collectionCount={collections.data?.total_count}
+            search={search}
+            onSearchChange={setSearch}
+            isSearching={search.length > 0 && search !== debouncedSearch}
+            hasActiveFilters={hasActiveFilters}
+            onClearFilters={() => {
               setSearch("");
               setSelectedTags([]);
             }}
-          >
-            <Icon icon="mdi:filter-off-outline" className="mr-1" /> Clear filters
-          </Button>
-        )}
-      </div>
-
-      {tags.data && tags.data.tags.length > 0 && (
-        <TagCloud
-          tags={tags.data.tags}
-          selectedTags={selectedTags}
-          onToggle={(tagName) =>
-            setSelectedTags((prev) =>
-              prev.includes(tagName) ? prev.filter((t) => t !== tagName) : [...prev, tagName]
-            )
-          }
-        />
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
-        <section className="flex flex-col gap-3">
-          {tab === "schemas" && (
-            <SchemaList
-              isPending={schemas.isPending}
-              error={schemas.error}
-              items={schemas.data?.items ?? []}
-              onSelect={selectSchema}
-              onViewDetails={setDetailSchema}
-              selectionMap={selectionMap}
-            />
-          )}
-          {tab === "collections" && (
-            <CollectionList
-              isPending={collections.isPending}
-              error={collections.error}
-              items={collections.data?.items ?? []}
-              onSelect={selectCollection}
-              selectionMap={selectionMap}
-            />
-          )}
-        </section>
-
-        <aside className="flex flex-col gap-3">
-          <InstallDrawer
-            selection={selection}
-            writableRepositories={repos.writableRepositories}
-            onRemove={removeSelection}
-            onClearSelection={() => setSelection([])}
           />
-          {!repos.isPending && repos.writableRepositories.length === 0 && (
-            <PrerequisiteState hasAnyRepository={repos.hasAnyRepository} />
+
+          {tab === "schemas" && tags.data && tags.data.tags.length > 0 && (
+            <TagCloud
+              tags={tags.data.tags}
+              selectedTags={selectedTags}
+              onToggle={(tagName) =>
+                setSelectedTags((prev) =>
+                  prev.includes(tagName) ? prev.filter((t) => t !== tagName) : [...prev, tagName]
+                )
+              }
+            />
           )}
-          {selection.length > 0 && (
-            <Card className="flex flex-col gap-2">
-              <header className="flex items-center gap-2 font-semibold text-sm">
-                <Icon icon="mdi:console" /> CLI alternative
-              </header>
-              <p className="text-gray-500 text-xs">
-                Prefer to apply directly from your machine? Use the commands below.
-              </p>
-              <CliAlternative selection={selection} />
-            </Card>
-          )}
-        </aside>
-      </div>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <section className="flex flex-col gap-3">
+              {tab === "schemas" && (
+                <SchemaList
+                  isPending={schemas.isPending}
+                  error={schemas.error}
+                  items={schemas.data?.items ?? []}
+                  onSelect={selectSchema}
+                  onViewDetails={setDetailSchema}
+                  selectionMap={selectionMap}
+                />
+              )}
+              {tab === "collections" && (
+                <CollectionList
+                  isPending={collections.isPending}
+                  error={collections.error}
+                  items={collections.data?.items ?? []}
+                  onSelect={selectCollection}
+                  onViewDetails={setDetailCollection}
+                  selectionMap={selectionMap}
+                />
+              )}
+            </section>
+
+            <aside className="flex flex-col gap-3">
+              <InstallDrawer
+                selection={selection}
+                writableRepositories={repos.writableRepositories}
+                onRemove={removeSelection}
+                onClearSelection={() => setSelection([])}
+              />
+              {!repos.isPending && repos.writableRepositories.length === 0 && (
+                <PrerequisiteState hasAnyRepository={repos.hasAnyRepository} />
+              )}
+              {selection.length > 0 && (
+                <Card className="flex flex-col gap-2">
+                  <header className="flex items-center gap-2 font-semibold text-sm">
+                    <Icon icon="mdi:console" /> CLI alternative
+                  </header>
+                  <p className="text-gray-500 text-xs">
+                    Prefer to apply directly from your machine? Use the commands below.
+                  </p>
+                  <CliAlternative selection={selection} />
+                </Card>
+              )}
+            </aside>
+          </div>
+        </div>
+      </Content.Card>
 
       <SchemaDetailModal
         schema={detailSchema}
@@ -312,7 +274,129 @@ export function MarketplacePage() {
         onRemove={removeSelection}
         onClose={() => setDetailSchema(null)}
       />
+      <CollectionDetailModal
+        collection={detailCollection}
+        currentSelection={selection}
+        onApply={upsertSelection}
+        onRemove={removeSelection}
+        onClose={() => setDetailCollection(null)}
+      />
     </Content>
+  );
+}
+
+interface ToolbarProps {
+  tab: BrowseTab;
+  onTabChange: (tab: BrowseTab) => void;
+  schemaCount: number | undefined;
+  collectionCount: number | undefined;
+  search: string;
+  onSearchChange: (value: string) => void;
+  isSearching: boolean;
+  hasActiveFilters: boolean;
+  onClearFilters: () => void;
+}
+
+function Toolbar({
+  tab,
+  onTabChange,
+  schemaCount,
+  collectionCount,
+  search,
+  onSearchChange,
+  isSearching,
+  hasActiveFilters,
+  onClearFilters,
+}: ToolbarProps) {
+  return (
+    <div className="flex flex-col gap-2 md:flex-row md:items-center">
+      {/* Segmented control — tabs inline with their counts as colored badges so
+          the count reads at a glance, not as gray marginalia. */}
+      <div
+        role="tablist"
+        aria-label="Marketplace item type"
+        className="flex shrink-0 rounded-md border border-gray-200 bg-gray-50 p-0.5"
+      >
+        <TabButton
+          active={tab === "schemas"}
+          onClick={() => onTabChange("schemas")}
+          label="Schemas"
+          count={schemaCount}
+          icon="mdi:file-code"
+        />
+        <TabButton
+          active={tab === "collections"}
+          onClick={() => onTabChange("collections")}
+          label="Collections"
+          count={collectionCount}
+          icon="mdi:package-variant-closed"
+        />
+      </div>
+      <div className="relative min-w-0 flex-1">
+        <Icon
+          icon="mdi:magnify"
+          className="-translate-y-1/2 absolute top-1/2 left-2.5 text-gray-400"
+        />
+        <input
+          className="w-full rounded-md border border-gray-200 bg-white p-2 pl-8 text-sm shadow-sm"
+          type="search"
+          placeholder={`Search ${tab === "schemas" ? "schemas" : "collections"}…`}
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+        />
+        {isSearching && (
+          <Icon
+            icon="mdi:loading"
+            className="-translate-y-1/2 absolute top-1/2 right-2.5 animate-spin text-gray-400"
+            aria-label="Searching"
+          />
+        )}
+      </div>
+      {hasActiveFilters && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClearFilters}
+          className="shrink-0"
+        >
+          <Icon icon="mdi:filter-off-outline" className="mr-1" /> Clear filters
+        </Button>
+      )}
+    </div>
+  );
+}
+
+interface TabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number | undefined;
+  icon: string;
+}
+
+function TabButton({ active, onClick, label, count, icon }: TabButtonProps) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      onClick={onClick}
+      className={classNames(
+        "flex items-center gap-1.5 rounded px-2.5 py-1 text-sm transition-colors",
+        active
+          ? "bg-white text-custom-blue-700 shadow-sm"
+          : "text-gray-600 hover:text-gray-900"
+      )}
+    >
+      <Icon icon={icon} className={active ? "text-custom-blue-700" : "text-gray-400"} />
+      <span className="font-medium">{label}</span>
+      {typeof count === "number" && (
+        <Badge variant={active ? "blue" : "gray"} className="ml-0.5">
+          {count}
+        </Badge>
+      )}
+    </button>
   );
 }
 
@@ -339,9 +423,11 @@ function SchemaList({
     return <EmptyResults label="schemas" />;
   }
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className={GRID_CLASS}>
       {items.map((schema) => {
-        const selected = selectionMap.has(keyOf({ kind: "schema", namespace: schema.namespace, name: schema.name }));
+        const selected = selectionMap.has(
+          keyOf({ kind: "schema", namespace: schema.namespace, name: schema.name })
+        );
         return (
           <MarketplaceSchemaCard
             key={schema.id}
@@ -361,17 +447,25 @@ interface CollectionListProps {
   error: Error | null;
   items: MarketplaceCollectionSummary[];
   onSelect: (collection: MarketplaceCollectionSummary) => void;
+  onViewDetails: (collection: MarketplaceCollectionSummary) => void;
   selectionMap: Set<string>;
 }
 
-function CollectionList({ isPending, error, items, onSelect, selectionMap }: CollectionListProps) {
+function CollectionList({
+  isPending,
+  error,
+  items,
+  onSelect,
+  onViewDetails,
+  selectionMap,
+}: CollectionListProps) {
   if (isPending) return <CardGridSkeleton />;
   if (error) return <ErrorScreen message={error.message} />;
   if (!items.length) {
     return <EmptyResults label="collections" />;
   }
   return (
-    <div className="grid gap-3 md:grid-cols-2">
+    <div className={GRID_CLASS}>
       {items.map((collection) => {
         const selected = selectionMap.has(
           keyOf({ kind: "collection", namespace: collection.namespace, name: collection.name })
@@ -382,6 +476,7 @@ function CollectionList({ isPending, error, items, onSelect, selectionMap }: Col
             collection={collection}
             selected={selected}
             onSelect={onSelect}
+            onViewDetails={onViewDetails}
           />
         );
       })}
@@ -389,12 +484,15 @@ function CollectionList({ isPending, error, items, onSelect, selectionMap }: Col
   );
 }
 
+// Cap at two columns so tiles read at a comfortable width; stack on narrow.
+const GRID_CLASS = "grid grid-cols-1 gap-3 md:grid-cols-2";
+
 function CardGridSkeleton() {
   return (
-    <div className="grid gap-3 md:grid-cols-2" aria-busy aria-label="Loading">
+    <div className={GRID_CLASS} aria-busy aria-label="Loading">
       {Array.from({ length: 6 }).map((_, i) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton set
-        <Card key={i} className="flex flex-col gap-2" aria-hidden>
+        <Card key={i} className="flex min-h-[8.5rem] flex-col gap-2" aria-hidden>
           <div className="flex items-center justify-between gap-2">
             <Skeleton className="h-4 w-1/2" />
             <Skeleton className="h-4 w-10" />
@@ -450,7 +548,10 @@ function TagCloud({ tags, selectedTags, onToggle }: TagCloudProps) {
       ? tags
       : [
           ...selectedEntries,
-          ...unselectedEntries.slice(0, Math.max(0, TAG_COLLAPSE_THRESHOLD - selectedEntries.length)),
+          ...unselectedEntries.slice(
+            0,
+            Math.max(0, TAG_COLLAPSE_THRESHOLD - selectedEntries.length)
+          ),
         ];
   const hiddenCount = tags.length - visible.length;
 

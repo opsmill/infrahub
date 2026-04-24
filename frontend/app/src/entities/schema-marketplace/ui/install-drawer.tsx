@@ -411,6 +411,15 @@ export function InstallDrawer({
             </p>
           </details>
         )}
+        <p className="flex items-start gap-1.5 text-gray-500 text-xs">
+          <Icon icon="mdi:information-outline" className="mt-0.5 shrink-0" />
+          <span>
+            Installing a schema that already exists{" "}
+            {target === "direct"
+              ? "updates it in place via schema-load."
+              : "overwrites the YAML file in the repository and re-imports it on the next sync."}
+          </span>
+        </p>
       </div>
 
       {target === "repository" && hasWritableRepo && (

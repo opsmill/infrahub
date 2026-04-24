@@ -53,22 +53,27 @@ export function fetchMarketplaceSchema(
   return fetchUrl(`${BASE}/schemas/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}`);
 }
 
-export function fetchMarketplaceSchemaVersionContent(
-  versionId: string
+// Uses the /preview route that maps to the upstream /download path, not the
+// flaky /versions/{id}/content path -- see the backend docstring on
+// `get_schema_version_preview` for why.
+export function fetchMarketplaceSchemaVersionPreview(
+  namespace: string,
+  name: string,
+  semver: string
 ): Promise<MarketplaceVersionContent> {
-  return fetchUrl(`${BASE}/schemas/versions/${encodeURIComponent(versionId)}/content`);
+  return fetchUrl(
+    `${BASE}/schemas/${encodeURIComponent(namespace)}/${encodeURIComponent(name)}/versions/${encodeURIComponent(semver)}/preview`
+  );
 }
 
 export function fetchMarketplaceCollections(args: {
   search?: string;
-  tags?: string[];
   limit?: number;
   after?: string;
 }): Promise<MarketplaceCollectionsListResponse> {
   return fetchUrl(
     `${BASE}/collections${qs({
       search: args.search,
-      tags: args.tags?.join(","),
       limit: args.limit,
       after: args.after,
     })}`
