@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import shutil
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -1006,11 +1007,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @classmethod
     def check_connectivity(cls, name: str, url: str) -> None:
-        # Pin working_dir to a directory with no .git so git's repository
-        # auto-discovery can't walk into a stray worktree stub inherited from
-        # the worker's cwd (e.g. /source/.git when the dev compose bind-mounts
-        # a host git worktree). `ls-remote` doesn't need a local repo.
-        cmd = git.cmd.Git(working_dir="/tmp")
+        # Disable git's repository auto-discovery so it can't walk into a
+        # stray worktree stub inherited from the worker's cwd (e.g.
+        # /source/.git when the dev compose bind-mounts a host git worktree).
+        # `ls-remote` doesn't need a local repo; GIT_CEILING_DIRECTORIES="/"
+        # blocks the discovery walk explicitly.
+        cmd = git.cmd.Git()
+        cmd.update_environment(**os.environ, GIT_CEILING_DIRECTORIES="/")
         try:
             cmd.ls_remote("--tags", url)
         except GitCommandError as exc:
