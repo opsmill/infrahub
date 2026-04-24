@@ -73,17 +73,13 @@ function BranchField({
     setBranchName(currentBranchName);
   };
 
-  // Icon + badge semantics differ per target:
-  //  - direct target: the branch is an Infrahub branch, not a Git branch -- the
-  //    Git source-branch icon would be misleading, so we use the lightning
-  //    icon matching the Direct toggle and label it "Infrahub branch".
-  //  - repository target: show the Git source-branch icon and a "Git branch"
-  //    badge. A "(will create if missing)" hint is shown in the helper line
-  //    since we can't currently detect existence client-side; the backend
-  //    auto-creates from default_branch if absent.
+  // The target toggle above already picks the install method visually;
+  // the icon here only reinforces it (lightning = direct install, source-
+  // branch = git commit path). Badge label removed — it was competing for
+  // horizontal space with the branch name and truncating it. The helper
+  // text below spells out what the branch actually means per target.
   const isDirect = target === "direct";
   const branchIcon = isDirect ? "mdi:lightning-bolt" : "mdi:source-branch";
-  const badgeLabel = isDirect ? "Infrahub branch" : "Git branch";
   const editable = allowOverride && branchEdited;
 
   return (
@@ -92,12 +88,13 @@ function BranchField({
         Branch
       </label>
       {!editable ? (
+        // Keep this field readable at the 320px sidebar width: icon + branch
+        // name + Override button only. The "Tracking" state and the target
+        // meaning are both covered by the helper line below.
         <div className="flex items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-sm">
-          <div className="flex items-center gap-1.5 truncate">
-            <Icon icon={branchIcon} className="text-gray-500" />
-            <span className="truncate font-mono">{branchName}</span>
-            <Badge variant="lightgray-outline">{badgeLabel}</Badge>
-            <Badge variant="lightgray-outline">Tracking</Badge>
+          <div className="flex min-w-0 flex-1 items-center gap-1.5">
+            <Icon icon={branchIcon} className="shrink-0 text-gray-500" />
+            <span className="min-w-0 truncate font-mono">{branchName}</span>
           </div>
           {allowOverride && (
             <Button
