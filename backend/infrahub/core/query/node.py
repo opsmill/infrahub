@@ -2359,11 +2359,11 @@ class NodeGetHierarchyQuery(Query):
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s
-            RETURN peer AS peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+            RETURN all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
             LIMIT 1
         }
-        WITH peer1 AS peer, is_active
+        WITH peer, is_active
         """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
 
         self.add_to_query(query)
