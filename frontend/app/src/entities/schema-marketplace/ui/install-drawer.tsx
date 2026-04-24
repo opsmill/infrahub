@@ -25,11 +25,6 @@ interface InstallDrawerProps {
   onRemove?: (item: MarketplaceInstallItem) => void;
 }
 
-function itemLabel(item: MarketplaceInstallItem): string {
-  const version = item.semver ? ` @${item.semver}` : "";
-  return `${item.kind}: ${item.namespace}/${item.name}${version}`;
-}
-
 type TaskLinkTone = "default" | "success" | "danger";
 
 function TaskLink({ taskId, tone = "default" }: { taskId: string; tone?: TaskLinkTone }) {
@@ -307,13 +302,28 @@ export function InstallDrawer({
           </p>
         </div>
       ) : (
-        <ul className="flex flex-col gap-1">
+        // Cap the selection list so a large batch doesn't push the install
+        // button below the fold inside the sidebar. Scrolls inside the card.
+        <ul className="-mr-1 flex max-h-64 flex-col gap-1 overflow-auto pr-1">
           {selection.map((item) => (
             <li
               key={itemKey(item)}
               className="flex items-center justify-between gap-2 rounded-md border border-gray-200 px-2 py-1 text-sm"
             >
-              <span className="truncate font-mono">{itemLabel(item)}</span>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <Icon
+                  icon={item.kind === "collection" ? "mdi:package-variant-closed" : "mdi:file-code"}
+                  className="shrink-0 text-gray-500"
+                />
+                <span className="truncate font-mono text-xs">
+                  {item.namespace}/{item.name}
+                </span>
+                {item.semver && (
+                  <Badge variant="lightgray-outline" className="shrink-0">
+                    v{item.semver}
+                  </Badge>
+                )}
+              </div>
               {onRemove && (
                 <Button
                   type="button"
