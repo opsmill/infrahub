@@ -8,7 +8,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
+import { Skeleton } from "@/shared/components/loading/skeleton";
 import { classNames } from "@/shared/utils/common";
 
 import {
@@ -324,7 +324,7 @@ function SchemaList({
   onViewDetails,
   selectionMap,
 }: SchemaListProps) {
-  if (isPending) return <LoadingIndicator />;
+  if (isPending) return <CardGridSkeleton />;
   if (error) return <ErrorScreen message={error.message} />;
   if (!items.length) {
     return <EmptyResults label="schemas" />;
@@ -356,7 +356,7 @@ interface CollectionListProps {
 }
 
 function CollectionList({ isPending, error, items, onSelect, selectionMap }: CollectionListProps) {
-  if (isPending) return <LoadingIndicator />;
+  if (isPending) return <CardGridSkeleton />;
   if (error) return <ErrorScreen message={error.message} />;
   if (!items.length) {
     return <EmptyResults label="collections" />;
@@ -376,6 +376,28 @@ function CollectionList({ isPending, error, items, onSelect, selectionMap }: Col
           />
         );
       })}
+    </div>
+  );
+}
+
+function CardGridSkeleton() {
+  return (
+    <div className="grid gap-3 md:grid-cols-2" aria-busy aria-label="Loading">
+      {Array.from({ length: 6 }).map((_, i) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: static skeleton set
+        <Card key={i} className="flex flex-col gap-2" aria-hidden>
+          <div className="flex items-center justify-between gap-2">
+            <Skeleton className="h-4 w-1/2" />
+            <Skeleton className="h-4 w-10" />
+          </div>
+          <Skeleton className="h-3 w-full" />
+          <Skeleton className="h-3 w-5/6" />
+          <div className="flex gap-1 pt-1">
+            <Skeleton className="h-3 w-12" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        </Card>
+      ))}
     </div>
   );
 }
