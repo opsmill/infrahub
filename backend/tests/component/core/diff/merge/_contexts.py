@@ -14,7 +14,7 @@ each context.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
@@ -138,7 +138,7 @@ class UpdatedAttributePropertyCtx:
 
     node_id: str
     attribute_name: str
-    property_name: str  # "source" | "owner" | "is_protected"
+    property_name: Literal["source", "owner", "is_protected"]
     expected_peer_id: str | None = None
     expected_bool: bool | None = None
     original_peer_id: str | None = None  # for source/owner
@@ -154,7 +154,7 @@ class ClearedAttributePropertyCtx:
 
     node_id: str
     attribute_name: str
-    property_name: str  # "source" | "owner"
+    property_name: Literal["source", "owner"]
     original_peer_id: str = ""  # pre-branch peer; rollback validator asserts this is restored
     branch_user: str = ""
     original_updated_at: Timestamp | None = None
@@ -168,7 +168,7 @@ class UpdatedRelationshipPropertyCtx:
     node_id: str
     relationship_name: str
     peer_id: str  # which relationship instance (identify by peer)
-    property_name: str  # "source" | "owner" | "is_protected"
+    property_name: Literal["source", "owner", "is_protected"]
     expected_peer_id: str | None = None
     expected_bool: bool | None = None
     original_peer_id: str | None = None
@@ -185,7 +185,7 @@ class ClearedRelationshipPropertyCtx:
     node_id: str
     relationship_name: str
     peer_id: str
-    property_name: str
+    property_name: Literal["source", "owner"]
     original_peer_id: str = ""
     branch_user: str = ""
     original_updated_at: Timestamp | None = None

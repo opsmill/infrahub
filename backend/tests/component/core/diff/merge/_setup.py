@@ -11,7 +11,7 @@ branch, or running a node-kind migration) are layered on by the test itself.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.manager import NodeManager
@@ -268,7 +268,7 @@ async def setup_updated_attribute_property(
     *,
     node_on_main: Node,
     attribute_name: str,
-    property_name: str,
+    property_name: Literal["source", "owner", "is_protected"],
     peer_node: Node | None = None,
     bool_value: bool | None = None,
     branch_user: str,
@@ -291,11 +291,9 @@ async def setup_updated_attribute_property(
     if property_name in ("source", "owner"):
         assert peer_node is not None
         setattr(attr, property_name, peer_node)
-    elif property_name == "is_protected":
+    else:  # is_protected
         assert bool_value is not None
         setattr(attr, property_name, bool_value)
-    else:
-        raise ValueError(f"Unknown property: {property_name}")
     await branch_node.save(db=db, user_id=branch_user)
     return UpdatedAttributePropertyCtx(
         node_id=node_on_main.id,
@@ -317,7 +315,7 @@ async def setup_cleared_attribute_property(
     *,
     node_on_main: Node,
     attribute_name: str,
-    property_name: str,
+    property_name: Literal["source", "owner"],
     branch_user: str,
 ) -> ClearedAttributePropertyCtx:
     main_node = await NodeManager.get_one(
@@ -356,7 +354,7 @@ async def setup_updated_relationship_property(
     node_on_main: Node,
     relationship_name: str,
     peer_id: str,
-    property_name: str,
+    property_name: Literal["source", "owner", "is_protected"],
     property_peer_node: Node | None = None,
     bool_value: bool | None = None,
     branch_user: str,
@@ -394,7 +392,7 @@ async def setup_updated_relationship_property(
         )
         assert main_rel_peers is not None
         original_peer_id = main_rel_peers.source_id if property_name == "source" else main_rel_peers.owner_id
-    elif property_name == "is_protected":
+    else:  # is_protected
         original_bool = main_rel.is_protected
 
     branch_node = await NodeManager.get_one(db=db, branch=branch, id=node_on_main.id)
@@ -402,11 +400,9 @@ async def setup_updated_relationship_property(
     if property_name in ("source", "owner"):
         assert property_peer_node is not None
         data[f"_relation__{property_name}"] = property_peer_node.id
-    elif property_name == "is_protected":
+    else:  # is_protected
         assert bool_value is not None
         data[f"_relation__{property_name}"] = bool_value
-    else:
-        raise ValueError(f"Unknown property: {property_name}")
     await branch_node.get_relationship(relationship_name).update(db=db, data=data)
     await branch_node.save(db=db, user_id=branch_user)
     return UpdatedRelationshipPropertyCtx(
@@ -431,18 +427,10 @@ async def setup_cleared_relationship_property(
     node_on_main: Node,
     relationship_name: str,
     peer_id: str,
-    property_name: str,
+    property_name: Literal["source", "owner"],
     branch_user: str,
 ) -> ClearedRelationshipPropertyCtx:
-    """Clear a source/owner on an existing relationship.
-
-    Calls ``clear_source()`` / ``clear_owner()`` on the Relationship instance
-    rather than ``.update(data={...: None})`` because the latter is a no-op
-    for property clearing.
-    """
-    if property_name not in ("source", "owner"):
-        raise ValueError(f"Cannot clear property {property_name}; only source/owner supported")
-
+    """Clear a source/owner on an existing relationship"""
     # prefetch_relationships=True for timestamps; drops peer-valued props so we re-fetch for source/owner below.
     main_node_ts = await NodeManager.get_one(
         db=db,
