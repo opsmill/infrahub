@@ -66,6 +66,10 @@ export function MarketplacePage() {
     staleTime: 30_000,
   });
 
+  // Both queries run regardless of which tab is active so the inactive tab's
+  // count is available in the label ("Collections · 1"). They're already
+  // cached on the backend (30s TTL) and idle otherwise; the upfront cost
+  // is two cheap list calls.
   const schemas = useQuery({
     queryKey: ["schema-marketplace", "schemas", debouncedSearch, selectedTags.join(",")],
     queryFn: () =>
@@ -73,7 +77,6 @@ export function MarketplacePage() {
         search: debouncedSearch || undefined,
         tags: selectedTags.length ? selectedTags : undefined,
       }),
-    enabled: tab === "schemas",
   });
 
   const collections = useQuery({
@@ -83,7 +86,6 @@ export function MarketplacePage() {
         search: debouncedSearch || undefined,
         tags: selectedTags.length ? selectedTags : undefined,
       }),
-    enabled: tab === "collections",
   });
 
   const selectionMap = new Set(selection.map(keyOf));
@@ -193,6 +195,9 @@ export function MarketplacePage() {
             onClick={() => setTab("schemas")}
           >
             Schemas
+            {typeof schemas.data?.total_count === "number" && (
+              <span className="ml-1.5 text-gray-500 text-xs">{schemas.data.total_count}</span>
+            )}
           </Button>
           <Button
             type="button"
@@ -201,6 +206,9 @@ export function MarketplacePage() {
             onClick={() => setTab("collections")}
           >
             Collections
+            {typeof collections.data?.total_count === "number" && (
+              <span className="ml-1.5 text-gray-500 text-xs">{collections.data.total_count}</span>
+            )}
           </Button>
         </div>
         <div className="relative flex-1">
