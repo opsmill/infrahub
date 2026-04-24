@@ -10,6 +10,12 @@ from typing_extensions import Self
 MarketplaceItemKind = Literal["schema", "collection"]
 
 _SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$")
+# Conservative branch-name charset: matches git's ref-name rules closely enough
+# to avoid anything that could be parsed as a git CLI flag (leading '-'), a
+# path-traversal token ('..'), or a control/whitespace char. We're stricter
+# than git here because this value is user-controlled and we never need the
+# full ref-name grammar.
+_BRANCH_NAME_RE = re.compile(r"^[A-Za-z0-9_][A-Za-z0-9._/\-]*$")
 
 
 class MarketplaceTag(BaseModel):
@@ -94,7 +100,6 @@ class MarketplaceCollectionSummary(BaseModel):
     schema_count: int = 0
     download_count: int = 0
     author: MarketplaceAuthor | None = Field(default=None, validation_alias=AliasChoices("author", "created_by"))
-    tags: list[MarketplaceTag] = Field(default_factory=list)
 
 
 class MarketplaceCollectionDetail(MarketplaceCollectionSummary):
@@ -156,6 +161,15 @@ class MarketplaceInstallItem(BaseModel):
 MarketplaceInstallTarget = Literal["repository", "direct"]
 
 
+def _validate_branch_name(value: str) -> str:
+    """Reject branch names that could be parsed as git CLI flags or path traversal."""
+    if not value or ".." in value or not _BRANCH_NAME_RE.match(value):
+        raise ValueError(
+            f"Invalid branch_name: {value!r} (must match {_BRANCH_NAME_RE.pattern}, no '..' sequences, no leading '-')"
+        )
+    return value
+
+
 class MarketplaceInstallRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
     target: MarketplaceInstallTarget = "repository"
@@ -171,6 +185,11 @@ class MarketplaceInstallRequest(BaseModel):
         if len(value) > 50:
             raise ValueError("items must not exceed 50 entries")
         return value
+
+    @field_validator("branch_name")
+    @classmethod
+    def _branch_name_must_be_safe(cls, value: str) -> str:
+        return _validate_branch_name(value)
 
     @field_validator("repository_id")
     @classmethod
@@ -202,12 +221,18 @@ class MarketplaceInstallResponse(BaseModel):
 
 
 class MarketplaceInstallPayload(BaseModel):
-    """Prefect flow parameter payload for `marketplace-schema-install`."""
+    """Prefect flow parameter payload for `marketplace-schema-install`.
+
+    ``initiator_account_id`` is the Infrahub account UUID; ``initiator_username``
+    is the resolved display name. Both are used to construct the git commit
+    ``Actor`` so the commit author reflects who ran the install, not the
+    worker's default identity.
+    """
 
     model_config = ConfigDict(frozen=True)
     marketplace_url: str
+    initiator_account_id: str
     initiator_username: str
-    initiator_user_id: str
     repository_id: str
     branch_name: str
     items: list[MarketplaceInstallItem]
@@ -222,8 +247,8 @@ class MarketplaceInstallDirectPayload(BaseModel):
 
     model_config = ConfigDict(frozen=True)
     marketplace_url: str
+    initiator_account_id: str
     initiator_username: str
-    initiator_user_id: str
     branch_name: str
     items: list[MarketplaceInstallItem]
 

@@ -183,16 +183,41 @@ async def list_schemas(
     return result
 
 
-@router.get("/schemas/versions/{version_id}/content", response_model=MarketplaceVersionContent)
-async def get_schema_version_content(
-    version_id: str,
+@router.get(
+    "/schemas/{namespace}/{name}/versions/{semver}/preview",
+    response_model=MarketplaceVersionContent,
+)
+async def get_schema_version_preview(
+    namespace: str,
+    name: str,
+    semver: str,
     _: AccountSession = Depends(get_current_user),
 ) -> MarketplaceVersionContent:
+    """Return the YAML body for a specific schema version.
+
+    Uses the same upstream ``/download`` path as the install flow (which is
+    known to respond reliably) rather than the upstream ``/versions/{id}/content``
+    endpoint, which 502s on the current marketplace deployment. Keeping preview
+    and install on the same upstream path also guarantees the user is looking
+    at exactly what the install would apply.
+    """
     try:
         async with make_marketplace_client() as client:
-            return await client.fetch_schema_version_content(version_id=version_id)
+            yaml_text, resolved = await client.fetch_schema_content_by_ref(
+                namespace=namespace, name=name, semver=semver
+            )
     except Exception as exc:
         raise _map_upstream_error(exc) from exc
+    return MarketplaceVersionContent(
+        # version_id is not carried on the /download path; preview callers only
+        # consume `content`/`semver`, so leaving this empty is safe and avoids
+        # lying about an id we didn't resolve.
+        version_id="",
+        semver=resolved,
+        content=yaml_text,
+        content_type="schema",
+        sha256=None,
+    )
 
 
 @router.get("/schemas/{namespace}/{name}", response_model=MarketplaceSchemaDetail)
@@ -211,19 +236,17 @@ async def get_schema(
 @router.get("/collections", response_model=MarketplaceCollectionsListResponse)
 async def list_collections(
     search: str | None = None,
-    tags: str | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=50),
     after: str | None = None,
     _: AccountSession = Depends(get_current_user),
 ) -> MarketplaceCollectionsListResponse:
-    tag_list = [t.strip() for t in tags.split(",")] if tags else None
-    key = _cache_key("collections", search, tuple(tag_list or ()), limit, after)
+    key = _cache_key("collections", search, limit, after)
     cached = _cache_collections_list.get(key)
     if cached is not None:
         return cached
     try:
         async with make_marketplace_client() as client:
-            result = await client.list_collections(search=search, tags=tag_list, limit=limit, after=after)
+            result = await client.list_collections(search=search, limit=limit, after=after)
     except Exception as exc:
         raise _map_upstream_error(exc) from exc
     _cache_collections_list[key] = result

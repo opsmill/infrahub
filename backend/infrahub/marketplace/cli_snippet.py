@@ -2,11 +2,20 @@
 
 Used by `GET /api/marketplace/cli-snippet` when a user has selected items but
 no writable Git repository exists (FR-030 through FR-034 in the spec).
+
+User-controlled values (``branch_name``, ``output_dir``, ``marketplace_url``)
+are shell-quoted with :func:`shlex.quote` before being pasted into the
+rendered command block — the server never executes the string itself, but the
+user copies it into their own shell, so an unquoted ``; rm -rf ~`` in any
+of these fields would run destructively in the caller's session.
 """
 
 from __future__ import annotations
 
-from .models import CliSnippetDownload, CliSnippetResponse, MarketplaceInstallItem
+from shlex import quote as shell_quote
+from typing import cast
+
+from .models import CliSnippetDownload, CliSnippetResponse, MarketplaceInstallItem, MarketplaceItemKind
 
 DEFAULT_OUTPUT_DIR = "./schemas"
 DEFAULT_BRANCH = "main"
@@ -29,18 +38,23 @@ def render_cli_snippet(
     include_url_flag = marketplace_url and marketplace_url.rstrip("/") != default_marketplace_url.rstrip("/")
     include_output_flag = output_dir and output_dir != DEFAULT_OUTPUT_DIR
 
+    quoted_output_dir = shell_quote(output_dir)
+    quoted_branch = shell_quote(branch_name)
+    quoted_marketplace_url = shell_quote(marketplace_url) if marketplace_url else None
+
     downloads: list[CliSnippetDownload] = []
     for item in items:
-        parts = ["infrahubctl", "marketplace", "download", f"{item.namespace}/{item.name}"]
+        identifier = f"{item.namespace}/{item.name}"
         if item.kind == "collection":
-            parts.insert(3, "-c")  # force collection path (inserted before identifier)
-            parts = ["infrahubctl", "marketplace", "download", "-c", f"{item.namespace}/{item.name}"]
-        elif item.semver:
-            parts.extend(["-v", item.semver])
+            parts = ["infrahubctl", "marketplace", "download", "-c", identifier]
+        else:
+            parts = ["infrahubctl", "marketplace", "download", identifier]
+            if item.semver:
+                parts.extend(["-v", item.semver])
         if include_output_flag:
-            parts.extend(["-o", output_dir])
-        if include_url_flag:
-            parts.extend(["--marketplace-url", marketplace_url])  # type: ignore[list-item]
+            parts.extend(["-o", quoted_output_dir])
+        if include_url_flag and quoted_marketplace_url is not None:
+            parts.extend(["--marketplace-url", quoted_marketplace_url])
         command = " ".join(parts)
         downloads.append(
             CliSnippetDownload(
@@ -52,7 +66,7 @@ def render_cli_snippet(
             )
         )
 
-    load_parts = ["infrahubctl", "schema", "load", output_dir, "--branch", branch_name]
+    load_parts = ["infrahubctl", "schema", "load", quoted_output_dir, "--branch", quoted_branch]
     load_command = " ".join(load_parts)
 
     rendered = "\n".join([d.command for d in downloads] + [load_command])
@@ -81,7 +95,7 @@ def parse_install_item(token: str) -> MarketplaceInstallItem:
     if not namespace or not name:
         raise ValueError(f"namespace and name must both be non-empty, got {identifier!r}")
     return MarketplaceInstallItem(
-        kind=kind_part,  # type: ignore[arg-type]
+        kind=cast("MarketplaceItemKind", kind_part),
         namespace=namespace,
         name=name,
         semver=semver if kind_part == "schema" else None,
