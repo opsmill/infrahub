@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
@@ -189,7 +189,7 @@ class TestDefaultBranchPermission:
         permission_manager = PermissionManager(account_session=session)
         await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
 
-        graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query = create_autospec(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.branch = None
         graphql_query.contains_mutation = True
         graphql_query.operation_names = ["BranchDelete"]
