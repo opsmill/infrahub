@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Card } from "@infrahub/ui/card";
 
 import type { AccountTokenNode } from "@/shared/api/graphql/generated/types";
-import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 import { formatFullDate } from "@/shared/utils/date";
 
@@ -13,10 +13,7 @@ export interface AccountTokenItemProps {
 
 export function AccountTokenItem({ token }: AccountTokenItemProps) {
   return (
-    <Card
-      className="flex items-center gap-4 p-4 text-sm"
-      data-testid={`account-token-${token.name}`}
-    >
+    <Card className="items-center gap-4 p-4 text-sm" data-testid={`account-token-${token.name}`}>
       <Icon icon="mdi:key-variant" className="text-gray-600 text-xl" />
       <div className="min-w-0 grow">
         <div className="truncate font-medium">{token.name}</div>

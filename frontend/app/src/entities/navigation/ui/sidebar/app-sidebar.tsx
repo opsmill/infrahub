@@ -1,3 +1,4 @@
+import { Card } from "@infrahub/ui/card";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Link } from "react-router";
 
@@ -7,7 +8,6 @@ import InfrahubLogo from "@/assets/infrahub-logo.svg";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Separator } from "@/shared/components/aria/separator";
 import { Button } from "@/shared/components/ui/button";
-import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
@@ -26,7 +26,7 @@ export function AppSidebar() {
     <Card
       data-collapsed={booleanCollapsed}
       className={classNames(
-        "relative flex w-[256px] shrink-0 flex-col gap-3",
+        "relative flex w-[256px] shrink-0 flex-col gap-3 p-3",
         "group/sidebar transition-all",
         booleanCollapsed && "w-auto items-center px-2"
       )}

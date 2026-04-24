@@ -6,7 +6,7 @@ import { RoleManagementTabs } from "@/entities/role-manager/ui/role-management-t
 
 export function Component() {
   return (
-    <Content.Card className="flex flex-col">
+    <Content.Card>
       <Content.CardTitle
         title="Users & Permissions"
         description="Accounts, groups, roles and permissions management"

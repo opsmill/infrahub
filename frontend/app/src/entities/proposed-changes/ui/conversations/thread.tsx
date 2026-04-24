@@ -1,4 +1,5 @@
 import { gql, useQuery } from "@apollo/client";
+import { Card } from "@infrahub/ui/card";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
@@ -7,7 +8,6 @@ import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
-import { Card } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
@@ -171,10 +171,7 @@ export const Thread = (props: tThread) => {
 
   return (
     <Card
-      className={classNames(
-        "relative flex flex-col gap-2 rounded-md p-2",
-        isResolved && "bg-gray-200"
-      )}
+      className={classNames("relative gap-2 rounded-md p-2", isResolved && "bg-gray-200")}
       data-testid="thread"
       data-cy="thread"
     >
