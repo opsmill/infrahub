@@ -1,0 +1,11 @@
+---
+# yamllint disable rule:line-length
+name: "Setup gh-aw CLI"
+description: "Install the gh-aw GitHub CLI extension at the repo-pinned version"
+runs:
+  using: composite
+  steps:
+    - name: "Install gh-aw extension"
+      uses: github/gh-aw-actions/setup-cli@ba90f2186d7ad780ec640f364005fa24e797b360 # v0.68.3
+      with:
+        version: v0.68.3

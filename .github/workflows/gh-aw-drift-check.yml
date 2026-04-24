@@ -1,0 +1,36 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: "gh-aw drift check"
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/*.md"
+      - ".github/workflows/*.lock.yml"
+      - ".github/workflows/shared/**"
+      - ".github/aw/**"
+      - ".github/workflows/gh-aw-drift-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  compile-and-diff:
+    name: "Verify .lock.yml files are in sync with .md sources"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: "Install gh-aw extension"
+        uses: ./.github/actions/setup-gh-aw
+      - name: "Recompile agentic workflows"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh aw compile
+      - name: "Fail if compiled lock files drifted from committed sources"
+        run: |
+          if ! git diff --exit-code -- '.github/workflows/*.lock.yml'; then
+            echo "::error::Committed .lock.yml files are out of sync with their .md sources."
+            echo "Run 'gh aw compile' locally and commit the regenerated .lock.yml files."
+            exit 1
+          fi
