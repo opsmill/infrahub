@@ -32,7 +32,7 @@ A future release will require this information to already be present. Any accoun
 
 A new **schema graph visualizer** turns your schema into an interactive, navigable graph. Instead of opening YAML files or paging through the schema viewer one schema node at a time, you can see the whole model - nodes, generics, profiles, and templates - laid out together with their relationships drawn as edges between them.
 
-The visualizer is a canvas you can drag, zoom, and pan, with an automatic layout. Each schema kind is colour-coded so you can tell nodes, generics, profiles, and templates apart at a glance. Relationship edges with `many` cardinality are animated, and self-referencing relationships are highlighted so recursive shapes in your model are easy to spot.
+The visualizer is a canvas you can drag, zoom, and pan, with an automatic layout. Each schema kind is colour-coded so you can tell nodes, generics, profiles, and templates apart at a glance. Relationship edges with `many` cardinality are animated, and self-referencing relationships are highlighted.
 
 You'll find it as a new **Graph** toggle on the Schema page, switching between the existing schema viewer and the graph view. Clicking the `view in graph` button in a schema node's details opens the graph with that node pre-highlighted.
 
@@ -93,7 +93,7 @@ Transitive dependencies are resolved automatically - a fragment that spreads ano
 
 ### Artifact content composition
 
-Jinja2 transforms gain a new set of filters for composing an artifact from the content of other artifacts:
+Jinja2 Transformations gain a new set of filters for composing an artifact from the content of other artifacts:
 
 - `artifact_content` takes a `storage_id` and returns the rendered content of another artifact as a string.
 - `file_object_content` does the same for a `CoreFileObject`.
@@ -101,7 +101,7 @@ Jinja2 transforms gain a new set of filters for composing an artifact from the c
 - `file_object_content_by_id` takes the `id` of a `CoreFileObject` and returns the content as a string
 - `from_json` and `from_yaml` parse the inlined content so the composing template can traverse it as structured data.
 
-This lets a template inline and parse sections from other artifacts without duplicating the template logic that produced them. Python transforms can achieve the same by calling `object_store.get()` via the SDK.
+This lets a template inline and parse sections from other artifacts without duplicating the template logic that produced them. Python Transformations can achieve the same by calling `object_store.get()` via the SDK.
 
 ### Display options for attributes and relationships
 
@@ -141,7 +141,7 @@ A single header can be attached to multiple webhooks, so rotating a credential i
 - **`CoreStaticKeyValue`** - the value is stored as-is in Infrahub. Appropriate for system identifiers, tenant IDs, or tokens that don't need external secret management.
 - **`CoreEnvKeyValue`** - only the environment-variable **name** is stored; the actual value is resolved from the worker process environment at send time. The stored configuration never contains the secret, which lets secret managers (Kubernetes secrets, Vault, Delinea) inject credentials the usual way. Missing variables are logged with a warning and the header is skipped; the remainder of the request is sent intact.
 
-If a custom header collides with a system-reserved header name (e.g. `Content-Type`), the user's value wins.
+If a custom header collides with a system-reserved header name (for example: `Content-Type`), the user's value wins.
 
 Although shipped to solve the webhook-authentication use case, `CoreKeyValue` and its two implementations are not webhook-specific - they can be reused anywhere in other contexts as well.
 
@@ -340,15 +340,15 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
 
 ### Added
 
-- Added condition to restrict the addition of optional attributes that participate in uniqueness constraints to generated profile schemas ([#7644](https://github.com/opsmill/infrahub/issues/7644))
+- Added condition to restrict the addition of optional attributes that participate in uniqueness constraints to generated Profile schemas ([#7644](https://github.com/opsmill/infrahub/issues/7644))
 - Added `display` field to `AttributeSchema` and `RelationshipSchema` with enum values `default` and `extra`, defaulting to `default`. This controls where attributes and relationships are displayed in the UI — `default` shows in the main view, `extra` in an expanded/secondary section.
 - Added `infrahub db reset-deployment-id` CLI command to regenerate the internal `deployment_id` without rebuilding the database.
 - Added a delete branch modal with the option to also delete the branch from Git
 - Added ability to automatically delete branches after a successful merge. When `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` is enabled (default: `False`), the Infrahub branch is deleted. Optionally, when `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` is also enabled (requires the first setting), the corresponding Git branch is deleted from synced repositories. The `BranchDelete` GraphQL mutation accepts a `delete_from_git` parameter to override the Git deletion setting per request.
 - Added an "Extra" toggle button in the object details card to reveal fields marked with display "extra", which are now hidden by default
-- Added login and logout activity events (`infrahub.account.logged_in` and `infrahub.account.logged_out`). Successful authentication attempts via password, OAuth2, and OIDC, as well as explicit logouts, are now queryable via the activity event feed.
+- Added login and logout activity events (`infrahub.account.logged_in` and `infrahub.account.logged_out`). Successful authentication attempts via password, OAuth2, and OIDC, as well as explicit logouts, can now be queried via the activity event feed.
 - Added namespace restriction parameter into generic schemas
-- Added optional `description` field for Python transforms in `.infrahub.yml`. Descriptions set in the repository config are propagated to the `TransformPython.description` attribute so they appear in the UI and API.
+- Added optional `description` field for Python Transformations in `.infrahub.yml`. Descriptions set in the repository configuration are propagated to the `TransformPython.description` attribute so they appear in the UI and API.
 - Added parent prefix lookup to the search anywhere dialog (Cmd+K). When searching for a valid IP address or CIDR prefix, containing parent prefixes are now displayed in a dedicated "Parent Prefixes" section, ordered from most specific to least specific, across all namespaces. Supports both IPv4 and IPv6.
 - Added schema graph visualizer plugin allowing users to view schemas as an interactive graph
 - Added support for `graphql_fragments` in `.infrahub.yml`. Repositories can now declare reusable `.gql` fragment files and reference them with standard fragment spread syntax (`...FragmentName`) in query files. Fragment definitions are resolved (including transitive dependencies) and inlined at repository sync time, so the stored query is a self-contained document. The same rendering applies when running queries locally with `infrahubctl`.
@@ -368,7 +368,7 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
   - New: Click an active filter tag to edit it or remove via the inline X
   - Improved: Active filter tags are now editable: click a tag to change its value without removing it
   - Improved: Filter tags now display human-readable conditions (contains, is any of, is empty, before, after etc...)
-- Consistent headers across object list and detail pages. Object list pages now share the same header style as detail pages, with easy access to schema, docs, and refresh actions.
+- Consistent headers across object list and detail pages. Object list pages now share the same header style as detail pages, with access to schema, docs, and refresh actions.
 - Jinja2 computed attributes are now recalculated immediately when their dependent attributes or relationships change on the same node, eliminating background task overhead for local changes.
 - Telemetry snapshots are now always stored locally in the database regardless of the telemetry opt-out setting, ensuring air-gapped and opted-out deployments retain usage data for support and auditing. New CLI commands `infrahubctl telemetry list` and `infrahubctl telemetry export` allow administrators to view and export stored telemetry data. A REST API endpoint `GET /api/telemetry/snapshots` provides programmatic access with `READ_TELEMETRY` permission enforcement.
 - `infrahub.branch.deleted` and `infrahub.branch.merged` events now expose the associated proposed change (when applicable) as the event's primary node instead of a related node. Consumers filtering on `primaryNodeIds` will match these events for a proposed change; filters relying on the proposed change appearing under `relatedNodes` must be updated.
@@ -390,4 +390,4 @@ The repository [infrahub-demo-edge](https://github.com/opsmill/infrahub-demo-edg
 
 ### Housekeeping
 
-- Removed deprecated forwardRef usage across frontend components ([#INFP-560](https://github.com/opsmill/infrahub/issues/INFP-560))
+- Removed deprecated `forwardRef` usage across frontend components ([#INFP-560](https://github.com/opsmill/infrahub/issues/INFP-560))
