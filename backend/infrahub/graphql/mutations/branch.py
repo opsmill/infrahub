@@ -147,7 +147,6 @@ class BranchDelete(Mutation):
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
-<<<<<<< variant A
         parameters = {
             "branch": obj.name,
             "delete_from_git": bool(data.delete_from_git),
@@ -162,7 +161,6 @@ class BranchDelete(Mutation):
         )
         if active_proposed_changes:
             parameters["proposed_change_id"] = active_proposed_changes[0].id
->>>>>>> variant B
         if obj.created_by != graphql_context.active_account_session.account_id:
             graphql_context.active_permissions.raise_for_permission(
                 permission=GlobalPermission(
@@ -170,7 +168,6 @@ class BranchDelete(Mutation):
                     decision=PermissionDecision.ALLOW_ALL.value,
                 )
             )
-======= end
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
