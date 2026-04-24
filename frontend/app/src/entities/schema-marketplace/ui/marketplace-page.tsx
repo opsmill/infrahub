@@ -3,6 +3,7 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 import Content from "@/shared/components/layout/content";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Card } from "@/shared/components/ui/card";
@@ -22,6 +23,7 @@ import { InstallDrawer } from "@/entities/schema-marketplace/ui/install-drawer";
 import { MarketplaceCollectionCard } from "@/entities/schema-marketplace/ui/marketplace-collection-card";
 import { MarketplaceSchemaCard } from "@/entities/schema-marketplace/ui/marketplace-schema-card";
 import { PrerequisiteState } from "@/entities/schema-marketplace/ui/prerequisite-state";
+import { SchemaDetailModal } from "@/entities/schema-marketplace/ui/schema-detail-modal";
 import type {
   MarketplaceCollectionSummary,
   MarketplaceInstallItem,
@@ -41,8 +43,14 @@ function keyOf(item: Pick<MarketplaceInstallItem, "kind" | "namespace" | "name">
 export function MarketplacePage() {
   const [tab, setTab] = useState<BrowseTab>("schemas");
   const [search, setSearch] = useState<string>("");
+  // Debounce the search term so we don't fire a request on every keystroke.
+  // 300 ms is the cached-list sweet spot — long enough that fast typing
+  // coalesces into one request, short enough that the list feels responsive.
+  const debouncedSearch = useDebounce(search, 300);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selection, setSelection] = useState<MarketplaceInstallItem[]>([]);
+  const [detailSchema, setDetailSchema] = useState<MarketplaceSchemaSummary | null>(null);
+  const hasActiveFilters = search.length > 0 || selectedTags.length > 0;
 
   const status = useQuery({
     queryKey: ["schema-marketplace", "status"],
@@ -59,20 +67,20 @@ export function MarketplacePage() {
   });
 
   const schemas = useQuery({
-    queryKey: ["schema-marketplace", "schemas", search, selectedTags.join(",")],
+    queryKey: ["schema-marketplace", "schemas", debouncedSearch, selectedTags.join(",")],
     queryFn: () =>
       fetchMarketplaceSchemas({
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         tags: selectedTags.length ? selectedTags : undefined,
       }),
     enabled: tab === "schemas",
   });
 
   const collections = useQuery({
-    queryKey: ["schema-marketplace", "collections", search, selectedTags.join(",")],
+    queryKey: ["schema-marketplace", "collections", debouncedSearch, selectedTags.join(",")],
     queryFn: () =>
       fetchMarketplaceCollections({
-        search: search || undefined,
+        search: debouncedSearch || undefined,
         tags: selectedTags.length ? selectedTags : undefined,
       }),
     enabled: tab === "collections",
@@ -104,6 +112,23 @@ export function MarketplacePage() {
     );
   };
 
+  // Upsert: add the item if its key is new, otherwise replace in place so the
+  // semver (or any future per-selection metadata) picked in the detail modal
+  // overrides whatever one-click-add put there.
+  const upsertSelection = (item: MarketplaceInstallItem) => {
+    setSelection((prev) => {
+      const idx = prev.findIndex((p) => keyOf(p) === keyOf(item));
+      if (idx === -1) return [...prev, item];
+      const next = prev.slice();
+      next[idx] = item;
+      return next;
+    });
+  };
+
+  const removeSelection = (item: MarketplaceInstallItem) => {
+    setSelection((prev) => prev.filter((p) => keyOf(p) !== keyOf(item)));
+  };
+
   const showConfigError =
     !!status.data && (!status.data.url_scheme_valid || !status.data.url_configured);
 
@@ -111,13 +136,18 @@ export function MarketplacePage() {
 
   return (
     <Content className="flex flex-col gap-4 p-4">
-      <header className="flex items-center justify-between gap-2">
-        <div>
-          <h1 className="font-bold text-2xl">Schema Marketplace</h1>
-          <p className="text-gray-500 text-sm">
-            Install schemas from the Infrahub Marketplace into a Git repository or via{" "}
-            <code className="font-mono">infrahubctl</code>.
-          </p>
+      <header className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-custom-blue-700/10 text-custom-blue-700">
+            <Icon icon="mdi:storefront-outline" className="text-xl" />
+          </span>
+          <div className="flex min-w-0 flex-col">
+            <h1 className="font-bold text-2xl">Schema Marketplace</h1>
+            <p className="text-gray-500 text-sm">
+              Browse and install ready-made schemas — to a Git repository or directly to this
+              instance.
+            </p>
+          </div>
         </div>
       </header>
 
@@ -173,13 +203,39 @@ export function MarketplacePage() {
             Collections
           </Button>
         </div>
-        <input
-          className="flex-1 rounded-md border border-gray-200 p-2 text-sm"
-          type="search"
-          placeholder="Search the Marketplace…"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-        />
+        <div className="relative flex-1">
+          <Icon
+            icon="mdi:magnify"
+            className="-translate-y-1/2 absolute top-1/2 left-2.5 text-gray-400"
+          />
+          <input
+            className="w-full rounded-md border border-gray-200 p-2 pl-8 text-sm"
+            type="search"
+            placeholder="Search the Marketplace…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          {search.length > 0 && search !== debouncedSearch && (
+            <Icon
+              icon="mdi:loading"
+              className="-translate-y-1/2 absolute top-1/2 right-2.5 animate-spin text-gray-400"
+              aria-label="Searching"
+            />
+          )}
+        </div>
+        {hasActiveFilters && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearch("");
+              setSelectedTags([]);
+            }}
+          >
+            <Icon icon="mdi:filter-off-outline" className="mr-1" /> Clear filters
+          </Button>
+        )}
       </div>
 
       {tags.data && tags.data.tags.length > 0 && (
@@ -218,6 +274,7 @@ export function MarketplacePage() {
               error={schemas.error}
               items={schemas.data?.items ?? []}
               onSelect={selectSchema}
+              onViewDetails={setDetailSchema}
               selectionMap={selectionMap}
             />
           )}
@@ -236,9 +293,7 @@ export function MarketplacePage() {
           <InstallDrawer
             selection={selection}
             writableRepositories={repos.writableRepositories}
-            onRemove={(item) =>
-              setSelection((prev) => prev.filter((p) => keyOf(p) !== keyOf(item)))
-            }
+            onRemove={removeSelection}
           />
           {!repos.isPending && repos.writableRepositories.length === 0 && (
             <PrerequisiteState hasAnyRepository={repos.hasAnyRepository} />
@@ -256,6 +311,14 @@ export function MarketplacePage() {
           )}
         </aside>
       </div>
+
+      <SchemaDetailModal
+        schema={detailSchema}
+        currentSelection={selection}
+        onApply={upsertSelection}
+        onRemove={removeSelection}
+        onClose={() => setDetailSchema(null)}
+      />
     </Content>
   );
 }
@@ -265,18 +328,22 @@ interface SchemaListProps {
   error: Error | null;
   items: MarketplaceSchemaSummary[];
   onSelect: (schema: MarketplaceSchemaSummary) => void;
+  onViewDetails: (schema: MarketplaceSchemaSummary) => void;
   selectionMap: Set<string>;
 }
 
-function SchemaList({ isPending, error, items, onSelect, selectionMap }: SchemaListProps) {
+function SchemaList({
+  isPending,
+  error,
+  items,
+  onSelect,
+  onViewDetails,
+  selectionMap,
+}: SchemaListProps) {
   if (isPending) return <LoadingIndicator />;
   if (error) return <ErrorScreen message={error.message} />;
   if (!items.length) {
-    return (
-      <Card>
-        <p className="text-gray-500 text-sm">No schemas match your filters.</p>
-      </Card>
-    );
+    return <EmptyResults label="schemas" />;
   }
   return (
     <div className="grid gap-3 md:grid-cols-2">
@@ -288,6 +355,7 @@ function SchemaList({ isPending, error, items, onSelect, selectionMap }: SchemaL
             schema={schema}
             selected={selected}
             onSelect={onSelect}
+            onViewDetails={onViewDetails}
           />
         );
       })}
@@ -307,11 +375,7 @@ function CollectionList({ isPending, error, items, onSelect, selectionMap }: Col
   if (isPending) return <LoadingIndicator />;
   if (error) return <ErrorScreen message={error.message} />;
   if (!items.length) {
-    return (
-      <Card>
-        <p className="text-gray-500 text-sm">No collections match your filters.</p>
-      </Card>
-    );
+    return <EmptyResults label="collections" />;
   }
   return (
     <div className="grid gap-3 md:grid-cols-2">
@@ -329,5 +393,20 @@ function CollectionList({ isPending, error, items, onSelect, selectionMap }: Col
         );
       })}
     </div>
+  );
+}
+
+function EmptyResults({ label }: { label: string }) {
+  return (
+    <Card className="flex flex-col items-center gap-2 py-10 text-center">
+      <span className="flex size-10 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+        <Icon icon="mdi:magnify" className="text-xl" />
+      </span>
+      <p className="font-medium text-gray-700 text-sm">No {label} match your filters</p>
+      <p className="max-w-xs text-gray-500 text-xs">
+        Try a different keyword, clear active tags, or open the CLI alternative below to install
+        something you already know the name of.
+      </p>
+    </Card>
   );
 }
