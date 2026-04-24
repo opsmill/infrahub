@@ -239,31 +239,15 @@ export function MarketplacePage() {
       </div>
 
       {tags.data && tags.data.tags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1">
-          <span className="mr-1 text-gray-500 text-xs">Tags:</span>
-          {tags.data.tags.map((tag) => {
-            const active = selectedTags.includes(tag.name);
-            return (
-              <button
-                key={tag.id ?? tag.name}
-                type="button"
-                onClick={() =>
-                  setSelectedTags((prev) =>
-                    active ? prev.filter((t) => t !== tag.name) : [...prev, tag.name]
-                  )
-                }
-                className={classNames(
-                  "cursor-pointer rounded-md border px-1.5 py-0.5 text-xs",
-                  active
-                    ? "border-custom-blue-700 bg-custom-blue-700/10 text-custom-blue-700"
-                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
-                )}
-              >
-                {tag.name} <Badge variant="lightgray-outline">{tag.count}</Badge>
-              </button>
-            );
-          })}
-        </div>
+        <TagCloud
+          tags={tags.data.tags}
+          selectedTags={selectedTags}
+          onToggle={(tagName) =>
+            setSelectedTags((prev) =>
+              prev.includes(tagName) ? prev.filter((t) => t !== tagName) : [...prev, tagName]
+            )
+          }
+        />
       )}
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
@@ -408,5 +392,68 @@ function EmptyResults({ label }: { label: string }) {
         something you already know the name of.
       </p>
     </Card>
+  );
+}
+
+interface TagCloudProps {
+  tags: { id: string | null; name: string; count: number }[];
+  selectedTags: string[];
+  onToggle: (tagName: string) => void;
+}
+
+const TAG_COLLAPSE_THRESHOLD = 12;
+
+function TagCloud({ tags, selectedTags, onToggle }: TagCloudProps) {
+  const [expanded, setExpanded] = useState(false);
+  // Always keep selected tags visible so the user can still deselect them when
+  // the list is collapsed. Then fill the remaining slots with the highest-count
+  // unselected tags until we hit the collapse threshold.
+  const selectedSet = new Set(selectedTags);
+  const selectedEntries = tags.filter((t) => selectedSet.has(t.name));
+  const unselectedEntries = tags
+    .filter((t) => !selectedSet.has(t.name))
+    .sort((a, b) => b.count - a.count);
+  const needsCollapse = tags.length > TAG_COLLAPSE_THRESHOLD;
+  const visible =
+    expanded || !needsCollapse
+      ? tags
+      : [
+          ...selectedEntries,
+          ...unselectedEntries.slice(0, Math.max(0, TAG_COLLAPSE_THRESHOLD - selectedEntries.length)),
+        ];
+  const hiddenCount = tags.length - visible.length;
+
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      <span className="mr-1 text-gray-500 text-xs">Tags:</span>
+      {visible.map((tag) => {
+        const active = selectedSet.has(tag.name);
+        return (
+          <button
+            key={tag.id ?? tag.name}
+            type="button"
+            onClick={() => onToggle(tag.name)}
+            className={classNames(
+              "cursor-pointer rounded-md border px-1.5 py-0.5 text-xs",
+              active
+                ? "border-custom-blue-700 bg-custom-blue-700/10 text-custom-blue-700"
+                : "border-gray-200 bg-white text-gray-700 hover:bg-gray-100"
+            )}
+            aria-pressed={active}
+          >
+            {tag.name} <Badge variant="lightgray-outline">{tag.count}</Badge>
+          </button>
+        );
+      })}
+      {needsCollapse && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="rounded-md px-1.5 py-0.5 text-custom-blue-700 text-xs hover:underline"
+        >
+          {expanded ? "Show fewer" : `+${hiddenCount} more`}
+        </button>
+      )}
+    </div>
   );
 }
