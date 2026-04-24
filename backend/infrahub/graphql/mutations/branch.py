@@ -8,8 +8,10 @@ from typing_extensions import Self
 
 from infrahub.branch.merge_mutation_checker import verify_branch_merge_mutation_allowed
 from infrahub.core import registry
+from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import retry_db_transaction
@@ -145,6 +147,7 @@ class BranchDelete(Mutation):
         obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         await apply_external_context(graphql_context=graphql_context, context_input=context)
 
+<<<<<<< variant A
         parameters = {
             "branch": obj.name,
             "delete_from_git": bool(data.delete_from_git),
@@ -159,6 +162,15 @@ class BranchDelete(Mutation):
         )
         if active_proposed_changes:
             parameters["proposed_change_id"] = active_proposed_changes[0].id
+>>>>>>> variant B
+        if obj.created_by != graphql_context.active_account_session.account_id:
+            graphql_context.active_permissions.raise_for_permission(
+                permission=GlobalPermission(
+                    action=GlobalPermissions.DELETE_BRANCH.value,
+                    decision=PermissionDecision.ALLOW_ALL.value,
+                )
+            )
+======= end
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
