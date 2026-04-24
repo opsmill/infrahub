@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { Icon } from "@iconify-icon/react";
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
@@ -27,6 +28,26 @@ interface InstallDrawerProps {
 function itemLabel(item: MarketplaceInstallItem): string {
   const version = item.semver ? ` @${item.semver}` : "";
   return `${item.kind}: ${item.namespace}/${item.name}${version}`;
+}
+
+type TaskLinkTone = "default" | "success" | "danger";
+
+function TaskLink({ taskId, tone = "default" }: { taskId: string; tone?: TaskLinkTone }) {
+  const toneClass =
+    tone === "success"
+      ? "text-green-800 hover:text-green-900"
+      : tone === "danger"
+        ? "text-red-700 hover:text-red-900"
+        : "text-gray-500 hover:text-custom-blue-700";
+  return (
+    <Link
+      to={`/tasks/${taskId}`}
+      className={classNames("flex items-center gap-0.5 whitespace-nowrap text-xs hover:underline", toneClass)}
+    >
+      View task
+      <Icon icon="mdi:open-in-new" className="text-[10px]" />
+    </Link>
+  );
 }
 
 interface BranchFieldProps {
@@ -428,37 +449,40 @@ export function InstallDrawer({
       </Button>
 
       {state.phase === "pending" && (
-        <p className="flex items-center gap-1.5 text-gray-500 text-sm">
-          <Icon icon="mdi:loading" className="animate-spin" />
-          Queued as task <span className="font-mono">{state.taskId.slice(0, 8)}</span>… waiting
-          for worker.
-        </p>
+        <div className="flex items-center justify-between gap-2 text-gray-500 text-sm">
+          <span className="flex items-center gap-1.5">
+            <Icon icon="mdi:loading" className="animate-spin" />
+            Queued — waiting for worker
+          </span>
+          <TaskLink taskId={state.taskId} />
+        </div>
       )}
       {state.phase === "running" && (
-        <p className="flex items-center gap-1.5 text-gray-500 text-sm">
-          <Icon icon="mdi:loading" className="animate-spin" />
-          Installing{typeof state.progress === "number" ? ` (${state.progress}%)` : "…"}
-        </p>
+        <div className="flex items-center justify-between gap-2 text-gray-500 text-sm">
+          <span className="flex items-center gap-1.5">
+            <Icon icon="mdi:loading" className="animate-spin" />
+            Installing{typeof state.progress === "number" ? ` (${state.progress}%)` : "…"}
+          </span>
+          <TaskLink taskId={state.taskId} />
+        </div>
       )}
       {state.phase === "completed" && (
         <div className="rounded-md bg-green-50 p-3 text-green-800 text-sm">
-          <p className="flex items-center gap-1.5 font-semibold">
-            <Icon icon="mdi:check-circle" /> Install completed
-          </p>
-          <p className="mt-0.5">
-            Task <span className="font-mono">{state.taskId.slice(0, 8)}</span> finished successfully.
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 font-semibold">
+              <Icon icon="mdi:check-circle" /> Install completed
+            </p>
+            <TaskLink taskId={state.taskId} tone="success" />
+          </div>
         </div>
       )}
       {state.phase === "failed" && (
         <div className="rounded-md bg-red-50 p-3 text-red-700 text-sm">
-          <p className="mb-1 font-semibold">Install failed</p>
-          <p>{state.error}</p>
-          {state.taskId && (
-            <p className="mt-1 text-red-600 text-xs">
-              Task <span className="font-mono">{state.taskId.slice(0, 8)}</span>
-            </p>
-          )}
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-semibold">Install failed</p>
+            {state.taskId && <TaskLink taskId={state.taskId} tone="danger" />}
+          </div>
+          <p className="mt-1">{state.error}</p>
         </div>
       )}
     </Card>
