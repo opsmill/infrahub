@@ -1,3 +1,5 @@
+---
+# yamllint disable rule:truthy
 name: "Copilot Setup Steps"
 
 # This workflow configures the environment for GitHub Copilot Agent with gh-aw MCP server
