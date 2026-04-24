@@ -269,17 +269,23 @@ export function InstallDrawer({
   return (
     <Card className={classNames("flex flex-col gap-3", className)}>
       <header className="flex items-center justify-between gap-2">
-        <h2 className="font-semibold">Install selected</h2>
-        <Badge variant="gray-outline">{selection.length} selected</Badge>
+        <h2 className="font-semibold">Install</h2>
+        {selection.length > 0 && (
+          <Badge variant="blue">
+            {selection.length} selected
+          </Badge>
+        )}
       </header>
 
-      {selection.length === 0 && (
-        <p className="text-gray-500 text-sm">
-          Pick one or more schemas or collections to install.
-        </p>
-      )}
-
-      {selection.length > 0 && (
+      {selection.length === 0 ? (
+        <div className="flex flex-col items-center gap-1 rounded-md border border-gray-200 border-dashed p-4 text-center">
+          <Icon icon="mdi:cursor-default-click-outline" className="text-gray-400 text-xl" />
+          <p className="text-gray-500 text-sm">Nothing selected yet</p>
+          <p className="text-gray-400 text-xs">
+            Click a schema or collection to add it to the install.
+          </p>
+        </div>
+      ) : (
         <ul className="flex flex-col gap-1">
           {selection.map((item) => (
             <li
@@ -347,14 +353,20 @@ export function InstallDrawer({
           </div>
         )}
         {target === "direct" && (
-          <div className="rounded-md bg-blue-50 p-2 text-custom-blue-700 text-xs">
-            <p className="mb-0.5 font-semibold">Recommended: connect a writable Git repository</p>
-            <p>
-              Direct install applies schemas to Infrahub immediately without a Git commit. If you
-              plan to edit these schemas later via proposed changes, install into a writable
-              repository instead so the YAML is version-controlled.
+          <details className="group rounded-md border border-blue-200 bg-blue-50 text-custom-blue-700 text-xs">
+            <summary className="flex cursor-pointer list-none items-center gap-1.5 p-2 font-semibold">
+              <Icon
+                icon="mdi:chevron-right"
+                className="transition-transform group-open:rotate-90"
+              />
+              Direct install skips Git — why it matters
+            </summary>
+            <p className="px-2 pb-2 pl-7">
+              Schemas are applied to this instance immediately, with no commit or version history.
+              If you plan to edit them later via proposed changes, install into a writable Git
+              repository instead so the YAML is tracked.
             </p>
-          </div>
+          </details>
         )}
       </div>
 
