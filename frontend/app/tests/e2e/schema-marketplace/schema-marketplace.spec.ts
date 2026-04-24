@@ -154,13 +154,4 @@ test.describe("/schema-marketplace", () => {
     await expect(page.getByText("1 selected")).toBeVisible();
   });
 
-  test("home-page tile is reachable and links to the marketplace", async ({ page }) => {
-    // Don't mock /api/marketplace/* here — the home tile doesn't hit those
-    // endpoints; only clicking it should navigate.
-    await page.goto("/");
-    const tile = page.getByRole("link", { name: /Schema Marketplace/i }).first();
-    await expect(tile).toBeVisible();
-    await tile.click();
-    await expect(page).toHaveURL(/\/schema-marketplace/);
-  });
 });

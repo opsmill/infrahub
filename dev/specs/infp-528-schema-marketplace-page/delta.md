@@ -79,6 +79,17 @@ when users commit schemas by hand. Rather than ship a stub that always
 returns `false`, the field is dropped from both Pydantic models and TS types
 until we have a performant detection mechanism.
 
+## Dropped: home-page tile
+
+The spec's FR-002/FR-003 called for a Schema Marketplace widget on the home
+page (with a "Get started" CTA on empty instances). The tile shipped
+initially but was removed before merge — the sidebar entry and the
+Marketplace page are sufficient, and keeping a home-page widget meant
+maintaining an additional "does this instance have any user schemas?"
+signal that duplicated what the Marketplace page already expresses. The
+`Getting started` card on the home page still deep-links to
+`/schema-marketplace`.
+
 ## Other small deltas
 
 - Install flow names:
