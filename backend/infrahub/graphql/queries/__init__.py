@@ -1,5 +1,6 @@
 from .account import AccountPermissions, AccountToken
 from .branch import BranchQueryList, InfrahubBranchQueryList
+from .graphql_query_report import InfrahubGraphQLQueryReport
 from .internal import InfrahubInfo
 from .ipam import InfrahubIPAddressGetNextAvailable, InfrahubIPPrefixGetNextAvailable
 from .proposed_change import ProposedChangeAvailableActions
@@ -14,6 +15,7 @@ __all__ = [
     "AccountToken",
     "BranchQueryList",
     "InfrahubBranchQueryList",
+    "InfrahubGraphQLQueryReport",
     "InfrahubIPAddressGetNextAvailable",
     "InfrahubIPPrefixGetNextAvailable",
     "InfrahubInfo",
