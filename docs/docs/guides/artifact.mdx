@@ -166,6 +166,20 @@ If artifacts aren't generating:
 3. Ensure group members inherit from `CoreArtifactTarget`
 4. Confirm the Git repository sync is working
 
+If artifacts are regenerating for all nodes instead of only changed nodes, the Transformation query may not uniquely identify its targets. Use `InfrahubGraphQLQueryReport` to diagnose:
+
+```graphql
+{
+  InfrahubGraphQLQueryReport(
+    query: "<paste your transformation query here>"
+  ) {
+    targets_unique_nodes
+  }
+}
+```
+
+If `targets_unique_nodes` returns `false`, update the query to filter by a required `ids` argument or a field matching the model's uniqueness constraints. See [artifact regeneration](../topics/artifact.mdx#artifact-regeneration) for details.
+
 ## Next steps
 
 - [Create complex Transformations with Python](./python-transform.mdx)

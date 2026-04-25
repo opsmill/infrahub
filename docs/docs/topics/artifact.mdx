@@ -76,6 +76,34 @@ nodes:
 When a `CoreArtifactTarget` node is deleted, all artifacts associated with it are automatically deleted as well.
 :::
 
+## Artifact regeneration
+
+When a relevant node changes, Infrahub regenerates affected artifacts. Regeneration operates in one of two modes:
+
+- **Targeted regeneration**: Infrahub regenerates artifacts only for the specific nodes that changed. This requires the artifact definition's Transformation query to uniquely identify its target nodes — via a required `ids` argument or a field that matches the model's uniqueness constraints.
+- **Full regeneration**: Infrahub regenerates artifacts for all nodes in the target group. This is the fallback when the query does not uniquely identify targets.
+
+Targeted regeneration reduces unnecessary work and speeds up artifact updates after node changes. Full regeneration is safe but less efficient for large groups.
+
+### Validating your Transformation query
+
+Before creating or updating an artifact definition, use the `InfrahubGraphQLQueryReport` introspection query to confirm whether your Transformation query will trigger targeted or full regeneration:
+
+```graphql
+{
+  InfrahubGraphQLQueryReport(
+    query: "{ NetworkDeviceQuery(ids: [\"<device-id>\"]) { edges { node { id name__value } } } }"
+  ) {
+    targets_unique_nodes
+  }
+}
+```
+
+- `targets_unique_nodes: true` — Infrahub will regenerate only the artifacts for nodes that changed.
+- `targets_unique_nodes: false` — Infrahub will regenerate all artifacts in the definition on any relevant node change.
+
+For step-by-step instructions on diagnosing unexpected full regenerations, see [generating artifacts](../guides/artifact.mdx#troubleshooting).
+
 ## Composing content across artifacts
 
 A Transformation can reference and include the rendered content of other artifacts or file objects using built-in Jinja2 filters or the Python SDK object store API. This enables modular configuration pipelines where each artifact generates one section, and a composite artifact assembles the final result.
