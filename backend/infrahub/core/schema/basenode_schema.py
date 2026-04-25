@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, NoReturn, ov
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import ConfigDict, ValidationError, field_validator
 
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
 
@@ -464,16 +465,25 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         """Generate a dictionary containing the list of fields that are required
         to generate the display_label.
 
-        If display_labels is not defined, we return None which equal to everything.
+        If neither display_label nor display_labels is defined, we return None which equal to everything.
         """
+        fields: dict[str, str | dict[str, None] | None] = {}
 
-        if not self.display_labels:
+        if self.display_labels:
+            for item in self.display_labels:
+                fields.update(self.convert_path_to_graphql_fields(path=item))
+            return fields
+
+        if not self.display_label:
             return None
 
-        fields: dict[str, str | dict[str, None] | None] = {}
-        for item in self.display_labels:
-            fields.update(self.convert_path_to_graphql_fields(path=item))
-        return fields
+        if "{{" in self.display_label:
+            for var in InfrahubJinja2Template(template=self.display_label).get_variables():
+                fields.update(self.convert_path_to_graphql_fields(path=var))
+        else:
+            fields.update(self.convert_path_to_graphql_fields(path=self.display_label))
+
+        return fields or None
 
     def generate_fields_for_hfid(self) -> dict | None:
         """Generate a dictionary containing the list of fields that are required

@@ -17,6 +17,8 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `migrate`: Check the current format of the internal...
+* `showmigrations`: Display all migrations and their...
+* `showmigration`: Show detailed information about a specific...
 * `check-inheritance`: Check the database for any vertices with...
 * `reset-deployment-id`: Reset the internal deployment_id on the...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
@@ -45,7 +47,46 @@ $ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
+* `--plan / --no-plan`: Show the migration plan without executing.  [default: no-plan]
+* `--verbose / --no-verbose`: Show detailed internal output from each migration.  [default: no-verbose]
 * `--migration-number INTEGER`: Apply a specific migration by number, regardless of current database version
+* `--help`: Show this message and exit.
+
+## `infrahub db showmigrations`
+
+Display all migrations and their applied/pending status.
+
+**Usage**:
+
+```console
+$ infrahub db showmigrations [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `infrahub db showmigration`
+
+Show detailed information about a specific migration.
+
+**Usage**:
+
+```console
+$ infrahub db showmigration [OPTIONS] MIGRATION_NUMBER [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `MIGRATION_NUMBER`: Migration number to inspect  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-inheritance`

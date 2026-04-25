@@ -16,7 +16,7 @@ from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db impor
     UpdateAttributeValuesQuery,
 )
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
-from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
 
@@ -142,7 +142,7 @@ class Migration046(ArbitraryMigration):
 
     async def _do_execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
-        console = get_migration_console()
+        console = migration_input.console
         result = MigrationResult()
 
         root_node = await get_root_node(db=db, initialize=False)

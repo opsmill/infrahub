@@ -1,3 +1,4 @@
+import re
 import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -296,9 +297,17 @@ async def test_get_branches_from_graph(
 
 async def test_get_commit_value(git_repo_01: InfrahubRepository) -> None:
     repo = git_repo_01
-    assert repo.get_commit_value(branch_name="main", remote=True) == "f165752c1047beb50f610c01bf40d45f211607e1"
-    assert repo.get_commit_value(branch_name="branch01", remote=True) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
-    assert repo.get_commit_value(branch_name="branch02", remote=True) == "4e2fd98a5fd1fb61dc53150c778e22ee35f26191"
+    commit_main = repo.get_commit_value(branch_name="main", remote=True)
+    commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=True)
+    commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=True)
+
+    # Each value should be a full 40-character SHA
+    assert re.fullmatch(r"[0-9a-f]{40}", commit_main)
+    assert re.fullmatch(r"[0-9a-f]{40}", commit_branch01)
+    assert re.fullmatch(r"[0-9a-f]{40}", commit_branch02)
+
+    # Each branch should be at a distinct commit
+    assert len({commit_main, commit_branch01, commit_branch02}) == 3
 
     with pytest.raises(ValueError):
         repo.get_commit_value(branch_name="branch01", remote=False)
@@ -322,19 +331,21 @@ async def test_compare_remote_local_no_diff(git_repo_02: InfrahubRepository) -> 
 
 async def test_create_branch_in_git_present_remote(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
     repo = git_repo_01
+    expected_commit = repo.get_commit_value(branch_name=branch01.name, remote=True)
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch01.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
+    assert repo.get_commit_value(branch_name=branch01.name) == expected_commit
     assert len(worktrees) == 4
 
 
 async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepository, branch99: BranchData) -> None:
     repo = git_repo_01
+    expected_commit = repo.get_commit_value(branch_name="main", remote=True)
     await repo.create_branch_in_git(branch_name=branch99.name, branch_id=branch99.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch99.name) == "f165752c1047beb50f610c01bf40d45f211607e1"
+    assert repo.get_commit_value(branch_name=branch99.name) == expected_commit
     assert len(worktrees) == 3
 
 
@@ -513,7 +524,7 @@ async def test_sync_new_branch(
         mock_import.assert_awaited()
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
+    assert repo.get_commit_value(branch_name=branch.name) == commit
     assert len(worktrees) == 4
 
 

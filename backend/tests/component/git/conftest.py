@@ -1,6 +1,5 @@
 import re
 import shutil
-import tarfile
 from pathlib import Path
 from typing import Any, Generator
 
@@ -26,6 +25,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.utils import find_first_file_in_directory, get_fixtures_dir
 from tests.conftest import TestHelper
+from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
 
 
@@ -79,16 +79,8 @@ def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
     There is conflict between branch01 and branch02."""
 
     name = "infrahub-test-fixture-01"
-    here = Path(__file__).parent.resolve()
-    fixtures_dir = here.parent.parent / "fixtures"
-    fixture_repo = fixtures_dir / "infrahub-test-fixture-01-f165752.tar.gz"
-
-    # Extract the fixture package in the source directory
-
-    with tarfile.open(fixture_repo) as file:
-        file.extractall(git_sources_dir, filter="data")
-
-    return {"name": name, "path": git_sources_dir / name}
+    file_repo = FileRepo(name=name, sources_directory=git_sources_dir)
+    return {"name": name, "path": Path(file_repo.path)}
 
 
 @pytest.fixture
