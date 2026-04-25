@@ -975,7 +975,7 @@ class GroupedPeerNodes:
         self._rel_directions_map: dict[tuple[str, str], dict[RelationshipDirection, set[str]]] = defaultdict(dict)
         # {(node_id, rel_name, direction, peer_Id): {MetadataOptions: value}}
         self._metadata_map: dict[
-            tuple[str, str, RelationshipDirection, str], dict[MetadataOptions, Timestamp | str | None]
+            tuple[str, str, RelationshipDirection, str], dict[MetadataOptions, Timestamp | str | bool | None]
         ] = {}
 
     def add_peer(
@@ -988,13 +988,17 @@ class GroupedPeerNodes:
         created_by: str | None = None,
         updated_at: Timestamp | None = None,
         updated_by: str | None = None,
+        source_id: str | None = None,
+        owner_id: str | None = None,
+        is_protected: bool | None = None,
     ) -> None:
         self._rel_names_by_node_id[node_id].add(rel_name)
         if direction not in self._rel_directions_map[node_id, rel_name]:
             self._rel_directions_map[node_id, rel_name][direction] = set()
         self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
         key = (node_id, rel_name, direction, peer_id)
-        if created_at is not None or created_by is not None or updated_at is not None or updated_by is not None:
+        provided = (created_at, created_by, updated_at, updated_by, source_id, owner_id, is_protected)
+        if any(v is not None for v in provided):
             self._metadata_map[key] = {}
         if created_at is not None:
             self._metadata_map[key][MetadataOptions.CREATED_AT] = created_at
@@ -1004,6 +1008,12 @@ class GroupedPeerNodes:
             self._metadata_map[key][MetadataOptions.UPDATED_AT] = updated_at
         if updated_by is not None:
             self._metadata_map[key][MetadataOptions.UPDATED_BY] = updated_by
+        if source_id is not None:
+            self._metadata_map[key][MetadataOptions.SOURCE] = source_id
+        if owner_id is not None:
+            self._metadata_map[key][MetadataOptions.OWNER] = owner_id
+        if is_protected is not None:
+            self._metadata_map[key][MetadataOptions.IS_PROTECTED] = is_protected
 
     def get_peer_ids(self, node_id: str, rel_name: str, direction: RelationshipDirection) -> set[str]:
         if (node_id, rel_name) not in self._rel_directions_map:
@@ -1022,7 +1032,7 @@ class GroupedPeerNodes:
 
     def get_metadata_map(
         self, node_id: str, rel_name: str, direction: RelationshipDirection, peer_id: str
-    ) -> dict[MetadataOptions, Timestamp | str | None]:
+    ) -> dict[MetadataOptions, Timestamp | str | bool | None]:
         return self._metadata_map.get((node_id, rel_name, direction, peer_id), {})
 
 
@@ -1109,6 +1119,52 @@ CALL (rel) {
             """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
         self.return_labels.extend(["updated_at", "updated_by"])
+
+    def _add_is_protected_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.IS_PROTECTED):
+            return
+        query = """
+CALL (rel) {
+    MATCH (rel)-[r:IS_PROTECTED]->(is_protected)
+    WHERE %(branch_filter)s
+    RETURN is_protected.value AS is_protected_value
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        self.return_labels.append("is_protected_value")
+
+    def _add_node_property_query(self, node_prop: str, branch_filter: str) -> None:
+        query = """
+CALL (rel) {
+    OPTIONAL MATCH (rel)-[r:HAS_%(node_prop_type)s]->(prop_node:Node)
+    WHERE %(branch_filter)s
+    WITH r, prop_node
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN CASE
+        WHEN r.status = "active" THEN prop_node.uuid
+        ELSE NULL
+    END AS %(node_prop)s_uuid
+}
+        """ % {
+            "node_prop": node_prop,
+            "node_prop_type": node_prop.upper(),
+            "branch_filter": branch_filter,
+        }
+        self.add_to_query(query)
+        self.return_labels.append(f"{node_prop}_uuid")
+
+    def _add_has_owner_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.OWNER):
+            return
+        self._add_node_property_query(node_prop="owner", branch_filter=branch_filter)
+
+    def _add_has_source_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.SOURCE):
+            return
+        self._add_node_property_query(node_prop="source", branch_filter=branch_filter)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
@@ -1201,6 +1257,9 @@ CALL (rel) {
 
         self._add_created_metadata_to_query()
         self._add_updated_metadata_to_query(branch_filter_str=rels_filter)
+        self._add_is_protected_query(branch_filter=rels_filter)
+        self._add_has_owner_query(branch_filter=rels_filter)
+        self._add_has_source_query(branch_filter=rels_filter)
         return_labels_str = ", ".join(sorted(self.return_labels))
         self.add_to_query(f"WITH DISTINCT {return_labels_str}, rel.name AS rel_name")
         self.return_labels.append("rel_name")
@@ -1231,6 +1290,18 @@ CALL (rel) {
             if self.include_metadata & MetadataOptions.UPDATED_BY:
                 updated_by_str = result.get("updated_by")
 
+            is_protected: bool | None = None
+            if self.include_metadata & MetadataOptions.IS_PROTECTED:
+                is_protected = result.get_as_type("is_protected_value", return_type=bool)
+
+            source_id: str | None = None
+            if self.include_metadata & MetadataOptions.SOURCE:
+                source_id = result.get_as_type("source_uuid", return_type=str)
+
+            owner_id: str | None = None
+            if self.include_metadata & MetadataOptions.OWNER:
+                owner_id = result.get_as_type("owner_uuid", return_type=str)
+
             direction_enum = {
                 "inbound": RelationshipDirection.INBOUND,
                 "outbound": RelationshipDirection.OUTBOUND,
@@ -1245,6 +1316,9 @@ CALL (rel) {
                 created_by=created_by_str,
                 updated_at=updated_at,
                 updated_by=updated_by_str,
+                source_id=source_id,
+                owner_id=owner_id,
+                is_protected=is_protected,
             )
 
         return gpn
