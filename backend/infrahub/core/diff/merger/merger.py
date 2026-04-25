@@ -5,9 +5,10 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 from infrahub.core.diff.model.path import BranchTrackingId
 from infrahub.core.diff.query.bulk_merge import (
+    BulkMergeAttributePropertyEdgesQuery,
     BulkMergeNodeExistenceQuery,
-    BulkMergePropertyEdgesQuery,
     BulkMergeRelationshipEdgesQuery,
+    BulkMergeRelationshipPropertyEdgesQuery,
 )
 from infrahub.core.diff.query.filters import EnrichedDiffQueryFilters
 from infrahub.core.diff.query.merge import (
@@ -76,11 +77,14 @@ class DiffMerger:
         log.info("Running bulk node existence merge")
         await self._bulk_merge_node_existence(at=at, excluded_uuids=excluded_uuids)
 
-        log.info("Running bulk property edge merge")
-        await self._bulk_merge_property_edges(at=at, excluded_uuids=excluded_uuids)
-
         log.info("Running bulk relationship edge merge")
         await self._bulk_merge_relationship_edges(at=at, excluded_uuids=excluded_uuids)
+
+        log.info("Running bulk attribute property edge merge")
+        await self._bulk_merge_attribute_property_edges(at=at, excluded_uuids=excluded_uuids)
+
+        log.info("Running bulk relationship property edge merge")
+        await self._bulk_merge_relationship_property_edges(at=at, excluded_uuids=excluded_uuids)
 
         # ------------------------------------------------------------------
         # Step 3: Handle conflicted nodes via existing serializer path
@@ -139,9 +143,20 @@ class DiffMerger:
         )
         await query.execute(db=self.db)
 
-    @retry_db_transaction(name="bulk_merge_property_edges")
-    async def _bulk_merge_property_edges(self, at: Timestamp, excluded_uuids: list[str]) -> None:
-        query = await BulkMergePropertyEdgesQuery.init(
+    @retry_db_transaction(name="bulk_merge_attribute_property_edges")
+    async def _bulk_merge_attribute_property_edges(self, at: Timestamp, excluded_uuids: list[str]) -> None:
+        query = await BulkMergeAttributePropertyEdgesQuery.init(
+            db=self.db,
+            branch=self.source_branch,
+            at=at,
+            target_branch=self.destination_branch,
+            excluded_uuids=excluded_uuids,
+        )
+        await query.execute(db=self.db)
+
+    @retry_db_transaction(name="bulk_merge_relationship_property_edges")
+    async def _bulk_merge_relationship_property_edges(self, at: Timestamp, excluded_uuids: list[str]) -> None:
+        query = await BulkMergeRelationshipPropertyEdgesQuery.init(
             db=self.db,
             branch=self.source_branch,
             at=at,

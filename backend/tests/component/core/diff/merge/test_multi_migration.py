@@ -29,7 +29,6 @@ from tests.node_creation import create_and_save
 from .conftest import get_diff_coordinator, get_diff_merger
 
 
-@pytest.mark.xfail(reason="to be fixed in upcoming merge refactor")
 async def test_diff_and_merge_with_migrated_node_kind_and_migrated_inheritance(
     db: InfrahubDatabase,
     default_branch: Branch,

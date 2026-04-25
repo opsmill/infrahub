@@ -8,7 +8,6 @@ validates the resulting metadata (including the V1/V2 relationship tracking
 that survives the resolution).
 """
 
-import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, MetadataOptions
@@ -25,7 +24,6 @@ from tests.helpers.db_validation import verify_graph
 from .conftest import get_diff_coordinator, get_diff_merger
 
 
-@pytest.mark.xfail(reason="to be fixed in upcoming merge refactor")
 async def test_branch_delete_with_added_base_relationship(
     db: InfrahubDatabase,
     default_branch: Branch,

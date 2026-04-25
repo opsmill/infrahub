@@ -1,6 +1,5 @@
 """Edge cases: node deletes combined with branch-side additions."""
 
-import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -19,7 +18,6 @@ from tests.helpers.db_validation import verify_graph
 from .conftest import get_diff_coordinator, get_diff_merger
 
 
-@pytest.mark.xfail(reason="to be fixed in upcoming merge refactor")
 async def test_base_delete_with_added_branch_attr_source(
     db: InfrahubDatabase,
     default_branch: Branch,
