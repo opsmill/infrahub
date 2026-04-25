@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { forwardRef } from "react";
+import React from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
@@ -23,7 +23,9 @@ import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-rel
 import type { NodeCore } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
-type PermissionNode = NodeCore & { identifier: { value: string } };
+interface PermissionNode extends NodeCore {
+  identifier: { value: string };
+}
 
 export interface PermissionComboboxProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   value: PermissionNode[] | null;
@@ -98,73 +100,72 @@ export function PermissionCombobox({
 }
 
 export interface RelationshipComboboxListProps {
+  ref?: React.Ref<HTMLDivElement>;
   value: PermissionNode[] | null;
   onSelect: (value: PermissionNode) => void;
 }
 
-export const PermissionComboboxList = forwardRef<HTMLDivElement, RelationshipComboboxListProps>(
-  ({ value, onSelect }, ref) => {
-    const [search, setSearch] = React.useState("");
-    const { schema } = useSchema(ACCOUNT_PERMISSION_OBJECT);
-    const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useObjects({
-      schema: schema!,
-      filters: search ? [{ name: "any__value", value: search }] : undefined,
-    });
+export const PermissionComboboxList = ({ ref, value, onSelect }: RelationshipComboboxListProps) => {
+  const [search, setSearch] = React.useState("");
+  const { schema } = useSchema(ACCOUNT_PERMISSION_OBJECT);
+  const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } = useObjects({
+    schema: schema!,
+    filters: search ? [{ name: "any__value", value: search }] : undefined,
+  });
 
-    if (error) return <ErrorScreen message={error.message} />;
+  if (error) return <ErrorScreen message={error.message} />;
 
-    const setSearchDebounced = debounce(setSearch, 300);
+  const setSearchDebounced = debounce(setSearch, 300);
 
-    return (
-      <ComboboxList
-        ref={ref}
-        onValueChange={(newValue) => setSearchDebounced(newValue)}
-        shouldFilter={false}
-      >
-        {isPending ? (
-          <Spinner className="m-2 flex justify-center" />
-        ) : (
-          <>
-            <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
+  return (
+    <ComboboxList
+      ref={ref}
+      onValueChange={(newValue) => setSearchDebounced(newValue)}
+      shouldFilter={false}
+    >
+      {isPending ? (
+        <Spinner className="m-2 flex justify-center" />
+      ) : (
+        <>
+          <ComboboxEmpty>No {schema?.label ?? "results"} found</ComboboxEmpty>
 
-            {data.pages.map((page) => {
-              return page
-                .filter((node) => !value?.some((v) => v.id === node.id))
-                .map((n) => {
-                  const node = n as unknown as PermissionNode;
-                  return (
-                    <ComboboxItem
-                      key={node.id}
-                      value={node.id}
-                      selectedValue={null}
-                      onSelect={() =>
-                        onSelect({
-                          id: node.id,
-                          display_label: node.identifier.value,
-                          identifier: { value: node.identifier.value },
-                          __typename: node.__typename,
-                        })
-                      }
-                    >
-                      <span className="truncate">{node.identifier.value}</span>
-                    </ComboboxItem>
-                  );
-                });
-            })}
-          </>
-        )}
+          {data.pages.map((page) => {
+            return page
+              .filter((node) => !value?.some((v) => v.id === node.id))
+              .map((n) => {
+                const node = n as unknown as PermissionNode;
+                return (
+                  <ComboboxItem
+                    key={node.id}
+                    value={node.id}
+                    selectedValue={null}
+                    onSelect={() =>
+                      onSelect({
+                        id: node.id,
+                        display_label: node.identifier.value,
+                        identifier: { value: node.identifier.value },
+                        __typename: node.__typename,
+                      })
+                    }
+                  >
+                    <span className="truncate">{node.identifier.value}</span>
+                  </ComboboxItem>
+                );
+              });
+          })}
+        </>
+      )}
 
-        {hasNextPage && (
-          <ComboboxItem
-            value="Load more"
-            onSelect={() => fetchNextPage()}
-            disabled={!hasNextPage || isFetchingNextPage}
-            className="justify-center text-custom-blue-700"
-          >
-            {isFetchingNextPage ? "Loading more..." : "Load more"}
-          </ComboboxItem>
-        )}
-      </ComboboxList>
-    );
-  }
-);
+      {hasNextPage && (
+        <ComboboxItem
+          value="Load more"
+          onSelect={() => fetchNextPage()}
+          disabled={!hasNextPage || isFetchingNextPage}
+          className="justify-center text-custom-blue-700"
+        >
+          {isFetchingNextPage ? "Loading more..." : "Load more"}
+        </ComboboxItem>
+      )}
+    </ComboboxList>
+  );
+};

@@ -11,6 +11,10 @@ paths:
 
 Full reference: `dev/guidelines/backend/testing.md`
 
+## Import at the top
+
+All imports should be at the top of the test file. Do not import inside of test functions or classes.
+
 ## No mocking
 
 Do NOT use `unittest.mock`, `pytest-mock`, `MagicMock`, `patch`, or `Mock`.

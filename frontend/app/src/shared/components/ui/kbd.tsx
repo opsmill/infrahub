@@ -1,4 +1,4 @@
-import { forwardRef, type HTMLAttributes, useMemo } from "react";
+import type React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -34,27 +34,24 @@ export const kbdKeysLabelMap: Record<KbdKey, string> = {
   tab: "Tab",
 };
 
-export interface KbdProps extends HTMLAttributes<HTMLElement> {
+export interface KbdProps extends React.HTMLAttributes<HTMLElement> {
+  ref?: React.Ref<HTMLElement>;
   keys?: KbdKey | KbdKey[];
   keyClassName?: string;
 }
 
-const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
-  const { children, keys, keyClassName, className } = props;
-
+function Kbd({ children, keys, keyClassName, className, ref }: KbdProps) {
   const keysToRender = typeof keys === "string" ? [keys] : Array.isArray(keys) ? keys : [];
 
-  const keysContent = useMemo(() => {
-    return keysToRender.map((key) => (
-      <abbr
-        key={key}
-        title={kbdKeysLabelMap[key]}
-        className={classNames("no-underline", keyClassName)}
-      >
-        {kbdKeysMap[key]}
-      </abbr>
-    ));
-  }, [keysToRender.toString()]);
+  const keysContent = keysToRender.map((key) => (
+    <abbr
+      key={key}
+      title={kbdKeysLabelMap[key]}
+      className={classNames("no-underline", keyClassName)}
+    >
+      {kbdKeysMap[key]}
+    </abbr>
+  ));
 
   return (
     <kbd
@@ -68,6 +65,6 @@ const Kbd = forwardRef<HTMLElement, KbdProps>((props, ref) => {
       {children && <span>{children}</span>}
     </kbd>
   );
-});
+}
 
 export default Kbd;

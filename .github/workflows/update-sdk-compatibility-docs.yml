@@ -28,6 +28,17 @@ jobs:
       - name: Install dependencies
         run: uv sync --all-groups --all-extras
 
+      - name: Install NodeJS
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: "npm"
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm install
+        working-directory: ./docs
+
       - name: Run compatibility update script
         env:
           GITHUB_TOKEN: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
@@ -47,7 +58,7 @@ jobs:
 
       - name: Create pull request
         if: steps.changes.outputs.changed == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@v8
         with:
           token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
           commit-message: "docs: update compatibility matrix"

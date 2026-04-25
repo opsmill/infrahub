@@ -12,7 +12,7 @@ import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { NodeAttribute, NodeObject, NodeRelationship } from "@/entities/nodes/types";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
-export const GROUP_TABLE_ATTRIBUTES = ["description", "label", "group_type"];
+export const GROUP_TABLE_ATTRIBUTES = ["name", "description", "label", "group_type"];
 export const GROUP_TABLE_RELATIONSHIPS = ["members", "roles"];
 
 const columnHelper = createColumnHelper<NodeObject>();

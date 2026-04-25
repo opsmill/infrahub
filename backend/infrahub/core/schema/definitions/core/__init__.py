@@ -21,6 +21,7 @@ from .account import (
     core_generic_account,
     core_password_credential,
     core_refresh_token,
+    internal_external_identity,
 )
 from .artifact import core_artifact, core_artifact_definition, core_artifact_target
 from .builtin import builtin_tag
@@ -199,6 +200,7 @@ core_models_mixed: CoreModelsMixedType = {
         core_account_group,
         internal_ipam_ip_prefix_available,
         internal_ipam_ip_range_available,
+        internal_external_identity,
     ],
 }
 

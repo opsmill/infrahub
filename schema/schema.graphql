@@ -8033,6 +8033,12 @@ type EdgedInternalAccountToken {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""External authentication provider identity linked to an account"""
+type EdgedInternalExternalIdentity {
+  node: InternalExternalIdentity
+  node_metadata: InfrahubNodeMetadata
+}
+
 """
 IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
@@ -8513,6 +8519,28 @@ type InternalAccountToken implements CoreNode {
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """The authentication token value (required)"""
   token: TextAttribute
+}
+
+"""External authentication provider identity linked to an account"""
+type InternalExternalIdentity implements CoreNode {
+  account: NestedEdgedCoreGenericAccount!
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String!
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """
+  The authentication protocol used, e.g. 'oidc', 'oauth2', 'ldap' (required)
+  """
+  protocol: TextAttribute
+  """
+  The provider name as configured in Infrahub, e.g. 'google', 'provider1' (required)
+  """
+  provider_name: TextAttribute
+  """The provider-issued subject identifier (required)"""
+  sub: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
 }
 
 """
@@ -10138,6 +10166,14 @@ type NestedEdgedInternalAccountToken {
   relationship_metadata: InfrahubRelationshipMetadata
 }
 
+"""External authentication provider identity linked to an account"""
+type NestedEdgedInternalExternalIdentity {
+  node: InternalExternalIdentity
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
 """
 IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
@@ -10807,6 +10843,13 @@ type NestedPaginatedCoreWeightedPoolResource {
 type NestedPaginatedInternalAccountToken {
   count: Int!
   edges: [NestedEdgedInternalAccountToken!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""External authentication provider identity linked to an account"""
+type NestedPaginatedInternalExternalIdentity {
+  count: Int!
+  edges: [NestedEdgedInternalExternalIdentity!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -11615,6 +11658,13 @@ type PaginatedCoreWeightedPoolResource {
 type PaginatedInternalAccountToken {
   count: Int!
   edges: [EdgedInternalAccountToken!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""External authentication provider identity linked to an account"""
+type PaginatedInternalExternalIdentity {
+  count: Int!
+  edges: [EdgedInternalExternalIdentity!]!
   permissions: PaginatedObjectPermission!
 }
 

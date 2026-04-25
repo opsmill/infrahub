@@ -2779,62 +2779,6 @@ async def test_schema_branch_validate_check_missing(
     }
 
 
-async def test_schema_branch_validate_node_deletion(
-    db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
-) -> None:
-    FULL_SCHEMA = {
-        "nodes": [
-            {
-                "name": "Criticality",
-                "namespace": "Testing",
-                "default_filter": "name__value",
-                "label": "Criticality",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "level", "kind": "Number", "label": "Level"},
-                    {"name": "color", "kind": "Text", "label": "Color", "default_value": "#444444"},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-                "relationships": [
-                    {
-                        "name": "tags",
-                        "peer": "TestingTag",
-                        "label": "Tags",
-                        "optional": True,
-                        "cardinality": "many",
-                    }
-                ],
-            },
-            {
-                "name": "Tag",
-                "namespace": "Testing",
-                "label": "Tag",
-                "default_filter": "name__value",
-                "attributes": [
-                    {"name": "name", "kind": "Text", "label": "Name", "unique": True},
-                    {"name": "description", "kind": "Text", "label": "Description", "optional": True},
-                ],
-            },
-        ]
-    }
-    schema = SchemaRoot(**FULL_SCHEMA)
-    schema.generate_uuid()
-    schema_branch = SchemaBranch(cache={}, name="test")
-    schema_branch.load_schema(schema=schema)
-
-    FULL_SCHEMA["nodes"].pop(1)
-
-    broken_schema = SchemaRoot(**FULL_SCHEMA)
-    broken_schema_branch = SchemaBranch(cache={}, name="test-broken")
-    broken_schema_branch.load_schema(schema=broken_schema)
-
-    diff = schema_branch.diff(other=broken_schema_branch)
-    assert "TestingTag" in diff.removed
-
-    with pytest.raises(ValueError, match="'TestingTag' has been removed but is still referenced"):
-        schema_branch.validate_node_deletions(diff=diff)
-
-
 async def test_schema_branch_validate_add_node_relationships(
     db: InfrahubDatabase, reset_registry: None, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
@@ -4707,3 +4651,51 @@ async def test_manage_object_templates_component_relationship_to_excluded_kind()
     template = schema_branch.get(name=f"Template{TestKind.CAR}", duplicate=False)
     pool_rel = template.get_relationship(name="number_pools")
     assert pool_rel.peer == InfrahubKind.NUMBERPOOL
+
+
+async def test_profile_does_not_contain_optional_unique_attributes() -> None:
+    schema = {
+        "namespace": "Network",
+        "name": "Router",
+        "uniqueness_constraints": [["name__value", "age__value"], ["year__value"]],
+        "human_friendly_id": ["name__value"],
+        "display_label": "name__value",
+        "attributes": [
+            {"name": "name", "kind": "Text", "optional": True},
+            {"name": "age", "kind": "Number", "optional": True},
+            {"name": "year", "kind": "Number", "optional": True},
+        ],
+    }
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=SchemaRoot(nodes=[schema]))
+    schema_branch.process()
+
+    network_router_profile = schema_branch.get(name="ProfileNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_profile.get_attribute("name")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute age"):
+        network_router_profile.get_attribute("age")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_profile.get_attribute("year")
+
+    schema_2 = copy.deepcopy(schema)
+    schema_2["attributes"][0]["unique"] = True
+    schema_2["attributes"][1]["unique"] = True
+    schema_2["attributes"][2]["unique"] = True
+    schema_2["uniqueness_constraints"] = []
+
+    schema_branch_2 = SchemaBranch(cache={}, name="test2")
+    schema_branch_2.load_schema(schema=SchemaRoot(nodes=[schema_2]))
+    schema_branch_2.process()
+
+    network_router_profile_2 = schema_branch_2.get(name="ProfileNetworkRouter", duplicate=False)
+    with pytest.raises(ValueError, match="Unable to find the attribute name"):
+        network_router_profile_2.get_attribute("name")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute age"):
+        network_router_profile_2.get_attribute("age")
+
+    with pytest.raises(ValueError, match="Unable to find the attribute year"):
+        network_router_profile_2.get_attribute("year")

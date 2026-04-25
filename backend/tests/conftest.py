@@ -44,6 +44,7 @@ from infrahub.core.schema.definitions.core import (
     core_account_token,
     core_generic_account,
     core_profile_schema_definition,
+    internal_external_identity,
 )
 from infrahub.core.schema.definitions.core.propose_change import core_proposed_change
 from infrahub.core.schema.manager import SchemaManager
@@ -55,6 +56,8 @@ from infrahub.database import InfrahubDatabase
 from infrahub.git import InfrahubRepository
 from infrahub.graphql.manager import registry as graphql_registry
 from infrahub.lock import initialize_lock
+from infrahub.menu.constants import DEFAULT_MENU
+from infrahub.menu.models import MenuItemDefinition, MenuSection
 from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 from infrahub.message_bus.types import MessageTTL
 from infrahub.permissions import LocalPermissionBackend
@@ -582,7 +585,7 @@ def do_data_schema(branch: Branch) -> None:
             core_profile_schema_definition,
             core_generic_account,
         ],
-        "nodes": [core_account_token],
+        "nodes": [core_account_token, internal_external_identity],
     }
 
     schema = SchemaRoot(**SCHEMA)
@@ -1862,3 +1865,108 @@ def git_user_config() -> Generator[None, None, None]:
     yield
     config.SETTINGS.git.user_email = initial_user_email
     config.SETTINGS.git.user_name = initial_user_name
+
+
+@pytest.fixture
+def menu_fixture_01_data() -> list[MenuItemDefinition]:
+    return [
+        MenuItemDefinition(
+            namespace="Userdefined",
+            name="Test",
+            label="Test",
+            protected=False,
+            icon="mdi:cube-outline",
+            section=MenuSection.OBJECT,
+            order_weight=12000,
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name=DEFAULT_MENU,
+            label=DEFAULT_MENU.title(),
+            protected=True,
+            icon="mdi:cube-outline",
+            section=MenuSection.OBJECT,
+            order_weight=10000,
+            children=[
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="Tag",
+                    label="Tags",
+                    kind=InfrahubKind.TAG,
+                    protected=True,
+                    section=MenuSection.OBJECT,
+                    order_weight=10000,
+                )
+            ],
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name="IPAM",
+            label="IPAM",
+            protected=True,
+            section=MenuSection.OBJECT,
+            icon="mdi:ip-network",
+            order_weight=9500,
+            children=[
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="IPPrefix",
+                    label="IP Prefixes",
+                    kind=InfrahubKind.IPPREFIX,
+                    path="/ipam",
+                    protected=True,
+                    section=MenuSection.INTERNAL,
+                    order_weight=1000,
+                ),
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="IPAddress",
+                    label="IP Addresses",
+                    kind=InfrahubKind.IPPREFIX,
+                    path="/ipam/ip_addresses",
+                    protected=True,
+                    section=MenuSection.INTERNAL,
+                    order_weight=2000,
+                ),
+            ],
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name="ProposedChanges",
+            label="Proposed Changes",
+            path="/proposed-changes",
+            protected=True,
+            section=MenuSection.INTERNAL,
+            order_weight=1000,
+        ),
+        MenuItemDefinition(
+            namespace="Builtin",
+            name="Deployment",
+            label="Deployment",
+            icon="mdi:rocket-launch",
+            protected=True,
+            section=MenuSection.INTERNAL,
+            order_weight=3000,
+            children=[
+                MenuItemDefinition(
+                    namespace="Builtin",
+                    name="ArtifactMenu",
+                    label="Artifact",
+                    protected=True,
+                    section=MenuSection.INTERNAL,
+                    order_weight=1000,
+                    children=[
+                        MenuItemDefinition(
+                            namespace="Builtin",
+                            name="Artifact",
+                            label="Artifact",
+                            kind=InfrahubKind.ARTIFACT,
+                            protected=True,
+                            section=MenuSection.INTERNAL,
+                            order_weight=1000,
+                        ),
+                    ],
+                ),
+            ],
+        ),
+    ]
