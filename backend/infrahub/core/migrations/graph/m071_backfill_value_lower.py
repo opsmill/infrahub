@@ -9,11 +9,11 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-class Migration070(ArbitraryMigration):
+class Migration071(ArbitraryMigration):
     """Backfill value_lower on all existing AttributeValueIndexed nodes for case-insensitive search."""
 
-    name: str = "070_backfill_value_lower"
-    minimum_version: int = 69
+    name: str = "071_backfill_value_lower"
+    minimum_version: int = 70
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
