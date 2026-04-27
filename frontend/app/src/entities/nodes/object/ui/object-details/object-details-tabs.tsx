@@ -29,13 +29,8 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
   const isRepository = isOfKind(GENERIC_REPOSITORY_KIND, objectSchema);
 
   return (
-    <ScrollArea
-      scrollX
-      scrollY={false}
-      scrollBarClassName="hidden"
-      className="shrink-0 border-gray-200 border-b"
-    >
-      <Row className="items-end gap-4 px-3" data-testid="object-details-tabs">
+    <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0">
+      <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
         <ObjectDetailsTab isActive={!qspTab} to={getObjectDetailsUrl(objectKind, objectData.id)}>
           Details
         </ObjectDetailsTab>

@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Card, CardHeader } from "@infrahub/ui/card";
 import { ChevronDownIcon, ChevronUpIcon, PenLineIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 import { Link } from "react-router";
@@ -9,7 +10,6 @@ import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltip
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -323,8 +323,8 @@ export function ObjectProfilesGroupsCard({
   };
 
   return (
-    <Card className={classNames("divide-y divide-gray-200 overflow-x-hidden p-0", className)}>
-      <CardWithBorder.Title>{getCardTitle()}</CardWithBorder.Title>
+    <Card className={classNames("divide-y divide-gray-200", className)}>
+      <CardHeader>{getCardTitle()}</CardHeader>
 
       {showProfilesSection && (
         <Section>

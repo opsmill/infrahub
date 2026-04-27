@@ -1,3 +1,6 @@
+import { Card } from "@infrahub/ui";
+
+import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
@@ -25,9 +28,15 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
   }
 
   return (
-    <>
+    <Col className="gap-0 overflow-auto p-1">
       <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
-      <ObjectDetails objectSchema={objectSchema} objectData={objectData} permission={permission} />
-    </>
+      <Card className="overflow-auto to-neutral-50">
+        <ObjectDetails
+          objectSchema={objectSchema}
+          objectData={objectData}
+          permission={permission}
+        />
+      </Card>
+    </Col>
   );
 }

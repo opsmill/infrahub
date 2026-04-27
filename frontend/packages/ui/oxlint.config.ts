@@ -24,9 +24,11 @@ export default defineConfig({
     "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
     "react/jsx-max-depth": "off",
     "react/jsx-props-no-spreading": "off",
+    "react/no-multi-comp": "off",
     "react/only-export-components": "off",
     "react/react-in-jsx-scope": "off",
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",
+    "typescript/no-empty-interface": "off",
   },
 });

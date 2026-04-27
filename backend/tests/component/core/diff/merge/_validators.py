@@ -13,7 +13,7 @@ omitted from the matrix because the scenario discarded that change).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 
@@ -57,16 +57,10 @@ async def _fetch_rel(
     node_id: str,
     relationship_name: str,
     peer_id: str,
-    with_prefetch: bool,
 ):
-    """Return the single RelationshipPeer matching ``peer_id`` for ``relationship_name`` on ``node_id``.
-
-    ``with_prefetch=True`` populates timestamps (``_get_updated_at``/``_by``) but
-    drops peer-valued properties (``source_id``/``owner_id``).
-    ``with_prefetch=False`` populates peer-valued properties but not timestamps.
-    """
+    """Return the single RelationshipPeer matching ``peer_id`` for ``relationship_name`` on ``node_id``."""
     node = await NodeManager.get_one(
-        db=db, branch=branch, id=node_id, include_metadata=_ALL_METADATA, prefetch_relationships=with_prefetch
+        db=db, branch=branch, id=node_id, include_metadata=_ALL_METADATA, prefetch_relationships=True
     )
     peers = await node.get_relationship(relationship_name).get_relationships(db=db)
     matched = [p for p in peers if p.peer_id == peer_id]
@@ -208,7 +202,6 @@ async def validate_added_relationship(
         node_id=ctx.node_id,
         relationship_name=ctx.relationship_name,
         peer_id=ctx.peer_id,
-        with_prefetch=True,
     )
     assert peer._get_created_at() == merge_at
     assert peer._get_created_by() == ctx.branch_user
@@ -274,38 +267,24 @@ async def validate_updated_relationship_property(
     ctx: UpdatedRelationshipPropertyCtx,
     merge_at: Timestamp,
 ) -> None:
-    # NodeManager fetch with prefetch_relationships=True populates relationship
-    # timestamps (_get_updated_at/by) but drops peer-valued properties
-    # (source_id/owner_id). Fetching without prefetch_relationships gives the
-    # peer-valued properties but not timestamps. So validators that need both
-    # do two fetches — one for each.
-    rel_with_timestamps = await _fetch_rel(
+    rel = await _fetch_rel(
         db=db,
         branch=branch,
         node_id=ctx.node_id,
         relationship_name=ctx.relationship_name,
         peer_id=ctx.peer_id,
-        with_prefetch=True,
-    )
-    rel_with_peers = await _fetch_rel(
-        db=db,
-        branch=branch,
-        node_id=ctx.node_id,
-        relationship_name=ctx.relationship_name,
-        peer_id=ctx.peer_id,
-        with_prefetch=False,
     )
     if ctx.property_name == "source":
-        assert rel_with_peers.source_id == ctx.expected_peer_id, (
+        assert rel.source_id == ctx.expected_peer_id, (
             f"{ctx.node_id}.{ctx.relationship_name}[{ctx.peer_id}].source: "
-            f"expected {ctx.expected_peer_id}, got {rel_with_peers.source_id}"
+            f"expected {ctx.expected_peer_id}, got {rel.source_id}"
         )
     elif ctx.property_name == "owner":
-        assert rel_with_peers.owner_id == ctx.expected_peer_id
+        assert rel.owner_id == ctx.expected_peer_id
     elif ctx.property_name == "is_protected":
-        assert rel_with_timestamps.is_protected == ctx.expected_bool
-    assert rel_with_timestamps._get_updated_at() == merge_at
-    assert rel_with_timestamps._get_updated_by() == ctx.branch_user
+        assert rel.is_protected == ctx.expected_bool
+    assert rel._get_updated_at() == merge_at
+    assert rel._get_updated_by() == ctx.branch_user
 
 
 async def validate_cleared_relationship_property(
@@ -320,7 +299,6 @@ async def validate_cleared_relationship_property(
         node_id=ctx.node_id,
         relationship_name=ctx.relationship_name,
         peer_id=ctx.peer_id,
-        with_prefetch=False,
     )
     if ctx.property_name == "source":
         assert rel.source_id is None
@@ -436,7 +414,6 @@ async def validate_rolled_back_deleted_relationship(
         node_id=ctx.node_id,
         relationship_name=ctx.relationship_name,
         peer_id=ctx.peer_id,
-        with_prefetch=True,
     )
     if ctx.original_updated_at is not None:
         assert rel._get_updated_at() == ctx.original_updated_at, (
@@ -482,31 +459,22 @@ async def validate_rolled_back_cleared_attribute_property(
 async def validate_rolled_back_updated_relationship_property(
     db: InfrahubDatabase, branch: Branch, ctx: UpdatedRelationshipPropertyCtx
 ) -> None:
-    if ctx.property_name in ("source", "owner"):
-        rel = await _fetch_rel(
-            db=db,
-            branch=branch,
-            node_id=ctx.node_id,
-            relationship_name=ctx.relationship_name,
-            peer_id=ctx.peer_id,
-            with_prefetch=False,
-        )
-        current = rel.source_id if ctx.property_name == "source" else rel.owner_id
-        assert current == ctx.original_peer_id
-    rel_ts = await _fetch_rel(
+    rel = await _fetch_rel(
         db=db,
         branch=branch,
         node_id=ctx.node_id,
         relationship_name=ctx.relationship_name,
         peer_id=ctx.peer_id,
-        with_prefetch=True,
     )
+    if ctx.property_name in ("source", "owner"):
+        current = rel.source_id if ctx.property_name == "source" else rel.owner_id
+        assert current == ctx.original_peer_id
     if ctx.property_name == "is_protected":
-        assert rel_ts.is_protected == ctx.original_bool
+        assert rel.is_protected == ctx.original_bool
     if ctx.original_updated_at is not None:
-        assert rel_ts._get_updated_at() == ctx.original_updated_at
+        assert rel._get_updated_at() == ctx.original_updated_at
     if ctx.original_updated_by is not None:
-        assert rel_ts._get_updated_by() == ctx.original_updated_by
+        assert rel._get_updated_by() == ctx.original_updated_by
 
 
 async def validate_rolled_back_cleared_relationship_property(
@@ -518,22 +486,13 @@ async def validate_rolled_back_cleared_relationship_property(
         node_id=ctx.node_id,
         relationship_name=ctx.relationship_name,
         peer_id=ctx.peer_id,
-        with_prefetch=False,
     )
     current = rel.source_id if ctx.property_name == "source" else rel.owner_id
     assert current == ctx.original_peer_id
-    rel_ts = await _fetch_rel(
-        db=db,
-        branch=branch,
-        node_id=ctx.node_id,
-        relationship_name=ctx.relationship_name,
-        peer_id=ctx.peer_id,
-        with_prefetch=True,
-    )
     if ctx.original_updated_at is not None:
-        assert rel_ts._get_updated_at() == ctx.original_updated_at
+        assert rel._get_updated_at() == ctx.original_updated_at
     if ctx.original_updated_by is not None:
-        assert rel_ts._get_updated_by() == ctx.original_updated_by
+        assert rel._get_updated_by() == ctx.original_updated_by
 
 
 async def validate_all_applied_with_conflict_to_base(  # noqa: C901
@@ -543,7 +502,7 @@ async def validate_all_applied_with_conflict_to_base(  # noqa: C901
     base_conflicts: BaseConflicts,
     merge_at: Timestamp,
     *,
-    added_node_state: str = "applied",
+    added_node_state: Literal["applied", "missing"] = "applied",
 ) -> None:
     """Validate post-merge state when every conflict was resolved toward the base branch.
 
@@ -631,26 +590,17 @@ async def validate_all_applied_with_conflict_to_base(  # noqa: C901
         )
         if base_val is None:
             continue
+        rel = await _fetch_rel(
+            db=db,
+            branch=branch,
+            node_id=rp.node_id,
+            relationship_name=rp.relationship_name,
+            peer_id=rp.peer_id,
+        )
         if rp.property_name in ("source", "owner"):
-            rel = await _fetch_rel(
-                db=db,
-                branch=branch,
-                node_id=rp.node_id,
-                relationship_name=rp.relationship_name,
-                peer_id=rp.peer_id,
-                with_prefetch=False,
-            )
             current = rel.source_id if rp.property_name == "source" else rel.owner_id
             assert current == base_val
         else:
-            rel = await _fetch_rel(
-                db=db,
-                branch=branch,
-                node_id=rp.node_id,
-                relationship_name=rp.relationship_name,
-                peer_id=rp.peer_id,
-                with_prefetch=True,
-            )
             assert rel.is_protected == base_val
     for crp in contexts.cleared_relationship_properties:
         base_val = base_conflicts.cleared_relationship_property_base.get(
@@ -664,7 +614,6 @@ async def validate_all_applied_with_conflict_to_base(  # noqa: C901
             node_id=crp.node_id,
             relationship_name=crp.relationship_name,
             peer_id=crp.peer_id,
-            with_prefetch=False,
         )
         current = rel.source_id if crp.property_name == "source" else rel.owner_id
         assert current == base_val

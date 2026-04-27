@@ -1,7 +1,7 @@
+import { Card, CardContent, CardHeader } from "@infrahub/ui/card";
 import type React from "react";
 import { Link, type LinkProps } from "react-router";
 
-import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 interface HomeCardProps {
@@ -9,15 +9,11 @@ interface HomeCardProps {
   children?: React.ReactNode;
 }
 
-const HomeCardRoot = ({ className, ...props }: HomeCardProps) => {
-  return <Card className={classNames("flex flex-col p-0", className)} {...props} />;
-};
-
 const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
   return (
-    <header
+    <CardHeader
       className={classNames(
-        "flex items-center justify-between rounded-t border-gray-200 border-b p-3 font-bold",
+        "flex items-center justify-between from-white font-semibold text-base",
         className
       )}
       {...props}
@@ -29,7 +25,7 @@ const HomeCardLink = ({ className, ...props }: LinkProps) => {
   return (
     <Link
       className={classNames(
-        "flex items-center font-normal text-gray-500 text-sm hover:underline",
+        "flex items-center font-normal text-neutral-500 text-sm hover:underline",
         className
       )}
       {...props}
@@ -37,12 +33,8 @@ const HomeCardLink = ({ className, ...props }: LinkProps) => {
   );
 };
 
-const HomeCardContent = ({ className, ...props }: HomeCardProps) => {
-  return <div className={classNames("p-3", className)} {...props} />;
-};
-
-export const HomeCard = Object.assign(HomeCardRoot, {
+export const HomeCard = Object.assign(Card, {
   Title: HomeCardTitle,
   Link: HomeCardLink,
-  Content: HomeCardContent,
+  Content: CardContent,
 });

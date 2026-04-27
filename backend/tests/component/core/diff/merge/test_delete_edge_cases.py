@@ -1,6 +1,5 @@
 """Edge cases: node deletes combined with branch-side additions."""
 
-
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.diff.model.path import ConflictSelection

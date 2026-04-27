@@ -8,7 +8,6 @@ validates the resulting metadata (including the V1/V2 relationship tracking
 that survives the resolution).
 """
 
-
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, MetadataOptions
 from infrahub.core.diff.repository.repository import DiffRepository

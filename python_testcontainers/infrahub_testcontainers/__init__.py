@@ -1,6 +1,3 @@
-import importlib.metadata
+from ._version import __version__
 
-try:
-    __version__ = importlib.metadata.version("infrahub-testcontainers")
-except importlib.metadata.PackageNotFoundError:
-    __version__ = importlib.metadata.version("infrahub-server")
+__all__ = ["__version__"]

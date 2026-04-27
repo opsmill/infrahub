@@ -6,6 +6,9 @@ ci_config: &ci_config
 github_workflows: &github_workflows
   - ".github/workflows/*.yml"
 
+version_upgrade_workflow:
+  - ".github/workflows/version-upgrade.yml"
+
 development_files: &development_files
   - "development/**"
   - "tasks/**"
@@ -111,6 +114,14 @@ openapi_schema_all:
 
 graphql_schema_all:
   - *graphql_schema_files
+
+observability_standalone_all:
+  - "development/docker-compose-observability.yml"
+  - "development/convert_compose_standalone.py"
+  - "development/alloy/**"
+  - "development/grafana/**"
+  - "development/loki/**"
+  - "development/tempo/**"
 
 e2e_all:
   - *backend_files

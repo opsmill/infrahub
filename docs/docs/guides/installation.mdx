@@ -423,6 +423,55 @@ sudo docker compose -p infrahub down -v
 </TabItem>
 </Tabs>
 
+#### Enable observability
+
+To deploy Infrahub with a built-in observability stack (Grafana, Prometheus, Loki, Alloy), add the `?observability=true` query parameter to the URL. This can be combined with existing parameters like `size`:
+
+<Tabs groupId="os" queryString>
+<TabItem value="macOS" default>
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+sudo docker compose -p infrahub up -d
+```
+
+</TabItem>
+</Tabs>
+
+Combined with a sizing preset:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
+```
+
+Once running, Grafana is accessible at [http://localhost:3500](http://localhost:3500) with default credentials `admin` / `admin`.
+
+For instructions on upgrading an existing observability stack, see the [Upgrade guide](./upgrade.mdx#upgrading-the-observability-stack).
+
+:::tip Enable request tracing
+
+Infrahub can export OpenTelemetry traces so you can follow a single request as it moves across the API server, task workers, and the database. Traces are sent to the bundled Tempo instance and surfaced in Grafana under the Tempo data source.
+
+To enable it, add the following to a `.env` file alongside the compose file:
+
+```bash
+INFRAHUB_TRACE_ENABLE=true
+INFRAHUB_TRACE_EXPORTER_TYPE=otlp
+INFRAHUB_TRACE_EXPORTER_PROTOCOL=grpc
+INFRAHUB_TRACE_EXPORTER_ENDPOINT=infrahub-tempo:4317
+INFRAHUB_TRACE_INSECURE=true
+```
+
+:::
+
 </TabItem>
 <TabItem value="Kubernetes with Helm">
 

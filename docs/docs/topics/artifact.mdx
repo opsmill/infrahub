@@ -75,3 +75,9 @@ nodes:
 :::warning Deletion behavior
 When a `CoreArtifactTarget` node is deleted, all artifacts associated with it are automatically deleted as well.
 :::
+
+## Composing content across artifacts
+
+A Transformation can reference and include the rendered content of other artifacts or file objects using built-in Jinja2 filters or the Python SDK object store API. This enables modular configuration pipelines where each artifact generates one section, and a composite artifact assembles the final result.
+
+For step-by-step instructions, see [Composing artifact content](../guides/artifact-content-composition.mdx).

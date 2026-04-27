@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Card, CardContent } from "@infrahub/ui/card";
 import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -7,7 +8,6 @@ import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Table } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
-import { Card } from "@/shared/components/ui/card";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { QSP } from "@/shared/config/qsp";
 import usePagination from "@/shared/hooks/usePagination";
@@ -59,22 +59,24 @@ const ResourceAllocationDetailsPage = () => {
     },
   ];
   return (
-    <Card className="sticky right-0 ml-1 flex max-h-full min-w-min max-w-fit flex-col overflow-hidden">
-      <div className="flex items-center gap-1 bg-white pb-2">
-        <h3 className="font-semibold">Allocated resources</h3>
-        <Badge>{totalOfResourcesAllocated}</Badge>
+    <Card className="sticky right-0 ml-1 max-h-full min-w-min max-w-fit">
+      <CardContent>
+        <div className="flex items-center gap-1 bg-white pb-2">
+          <h3 className="font-semibold">Allocated resources</h3>
+          <Badge>{totalOfResourcesAllocated}</Badge>
 
-        <Link to={constructPath(`/resource-manager/${resourcePoolId}`)} className="ml-auto">
-          <Button size="icon" variant="ghost">
-            <Icon icon="mdi:close" className="text-xl" />
-          </Button>
-        </Link>
-      </div>
+          <Link to={constructPath(`/resource-manager/${resourcePoolId}`)} className="ml-auto">
+            <Button size="icon" variant="ghost">
+              <Icon icon="mdi:close" className="text-xl" />
+            </Button>
+          </Link>
+        </div>
 
-      <div className="overflow-y-auto">
-        <Table columns={columns} rows={resourcesAllocated} />
-        <Pagination count={totalOfResourcesAllocated} className="pb-0" />
-      </div>
+        <div className="overflow-y-auto">
+          <Table columns={columns} rows={resourcesAllocated} />
+          <Pagination count={totalOfResourcesAllocated} className="pb-0" />
+        </div>
+      </CardContent>
     </Card>
   );
 };
@@ -84,27 +86,29 @@ const ResourceAllocationPageSkeleton = () => {
 
   return (
     <Card className="sticky right-0 ml-1 w-full min-w-[450px] max-w-[606px]">
-      <div className="flex items-center gap-1 bg-white pb-2">
-        <h3 className="font-semibold">Allocated resources</h3>
-        <Badge>...</Badge>
+      <CardContent>
+        <div className="flex items-center gap-1 bg-white pb-2">
+          <h3 className="font-semibold">Allocated resources</h3>
+          <Badge>...</Badge>
 
-        <Link to={constructPath(`/resource-manager/${resourcePoolId}`)} className="ml-auto">
-          <Button size="icon" variant="ghost">
-            <Icon icon="mdi:close" className="text-xl" />
-          </Button>
-        </Link>
-      </div>
+          <Link to={constructPath(`/resource-manager/${resourcePoolId}`)} className="ml-auto">
+            <Button size="icon" variant="ghost">
+              <Icon icon="mdi:close" className="text-xl" />
+            </Button>
+          </Link>
+        </div>
 
-      <div className="space-y-1">
-        <Skeleton className="h-7" />
-        <Skeleton className="h-7" />
-        <Skeleton className="h-7" />
-        <Skeleton className="h-7" />
-        <Skeleton className="h-7" />
-        <Skeleton className="h-7" />
-        <Skeleton className="h-7" />
-        <Skeleton className="h-7" />
-      </div>
+        <div className="space-y-1">
+          <Skeleton className="h-7" />
+          <Skeleton className="h-7" />
+          <Skeleton className="h-7" />
+          <Skeleton className="h-7" />
+          <Skeleton className="h-7" />
+          <Skeleton className="h-7" />
+          <Skeleton className="h-7" />
+          <Skeleton className="h-7" />
+        </div>
+      </CardContent>
     </Card>
   );
 };

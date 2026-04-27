@@ -1,9 +1,8 @@
+import { Card, CardHeader } from "@infrahub/ui/card";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
 
 import { Button } from "@/shared/components/ui/button";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
-import { classNames } from "@/shared/utils/common";
 
 import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
 import { hasExtraFields } from "@/entities/nodes/object/utils/has-extra-fields";
@@ -30,8 +29,8 @@ export function ObjectDetailsCard({
   const schemaHasExtraFields = hasExtraFields(objectSchema);
 
   return (
-    <Card className={classNames("overflow-x-hidden p-0", className)} data-testid="object-details">
-      <CardWithBorder.Title className="flex justify-between border-gray-200 border-b">
+    <Card className={className} data-testid="object-details">
+      <CardHeader className="flex justify-between">
         Details
         {schemaHasExtraFields && (
           <Button
@@ -44,7 +43,7 @@ export function ObjectDetailsCard({
             Extra
           </Button>
         )}
-      </CardWithBorder.Title>
+      </CardHeader>
 
       <ObjectDataDisplay
         objectSchema={objectSchema}

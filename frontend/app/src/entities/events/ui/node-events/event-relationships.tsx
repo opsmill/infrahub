@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Card, CardContent } from "@infrahub/ui/card";
 import React from "react";
 
 import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/types";
-import { Card } from "@/shared/components/ui/card";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
@@ -17,20 +17,22 @@ export const EventRelationships = ({ relationships }: Pick<NodeMutatedEvent, "re
   if (relationships.length === 0) return null;
 
   return (
-    <Card className="flex flex-col gap-1.5 bg-zinc-50 text-xs">
-      {relationships.map(({ action, name, peer }) => {
-        return (
-          <React.Fragment key={`${peer.id}`}>
-            <div className="flex items-center gap-2 overflow-hidden">
-              <div className="truncate text-left text-gray-600">{name}</div>
+    <Card className="bg-zinc-50">
+      <CardContent className="gap-1.5 text-xs">
+        {relationships.map(({ action, name, peer }) => {
+          return (
+            <React.Fragment key={`${peer.id}`}>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <div className="truncate text-left text-gray-600">{name}</div>
 
-              {ActionMapping[action] ?? "-"}
+                {ActionMapping[action] ?? "-"}
 
-              <NodeLabel id={peer.id} kind={peer.kind} />
-            </div>
-          </React.Fragment>
-        );
-      })}
+                <NodeLabel id={peer.id} kind={peer.kind} />
+              </div>
+            </React.Fragment>
+          );
+        })}
+      </CardContent>
     </Card>
   );
 };

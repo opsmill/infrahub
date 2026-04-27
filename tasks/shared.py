@@ -204,7 +204,7 @@ def get_compose_cmd(namespace: Namespace) -> str:
             os.environ["INFRAHUB_TRACE_ENABLE"] = "True"
             os.environ["INFRAHUB_TRACE_INSECURE"] = "True"
             os.environ["INFRAHUB_TRACE_EXPORTER_TYPE"] = "otlp"
-            os.environ["INFRAHUB_TRACE_EXPORTER_ENDPOINT"] = "http://tempo:4317"
+            os.environ["INFRAHUB_TRACE_EXPORTER_ENDPOINT"] = "http://infrahub-tempo:4317"
 
     if dumb_terminal():
         options.append("--ansi never")
