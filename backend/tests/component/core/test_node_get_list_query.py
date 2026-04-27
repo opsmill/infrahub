@@ -14,8 +14,9 @@ from infrahub.core.node import Node
 from infrahub.core.order import NodeMetaOrder, OrderModel
 from infrahub.core.query.node import NodeGetListQuery
 from infrahub.core.registry import registry
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.relationship_schema import RelationshipSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.profiles.node_applier import NodeProfilesApplier
@@ -23,7 +24,12 @@ from tests.helpers.schema import WIDGET
 
 
 async def test_query_NodeGetListQuery(
-    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     ids = [person_john_main.id, person_jim_main.id, person_albert_main.id, person_alfred_main.id]
@@ -33,7 +39,12 @@ async def test_query_NodeGetListQuery(
 
 
 async def test_query_NodeGetListQuery_filter_id(
-    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=person_schema, filters={"id": person_john_main.id})
@@ -42,7 +53,12 @@ async def test_query_NodeGetListQuery_filter_id(
 
 
 async def test_query_NodeGetListQuery_filter_ids(
-    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    branch: Branch,
 ) -> None:
     node_to_delete = await NodeManager.get_one(id=person_jim_main.id, db=db, branch=branch)
     await node_to_delete.delete(db=db)
@@ -60,7 +76,7 @@ async def test_query_NodeGetListQuery_filter_ids(
 
 
 async def test_query_NodeGetListQuery_filter_attribute_isnull(
-    db: InfrahubDatabase, person_albert_main, person_alfred_main, person_jane_main, branch: Branch
+    db: InfrahubDatabase, person_albert_main: Node, person_alfred_main: Node, person_jane_main: Node, branch: Branch
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch, duplicate=False)
     person_branch = await NodeManager.get_one(db=db, branch=branch, id=person_albert_main.id)
@@ -109,7 +125,12 @@ async def test_query_NodeGetListQuery_filter_attribute_isnull(
 
 
 async def test_query_NodeGetListQuery_filter_relationship_isnull_one(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, person_jane_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    person_jane_main: Node,
+    branch: Branch,
 ) -> None:
     car_schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
     owner_rel = car_schema.get_relationship(name="owner")
@@ -161,12 +182,12 @@ async def test_query_NodeGetListQuery_filter_relationship_isnull_one(
 
 async def test_query_NodeGetListQuery_filter_relationship_isnull_many(
     db: InfrahubDatabase,
-    car_accord_main,
-    car_camry_main,
-    person_albert_main,
-    person_alfred_main,
-    person_jane_main,
-    person_john_main,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    person_jane_main: Node,
+    person_john_main: Node,
     branch: Branch,
 ) -> None:
     person_schema = registry.schema.get(name="TestPerson", branch=branch)
@@ -195,7 +216,7 @@ async def test_query_NodeGetListQuery_filter_relationship_isnull_many(
 
 
 async def test_query_NodeGetListQuery_filter_relationship_attribute_isnull_not_allowed(
-    db: InfrahubDatabase, car_person_schema, default_branch
+    db: InfrahubDatabase, car_person_schema: SchemaBranch, default_branch: Branch
 ) -> None:
     car_schema = registry.schema.get(name="TestCar", branch=default_branch, duplicate=False)
 
@@ -209,7 +230,12 @@ async def test_query_NodeGetListQuery_filter_relationship_attribute_isnull_not_a
 
 
 async def test_query_NodeGetListQuery_filter_height(
-    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestPerson", branch=branch)
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema, filters={"height__value": 160})
@@ -247,7 +273,12 @@ async def test_query_NodeGetListQuery_filter_owner(
 
 
 async def test_query_NodeGetListQuery_filter_boolean(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch)
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema, filters={"is_electric__value": False})
@@ -256,7 +287,12 @@ async def test_query_NodeGetListQuery_filter_boolean(
 
 
 async def test_query_NodeGetListQuery_deleted_node(
-    db: InfrahubDatabase, car_accord_main, car_camry_main: Node, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     node_to_delete = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
     await node_to_delete.delete(db=db)
@@ -270,7 +306,12 @@ async def test_query_NodeGetListQuery_deleted_node(
 
 
 async def test_query_NodeGetListQuery_deleted_node_no_filter(
-    db: InfrahubDatabase, car_accord_main, car_camry_main: Node, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     node_to_delete = await NodeManager.get_one(id=car_camry_main.id, db=db, branch=branch)
     await node_to_delete.delete(db=db)
@@ -284,7 +325,12 @@ async def test_query_NodeGetListQuery_deleted_node_no_filter(
 
 
 async def test_query_NodeGetListQuery_filter_relationship(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch)
     query = await NodeGetListQuery.init(db=db, branch=branch, schema=schema, filters={"owner__name__value": "John"})
@@ -294,11 +340,11 @@ async def test_query_NodeGetListQuery_filter_relationship(
 
 async def test_query_NodeGetListQuery_filter_relationship_ids(
     db: InfrahubDatabase,
-    person_john_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_yaris_main,
+    person_john_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch)
@@ -311,12 +357,12 @@ async def test_query_NodeGetListQuery_filter_relationship_ids(
 
 async def test_query_NodeGetListQuery_filter_relationship_ids_with_update(
     db: InfrahubDatabase,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_yaris_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch)
@@ -333,7 +379,12 @@ async def test_query_NodeGetListQuery_filter_relationship_ids_with_update(
 
 
 async def test_query_NodeGetListQuery_filter_and_sort(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch)
     schema.order_by = ["owner__name__value", "is_electric__value"]
@@ -349,7 +400,12 @@ async def test_query_NodeGetListQuery_filter_and_sort(
 
 
 async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     node = await NodeManager.get_one(id=car_volt_main.id, db=db, branch=branch)
     node.is_electric.value = False
@@ -368,7 +424,9 @@ async def test_query_NodeGetListQuery_filter_and_sort_with_revision(
     assert len(query.get_node_ids()) == 2
 
 
-async def test_query_NodeGetListQuery_with_generics(db: InfrahubDatabase, group_group1_main, branch: Branch) -> None:
+async def test_query_NodeGetListQuery_with_generics(
+    db: InfrahubDatabase, group_group1_main: Node, branch: Branch
+) -> None:
     schema = registry.schema.get(name=InfrahubKind.GENERICGROUP, branch=branch)
     query = await NodeGetListQuery.init(
         db=db,
@@ -380,7 +438,12 @@ async def test_query_NodeGetListQuery_with_generics(db: InfrahubDatabase, group_
 
 
 async def test_query_NodeGetListQuery_order_by(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch)
     schema.order_by = ["owner__name__value", "name__value"]
@@ -395,7 +458,12 @@ async def test_query_NodeGetListQuery_order_by(
 
 
 async def test_query_NodeGetListQuery_order_by_disabled(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch)
     schema.order_by = ["owner__name__value", "name__value"]
@@ -411,7 +479,12 @@ async def test_query_NodeGetListQuery_order_by_disabled(
 
 
 async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(
-    db: InfrahubDatabase, car_accord_main, car_camry_main, car_volt_main, car_yaris_main, branch: Branch
+    db: InfrahubDatabase,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
+    branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
     schema.relationships.append(
@@ -450,12 +523,12 @@ async def test_query_NodeGetListQuery_order_by_optional_relationship_nulls(
 
 async def test_query_NodeGetListQuery_order_by_relationship_value_with_update(
     db: InfrahubDatabase,
-    person_john_main,
-    person_jane_main,
-    car_accord_main,
-    car_camry_main,
-    car_volt_main,
-    car_yaris_main,
+    person_john_main: Node,
+    person_jane_main: Node,
+    car_accord_main: Node,
+    car_camry_main: Node,
+    car_volt_main: Node,
+    car_yaris_main: Node,
     branch: Branch,
 ) -> None:
     schema = registry.schema.get(name="TestCar", branch=branch, duplicate=False)
@@ -505,7 +578,12 @@ async def test_query_NodeGetListQuery_order_by_relationship_value_with_update(
 
 
 async def test_query_NodeGetListQuery_filter_with_profiles(
-    db: InfrahubDatabase, person_john_main, person_jim_main, person_albert_main, person_alfred_main, branch: Branch
+    db: InfrahubDatabase,
+    person_john_main: Node,
+    person_jim_main: Node,
+    person_albert_main: Node,
+    person_alfred_main: Node,
+    branch: Branch,
 ) -> None:
     profile_schema = registry.schema.get("ProfileTestPerson", branch=branch, duplicate=False)
     person_profile = await Node.init(db=db, schema=profile_schema, branch=branch)
@@ -550,7 +628,7 @@ async def test_query_NodeGetListQuery_filter_with_profiles(
 
 
 async def test_query_NodeGetListQuery_filter_with_generic_profiles(
-    db: InfrahubDatabase, animal_person_schema, default_branch: Branch
+    db: InfrahubDatabase, animal_person_schema: SchemaBranch, default_branch: Branch
 ) -> None:
     animal_profile_schema = registry.schema.get("ProfileTestAnimal", duplicate=False)
     animal_profile = await Node.init(db=db, schema=animal_profile_schema)
@@ -614,7 +692,7 @@ async def test_query_NodeGetListQuery_filter_with_generic_profiles(
 
 
 async def test_query_NodeGetListQuery_order_with_profiles(
-    db: InfrahubDatabase, car_camry_main, car_accord_main, car_volt_main, branch: Branch
+    db: InfrahubDatabase, car_camry_main: Node, car_accord_main: Node, car_volt_main: Node, branch: Branch
 ) -> None:
     profile_schema = registry.schema.get("ProfileTestCar", branch=branch, duplicate=False)
     car_profile_black = await Node.init(db=db, schema=profile_schema, branch=branch)
@@ -651,7 +729,7 @@ async def test_query_NodeGetListQuery_order_with_profiles(
 
 
 async def test_query_NodeGetListQuery_pagination_order_by(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None
 ) -> None:
     """Validate that pagination works for nodes which have an order_by clause on non unique attributes."""
     schema_root = SchemaRoot(nodes=[WIDGET])
@@ -680,7 +758,7 @@ async def test_query_NodeGetListQuery_pagination_order_by(
 
 
 async def test_query_NodeGetListQuery_metadata_order_pagination(
-    db: InfrahubDatabase, default_branch: Branch, node_group_schema
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None
 ) -> None:
     """Test that pagination works correctly with metadata ordering on default and user branches."""
     schema_root = SchemaRoot(nodes=[WIDGET])
@@ -837,7 +915,7 @@ async def test_query_NodeGetListQuery_metadata_order_pagination(
 
 
 async def test_query_NodeGetListQuery_metadata_filtering(
-    db: InfrahubDatabase, criticality_schema, branch: Branch
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
 ) -> None:
     """Test all metadata filtering scenarios without ordering."""
     schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
@@ -945,7 +1023,7 @@ async def test_query_NodeGetListQuery_metadata_filtering(
 
 
 async def test_query_NodeGetListQuery_metadata_ordering(
-    db: InfrahubDatabase, criticality_schema, branch: Branch
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
 ) -> None:
     """Test metadata ordering without filtering."""
     schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)
@@ -1014,7 +1092,7 @@ async def test_query_NodeGetListQuery_metadata_ordering(
 
 
 async def test_query_NodeGetListQuery_metadata_filter_and_order(
-    db: InfrahubDatabase, criticality_schema, branch: Branch
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
 ) -> None:
     """Test combined filtering and ordering scenarios."""
     schema = registry.schema.get(name="TestCriticality", branch=branch, duplicate=False)

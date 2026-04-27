@@ -1,13 +1,13 @@
-import { forwardRef, type InputHTMLAttributes } from "react";
+import type React from "react";
 
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
-interface CheckboxProps extends InputHTMLAttributes<HTMLInputElement> {}
+interface CheckboxProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  ref?: React.Ref<HTMLInputElement>;
+}
 
-export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref) => {
-  const { className, onChange, disabled, ...propsToPass } = props;
-
+export const Checkbox = ({ className, onChange, disabled, ref, ...propsToPass }: CheckboxProps) => {
   return (
     <input
       ref={ref}
@@ -24,4 +24,4 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>((props, ref)
       {...propsToPass}
     />
   );
-});
+};

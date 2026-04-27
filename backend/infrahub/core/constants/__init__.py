@@ -89,6 +89,9 @@ class EventType(InfrahubStringEnum):
     VALIDATOR_PASSED = f"{EVENT_NAMESPACE}.validator.passed"
     VALIDATOR_FAILED = f"{EVENT_NAMESPACE}.validator.failed"
 
+    ACCOUNT_LOGGED_IN = f"{EVENT_NAMESPACE}.account.logged_in"
+    ACCOUNT_LOGGED_OUT = f"{EVENT_NAMESPACE}.account.logged_out"
+
 
 class PermissionLevel(Flag):
     READ = 1
@@ -108,6 +111,7 @@ class GlobalPermissions(InfrahubStringEnum):
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
     OVERRIDE_CONTEXT = "override_context"
+    READ_TELEMETRY = "read_telemetry"
     UPDATE_OBJECT_HFID_DISPLAY_LABEL = "update_object_hfid_display_label"
 
 
@@ -282,6 +286,11 @@ class PathType(InfrahubStringEnum):
 class HashableModelState(InfrahubStringEnum):
     PRESENT = "present"
     ABSENT = "absent"
+
+
+class SchemaAttributeDisplay(InfrahubStringEnum):
+    DEFAULT = "default"
+    EXTRA = "extra"
 
 
 class RelationshipCardinality(InfrahubStringEnum):

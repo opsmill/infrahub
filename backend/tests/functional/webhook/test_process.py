@@ -38,6 +38,35 @@ class TestWebhookProcess(TestInfrahubApp):
             "event_type": "infrahub.branch.created",
             "validate_certificates": False,
             "shared_key": "1234567890",
+            "custom_headers": [],
+            "webhook_type": "StandardWebhook",
+        }
+
+    async def test_convert_node_to_webhook_with_headers(
+        self,
+        db: InfrahubDatabase,
+        webhook_with_headers: Node,
+        client: InfrahubClient,
+    ) -> None:
+        webhook = await client.get(
+            kind=InfrahubKind.STANDARDWEBHOOK, id=webhook_with_headers.id, prefetch_relationships=True
+        )
+        converted_webhook = await convert_node_to_webhook(webhook_node=webhook, client=client)
+
+        dumped = converted_webhook.model_dump()
+        assert sorted(dumped.pop("custom_headers"), key=lambda h: h.get("key", "")) == sorted(
+            [
+                {"key": "X-Custom-Token", "value": "secret123", "kind": "static"},
+                {"key": "X-Env-Key", "value": "MY_ENV_VAR", "kind": "environment"},
+            ],
+            key=lambda h: h.get("key", ""),
+        )
+        assert dumped == {
+            "name": "WebhookWithHeaders",
+            "url": "https://url.mock",
+            "event_type": "infrahub.branch.created",
+            "validate_certificates": False,
+            "shared_key": "1234567890",
             "webhook_type": "StandardWebhook",
         }
 
@@ -63,6 +92,7 @@ class TestWebhookProcess(TestInfrahubApp):
             "transform_timeout": 5,
             "url": "https://url.mock",
             "validate_certificates": False,
+            "custom_headers": [],
             "webhook_type": "TransformWebhook",
         }
 
@@ -86,7 +116,7 @@ class TestWebhookProcess(TestInfrahubApp):
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",
-                webhook_kind="CoreStandardWebhook",
+                webhook_kind=InfrahubKind.STANDARDWEBHOOK,
                 event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
                 event_type="infrahub.branch.created",
                 event_occured_at="2025-02-28T08:37:09.969Z",
@@ -114,7 +144,7 @@ class TestWebhookProcess(TestInfrahubApp):
             await webhook_process(
                 webhook_id=webhook1.id,
                 webhook_name="Webhook1",
-                webhook_kind="CoreStandardWebhook",
+                webhook_kind=InfrahubKind.STANDARDWEBHOOK,
                 branch_name="main",
                 event_id="ce3b7013-4abb-4945-89de-1f56da4ff636",
                 event_type="infrahub.branch.created",

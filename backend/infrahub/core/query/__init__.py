@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -634,7 +635,7 @@ class Query:
         for idx, result in enumerate(self.results):
             score_idx[idx] = result.branch_score
 
-        for idx, _ in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
+        for idx, _ in sorted(score_idx.items(), key=operator.itemgetter(1), reverse=True):
             yield self.results[idx]
 
     def get_results_group_by(self, *args: Any) -> Generator[QueryResult, None, None]:
@@ -665,9 +666,7 @@ class Query:
             attrs_info[tuple(identifier)].append(info)
 
         for values in attrs_info.values():
-            attr_info = sorted(
-                values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]), reverse=True
-            )[0]
+            attr_info = max(values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]))
             if attr_info["deleted"]:
                 continue
 

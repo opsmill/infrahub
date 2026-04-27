@@ -183,7 +183,17 @@ export const router = createBrowserRouter([
               },
               {
                 path: "/schema",
-                lazy: () => import("@/pages/schema"),
+                lazy: () => import("@/pages/schema/layout"),
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/schema/list"),
+                  },
+                  {
+                    path: "graph",
+                    lazy: () => import("@/pages/schema/graph"),
+                  },
+                ],
               },
               {
                 path: "ipam",
@@ -247,27 +257,27 @@ export const router = createBrowserRouter([
               },
               {
                 path: "role-management",
-                lazy: () => import("@/pages/role-management"),
+                lazy: () => import("@/pages/role-management/layout"),
                 children: [
                   {
                     index: true,
-                    lazy: () => import("@/entities/role-manager/ui/accounts"),
+                    lazy: () => import("@/pages/role-management/accounts"),
                   },
                   {
                     path: "groups",
-                    lazy: () => import("@/entities/role-manager/ui/groups"),
+                    lazy: () => import("@/pages/role-management/groups"),
                   },
                   {
                     path: "roles",
-                    lazy: () => import("@/entities/role-manager/ui/roles"),
+                    lazy: () => import("@/pages/role-management/roles"),
                   },
                   {
                     path: "global-permissions",
-                    lazy: () => import("@/entities/role-manager/ui/global-permissions"),
+                    lazy: () => import("@/pages/role-management/global-permissions"),
                   },
                   {
                     path: "object-permissions",
-                    lazy: () => import("@/entities/role-manager/ui/object-permissions"),
+                    lazy: () => import("@/pages/role-management/object-permissions"),
                   },
                 ],
               },

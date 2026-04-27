@@ -8,7 +8,7 @@ from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
 
-from ..attribute import BaseAttribute, ListAttributeOptional, StringOptional
+from ..attribute import BaseAttribute, IndexedListAttribute, StringOptional
 
 if TYPE_CHECKING:
     from infrahub.core.node import Node
@@ -46,7 +46,7 @@ class NodePropertyAttribute[T]:
 
         self.analyze_variables()
 
-    def needs_update(self, fields: list[str] | None) -> bool:
+    def needs_update(self, fields: set[str] | None) -> bool:
         """Tell if this node property attribute must be recomputed given a list of updated fields of a node."""
         if self._manually_assigned or not fields:
             return True
@@ -214,13 +214,14 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
         for path in self.template:
             path_value = await node.get_path_value(db=db, path=path)
             # Use .value for enum to be consistent with display label
-            value.append(path_value if not isinstance(path_value, Enum) else path_value.value)
+            raw_value = path_value.value if isinstance(path_value, Enum) else path_value
+            value.append(str(raw_value))
 
         self.set_value(value=value)
 
-    def get_node_attribute(self, node: Node, at: Timestamp) -> ListAttributeOptional:
+    def get_node_attribute(self, node: Node, at: Timestamp) -> IndexedListAttribute:
         """Return a node attribute that can be stored in the database for this HFID and node."""
-        return ListAttributeOptional(
+        return IndexedListAttribute(
             name="human_friendly_id",
             schema=self.schema,
             branch=node.get_branch(),

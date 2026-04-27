@@ -18,6 +18,7 @@ export interface BulkMutateGroupsProps extends Omit<ProcessingGroupsPanelProps, 
 export function BulkMutateGroups({
   mutationFn,
   onSuccess,
+  onClose,
   groupsQueryFilter,
 }: BulkMutateGroupsProps) {
   const [selectedGroups, setSelectedGroups] = React.useState<RelationshipNode[]>([]);
@@ -29,6 +30,7 @@ export function BulkMutateGroups({
         selectedGroups={selectedGroups}
         mutationFn={mutationFn}
         onSuccess={onSuccess}
+        onClose={onClose}
       />
     );
   }
@@ -42,7 +44,7 @@ export function BulkMutateGroups({
           setSelectedGroups((prev) => [...prev, group]);
         }}
         filterItem={(node) => !selectedGroups.some((v) => v.id === node.id)}
-        className="max-h-[12rem] max-w-xs"
+        className="max-h-48 max-w-xs"
         data-testid="group-selector"
         filterQuery={groupsQueryFilter}
       />

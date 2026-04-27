@@ -42,7 +42,10 @@
   "updateContentCommand": "./.devcontainer/updateContentCommand.sh",
   "postAttachCommand": "./.devcontainer/postAttachCommand.sh",
   "features": {
-    "docker-in-docker": "latest",
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": false
+    },
     "github-cli": "latest"
   },
   "hostRequirements": {

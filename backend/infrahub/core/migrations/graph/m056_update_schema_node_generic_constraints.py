@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema.definitions.internal import (
     generic_schema as internal_generic_schema,
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
-console = get_migration_console()
 
 
 async def update_schema_on_branch(db: InfrahubDatabase, branch: Branch, at: Timestamp, user_id: str) -> None:
@@ -34,46 +33,33 @@ async def update_schema_on_branch(db: InfrahubDatabase, branch: Branch, at: Time
     manager.register_schema(schema=internal_schema_root)
     schema_branch = await manager.load_schema_from_db(db=db, branch=branch)
 
-    node_kind = "SchemaNode"
-    node_schema = schema_branch.get_node(name=node_kind, duplicate=False)
-    node_schema_node = await manager.get_one(db=db, branch=branch, id=node_schema.get_id(), prefetch_relationships=True)
-    current_node_schema = await manager.convert_node_schema_to_schema(db=db, schema_node=node_schema_node)
-
-    generic_kind = "SchemaGeneric"
-    generic_schema = schema_branch.get_node(name=generic_kind, duplicate=False)
-    generic_schema_node = await manager.get_one(
-        db=db, branch=branch, id=generic_schema.get_id(), prefetch_relationships=True
-    )
-    current_generic_schema = await manager.convert_node_schema_to_schema(db=db, schema_node=generic_schema_node)
-
-    for current_schema, internal_schema_spec in [
-        (current_node_schema, internal_node_schema),
-        (current_generic_schema, internal_generic_schema),
+    for kind, internal_schema_spec in [
+        ("SchemaNode", internal_node_schema),
+        ("SchemaGeneric", internal_generic_schema),
     ]:
-        # Update SchemaNode
-        changed = False
+        schema = schema_branch.get_node(name=kind, duplicate=False)
+        db_node = await manager.get_one(db=db, branch=branch, id=schema.get_id(), prefetch_relationships=True)
+        current_schema = await manager.convert_node_schema_to_schema(db=db, schema_node=db_node)
+
+        fields_to_save: list[str] = []
         if current_schema.human_friendly_id != internal_schema_spec.human_friendly_id:
-            current_schema.human_friendly_id = internal_schema_spec.human_friendly_id
-            changed = True
+            db_node.human_friendly_id.value = internal_schema_spec.human_friendly_id  # type: ignore[attr-defined]
+            fields_to_save.append("human_friendly_id")
         if current_schema.uniqueness_constraints != internal_schema_spec.uniqueness_constraints:
-            current_schema.uniqueness_constraints = internal_schema_spec.uniqueness_constraints
-            changed = True
+            db_node.uniqueness_constraints.value = internal_schema_spec.uniqueness_constraints  # type: ignore[attr-defined]
+            fields_to_save.append("uniqueness_constraints")
+
+        if fields_to_save:
+            await db_node.save(db=db, at=at, user_id=user_id, fields=fields_to_save)
 
         # Update the name attribute to be unique = False
         name_attr = current_schema.get_attribute(name="name")
-        if name_attr.unique:
-            name_attr.unique = False
-            changed = True
-
-        if changed:
-            # Save SchemaNode back to DB
-            await manager.update_node_in_db(
-                db=db,
-                node=current_schema,
-                user_id=user_id,
-                at=at,
-                branch=branch,
-            )
+        if name_attr.unique and name_attr.id:
+            name_attr_db_nodes = await manager.get_many(ids=[name_attr.id], db=db, branch=branch)
+            if name_attr.id in name_attr_db_nodes:
+                name_attr_db_node = name_attr_db_nodes[name_attr.id]
+                name_attr_db_node.unique.value = False  # type: ignore[attr-defined]
+                await name_attr_db_node.save(db=db, at=at, user_id=user_id, fields=["unique"])
 
 
 class Migration056(ArbitraryMigration):
@@ -84,6 +70,7 @@ class Migration056(ArbitraryMigration):
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
         at = migration_input.at
         user_id = migration_input.user_id

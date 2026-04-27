@@ -1,91 +1,78 @@
-import { useMemo } from "react";
 import type { TagGroupProps } from "react-aria-components";
 
 import { ActiveFilterTags } from "@/shared/components/filters/active-filter-tags";
+import type { Filter } from "@/shared/hooks/useFilters";
 
 import {
   AVAILABLE_IP_FILTER_NAME,
-  HIDE_AVAILABLE_IP,
-  HIDE_AVAILABLE_IP_FILTER,
   IP_ADDRESS_GENERIC,
   IP_PREFIX_GENERIC,
-  SHOW_AVAILABLE_IP,
 } from "@/entities/ipam/constants";
 import { IpAddressAvailabilityFilterTag } from "@/entities/ipam/ip-addresses/ui/ip-address-availability-filter-tag";
 import { IpPrefixAvailabilityFilterTag } from "@/entities/ipam/ip-prefixes/ui/ip-prefix-availability-filter-tag";
+import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
+import { getFilterDefinitionName } from "@/entities/nodes/object/domain/filter-definition";
+import { ALL_METADATA_FILTERS } from "@/entities/nodes/object/domain/metadata-filter-definitions";
 import {
   HIDE_INTERNAL_GROUPS_FILTER,
-  HIDE_INTERNAL_GROUPS_ID,
   InternalGroupsFilterTag,
-  SHOW_INTERNAL_GROUPS_ID,
 } from "@/entities/nodes/object/ui/filters/internal-groups-filter-tag";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
-import type { AttributeSchema, ModelSchema, RelationshipSchema } from "@/entities/schema/types";
+import { getDecisionOptions } from "@/entities/role-manager/domain/get-decision-options";
+import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
 export interface ActiveObjectsFilterTagsProps extends TagGroupProps {
   schema: ModelSchema;
 }
 
+function buildFilterDefinitions(schema: ModelSchema): Record<string, FilterDefinition> {
+  const definitions: Record<string, FilterDefinition> = {};
+
+  for (const attr of schema?.attributes ?? []) {
+    const decisionOptions = getDecisionOptions(schema.kind, attr.name);
+    definitions[attr.name] = decisionOptions
+      ? { type: "permission-decision", schema: attr, options: decisionOptions }
+      : { type: "attribute", schema: attr };
+  }
+  for (const rel of schema?.relationships ?? []) {
+    definitions[rel.name] = { type: "relationship", schema: rel };
+  }
+  for (const meta of ALL_METADATA_FILTERS) {
+    definitions[getFilterDefinitionName(meta)] = meta;
+  }
+
+  return definitions;
+}
+
+const HIDDEN_FILTER_NAMES = new Set([HIDE_INTERNAL_GROUPS_FILTER.name, AVAILABLE_IP_FILTER_NAME]);
+
+function excludeHiddenFilters(filters: Filter[]): Filter[] {
+  return filters.filter((f) => !HIDDEN_FILTER_NAMES.has(f.name));
+}
+
 export function ActiveObjectFilterTags({ schema, ...props }: ActiveObjectsFilterTagsProps) {
   const { filters, setFilters } = useObjectTableContext();
 
-  // Build field schemas map from model schema
-  const fieldSchemas = useMemo(() => {
-    const schemas: Record<string, AttributeSchema | RelationshipSchema> = {};
-    for (const attr of schema?.attributes ?? []) {
-      schemas[attr.name] = attr;
-    }
-    for (const rel of schema?.relationships ?? []) {
-      schemas[rel.name] = rel;
-    }
-    return schemas;
-  }, [schema]);
+  const hasAdditionalTags =
+    isOfKind("CoreGroup", schema) ||
+    isOfKind(IP_PREFIX_GENERIC, schema) ||
+    isOfKind(IP_ADDRESS_GENERIC, schema);
 
-  // Filter out special filters that are handled separately
-  const displayFilters = useMemo(() => {
-    return filters.filter((f) => f.name !== HIDE_INTERNAL_GROUPS_FILTER.name);
-  }, [filters]);
-
-  // Handle custom filter removal for special cases
-  const handleCustomFilterRemove = (filterName: string): boolean => {
-    switch (filterName) {
-      case HIDE_INTERNAL_GROUPS_ID: {
-        setFilters([HIDE_INTERNAL_GROUPS_FILTER, ...filters]);
-        return true;
-      }
-      case SHOW_INTERNAL_GROUPS_ID: {
-        setFilters(filters.filter((filter) => filter.name !== HIDE_INTERNAL_GROUPS_FILTER.name));
-        return true;
-      }
-      case SHOW_AVAILABLE_IP: {
-        setFilters(filters.filter((filter) => filter.name !== AVAILABLE_IP_FILTER_NAME));
-        return true;
-      }
-      case HIDE_AVAILABLE_IP: {
-        setFilters([HIDE_AVAILABLE_IP_FILTER, ...filters]);
-        return true;
-      }
-      default:
-        return false;
-    }
-  };
-
-  const additionalTags = (
+  const additionalTags = hasAdditionalTags ? (
     <>
       {isOfKind("CoreGroup", schema) && <InternalGroupsFilterTag />}
       {isOfKind(IP_PREFIX_GENERIC, schema) && <IpPrefixAvailabilityFilterTag />}
       {isOfKind(IP_ADDRESS_GENERIC, schema) && <IpAddressAvailabilityFilterTag />}
     </>
-  );
+  ) : undefined;
 
   return (
     <ActiveFilterTags
-      filters={displayFilters}
+      filters={excludeHiddenFilters(filters)}
       setFilters={setFilters}
-      fieldSchemas={fieldSchemas}
+      filterDefinitions={buildFilterDefinitions(schema)}
       additionalTags={additionalTags}
-      onCustomFilterRemove={handleCustomFilterRemove}
       {...props}
     />
   );

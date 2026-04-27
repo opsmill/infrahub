@@ -246,7 +246,13 @@ class AuthorizationError(Error):
         super().__init__(self.message)
 
 
-class PermissionDeniedError(Error):
+class ForwardableError(Error):
+    """Base class for exceptions that can be forwarded to log forwarding destinations."""
+
+    log_forwarded: bool = False
+
+
+class PermissionDeniedError(ForwardableError):
     HTTP_CODE: int = 403
     message: str = "The requested operation was not authorized"
 

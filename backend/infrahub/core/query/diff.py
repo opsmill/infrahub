@@ -190,8 +190,6 @@ CALL (penultimate_path) {
     AND %(id_func)s(peer_r_node) = %(id_func)s(r_node)
     AND [%(id_func)s(n), type(peer_r_node)] <> [%(id_func)s(peer), type(r_peer)]
     AND r_peer.from < $to_time
-    // filter out paths where a base branch edge follows a branch edge
-    AND (peer_r_node.branch = $base_branch_name OR r_peer.branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
     AND (peer_r_node.status = "active" OR r_peer.status = "deleted")
     // require adjacent edge pairs to have overlapping times, but only if on the same branch
@@ -199,6 +197,16 @@ CALL (penultimate_path) {
         peer_r_node.branch <> r_peer.branch
         OR peer_r_node.to IS NULL
         OR peer_r_node.to >= r_peer.from
+    )
+    // ------------------------
+    // special handling for if a peer kind was migrated on the base branch after the diff branch forked
+    // if diffing across branches AND this edge is on the base branch,
+    // then make sure to pick the peer that was active before the branched_from time
+    // ------------------------
+    AND (
+        $branch_name = $base_branch_name
+        OR r_peer.branch = $branch_name
+        OR (r_peer.status = "active" AND r_peer.from <= $branch_from_time)
     )
     // ------------------------
     // special handling for nodes that had their kind updated,
@@ -606,12 +614,10 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
 // -------------------------------------
 // Identify properties added/removed on branch
 // -------------------------------------
-MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(p)-[diff_rel {branch: $branch_name}]->(q)
+MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)
+    -[r_node:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
+    -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->(q:Boolean|Node|AttributeValue)
 WHERE p.branch_support = $branch_aware
-AND any(l in labels(p) WHERE l in ["Attribute", "Relationship"])
-AND type(diff_rel) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
-AND any(l in labels(q) WHERE l in ["Boolean", "Node", "AttributeValue"])
-AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
 // node ID and field name filtering first pass
 AND (
     (
@@ -724,11 +730,16 @@ AND ALL(
     AND (r_pair[0]).from <= (r_pair[1]).from
     // if both are deleted, then the deeper edge must have been deleted first
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "active" OR (r_pair[0]).from >= (r_pair[1].from))
+    // if only the deeper edge is deleted, shallower edge must have been active for the delete
     AND (
         (r_pair[0]).status = (r_pair[1]).status
         OR (
             (r_pair[0]).from <= (r_pair[1]).from
-            AND ((r_pair[0]).to IS NULL OR (r_pair[0]).to >= (r_pair[1]).from)
+            AND (
+                (r_pair[0]).to IS NULL
+                OR ((r_pair[0]).branch = $branch_name AND (r_pair[0]).to >= (r_pair[1]).from)
+                OR ((r_pair[0]).branch = $base_branch_name AND (r_pair[0]).to >= $branch_from_time)
+            )
         )
     )
     // require adjacent edge pairs to have overlapping times, but only if on the same branch

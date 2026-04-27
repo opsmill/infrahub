@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
@@ -15,6 +14,8 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
@@ -25,6 +26,7 @@ export interface BranchActionsCellProps {
 export function BranchActionsCell({ branch }: BranchActionsCellProps) {
   const { isAuthenticated } = useAuth();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const { clearBranchIfCurrent } = useNavigateAfterBranchRemoval();
   const { mutateAsync: deleteBranch, isPending: isDeleting } = useDeleteBranchMutation();
 
   const isDeleteAllowed = isAuthenticated && !branch.is_default;
@@ -71,16 +73,14 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
         </DropdownMenu>
       </StickyRightCell>
 
-      <ModalDelete
-        title="Delete"
-        description={
-          <>
-            Are you sure you want to remove the branch
-            <br /> <b>`{branch.name}`</b>?
-          </>
-        }
-        onDelete={async () => {
-          await deleteBranch({ name: branch.name });
+      <ModalDeleteBranch
+        branches={[branch]}
+        onDelete={async (scope) => {
+          clearBranchIfCurrent(branch.name);
+          await deleteBranch({
+            name: branch.name,
+            deleteFromGit: scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE,
+          });
           setShowDeleteModal(false);
         }}
         isOpen={showDeleteModal}

@@ -14,9 +14,15 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.workers.dependencies import get_component, get_database, get_http
 
-from .constants import TELEMETRY_KIND, TELEMETRY_VERSION
+from .constants import (
+    TELEMETRY_KIND,
+    TELEMETRY_VERSION,
+    RemoteSendStatus,
+)
 from .database import gather_database_information
 from .models import TelemetryBranchData, TelemetryData, TelemetrySchemaData, TelemetryWorkerData
+from .repository import TelemetrySnapshotRepository
+from .snapshot import TelemetrySnapshot
 from .task_manager import gather_prefect_information
 from .utils import determine_infrahub_type
 
@@ -96,21 +102,59 @@ async def post_telemetry_data(url: str, payload: dict[str, Any]) -> None:
 @flow(name="anonymous_telemetry_send", flow_run_name="Send anonymous telemetry")
 async def send_telemetry_push() -> None:
     log = get_run_logger()
+
+    log.info("Gathering anonymous telemetry data...")
+    data = await gather_anonymous_telemetry_data()
+    data_dict = data.model_dump(mode="json")
+    checksum = hashlib.sha256(json.dumps(data_dict).encode()).hexdigest()
+    log.info(f"Anonymous usage telemetry gathered in {data.execution_time} seconds.")
+
+    snapshot = TelemetrySnapshot(
+        kind=TELEMETRY_KIND,
+        payload_format=TELEMETRY_VERSION,
+        deployment_id=str(registry.id) if registry.id else "",
+        infrahub_version=__version__,
+        data=data_dict,
+        checksum=checksum,
+        remote_send_status=RemoteSendStatus.PENDING,
+    )
+
+    database = await get_database()
+    repository = TelemetrySnapshotRepository(db=database)
+
+    # Always store locally. If this fails, we have nothing to update later — bail out.
+    try:
+        await repository.save(snapshot)
+        log.info(f"Telemetry snapshot stored locally (uuid={snapshot.uuid}).")
+    except Exception as exc:
+        log.warning(f"Failed to store telemetry snapshot locally: {exc}")
+        return
+
+    # Conditionally send remotely
     if config.SETTINGS.main.telemetry_optout:
-        log.info("Skipping, User opted out of this service.")
+        log.info("User opted out of remote telemetry. Marking snapshot as skipped.")
+        snapshot.remote_send_status = RemoteSendStatus.SKIPPED
+        await repository.save(snapshot)
         return
 
     log.info(f"Pushing anonymous telemetry data to {config.SETTINGS.main.telemetry_endpoint}...")
-
-    data = await gather_anonymous_telemetry_data()
-    data_dict = data.model_dump(mode="json")
-    log.info(f"Anonymous usage telemetry gathered in {data.execution_time} seconds. | {data_dict}")
-
     payload = {
         "kind": TELEMETRY_KIND,
         "payload_format": TELEMETRY_VERSION,
         "data": data_dict,
-        "checksum": hashlib.sha256(json.dumps(data_dict).encode()).hexdigest(),
+        "checksum": checksum,
     }
 
-    await post_telemetry_data(url=config.SETTINGS.main.telemetry_endpoint, payload=payload)
+    try:
+        await post_telemetry_data(url=config.SETTINGS.main.telemetry_endpoint, payload=payload)
+        snapshot.remote_send_status = RemoteSendStatus.SENT
+        log.info("Telemetry data sent to remote endpoint successfully.")
+    except Exception as exc:
+        snapshot.remote_send_status = RemoteSendStatus.FAILED
+        log.warning(f"Failed to send telemetry data to remote endpoint: {exc}")
+
+    # Update remote send status in DB
+    try:
+        await repository.save(snapshot)
+    except Exception as exc:
+        log.warning(f"Failed to update snapshot remote send status: {exc}")

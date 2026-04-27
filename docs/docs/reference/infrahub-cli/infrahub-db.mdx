@@ -17,7 +17,10 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `migrate`: Check the current format of the internal...
+* `showmigrations`: Display all migrations and their...
+* `showmigration`: Show detailed information about a specific...
 * `check-inheritance`: Check the database for any vertices with...
+* `reset-deployment-id`: Reset the internal deployment_id on the...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Check the current format of the internal...
 * `constraint`: Manage Database Constraints
@@ -44,7 +47,46 @@ $ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--check / --no-check`: Check the state of the database without applying the migrations.  [default: no-check]
+* `--plan / --no-plan`: Show the migration plan without executing.  [default: no-plan]
+* `--verbose / --no-verbose`: Show detailed internal output from each migration.  [default: no-verbose]
 * `--migration-number INTEGER`: Apply a specific migration by number, regardless of current database version
+* `--help`: Show this message and exit.
+
+## `infrahub db showmigrations`
+
+Display all migrations and their applied/pending status.
+
+**Usage**:
+
+```console
+$ infrahub db showmigrations [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--help`: Show this message and exit.
+
+## `infrahub db showmigration`
+
+Show detailed information about a specific migration.
+
+**Usage**:
+
+```console
+$ infrahub db showmigration [OPTIONS] MIGRATION_NUMBER [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `MIGRATION_NUMBER`: Migration number to inspect  [required]
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-inheritance`
@@ -64,6 +106,29 @@ $ infrahub db check-inheritance [OPTIONS] [CONFIG_FILE]
 **Options**:
 
 * `--fix / --no-fix`: Fix the inheritance of any invalid nodes.  [default: no-fix]
+* `--help`: Show this message and exit.
+
+## `infrahub db reset-deployment-id`
+
+Reset the internal deployment_id on the Root node.
+
+Running Infrahub server and worker processes cache this value at startup and
+must be restarted after this command to pick up the new value.
+
+**Usage**:
+
+```console
+$ infrahub db reset-deployment-id [OPTIONS] [CONFIG_FILE]
+```
+
+**Arguments**:
+
+* `[CONFIG_FILE]`: [env var: INFRAHUB_CONFIG; default: infrahub.toml]
+
+**Options**:
+
+* `--deployment-id TEXT`: Set an explicit UUID instead of generating a random one.
+* `-y, --yes`: Skip the confirmation prompt.
 * `--help`: Show this message and exit.
 
 ## `infrahub db check-duplicate-schema-fields`

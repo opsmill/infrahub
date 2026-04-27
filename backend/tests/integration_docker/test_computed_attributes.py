@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from asyncio import sleep
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -257,11 +258,18 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         # Validate that the schema is in sync after loading the device and interface schema
         assert await client.schema.in_sync()
 
-        await sleep(1)
-        await wait_for_all_tasks_to_be_completed(client)
+        # Wait for the computed attribute tasks to be created and completed
+        # Tasks may not be created immediately after schema load, so poll for them
+        nbr_task_after_related = nbr_task_after_not_related
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            nbr_task_after_related = await client.task.count(
+                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+            )
+            if nbr_task_after_related >= nbr_task_after_not_related + 2:
+                break
 
         # The computed attribute of type Jinja2 should be updated on the sites but NOT on the continents
-        nbr_task_after_related = await client.task.count(
-            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
-        )
         assert nbr_task_after_related == nbr_task_after_not_related + 2

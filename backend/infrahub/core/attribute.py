@@ -38,6 +38,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
+from infrahub.log import get_logger
 
 from ..types import is_large_attribute_type
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
@@ -49,6 +50,8 @@ if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
     from infrahub.database import InfrahubDatabase
 
+
+log = get_logger()
 
 # Use a more user-friendly threshold than Neo4j one (8167 bytes).
 MAX_STRING_LENGTH = 4096
@@ -189,6 +192,11 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         if isinstance(self.value, Enum):
             return self.value.value
         return self.value
+
+    def get_property(self, name: str) -> Any:
+        if not hasattr(self, name):
+            raise ValueError(f"{name} is not a valid property of {self.name} on {self.node.get_kind()}")
+        return getattr(self, name)
 
     def set_default_value(self) -> None:
         self.value = self.schema.default_value
@@ -1289,6 +1297,35 @@ class ListAttribute(BaseAttribute):
 
 class ListAttributeOptional(ListAttribute):
     value: list[Any] | None
+
+
+class IndexedListAttribute(ListAttributeOptional):
+    """List attribute that is indexed in the database when within size limits.
+
+    Unlike regular List attributes, the serialized value receives the
+    AttributeValueIndexed label when it fits within Neo4j indexing limits.
+    Oversized values fall back to non-indexed storage with a warning.
+    """
+
+    def _is_within_index_limit(self) -> bool:
+        if self.value is None:
+            return True
+        serialized = self.serialize_value()
+        return not (isinstance(serialized, str) and 3 + len(serialized.encode("utf-8")) >= MAX_STRING_LENGTH)
+
+    def get_db_node_type(self) -> AttributeDBNodeType:
+        if self._is_within_index_limit():
+            return AttributeDBNodeType.INDEXED
+        return AttributeDBNodeType.DEFAULT
+
+    def to_db(self) -> dict[str, Any]:
+        data = super().to_db()
+        if not self._is_within_index_limit():
+            log.warning(
+                "List attribute value exceeds maximum indexed string length, storing without index",
+                attribute_name=self.name,
+            )
+        return data
 
 
 class JSONAttribute(BaseAttribute):

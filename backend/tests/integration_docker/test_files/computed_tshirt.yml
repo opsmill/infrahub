@@ -42,8 +42,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "name__value"
     attributes:
       - name: name
         kind: Text
@@ -98,8 +97,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "name__value"
     children: "LocationCountry"
     parent: ""
   - name: Country
@@ -112,8 +110,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "name__value"
     children: "LocationSite"
     parent: "LocationContinent"
     attributes:
@@ -134,8 +131,7 @@ nodes:
     default_filter: "name__value"
     order_by:
       - "name__value"
-    display_labels:
-      - "name__value"
+    display_label: "name__value"
     parent: "LocationCountry"
     attributes:
       - name: city
@@ -165,8 +161,7 @@ nodes:
     namespace: Infra
     label: "Device"
     icon: "mdi:server"
-    display_labels:
-      - name__value
+    display_label: "name__value"
     human_friendly_id: ["name__value"]
     attributes:
       - name: device_type

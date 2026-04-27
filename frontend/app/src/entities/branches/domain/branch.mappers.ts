@@ -3,7 +3,7 @@ import type {
   InfrahubBranch,
   InfrahubBranchType,
   InfrahubNodeMetadata,
-} from "@/shared/api/graphql/generated/graphql";
+} from "@/shared/api/graphql/generated/types";
 import { ACCOUNT_GENERIC_OBJECT } from "@/shared/config/constants";
 import type { Filter } from "@/shared/hooks/useFilters";
 
@@ -40,7 +40,7 @@ export interface BranchDetail extends BranchBase {
   created_at?: string | null;
 }
 
-function mapCreatedByToNodeCore(createdBy: InfrahubNodeMetadata["created_by"]): NodeCore | null {
+function mapCreatedByToNodeCore(createdBy?: InfrahubNodeMetadata["created_by"]): NodeCore | null {
   if (!createdBy?.id) return null;
 
   return {
@@ -77,7 +77,9 @@ export function mapToBranchListItem({
   };
 }
 
-export function mapToBranchDetail(node: InfrahubBranch): BranchDetail {
+export function mapToBranchDetail(
+  node: Omit<InfrahubBranch, "is_isolated" | "graph_version">
+): BranchDetail {
   return {
     id: node.id,
     __typename: "Branch",
@@ -105,7 +107,7 @@ export const getStatusFilterValue = (filters?: Filter[]): BranchStatus | undefin
 
 export const getCreatedByFilterValue = (filters?: Filter[]) => {
   const createdByFilter = filters?.find((f) => f.name === "node_metadata__created_by__ids");
-  if (!createdByFilter?.value) return undefined;
+  if (!createdByFilter?.value) return;
 
   const relationships = createdByFilter.value as Array<{ id: string }>;
   // Return first ID since backend expects single ID, not array

@@ -34,7 +34,7 @@ export function AddGroupTriggerButton({
     <>
       <ButtonWithTooltip
         onClick={() => setIsAddGroupFormOpen(true)}
-        className="p-2"
+        size="square"
         disabled={!permission.update.isAllowed}
         tooltipContent={permission.update.message ?? "Add groups"}
         tooltipEnabled

@@ -4,74 +4,84 @@ import base64
 import hashlib
 import hmac
 import json
-from typing import TYPE_CHECKING, Any
+import logging
+import os
+from enum import StrEnum
+from typing import TYPE_CHECKING, Any, assert_never
 from uuid import UUID, uuid4
 
+from prefect.automations import AutomationCore
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 from typing_extensions import Self
 
-from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
 from infrahub.core.timestamp import Timestamp
 from infrahub.events.utils import get_all_infrahub_node_kind_events
 from infrahub.git.repository import InfrahubReadOnlyRepository, InfrahubRepository
 from infrahub.trigger.constants import NAME_SEPARATOR
 from infrahub.trigger.models import EventTrigger, ExecuteWorkflow, TriggerDefinition, TriggerType
+from infrahub.trigger.setup import gather_all_automations
 from infrahub.workflows.catalogue import WEBHOOK_PROCESS
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from httpx import Response
     from infrahub_sdk.client import InfrahubClient
-    from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython, CoreWebhook
+    from infrahub_sdk.protocols import CoreCustomWebhook, CoreStandardWebhook, CoreTransformPython
+    from prefect.client.orchestration import PrefectClient
+    from prefect.events.schemas.automations import Automation
 
-    from infrahub.core.protocols import CoreWebhook as CoreWebhookNode
+    from infrahub.core.protocols import CoreWebhook
     from infrahub.services.adapters.http import InfrahubHTTP
 
 
-class WebhookTriggerDefinition(TriggerDefinition):
-    id: str
-    type: TriggerType = TriggerType.WEBHOOK
+class WebhookTriggerDefinitionBuilder:
+    """Builds a WebhookTriggerDefinition from a CoreWebhook."""
 
-    def generate_name(self) -> str:
-        return f"{self.type.value}{NAME_SEPARATOR}{self.id}"
+    def __init__(self, default_branch: str) -> None:
+        self._default_branch = default_branch
 
-    @classmethod
-    def generate_name_from_id(cls, id: str) -> str:
-        return f"{TriggerType.WEBHOOK.value}{NAME_SEPARATOR}{id}"
+    def build(self, webhook: CoreWebhook) -> WebhookTriggerDefinition:
+        event_type = webhook.event_type.value.value
+        branch_scope = webhook.branch_scope.value
+        node_kind = webhook.node_kind.value
+        webhook_id = webhook.id
+        webhook_name = webhook.name.value
+        webhook_kind = webhook.get_kind()
 
-    @classmethod
-    def from_object(cls, obj: CoreWebhook | CoreWebhookNode) -> Self:
         event_trigger = EventTrigger()
-        if obj.event_type.value == "all":
+
+        if event_type == "all":
             event_trigger.events.add("infrahub.*")
         else:
-            event_trigger.events.add(obj.event_type.value)
+            event_trigger.events.add(event_type)
 
-        if obj.branch_scope.value == "default_branch":
+        if branch_scope == "default_branch":
             event_trigger.match_related = {
                 "prefect.resource.role": "infrahub.branch",
-                "infrahub.resource.label": registry.default_branch,
+                "infrahub.resource.label": self._default_branch,
             }
-        elif obj.branch_scope.value == "other_branches":
+        elif branch_scope == "other_branches":
             event_trigger.match_related = {
                 "prefect.resource.role": "infrahub.branch",
-                "infrahub.resource.label": f"!{registry.default_branch}",
+                "infrahub.resource.label": f"!{self._default_branch}",
             }
 
-        if obj.node_kind.value and obj.event_type.value in get_all_infrahub_node_kind_events():
-            event_trigger.match = {"infrahub.node.kind": obj.node_kind.value}
+        if node_kind and event_type in get_all_infrahub_node_kind_events():
+            event_trigger.match = {"infrahub.node.kind": node_kind}
 
-        definition = cls(
-            id=obj.id,
-            name=obj.name.value,
+        return WebhookTriggerDefinition(
+            id=webhook_id,
+            name=webhook_name,
             trigger=event_trigger,
             actions=[
                 ExecuteWorkflow(
                     workflow=WEBHOOK_PROCESS,
                     parameters={
-                        "webhook_id": obj.id,
-                        "webhook_name": obj.name.value,
-                        "webhook_kind": obj.get_kind(),
+                        "webhook_id": webhook_id,
+                        "webhook_name": webhook_name,
+                        "webhook_kind": webhook_kind,
                         "branch_name": "{{ event.resource['infrahub.branch.name'] }}",
                         "event_id": "{{ event.id }}",
                         "event_type": "{{ event.event }}",
@@ -85,7 +95,89 @@ class WebhookTriggerDefinition(TriggerDefinition):
             ],
         )
 
-        return definition
+
+def generate_webhook_automation_name(webhook_id: str) -> str:
+    return f"{TriggerType.WEBHOOK.value}{NAME_SEPARATOR}{webhook_id}"
+
+
+class WebhookTriggerDefinition(TriggerDefinition):
+    id: str
+    type: TriggerType = TriggerType.WEBHOOK
+
+    def generate_name(self) -> str:
+        return generate_webhook_automation_name(self.id)
+
+
+class WebhookAutomation:
+    """A webhook's desired automation state in Prefect."""
+
+    def __init__(self, trigger_definition: WebhookTriggerDefinition, active: bool) -> None:
+        self._trigger_definition = trigger_definition
+        self._active = active
+
+    @property
+    def name(self) -> str:
+        return self._trigger_definition.generate_name()
+
+    @property
+    def webhook_id(self) -> str:
+        return self._trigger_definition.id
+
+    @property
+    def active(self) -> bool:
+        return self._active
+
+    @property
+    def deployment_name(self) -> str:
+        return self._trigger_definition.get_deployment_names()[0]
+
+    def to_prefect_automation(self, deployment_id: UUID) -> AutomationCore:
+        return AutomationCore(
+            name=self.name,
+            description=self._trigger_definition.get_description(),
+            enabled=True,
+            trigger=self._trigger_definition.trigger.get_prefect(),
+            actions=[
+                action.get(deployment_id)
+                for action in self._trigger_definition.actions
+                if isinstance(action, ExecuteWorkflow)
+            ],
+        )
+
+
+class WebhookAutomationPrefectSyncer:
+    """Syncs a WebhookAutomation against Prefect state."""
+
+    def __init__(self, prefect_client: PrefectClient) -> None:
+        self._client = prefect_client
+
+    async def apply(self, automation: WebhookAutomation) -> None:
+        """Ensure Prefect matches desired state: create, update, or delete."""
+        existing = await self._find_existing(name=automation.name)
+
+        if not automation.active:
+            if existing:
+                await self._client.delete_automation(automation_id=existing.id)
+                logger.info("Automation %s deleted (webhook disabled)", automation.name)
+            else:
+                logger.info("Webhook %s is disabled, no automation to delete", automation.name)
+            return
+
+        deployment_name = automation.deployment_name
+        deployment = await self._client.read_deployment_by_name(name=f"{deployment_name}/{deployment_name}")
+        prefect_automation = automation.to_prefect_automation(deployment_id=deployment.id)
+
+        if existing:
+            await self._client.update_automation(automation_id=existing.id, automation=prefect_automation)
+            logger.info("Automation %s updated", automation.name)
+        else:
+            await self._client.create_automation(automation=prefect_automation)
+            logger.info("Automation %s created", automation.name)
+
+    async def _find_existing(self, name: str) -> Automation | None:
+        all_automations = await gather_all_automations(client=self._client)
+        matches = [a for a in all_automations if a.name == name]
+        return matches[0] if matches else None
 
 
 class EventContext(BaseModel):
@@ -113,12 +205,44 @@ class EventContext(BaseModel):
         )
 
 
+class HeaderKind(StrEnum):
+    STATIC = "static"
+    ENVIRONMENT = "environment"
+
+
+class WebhookHeaderResolutionError(Exception):
+    pass
+
+
+class WebhookHeader(BaseModel):
+    key: str
+    value: str
+    kind: HeaderKind
+
+    def resolve(self) -> str:
+        """Resolve the header value based on its kind.
+
+        Raises WebhookHeaderResolutionError if the value cannot be resolved.
+        """
+        match self.kind:
+            case HeaderKind.STATIC:
+                return self.value
+            case HeaderKind.ENVIRONMENT:
+                resolved = os.environ.get(self.value)
+                if resolved is None:
+                    raise WebhookHeaderResolutionError(f"Environment variable '{self.value}' not found")
+                return resolved
+            case _:
+                assert_never(self.kind)
+
+
 class Webhook(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     name: str = Field(...)
     url: str = Field(...)
     event_type: str = Field(...)
     validate_certificates: bool | None = Field(...)
+    custom_headers: list[WebhookHeader] = Field(default_factory=list)
     _payload: Any = None
     _headers: dict[str, Any] | None = None
     shared_key: str | None = Field(default=None, description="Shared key for signing the webhook requests")
@@ -131,6 +255,20 @@ class Webhook(BaseModel):
             "Accept": "application/json",
             "Content-Type": "application/json",
         }
+
+        seen_keys: set[str] = set()
+        for header in self.custom_headers:
+            if header.key in seen_keys:
+                logger.warning(
+                    "Webhook '%s': duplicate header key '%s', later value will overwrite earlier one",
+                    self.name,
+                    header.key,
+                )
+            seen_keys.add(header.key)
+            try:
+                self._headers[header.key] = header.resolve()
+            except WebhookHeaderResolutionError as exc:
+                logger.warning("Webhook '%s': %s, skipping header '%s'", self.name, exc, header.key)
 
         if self.shared_key:
             message_id = f"msg_{uuid.hex}" if uuid else f"msg_{uuid4().hex}"
@@ -184,25 +322,27 @@ class CustomWebhook(Webhook):
     """Custom webhook"""
 
     @classmethod
-    def from_object(cls, obj: CoreCustomWebhook) -> Self:
+    def from_object(cls, obj: CoreCustomWebhook, custom_headers: list[WebhookHeader] | None = None) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
             event_type=obj.event_type.value,
             validate_certificates=obj.validate_certificates.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )
 
 
 class StandardWebhook(Webhook):
     @classmethod
-    def from_object(cls, obj: CoreStandardWebhook) -> Self:
+    def from_object(cls, obj: CoreStandardWebhook, custom_headers: list[WebhookHeader] | None = None) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
             event_type=obj.event_type.value,
             validate_certificates=obj.validate_certificates.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )
 
 
@@ -238,7 +378,9 @@ class TransformWebhook(Webhook):
         )  # type: ignore[call-overload]
 
     @classmethod
-    def from_object(cls, obj: CoreCustomWebhook, transform: CoreTransformPython) -> Self:
+    def from_object(
+        cls, obj: CoreCustomWebhook, transform: CoreTransformPython, custom_headers: list[WebhookHeader] | None = None
+    ) -> Self:
         return cls(
             name=obj.name.value,
             url=obj.url.value,
@@ -253,4 +395,5 @@ class TransformWebhook(Webhook):
             transform_timeout=transform.timeout.value,
             convert_query_response=transform.convert_query_response.value or False,
             shared_key=obj.shared_key.value,
+            custom_headers=custom_headers or [],
         )

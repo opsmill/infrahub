@@ -2,7 +2,12 @@ import pytest
 from infrahub_sdk.timestamp import Timestamp
 from pytz import timezone
 
-from infrahub.auth import authenticate_with_password, authentication_token, validate_active_account
+from infrahub.auth import (
+    authenticate_with_password,
+    authentication_token,
+    fetch_account_groups_and_roles,
+    validate_active_account,
+)
 from infrahub.core import registry
 from infrahub.core.account import validate_token
 from infrahub.core.branch import Branch
@@ -163,3 +168,52 @@ async def test_authenticate_token(
     assert await authentication_token(db=db, api_key=token1.token.value)
     with pytest.raises(AuthorizationError, match="This account has been deactivated"):
         await authentication_token(db=db, api_key=token2.token.value)
+
+
+async def test_fetch_account_groups_and_roles(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user1", password="User1Password123")
+    await account.save(db=db)
+
+    role1 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role1.new(db=db, name="read-role")
+    await role1.save(db=db)
+
+    role2 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTROLE)
+    await role2.new(db=db, name="admin-role")
+    await role2.save(db=db)
+
+    group1 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group1.new(db=db, name="readers", roles=[role1])
+    await group1.save(db=db)
+    await group1.members.add(db=db, data={"id": account.id})  # type: ignore[union-attr]
+    await group1.members.save(db=db)  # type: ignore[union-attr]
+
+    group2 = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+    await group2.new(db=db, name="admins", roles=[role2])
+    await group2.save(db=db)
+    await group2.members.add(db=db, data={"id": account.id})  # type: ignore[union-attr]
+    await group2.members.save(db=db)  # type: ignore[union-attr]
+
+    groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
+
+    assert sorted(groups, key=lambda d: list(d.values())) == [{group2.get_id(): "admins"}, {group1.get_id(): "readers"}]
+    assert sorted(roles, key=lambda d: list(d.values())) == [
+        {role2.get_id(): "admin-role"},
+        {role1.get_id(): "read-role"},
+    ]
+
+
+async def test_fetch_account_groups_and_roles_no_groups(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="user1", password="User1Password123")
+    await account.save(db=db)
+
+    groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
+
+    assert groups == []
+    assert roles == []

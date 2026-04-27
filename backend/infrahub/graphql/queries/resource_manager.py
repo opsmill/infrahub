@@ -292,6 +292,7 @@ async def resolve_number_pool_allocation(
                     "kind": pool.node.value,  # type: ignore[attr-defined]
                     "branch": item.branch,
                     "display_label": item.value,
+                    "identifier": item.identifier,
                 }
             }
             edges.append(node)

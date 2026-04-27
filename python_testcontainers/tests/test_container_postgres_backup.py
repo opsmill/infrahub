@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_testcontainers.container import InfrahubDockerCompose
 from testcontainers.core.exceptions import ContainerIsNotRunning
+
+from infrahub_testcontainers.container import InfrahubDockerCompose
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 @pytest.fixture(name="compose_factory")
@@ -86,7 +90,8 @@ def test_task_manager_db_restore_backup_runs_expected_commands(
 
     def _raise(service_name: str) -> None:
         _ = service_name
-        raise ContainerIsNotRunning("task-manager-db")
+        msg = "task-manager-db"
+        raise ContainerIsNotRunning(msg)
 
     compose.get_container = _raise  # type: ignore[assignment]
     started_services: list[str] = []

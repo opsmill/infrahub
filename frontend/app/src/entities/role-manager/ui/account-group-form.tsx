@@ -20,13 +20,13 @@ import {
   ACCOUNT_ROLE_OBJECT,
 } from "@/shared/config/constants";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface AccountGroupFormProps {
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   onCancel?: () => void;
   onSuccess?: NodeFormProps["onSuccess"];
 }
@@ -37,12 +37,12 @@ export const AccountGroupForm = ({ currentObject, onSuccess, onCancel }: Account
   const updateObject = useUpdateObjectMutation();
 
   const roles = getRelationshipDefaultValue({
-    objectData: { roles: currentObject?.roles?.value },
+    objectData: currentObject,
     relationshipName: "roles",
   });
 
   const members = getRelationshipDefaultValue({
-    objectData: { members: currentObject?.members?.value },
+    objectData: currentObject,
     relationshipName: "members",
   });
 

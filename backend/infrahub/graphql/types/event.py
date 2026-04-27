@@ -110,6 +110,7 @@ class BranchDeletedEvent(ObjectType):
         interfaces = (EventNodeInterface,)
 
     deleted_branch = String(required=True, description="The name of the branch that was deleted")
+    proposed_change_id = String(required=False, description="Proposed change ID if available")
     payload = Field(GenericScalar, required=True)
 
 
@@ -173,6 +174,41 @@ class ProposedChangeThreadEvent(ObjectType):
 
 
 # ---------------------------------------
+# Account events
+# ---------------------------------------
+class AccountLoggedInEventType(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    kind = String(required=True, description="The type of account object")
+    account_name = String(required=True, description="Username of the account")
+    account_type = String(required=True, description="USER or SCRIPT")
+    auth_method = String(required=True, description="How they authenticated")
+    session_id = String(required=True, description="UUID of the session")
+    groups = List(NonNull(String), required=True, description="List of group names/IDs")
+    roles = List(NonNull(String), required=True, description="List of role names/IDs")
+    identity_source = String(required=False, description="External identity provider name (if applicable)")
+    client_ip = String(required=False, description="Source IP address")
+    user_agent = String(required=False, description="Browser/client info")
+    timestamp = DateTime(required=True, description="When the login occurred (UTC)")
+    payload = Field(GenericScalar, required=True)
+
+
+class AccountLoggedOutEventType(ObjectType):
+    class Meta:
+        interfaces = (EventNodeInterface,)
+
+    kind = String(required=True, description="The type of account object")
+    account_name = String(required=True, description="Username of the account")
+    session_id = String(required=True, description="UUID of the session being terminated")
+    logout_type = String(required=True, description="How logout occurred")
+    client_ip = String(required=False, description="Source IP address")
+    user_agent = String(required=False, description="Browser/client info")
+    timestamp = DateTime(required=True, description="When the logout occurred (UTC)")
+    payload = Field(GenericScalar, required=True)
+
+
+# ---------------------------------------
 # Node/Object events
 # ---------------------------------------
 class NodeMutatedEvent(ObjectType):
@@ -211,6 +247,8 @@ class StandardEvent(ObjectType):
 
 
 EVENT_TYPES: dict[str, type[ObjectType]] = {
+    events.AccountLoggedInEvent.event_name: AccountLoggedInEventType,
+    events.AccountLoggedOutEvent.event_name: AccountLoggedOutEventType,
     events.ArtifactCreatedEvent.event_name: ArtifactEvent,
     events.ArtifactUpdatedEvent.event_name: ArtifactEvent,
     events.NodeCreatedEvent.event_name: NodeMutatedEvent,

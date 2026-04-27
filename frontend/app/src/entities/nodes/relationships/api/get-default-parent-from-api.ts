@@ -61,12 +61,12 @@ export const getDefaultParentFromApi = ({
     getRelationshipParent({
       kind: parentRelationship?.peer,
       attribute: `${parentRelationshipAttribute?.name}__ids`,
-      id,
     })
   );
 
   return graphqlClient.query({
     query,
+    variables: { ids: id ? [id] : undefined },
     context: {
       branch: branchName,
       date: atDate,

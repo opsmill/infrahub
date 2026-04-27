@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.8.0rc0"
+version = "1.9.0b1"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -35,18 +35,18 @@ dependencies = [
     "gitpython>=3,<4",
     "pyyaml>=6,<7",
     "tomli>=1.1.0; python_version<='3.11'",
-    "deepdiff==8.6.1",
+    "deepdiff==8.6.2",
     # Dependencies specific to the API Server
-    "fastapi==0.121.1",
+    "fastapi==0.131.0",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
     "gunicorn>=23.0.0,<24",
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
-    "python-multipart==0.0.22", # Required by FastAPI to upload large files
+    "python-multipart==0.0.26", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
     "bcrypt>=4.1,<4.2", # Used to hash and validate password
-    "pyjwt>=2.8,<2.9", # Used to manage JWT tokens
+    "pyjwt==2.12.1", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.60b0",
     "opentelemetry-instrumentation-fastapi==0.60b0",
@@ -54,7 +54,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
-    "authlib==1.6.6",
+    "authlib==1.6.11",
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
@@ -86,7 +86,7 @@ dev = [
     "ipython>=8,<9",
     "pytest-asyncio>=1.3,<1.4",
     "pytest-clarity>=1.0,<1.1",
-    "pytest-cov==7.0.0",
+    "pytest-cov==7.1.0",
     "pytest-xdist>=3.4,<3.5",
     "types-python-slugify>=8.0.0.3,<9",
     "types-ujson",
@@ -108,9 +108,10 @@ dev = [
     "pytest-httpx>=0.33",
     "docker==7.1.0",
     "psutil==6.1.0",
-    "jwcrypto==1.5.6",
-    "ty==0.0.14",
+    "jwcrypto==1.5.7",
+    "ty==0.0.32",
     "prek>=0.3.0",
+    "coverage==7.13.5",
 ]
 
 # test-scale = [
@@ -248,14 +249,6 @@ disable_error_code = [
 module = "infrahub.core.node.base"
 disable_error_code = [
     "no-untyped-def",
-]
-
-[[tool.mypy.overrides]]
-module = "infrahub.core.node.standard"
-disable_error_code = [
-    "arg-type",
-    "assignment",
-    "return-value",
 ]
 
 [[tool.mypy.overrides]]
@@ -550,7 +543,7 @@ max-line-length = 150
 
 [tool.ruff.lint.mccabe]
 # Target max-complexity=10
-max-complexity = 30
+max-complexity = 20
 
 [tool.ruff.lint.pylint]
 
@@ -572,9 +565,6 @@ allow-dunder-method-names = [
     "FIX",      # flake8-fixme
     "FURB113",  # Use `extend(...)` instead of repeatedly calling `append()`
     "INP001",   # File is part of an implicit namespace package
-    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
-    "FURB140",  # Use `itertools.starmap` instead of the generator
-    "FURB192",  # Prefer `min` over `sorted()` to compute the minimum value
     "N801",     # Class name should use CapWords convention
     "N806",     # Variable in function should be lowercase
     "PERF401",  # Use a list comprehension to create a transformed list
@@ -624,10 +614,6 @@ allow-dunder-method-names = [
     ##################################################################################################
     "PLR1702", # Too many nested blocks
     "PLR0915", # Too many statements
-]
-
-"backend/infrahub/config.py" = [
-    "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
 "backend/infrahub/core/branch/models.py" = [
@@ -712,6 +698,10 @@ allow-dunder-method-names = [
 
 "backend/infrahub/serve/log.py" = [
     "LOG004",  # `.exception()` call outside exception handlers
+]
+
+"backend/infrahub/tls/context_builder.py" = [
+    "S323", # Allow users to create an SSL context that doesn't validate certificates
 ]
 
 "tasks/__init__.py" = [
@@ -976,74 +966,12 @@ allow-dunder-method-names = [
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
-##################################################################################################
-# ANN001 (Missing type annotation for function argument) granular ignores for                    #
-# backend/tests/component/. Split from the broad section above to allow incremental fixes.       #
-# Remove each entry below once all ANN001 violations in that path have been resolved.            #
-##################################################################################################
-# backend/tests/component/core/constraint_validators/ (320 violations)
-"backend/tests/component/core/constraint_validators/test_relationship_count.py" = ["ANN001"]              # 28 violations
-"backend/tests/component/core/constraint_validators/test_uniqueness_validation_query.py" = ["ANN001"]     # 25 violations
-"backend/tests/component/core/constraint_validators/test_attribute_length.py" = ["ANN001"]                # 18 violations
-"backend/tests/component/core/constraint_validators/test_node_grouped_uniqueness.py" = ["ANN001"]         # 16 violations
-"backend/tests/component/core/constraint_validators/test_attribute_number_constraints.py" = ["ANN001"]    # 16 violations
-"backend/tests/component/core/constraint_validators/test_attribute_kind_update.py" = ["ANN001"]           # 15 violations
-"backend/tests/component/core/constraint_validators/test_attribute_enum_update.py" = ["ANN001"]           # 13 violations
-# backend/tests/component/core/diff/ (236 violations)
-"backend/tests/component/core/diff/query/**.py" = ["ANN001"]                   # 6 violations
-"backend/tests/component/core/diff/repository/**.py" = ["ANN001"]              # 26 violations
-"backend/tests/component/core/diff/test_diff_calculator.py" = ["ANN001"]       # 114 violations
-"backend/tests/component/core/diff/test_diff_and_merge.py" = ["ANN001"]        # 22 violations
-"backend/tests/component/core/diff/test_diff_merger.py" = ["ANN001"]           # 18 violations
-"backend/tests/component/core/diff/test_diff_combiner.py" = ["ANN001"]         # 17 violations
-"backend/tests/component/core/diff/test_conflicts_enricher.py" = ["ANN001"]    # 11 violations
-"backend/tests/component/core/diff/test_diff_hierarchy_enricher.py" = ["ANN001"] # 8 violations
-"backend/tests/component/core/diff/test_diff_labels_enricher.py" = ["ANN001"]  # 7 violations
-"backend/tests/component/core/diff/test_cardinality_one_enricher.py" = ["ANN001"] # 4 violations
-"backend/tests/component/core/diff/test_path_identifier_enricher.py" = ["ANN001"] # 1 violation
-"backend/tests/component/core/diff/test_diff_init.py" = ["ANN001"]             # 1 violation
-"backend/tests/component/core/diff/test_coordinator.py" = ["ANN001"]           # 1 violation
-"backend/tests/component/core/ipam/**.py" = ["ANN001"]                         # 42 violations
-# backend/tests/component/core/migrations/ (174 violations)
-"backend/tests/component/core/migrations/schema/**.py" = ["ANN001"]            # 33 violations
-"backend/tests/component/core/migrations/graph/test_012.py" = ["ANN001"]       # 32 violations
-"backend/tests/component/core/migrations/graph/test_013.py" = ["ANN001"]       # 29 violations
-"backend/tests/component/core/migrations/graph/test_023.py" = ["ANN001"]       # 13 violations
-"backend/tests/component/core/migrations/graph/test_018_025.py" = ["ANN001"]   # 12 violations
-"backend/tests/component/core/migrations/graph/test_003.py" = ["ANN001"]       # 11 violations
-"backend/tests/component/core/migrations/graph/test_019.py" = ["ANN001"]       # 7 violations
-"backend/tests/component/core/migrations/graph/test_047.py" = ["ANN001"]       # 6 violations
-"backend/tests/component/core/migrations/graph/test_001.py" = ["ANN001"]       # 6 violations
-"backend/tests/component/core/migrations/graph/test_042.py" = ["ANN001"]       # 4 violations
-"backend/tests/component/core/migrations/graph/test_049.py" = ["ANN001"]       # 3 violations
-"backend/tests/component/core/migrations/graph/test_031.py" = ["ANN001"]       # 3 violations
-"backend/tests/component/core/migrations/graph/test_014.py" = ["ANN001"]       # 3 violations
-"backend/tests/component/core/migrations/graph/test_033.py" = ["ANN001"]       # 2 violations
-"backend/tests/component/core/migrations/graph/test_030.py" = ["ANN001"]       # 2 violations
-"backend/tests/component/core/migrations/graph/test_017.py" = ["ANN001"]       # 2 violations
-"backend/tests/component/core/migrations/graph/test_057_set_coreproposedchange_created_by_on_node.py" = ["ANN001"] # 1 violation
-"backend/tests/component/core/migrations/graph/test_048.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_041/test_041.py" = ["ANN001"] # 1 violation
-"backend/tests/component/core/migrations/graph/test_039.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_034.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_032.py" = ["ANN001"]       # 1 violation
-"backend/tests/component/core/migrations/graph/test_027.py" = ["ANN001"]       # 1 violation
-# backend/tests/component/core/schema_manager/ (114 violations)
-"backend/tests/component/core/schema_manager/test_manager_schema.py" = ["ANN001"]                # 100 violations
-"backend/tests/component/core/test_node_get_list_query.py" = ["ANN001"]        # 96 violations
-"backend/tests/component/core/test_relationship_query.py" = ["ANN001"]        # 59 violations
-
 "backend/tests/query_benchmark/**.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################
-    "ANN202",   # Missing return type annotation for private function
     "PLR0913",  # Too many arguments in function definition
     "PLR0917",  # Too many positional arguments
-    "PT003",    # `scope='function'` is implied in `@pytest.fixture()`
-    "PT006",    # Wrong type passed to first argument of `pytest.mark.parametrize`
-    "RET504",   # Unnecessary assignment before `return` statement
-    "RUF029",   # Function is declared `async`, but doesn't `await`
 ]
 
 "backend/tests/integration_docker/**.py" = [
@@ -1067,14 +995,9 @@ allow-dunder-method-names = [
     ##################################################################################################
     # Rules with violations in unit tests                                                            #
     ##################################################################################################
-    "FURB118",  # Use `operator.itemgetter(1)` instead of defining a lambda
-    "PERF401",  # Use a list comprehension to create a transformed list
     "PLC2701",  # Private name import from external module
     "PLR2004",  # Magic value used in comparison
-    "PLR6201",  # Use a `set` literal when testing for membership
     "RUF012",   # Mutable class attributes should be annotated with `typing.ClassVar`
-    "RUF029",   # Function is declared `async`, but doesn't `await`
-    "SIM118",   # Use `key in dict` instead of `key in dict.keys()`
 ]
 
 "backend/tests/integration_docker/test_schema_migration.py" = [
@@ -1292,6 +1215,7 @@ include = ["utilities/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 possibly-missing-attribute = "ignore"
+possibly-missing-submodule = "ignore"
 unresolved-import = "ignore"
 
 [[tool.ty.overrides]]
@@ -1303,13 +1227,15 @@ include = ["models/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 invalid-argument-type = "ignore"
+invalid-assignment = "ignore"
 missing-argument = "ignore"
 no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 possibly-missing-attribute = "ignore"
 too-many-positional-arguments = "ignore"
+unresolved-attribute = "ignore"
 unresolved-import = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["python_testcontainers/**"]
@@ -1319,10 +1245,12 @@ include = ["python_testcontainers/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
+invalid-assignment = "ignore"
 possibly-missing-attribute = "ignore"
+possibly-missing-submodule = "ignore"
 too-many-positional-arguments = "ignore"
 unresolved-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/core/query/standard_node.py"]
@@ -1356,7 +1284,7 @@ possibly-missing-attribute = "ignore"
 unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/graphql/**"]
@@ -1376,10 +1304,11 @@ no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 not-iterable = "ignore"
 possibly-missing-attribute = "ignore"
+redundant-cast = "ignore"
 unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/git/**"]
@@ -1396,7 +1325,7 @@ invalid-return-type = "ignore"
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/database/**"]
@@ -1411,7 +1340,8 @@ invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 invalid-return-type = "ignore"
 invalid-type-form = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/services/**"]
@@ -1422,8 +1352,9 @@ include = ["backend/infrahub/services/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 deprecated = "ignore"
+invalid-await = "ignore"
 unresolved-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/services/adapters/**/nats.py"]
@@ -1434,6 +1365,7 @@ include = ["backend/infrahub/services/adapters/**/nats.py"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 possibly-missing-attribute = "ignore"
+possibly-missing-submodule = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/proposed_change/**"]
@@ -1448,7 +1380,8 @@ invalid-assignment = "ignore"
 invalid-await = "ignore"
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/generators/**"]
@@ -1462,7 +1395,8 @@ invalid-argument-type = "ignore"
 invalid-await = "ignore"
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/git_credential/**"]
@@ -1477,7 +1411,7 @@ invalid-assignment = "ignore"
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/webhook/**"]
@@ -1491,7 +1425,7 @@ invalid-argument-type = "ignore"
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/cli/**"]
@@ -1503,7 +1437,7 @@ include = ["backend/infrahub/cli/**"]
 ##################################################################################################
 invalid-argument-type = "ignore"
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/telemetry/**"]
@@ -1514,7 +1448,7 @@ include = ["backend/infrahub/telemetry/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/computed_attribute/**"]
@@ -1527,7 +1461,8 @@ include = ["backend/infrahub/computed_attribute/**"]
 invalid-argument-type = "ignore"
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/workers/**"]
@@ -1539,7 +1474,7 @@ include = ["backend/infrahub/workers/**"]
 ##################################################################################################
 invalid-argument-type = "ignore"
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/trigger/**"]
@@ -1550,7 +1485,7 @@ include = ["backend/infrahub/trigger/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/workflows/**"]
@@ -1561,7 +1496,7 @@ include = ["backend/infrahub/workflows/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/message_bus/**"]
@@ -1572,8 +1507,10 @@ include = ["backend/infrahub/message_bus/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 call-non-callable = "ignore"
+call-top-callable = "ignore"
+invalid-await = "ignore"
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/artifacts/tasks.py"]
@@ -1583,8 +1520,9 @@ include = ["backend/infrahub/artifacts/tasks.py"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
+invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/artifacts/**"]
@@ -1595,7 +1533,7 @@ include = ["backend/infrahub/artifacts/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/tasks/**"]
@@ -1605,8 +1543,10 @@ include = ["backend/infrahub/tasks/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
+missing-argument = "ignore"
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unknown-argument = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/transformations/**"]
@@ -1617,7 +1557,7 @@ include = ["backend/infrahub/transformations/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/profiles/**"]
@@ -1630,7 +1570,8 @@ include = ["backend/infrahub/profiles/**"]
 invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/api/**"]
@@ -1641,7 +1582,8 @@ include = ["backend/infrahub/api/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 invalid-return-type = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/actions/tasks.py"]
@@ -1652,7 +1594,7 @@ include = ["backend/infrahub/actions/tasks.py"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 invalid-assignment = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/actions/**"]
@@ -1662,8 +1604,9 @@ include = ["backend/infrahub/actions/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
+invalid-argument-type = "ignore"
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/branch/**"]
@@ -1674,7 +1617,7 @@ include = ["backend/infrahub/branch/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/schema/**"]
@@ -1685,7 +1628,7 @@ include = ["backend/infrahub/schema/**"]
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
 no-matching-overload = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/*.py"]
@@ -1703,7 +1646,7 @@ no-matching-overload = "ignore"
 not-subscriptable = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/display_labels/**"]
@@ -1713,7 +1656,48 @@ include = ["backend/infrahub/display_labels/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/events/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unresolved-attribute = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/menu/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+invalid-argument-type = "ignore"
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/pools/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+
+[[tool.ty.overrides]]
+include = ["backend/infrahub/templates/**"]
+
+[tool.ty.overrides.rules]
+##################################################################################################
+# The ignored rules below should be removed once the code has been updated, they are included    #
+# like this so that we can reactivate them one by one.                                           #
+##################################################################################################
+unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/hfid/**"]
@@ -1723,7 +1707,7 @@ include = ["backend/infrahub/hfid/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/prefect_server/**"]
@@ -1733,7 +1717,7 @@ include = ["backend/infrahub/prefect_server/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/infrahub/task_manager/**"]
@@ -1743,7 +1727,8 @@ include = ["backend/infrahub/task_manager/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+invalid-argument-type = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/tests/component/**"]
@@ -1765,7 +1750,8 @@ possibly-missing-attribute = "ignore"
 unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-awaitable = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/tests/helpers/**"]
@@ -1775,7 +1761,8 @@ include = ["backend/tests/helpers/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/tests/integration/**"]
@@ -1795,7 +1782,7 @@ not-subscriptable = "ignore"
 possibly-missing-attribute = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/tests/functional/**"]
@@ -1814,7 +1801,7 @@ possibly-missing-attribute = "ignore"
 unknown-argument = "ignore"
 unresolved-attribute = "ignore"
 unsupported-operator = "ignore"
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/tests/integration_docker/**"]
@@ -1828,6 +1815,7 @@ invalid-argument-type = "ignore"
 invalid-assignment = "ignore"
 invalid-return-type = "ignore"
 possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/tests/scale/**"]
@@ -1840,6 +1828,7 @@ include = ["backend/tests/scale/**"]
 invalid-assignment = "ignore"
 not-iterable = "ignore"
 possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
 unresolved-import = "ignore"
 unsupported-operator = "ignore"
 
@@ -1853,7 +1842,9 @@ include = ["backend/tests/fixtures/**"]
 ##################################################################################################
 no-matching-overload = "ignore"
 possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
 unresolved-import = "ignore"
+invalid-argument-type = "ignore"
 
 [[tool.ty.overrides]]
 include = ["backend/tests/unit/**"]
@@ -1863,7 +1854,8 @@ include = ["backend/tests/unit/**"]
 # The ignored rules below should be removed once the code has been updated, they are included    #
 # like this so that we can reactivate them one by one.                                           #
 ##################################################################################################
-unused-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
+unresolved-attribute = "ignore"
+unused-type-ignore-comment = "ignore" # Clashes with mypy's type ignore comments
 
 [[tool.ty.overrides]]
 include = ["backend/tests/test_data/**"]
@@ -1885,6 +1877,7 @@ include = ["backend/tests/query_benchmark/**"]
 ##################################################################################################
 invalid-return-type = "ignore"
 possibly-missing-attribute = "ignore"
+unresolved-attribute = "ignore"
 unresolved-import = "ignore"
 
 [tool.hatch.build.targets.sdist]

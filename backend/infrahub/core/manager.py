@@ -18,6 +18,7 @@ from infrahub.core.order import OrderModel
 from infrahub.core.query.node import (
     AttributeFromDB,
     GroupedPeerNodes,
+    NodeGetByHFIDQuery,
     NodeGetHierarchyQuery,
     NodeGetListQuery,
     NodeListGetAttributeQuery,
@@ -768,48 +769,36 @@ class NodeManager:
                 message=f"Unable to lookup node by HFID, schema '{node_schema.kind}' HFID does not contain the same number of elements as {hfid}",
             )
 
-        filters = {}
-        for key, item in zip(node_schema.human_friendly_id, hfid, strict=False):
-            path = node_schema.parse_schema_path(path=key, schema=registry.schema.get_schema_branch(name=branch.name))
-
-            if path.is_type_relationship and path.related_schema:
-                rel_schema = path.related_schema
-                # Keep the relationship attribute path and parse it
-                path = rel_schema.parse_schema_path(
-                    path=key.split("__", maxsplit=1)[1],
-                    schema=registry.schema.get_schema_branch(name=branch.name),
-                )
-
-            filters[key] = path.active_attribute_schema.get_class().deserialize_from_string(item)
-
-        items = await NodeManager.query(
-            db=db,
-            schema=node_schema,
-            fields=fields,
-            limit=2,
-            filters=filters,
-            branch=branch,
-            at=at,
-            include_metadata=include_metadata,
-            prefetch_relationships=prefetch_relationships,
-            branch_agnostic=branch_agnostic,
-            order=OrderModel(disable=True),
+        query = await NodeGetByHFIDQuery.init(
+            db=db, branch=branch, at=at, node_kind=kind_str, hfids=[hfid], branch_agnostic=branch_agnostic
         )
+        await query.execute(db=db)
+        node_uuids = query.get_node_uuids()
 
-        if len(items) < 1:
+        if len(node_uuids) < 1:
             if raise_on_error:
                 raise NodeNotFoundError(branch_name=branch.name, node_type=kind_str, identifier=hfid_str)
             return None
 
-        if len(items) > 1:
+        if len(node_uuids) > 1:
             raise NodeNotFoundError(
                 branch_name=branch.name,
                 node_type=kind_str,
                 identifier=hfid_str,
-                message=f"Unable to find node {hfid_str!r}, {len(items)} nodes returned, expected 1",
+                message=f"Unable to find node {hfid_str!r}, {len(node_uuids)} nodes returned, expected 1",
             )
 
-        return items[0]
+        return await cls.get_one(
+            id=node_uuids[0],
+            db=db,
+            kind=kind,
+            fields=fields,
+            at=at,
+            branch=branch,
+            include_metadata=include_metadata,
+            prefetch_relationships=prefetch_relationships,
+            branch_agnostic=branch_agnostic,
+        )
 
     @overload
     @classmethod

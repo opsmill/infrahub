@@ -10,7 +10,6 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, AsyncIterator, Generator
 
 import ujson
-from whenever import ZonedDateTime
 
 from infrahub import config
 from infrahub.constants.enums import OrderDirection
@@ -173,11 +172,12 @@ class NodeCreateAllQuery(NodeQuery):
                 )
             )
         if self.node.has_human_friendly_id():
-            attributes_indexed.append(
-                self.node._human_friendly_id.get_node_attribute(node=self.node, at=at).get_create_data(
-                    node_schema=self.node.get_schema()
-                )
-            )
+            hfid_attr = self.node._human_friendly_id.get_node_attribute(node=self.node, at=at)
+            hfid_data = hfid_attr.get_create_data(node_schema=self.node.get_schema())
+            if AttributeDBNodeType.INDEXED in hfid_attr.get_db_node_type():
+                attributes_indexed.append(hfid_data)
+            else:
+                attributes.append(hfid_data)
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
@@ -1452,36 +1452,69 @@ class NodeGetByHFIDQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
+
         # The list is stored as a string in the database
         self.params["hfid_values"] = [ujson.dumps(hfid) for hfid in self.hfids]
 
         query = """
-        MATCH (n:%(node_kind)s)
+        // --------------------------
+        // Start from the indexed HFID value to ensure the query planner
+        // uses the AttributeValueIndexed index. HFIDs larger than
+        // MAX_STRING_LENGTH are not indexed and thus not searchable.
+        // --------------------------
+        MATCH (av:AttributeValueIndexed)
+        WHERE av.value IN $hfid_values
+        MATCH (av)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
+        WITH DISTINCT n, attr, av
+        // --------------------------
+        // Filter IS_PART_OF edges to ensure node is active
+        // --------------------------
         CALL (n) {
             MATCH (n)-[r:IS_PART_OF]->(:Root)
             WHERE %(branch_filter)s
-            RETURN r AS r_part_of
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, r_part_of
-        WHERE r_part_of.status = "active"
-        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "human_friendly_id"})
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av)
+        WITH n, attr, av
+        WHERE r.status = "active"
+        // --------------------------
+        // Filter HAS_ATTRIBUTE edges to confirm the attribute
+        // is actively linked to the node on the correct branch
+        // --------------------------
+        CALL (n, attr) {
+            MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
             WHERE %(branch_filter)s
-            RETURN av, r AS r_attr
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, av, r_attr
-        WHERE r_attr.status = "active" AND av.value IN $hfid_values
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_kind}
+        WITH n, attr, av
+        WHERE r.status = "active"
+        // --------------------------
+        // Filter HAS_VALUE edges to resolve the active value
+        // on the correct branch at the requested point in time
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r
+        WHERE r.status = "active"
+        """ % {
+            "branch_filter": branch_filter,
+            "node_kind": self.node_kind,
+        }
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid AS node_uuid", "av.value AS hfid"]
+        self.return_labels = ["DISTINCT n.uuid AS node_uuid", "av.value AS hfid"]
 
     def get_node_uuids(self) -> list[str]:
         """Get the list of node UUIDs from the query results."""
@@ -1994,8 +2027,7 @@ WITH %(tracked_vars)s,
     ) -> FieldAttributeRequirement:
         """Build a FieldAttributeRequirement for a metadata filter."""
         if isinstance(value, datetime):
-            timestamp = Timestamp(ZonedDateTime.from_py_datetime(value))
-            value = timestamp.to_string()
+            value = Timestamp(value.isoformat()).to_string()
         return FieldAttributeRequirement(
             field_name=field_name,
             field=None,

@@ -1,6 +1,5 @@
 import re
 import shutil
-import tarfile
 from pathlib import Path
 from typing import Any, Generator
 
@@ -11,6 +10,7 @@ from git import Repo
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.branch import BranchData
 from infrahub_sdk.node import InfrahubNode
+from infrahub_sdk.schema import NodeSchemaAPI
 from infrahub_sdk.schema import SchemaRootAPI as ClientSchemaRoot
 from infrahub_sdk.uuidt import UUIDT
 from pytest_httpx import HTTPXMock
@@ -31,63 +31,6 @@ from tests.helpers.test_client import dummy_async_request
 @pytest.fixture
 def client() -> InfrahubClient:
     return InfrahubClient(config=Config(address="http://mock", insert_tracker=True))
-
-
-@pytest.fixture
-def branch01() -> BranchData:
-    return BranchData(
-        id="6c915158-d8ef-4169-9b00-59f94716b8c3 ",
-        name="branch01",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def branch02() -> BranchData:
-    return BranchData(
-        id="7708dcea-f7b4-4f5a-b5e9-a0605d4c11ba",
-        name="branch02",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def branch99() -> BranchData:
-    return BranchData(
-        id="2e933717-086c-47cf-8242-21421dd3c2bb",
-        name="branch99",
-        sync_with_git=False,
-        is_default=False,
-        branched_from="main",
-        is_isolated=False,
-        has_schema_changes=False,
-    )
-
-
-@pytest.fixture
-def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
-    """Git Repository with 4 branches main, branch01, branch02, and clean-branch.
-    There is conflict between branch01 and branch02."""
-
-    name = "infrahub-test-fixture-01"
-    here = Path(__file__).parent.resolve()
-    fixtures_dir = here.parent.parent / "fixtures"
-    fixture_repo = fixtures_dir / "infrahub-test-fixture-01-f165752.tar.gz"
-
-    # Extract the fixture package in the source directory
-
-    with tarfile.open(fixture_repo) as file:
-        file.extractall(git_sources_dir, filter="data")
-
-    return {"name": name, "path": git_sources_dir / name}
 
 
 @pytest.fixture
@@ -116,22 +59,6 @@ def git_upstream_repo_03(git_upstream_repo_01: dict[str, str | Path]) -> dict[st
         repo.git.branch("-D", str(local_branch))
 
     return git_upstream_repo_01
-
-
-@pytest.fixture
-async def git_repo_01(
-    client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
-) -> InfrahubRepository:
-    """Git Repository with git_upstream_repo_01 as remote"""
-
-    repo = await InfrahubRepository.new(
-        id=UUIDT.new(),
-        name=git_upstream_repo_01["name"],
-        location=str(git_upstream_repo_01["path"]),
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-    )
-
-    return repo
 
 
 @pytest.fixture
@@ -801,7 +728,8 @@ async def schema_02(client: InfrahubClient, helper: TestHelper, car_data_01: dic
 
 @pytest.fixture
 async def gql_query_node_03(client: InfrahubClient, gql_query_data_03: dict[str, Any]) -> InfrahubNode:
-    schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
+    backend_schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
+    schema = NodeSchemaAPI(**backend_schema.model_dump())
     node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
     return node
 

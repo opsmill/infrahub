@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Optional, Self, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
@@ -22,8 +22,6 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, InitializationError, ValidationError
 
 if TYPE_CHECKING:
-    from neo4j.graph import Node as Neo4jNode
-
     from infrahub.database import InfrahubDatabase
 
 
@@ -157,15 +155,16 @@ class Branch(StandardNode):
         cls,
         db: InfrahubDatabase,
         limit: int = 1000,
+        offset: int | None = None,
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> list[Self]:
         # Extract branch-specific params from kwargs, a future refactoring could update the parent signature for
         # standard nodes instead. Should be considered when additional StandardNode subclasses are introduced
-        branch_filters: BranchListFilters | None = kwargs.pop("branch_filters", None)  # type: ignore[assignment]
-        exclude_global: bool = kwargs.pop("exclude_global", False)  # type: ignore[assignment]
+        branch_filters: BranchListFilters | None = kwargs.pop("branch_filters", None)
+        exclude_global: bool = kwargs.pop("exclude_global", False)
 
         if branch_filters is None:
             branch_filters = BranchListFilters(name=name, ids=ids)
@@ -180,11 +179,12 @@ class Branch(StandardNode):
             branch_filters=branch_filters,
             exclude_global=exclude_global,
             limit=limit,
+            offset=offset,
             node_ordering=node_ordering,
         )
         await query.execute(db=db)
 
-        return [cls.from_db(node=cast("Neo4jNode", result.get("n"))) for result in query.get_results()]
+        return [cls.from_db(node=result.get_node("n")) for result in query.get_results()]
 
     @classmethod
     async def get_list_count(

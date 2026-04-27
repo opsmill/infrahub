@@ -66,7 +66,7 @@ type NodesOptionsProps = {
   node: ObjectResult;
 };
 
-const NodesOptions = ({ node }: NodesOptionsProps) => {
+export const NodesOptions = ({ node }: NodesOptionsProps) => {
   const { schema } = useSchema(node.kind);
   const {
     data: objectDetailsData,

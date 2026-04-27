@@ -86,7 +86,7 @@ class UpdateHFID(Mutation):
                 kind=node_schema.kind,
                 id=str(data.id),
                 branch=graphql_context.branch,
-                fields={"human_friendly_id": None},
+                fields={"human_friendly_id": None, "display_label": None},
             )
         ):
             raise NodeNotFoundError(

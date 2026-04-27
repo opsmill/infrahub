@@ -3,8 +3,9 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph import Migration018, Migration025
-from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.migrations.graph.m018_uniqueness_nulls import Migration018
+from infrahub.core.migrations.graph.m025_uniqueness_nulls import Migration025
+from infrahub.core.migrations.shared import InternalSchemaMigration, MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -15,7 +16,7 @@ from infrahub.database import InfrahubDatabase
 async def car_person_schema(
     db: InfrahubDatabase,
     default_branch: Branch,
-    register_internal_models_schema,
+    register_internal_models_schema: SchemaBranch,
     car_person_schema_unregistered: SchemaRoot,
 ) -> SchemaBranch:
     car_person_schema_unregistered.get("TestCar").uniqueness_constraints = [["color__value", "nbr_seats__value"]]
@@ -23,7 +24,7 @@ async def car_person_schema(
 
 
 @pytest.fixture
-async def person_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema) -> Node:
+async def person_main(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> Node:
     person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await person.new(db=db, name="John", height=180)
     await person.save(db=db)
@@ -59,11 +60,11 @@ async def car_invisible(db: InfrahubDatabase, default_branch: Branch, person_mai
 @pytest.mark.parametrize("migration", [Migration018(), Migration025()])
 async def test_migration_018_success(
     db: InfrahubDatabase,
-    default_branch,
-    car_blue,
-    car_red,
-    car_invisible,
-    migration,
+    default_branch: Branch,
+    car_blue: Node,
+    car_red: Node,
+    car_invisible: Node,
+    migration: InternalSchemaMigration,
 ) -> None:
     # check no validation errors for now
     async with db.start_session() as dbs:
@@ -77,12 +78,12 @@ async def test_migration_018_success(
 @pytest.mark.parametrize("migration", [Migration018(), Migration025()])
 async def test_migration_018_fail(
     db: InfrahubDatabase,
-    default_branch,
-    car_blue,
-    car_red,
-    car_invisible,
+    default_branch: Branch,
+    car_blue: Node,
+    car_red: Node,
+    car_invisible: Node,
     car_person_schema: SchemaBranch,
-    migration,
+    migration: InternalSchemaMigration,
 ) -> None:
     """
     Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint

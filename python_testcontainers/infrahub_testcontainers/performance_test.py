@@ -3,16 +3,20 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from types import TracebackType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
-import pytest
 from typing_extensions import Self
 
 from .constants import PERFORMANCE_TEST_KIND, PERFORMANCE_TEST_VERSION
-from .helpers import InfrahubDockerCompose
 from .host import get_system_stats
+
+if TYPE_CHECKING:
+    from types import TracebackType
+
+    import pytest
+
+    from .helpers import InfrahubDockerCompose
 from .models import (
     ContextUnit,
     InfrahubActiveMeasurementItem,

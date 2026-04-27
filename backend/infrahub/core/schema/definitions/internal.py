@@ -29,6 +29,7 @@ from infrahub.core.constants import (
     RelationshipDeleteBehavior,
     RelationshipDirection,
     RelationshipKind,
+    SchemaAttributeDisplay,
     UpdateSupport,
 )
 from infrahub.core.schema.attribute_parameters import (
@@ -181,7 +182,7 @@ class SchemaNode(BaseModel):
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_label: str | None = None
-    display_labels: list[str]
+    display_labels: list[str] | None = None
     uniqueness_constraints: list[list[str]] | None = None
     human_friendly_id: list[str] | None = None
 
@@ -228,7 +229,7 @@ base_node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     attributes=[
         SchemaAttribute(
             name="id",
@@ -350,7 +351,7 @@ base_node_schema = SchemaNode(
             internal_kind=list[list[str]],
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="documentation",
@@ -396,7 +397,7 @@ node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     human_friendly_id=["namespace__value", "name__value"],
     uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
@@ -478,7 +479,7 @@ attribute_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_labels=["name__value"],
+    display_label="name__value",
     uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
@@ -664,6 +665,19 @@ attribute_schema = SchemaNode(
             max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the attribute is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -684,7 +698,7 @@ relationship_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_labels=["name__value"],
+    display_label="name__value",
     uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
@@ -883,6 +897,19 @@ relationship_schema = SchemaNode(
             max_length=DEFAULT_DESCRIPTION_LENGTH,
             extra={"update": UpdateSupport.ALLOWED},
         ),
+        SchemaAttribute(
+            name="display",
+            kind="Text",
+            internal_kind=SchemaAttributeDisplay,
+            description=(
+                "Controls where the relationship is displayed. 'default' shows in the main view, "
+                "'extra' shows in an expanded/secondary section."
+            ),
+            enum=SchemaAttributeDisplay.available_types(),
+            default_value=SchemaAttributeDisplay.DEFAULT,
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
+        ),
     ],
     relationships=[
         SchemaRelationship(
@@ -902,7 +929,7 @@ generic_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     human_friendly_id=["namespace__value", "name__value"],
     uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
@@ -931,6 +958,14 @@ generic_schema = SchemaNode(
             description="List of Nodes that are referencing this Generic",
             optional=True,
             extra={"update": UpdateSupport.NOT_APPLICABLE},
+        ),
+        SchemaAttribute(
+            name="restricted_namespaces",
+            kind="List",
+            internal_kind=str,
+            description="Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
+            optional=True,
+            extra={"update": UpdateSupport.ALLOWED},
         ),
     ],
     relationships=[

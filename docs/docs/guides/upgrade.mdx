@@ -153,6 +153,14 @@ kubectl rollout restart deployment/infrahub-infrahub-server
 </TabItem>
 </Tabs>
 
+## Upgrading the observability stack
+
+When a new compose file changes the embedded observability configuration, services backed by Docker Compose `configs` do not pick up those changes on a regular `up -d`. Use `--force-recreate` on the affected services to reload the embedded configuration content:
+
+```bash
+docker compose -p infrahub up -d --force-recreate infrahub-alloy infrahub-loki infrahub-tempo infrahub-grafana
+```
+
 ## Known issues
 
 ### Migration failing because of transaction memory limit reached in Neo4j

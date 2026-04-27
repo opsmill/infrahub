@@ -1,16 +1,16 @@
 import { Icon } from "@iconify-icon/react";
 import { XIcon } from "lucide-react";
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useSearchParams } from "react-router";
 import { toast } from "react-toastify";
 
-import { constructPath, getCurrentQsp } from "@/shared/api/rest/fetch";
-import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchesMutation } from "@/entities/branches/ui/queries/delete-branches.mutation";
 import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
@@ -22,16 +22,22 @@ export interface BranchesToolbarProps {
 
 export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [searchParams] = useSearchParams();
   const { mutateAsync: deleteBranches, isPending: isDeleting } = useDeleteBranchesMutation();
-  const navigate = useNavigate();
+  const { clearBranchIfCurrent } = useNavigateAfterBranchRemoval();
 
   const deletableBranches = selectedBranches.filter((branch) => !branch.is_default);
 
-  const handleDelete = async () => {
+  const handleDelete = async (deleteFromGit: boolean) => {
     const branchNames = deletableBranches.map((branch) => branch.name);
 
+    const currentBranch = searchParams.get(QSP.BRANCH);
+    if (currentBranch && branchNames.includes(currentBranch)) {
+      clearBranchIfCurrent(currentBranch);
+    }
+
     try {
-      const result = await deleteBranches({ names: branchNames });
+      const result = await deleteBranches({ names: branchNames, deleteFromGit });
 
       if (result.failed.length > 0) {
         toast(
@@ -40,17 +46,6 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
             message={`Failed to delete ${result.failed.length === 1 ? "branch" : "branches"}: ${result.failed.join(", ")}`}
           />
         );
-      }
-
-      if (result.deleted.length > 0) {
-        const queryStringParams = getCurrentQsp();
-        const currentBranch = queryStringParams.get(QSP.BRANCH);
-        const isCurrentBranchDeleted = currentBranch && result.deleted.includes(currentBranch);
-
-        if (isCurrentBranchDeleted) {
-          const path = constructPath("/branches", [{ name: QSP.BRANCH, exclude: true }]);
-          navigate(path, { replace: true });
-        }
       }
     } catch {
       toast(
@@ -94,23 +89,11 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
         </ToolbarButton>
       </div>
 
-      <ModalDelete
-        title="Delete"
-        description={
-          deletableBranches.length === 1 ? (
-            <>
-              Are you sure you want to remove the branch
-              <br /> <b>`{deletableBranches[0].name}`</b>?
-            </>
-          ) : (
-            <>
-              Are you sure you want to remove {deletableBranches.length} branches?
-              <br />
-              <b>{deletableBranches.map((b) => b.name).join(", ")}</b>
-            </>
-          )
-        }
-        onDelete={handleDelete}
+      <ModalDeleteBranch
+        branches={deletableBranches}
+        onDelete={async (scope) => {
+          await handleDelete(scope === DELETE_BRANCH_SCOPE.LOCAL_AND_REMOTE);
+        }}
         isOpen={showDeleteModal}
         onOpenChange={setShowDeleteModal}
         isLoading={isDeleting}

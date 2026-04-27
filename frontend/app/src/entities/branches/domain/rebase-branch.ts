@@ -1,4 +1,4 @@
-import type { Branch } from "@/shared/api/graphql/generated/graphql";
+import type { Branch } from "@/shared/api/graphql/generated/types";
 
 import { rebaseBranchFromApi } from "@/entities/branches/api/rebase-branch-from-api";
 

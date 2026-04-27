@@ -617,14 +617,13 @@ class DiffTreeResolver:
             return None
         if len(enriched_diffs) > 0:
             # take the one with the longest duration that covers multiple branches
-            enriched_diff = sorted(
+            enriched_diff = max(
                 enriched_diffs,
                 key=lambda d: (
                     d.base_branch_name != d.diff_branch_name,
                     d.to_time.to_datetime() - d.from_time.to_datetime(),
                 ),
-                reverse=True,
-            )[0]
+            )
         else:
             enriched_diff = enriched_diffs[0]
 

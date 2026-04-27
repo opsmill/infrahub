@@ -3,6 +3,7 @@ from infrahub.core.constants import (
     BranchSupportType,
     ContentType,
     InfrahubKind,
+    RelationshipDeleteBehavior,
 )
 from infrahub.core.constants import RelationshipCardinality as Cardinality
 from infrahub.core.constants import RelationshipKind as RelKind
@@ -28,6 +29,7 @@ core_artifact_target = GenericSchema(
             cardinality=Cardinality.MANY,
             kind=RelKind.GENERIC,
             identifier="artifact__node",
+            on_delete=RelationshipDeleteBehavior.CASCADE,
         ),
     ],
 )
@@ -41,7 +43,7 @@ core_artifact = NodeSchema(
     icon="mdi:file-document-outline",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     branch=BranchSupportType.LOCAL,
     generate_profile=False,
     inherit_from=[InfrahubKind.TASKTARGET],
@@ -103,7 +105,7 @@ core_artifact_definition = NodeSchema(
     label="Artifact Definition",
     default_filter="name__value",
     order_by=["name__value"],
-    display_labels=["name__value"],
+    display_label="name__value",
     branch=BranchSupportType.AWARE,
     generate_profile=False,
     uniqueness_constraints=[["name__value"]],

@@ -11,6 +11,278 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.8.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.6) - 2026-04-21
+
+### Changed
+
+- SSO authentication now anchors account identity on the provider-issued `sub` claim rather than the user display name. Existing accounts are linked transparently on first login after upgrade. If a display name collision occurs with another SSO user's account, the email address is used as the account name instead.
+
+### Fixed
+
+- Schema deletions are now rejected when a generic is still referenced by another node's `inherit_from`, and partial schema writes are rolled back if loading the updated schema fails. ([#8988](https://github.com/opsmill/infrahub/issues/8988))
+- Fix branch name display in event details popover for branch deletion events.
+- Fix check messages overflowing outside their container in proposed changes.
+
+## [Infrahub - v1.8.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.5) - 2026-04-17
+
+### Fixed
+
+- Ensure that changes to a password attribute counts as a mutation event for a node. ([#6909](https://github.com/opsmill/infrahub/issues/6909))
+- Add distributed lock around branch creation to prevent race condition ([#8368](https://github.com/opsmill/infrahub/issues/8368))
+- Correct the display label on events sent from the mutations to update computed attributes and HFIDs when the display label contains attributes from related nodes. ([#8837](https://github.com/opsmill/infrahub/issues/8837))
+- Fix false-positive conflict detection during git sync caused by naive string matching of conflict markers in file content. ([#8848](https://github.com/opsmill/infrahub/issues/8848))
+- Prevent non-idempotent behavior when loading a schema that involves generic inheritance, HFIDs, uniqueness constraints, and unique attributes. In certain circumstances these elements could interact to cause unexpected schema drift when an attribute was identified as unique from a single-item uniqueness constraint on a node or generic schema. The schema loading logic is updated to ensure all of these elements are idempotent going forward. ([#8897](https://github.com/opsmill/infrahub/issues/8897))
+- Fixed git sync not importing objects after repository re-clone from a missing local directory ([#8930](https://github.com/opsmill/infrahub/issues/8930))
+- Fixed Jinja2 computed attributes, display labels, and human-friendly IDs failing when referencing attributes on a hierarchical relationship's concrete peer type ([#8943](https://github.com/opsmill/infrahub/issues/8943))
+- Fix bug in schema remove migration that could cause removed instances of the schema to be excluded from the diff. Would not cause a functional issue because the schema remove migration would run on the default branch when merged.
+- Support non-UTC timezones in filters for GraphQL queries
+
+## [Infrahub - v1.8.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.4) - 2026-04-02
+
+### Fixed
+
+- Link a merging proposed change to its diff during the merge operation if it has not been linked yet ([#8769](https://github.com/opsmill/infrahub/issues/8769))
+- Fixed an issue where webhook match statements (node kind filters) were lost during scheduled reconfiguration. ([#8772](https://github.com/opsmill/infrahub/issues/8772))
+
+## [Infrahub - v1.8.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.3) - 2026-03-31
+
+### Fixed
+
+- Corrected data diff view within a proposed change or branch view so that changes to profiles show up. ([#8529](https://github.com/opsmill/infrahub/issues/8529))
+- Fixed hard failures on GraphQL queries that would exhaust Neo4j's server thread pool by implementing backoff retry. ([#8696](https://github.com/opsmill/infrahub/issues/8696))
+- Fix object creation from a template when a resource pool is assigned to a required relationship or attribute field. ([#8701](https://github.com/opsmill/infrahub/issues/8701))
+- Deleting a node that inherits from `CoreArtifactTarget` now automatically deletes its associated artifacts. ([#8735](https://github.com/opsmill/infrahub/issues/8735))
+- Add missing `hfid` field to `RelatedIPAddressNodeInput` GraphQL type, allowing IP address relationships to be referenced by human-friendly ID
+- Fixed "Import latest commit" action crashing with `'Node' object has no attribute 'ref'` when used on a regular Repository instead of a Read-Only Repository.
+
+### Housekeeping
+
+- Migrated Node.js from version 22 to 24 LTS across CI workflows, Docker build, and package engine constraints.
+
+## [Infrahub - v1.8.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.2) - 2026-03-25
+
+### Changed
+
+- This change prevents redundant artifact regenerations by only triggering on node changes that affect fields actually read by the associated GraphQL query, reducing the number of artifacts that need to be regenerated and speeding up the pipeline.
+
+### Fixed
+
+- Fix scheduled reconfiguration of webhooks targeting "all" events ([#8694](https://github.com/opsmill/infrahub/issues/8694))
+- Fixed branch rebase conflicts during 1.7 to 1.8 upgrades caused by migration 056 writing unrelated schema attributes to branch timelines
+
+## [Infrahub - v1.8.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.1) - 2026-03-19
+
+### Added
+
+- Added schema processing to schema integrity check in order to validate the schema ([#8355](https://github.com/opsmill/infrahub/issues/8355))
+
+### Fixed
+
+- Prevent multiple merge operations from running simultaneously, whether they are for the same branch or different branches. Only a single merge operation can run at a given time. Before executing any updates, the merge operation will check if the branch being merged is open to prevent merging a branch multiple times. ([#6794](https://github.com/opsmill/infrahub/issues/6794))
+- Fixed read-only repository operational status after successful sync ([#8166](https://github.com/opsmill/infrahub/issues/8166))
+- Fixed artifact detail page not being accessible when the artifact failed to generate ([#8394](https://github.com/opsmill/infrahub/issues/8394))
+- Fixed long branch names overflowing in the branch selector and ensured the branch creation button maintains its size when disabled ([#8629](https://github.com/opsmill/infrahub/issues/8629))
+
+## [Infrahub - v1.8.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.0) - 2026-03-16
+
+We're excited to announce the release of Infrahub, v1.8.0!
+
+This release introduces a file objects feature, adds stronger branch life-cycle controls with automatic freeze-on-merge, and adds support for resource pools in object templates. The Infrahub Backup tool now fully supports Kubernetes deployments.
+
+## Main changes
+
+### File Object: Upload and attach files to Infrahub objects
+
+Infrahub can now store files -- Text files, PDFs, images, spreadsheets, KMZ files, and any other format -- directly as objects in the database. With the new `CoreFileObject` generic, you can define custom file types in your schema. Object files behave as all other objects in Infrahub, you can fully customize the schema and relate (or attach) them to other objects.
+
+The contents of the file will be rendered in Infrahub's web interface, if the file has one of the following file types: 
+
+- application/json
+- application/yaml
+- application/x-yaml
+- application/hcl
+- application/graphql
+- application/pdf
+- image/svg+xml
+- text/plain
+- text/markdown
+- application/xml
+- text/csv;
+- image/png
+- image/jpeg
+- image/gif
+- image/webp
+- image/bmp
+- image/x-icon
+
+To use this feature, create a schema node that inherits from `CoreFileObject`:
+
+```yaml
+nodes:
+  - name: ContractDocument
+    namespace: Custom
+    inherit_from:
+      - CoreFileObject
+    attributes:
+      - name: contract_number
+        kind: Text
+```
+
+The `CoreFileObject` generic automatically provides read-only attributes for file metadata: `file_name`, `checksum` (SHA-1), `file_size`, `file_type` (MIME type), and `storage_id`.
+
+**Upload** files through GraphQL mutations -- a `file` argument is automatically added to Create, Update, and Upsert mutations for any node inheriting from `CoreFileObject`.
+
+**Download** files through the UI or these REST API endpoints:
+- `/api/files/{node_id}` -- by node UUID
+- `/api/files/by-hfid/{kind}` -- by human-friendly ID
+- `/api/files/by-storage-id/{storage_id}` -- by internal storage ID
+
+The maximum file size defaults to 50 MB and is configurable via the `INFRAHUB_STORAGE_MAX_FILE_SIZE` environment variable.
+
+### Freeze branch after merge
+
+When a branch is merged -- either through a direct branch merge or via a Proposed Change -- it now transitions to a frozen state where no further mutations are allowed. This prevents a class of data integrity issues that could occur when a branch was modified or merged a second time after its initial merge.
+
+Both the backend API and the frontend UI enforce this freeze:
+- GraphQL mutations (Create, Upsert, Update, Delete) are blocked on merged branches
+- The UI disables editing controls and shows a visual indication that the branch is frozen
+- Creating a new Proposed Change for an already-merged branch is prevented
+
+### Resource pool references in object templates
+
+Object templates can now reference resource pools (IP Address, IP Prefix, and Number pools). Previously, adding a resource pool to a template would allocate a resource to the template itself -- not the intended behavior. In 1.8, pool references on templates are stored as metadata. When an object is created from the template, the resource is allocated from the specified pool at creation time.
+
+This applies to all pool types:
+- IP Address pools
+- IP Prefix pools
+- Number pools
+
+The feature introduces a new `relationship_properties` field in the GraphQL schema for template relationships, which stores the pool source reference alongside the standard `edges` field. Template inheritance (subtemplates) correctly propagates pool references.
+
+A database migration is included to convert any existing template-IP relationships that incorrectly have pool sources into the new `_from_resource_pool` relationship format.
+
+### Consult the diff of a proposed change after branch deletion
+
+The data and schema diff of a Proposed Change is now preserved and accessible even after the associated branch has been deleted. This is essential for audit and compliance workflows -- during incident investigation or regulatory review, users need to inspect what changes were made, by whom, and when, regardless of whether the source branch still exists.
+
+The diff data is now tied to the Proposed Change itself rather than solely to the branch. The Files and Artifacts tabs on a Proposed Change also handle deleted branches gracefully, showing a user-friendly message instead of an error.
+
+This feature is a prerequisite for a future capability to automatically delete branches after merge, which will help prevent stale branches that can cause Git synchronization issues.
+
+### Read-only repository: Update to Latest button
+
+Managing read-only Git repositories is now simpler. A new "Update to Latest" button fetches and imports the latest commit from the tracked branch directly from the UI. Previously, users had to manually copy and paste commit hashes from an external source to update what Infrahub was tracking. The existing reimport action has been renamed to "Reimport Current Commit" to clearly distinguish between re-processing the current commit and pulling the latest.
+
+Repositories now also support providing a Git Tag as the reference (ref) to track for a repository.
+
+### Infrahub Backup: Kubernetes support
+
+The `infrahub-backup` CLI tool now fully supports Kubernetes deployments for both backup and restore operations. The tool automatically detects whether Infrahub is running on Docker Compose or Kubernetes and adjusts its behavior accordingly.
+
+For Kubernetes deployments we can now install `infrahub-backup` using the Infrahub Helm Chart. This is now the recommended installation method for Kubernetes deployments.
+See the [installation instructions](https://docs.infrahub.app/backup/guides/install#enable-via-infrahub-helm-chart-recommended) for more details
+
+Key new capabilities:
+- `infrahub-backup create --k8s-namespace <namespace>` -- creates a backup archive containing Neo4j and PostgreSQL database dumps
+- `infrahub-backup restore <backup_file> --k8s-namespace <namespace>` -- restores from an archive, handling service stop/start, cache/queue cleanup, database restore, and service restart automatically
+- Supports Neo4j Enterprise Edition online backups
+- Backup archives include metadata with Infrahub version, Neo4j edition, components backed up, and timestamps
+
+### Display artifact count in proposed changes
+
+The Proposed Changes detail view now displays item counts on all tabs, giving you immediate visibility into how many changes exist in each category:
+
+- **Data** -- count of added, updated, and removed nodes
+- **Files** -- total count of changed files across repositories
+- **Artifacts** -- count of changed artifacts (excludes unchanged)
+- **Schema** -- count of schema changes
+- **Checks** -- count of validators
+- **Tasks** -- count of related tasks
+
+### Branch list page improvements
+
+The branch list page continues to evolve with richer information and better usability:
+
+- **Created By** column shows who created each branch (available for branches created after 1.7)
+- **Proposed Changes** column links directly to associated proposed changes
+- **Status** column shows branch state with warning indicators (e.g., "Rebase needed")
+- **Schema Changes** indicator shows whether the branch includes schema modifications
+- **Last Rebase** timestamp for sync tracking
+- **Merged badge** clearly identifies branches that have been merged
+- Merged branches are filtered from the proposed change creation form
+
+### General UI improvements
+
+Several smaller improvements enhance the day-to-day experience:
+
+- **Schema field shortcuts** -- clicking an attribute or relationship label in the object detail view opens the schema viewer modal, scrolling directly to the relevant field definition
+- **Field type icons** -- icons next to field names indicate the attribute type (text, number, boolean) and relationship schema
+- **Diff status badges** -- file and artifact diffs now show badges indicating the type of change (added, removed, updated)
+- **Branch artifacts tab** -- view artifact changes directly from the branch details view
+- **Refresh button** -- task list and details views now include a manual refresh button with a tooltip showing the last data refresh time
+- **Consistent focus outlines** -- improved visual accessibility across all interactive elements
+
+## Infrahub Python SDK
+
+Infrahub v1.8.0 requires the usage of infrahub-sdk v1.19.0, please update the `infrahub-sdk` package accordingly.
+
+Notable SDK changes in this release:
+- Added support for the File Object feature
+- Fixed an issue where the SDK tracking feature would fail when deleting a parent node with component relationships (e.g., a device with interfaces). The SDK now correctly handles cascade deletions where component nodes are automatically removed when their parent is deleted, preventing "Unable to find the node" errors in generator workflows.
+
+## Full changelog
+
+### Added
+
+- Added the ability to also fetch tags from git ([#8078](https://github.com/opsmill/infrahub/issues/8078))
+- Added `Builtin` to the list of restricted namespaces
+- Added `CoreFileObject` generic for storing files as node attributes with branch-aware versioning. Nodes inheriting from `CoreFileObject` support file upload via GraphQL mutations and download via REST API endpoints.
+- Added a refresh button to the task list and details view with a tooltip showing the last data refresh time
+- Added a shortcut in the object details view: clicking an attribute or relationship label opens the schema viewer modal, directly showing and scrolling to the relevant field definition
+- Added ability to view artifact changes from the branch details view
+- Added consistent focus outline color across all interactive elements for improved visual accessibility
+- Added counts to proposed change tabs
+- Added icons next to field names in the object details view to indicate field types (e.g., text, number, boolean) and relationship schemas
+- Added status badges to file and artifact diffs showing the type of change (added, removed, updated)
+- Added tooltip over action buttons (download/copy) on artifact details view.
+
+### Changed
+
+- Improved consistency of GraphQL Query details page with other object views
+- Remove "Task Overview" title from embedded task tabs (object that inherit from CoreTaskTarget)
+- Simplified default branch view by hiding inapplicable actions and tabs
+- Use Jinja2 templates to compute display labels of permission objects, also mark `identifier` as deprecated
+
+### Fixed
+
+- Handle schema updates and associated data migrations as a single item so that an unexpected failure during a schema migration does not leave the schema and data in incompatible states. This applies to loading a schema, merging a branch, and rebasing a branch. ([#6948](https://github.com/opsmill/infrahub/issues/6948))
+- Fixed IP addresses disappearing from their parent prefix when the address mask is less specific than the prefix length ([#7267](https://github.com/opsmill/infrahub/issues/7267))
+- Fixed missing changelog events for objects created as side effects during node creation, including pool-allocated resources and template-generated child objects. ([#7268](https://github.com/opsmill/infrahub/issues/7268))
+- Allow List attributes to use the regex parameter for validating list item values ([#7717](https://github.com/opsmill/infrahub/issues/7717))
+- Fixed schema loading crash when a node with `generate_template=True` has a Component relationship to `CoreNumberPool` ([#7903](https://github.com/opsmill/infrahub/issues/7903))
+- Prevent creating multiple number pools for the same schema if it is separately loaded on multiple branches. It is now possible to encounter an error if a user tries to create an instance of a schema immediately after an update to include a NumberPool attribute because the associated CoreNumberPool must be created by an asynchronous task. ([#8222](https://github.com/opsmill/infrahub/issues/8222))
+- Shift-click range selection now anchors to the last clicked row, with added e2e coverage for range toggling. ([#8229](https://github.com/opsmill/infrahub/issues/8229))
+- Fixed display labels showing 'None' for relationship-based fields after upsert.
+  Relationship peer attributes needed by display label and HFID templates are now correctly loaded during node updates. ([#8237](https://github.com/opsmill/infrahub/issues/8237))
+- Fixed error reporting on invalid Jinja2 templates for display_labels ([#8311](https://github.com/opsmill/infrahub/issues/8311))
+- Removed `generate_template` on a GenericSchema, this attribute could lead to an invalid GraphQL schema and breaking both frontend and backend operations ([#8371](https://github.com/opsmill/infrahub/issues/8371))
+- Fix IPAM view failing to load when more than 40 IP namespaces exist. ([#8481](https://github.com/opsmill/infrahub/issues/8481))
+- Fix diff update logic that runs after merge and rebase operations to ignore diffs for merged and deleted branches. Add a new environment variable, "INFRAHUB_DIFF_UPDATE_AFTER_MERGE", that allows skipping the automatic diff updates following a merge. ([#8507](https://github.com/opsmill/infrahub/issues/8507))
+- Fixed incorrect merge behavior where removing the source property from an attribute was silently ignored during branch merge. ([#8583](https://github.com/opsmill/infrahub/issues/8583))
+- Data tables now display error messages when API requests fail due to permission or other errors.
+- Fix false "unsaved changes" warning when editing objects with generic relationships.
+- Fix task view showing "Name not found" for related nodes that exist only on a branch by querying the correct branch and time context.
+- Fixed adding a relationship from a resource pool within relationship tabs in the object detail view
+- Show a user-friendly message in the Files and Artifacts tabs of a proposed change when the source branch has been deleted.
+
+## [Infrahub - v1.7.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.7) - 2026-03-12
+
+### Fixed
+
+- Fixed display labels showing 'None' for relationship-based fields after upsert.
+  Relationship peer attributes needed by display label and HFID templates are now correctly loaded during node updates.
+  Includes a migration to correct objects that had their display labels and or human-friendly IDs improperly updated to include a null value. ([#8237](https://github.com/opsmill/infrahub/issues/8237))
+
 ## [Infrahub - v1.7.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.7.6) - 2026-02-24
 
 ### Fixed

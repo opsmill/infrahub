@@ -13812,10 +13812,10 @@
       {
         "current": {
           "text": [
-            "loki:3100"
+            "infrahub-loki:3100"
           ],
           "value": [
-            "loki:3100"
+            "infrahub-loki:3100"
           ]
         },
         "datasource": {

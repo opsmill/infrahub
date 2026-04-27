@@ -96,17 +96,20 @@ export function RepositoryMenuSection({
         Check connectivity
       </MenuItem>
 
-      <MenuItem isDisabled={!isUpdateAllowed} onAction={() => reimportLastCommit({ repositoryId })}>
-        <Icon icon="mdi:source-commit" />
-        Import latest commit
-      </MenuItem>
-
       {isReadOnlyRepository && (
-        <MenuItem onAction={() => importCurrentCommit({ repositoryId })}>
-          <Icon icon="mdi:reload" />
-          Reimport current commit
+        <MenuItem
+          isDisabled={!isUpdateAllowed}
+          onAction={() => reimportLastCommit({ repositoryId })}
+        >
+          <Icon icon="mdi:source-commit" />
+          Import latest commit
         </MenuItem>
       )}
+
+      <MenuItem onAction={() => importCurrentCommit({ repositoryId })}>
+        <Icon icon="mdi:reload" />
+        Reimport current commit
+      </MenuItem>
     </MenuSection>
   );
 }

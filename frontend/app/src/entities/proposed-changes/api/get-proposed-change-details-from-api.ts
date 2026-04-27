@@ -27,7 +27,6 @@ const GET_PROPOSED_CHANGE_DETAILS = graphql(`
           id
           display_label
           __typename
-          _updated_at
           name {
             value
           }

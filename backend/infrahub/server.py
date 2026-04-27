@@ -20,13 +20,13 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
-from infrahub.api.exception_handlers import generic_api_exception_handler
+from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
-from infrahub.exceptions import Error, ValidationError
+from infrahub.exceptions import Error, ForwardableError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
@@ -38,7 +38,9 @@ from infrahub.workers.dependencies import (
     get_cache,
     get_component,
     get_database,
+    get_http,
     get_installation_type,
+    get_log_forwarding_service,
     get_message_bus,
     get_workflow,
     set_component_type,
@@ -73,6 +75,8 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     message_bus = await get_message_bus()
     cache = await get_cache()
     component = await get_component()
+    http_service = get_http()
+    log_forwarding = get_log_forwarding_service()
     service = await InfrahubServices.new(
         cache=cache,
         database=database,
@@ -80,7 +84,10 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         workflow=workflow,
         component=component,
         component_type=component_type,
+        http=http_service,
+        log_forwarding=log_forwarding,
     )
+    await log_forwarding.start()
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
     async with application.state.db.start_session() as db:
@@ -203,6 +210,7 @@ app.add_middleware(
     ),
 )
 
+app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
 app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))

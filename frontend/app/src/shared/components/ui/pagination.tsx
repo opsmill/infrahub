@@ -114,7 +114,8 @@ export const Pagination = (props: tPaginationType) => {
         </div>
 
         <div>
-          <ReactPaginate
+          {/* @ts-expect-error Vite 8 CJS interop: "type":"module" wraps default in { default: Component } */}
+          <ReactPaginate.default
             initialPage={currentPage}
             onClick={handlePageChange}
             pageRangeDisplayed={3}
