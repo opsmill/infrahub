@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
 
 from typing_extensions import Self
 
@@ -69,15 +69,24 @@ class InfrahubDatabase(Protocol):
     def to_database_id(self, db_id: str | int) -> str | int: ...
 
 
-@runtime_checkable
-class CoreNode(Protocol):
+class CoreNode:
+    _is_runtime_protocol: ClassVar[bool] = True
     id: str
 
-    def get_id(self) -> str: ...
-    def get_kind(self) -> str: ...
-    def get_schema(self) -> NonGenericSchemaTypes: ...
-    def get_attribute(self, name: str) -> BaseAttribute: ...
-    def get_relationship(self, name: str) -> RelationshipManager: ...
+    def get_id(self) -> str:
+        raise NotImplementedError()
+
+    def get_kind(self) -> str:
+        raise NotImplementedError()
+
+    def get_schema(self) -> NonGenericSchemaTypes:
+        raise NotImplementedError()
+
+    def get_attribute(self, name: str) -> BaseAttribute:
+        raise NotImplementedError()
+
+    def get_relationship(self, name: str) -> RelationshipManager:
+        raise NotImplementedError()
 
     @classmethod
     async def init(
@@ -86,12 +95,18 @@ class CoreNode(Protocol):
         db: InfrahubDatabase,
         branch: Branch | str | None = None,
         at: Timestamp | str | None = None,
-    ) -> Self: ...
-    async def new(self, db: InfrahubDatabase, id: str | None = None, **kwargs: Any) -> Self: ...
-    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self: ...
-    async def delete(
-        self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID
-    ) -> None: ...
+    ) -> Self:
+        raise NotImplementedError()
+
+    async def new(self, db: InfrahubDatabase, id: str | None = None, **kwargs: Any) -> Self:
+        raise NotImplementedError()
+
+    async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
+        raise NotImplementedError()
+
+    async def delete(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> None:
+        raise NotImplementedError()
+
     async def load(
         self,
         db: InfrahubDatabase,
@@ -99,7 +114,9 @@ class CoreNode(Protocol):
         db_id: str | None = None,
         updated_at: Timestamp | str | None = None,
         **kwargs: Any,
-    ) -> Self: ...
+    ) -> Self:
+        raise NotImplementedError()
+
     async def to_graphql(
         self,
         db: InfrahubDatabase,
@@ -107,10 +124,23 @@ class CoreNode(Protocol):
         related_node_ids: set | None = None,
         filter_sensitive: bool = False,
         permissions: dict | None = None,
-    ) -> dict: ...
-    async def get_display_label(self, db: InfrahubDatabase) -> str: ...
-    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool: ...
-    def _get_created_at(self) -> Timestamp | None: ...
-    def _get_created_by(self) -> str | None: ...
-    def _get_updated_at(self) -> Timestamp | None: ...
-    def _get_updated_by(self) -> str | None: ...
+    ) -> dict:
+        raise NotImplementedError()
+
+    async def get_display_label(self, db: InfrahubDatabase) -> str:
+        raise NotImplementedError()
+
+    async def from_graphql(self, data: dict, db: InfrahubDatabase) -> bool:
+        raise NotImplementedError()
+
+    def _get_created_at(self) -> Timestamp | None:
+        raise NotImplementedError()
+
+    def _get_created_by(self) -> str | None:
+        raise NotImplementedError()
+
+    def _get_updated_at(self) -> Timestamp | None:
+        raise NotImplementedError()
+
+    def _get_updated_by(self) -> str | None:
+        raise NotImplementedError()
