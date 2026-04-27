@@ -455,7 +455,8 @@ export function PathTraversalPage() {
                           <div className="min-w-0 flex-1">
                             <div className="truncate font-medium">{object.display_label}</div>
                             <div className="truncate text-[10px] text-gray-400">
-                              {object.kind} &middot; {object.depth} hop{object.depth !== 1 ? "s" : ""}
+                              {object.kind} &middot; {object.depth} hop
+                              {object.depth !== 1 ? "s" : ""}
                             </div>
                           </div>
                         </button>
