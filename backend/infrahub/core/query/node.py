@@ -1297,11 +1297,11 @@ CALL (rel) {
 
             source_id: str | None = None
             if self.include_metadata & MetadataOptions.SOURCE:
-                source_id = result.get_as_type("source_uuid", return_type=str)
+                source_id = result.get_as_optional_type("source_uuid", return_type=str)
 
             owner_id: str | None = None
             if self.include_metadata & MetadataOptions.OWNER:
-                owner_id = result.get_as_type("owner_uuid", return_type=str)
+                owner_id = result.get_as_optional_type("owner_uuid", return_type=str)
 
             direction_enum = {
                 "inbound": RelationshipDirection.INBOUND,
