@@ -11,6 +11,68 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.9.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.0) - 2026-04-24
+
+### Removed
+
+- Remove proposed change comments created_at and created_by attribute and relationship in favor of already existing node metadata created_by and created_at
+- Removed deprecated GraphQL queries and mutations `IPAddressGetNextAvailable`, `IPPrefixGetNextAvailable`, `IPPrefixPoolGetResource`, `IPAddressPoolGetResource`, use their `Infrahub` prefixed equivalents
+- Removed previously deprecated "_updated_at" field within GraphQL queries. Use "updated_at" within the node_metadata instead.
+
+### Added
+
+- Added condition to restrict the addition of optional attributes that participate in uniqueness constraints to generated profile schemas ([#7644](https://github.com/opsmill/infrahub/issues/7644))
+- Added `display` field to `AttributeSchema` and `RelationshipSchema` with enum values `default` and `extra`, defaulting to `default`. This controls where attributes and relationships are displayed in the UI — `default` shows in the main view, `extra` in an expanded/secondary section.
+- Added `infrahub db reset-deployment-id` CLI command to regenerate the internal `deployment_id` without rebuilding the database.
+- Added a delete branch modal with the option to also delete the branch from Git
+- Added ability to automatically delete branches after a successful merge. When `INFRAHUB_DELETE_BRANCH_AFTER_MERGE` is enabled (default: `False`), the Infrahub branch is deleted. Optionally, when `INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE` is also enabled (requires the first setting), the corresponding Git branch is deleted from synced repositories. The `BranchDelete` GraphQL mutation accepts a `delete_from_git` parameter to override the Git deletion setting per request.
+- Added an "Extra" toggle button in the object details card to reveal fields marked with display "extra", which are now hidden by default
+- Added login and logout activity events (`infrahub.account.logged_in` and `infrahub.account.logged_out`). Successful authentication attempts via password, OAuth2, and OIDC, as well as explicit logouts, are now queryable via the activity event feed.
+- Added namespace restriction parameter into generic schemas
+- Added optional `description` field for Python transforms in `.infrahub.yml`. Descriptions set in the repository config are propagated to the `TransformPython.description` attribute so they appear in the UI and API.
+- Added parent prefix lookup to the search anywhere dialog (Cmd+K). When searching for a valid IP address or CIDR prefix, containing parent prefixes are now displayed in a dedicated "Parent Prefixes" section, ordered from most specific to least specific, across all namespaces. Supports both IPv4 and IPv6.
+- Added schema graph visualizer plugin allowing users to view schemas as an interactive graph
+- Added support for `graphql_fragments` in `.infrahub.yml`. Repositories can now declare reusable `.gql` fragment files and reference them with standard fragment spread syntax (`...FragmentName`) in query files. Fragment definitions are resolved (including transitive dependencies) and inlined at repository sync time, so the stored query is a self-contained document. The same rendering applies when running queries locally with `infrahubctl`.
+- Added support for artifact content composition via Jinja2 filters. Templates running on Prefect workers can now use `artifact_content`, `file_object_content`, `from_json`, and `from_yaml` filters to inline and parse content from other artifacts and file objects. These filters are blocked in computed attributes for security.
+- Added support for custom HTTP headers on webhooks. Users can create reusable key-value pairs (static or environment-variable-based) and associate them with webhooks.
+- Schema selector search bar is now sticky at the top, with new collapse all and expand all buttons to quickly toggle every namespace section.
+- Unified IPAM detail pages with the standard object details card, adding field metadata, extra fields toggle, edit metadata, and profiles & groups
+- When `delete_branch_after_merge` is enabled, merging a branch now redirects to the branches list view and switches to the main branch if the deleted branch was the active one. Merging a proposed change stays on the detail page but switches to the main branch if the source branch was the active one.
+
+### Changed
+
+- Accounts, Groups, Roles, and Global Permissions tables in Role Manager now use the same updated design and features as other object tables across the application
+- Added a unified filter picker for object list views and support for node metadata filtering:
+
+  - New: Added a unified Filter menu that displays available filters for attributes, relationships and metadata
+  - New: Added metadata filters (Created at, Created by, Updated at, Updated by)
+  - New: Click an active filter tag to edit it or remove via the inline X
+  - Improved: Active filter tags are now editable: click a tag to change its value without removing it
+  - Improved: Filter tags now display human-readable conditions (contains, is any of, is empty, before, after etc...)
+- Consistent headers across object list and detail pages. Object list pages now share the same header style as detail pages, with easy access to schema, docs, and refresh actions.
+- Jinja2 computed attributes are now recalculated immediately when their dependent attributes or relationships change on the same node, eliminating background task overhead for local changes.
+- Telemetry snapshots are now always stored locally in the database regardless of the telemetry opt-out setting, ensuring air-gapped and opted-out deployments retain usage data for support and auditing. New CLI commands `infrahubctl telemetry list` and `infrahubctl telemetry export` allow administrators to view and export stored telemetry data. A REST API endpoint `GET /api/telemetry/snapshots` provides programmatic access with `READ_TELEMETRY` permission enforcement.
+- `infrahub.branch.deleted` and `infrahub.branch.merged` events now expose the associated proposed change (when applicable) as the event's primary node instead of a related node. Consumers filtering on `primaryNodeIds` will match these events for a proposed change; filters relying on the proposed change appearing under `relatedNodes` must be updated.
+- hides the `internal` attributes of CoreFileObject in the UI
+
+### Fixed
+
+- Fix diff update logic that runs after merge and rebase operations to ignore diffs for merged and deleted branches. Add a new environment variable, "INFRAHUB_DIFF_UPDATE_AFTER_MERGE", that allows skipping the automatic diff updates following a merge. ([#8507](https://github.com/opsmill/infrahub/issues/8507))
+- Fix a bug in diff calculation that could cause the wrong peer to be identified for a peer object belonging to a schema that had its kind or inheritance updated on the default branch.
+- Fix bug in diff calculation that would cause source property update on the user-created branch to be ignored if the schema of the owning object was migrated to a new kind or inheritance on the default branch.
+- Fix bug in diff calculation that would not correctly capture conflicts if the source of an attribute or relationship was updated to conflicting values on the default branch and the user-created branch.
+- Fix clicking on kinds in the schema viewer modal to navigate to the related schema.
+- Fix identifier not being returned when querying number pool allocations via GraphQL API.
+- Fixed pagination offset being ignored when querying InfrahubBranch
+- Fixed possible empty display labels by removing legacy display_labels processing
+- Improve SVG artifact handling: allow scrolling in the preview so oversized content is no longer clipped, and fix the download action so the saved file contains the raw SVG content.
+- Object table now refreshes automatically after adding or removing objects from groups in bulk
+- Suppress spurious Neo4j SCHEMA notifications for optional relationship types that do not yet exist in the database schema, eliminating noisy log warnings about non-existent HAS_OWNER and HAS_SOURCE relationship types.
+
+### Housekeeping
+
+- Removed deprecated forwardRef usage across frontend components ([#INFP-560](https://github.com/opsmill/infrahub/issues/INFP-560))
+
 ## [Infrahub - v1.8.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.6) - 2026-04-21
 
 ### Changed

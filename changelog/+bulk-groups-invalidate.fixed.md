@@ -1,1 +1,0 @@
-Object table now refreshes automatically after adding or removing objects from groups in bulk

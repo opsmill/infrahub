@@ -53,6 +53,7 @@ datastore
 datetime
 default_branch
 default_filter
+Delinea
 dev
 Diataxis
 direnv
@@ -98,6 +99,9 @@ Infrahub's
 infrahubasync
 infrahubctl
 infrahubops
+inlines
+inlined
+inlining
 Instruqt
 IPAddress
 IPHost
@@ -140,6 +144,7 @@ NGINX
 Netbox
 Netutils
 Newsfragment
+node_metadata
 Nornir
 npm
 O'Brian

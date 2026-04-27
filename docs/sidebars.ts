@@ -108,6 +108,7 @@ const sidebars: SidebarsConfig = {
             'guides/jinja2-transform',
             'guides/python-transform',
             'guides/artifact',
+            'guides/artifact-content-composition',
             'guides/graphql-fragment',
             'guides/object-storage',
           ],
@@ -435,6 +436,7 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_9_0',
             'release-notes/infrahub/release-1_8_6',
             'release-notes/infrahub/release-1_8_5',
             'release-notes/infrahub/release-1_8_4',
