@@ -132,10 +132,7 @@ class EventNotObservedError(Exception):
         self.elapsed_seconds = elapsed_seconds
         self.reason = reason
         criteria = f"name={name!r}" if name is not None else f"event_id={event_id}"
-        super().__init__(
-            f"Event ({criteria}) not observed after {elapsed_seconds:.2f}s "
-            f"(reason={reason})"
-        )
+        super().__init__(f"Event ({criteria}) not observed after {elapsed_seconds:.2f}s (reason={reason})")
 
 
 # --------------------------------------------------------------------------
@@ -203,9 +200,7 @@ class EmitCapture:
         candidates = self.events if name is None else self.by_name(name)
         if len(candidates) != 1:
             criteria = f"name={name!r}" if name is not None else "any"
-            raise AssertionError(
-                f"captured_emits.only({criteria}): expected 1 event, got {len(candidates)}"
-            )
+            raise AssertionError(f"captured_emits.only({criteria}): expected 1 event, got {len(candidates)}")
         return candidates[0]
 
 
