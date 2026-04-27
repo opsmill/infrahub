@@ -80,7 +80,7 @@ backend/infrahub/services/adapters/prefect_client/
 │                               #     (inherits RealPrefectClientAdapter, adds polling wait_for_event)
 │                               #   - InMemoryPrefectClientTestAdapter
 │                               #     (in-memory; implements all production ops + wait_for_event via
-│                               #     condition variable; carries recorder helpers)
+│                               #     condition variable; carries observation helpers)
 │                               # Underscore prefix signals "not for production imports".
 └── types.py                    # Re-exports of the Prefect response/request types that cross the port boundary
                                 # (Automation, Deployment, FlowRun, Event, WorkPool, StateType, etc.)
@@ -181,7 +181,7 @@ See [data-model.md](./data-model.md), [contracts/prefect_client_adapter.py](./co
 
 - **data-model.md** enumerates the entities that cross the port (request args, response objects re-exported from Prefect types) and the in-memory test adapter's internal state shape (recorded calls, in-memory entity stores, observed events).
 - **contracts/prefect_client_adapter.py** expresses both ports (production + test) as abstract Python classes with typed signatures — the plan artifact mirrors the runtime module that will live at `backend/infrahub/services/adapters/prefect_client/__init__.py`.
-- **quickstart.md** shows a developer the minimal path: (a) how to write a new unit test against the in-memory test adapter (FR-001–FR-007, SC-001), (b) how to drive code under test by exercising the in-memory simulation (no seeded returns in v1), (c) how to use the event-wait primitive, and (d) how to add a contract test for a newly-wrapped operation.
+- **quickstart.md** shows a developer the minimal path: (a) how to write a new unit test against the in-memory test adapter (FR-001–FR-007, SC-001), (b) how to drive code under test by exercising the in-memory simulation (seeded returns deferred to FR-018), (c) how to use the event-wait primitive, and (d) how to add a contract test for a newly-wrapped operation.
 
 ## Post-design Constitution Re-check
 

@@ -72,7 +72,7 @@ Defined in `backend/infrahub/services/adapters/prefect_client/__init__.py` (ABCs
 
 - Production real implementation. Lives in `prefect_client/real.py`.
 - Wraps `prefect.client.orchestration.PrefectClient` and `prefect.events.emit_event`; the only production module permitted to import from `prefect.*` (per FR-014/FR-015 + R-1 whitelist).
-- No test capabilities — no `wait_for_event`, no recorder helpers.
+- No test capabilities — no `wait_for_event`, no observation helpers.
 
 ### `RealPrefectClientTestAdapter(RealPrefectClientAdapter, PrefectClientTestAdapter)`
 

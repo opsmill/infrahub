@@ -109,7 +109,7 @@ prefect_client/
 │                   #                                    adds polling wait_for_event)
 │                   # InMemoryPrefectClientTestAdapter  (in-memory production ops + test port;
 │                   #                                    condition-variable wait_for_event;
-│                   #                                    carries recorder helpers)
+│                   #                                    carries observation helpers)
 └── types.py        # Re-exports of Prefect response/request types
 ```
 
