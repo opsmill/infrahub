@@ -43,6 +43,9 @@ export const PERMISSION_DECISION_FILTER_CONDITION_OPTIONS: Array<{
 ];
 
 export const DATETIME_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; label: string }> = [
+  { key: FILTER_CONDITION.BEFORE, label: "before" },
+  { key: FILTER_CONDITION.AFTER, label: "after" },
+  { key: FILTER_CONDITION.BETWEEN, label: "between" },
   { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
 ];
