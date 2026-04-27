@@ -100,7 +100,7 @@ class ObjectConflictValidatorRecorder:
 
         for validation in validations.values():
             if validation.get_kind() == self.validator_kind:
-                return validation
+                return cast("Node", validation)
         return None
 
     async def get_or_create_validator(self, proposed_change: CoreProposedChange) -> Node:

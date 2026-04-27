@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipChangelogGetter
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.protocols import CoreProposedChange
 from infrahub.events.node_action import (
     NodeCreatedEvent,
     NodeDeletedEvent,
@@ -99,7 +103,7 @@ async def generate_node_mutation_events(
         InfrahubKind.ARTIFACTTHREAD,
         InfrahubKind.FILETHREAD,
     ]:
-        proposed_change: CoreProposedChange = await node.change.get_peer(db=db, peer_type=CoreProposedChange)  # type: ignore[attr-defined]
+        proposed_change: CoreProposedChange = await node.change.get_peer(db=db)  # type: ignore[attr-defined]
         action_to_event_map = {
             MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
             MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,

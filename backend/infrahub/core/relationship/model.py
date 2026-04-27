@@ -989,7 +989,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: Literal[False] = ...,
-    ) -> Node | None: ...
+    ) -> RelationshipManagerPeerType | None: ...
 
     @overload
     async def get_peer(
@@ -997,7 +997,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: Literal[True] = ...,
-    ) -> Node: ...
+    ) -> RelationshipManagerPeerType: ...
 
     @overload
     async def get_peer(
@@ -1005,7 +1005,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         db: InfrahubDatabase,
         peer_type: None = ...,
         raise_on_error: bool = ...,
-    ) -> Node: ...
+    ) -> RelationshipManagerPeerType: ...
 
     async def get_peer(
         self,
@@ -1041,7 +1041,7 @@ class RelationshipManager[RelationshipManagerPeerType]:
         peer_type: None = None,
         branch_agnostic: bool = ...,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
-    ) -> Mapping[str, Node]: ...
+    ) -> Mapping[str, RelationshipManagerPeerType]: ...
 
     async def get_peers(
         self,
