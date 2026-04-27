@@ -50,7 +50,7 @@ Infrahub is the data foundation for modern infrastructure automation, for teams 
 
 ## What makes Infrahub different
 
-Infrahub is purpose-built for infrastructure automation. It combines an extensible schema language, native version control of the data, a graph data store, and open-source foundations — Neo4j, Git, Prefect, GraphQL, and Python — in a single platform. For a side-by-side comparison with common alternatives, see [How Infrahub compares](https://opsmill.com/compare-source-of-truth-tools/).
+Infrahub is purpose-built for network and infrastructure automation. It combines an extensible schema language, native version control of the data, a graph data store, and open-source foundations — Neo4j, Git, Prefect, GraphQL, and Python — in a single platform. For a side-by-side comparison with common alternatives, see [How Infrahub compares](https://opsmill.com/compare-source-of-truth-tools/).
 
 ## Getting started
 
