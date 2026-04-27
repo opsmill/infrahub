@@ -76,8 +76,8 @@ async def test_hierarchy_preserved(
 
     await verify_graph(db=db)
 
+
 async def test_hierarchy_parent_change_on_branch_after_merge(
-    self,
     db: InfrahubDatabase,
     default_branch: Branch,
     hierarchical_location_schema_simple: SchemaRoot,
@@ -110,10 +110,10 @@ async def test_hierarchy_parent_change_on_branch_after_merge(
     await paris_on_branch.save(db=db)
 
     # Merge the branch back to the default branch
-    diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch)
+    diff_coordinator = await get_diff_coordinator(db=db, branch=branch)
     await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
     merge_at = Timestamp()
-    diff_merger = await self._get_diff_merger(db=db, branch=branch)
+    diff_merger = await get_diff_merger(db=db, branch=branch)
     await diff_merger.merge_graph(at=merge_at)
 
     # After merge, query ancestors of paris on the default branch.
