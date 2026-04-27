@@ -1,12 +1,13 @@
 import { DialogTrigger } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
-import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { removeRelationships } from "@/entities/nodes/relationships/domain/remove-relationships/remove-relationships";
 import type { NodeCore } from "@/entities/nodes/types";
@@ -22,15 +23,19 @@ export function ToolbarRemoveFromGroupsAction({ selectedRows }: ToolbarRemoveFro
 
   if (!isAllowed) {
     return (
-      <ToolbarButtonWithTooltip variant="danger" isDisabled tooltipEnabled tooltipContent={message}>
-        Remove from groups
-      </ToolbarButtonWithTooltip>
+      <Tooltip message={message}>
+        <Button variant="danger-outline" size="xs" isDisabledAndFocusable>
+          Remove from groups
+        </Button>
+      </Tooltip>
     );
   }
 
   return (
     <DialogTrigger>
-      <ToolbarButtonWithTooltip variant="danger">Remove from groups</ToolbarButtonWithTooltip>
+      <Button variant="danger-outline" size="xs">
+        Remove from groups
+      </Button>
 
       <Popover placement="top start" className="bg-white">
         <PopoverDialog>

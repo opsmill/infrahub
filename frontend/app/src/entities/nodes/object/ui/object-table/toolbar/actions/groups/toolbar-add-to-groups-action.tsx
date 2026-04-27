@@ -1,12 +1,13 @@
 import { DialogTrigger } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
 import { BulkMutateGroups } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/bulk-mutate-groups";
-import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { addRelationships } from "@/entities/nodes/relationships/domain/add-relationships/add-relationships";
 import type { NodeCore } from "@/entities/nodes/types";
@@ -22,15 +23,19 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
 
   if (!isAllowed) {
     return (
-      <ToolbarButtonWithTooltip isDisabled tooltipEnabled tooltipContent={message}>
-        Add to groups
-      </ToolbarButtonWithTooltip>
+      <Tooltip message={message}>
+        <Button variant="outline" size="xs" isDisabledAndFocusable>
+          Add to groups
+        </Button>
+      </Tooltip>
     );
   }
 
   return (
     <DialogTrigger>
-      <ToolbarButtonWithTooltip>Add to groups</ToolbarButtonWithTooltip>
+      <Button variant="outline" size="xs">
+        Add to groups
+      </Button>
 
       <Popover placement="top start" className="bg-white">
         <PopoverDialog>

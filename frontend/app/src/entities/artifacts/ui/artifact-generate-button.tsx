@@ -2,8 +2,8 @@ import { RefreshCwIcon } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { useGenerateArtifactMutation } from "@/entities/artifacts/ui/queries/generate-artifact.mutation";
@@ -18,7 +18,7 @@ type ArtifactGenerateButtonProps = {
 };
 
 export const ArtifactGenerateButton = (props: ArtifactGenerateButtonProps) => {
-  const { label, artifactId, artifactDefinitionId, size, variant = "active" } = props;
+  const { label, artifactId, artifactDefinitionId, size = "sm", variant = "active" } = props;
   const { isPending, mutate } = useGenerateArtifactMutation();
 
   const { isAuthenticated } = useAuth();
@@ -65,10 +65,10 @@ export const ArtifactGenerateButton = (props: ArtifactGenerateButtonProps) => {
     <Button
       variant={variant}
       size={size}
-      disabled={!isAuthenticated || isPending}
-      onClick={handleGenerate}
+      isDisabled={!isAuthenticated || isPending}
+      onPress={handleGenerate}
     >
-      <RefreshCwIcon className={classNames("mr-2 size-4", isPending && "animate-spin")} />
+      <RefreshCwIcon className={classNames("mr-2 size-3.5", isPending && "animate-spin")} />
       {label ?? "Generate"}
     </Button>
   );

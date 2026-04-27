@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { toast } from "react-toastify";
 
+import { Button } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
@@ -12,7 +13,6 @@ import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchesMutation } from "@/entities/branches/ui/queries/delete-branches.mutation";
-import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
 
 export interface BranchesToolbarProps {
@@ -72,21 +72,22 @@ export function BranchesToolbar({ selectedBranches, onClose }: BranchesToolbarPr
         )}
         data-testid="branches-toolbar"
       >
-        <ToolbarButton variant="ghost" onPress={onClose}>
+        <Button variant="ghost" size="xs" onPress={onClose}>
           <span>{selectedBranches.length} selected</span>
           <XIcon className="size-3.5" />
-        </ToolbarButton>
+        </Button>
 
         <ToolbarDivider />
 
-        <ToolbarButton
-          variant="danger"
+        <Button
+          variant="danger-outline"
+          size="xs"
           isDisabled={deletableBranches.length === 0}
           onPress={() => setShowDeleteModal(true)}
         >
           <Icon icon="mdi:delete-outline" className="text-sm" />
           Delete
-        </ToolbarButton>
+        </Button>
       </div>
 
       <ModalDeleteBranch

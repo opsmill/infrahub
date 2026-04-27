@@ -1,7 +1,9 @@
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 
-import { ToolbarButtonWithTooltip } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
+
 import {
   type DissociateRelationshipModalProps,
   DissociateRelationshipsModal,
@@ -24,18 +26,23 @@ export function ToolbarDissociateAction({
   const { data: permission } = useGetObjectPermissions(parentKind);
   const { isAllowed, message } = permission?.update ?? { isAllowed: false };
 
+  if (!isAllowed) {
+    return (
+      <Tooltip message={message}>
+        <Button variant="danger-outline" size="xs" isDisabledAndFocusable>
+          <Icon icon="mdi:link-variant-remove" />
+          Dissociate
+        </Button>
+      </Tooltip>
+    );
+  }
+
   return (
     <>
-      <ToolbarButtonWithTooltip
-        variant="danger"
-        isDisabled={!isAllowed}
-        tooltipEnabled={!isAllowed}
-        tooltipContent={message}
-        onPress={() => setIsOpen((prev) => !prev)}
-      >
+      <Button variant="danger-outline" size="xs" onPress={() => setIsOpen((prev) => !prev)}>
         <Icon icon="mdi:link-variant-remove" />
         Dissociate
-      </ToolbarButtonWithTooltip>
+      </Button>
 
       <DissociateRelationshipsModal
         objectId={objectId}

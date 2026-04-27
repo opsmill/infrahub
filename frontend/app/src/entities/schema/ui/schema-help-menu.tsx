@@ -1,9 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { Pressable } from "react-aria-components";
 
+import { Button } from "@/shared/components/aria/button";
 import { Menu, MenuItem, MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
-import { Button } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { MENU_EXCLUDELIST } from "@/shared/config/constants";
 
@@ -23,11 +22,9 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
 
   return (
     <MenuTrigger>
-      <Pressable>
-        <Button size="icon" variant="outline" data-testid="schema-help-menu-trigger">
-          ?
-        </Button>
-      </Pressable>
+      <Button size="icon" variant="outline" data-testid="schema-help-menu-trigger">
+        ?
+      </Button>
 
       <Popover placement="bottom end">
         <Menu data-testid="schema-help-menu-content">

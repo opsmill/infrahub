@@ -2,12 +2,12 @@ import { Icon } from "@iconify-icon/react";
 import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
-import { Button as AriaButton, type Key } from "react-aria-components";
+import type { Key } from "react-aria-components";
 
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
+import { Button } from "@/shared/components/aria/button";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
-import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
@@ -62,16 +62,11 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
           if (!isOpen) setSelectedField(null);
         }}
       >
-        <AriaButton
-          className={classNames(
-            focusVisibleStyle,
-            "inline-flex h-8 shrink-0 items-center gap-1 rounded-xl border border-stone-300 px-2 text-sm"
-          )}
-        >
+        <Button variant="outline" size="sm" className="rounded-xl">
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
           {filterCount > 0 && <FilterCountBadge count={filterCount} />}
-        </AriaButton>
+        </Button>
 
         <Popover
           placement="bottom start"

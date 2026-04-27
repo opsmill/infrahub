@@ -4,8 +4,9 @@ import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Button, LinkButton } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { ARTIFACT_DEFINITION_KIND } from "@/entities/artifacts/constants";
@@ -65,25 +66,25 @@ export function DetailsButtons({
           />
         )}
 
-        <ButtonWithTooltip
-          variant="outline"
-          size="sm"
-          disabled={!isEditAllowed}
-          onClick={() => setIsEditModalOpen(true)}
-          tooltipContent={editTooltipMessage}
-          tooltipEnabled={!isEditAllowed}
-          data-testid="edit-button"
-        >
-          <PencilLineIcon className="mr-1 size-3.5" />
-          Edit
-        </ButtonWithTooltip>
+        <Tooltip message={editTooltipMessage}>
+          <Button
+            variant="outline"
+            size="sm"
+            isDisabledAndFocusable={!isEditAllowed}
+            onPress={() => setIsEditModalOpen(true)}
+            data-testid="edit-button"
+          >
+            <PencilLineIcon className="size-3.5" />
+            Edit
+          </Button>
+        </Tooltip>
 
         <LinkButton
           variant="outline"
           size="sm"
-          to={constructPath("/schema", [{ name: "kind", value: schema.kind }])}
+          href={constructPath("/schema", [{ name: "kind", value: schema.kind }])}
         >
-          <Icon icon="mdi:code-json" className="mr-1" />
+          <Icon icon="mdi:code-json" />
           Schema
         </LinkButton>
       </div>

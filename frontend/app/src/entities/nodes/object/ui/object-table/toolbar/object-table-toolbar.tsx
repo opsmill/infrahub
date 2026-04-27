@@ -1,12 +1,12 @@
 import { XIcon } from "lucide-react";
 
+import { Button } from "@/shared/components/aria/button";
 import { classNames } from "@/shared/utils/common";
 
 import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action";
 import { ToolbarRemoveFromGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-remove-from-groups-action";
 import { ToolbarDeleteAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-delete-action";
 import { ToolbarEditAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/objects/toolbar-edit-action";
-import { ToolbarButton } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-button";
 import { ToolbarDivider } from "@/entities/nodes/object/ui/object-table/toolbar/toolbar-divider";
 import type { NodeCore } from "@/entities/nodes/types";
 
@@ -32,10 +32,10 @@ export function ObjectTableToolbar({
       )}
       data-testid="object-table-toolbar"
     >
-      <ToolbarButton variant="ghost" onPress={onClose}>
+      <Button variant="ghost" size="xs" onPress={onClose}>
         <span>{selectedRows.length} selected</span>
         <XIcon className="size-3.5" />
-      </ToolbarButton>
+      </Button>
 
       <ToolbarDivider />
 

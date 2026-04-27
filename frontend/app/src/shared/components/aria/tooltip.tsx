@@ -10,6 +10,7 @@ import {
 
 export interface TooltipProps extends Omit<AriaTooltipProps, "children"> {
   children: React.ReactNode;
+  message: React.ReactNode;
 }
 
 const styles = cva(
@@ -26,13 +27,11 @@ const styles = cva(
   }
 );
 
-export function Tooltip({
-  children,
-  message,
-  isOpen,
-  onOpenChange,
-  ...props
-}: TooltipProps & { message: React.ReactNode }) {
+export function Tooltip({ children, message, isOpen, onOpenChange, ...props }: TooltipProps) {
+  if (!message) {
+    return children;
+  }
+
   return (
     <TooltipTrigger
       delay={200}
