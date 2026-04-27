@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
-    Generic,
     Iterable,
     Iterator,
     Literal,
@@ -57,7 +56,6 @@ if TYPE_CHECKING:
 
 
 PeerType = TypeVar("PeerType")
-RelationshipManagerPeerType = TypeVar("RelationshipManagerPeerType")
 
 PREFIX_PROPERTY = "_relation__"
 INDEX_DEFAULT_STOP = sys.maxsize
@@ -852,7 +850,7 @@ class RelationshipValidatorList:
         self.validate_max()
 
 
-class RelationshipManager(Generic[RelationshipManagerPeerType]):
+class RelationshipManager[RelationshipManagerPeerType]:
     def __init__(
         self, schema: RelationshipSchema, branch: Branch, at: Timestamp, node: Node, is_from_profile: bool = False
     ) -> None:
