@@ -262,7 +262,16 @@ CALL (rel, branch, branch_created_at, peer) {
 // Count peers where the latest visible edge is active
 // ----------------
 WITH rel, branch,
-    CASE WHEN r.status = "active" AND r.to IS NULL THEN 1 ELSE NULL END AS is_active
+    CASE
+        WHEN r.status = "active"
+        AND (
+            r.to IS NULL
+            OR (branch <> $default_branch AND r.branch = $default_branch AND r.to > branch_created_at)
+        )
+        THEN 1
+        ELSE NULL
+    END AS is_active
+
 WITH rel, branch, count(is_active) AS active_count
 WHERE active_count <> 0 AND active_count <> 2
 RETURN rel.name AS rel_name, rel.uuid AS rel_uuid, branch, active_count
