@@ -2354,6 +2354,10 @@ class NodeGetHierarchyQuery(Query):
         query = """
         MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
         WHERE $hierarchy IN LABELS(peer) AND all(r IN relationships(path) WHERE (%(branch_filter)s))
+        """ % {"filter": filter_str, "branch_filter": branch_filter}
+
+        if not self.branch.is_default:
+            query += """
         WITH DISTINCT n, last(nodes(path)) AS peer
         CALL (n, peer) {
             MATCH path = (n)%(filter)s(peer)
@@ -2365,6 +2369,11 @@ class NodeGetHierarchyQuery(Query):
         }
         WITH peer, is_active
         """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        else:
+            query += """
+        WITH DISTINCT n, last(nodes(path)) AS peer, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+        WITH peer, is_active
+            """
 
         self.add_to_query(query)
         where_clause = ["is_active = TRUE"]
