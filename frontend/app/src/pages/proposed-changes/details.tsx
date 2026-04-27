@@ -137,7 +137,7 @@ export function Component() {
   }
 
   return (
-    <Content.Card className="flex flex-col">
+    <Content.Card>
       <Content.CardTitle
         title={getNodeLabel(proposedChangeData)}
         description={

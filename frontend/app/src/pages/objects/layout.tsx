@@ -30,7 +30,7 @@ const ObjectPageLayout = () => {
   return (
     <ResizablePanelGroup className="items-stretch overflow-hidden">
       <ResizablePanel defaultSize={300} minSize={40} maxSize="90%" className="flex grow flex-col">
-        <Content.Card className="flex grow flex-col">
+        <Content.Card className="grow">
           <ScrollArea scrollX className="h-full p-1">
             <ObjectHierarchyTreeWrapper
               key={genericSchemaOfHierarchy.kind}

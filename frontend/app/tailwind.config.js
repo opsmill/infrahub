@@ -7,6 +7,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
     "../packages/schema-visualizer/src/**/*.{js,ts,jsx,tsx}",
+    "../packages/ui/src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {
