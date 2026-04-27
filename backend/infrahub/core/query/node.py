@@ -2339,10 +2339,9 @@ class NodeGetHierarchyQuery(Query):
         )
         self.params["hierarchy"] = hierarchy_schema.kind
 
-        if self.direction == RelationshipHierarchyDirection.ANCESTORS:
-            filter_str = f"-{filter_str}->"
-        else:
-            filter_str = f"<-{filter_str}-"
+        filter_str = (
+            f"-{filter_str}->" if self.direction == RelationshipHierarchyDirection.ANCESTORS else f"<-{filter_str}-"
+        )
 
         froms_var = db.render_list_comprehension(items="relationships(path)", item_name="from")
         with_clause = (
@@ -2382,12 +2381,10 @@ class NodeGetHierarchyQuery(Query):
 
         if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
-            self.params["peer_ids"] = clean_filters.get("ids", [])
-            if clean_filters.get("id", None):
-                self.params["peer_ids"].append(clean_filters.get("id"))
+            extra_id = [clean_filters["id"]] if clean_filters.get("id") else []
+            self.params["peer_ids"] = list(clean_filters.get("ids", [])) + extra_id
 
-        if where_clause:
-            self.add_to_query("WHERE " + " AND ".join(where_clause))
+        self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["peer"]
 
