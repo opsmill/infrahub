@@ -12,7 +12,6 @@ import {
 import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { SlideOverContext } from "@/shared/components/display/slide-over";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -137,19 +136,12 @@ export const FormMessage = ({
   );
 };
 
-interface FormSubmitProps extends Omit<ButtonProps, "children"> {
-  children?: React.ReactNode;
-}
+interface FormSubmitProps extends Omit<ButtonProps, "type" | "slot"> {}
 
-export const FormSubmit = ({ children, ...props }: FormSubmitProps) => {
+export const FormSubmit = ({ ...props }: FormSubmitProps) => {
   const { formState } = useFormContext();
 
   const isLoading = formState.isSubmitting || formState.isValidating;
 
-  return (
-    <Button isDisabled={isLoading} {...props} type="submit">
-      <span className={classNames(isLoading && "invisible")}>{children}</span>
-      {isLoading && <Spinner className="absolute" />}
-    </Button>
-  );
+  return <Button isPending={isLoading} {...props} type="submit" slot={null} />;
 };
