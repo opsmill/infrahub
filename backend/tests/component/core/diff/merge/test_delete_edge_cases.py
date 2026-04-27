@@ -2,6 +2,7 @@
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.constants import SYSTEM_USER_ID, DiffAction
 from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
@@ -11,6 +12,7 @@ from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.component.core.diff.get_one_node import get_one_diff_node
 from tests.component.core.test_utils import verify_all_linked_edges_deleted
 from tests.helpers.db_validation import verify_graph
 
@@ -240,3 +242,134 @@ async def test_delete_with_many_relationship_added(
     assert car_2_rel_to_person_1.created_by == "main-user"
     assert before_rel_create < car_2_rel_to_person_1.created_at < after_rel_create
     assert car_2_rel_to_person_1.updated_by == "main-user"
+
+
+async def test_base_delete_with_added_branch_attribute(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    person_john_main: Node,
+    car_accord_main: Node,
+) -> None:
+    """Branch modifies an attribute value while main deletes the node. Conflict is resolved
+    by reverting the branch change; after merge the node stays deleted and no orphan
+    HAS_VALUE / HAS_ATTRIBUTE edges point to the deleted node on main.
+    """
+    car_created_at = car_accord_main._get_created_at()
+    original_color = car_accord_main.color.value
+    original_nbr_seats = car_accord_main.nbr_seats.value
+
+    branch2 = await create_branch(db=db, branch_name="branch2")
+    # Branch: modify attribute values (creates new HAS_VALUE edges on source branch)
+    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
+    car_branch.color.value = "#FF0000"
+    car_branch.nbr_seats.value = 7
+    await car_branch.save(db=db, user_id="branch-user")
+
+    # Main: delete the car
+    car_main = await NodeManager.get_one(db=db, id=car_accord_main.id)
+    before_main_delete = Timestamp()
+    await car_main.delete(db=db, user_id="main-user")
+    after_main_delete = Timestamp()
+
+    diff_coordinator = await get_diff_coordinator(db=db, branch=branch2)
+    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+    conflicts_map = enriched_diff.get_all_conflicts()
+    # node-level conflict: modify-vs-delete
+    assert len(conflicts_map) == 1
+    conflict_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=car_branch.id)
+    assert conflict_node.conflict
+    assert conflict_node.conflict.base_branch_action is DiffAction.REMOVED
+    assert conflict_node.conflict.diff_branch_action is DiffAction.UPDATED
+
+    # manually resolve the conflict by reverting branch attribute changes
+    car_branch = await NodeManager.get_one(db=db, branch=branch2, id=car_accord_main.id)
+    car_branch.color.value = original_color
+    car_branch.nbr_seats.value = original_nbr_seats
+    await car_branch.save(db=db, user_id="branch-user-2")
+
+    # check that the conflict is removed
+    enriched_diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+    enriched_diff = await diff_repository.get_one(
+        diff_branch_name=enriched_diff_metadata.diff_branch_name, diff_id=enriched_diff_metadata.uuid
+    )
+    conflicts_map = enriched_diff.get_all_conflicts()
+    assert len(conflicts_map) == 0
+
+    merge_at = Timestamp()
+    diff_merger = await get_diff_merger(db=db, branch=branch2)
+    await diff_merger.merge_graph(at=merge_at)
+
+    # car remains deleted on main
+    updated_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+    assert updated_car is None
+
+    # john remains unchanged on main (no active relationship to the deleted car)
+    john_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+    cars_rels = await john_main.cars.get(db=db)
+    assert len(cars_rels) == 0
+
+    # Validate metadata using NodeMetadataDefaultBranchQuery
+    node_metadata_query = await NodeMetadataDefaultBranchQuery.init(
+        db=db,
+        branch=default_branch,
+        node_uuids=[car_accord_main.id, person_john_main.id],
+    )
+    await node_metadata_query.execute(db=db)
+    node_metadatas = node_metadata_query.get_metadatas()
+    assert len(node_metadatas) == 2
+    metadata_by_uuid = {m.uuid: m for m in node_metadatas}
+
+    # Car: deleted on main, metadata reflects main-user's delete (not the merge time)
+    car_meta = metadata_by_uuid[car_accord_main.id]
+    assert car_meta.is_deleted is True
+    assert car_meta.created_at == car_created_at
+    assert car_meta.created_by == SYSTEM_USER_ID
+    assert before_main_delete < car_meta.updated_at < after_main_delete
+    assert car_meta.updated_by == "main-user"
+
+    # Car's attributes remain deleted with main-user's metadata — no orphan HAS_VALUE
+    # from the reverted branch modifications should be active on main.
+    for attr in car_meta.attributes:
+        assert attr.is_deleted is True
+        assert attr.created_at == car_created_at
+        assert attr.created_by == SYSTEM_USER_ID
+        assert before_main_delete < attr.updated_at < after_main_delete
+        assert attr.updated_by == "main-user"
+
+    # Car's relationship to john is also deleted (cascade from the node delete on main)
+    car_rels_to_john = [r for r in car_meta.relationships if r.peer_uuid == person_john_main.id]
+    assert len(car_rels_to_john) == 1
+    assert car_rels_to_john[0].is_deleted is True
+    assert car_rels_to_john[0].updated_by == "main-user"
+    assert before_main_delete < car_rels_to_john[0].updated_at < after_main_delete
+
+    # John: no update from this merge since branch attribute changes were discarded
+    john_meta = metadata_by_uuid[person_john_main.id]
+    assert john_meta.is_deleted is False
+    # John's relationship to the car is deleted (car was deleted on main)
+    john_rels_to_car = [r for r in john_meta.relationships if r.peer_uuid == car_accord_main.id]
+    assert len(john_rels_to_car) == 1
+    assert john_rels_to_car[0].is_deleted is True
+    assert john_rels_to_car[0].updated_by == "main-user"
+    assert before_main_delete < john_rels_to_car[0].updated_at < after_main_delete
+
+    # Rollback and re-verify — car stays deleted, no resurrection
+    await diff_merger.rollback(at=merge_at)
+    rolled_back_car = await NodeManager.get_one(db=db, id=car_accord_main.id)
+    assert rolled_back_car is None
+
+    node_metadata_query_after_rollback = await NodeMetadataDefaultBranchQuery.init(
+        db=db,
+        branch=default_branch,
+        node_uuids=[car_accord_main.id],
+    )
+    await node_metadata_query_after_rollback.execute(db=db)
+    metadatas_after = node_metadata_query_after_rollback.get_metadatas()
+    assert len(metadatas_after) == 1
+    car_meta_after = metadatas_after[0]
+    assert car_meta_after.is_deleted is True
+    assert before_main_delete < car_meta_after.updated_at < after_main_delete
+    assert car_meta_after.updated_by == "main-user"
+
+    await verify_graph(db=db)

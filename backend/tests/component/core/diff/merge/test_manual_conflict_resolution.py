@@ -8,8 +8,11 @@ validates the resulting metadata (including the V1/V2 relationship tracking
 that survives the resolution).
 """
 
+import pytest
+
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SYSTEM_USER_ID, DiffAction, MetadataOptions
+from infrahub.core.diff.model.path import ConflictSelection
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -17,6 +20,7 @@ from infrahub.core.metadata.query.node_metadata import NodeMetadataDefaultBranch
 from infrahub.core.node import Node
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import NodeNotFoundError
 from tests.component.core.diff.get_one_node import get_one_diff_node
 from tests.helpers.db_validation import verify_graph
 
@@ -343,5 +347,112 @@ async def test_base_delete_with_added_branch_relationship(
     assert john_rel_to_car_after_rollback.is_deleted is True
     assert john_rel_to_car_after_rollback.updated_by == "main-user"
     assert before_main_delete < john_rel_to_car_after_rollback.updated_at < after_main_delete
+
+    await verify_graph(db=db)
+
+
+@pytest.mark.parametrize(
+    "base_action,diff_action,selection,expect_deleted",
+    [
+        # DELETE on base + UPDATE on diff: selecting BASE_BRANCH keeps the node deleted
+        ("delete", "update", ConflictSelection.BASE_BRANCH, True),
+        # UPDATE on base + DELETE on diff: selecting BASE_BRANCH keeps the node with base value
+        ("update", "delete", ConflictSelection.BASE_BRANCH, False),
+        # Note: DIFF_BRANCH selection for node-level conflicts involving deletion is not tested here
+        # because un-deleting an object on the default branch is not supported
+    ],
+)
+async def test_node_delete_update_conflict(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    diff_repository: DiffRepository,
+    person_john_main: Node,
+    base_action: str,
+    diff_action: str,
+    selection: ConflictSelection,
+    expect_deleted: bool,
+) -> None:
+    """Test node-level conflicts between delete and update operations.
+
+    This test covers scenarios where BASE_BRANCH is selected to resolve the conflict:
+    1. DELETE on base + UPDATE on diff + select BASE_BRANCH = Node deleted
+    2. UPDATE on base + DELETE on diff + select BASE_BRANCH = Node exists with base value
+
+    Note: Selecting DIFF_BRANCH for node-level delete conflicts is not supported because
+    un-deleting an object on the default branch is not allowed.
+    """
+    # Capture initial metadata
+    person_before = await NodeManager.get_one(
+        db=db, id=person_john_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+    )
+    person_created_at = person_before._get_created_at()
+    person_created_by = person_before._get_created_by()
+
+    branch2 = await create_branch(db=db, branch_name="branch2")
+
+    # Perform actions based on test parameters
+    before_base_update = Timestamp()
+    if base_action == "delete":
+        person_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+        await person_main.delete(db=db, user_id="main-user")
+    else:  # base_action == "update"
+        person_main = await NodeManager.get_one(db=db, id=person_john_main.id)
+        person_main.height.value = 200
+        await person_main.save(db=db, user_id="main-user")
+    after_base_update = Timestamp()
+
+    if diff_action == "delete":
+        person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
+        await person_branch.delete(db=db, user_id="branch-user")
+    else:  # diff_action == "update"
+        person_branch = await NodeManager.get_one(db=db, branch=branch2, id=person_john_main.id)
+        person_branch.height.value = 150
+        await person_branch.save(db=db, user_id="branch-user")
+
+    # Run diff coordinator to detect conflicts
+    diff_coordinator = await get_diff_coordinator(db=db, branch=branch2)
+    enriched_diff = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch2)
+
+    # Assert a node-level conflict is detected
+    conflicts_map = enriched_diff.get_all_conflicts()
+    assert len(conflicts_map) >= 1
+    conflict_node = get_one_diff_node(diff_root=enriched_diff, node_uuid=person_john_main.id)
+    assert conflict_node.conflict is not None
+    if base_action == "delete":
+        assert conflict_node.conflict.base_branch_action is DiffAction.REMOVED
+        assert conflict_node.conflict.diff_branch_action is DiffAction.UPDATED
+    else:  # base_action == "update"
+        assert conflict_node.conflict.base_branch_action is DiffAction.UPDATED
+        assert conflict_node.conflict.diff_branch_action is DiffAction.REMOVED
+
+    # Set conflict resolution
+    await diff_repository.update_conflict_by_id(conflict_id=conflict_node.conflict.uuid, selection=selection)
+
+    # Merge the branch
+    merge_at = Timestamp()
+    diff_merger = await get_diff_merger(db=db, branch=branch2)
+    await diff_merger.merge_graph(at=merge_at)
+
+    # Validate outcome
+    if expect_deleted:
+        # Node should be deleted
+        with pytest.raises(NodeNotFoundError):
+            await NodeManager.get_one(db=db, id=person_john_main.id, raise_on_error=True)
+    else:
+        # Node should exist
+        updated_person = await NodeManager.get_one(
+            db=db, id=person_john_main.id, include_metadata=MetadataOptions.USER_TIMESTAMPS
+        )
+        assert updated_person is not None
+
+        # base_action must be "update" (since expect_deleted is False and selection is BASE_BRANCH)
+        assert updated_person.height.value == 200
+        # Metadata should reflect main-user's update
+        assert before_base_update < updated_person._get_updated_at() < after_base_update
+        assert updated_person._get_updated_by() == "main-user"
+
+        # created_at/created_by should remain unchanged
+        assert updated_person._get_created_at() == person_created_at
+        assert updated_person._get_created_by() == person_created_by
 
     await verify_graph(db=db)
