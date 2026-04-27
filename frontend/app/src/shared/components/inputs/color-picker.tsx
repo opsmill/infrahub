@@ -1,15 +1,15 @@
 import { Colorful, type ColorResult, type HsvaColor } from "@uiw/react-color";
-import { forwardRef, useState } from "react";
+import React from "react";
 
 import { Input } from "@/shared/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, getTextColor } from "@/shared/utils/common";
 
-export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
-  const { id, disabled, value, onChange, className } = props;
+export const ColorPicker = (props: any & { ref?: React.Ref<HTMLInputElement> }) => {
+  const { id, disabled, value, onChange, className, ref } = props;
 
-  const [hsva, setHsva] = useState<string | HsvaColor>(value ?? { h: 0, s: 0, v: 0, a: 0 }); // Used for colorfule
+  const [hsva, setHsva] = React.useState<string | HsvaColor>(value ?? { h: 0, s: 0, v: 0, a: 0 }); // Used for colorfule
 
   const handleChange = (newValue: ColorResult) => {
     setHsva(newValue.hsva);
@@ -60,4 +60,4 @@ export const ColorPicker = forwardRef<HTMLInputElement, any>((props, ref) => {
       </Popover>
     </div>
   );
-});
+};

@@ -8,6 +8,7 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
+      "**",
       "!coverage",
       "!dist",
       "!playwright-report",
@@ -128,6 +129,7 @@
         "noUselessElse": "off",
         "useBlockStatements": "off",
         "useConsistentArrayType": "off",
+        "useConsistentArrowReturn": "off",
         "useConsistentBuiltinInstantiation": "off",
         "useConsistentTypeDefinitions": "off",
         "useConst": "off",

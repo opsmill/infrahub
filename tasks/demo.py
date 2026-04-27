@@ -79,7 +79,7 @@ def upgrade(context: Context, database: str = INFRAHUB_DATABASE, rebase_branches
 
 @task(optional=["database"])
 def cli_server(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Launch a bash shell inside the running Infrahub container."""
+    """Launch a bash shell inside the running Infrahub server container."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         command = (
@@ -90,7 +90,7 @@ def cli_server(context: Context, database: str = INFRAHUB_DATABASE) -> None:
 
 @task(optional=["database"])
 def cli_git(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Launch a bash shell inside the running Infrahub container."""
+    """Launch a bash shell inside the running Infrahub task-worker container."""
     with context.cd(ESCAPED_REPO_PATH):
         compose_files_cmd = build_compose_files_cmd(database=database)
         command = (
@@ -131,7 +131,7 @@ def run_infra_patch_scripts(context: Context, database: str = INFRAHUB_DATABASE)
 
 @task(optional=["database"])
 def load_infra_menu(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Load the base schema for infrastructure."""
+    """Load the infrastructure navigation menu into Infrahub."""
     load_infrastructure_menu(context=context, database=database, namespace=NAMESPACE)
 
 

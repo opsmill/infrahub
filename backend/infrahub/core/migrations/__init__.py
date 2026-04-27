@@ -5,6 +5,7 @@ from .schema.node_attribute_add import NodeAttributeAddMigration
 from .schema.node_attribute_remove import NodeAttributeRemoveMigration
 from .schema.node_kind_update import NodeKindUpdateMigration
 from .schema.node_remove import NodeRemoveMigration
+from .schema.node_uniqueness_constraints_update import NodeUniquenessConstraintsUpdateMigration
 from .schema.placeholder_dummy import PlaceholderDummyMigration
 from .shared import SchemaMigration
 
@@ -17,6 +18,7 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "node.name.update": NodeKindUpdateMigration,
     "node.namespace.update": NodeKindUpdateMigration,
     "node.relationship.remove": PlaceholderDummyMigration,
+    "node.uniqueness_constraints.update": NodeUniquenessConstraintsUpdateMigration,
     "attribute.name.update": AttributeNameUpdateMigration,
     "attribute.branch.update": None,
     "attribute.kind.update": AttributeKindUpdateMigration,

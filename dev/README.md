@@ -77,7 +77,9 @@ Available agent commands in [commands/](commands/):
 - [new-component.md](commands/new-component.md) - React component creation flow
 - [guided-task.md](commands/guided-task.md) - General task flow
 - [add-docs.md](commands/add-docs.md) - Documentation flow
-- [fix-bug.md](commands/fix-bug.md) - Bug fixing flow
+- [bug-analyze.md](commands/bug-analyze.md) - Root cause analysis (`/bug-analyze <issue>`)
+- [bug-tdd.md](commands/bug-tdd.md) - Failing test from analysis (`/bug-tdd <issue>`)
+- [bug-fix.md](commands/bug-fix.md) - Fix implementation (`/bug-fix <issue>`)
 - [fix-github-issue.md](commands/fix-github-issue.md) - GitHub issue fixing
 - [fix-mypy-module.md](commands/fix-mypy-module.md) - Mypy type fixes
 - [fix-ruff-rule.md](commands/fix-ruff-rule.md) - Ruff linting fixes

@@ -1,5 +1,7 @@
-import type { AttributeKind, AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
-import { ATTRIBUTE_ICONS } from "@/entities/schema/ui/field-schema-icon";
+import { warnUnexpectedType } from "@/shared/utils/common";
+
+import type { DecisionOption } from "@/entities/role-manager/domain/get-decision-options";
+import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
 
 export type AttributeFilterDefinition = {
   type: "attribute";
@@ -24,9 +26,16 @@ export type MetadataUserFilterDefinition = {
   peer: string;
 };
 
+export type PermissionDecisionFilterDefinition = {
+  type: "permission-decision";
+  schema: AttributeSchema;
+  options: DecisionOption[];
+};
+
 export type FilterDefinition =
   | AttributeFilterDefinition
   | RelationshipFilterDefinition
+  | PermissionDecisionFilterDefinition
   | MetadataDateFilterDefinition
   | MetadataUserFilterDefinition;
 
@@ -34,10 +43,14 @@ export function getFilterDefinitionName(def: FilterDefinition): string {
   switch (def.type) {
     case "attribute":
     case "relationship":
+    case "permission-decision":
       return def.schema.name;
     case "metadata-date":
     case "metadata-user":
       return def.name;
+    default:
+      warnUnexpectedType(def);
+      return "???";
   }
 }
 
@@ -45,22 +58,13 @@ export function getFilterDefinitionLabel(def: FilterDefinition): string {
   switch (def.type) {
     case "attribute":
     case "relationship":
+    case "permission-decision":
       return def.schema.label ?? def.schema.name;
     case "metadata-date":
     case "metadata-user":
       return def.label;
-  }
-}
-
-export function getFilterDefinitionIcon(def: FilterDefinition): string {
-  switch (def.type) {
-    case "attribute":
-      return ATTRIBUTE_ICONS[def.schema.kind as AttributeKind] ?? "mdi:filter-variant";
-    case "relationship":
-      return "mdi:cube-outline";
-    case "metadata-date":
-      return "mdi:calendar-clock";
-    case "metadata-user":
-      return "mdi:account";
+    default:
+      warnUnexpectedType(def);
+      return "???";
   }
 }

@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
     from infrahub.database import InfrahubDatabase
+    from tests.helpers.git import GogsServer
 
 
 def _branch_exists_on_gogs(base_url: str, token: str, repo_name: str, branch_name: str) -> bool:
@@ -46,16 +47,12 @@ class TestDeleteGitBranchGogs(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         git_repos_dir_module_scope: Path,
         client: InfrahubClient,
-        gogs_server: dict,
+        gogs_server: GogsServer,
     ) -> None:
         await load_schema(db, schema=CAR_SCHEMA)
 
-        repo1_url = create_gogs_repo(
-            gogs_server["base_url"], gogs_server["token"], "gogs-repo-1", gogs_server["container"]
-        )
-        repo2_url = create_gogs_repo(
-            gogs_server["base_url"], gogs_server["token"], "gogs-repo-2", gogs_server["container"]
-        )
+        repo1_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, "gogs-repo-1", gogs_server.container)
+        repo2_url = create_gogs_repo(gogs_server.base_url, gogs_server.token, "gogs-repo-2", gogs_server.container)
 
         for repo_url, repo_name in [(repo1_url, "gogs-repo-1"), (repo2_url, "gogs-repo-2")]:
             node = await client.create(
@@ -68,12 +65,12 @@ class TestDeleteGitBranchGogs(TestInfrahubApp):
         self,
         initial_dataset: None,
         client: InfrahubClient,
-        gogs_server: dict,
+        gogs_server: GogsServer,
         delete_branch_after_merge_reset_config: None,
         delete_git_branch_after_merge_reset_config: None,
     ) -> None:
-        base_url = gogs_server["base_url"]
-        token = gogs_server["token"]
+        base_url = gogs_server.base_url
+        token = gogs_server.token
         branch_name = "feature-alpha"
 
         config.SETTINGS.main.delete_branch_after_merge = True
@@ -106,12 +103,12 @@ class TestDeleteGitBranchGogs(TestInfrahubApp):
         self,
         initial_dataset: None,
         client: InfrahubClient,
-        gogs_server: dict,
+        gogs_server: GogsServer,
         delete_branch_after_merge_reset_config: None,
         delete_git_branch_after_merge_reset_config: None,
     ) -> None:
-        base_url = gogs_server["base_url"]
-        token = gogs_server["token"]
+        base_url = gogs_server.base_url
+        token = gogs_server.token
         branch_name = "feature-beta"
 
         config.SETTINGS.main.delete_branch_after_merge = True

@@ -218,12 +218,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._human_friendly_id.compute(db=db, node=self)
 
     async def get_display_label(self, db: InfrahubDatabase) -> str:
-        if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
-            return value
+        if self._display_label is not None:
+            if value := self._display_label.get_value(node=self, at=self._at):
+                return value
+            # Stored value is empty do not compute on the fly to avoid recomputation trigger issues
+            if self._schema.display_label:
+                return ""
 
         if not self._schema.display_label:
             return repr(self)
 
+        # This should only happens for "virtual" nodes (that never exist inside the db)
         display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
         await display_label.compute(db=db, node=self)
         return display_label.get_value(node=self, at=self._at) or ""
@@ -238,7 +243,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
         await self._display_label.compute(db=db, node=self)
 
-    async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
+    async def get_path_value(self, db: InfrahubDatabase, path: str) -> Any:
         schema_path = self._schema.parse_schema_path(
             path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
         )

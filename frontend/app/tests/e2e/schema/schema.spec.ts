@@ -5,8 +5,7 @@ import { saveScreenshotForDocs } from "../../utils";
 test.describe("/schema - Schema visualizer", () => {
   test("redirect to schema page using object help menu", async ({ page }) => {
     await page.goto("/objects/InfraInterface");
-    await page.getByRole("button", { name: "?" }).click();
-    await page.getByRole("menuitem", { name: "Schema" }).click();
+    await page.getByRole("link", { name: "Schema" }).click();
     await expect(page.getByTestId("schema-viewer")).toBeVisible();
     await expect(page.getByText("KindInfraInterface")).toBeVisible();
     await expect(page).toHaveURL(/\/schema\?kind=InfraInterface/);

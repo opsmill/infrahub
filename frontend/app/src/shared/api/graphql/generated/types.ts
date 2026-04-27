@@ -364,6 +364,8 @@ export type BranchDeletedEvent = EventNodeInterface & {
   payload: Scalars['GenericScalar']['output'];
   /** The primary Infrahub node this event is associated with. */
   primary_node: Maybe<RelatedNode>;
+  /** Proposed change ID if available */
+  proposed_change_id: Maybe<Scalars['String']['output']>;
   /** Related Infrahub nodes this event is associated with. */
   related_nodes: Array<RelatedNode>;
 };
@@ -16903,6 +16905,13 @@ export type EdgedInternalAccountToken = {
   node_metadata: Maybe<InfrahubNodeMetadata>;
 };
 
+/** External authentication provider identity linked to an account */
+export type EdgedInternalExternalIdentity = {
+  __typename: 'EdgedInternalExternalIdentity';
+  node: Maybe<InternalExternalIdentity>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+};
+
 /** IPv4 or IPv6 prefix also referred as network which has not been allocated yet */
 export type EdgedInternalIpPrefixAvailable = {
   __typename: 'EdgedInternalIPPrefixAvailable';
@@ -17437,6 +17446,91 @@ export type InternalAccountTokenMember_Of_GroupsArgs = {
 
 /** Token for User Account */
 export type InternalAccountTokenSubscriber_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+/** External authentication provider identity linked to an account */
+export type InternalExternalIdentity = CoreNode & {
+  __typename: 'InternalExternalIdentity';
+  account: NestedEdgedCoreGenericAccount;
+  display_label: Maybe<Scalars['String']['output']>;
+  /** Human friendly identifier */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  /** Unique identifier */
+  id: Scalars['String']['output'];
+  member_of_groups: NestedPaginatedCoreGroup;
+  /** The authentication protocol used, e.g. 'oidc', 'oauth2', 'ldap' (required) */
+  protocol: Maybe<TextAttribute>;
+  /** The provider name as configured in Infrahub, e.g. 'google', 'provider1' (required) */
+  provider_name: Maybe<TextAttribute>;
+  /** The provider-issued subject identifier (required) */
+  sub: Maybe<TextAttribute>;
+  subscriber_of_groups: NestedPaginatedCoreGroup;
+};
+
+
+/** External authentication provider identity linked to an account */
+export type InternalExternalIdentityMember_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+
+/** External authentication provider identity linked to an account */
+export type InternalExternalIdentitySubscriber_Of_GroupsArgs = {
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -21535,6 +21629,15 @@ export type NestedEdgedInternalAccountToken = {
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
 
+/** External authentication provider identity linked to an account */
+export type NestedEdgedInternalExternalIdentity = {
+  __typename: 'NestedEdgedInternalExternalIdentity';
+  node: Maybe<InternalExternalIdentity>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+  properties: Maybe<RelationshipProperty>;
+  relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
+};
+
 /** IPv4 or IPv6 prefix also referred as network which has not been allocated yet */
 export type NestedEdgedInternalIpPrefixAvailable = {
   __typename: 'NestedEdgedInternalIPPrefixAvailable';
@@ -22266,6 +22369,14 @@ export type NestedPaginatedInternalAccountToken = {
   __typename: 'NestedPaginatedInternalAccountToken';
   count: Scalars['Int']['output'];
   edges: Array<NestedEdgedInternalAccountToken>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** External authentication provider identity linked to an account */
+export type NestedPaginatedInternalExternalIdentity = {
+  __typename: 'NestedPaginatedInternalExternalIdentity';
+  count: Scalars['Int']['output'];
+  edges: Array<NestedEdgedInternalExternalIdentity>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -23141,6 +23252,14 @@ export type PaginatedInternalAccountToken = {
   __typename: 'PaginatedInternalAccountToken';
   count: Scalars['Int']['output'];
   edges: Array<EdgedInternalAccountToken>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** External authentication provider identity linked to an account */
+export type PaginatedInternalExternalIdentity = {
+  __typename: 'PaginatedInternalExternalIdentity';
+  count: Scalars['Int']['output'];
+  edges: Array<EdgedInternalExternalIdentity>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -37118,6 +37237,67 @@ export type Get_Core_ValidatorsQuery = { CoreValidator: { __typename: 'Paginated
                | null }> | null } }
        | null }> } };
 
+export type Get_Validator_DetailsQueryVariables = Exact<{
+  ids?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+  checksOffset?: InputMaybe<Scalars['Int']['input']>;
+  checksLimit?: InputMaybe<Scalars['Int']['input']>;
+}>;
+
+
+export type Get_Validator_DetailsQuery = { CoreValidator: { __typename: 'PaginatedCoreValidator', edges: Array<{ __typename: 'EdgedCoreValidator', node:
+        | { __typename: 'CoreArtifactValidator', id: string, display_label: string | null, definition: { __typename: 'NestedEdgedCoreArtifactDefinition', node: { __typename: 'CoreArtifactDefinition', display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, description: { __typename: 'TextAttribute', value: string | null } | null } | null }, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreDataValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreGeneratorValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreRepositoryValidator', id: string, display_label: string | null, repository: { __typename: 'NestedEdgedCoreGenericRepository', node:
+              | { __typename: 'CoreReadOnlyRepository', display_label: string | null }
+              | { __typename: 'CoreRepository', display_label: string | null }
+             | null }, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreSchemaValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreUserValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', count: number, edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', id: string, display_label: string | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, artifact_id: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', id: string, display_label: string | null, files: { __typename: 'ListAttribute', value: any | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+       | null }> } };
+
 export type Resolve_ConflictMutationVariables = Exact<{
   id?: InputMaybe<Scalars['String']['input']>;
   selection?: InputMaybe<ConflictSelection>;
@@ -37295,6 +37475,36 @@ export type ActionsQueryVariables = Exact<{
 
 export type ActionsQuery = { CoreProposedChangeAvailableActions: { __typename: 'AvailableActions', count: number, edges: Array<{ __typename: 'ActionAvailabilityEdge', node: { __typename: 'ActionAvailability', action: string, available: boolean, unavailability_reason: string | null } }> } };
 
+export type Get_Artifact_ThreadsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+}>;
+
+
+export type Get_Artifact_ThreadsQuery = { CoreArtifactThread: { __typename: 'PaginatedCoreArtifactThread', count: number, edges: Array<{ __typename: 'EdgedCoreArtifactThread', node: { __typename: 'CoreArtifactThread', id: string, display_label: string | null, line_number: { __typename: 'NumberAttribute', value: any | null } | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
+
+export type Get_File_ThreadsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+}>;
+
+
+export type Get_File_ThreadsQuery = { CoreFileThread: { __typename: 'PaginatedCoreFileThread', count: number, edges: Array<{ __typename: 'EdgedCoreFileThread', node: { __typename: 'CoreFileThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, file: { __typename: 'TextAttribute', value: string | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, repository: { __typename: 'NestedEdgedCoreRepository', node: { __typename: 'CoreRepository', id: string } | null }, line_number: { __typename: 'NumberAttribute', value: any | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
+
+export type Get_Object_Thread_CommentsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+  objectPath?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type Get_Object_Thread_CommentsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
+
+export type Get_Object_ThreadsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+  objectPath?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type Get_Object_ThreadsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number } } | null }>, permissions: { __typename: 'PaginatedObjectPermission', edges: Array<{ __typename: 'ObjectPermissionNode', node: { __typename: 'ObjectPermission', kind: string, view: BranchRelativePermissionDecision, create: BranchRelativePermissionDecision, update: BranchRelativePermissionDecision, delete: BranchRelativePermissionDecision } }> } } };
+
 export type ProposedChangeReviewMutationVariables = Exact<{
   proposedChangeId: Scalars['String']['input'];
   decision: ProposedChangeApprovalDecision;
@@ -37452,6 +37662,13 @@ export type Task_DetailsQueryVariables = Exact<{
 
 
 export type Task_DetailsQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', id: string, title: string, related_node: string | null, state: StateType | null, progress: number | null, created_at: string, updated_at: string, related_nodes: Array<{ __typename: 'TaskRelatedNode', id: string, kind: string } | null> | null, logs: { __typename: 'TaskLogEdge', edges: Array<{ __typename: 'TaskLogNodes', node: { __typename: 'TaskLog', id: string | null, message: string, severity: string, timestamp: string } | null }> } | null } | null }> } };
+
+export type Get_Task_Details_TitleQueryVariables = Exact<{
+  ids?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+}>;
+
+
+export type Get_Task_Details_TitleQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', title: string } | null }> } };
 
 export type InfrahubAccountTokenCreateMutationVariables = Exact<{
   tokenName: Scalars['String']['input'];

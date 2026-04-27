@@ -110,6 +110,7 @@ class BranchDeletedEvent(ObjectType):
         interfaces = (EventNodeInterface,)
 
     deleted_branch = String(required=True, description="The name of the branch that was deleted")
+    proposed_change_id = String(required=False, description="Proposed change ID if available")
     payload = Field(GenericScalar, required=True)
 
 

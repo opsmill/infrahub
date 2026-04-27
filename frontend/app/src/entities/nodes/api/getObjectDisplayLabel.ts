@@ -1,19 +1,26 @@
-import Handlebars from "@/shared/libs/handlebars";
+import { jsonToGraphQLQuery, VariableType } from "json-to-graphql-query";
 
-export const getObjectDisplayLabel = Handlebars.compile(`
-query GetLabel_{{kind}}($ids: [ID]) {
-  {{kind}} (ids: $ids) {
-    edges{
-      node{
-        id
-        display_label
-        {{#if peerField}}
-        {{peerField}}{
-          value
-        }
-        {{/if}}
-      }
-    }
-  }
-}
-`);
+export const getObjectDisplayLabel = ({
+  kind,
+  peerField,
+}: {
+  kind: string;
+  peerField?: string;
+}) => {
+  return jsonToGraphQLQuery({
+    query: {
+      __name: `getObjectDisplayLabel__${kind}`,
+      __variables: { ids: "[ID]" },
+      [kind]: {
+        __args: { ids: new VariableType("ids") },
+        edges: {
+          node: {
+            id: true,
+            display_label: true,
+            ...(peerField ? { [peerField]: { value: true } } : {}),
+          },
+        },
+      },
+    },
+  });
+};

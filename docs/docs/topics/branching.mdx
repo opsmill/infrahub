@@ -109,7 +109,7 @@ Feature branches strategically relax some of these constraints to optimize for d
 To get the most out of Infrahub's branching capabilities, consider these recommended practices:
 
 - **Use descriptive branch names**: Name branches in a way that clearly identifies their purpose, such as `feature-network-redesign` or `fix-datacenter-connectivity`.
-- **Keep branches short-lived**: Complete work and merge branches promptly to minimize drift from the main branch and reduce conflict potential.
+- **Keep branches short-lived**: Complete work and merge branches promptly to minimize drift from the main branch and reduce conflict potential. Enable `delete_branch_after_merge` in the [configuration](../reference/configuration.mdx) to automate cleanup of merged branches.
 - **Rebase before creating a Proposed Change**: Update your branch with the latest changes from the default branch to identify and resolve conflicts early.
 - **Use data-only branches for quick fixes**: When changes don't require infrastructure code updates, data-only branches provide a streamlined workflow.
 - **Leverage branch permissions**: Restrict who can create branches and merge to the default branch to maintain quality control in production environments.
@@ -141,8 +141,11 @@ This structured approach ensures that changes are thoroughly validated before re
 Infrahub provides a comprehensive set of operations to manage the branch lifecycle:
 
 - **Branch creation**: Start a new branch from an existing one, typically the `main` branch. This creates a snapshot of the current state that can be modified independently. When creating a branch, you specify a name, description, and whether it should synchronize with Git repositories.
-- **Branch merging**: Once changes are complete, they can be merged back into the parent branch through a controlled process using Proposed Changes. This ensures that all modifications are validated and conflicts are resolved. The merge process creates a permanent record in the commit history that documents what changed and why.
-- **Branch deletion**: After merging, branches can be safely deleted without losing any history. All changes are preserved in the commit history of the default branch. This keeps the workspace clean while maintaining a comprehensive audit trail of all changes.
+- **Branch merging**: Once changes are complete, they can be merged back into the parent branch through a controlled process using Proposed Changes. This ensures that all modifications are validated and conflicts are resolved. The merge process creates a permanent record in the commit history that documents what changed and why. After a successful merge, the source branch is automatically frozen: GraphQL mutations (create, upsert, update, delete) are blocked, the UI disables editing controls, and opening a new Proposed Change against the merged branch is prevented.
+- **Branch deletion**: After merging, branches can be deleted without losing any history. All changes are preserved in the commit history of the default branch. Deletion can be triggered in three ways:
+  - **Manually** from the branch detail view, with an option to also delete the corresponding Git branch when one is linked.
+  - **Automatically after merge** when `delete_branch_after_merge` is enabled in the [configuration](../reference/configuration.mdx). The branch is deleted immediately after a successful merge, whether initiated through a direct branch merge or a Proposed Change.
+  - **Automatically including the Git branch** when `delete_git_branch_after_merge` is also enabled. Git deletion runs asynchronously and failures are recorded in the repository task log without blocking the Infrahub branch deletion.
 - **Branch rebase**: Rebasing allows you to incorporate the latest changes from the parent branch into your feature branch. This helps keep your branch up-to-date and minimizes potential merge conflicts.
 
 ### Merge semantics
@@ -157,6 +160,12 @@ This approach provides several benefits:
 - **Reduces storage overhead** by not duplicating the entire change history of the branch
 
 This merge strategy aligns with Infrahub's focus on the current state of infrastructure rather than the historical evolution of individual files, making it particularly well-suited for infrastructure management workflows.
+
+### Automatic branch cleanup after merge
+
+Infrahub can automatically delete a branch after it is successfully merged. This keeps your branch list tidy and avoids the operational overhead of manually pruning branches that have already served their purpose.
+
+This behavior is opt-in. Set `delete_branch_after_merge = true` (or `INFRAHUB_DELETE_BRANCH_AFTER_MERGE=true`) to enable it. To also remove the linked Git branch, set `delete_git_branch_after_merge = true` (`INFRAHUB_GIT_DELETE_GIT_BRANCH_AFTER_MERGE=true`)—this has no effect unless Infrahub branch deletion is also enabled.
 
 ### Rebase operations
 

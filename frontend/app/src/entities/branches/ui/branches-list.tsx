@@ -36,14 +36,14 @@ function BranchesListToolbar() {
     <Col className="gap-0">
       <BranchesListHeader />
 
-      <Row className="items-center gap-2 px-3">
-        <div className="max-w-56 py-3">
-          <FilterSearchInput placeholder="Search branches" />
-        </div>
+      <Row className="px-3 py-2">
+        <FilterSearchInput placeholder="Search branches" />
+
         <ActiveFilterTags
           filters={filters}
           setFilters={setFilters}
           filterDefinitions={BRANCH_FILTER_DEFINITIONS}
+          className="p-0"
         />
       </Row>
     </Col>

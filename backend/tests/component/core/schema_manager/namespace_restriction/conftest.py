@@ -16,7 +16,7 @@ def schema_animal_generic() -> dict[str, Any]:
         "namespace": "Testing",
         "label": "Animal",
         "order_by": ["name__value"],
-        "display_labels": ["name__value"],
+        "display_label": "name__value",
         "attributes": [
             {"name": "name", "kind": "Text"},
             {"name": "description", "kind": "Text", "optional": True},
@@ -47,7 +47,7 @@ def schema_dog_node() -> dict[str, Any]:
         "name": "Dog",
         "namespace": "Dog",
         "label": "Dog",
-        "display_labels": ["name__value"],
+        "display_label": "name__value",
         "inherit_from": ["TestingAnimal"],
         "attributes": [
             {"name": "breed", "kind": "Text", "optional": True},
@@ -62,7 +62,7 @@ def schema_cat_node() -> dict[str, Any]:
         "name": "Cat",
         "namespace": "Cat",
         "label": "Cat",
-        "display_labels": ["name__value"],
+        "display_label": "name__value",
         "inherit_from": ["TestingAnimal"],
         "attributes": [
             {"name": "color", "kind": "Text", "optional": True},
@@ -78,7 +78,7 @@ def correct_schema_generic_with_namespace_restriction() -> SchemaRoot:
             {
                 "name": "Generic",
                 "namespace": "Animal",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "order_by": ["name__value"],
                 "attributes": [{"name": "name", "kind": "Text"}],
                 "restricted_namespaces": ["Animal"],
@@ -104,7 +104,7 @@ def schema_multi_generic_with_one_restricted() -> SchemaRoot:
             {
                 "name": "GenericA",
                 "namespace": "Core",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "order_by": ["name__value"],
                 "attributes": [{"name": "name", "kind": "Text"}],
                 "restricted_namespaces": ["Core"],
@@ -112,7 +112,7 @@ def schema_multi_generic_with_one_restricted() -> SchemaRoot:
             {
                 "name": "GenericB",
                 "namespace": "Animal",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "order_by": ["name__value"],
                 "attributes": [{"name": "color", "kind": "Text"}],
             },

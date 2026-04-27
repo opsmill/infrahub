@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-testcontainers"
-version = "1.9.0b0"
+version = "1.9.0b1"
 requires-python = ">=3.10"
 
 description = "Testcontainers instance for Infrahub to easily build integration tests"
@@ -71,33 +71,15 @@ ignore = [
     "E501",     # Line too long
     "EM101",    # Exception must not use a string literal, assign to variable first
     "EM102",    # Exception must not use an f-string literal, assign to variable first
-    "FBT001",   # Boolean-typed positional argument in function definition
-    "FBT002",   # Boolean default positional argument in function definition
-    "FIX002",   # Line contains TODO, consider resolving the issue
+    "FBT001",   # Boolean-typed positional argument in function definition — breaking change to fix
+    "FBT002",   # Boolean default positional argument in function definition — breaking change to fix
     "PERF203",  # `try`-`except` within a loop incurs performance overhead
     "PLR0912",  # Too many branches
     "PLR0914",  # Too many local variables
     "PLR6301",  # Method `infrahub_app` could be a function, class method, or static method
-    "RUF067",   # `__init__` module should only contain docstrings and re-exports
-    "SLF001",   # Private member accessed: `_session`
-    "TC001",    # Move application import `.helpers.InfrahubDockerCompose` into a type-checking block
-    "TC002",    # Move third-party import `pytest` into a type-checking block
-    "TC003",    # Move standard library import `types.TracebackType` into a type-checking block
-    "TD002",    # Missing author in TODO; try: `# TODO(<author_name>): ...` or `# TODO @<author_name>: ...`
-    "TD003",    # Missing issue link for this TODO
-    "TD004",    # Missing colon in TODO
+    "SLF001",   # Private member accessed: `_session` (pytest internal API, no public alternative)
     "TRY002",   # Create your own exception
     "TRY003",   # Avoid specifying long messages outside the exception class
-]
-
-"tests/**.py" = [
-    ##################################################################################################
-    # Rules below needs to be Investigated                                                           #
-    ##################################################################################################
-    "EM101",    # Exception must not use a string literal, assign to variable first
-    "PGH003",   # Use specific rule codes when ignoring type issues
-    "RUF067",   # `__init__` module should only contain docstrings and re-exports
-    "TC003",    # Move standard library import into a type-checking block
 ]
 
 

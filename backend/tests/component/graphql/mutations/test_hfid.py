@@ -266,7 +266,6 @@ async def test_create_nodes_with_relational_hfids(
                         name="container", peer="TestContainer", cardinality=RelationshipCardinality.ONE, optional=False
                     )
                 ],
-                display_labels=["name__value", "status"],
                 display_label="{{ name__value|upper }}: {{ status__value|lower }} - {{ container__storage_name__value }}",
                 human_friendly_id=["name__value", "status__value", "container__storage_name__value"],
             ),

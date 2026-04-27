@@ -1,11 +1,9 @@
-import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { ReactElement } from "react";
 import { Tab, TabPanel, type TabPanelProps, type TabProps } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import Accordion, { type AccordionProps } from "@/shared/components/display/accordion";
 import { Badge } from "@/shared/components/ui/badge";
-import { QSP } from "@/shared/config/qsp";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
 interface AccordionStyleProps extends AccordionProps {
@@ -144,8 +142,13 @@ export const TabPanelStyled = ({ className, ...props }: TabPanelProps) => {
 
 export const NullDisplay = () => <div className="text-gray-500 text-xs">null</div>;
 
-export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
-  const [selectedKinds, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
+export const SchemaKindDisplay = ({
+  kinds,
+  onKindClick,
+}: {
+  kinds?: string[];
+  onKindClick?: (kind: string) => void;
+}) => {
   if (!kinds) return null;
   if (kinds.length === 0) return <span>empty</span>;
 
@@ -154,10 +157,11 @@ export const ModelDisplay = ({ kinds }: { kinds?: string[] }) => {
       {kinds.map((kind) => (
         <Badge
           key={kind}
-          className="cursor-pointer border-sky-200 bg-sky-50 text-sky-800 hover:bg-sky-100"
-          onClick={() =>
-            setKinds(selectedKinds && selectedKinds?.length > 0 ? [...selectedKinds, kind] : [kind])
-          }
+          className={classNames(
+            "border-sky-200 bg-sky-50 text-sky-800",
+            onKindClick && "cursor-pointer hover:bg-sky-100"
+          )}
+          onClick={onKindClick ? () => onKindClick(kind) : undefined}
         >
           {kind}
         </Badge>

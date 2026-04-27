@@ -7,13 +7,15 @@ import { warnUnexpectedType } from "@/shared/utils/common";
 
 import type { RelationshipSchema } from "@/entities/schema/types";
 
-import { AccordionStyled, ModelDisplay, PropertyRow } from "./styled";
+import { AccordionStyled, PropertyRow, SchemaKindDisplay } from "./styled";
 
 export const RelationshipDisplay = ({
   relationship,
+  onKindClick,
   defaultOpen = false,
 }: {
   relationship: RelationshipSchema;
+  onKindClick?: (kind: string) => void;
   defaultOpen?: boolean;
 }) => {
   const ref = useRef<HTMLDivElement>(null);
@@ -57,7 +59,10 @@ export const RelationshipDisplay = ({
       </div>
 
       <div>
-        <PropertyRow title="Peer" value={<ModelDisplay kinds={[relationship.peer]} />} />
+        <PropertyRow
+          title="Peer"
+          value={<SchemaKindDisplay kinds={[relationship.peer]} onKindClick={onKindClick} />}
+        />
         <PropertyRow title="Peer identifier" value={relationship.identifier} />
         <PropertyRow title="Common parent" value={relationship.common_parent} />
         <PropertyRow title="Cardinality" value={relationship.cardinality} />
@@ -72,6 +77,7 @@ export const RelationshipDisplay = ({
         <PropertyRow title="Branch" value={relationship.branch} />
         <PropertyRow title="Max count" value={relationship.max_count} />
         <PropertyRow title="Min count" value={relationship.min_count} />
+        <PropertyRow title="Display" value={relationship.display} />
         <PropertyRow title="Order weight" value={relationship.order_weight} />
       </div>
     </AccordionStyled>

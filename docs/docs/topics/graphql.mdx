@@ -253,6 +253,53 @@ More details on the `.infrahub.yml` file format can be found in [.infrahub.yml t
 
 Stored GraphQL queries can be executed by using the `/api/query/{query_id}` REST API endpoint. The `{query_id}` can be the name or the id of the `GraphQLQuery` node in the database. More information can be found in the [Swagger documentation](http://localhost:8000/api/docs).
 
+## GraphQL fragments
+
+GraphQL fragments are reusable field selections that can be shared across multiple stored queries. Instead of duplicating the same nested field selections in every query, you define them once as a fragment and reference them using the standard GraphQL spread syntax (`...fragmentName`).
+
+### How fragments work in Infrahub
+
+Fragment files are `.gql` files containing one or more `fragment ... on Type { }` definitions. They are declared in the [`.infrahub.yml`](../topics/infrahub-yml.mdx) configuration file under `graphql_fragments`:
+
+```yaml
+graphql_fragments:
+  - name: interface_fields
+    file_path: "fragments/interface_fields.gql"
+```
+
+When Infrahub imports a query from a Git repository, it checks for fragment spread references (`...fragmentName`). If any are found, the corresponding fragment definitions are resolved from the declared fragment files and included inline in the query before it is stored in the database.
+
+### Fragment resolution behavior
+
+- **Transitive resolution**: If fragment A references fragment B, both are included automatically
+- **Duplicate detection**: A fragment name defined in multiple files raises an error
+- **Circular dependency detection**: Fragments that reference each other in a cycle are rejected
+- **Directory support**: The `file_path` in `.infrahub.yml` can point to a directory, loading all `.gql` files within it
+
+### Using fragments in queries
+
+Reference a fragment in any query file declared in the same repository:
+
+```graphql
+query DeviceInterfaces($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        interfaces {
+          edges {
+            node {
+              ...interfaceFields
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+For step-by-step instructions on setting up and using fragments, see [Using GraphQL fragments](../guides/graphql-fragment.mdx).
+
 ## Single-target query pattern
 
 When writing GraphQL queries for [transformations](./transformation.mdx), [generators](./generator.mdx), [artifacts](./artifact.mdx), and [computed attributes](./computed-attributes.mdx), it's critical to use a **single-target query pattern** to ensure proper tracking by the system.

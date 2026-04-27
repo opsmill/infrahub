@@ -272,6 +272,34 @@ async def test_node_schema_generate_fields_for_display_label() -> None:
     assert schema.generate_fields_for_display_label() == {"level": {"value": None}, "name": {"value": None}}
 
 
+async def test_node_schema_generate_fields_for_display_label_simple_path() -> None:
+    schema = NodeSchema(
+        name="Prefix",
+        namespace="Test",
+        display_label="prefix__value",
+        branch=BranchSupportType.AWARE.value,
+        attributes=[{"name": "prefix", "kind": "IPNetwork"}],
+    )
+    assert schema.generate_fields_for_display_label() == {"prefix": {"value": None}}
+
+
+async def test_node_schema_generate_fields_for_display_label_jinja2() -> None:
+    schema = NodeSchema(
+        name="Range",
+        namespace="Test",
+        display_label="{{ address__value }} {{ last_address__value }}",
+        branch=BranchSupportType.AWARE.value,
+        attributes=[
+            {"name": "address", "kind": "IPHost"},
+            {"name": "last_address", "kind": "IPHost"},
+        ],
+    )
+    assert schema.generate_fields_for_display_label() == {
+        "address": {"value": None},
+        "last_address": {"value": None},
+    }
+
+
 async def test_node_schema_generate_fields_for_display_label_with_generic(default_branch: Branch) -> None:
     generic_schema = GenericSchema(
         name="ThingGeneric",

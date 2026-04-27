@@ -93,7 +93,6 @@ from infrahub.pytest_plugin import InfrahubBackendPlugin
 from infrahub.validators.tasks import start_validator
 from infrahub.workers.dependencies import get_cache, get_client, get_database, get_event_service, get_workflow
 from infrahub.workflows.catalogue import (
-    BRANCH_DELETE,
     GIT_REPOSITORIES_CHECK_ARTIFACT_CREATE,
     GIT_REPOSITORY_INTERNAL_CHECKS_TRIGGER,
     GIT_REPOSITORY_USER_CHECKS_TRIGGER,
@@ -245,13 +244,6 @@ async def merge_proposed_change(
             database=db,
             user_id=context.account.account_id,
         )
-
-        if config.SETTINGS.main.delete_branch_after_merge and not source_branch.is_default:
-            await get_workflow().submit_workflow(
-                workflow=BRANCH_DELETE,
-                context=context,
-                parameters={"branch": source_branch.name},
-            )
 
         current_user = await NodeManager.get_one_by_id_or_default_filter(
             id=context.account.account_id, kind=InfrahubKind.GENERICACCOUNT, db=db

@@ -50,7 +50,7 @@ class TestTriggeredActions(TestInfrahubDockerClient, SchemaCarPerson):
             label="Tag",
             default_filter="name__value",
             order_by=["name__value"],
-            display_labels=["name__value"],
+            display_label="name__value",
             uniqueness_constraints=[["name__value"]],
             attributes=[
                 Attr(name="name", kind=AttributeKind.TEXT, unique=True),

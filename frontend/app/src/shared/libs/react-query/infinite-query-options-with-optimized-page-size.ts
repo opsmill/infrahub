@@ -50,7 +50,7 @@ export function infiniteQueryOptionsWithOptimizedPageSize<
     initialPageParam: { offset: 0, limit: pageSize },
     getNextPageParam: (lastPage, _, lastPageParam) => {
       if (lastPage.length < lastPageParam.limit) {
-        return undefined;
+        return;
       }
       return {
         offset: lastPageParam.offset + lastPageParam.limit,

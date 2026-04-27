@@ -139,6 +139,9 @@ class TransformPythonInformation(BaseModel):
         ..., description="Indicate if the transform should convert the query response to InfrahubNode objects"
     )
 
+    description: str | None = None
+    """Description of the Transform"""
+
 
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     """
@@ -158,6 +161,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         except RepositoryInvalidFileSystemError:
             await self.ensure_location_is_defined()
             await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
+            self.reinitialized = True
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
         if commit:
@@ -1014,6 +1018,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
                     convert_query_response=transform.convert_query_response,
+                    description=transform.description,
                 )
             )
 
@@ -1146,6 +1151,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name)
         data = {
             "name": transform.name,
+            "description": transform.description,
             "repository": transform.repository,
             "query": transform.query,
             "file_path": transform.file_path,
@@ -1166,6 +1172,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def update_python_transform(
         self, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> None:
+        if existing_transform.description.value != local_transform.description:
+            existing_transform.description.value = local_transform.description
+
         if existing_transform.query.id != local_transform.query:
             existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
 
@@ -1185,7 +1194,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         cls, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> bool:
         if (
-            existing_transform.query.id != local_transform.query
+            existing_transform.description.value != local_transform.description
+            or existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
             or existing_transform.convert_query_response.value != local_transform.convert_query_response

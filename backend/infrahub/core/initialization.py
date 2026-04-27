@@ -1,7 +1,9 @@
 import importlib
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
-from uuid import uuid4
+from uuid import UUID, uuid4
+
+from infrahub_sdk.uuidt import UUIDT
 
 from infrahub import config, lock
 from infrahub.constants.database import DatabaseType
@@ -30,7 +32,7 @@ from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRo
 from infrahub.core.root import Root
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
-from infrahub.core.timestamp import Timestamp
+from infrahub.core.timestamp import Timestamp, current_timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.database.memgraph import IndexManagerMemgraph
 from infrahub.database.neo4j import IndexManagerNeo4j
@@ -225,6 +227,32 @@ async def create_root_node(db: InfrahubDatabase) -> Root:
     registry.default_branch = root.default_branch
 
     return root
+
+
+async def reset_deployment_id(db: InfrahubDatabase, new_uuid: str | None = None) -> tuple[str, str]:
+    """Rewrite the uuid of the singleton Root node.
+
+    The normal StandardNode update path matches on uuid and cannot change it, so
+    this helper issues a direct write keyed on the :Root label.
+    """
+    root = await get_root_node(db=db)
+    old_uuid = str(root.get_uuid())
+
+    if new_uuid is None:
+        new_uuid = str(UUIDT())
+    else:
+        UUID(new_uuid)
+
+    if new_uuid == old_uuid:
+        raise ValueError("The new deployment_id must be different from the current one.")
+
+    await db.execute_query(
+        query=("MATCH (n:Root {uuid: $old_uuid}) SET n.uuid = $new_uuid, n.updated_at = $updated_at RETURN n"),
+        params={"old_uuid": old_uuid, "new_uuid": new_uuid, "updated_at": current_timestamp()},
+        name="root_reset_deployment_id",
+    )
+
+    return old_uuid, new_uuid
 
 
 async def create_default_branch(db: InfrahubDatabase) -> Branch:
