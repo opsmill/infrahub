@@ -55,7 +55,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
               variant={"ghost"}
               data-testid="data-diff-add-comment"
             >
-              <Icon icon="mdi:chat-outline" className="mr-1" />
+              <Icon icon="mdi:chat-outline" />
               {thread?.comments?.count}
             </Button>
           </Tooltip>

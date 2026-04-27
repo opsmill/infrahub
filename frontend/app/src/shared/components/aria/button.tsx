@@ -15,7 +15,7 @@ import { focusVisibleStyle } from "./style-rac";
 const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-lg border font-medium text-sm outline-none transition-shadow",
+    "rounded-lg border text-sm outline-none transition-shadow",
     "before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit]",
     "data-disabled:pointer-events-none data-disabled:cursor-default data-disabled:opacity-60 data-disabled:shadow-none",
     "data-[pending]:cursor-default data-[pending]:select-none",
@@ -67,12 +67,12 @@ const buttonVariants = cva(
           "data-pressed:inset-shadow-[0_1px_0_rgba(0,0,0,0.06)] data-pressed:shadow-none",
         ],
         ghost: [
-          "border-transparent text-neutral-900 data-hovered:bg-neutral-100 data-pressed:bg-neutral-200",
+          "border-transparent text-neutral-900 data-hovered:bg-neutral-200/50 data-pressed:bg-neutral-200",
         ],
       },
       size: {
         default: "h-9 px-4",
-        xs: "h-7 gap-1 px-2 font-normal",
+        xs: "h-7 gap-1 px-2",
         sm: "h-8 gap-1.5 px-2.5",
         icon: "h-7 w-7 rounded-full",
         square: "h-9 w-9",
@@ -93,6 +93,7 @@ export interface ButtonProps extends AriaButtonProps, VariantProps<typeof button
 export function Button({ variant, size, isDisabledAndFocusable, ...props }: ButtonProps) {
   return (
     <AriaButton
+      slot={null}
       {...props}
       isPending={isDisabledAndFocusable || props.isPending}
       className={composeRenderProps(props.className, (className, { isPending }) =>

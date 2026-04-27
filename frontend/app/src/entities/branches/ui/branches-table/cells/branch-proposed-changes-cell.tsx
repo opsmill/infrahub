@@ -62,7 +62,7 @@ export function BranchProposedChangesCell({ branchName }: BranchProposedChangesC
           href={detailUrl}
           className="max-w-40 rounded-full pr-2.5 data-hovered:border-custom-blue-700 data-hovered:underline"
         >
-          <Icon icon={getSchemaIcon(schema)} className="mr-1 shrink-0 text-custom-blue-800" />
+          <Icon icon={getSchemaIcon(schema)} className="shrink-0 text-custom-blue-800" />
           <span className="truncate">{firstPC.node.name.value}</span>
         </LinkButton>
 

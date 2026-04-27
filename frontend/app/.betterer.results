@@ -73,7 +73,7 @@ exports[`fix ts error`] = {
       [137, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [141, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
     ],
-    "src/entities/diff/ui/node-diff/thread.tsx:798878205": [
+    "src/entities/diff/ui/node-diff/thread.tsx:2839186922": [
       [23, 10, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
       [23, 16, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
     ],

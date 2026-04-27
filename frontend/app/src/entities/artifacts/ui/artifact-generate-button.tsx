@@ -68,7 +68,7 @@ export const ArtifactGenerateButton = (props: ArtifactGenerateButtonProps) => {
       isDisabled={!isAuthenticated || isPending}
       onPress={handleGenerate}
     >
-      <RefreshCwIcon className={classNames("mr-2 size-3.5", isPending && "animate-spin")} />
+      <RefreshCwIcon className={classNames("size-3.5", isPending && "animate-spin")} />
       {label ?? "Generate"}
     </Button>
   );

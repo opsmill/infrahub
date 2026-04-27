@@ -41,7 +41,7 @@ export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonPro
 
   return (
     <Button variant="primary-outline" onPress={handleRefreshDiff} {...props}>
-      <Icon icon="mdi:reload" className={classNames("mr-1", isLoading && "animate-spin")} />
+      <Icon icon="mdi:reload" className={classNames(isLoading && "animate-spin")} />
       {isLoading ? "Refreshing diff..." : "Refresh diff"}
     </Button>
   );

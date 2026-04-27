@@ -26,7 +26,7 @@ export function ObjectTableEmpty({ schema }: { schema: ModelSchema }) {
           <div className="font-medium text-lg">No {schemaLabel} found</div>
           <div className="text-sm">No {schemaLabel} matches the current filters</div>
           <Button size="sm" variant="outline" className="mt-4" onPress={handleClearFilters}>
-            <Icon icon="mdi:filter-variant-remove" className="mr-1.5" />
+            <Icon icon="mdi:filter-variant-remove" />
             Clear filters
           </Button>
         </>

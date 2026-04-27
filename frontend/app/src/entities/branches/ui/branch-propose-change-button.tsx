@@ -26,7 +26,7 @@ export const BranchProposeChangeButton = ({ branch }: BranchProposeChangeButtonP
       ])}
     >
       Propose change
-      <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />
+      <PlusIcon className="h-4 w-4" aria-hidden="true" />
     </LinkButton>
   );
 };

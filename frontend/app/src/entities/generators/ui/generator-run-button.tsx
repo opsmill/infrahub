@@ -62,7 +62,7 @@ export function GeneratorRunButton({
       onPress={handleRunGenerator}
       {...props}
     >
-      {!isPending && <PlayIcon className="mr-2 size-4" />}
+      {!isPending && <PlayIcon className="size-4" />}
       {children ?? "Run"}
     </Button>
   );

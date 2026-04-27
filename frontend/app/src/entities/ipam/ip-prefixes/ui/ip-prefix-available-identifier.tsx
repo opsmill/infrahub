@@ -32,25 +32,23 @@ export function IpPrefixAvailableIdentifier({
 
   return (
     <>
-      <Tooltip message={!isCreationAllowed && permission.create.message} placement="right">
+      <Tooltip message={permission.create.message} placement="right">
         <Button
           variant="ghost"
           size="sm"
           isDisabledAndFocusable={!isCreationAllowed}
           className={classNames(
-            "gap-3.75 rounded-full px-2.5 pl-1.5 hover:bg-gray-400/10 hover:underline",
+            "gap-2.5 rounded-full px-2.5 pl-1.5 text-neutral-400 hover:underline",
             className
           )}
           onPress={() => setIsCreateFormOpen(true)}
           {...props}
         >
-          <div className="mr-px flex size-4 items-center justify-center">
-            <PlusIcon className="size-4 text-gray-300" />
-          </div>
+          <PlusIcon className="size-4 text-neutral-300" />
 
           <Row className="gap-2.5">
             {[...Array(ancestorsCount)].map((_, i) => (
-              <div className="size-1 rounded-full bg-gray-300" key={i} />
+              <div className="size-1 rounded-full bg-neutral-300" key={i} />
             ))}
             {ipPrefixNode.display_label}
           </Row>

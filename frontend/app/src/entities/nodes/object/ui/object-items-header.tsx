@@ -27,7 +27,7 @@ export function ObjectItemsHeader({ schema }: ObjectItemsHeaderProps) {
         size="sm"
         href={constructPath("/schema", [{ name: "kind", value: schema.kind }])}
       >
-        <Icon icon="mdi:code-json" className="mr-1" />
+        <Icon icon="mdi:code-json" />
         Schema
       </LinkButton>
       {schema.documentation && (

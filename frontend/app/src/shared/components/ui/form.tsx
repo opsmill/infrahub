@@ -143,5 +143,5 @@ export const FormSubmit = ({ ...props }: FormSubmitProps) => {
 
   const isLoading = formState.isSubmitting || formState.isValidating;
 
-  return <Button isPending={isLoading} {...props} type="submit" slot={null} />;
+  return <Button isPending={isLoading} {...props} type="submit" />;
 };

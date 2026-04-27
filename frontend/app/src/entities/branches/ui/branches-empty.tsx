@@ -24,7 +24,7 @@ export function BranchesEmpty() {
           <div className="text-sm">Try adjusting or clearing your filters</div>
 
           <Button size="sm" variant="outline" className="mt-4" onPress={handleClearFilters}>
-            <Icon icon="mdi:filter-variant-remove" className="mr-1.5" />
+            <Icon icon="mdi:filter-variant-remove" />
             Clear filters
           </Button>
         </>

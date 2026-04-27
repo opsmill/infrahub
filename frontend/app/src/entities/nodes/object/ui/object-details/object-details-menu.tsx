@@ -67,7 +67,7 @@ export function ObjectDetailsMenu({
     <>
       <MenuTrigger>
         <Button variant="outline" size="sm" data-testid="object-details-menu" {...props}>
-          Actions <ChevronDownIcon className="ml-2 size-3.5" />
+          Actions <ChevronDownIcon className="size-3.5" />
         </Button>
 
         <Popover placement="bottom end">

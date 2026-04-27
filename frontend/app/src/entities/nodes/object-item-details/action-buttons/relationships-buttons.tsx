@@ -124,7 +124,7 @@ export function RelationshipsButtons({
           data-testid="open-relationship-form-button"
           size="sm"
         >
-          <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
+          <Icon icon="mdi:plus" aria-hidden="true" /> Add{" "}
           {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
         </Button>
       </Tooltip>

@@ -25,7 +25,7 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
     <>
       <Button isDisabled={isDisabled} onPress={() => setDisplayModal(true)} variant="danger">
         Delete
-        <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
+        <Icon icon="mdi:delete-outline" className="text-base" aria-hidden="true" />
       </Button>
 
       <ModalDeleteBranch

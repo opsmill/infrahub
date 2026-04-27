@@ -22,12 +22,12 @@ export function IpAddressAvailableIdentifier({
       variant="ghost"
       size="sm"
       className={classNames(
-        "gap-3.75 rounded-full pr-2.5 pl-1.5 data-hovered:bg-gray-400/10 data-hovered:underline",
+        "rounded-full pr-2.5 pl-1.5 text-neutral-400 data-hovered:underline",
         className
       )}
       {...props}
     >
-      <PlusIcon className="mr-px size-4" />
+      <PlusIcon className="mr-1 size-4" />
       <span>{firstAddressAvailable}</span>
     </Button>
   ) : (
@@ -35,12 +35,12 @@ export function IpAddressAvailableIdentifier({
       variant="ghost"
       size="sm"
       className={classNames(
-        "gap-1 rounded-full data-hovered:bg-gray-400/10 data-hovered:underline",
+        "rounded-full pr-2.5 pl-1.5 text-neutral-400 data-hovered:underline",
         className
       )}
       {...props}
     >
-      <PlusIcon className="mr-3 size-4" />
+      <PlusIcon className="mr-1 size-4" />
       <span>{firstAddressAvailable}</span>
       <ArrowRightIcon className="size-3.5" />
       <span>{lastAddressAvailable}</span>

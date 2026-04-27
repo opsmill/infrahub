@@ -82,7 +82,7 @@ export function GeneratorDefinitionRunButton({
           isPending={isPending}
           isDisabled={isPending || !isAuthenticated}
         >
-          {!isPending && <PlayIcon className="mr-2 size-4" />}
+          {!isPending && <PlayIcon className="size-4" />}
           Run
         </Button>
       </PopoverTrigger>

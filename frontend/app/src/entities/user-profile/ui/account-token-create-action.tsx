@@ -20,7 +20,7 @@ export function AccountTokenCreateAction() {
   return (
     <>
       <Button className="ml-auto" onPress={() => setIsFormOpen(true)}>
-        <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
+        <Icon icon="mdi:plus" className="text-sm" />
         Add account token
       </Button>
 

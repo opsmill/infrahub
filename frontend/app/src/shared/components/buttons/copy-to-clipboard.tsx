@@ -3,7 +3,6 @@ import type { ReactNode } from "react";
 
 import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
-import { classNames } from "@/shared/utils/common";
 
 interface CopyToClipboardProps extends Omit<ButtonProps, "children"> {
   text: string;
@@ -25,7 +24,7 @@ export const CopyToClipboard = ({
         icon={
           isCopied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"
         }
-        className={classNames("text-base", children && "mr-2")}
+        className="text-base"
       />
 
       {children}
