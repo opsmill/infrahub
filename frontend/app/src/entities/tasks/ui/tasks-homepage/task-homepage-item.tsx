@@ -7,10 +7,17 @@ import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
+import type { NodeCore } from "@/entities/nodes/types";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { getSchemaIcon } from "@/entities/schema/utils/get-schema-icon";
 import type { TaskHomepageNode } from "@/entities/tasks/domain/get-tasks-homepage/get-tasks-homepage";
+
+interface TaskHomepageItemProps extends TaskHomepageNode {
+  // Pre-resolved related-node labels from a parent batched fetch (#9067).
+  resolvedLabels?: Map<string, NodeCore>;
+  labelsLoading?: boolean;
+}
 
 export const TaskHomepageItem = ({
   id,
@@ -18,7 +25,9 @@ export const TaskHomepageItem = ({
   branch,
   updated_at,
   related_nodes,
-}: TaskHomepageNode) => {
+  resolvedLabels,
+  labelsLoading,
+}: TaskHomepageItemProps) => {
   return (
     <div className="flex w-full flex-col gap-1.5 rounded-md border border-transparent bg-white p-2 text-xs shadow-sm">
       <Link
@@ -38,6 +47,9 @@ export const TaskHomepageItem = ({
 
             const { schema } = getSchema(node.kind);
             const icon = getSchemaIcon(schema);
+            const resolved = resolvedLabels?.get(node.id);
+            const isStillLoading = !!labelsLoading && !resolved;
+            const hasBatchedLabels = resolvedLabels !== undefined;
 
             return (
               <Link
@@ -49,7 +61,13 @@ export const TaskHomepageItem = ({
                 to={getObjectDetailsUrl(node.kind, node.id)}
               >
                 <Icon icon={icon} className="shrink-0" />
-                <NodeLabel id={node.id} kind={node.kind} branch={branch} />
+                <NodeLabel
+                  id={node.id}
+                  kind={node.kind}
+                  branch={branch}
+                  resolved={hasBatchedLabels ? (resolved ?? null) : undefined}
+                  loading={isStillLoading}
+                />
               </Link>
             );
           })}
