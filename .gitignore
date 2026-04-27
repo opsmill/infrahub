@@ -48,5 +48,6 @@ python_testcontainers/infrahub_testcontainers.egg-info/*
 schema/node_modules/*
 
 # AI and SDD
+**/.playwright-mcp/**
 **/.worktrees/
 .bug-analysis-*.md
