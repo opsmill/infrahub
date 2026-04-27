@@ -1332,6 +1332,9 @@ class NodeManager:
                 peer_with_metadata.created_by = metadata_map.get(MetadataOptions.CREATED_BY)
                 peer_with_metadata.updated_at = metadata_map.get(MetadataOptions.UPDATED_AT)
                 peer_with_metadata.updated_by = metadata_map.get(MetadataOptions.UPDATED_BY)
+                peer_with_metadata.source_id = metadata_map.get(MetadataOptions.SOURCE)
+                peer_with_metadata.owner_id = metadata_map.get(MetadataOptions.OWNER)
+                peer_with_metadata.is_protected = metadata_map.get(MetadataOptions.IS_PROTECTED)
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True
