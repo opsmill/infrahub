@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 from typing_extensions import Self
 
@@ -70,7 +70,6 @@ class InfrahubDatabase(Protocol):
 
 
 class CoreNode:
-    _is_runtime_protocol: ClassVar[bool] = True
     id: str
 
     def get_id(self) -> str:
