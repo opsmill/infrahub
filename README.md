@@ -35,7 +35,7 @@ Infrahub is the data foundation for modern infrastructure automation, for teams 
 ## Key capabilities
 
 - **Schema-first, graph-backed data model.** Define your own data models for devices, services, topologies, and business context — enforced with validation and queried with first-class relationships on a Neo4j graph database.
-- **Version control for data, not just configs.** Branches, peer review, rollback, and a complete queryable history of who changed what, when, and why — applied to schema, data, and generated artifacts.
+- **Version control for data, not just configs.** Branches, peer review, and a complete queryable history of who changed what, when, and why — applied to schema, data, and generated artifacts.
 - **Generators and transforms.** Render configurations and other artifacts from Infrahub data using Jinja2 or Python — composable, reusable, and version-controlled alongside the data.
 - **Built for production.** Templates and generators are unit-and-integration testable. Every change moves through branch → CI → review → merge — and idempotent re-runs surface and correct deviations without a full rebuild.
 - **Integrations and self-service.** Connectors for Git, Ansible, and Nornir. Infrahub Sync federates data from Netbox, Nautobot, and IP Fabric. GraphQL, REST, and a web UI back service catalogs so internal teams and customers can self-serve.
