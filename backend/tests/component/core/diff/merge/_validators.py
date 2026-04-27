@@ -13,7 +13,7 @@ omitted from the matrix because the scenario discarded that change).
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import pytest
 
@@ -502,7 +502,7 @@ async def validate_all_applied_with_conflict_to_base(  # noqa: C901
     base_conflicts: BaseConflicts,
     merge_at: Timestamp,
     *,
-    added_node_state: str = "applied",
+    added_node_state: Literal["applied", "missing"] = "applied",
 ) -> None:
     """Validate post-merge state when every conflict was resolved toward the base branch.
 
