@@ -2401,7 +2401,7 @@ class NodeGetHierarchyQuery(Query):
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002,PLR0915
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -2413,10 +2413,9 @@ class NodeGetHierarchyQuery(Query):
         )
         self.params["hierarchy"] = hierarchy_schema.kind
 
-        if self.direction == RelationshipHierarchyDirection.ANCESTORS:
-            filter_str = f"-{filter_str}->"
-        else:
-            filter_str = f"<-{filter_str}-"
+        filter_str = (
+            f"-{filter_str}->" if self.direction == RelationshipHierarchyDirection.ANCESTORS else f"<-{filter_str}-"
+        )
 
         froms_var = db.render_list_comprehension(items="relationships(path)", item_name="from")
         with_clause = (
@@ -2427,45 +2426,39 @@ class NodeGetHierarchyQuery(Query):
 
         query = """
         MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
-        WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
-        WITH n, collect(last(nodes(path))) AS peers_with_duplicates
-        CALL (peers_with_duplicates) {
-            UNWIND peers_with_duplicates AS pwd
-            RETURN DISTINCT pwd AS peer
-        }
-
+        WHERE $hierarchy IN LABELS(peer) AND all(r IN relationships(path) WHERE (%(branch_filter)s))
         """ % {"filter": filter_str, "branch_filter": branch_filter}
 
         if not self.branch.is_default:
             query += """
+        WITH DISTINCT n, last(nodes(path)) AS peer
         CALL (n, peer) {
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s
-            RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+            RETURN all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
             LIMIT 1
         }
-        WITH peer1 as peer, is_active
-            """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        WITH peer, is_active
+        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
         else:
             query += """
-        WITH peer
+        WITH DISTINCT n, last(nodes(path)) AS peer, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+        WITH peer, is_active
             """
 
         self.add_to_query(query)
-        where_clause = ["is_active = TRUE"] if not self.branch.is_default else []
+        where_clause = ["is_active = TRUE"]
 
         clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
         if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
-            self.params["peer_ids"] = clean_filters.get("ids", [])
-            if clean_filters.get("id", None):
-                self.params["peer_ids"].append(clean_filters.get("id"))
+            extra_id = [clean_filters["id"]] if clean_filters.get("id") else []
+            self.params["peer_ids"] = list(clean_filters.get("ids", [])) + extra_id
 
-        if where_clause:
-            self.add_to_query("WHERE " + " AND ".join(where_clause))
+        self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["peer"]
 
