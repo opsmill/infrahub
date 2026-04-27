@@ -43,12 +43,12 @@ Concrete implementations in the runtime tree:
     watermark and `captured_emits()` by intercepting its own `emit_event`.
   * `InMemoryPrefectClientTestAdapter(PrefectClientTestAdapter)` — in-memory
     test adapter; implements every production operation against an in-memory
-    event log + seed registry + call log; implements `wait_for_event` via
-    condition-variable observation of the log (no polling); `checkpoint()`
-    captures the log index; `captured_emits()` records every emission.
-    Additionally exposes in-memory-specific concrete helpers (`seed_return`,
-    `recorded`, `call_count`, `recorded_calls`, `unused_seeds`, `reset`)
-    that are **not** on any ABC — no real Prefect backend can deliver them.
+    event log and call log; implements `wait_for_event` via condition-variable
+    observation of the log (no polling); `checkpoint()` captures the log
+    index; `captured_emits()` records every emission. Additionally exposes
+    in-memory-specific concrete helpers (`recorded`, `call_count`,
+    `recorded_calls`, `reset`) that are **not** on any ABC — no real Prefect
+    backend can deliver them.
 """
 
 from __future__ import annotations
@@ -140,20 +140,33 @@ class EventNotObservedError(Exception):
 # --------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
 class Checkpoint:
-    """Opaque watermark created by `PrefectClientTestAdapter.checkpoint()`.
+    """Opaque watermark returned by `PrefectClientTestAdapter.checkpoint()`.
 
     Pass to `wait_for_event(since=...)` to scope the search to events
-    emitted after this point. Internal representation differs by adapter:
-    `InMemoryPrefectClientTestAdapter` records a log index;
-    `RealPrefectClientTestAdapter` records a wall-clock timestamp. Treat
-    as opaque — only pass back to the same adapter instance that produced
-    it.
+    emitted after this point. Treat as opaque — only pass back to the
+    same adapter instance that produced it.
+
+    Concrete subtypes are adapter-internal (`_LogIndexCheckpoint` for the
+    in-memory adapter, `_OccurredCheckpoint` for the real adapter); each
+    adapter constructs and consumes only its own subtype. `wait_for_event`
+    raises `TypeError` when handed a checkpoint produced by a different
+    adapter class.
     """
 
-    _log_index: int | None = None
-    _occurred: datetime | None = None
+
+@dataclass(frozen=True)
+class _LogIndexCheckpoint(Checkpoint):
+    """Checkpoint subtype produced by `InMemoryPrefectClientTestAdapter`."""
+
+    log_index: int
+
+
+@dataclass(frozen=True)
+class _OccurredCheckpoint(Checkpoint):
+    """Checkpoint subtype produced by `RealPrefectClientTestAdapter`."""
+
+    occurred: datetime
 
 
 @dataclass
@@ -353,9 +366,8 @@ class PrefectClientTestAdapter(PrefectClientAdapter):
         production port plus a condition-variable fast path for
         `wait_for_event`. `checkpoint()` records the log length;
         `captured_emits()` appends every emission to all active captures.
-        Also exposes in-memory-specific concrete helpers (`seed_return`,
-        `recorded`, `call_count`, `recorded_calls`, `unused_seeds`, `reset`)
-        that are not on any ABC.
+        Also exposes in-memory-specific concrete helpers (`recorded`,
+        `call_count`, `recorded_calls`, `reset`) that are not on any ABC.
 
     Production code type-hints against `PrefectClientAdapter`, not this class,
     so production callers cannot reach `wait_for_event`, `checkpoint`, or

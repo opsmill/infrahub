@@ -78,19 +78,19 @@ Defined in `backend/infrahub/services/adapters/prefect_client/__init__.py` (ABCs
 
 - Real-backed test implementation. Lives in `prefect_client/_testing.py`.
 - Inherits every production operation from `RealPrefectClientAdapter`.
-- Implements `wait_for_event` as a bounded polling loop (default 250 ms interval, 10 s total timeout) over `filter_events` with **server-side filtering only** via Prefect's `EventFilter(id=EventIDFilter(...), event=EventNameFilter(...), occurred=EventOccurredFilter(since=since._occurred))` (research R-6).
-- Implements `checkpoint()` by recording `datetime.now(UTC)` as `Checkpoint._occurred` (no I/O).
+- Implements `wait_for_event` as a bounded polling loop (default 250 ms interval, 10 s total timeout) over `filter_events` with **server-side filtering only** via Prefect's `EventFilter(id=EventIDFilter(...), event=EventNameFilter(...), occurred=EventOccurredFilter(since=since.occurred))` after narrowing `since` with `isinstance(since, _OccurredCheckpoint)` (research R-6).
+- Implements `checkpoint()` by returning `_OccurredCheckpoint(occurred=datetime.now(UTC))` (no I/O).
 - Implements `captured_emits()` by overriding the inherited `emit_event` to forward to Prefect, then appending the returned `Event` to every active capture in `self._captures`.
 - Used by the integration-lane contract tests (`backend/tests/integration/prefect_client/`) and by functional tests that need a live Prefect server (e.g., `test_thread_events` after migration).
 
 ### `InMemoryPrefectClientTestAdapter(PrefectClientTestAdapter)`
 
 - In-memory test implementation. Lives in `prefect_client/_testing.py`.
-- Implements every production operation against in-memory state (event log, seed registry, call log).
+- Implements every production operation against in-memory state (event log, call log).
 - Implements `wait_for_event` via an `asyncio.Event`/condition variable signalled by every `emit_event` — no polling, no latency.
-- Implements `checkpoint()` by recording `len(self._emit_log)` as `Checkpoint._log_index` — events at index `≥ _log_index` were emitted after the checkpoint.
+- Implements `checkpoint()` by returning `_LogIndexCheckpoint(log_index=len(self._emit_log))` — events at index `≥ log_index` were emitted after the checkpoint.
 - Implements `captured_emits()` by appending every `Event` returned from `emit_event` to all `EmitCapture` instances currently registered on `self._captures`.
-- Additionally exposes in-memory-specific concrete helpers (`seed_return`, `recorded`, `call_count`, `recorded_calls`, `unused_seeds`, `reset`) that are **not** on any ABC — no real backend can deliver them.
+- Additionally exposes in-memory-specific concrete helpers (`recorded`, `call_count`, `recorded_calls`, `reset`) that are **not** on any ABC — no real backend can deliver them.
 - Usable without Docker, a Prefect server, or network (FR-023).
 - Reset per test via the fixture in `backend/tests/helpers/prefect_client.py` (FR-010).
 
@@ -112,12 +112,14 @@ Raised by `wait_for_event` when the bounded timeout elapses.
 
 ### `Checkpoint`
 
-Frozen dataclass returned by `PrefectClientTestAdapter.checkpoint()`. Opaque to callers — only pass it back to `wait_for_event(since=...)` on the same adapter instance that produced it. Internal representation differs by adapter:
+Sealed base class returned by `PrefectClientTestAdapter.checkpoint()`. Opaque to callers — only pass it back to `wait_for_event(since=...)` on the same adapter instance that produced it.
 
-- `_log_index: int | None` — used by `InMemoryPrefectClientTestAdapter` (`len(self._emit_log)` at checkpoint time).
-- `_occurred: datetime | None` — used by `RealPrefectClientTestAdapter` (`datetime.now(UTC)` at checkpoint time).
+The base class is empty; each adapter has its own frozen subtype with a single mandatory field:
 
-Exactly one of the two is populated, depending on which adapter created the checkpoint.
+- `_LogIndexCheckpoint(log_index: int)` — produced by `InMemoryPrefectClientTestAdapter`; `log_index = len(self._emit_log)` at checkpoint time.
+- `_OccurredCheckpoint(occurred: datetime)` — produced by `RealPrefectClientTestAdapter`; `occurred = datetime.now(UTC)` at checkpoint time.
+
+Subtypes are adapter-internal (leading underscore); only the base `Checkpoint` is re-exported from `prefect_client/types.py`. `wait_for_event` narrows the `since` argument with `isinstance` and raises `TypeError` (naming both adapter classes) if it receives a checkpoint subtype produced by the wrong adapter — a single guard replacing the prior "exactly one of two `| None` fields is populated" invariant.
 
 ### `EmitCapture`
 
@@ -150,16 +152,6 @@ Frozen dataclass. Contains everything needed to make assertions on interactions.
 - `result: Any | None` — the value returned to the caller (re-exported Prefect type)
 - `error: BaseException | None` — raised if the call failed
 
-### `SeededReturn`
-
-- `method: str` — adapter method name
-- `matcher: Callable[[Mapping[str, Any]], bool] | None` — optional kwarg matcher; `None` means "match any call to this method". Callers of `seed_return` pass the matcher via a `where=` parameter that accepts either a callable (`Callable[[Mapping[str, Any]], bool]`) **or** a plain dict — a dict is treated as "the call's kwargs must contain each key in `where` with the same value (shallow equality)" and is normalized into a callable internally before being stored. `None` is passed through unchanged.
-- `value: Any` — the value to return (must conform to the method's declared return type; validated when seeded, not when consumed)
-- `consumed: int` — count of times a matching call drew this seed; used to identify unused seeds (FR-012)
-- `one_shot: bool` — whether this seed is exhausted after one use (default `False`; `True` simulates e.g. "first call returns X, later calls use the default")
-
-Unused seeds at teardown are reported via a fixture-level check, failing the test when any `SeededReturn.consumed == 0`.
-
 ### `ObservedEvent`
 
 Append-only per-test log. `InMemoryPrefectClientTestAdapter.emit_event` constructs and appends an `Event` (the real Prefect `Event` Pydantic model — FR-005); its `wait_for_event` reads. The list is the same list whose length `checkpoint()` records and whose new entries `captured_emits()` mirrors. Each entry is the full Prefect `Event` (carrying `id: UUID`, `event: str`, `resource: dict`, `payload: dict`, `occurred: datetime`, etc.) — no parallel custom record is kept.
@@ -168,7 +160,6 @@ Append-only per-test log. `InMemoryPrefectClientTestAdapter.emit_event` construc
 
 - Every call into `InMemoryPrefectClientTestAdapter` validates kwargs against the declared signature using `pydantic.TypeAdapter(arg_type).validate_python(value)` before appending to the call log. A validation failure raises a descriptive `AssertionError` with the method name, argument name, and mismatch (SC-003).
 - The call log preserves insertion order; assertions against it may slice by method or by `sequence` range.
-- Seeded returns are matched in insertion order; the first seed whose `method` matches and whose `matcher` (if set) accepts the kwargs is consumed. This keeps behaviour predictable when multiple seeds overlap.
 - The event log is per-instance; tests that share a class-scoped adapter via the fixture wrapper still get per-test isolation because the fixture rebuilds the in-memory test adapter at function scope (FR-010).
 
 ---

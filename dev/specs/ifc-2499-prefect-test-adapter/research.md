@@ -131,7 +131,7 @@ Class names:
 **Alternatives considered.**
 
 - *Single ABC, rename `wait_for_event` to `testing_wait_for_event` + ban-api rule.* Rejected: convention/lint-enforced boundary vs type-system-enforced boundary — the latter is stronger, has no drift risk, and doesn't add a lint rule we'd need to maintain.
-- *Composition decorator (`PrefectClientTestAdapter(inner: PrefectClientAdapter)`).* Rejected: forces 18 delegation stubs on the real side, awkward two-object handling on the in-memory side (fake fixture must yield both the wrapper and the inner fake so tests can still call `seed_return`), and gains only marginal flexibility over inheritance for a class with a stable surface.
+- *Composition decorator (`PrefectClientTestAdapter(inner: PrefectClientAdapter)`).* Rejected: forces 18 delegation stubs on the real side, awkward two-object handling on the in-memory side (fake fixture must yield both the wrapper and the inner fake so tests can still reach the in-memory observation helpers), and gains only marginal flexibility over inheritance for a class with a stable surface.
 - *Place at `backend/infrahub/prefect/` or `backend/infrahub/adapters/prefect/`.* Rejected: breaks the existing `services/adapters/` convention.
 - *Name the port `InfrahubPrefectService` (matching `InfrahubEventService`).* Rejected: this is structurally an *adapter* (matches `InfrahubWorkflow`, `InfrahubMessageBus`), not a composite domain service.
 
@@ -228,19 +228,22 @@ At least one of `name` or `event_id` must be supplied to `wait_for_event`. Match
 
 ### Two concrete implementations
 
-- **`InMemoryPrefectClientTestAdapter`** — Maintains an append-only in-memory event log. `wait_for_event` awaits an `asyncio.Event`/condition variable signalled by every `emit_event` and resolves as soon as a matching entry appears. No polling latency. The log is per-instance (fresh per test via the function-scoped fixture — FR-010), so cross-test leakage (FR-009) is impossible by construction. `checkpoint()` returns `Checkpoint(_log_index=len(self._emit_log))`. `captured_emits()` registers an `EmitCapture` on a `_captures` list; `emit_event` appends every emitted `Event` to all active captures. If no match arrives before `timeout_seconds`, raises `EventNotObservedError(name=..., event_id=..., elapsed_seconds=..., reason=EventNotObservedReason.NOT_EMITTED)`.
+- **`InMemoryPrefectClientTestAdapter`** — Maintains an append-only in-memory event log. `wait_for_event` awaits an `asyncio.Event`/condition variable signalled by every `emit_event` and resolves as soon as a matching entry appears. No polling latency. The log is per-instance (fresh per test via the function-scoped fixture — FR-010), so cross-test leakage (FR-009) is impossible by construction. `checkpoint()` returns `_LogIndexCheckpoint(log_index=len(self._emit_log))`. `captured_emits()` registers an `EmitCapture` on a `_captures` list; `emit_event` appends every emitted `Event` to all active captures. If no match arrives before `timeout_seconds`, raises `EventNotObservedError(name=..., event_id=..., elapsed_seconds=..., reason=EventNotObservedReason.NOT_EMITTED)`.
 
 - **`RealPrefectClientTestAdapter`** — Polls `POST /events/filter` at a bounded interval (default 250 ms → ~40 polls per default 10 s timeout) with **server-side filtering only** via `EventFilter`:
 
   ```python
+  occurred = EventOccurredFilter()
+  if isinstance(since, _OccurredCheckpoint):
+      occurred = EventOccurredFilter(since=since.occurred)
   EventFilter(
-      occurred=EventOccurredFilter(since=since._occurred) if since else EventOccurredFilter(),
+      occurred=occurred,
       event=EventNameFilter(name=[name]) if name else None,
       id=EventIDFilter(id=[event_id]) if event_id else None,
   )
   ```
 
-  Verified in Prefect 3.6.13 (`prefect/events/filters.py`): `EventFilter` exposes a first-class `id: EventIDFilter` field, so id-based wait resolves at the API rather than after a client-side scan. `checkpoint()` records `datetime.now(UTC)` (no I/O — the wall-clock instant is used as the `since` watermark; exact server-clock alignment is not required at test scale). `captured_emits()` overrides the inherited `emit_event` to forward to Prefect, then appends the returned `Event` to every active capture. Returns the first match; raises `EventNotObservedError(..., reason=EventNotObservedReason.NOT_OBSERVABLE)` at timeout. The watermark + name + id filtering replace the `assert_event` helper's naive "any event with this name" check, which is what the current spec flags as a false-positive risk when prior tests emit the same event name.
+  Verified in Prefect 3.6.13 (`prefect/events/filters.py`): `EventFilter` exposes a first-class `id: EventIDFilter` field, so id-based wait resolves at the API rather than after a client-side scan. `checkpoint()` returns `_OccurredCheckpoint(occurred=datetime.now(UTC))` (no I/O — the wall-clock instant is used as the `since` watermark; exact server-clock alignment is not required at test scale). A checkpoint produced by another adapter (e.g. `_LogIndexCheckpoint`) raises `TypeError` in `wait_for_event`, replacing the prior "exactly one of two `| None` fields populated" invariant with a single `isinstance` check. `captured_emits()` overrides the inherited `emit_event` to forward to Prefect, then appends the returned `Event` to every active capture. Returns the first match; raises `EventNotObservedError(..., reason=EventNotObservedReason.NOT_OBSERVABLE)` at timeout. The watermark + name + id filtering replace the `assert_event` helper's naive "any event with this name" check, which is what the current spec flags as a false-positive risk when prior tests emit the same event name.
 
 ### Why three primitives, not one
 

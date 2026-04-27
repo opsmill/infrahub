@@ -34,13 +34,12 @@ from infrahub.services.adapters.prefect_client._testing import (
 async def prefect_client(
     in_memory_prefect_test_adapter: InMemoryPrefectClientTestAdapter,
 ) -> PrefectClientAdapter:
-    in_memory_prefect_test_adapter.seed_return("create_automation", AUTOMATION_ID)
     return in_memory_prefect_test_adapter  # production code sees it as PrefectClientAdapter
 ```
 
 Note: the fixture returns the in-memory test adapter, but code under test receives it as `PrefectClientAdapter` (the production port). Production code cannot reach `wait_for_event` or any other test-only primitive — those live on `PrefectClientTestAdapter`, a narrower type that production code never depends on.
 
-No `AsyncMock`. No `create_autospec`. The seeded return value is typed. A malformed call from the code under test fails at the adapter layer with a clear message.
+No `AsyncMock`. No `create_autospec`. Calls flow through the adapter's in-memory simulation: `create_automation` returns a real `Automation` with a real `id`, `read_automations_by_name` reads back from the same in-memory store, and so on. A malformed call from the code under test fails at the adapter layer with a clear message.
 
 Assertions on what happened:
 
@@ -50,20 +49,22 @@ assert in_memory_prefect_test_adapter.recorded("create_automation", kwargs={"aut
 assert in_memory_prefect_test_adapter.call_count("create_automation") == 1
 ```
 
-No `mock.create_automation.assert_called_once_with(...)` — the adapter owns its own assertion helpers (FR-007). These recorder helpers (`recorded`, `call_count`, `seed_return`, `recorded_calls`, `unused_seeds`, `reset`) are **concrete methods on `InMemoryPrefectClientTestAdapter`**, not on any ABC — no real Prefect backend can deliver them, so they don't belong on a shared port.
+No `mock.create_automation.assert_called_once_with(...)` — the adapter owns its own assertion helpers (FR-007). These observation helpers (`recorded`, `call_count`, `recorded_calls`, `reset`) are **concrete methods on `InMemoryPrefectClientTestAdapter`**, not on any ABC — no real Prefect backend can deliver them, so they don't belong on a shared port. Pre-seeding return values is deferred to FR-018 (programmable test adapter); v1 tests drive the in-memory simulation directly.
 
-## 2. Seed a specific return value for one call
+## 2. Set up specific Prefect state for the code under test to read
+
+When the code under test needs an existing Prefect entity, build it through the adapter — the in-memory simulation is the source of truth, so a subsequent read returns what was just written:
 
 ```python
-in_memory_prefect_test_adapter.seed_return(
-    "read_automations_by_name",
-    value=[existing_automation],
-    where={"name": "my-automation"},  # only match calls with this kwarg (shallow dict match)
+existing = await in_memory_prefect_test_adapter.create_automation(
+    automation=AutomationCore(name="my-automation", ...),
 )
-# `where` also accepts a callable: where=lambda kwargs: kwargs["name"].startswith("my-")
+# code under test now reads it back via the same adapter
+results = await in_memory_prefect_test_adapter.read_automations_by_name(name="my-automation")
+assert results == [existing]
 ```
 
-At test teardown, a fixture-level check fails the test if any seed was never consumed (FR-012, SC-001's "no dead stubs" guarantee).
+If you need to capture an `id` produced by the adapter for later assertions, read it off the return value (or via `recorded_calls("create_automation")[-1].result.id`).
 
 ## 3. Wait deterministically for an emitted event
 
