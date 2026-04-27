@@ -30,7 +30,7 @@ jobs:
         with:
           fetch-depth: 0  # In order for Chromatic to correctly determine baseline commits, tot access the full Git history graph.
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 10
       - name: Install Node.js
