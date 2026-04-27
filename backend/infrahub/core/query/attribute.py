@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.constants import AttributeDBNodeType
@@ -401,7 +402,7 @@ async def default_attribute_query_filter(
     query_params: dict[str, Any] = {}
     query_where: list[str] = []
 
-    if filter_value and not isinstance(filter_value, str | bool | int | list):
+    if filter_value and not isinstance(filter_value, str | bool | int | list | datetime):
         raise TypeError(f"filter {filter_name}: {filter_value} ({type(filter_value)}) is not supported.")
 
     if isinstance(filter_value, list) and not all(isinstance(value, str | bool | int) for value in filter_value):
@@ -472,6 +473,20 @@ async def default_attribute_query_filter(
                 )
             )
             query_params[f"{param_prefix}_{filter_name}"] = filter_value
+
+    elif filter_name in ("before", "after") and filter_value is not None:
+        query_filter.extend(
+            (QueryRel(labels=[RELATIONSHIP_TO_VALUE_LABEL]), QueryNode(name="av", labels=[attribute_value_label]))
+        )
+        operator = ">" if filter_name == "after" else "<"
+        # Normalize datetime input to a canonical UTC ISO string. Stored DateTime
+        # attribute values are strings, so lexicographic Cypher comparison is only
+        # correct when both sides share canonical form. Mirrors the metadata path
+        # in _build_metadata_filter_requirement for node_metadata__*__before/after.
+        if isinstance(filter_value, datetime):
+            filter_value = Timestamp(filter_value.isoformat()).to_string()
+        query_where.append(f"av.value {operator} ${param_prefix}_{filter_name}")
+        query_params[f"{param_prefix}_{filter_name}"] = filter_value
 
     elif filter_name in [v.value for v in FlagProperty] and filter_value is not None:
         query_filter.append(QueryRel(labels=[filter_name.upper()]))
