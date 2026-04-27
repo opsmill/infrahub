@@ -1,15 +1,6 @@
 ---
-name: speckit-git-feature
-description: Validate Jira/JPD ticket reference and create a feature branch
-compatibility: Requires spec-kit project structure with .specify/ directory
-metadata:
-  author: github-spec-kit
-  source: preset:infrahub
-user-invocable: true
-disable-model-invocation: false
+description: "Validate Jira/JPD ticket reference and create a feature branch"
 ---
-
-# Speckit Git Feature Skill
 
 # Create Infrahub Feature Branch
 
