@@ -271,6 +271,9 @@ importers:
       '@types/apollo-upload-client':
         specifier: 18.0.1
         version: 18.0.1(@types/react@19.2.14)(graphql-ws@6.0.8(graphql@16.13.2)(ws@8.20.0))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@types/dagre':
+        specifier: ^0.7.54
+        version: 0.7.54
       '@types/node':
         specifier: ^25.6.0
         version: 25.6.0
@@ -2752,6 +2755,9 @@ packages:
 
   '@types/d3-zoom@3.0.8':
     resolution: {integrity: sha512-iqMC4/YlFCSlO8+2Ii1GGGliCAY4XdeG748w5vQUbevlbDu0zSjH/+jojorQVBK/se0j6DUFNPBGSqD3YWYnDw==}
+
+  '@types/dagre@0.7.54':
+    resolution: {integrity: sha512-QjcRY+adGbYvBFS7cwv5txhVIwX1XXIUswWl+kSQTbI6NjgZydrZkEKX/etzVd7i+bCsCb40Z/xlBY5eoFuvWQ==}
 
   '@types/debug@4.1.13':
     resolution: {integrity: sha512-KSVgmQmzMwPlmtljOomayoR89W4FynCAi3E8PPs7vmDVPe84hT+vGPKkJfThkmXs0x0jAaa9U8uW8bbfyS2fWw==}
@@ -7904,6 +7910,8 @@ snapshots:
     dependencies:
       '@types/d3-interpolate': 3.0.4
       '@types/d3-selection': 3.0.11
+
+  '@types/dagre@0.7.54': {}
 
   '@types/debug@4.1.13':
     dependencies:

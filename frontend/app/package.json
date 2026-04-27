@@ -118,6 +118,7 @@
     "@graphql-codegen/typescript-operations": "^5.1.0",
     "@playwright/test": "1.56.1",
     "@types/apollo-upload-client": "18.0.1",
+    "@types/dagre": "^0.7.54",
     "@types/node": "^25.6.0",
     "@types/prismjs": "^1.26.6",
     "@types/react": "^19.2.14",
