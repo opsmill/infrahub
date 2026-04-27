@@ -5,9 +5,9 @@ import { Link, useLocation } from "react-router";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Button, LinkButton } from "@/shared/components/aria/button";
 import { Avatar } from "@/shared/components/display/avatar";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { Button, LinkButton } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,9 +98,8 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
     <DropdownMenu>
       <LinkButton
         variant="ghost"
-        className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 hover:bg-indigo-50"
-        to="/login"
-        state={{ from: location }}
+        className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 data-hovered:bg-indigo-50"
+        href="/login"
       >
         <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50">
           <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600" />
@@ -121,7 +120,7 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
             variant="ghost"
             size="square"
             data-testid="unauthenticated-menu-trigger"
-            className="ml-auto shrink-0 hover:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
+            className="ml-auto shrink-0 data-hovered:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
           >
             <Icon icon="mdi:dots-vertical" className="text-lg" />
           </Button>
@@ -170,7 +169,7 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full shrink-0 justify-start gap-2 overflow-hidden rounded-lg p-2 text-left hover:bg-indigo-50"
+          className="h-auto w-full shrink-0 justify-start gap-2 overflow-hidden rounded-lg p-2 text-left data-hovered:bg-indigo-50"
           data-testid="authenticated-menu-trigger"
         >
           <Avatar name={profile?.name?.value} className="size-9 shrink-0" />

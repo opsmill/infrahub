@@ -1,9 +1,9 @@
 import { useAtomValue } from "jotai";
 import type React from "react";
 
+import { Button } from "@/shared/components/aria/button";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
-import { Button } from "@/shared/components/ui/button";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
@@ -56,7 +56,7 @@ export const TasksFilterForm = ({
 
       <div className="text-right">
         {onCancel && (
-          <Button variant="outline" className="mr-2" onClick={onCancel}>
+          <Button variant="outline" className="mr-2" onPress={onCancel}>
             Cancel
           </Button>
         )}

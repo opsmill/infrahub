@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,7 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
             variant="ghost"
             className="size-6"
             data-testid={`actions-row-button-${objectLabel}`}
+            aria-label="Actions"
           >
             <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
           </Button>

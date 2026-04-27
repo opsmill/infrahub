@@ -2,7 +2,7 @@ import { Card, CardHeader } from "@infrahub/ui/card";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 
 import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
 import { hasExtraFields } from "@/entities/nodes/object/utils/has-extra-fields";
@@ -37,7 +37,7 @@ export function ObjectDetailsCard({
             variant="ghost"
             size="sm"
             className="h-auto gap-1 pr-0 text-xs"
-            onClick={() => setShowExtra((prev) => !prev)}
+            onPress={() => setShowExtra((prev) => !prev)}
           >
             {showExtra ? <EyeOffIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}
             Extra

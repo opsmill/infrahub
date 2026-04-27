@@ -3,9 +3,9 @@ import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { CANCEL_REJECT_DECISION, REJECT_DECISION } from "@/entities/proposed-changes/constants";
@@ -48,29 +48,28 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     },
   });
 
-  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
+  const handleAction = () => {
     mutate({
       proposedChangeId: proposedChangesDetails.id,
       decision: hasRejected ? CANCEL_REJECT_DECISION : REJECT_DECISION,
     });
   };
 
-  const tooltipContent = hasRejected
+  const tooltipMessage = hasRejected
     ? cancelReject.unavailability_reason
     : reject.unavailability_reason;
-  const tooltipEnabled = hasRejected ? !cancelReject.available : !reject.available;
+  const isUnavailable = hasRejected ? !cancelReject.available : !reject.available;
 
   return (
     <>
-      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+      <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
           className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
-          onClick={handleAction}
+          onPress={handleAction}
           variant={"primary"}
-          isLoading={isPending}
-          disabled={tooltipEnabled || isPending}
+          isPending={isPending}
+          isDisabled={isUnavailable || isPending}
+          isDisabledAndFocusable={isUnavailable && !isPending}
         >
           {hasRejected ? "Cancel Reject" : "Reject"}
         </Button>
@@ -80,13 +79,12 @@ export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         className="h-full rounded-l-none border-l-0"
         variant={"primary"}
         size={"sm"}
-        onClick={() => {
+        onPress={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        isDisabled={isPending}
         data-testid="proposed-change-action-button-select"
         aria-label="More actions"
-        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

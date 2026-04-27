@@ -4,11 +4,11 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
@@ -164,7 +164,7 @@ export const Thread = (props: tThread) => {
   );
 
   const MarkAsResolvedWithTooltip = (
-    <Tooltip enabled content={"The resolution will be done after submitting the comment"}>
+    <Tooltip message={"The resolution will be done after submitting the comment"}>
       {MarkAsResolved}
     </Tooltip>
   );
@@ -199,8 +199,8 @@ export const Thread = (props: tThread) => {
 
           <Button
             variant={"outline"}
-            onClick={() => setDisplayAddComment(true)}
-            disabled={loading || !permission?.create?.isAllowed}
+            onPress={() => setDisplayAddComment(true)}
+            isDisabled={loading || !permission?.create?.isAllowed}
           >
             Reply
           </Button>

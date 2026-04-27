@@ -1,10 +1,9 @@
 import type React from "react";
-import { useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Button, LinkButton } from "@/shared/components/aria/button";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { Button, LinkButton } from "@/shared/components/ui/button";
 import { Form, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -21,7 +20,6 @@ interface AddCommentProps {
 }
 
 export const AddComment = ({ ref, onSubmit, onCancel }: AddCommentProps) => {
-  const location = useLocation();
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
@@ -48,7 +46,7 @@ export const AddComment = ({ ref, onSubmit, onCancel }: AddCommentProps) => {
 
         <div className="text-right">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" className="mr-2" onPress={onCancel}>
               Cancel
             </Button>
           )}
@@ -60,12 +58,7 @@ export const AddComment = ({ ref, onSubmit, onCancel }: AddCommentProps) => {
 
   return (
     <div>
-      <LinkButton
-        size="sm"
-        variant="primary"
-        to={constructPath("/login")}
-        state={{ from: location }}
-      >
+      <LinkButton size="sm" variant="primary" href={constructPath("/login")}>
         Login
       </LinkButton>{" "}
       to be able to add a comment.

@@ -5,7 +5,7 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import { isValid } from "date-fns";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";
@@ -81,9 +81,7 @@ export const DatePicker = ({
           <Button
             variant="ghost"
             size="icon"
-            onMouseDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
+            onPress={() => {
               handleClear();
             }}
           >

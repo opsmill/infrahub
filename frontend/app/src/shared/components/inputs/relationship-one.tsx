@@ -3,9 +3,9 @@ import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
+import { Button } from "@/shared/components/aria/button";
 import type { PoolValue } from "@/shared/components/form/pool-selector";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -168,8 +168,8 @@ export const RelationshipInput = ({
             <div className="pt-2">
               <Button
                 variant={"ghost"}
-                className="w-full border-custom-blue-500/10 font-normal text-custom-blue-700 enabled:hover:bg-custom-blue-500/10"
-                onClick={() => {
+                className="w-full border-custom-blue-500/10 font-normal text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-500/10"
+                onPress={() => {
                   setOffset(offset + PAGINATION);
                   setShouldAggregate(true);
                 }}

@@ -1,10 +1,11 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver from "@/shared/components/display/slide-over";
 import { getFiltersFromFormData } from "@/shared/components/filters/utils/getFiltersFromFormData";
 import type { FormFieldValue } from "@/shared/components/form/type";
-import { Button, ButtonWithTooltip } from "@/shared/components/ui/button";
 import { SEARCH_FILTERS } from "@/shared/config/constants";
 import useFilters from "@/shared/hooks/useFilters";
 import usePagination from "@/shared/hooks/usePagination";
@@ -45,21 +46,21 @@ export const TaskFilters = () => {
   return (
     <>
       <div className="flex items-center gap-1">
-        <ButtonWithTooltip
-          tooltipEnabled
-          tooltipContent="Apply filters"
-          variant="ghost"
-          size="icon"
-          data-testid="apply-filters"
-          onClick={() => setShowFilters(true)}
-        >
-          <Icon icon={"mdi:filter-outline"} className="text-custom-blue-100" />
-        </ButtonWithTooltip>
+        <Tooltip message="Apply filters">
+          <Button
+            variant="ghost"
+            size="icon"
+            data-testid="apply-filters"
+            onPress={() => setShowFilters(true)}
+          >
+            <Icon icon={"mdi:filter-outline"} className="text-custom-blue-100" />
+          </Button>
+        </Tooltip>
 
         <span className="text-xs">Filters: {currentFilters.length}</span>
 
         {!!currentFilters.length && (
-          <Button onClick={removeFilters} variant="ghost" size="icon" data-testid="remove-filters">
+          <Button onPress={removeFilters} variant="ghost" size="icon" data-testid="remove-filters">
             <Icon icon="mdi:close" className="text-gray-400" />
           </Button>
         )}

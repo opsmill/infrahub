@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { FileField } from "@/shared/components/form/fields/file.field";
 import type { ProfileData } from "@/shared/components/form/object-form";
@@ -13,7 +14,6 @@ import { getUpdateMutationFromFormData } from "@/shared/components/form/utils/mu
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
@@ -183,7 +183,7 @@ export function CoreFileForm({
 
         <div className="text-right">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" className="mr-2" onPress={onCancel}>
               Cancel
             </Button>
           )}

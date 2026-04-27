@@ -5,11 +5,12 @@ import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import * as R from "remeda";
 
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
 import { SearchInput } from "@/shared/components/inputs/search-input";
 import { Badge } from "@/shared/components/ui/badge";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -92,21 +93,21 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
     <Col className={classNames("bg-white", className)}>
       <Row className="sticky top-0 z-1 border-gray-200 border-b bg-white p-4">
         <SearchInput placeholder="Search schema" value={search} onChange={handleSearchChange} />
-        <ButtonWithTooltip
-          size="square"
-          variant="outline"
-          className="size-10 rounded-md border-gray-300"
-          onClick={toggleAll}
-          tooltipContent={anyOpen ? "Collapse all" : "Expand all"}
-          tooltipEnabled
-          aria-label={anyOpen ? "Collapse all" : "Expand all"}
-        >
-          {anyOpen ? (
-            <ListChevronsDownUpIcon className="size-4" />
-          ) : (
-            <ListChevronsUpDown className="size-4" />
-          )}
-        </ButtonWithTooltip>
+        <Tooltip message={anyOpen ? "Collapse all" : "Expand all"}>
+          <Button
+            size="square"
+            variant="outline"
+            className="size-10 rounded-md border-gray-300"
+            onPress={toggleAll}
+            aria-label={anyOpen ? "Collapse all" : "Expand all"}
+          >
+            {anyOpen ? (
+              <ListChevronsDownUpIcon className="size-4" />
+            ) : (
+              <ListChevronsUpDown className="size-4" />
+            )}
+          </Button>
+        </Tooltip>
       </Row>
 
       {Object.entries(schemasPerNamespace).map(([namespace, schemas]) => {

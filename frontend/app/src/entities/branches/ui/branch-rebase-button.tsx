@@ -2,8 +2,8 @@ import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { toast } from "react-toastify";
 
+import { Button } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { TASK_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -64,8 +64,8 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
 
   return (
     <Button
-      disabled={isDisabled}
-      onClick={handleRebase}
+      isDisabled={isDisabled}
+      onPress={handleRebase}
       variant="outline"
       className="flex items-center gap-2"
     >

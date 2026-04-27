@@ -8,10 +8,10 @@ import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
+import { LinkButton } from "@/shared/components/aria/button";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { LinkButton } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -203,7 +203,7 @@ export const ProposedChangeCreateForm = () => {
       />
 
       <div className="flex w-full items-center justify-end gap-2">
-        <LinkButton variant="outline" to={constructPath("/proposed-changes")}>
+        <LinkButton variant="outline" href={constructPath("/proposed-changes")}>
           Cancel
         </LinkButton>
 

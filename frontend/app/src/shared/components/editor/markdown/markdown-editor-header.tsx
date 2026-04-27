@@ -27,7 +27,7 @@ const ToolBar: FC<ToolbarProps> = ({ codeMirror }) => {
     <Row>
       {commands.map(({ label, icon, onClick }) => (
         <Button
-          className="inline-flex size-5 shrink-0 items-center justify-center rounded text-lg hover:bg-gray-100"
+          className="inline-flex size-5 shrink-0 items-center justify-center rounded text-lg data-hovered:bg-gray-100"
           key={label}
           aria-label={label}
           onMouseDown={handleButtonMouseDown(onClick)}
@@ -57,7 +57,7 @@ export const MarkdownEditorHeader: FC<EditorHeaderProps> = ({
   <Row className="justify-between overflow-auto border-gray-200 border-b pr-2">
     <Button
       onClick={onPreviewToggle}
-      className="rounded-tl-md bg-white px-2 py-1.5 font-semibold text-sm hover:bg-gray-100"
+      className="rounded-tl-md bg-white px-2 py-1.5 font-semibold text-sm data-hovered:bg-gray-100"
     >
       {previewMode ? (editLabel ?? "Continue editing") : (previewLabel ?? "Preview")}
     </Button>

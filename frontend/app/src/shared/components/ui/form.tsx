@@ -9,8 +9,8 @@ import {
   useFormContext,
 } from "react-hook-form";
 
+import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { SlideOverContext } from "@/shared/components/display/slide-over";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { Spinner } from "@/shared/components/ui/spinner";
 import { inputErrorStyle } from "@/shared/components/ui/style";
@@ -137,15 +137,17 @@ export const FormMessage = ({
   );
 };
 
-interface FormSubmitProps extends ButtonProps {}
+interface FormSubmitProps extends Omit<ButtonProps, "children"> {
+  children?: React.ReactNode;
+}
 
-export const FormSubmit = ({ children, ref, ...props }: FormSubmitProps) => {
+export const FormSubmit = ({ children, ...props }: FormSubmitProps) => {
   const { formState } = useFormContext();
 
   const isLoading = formState.isSubmitting || formState.isValidating;
 
   return (
-    <Button ref={ref} disabled={isLoading} {...props} type="submit">
+    <Button isDisabled={isLoading} {...props} type="submit">
       <span className={classNames(isLoading && "invisible")}>{children}</span>
       {isLoading && <Spinner className="absolute" />}
     </Button>

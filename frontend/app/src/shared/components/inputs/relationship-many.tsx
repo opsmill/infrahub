@@ -2,8 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
+import { Button } from "@/shared/components/aria/button";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -55,11 +55,10 @@ export function RelationshipManyInput({
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onPress={() => {
                     onChange(value.filter((item) => item.id !== node.id));
                   }}
-                  className="size-4 text-gray-500 hover:text-gray-800"
+                  className="size-4 text-gray-500 data-hovered:text-gray-800"
                   aria-label="Remove"
                   data-testid="remove-option"
                 >

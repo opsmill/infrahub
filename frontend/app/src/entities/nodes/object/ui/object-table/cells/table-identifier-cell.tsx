@@ -1,7 +1,7 @@
 import type { PressEvent } from "react-aria-components";
 
+import { LinkButton } from "@/shared/components/aria/button";
 import { Checkbox } from "@/shared/components/aria/checkbox";
-import { LinkButton } from "@/shared/components/ui/button";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
@@ -36,7 +36,7 @@ export function TableIdentifierCell({
       <LinkButton
         variant="ghost"
         size="sm"
-        to={getObjectDetailsUrl(objectKind, objectId)}
+        href={getObjectDetailsUrl(objectKind, objectId)}
         className="-mx-1 truncate rounded-xl px-2 text-custom-blue-700 hover:underline"
       >
         {label}

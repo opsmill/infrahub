@@ -6,8 +6,8 @@ import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
 import InfrahubLogo from "@/assets/infrahub-logo.svg";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Button } from "@/shared/components/aria/button";
 import { Separator } from "@/shared/components/aria/separator";
-import { Button } from "@/shared/components/ui/button";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
@@ -46,7 +46,7 @@ export function AppSidebar() {
             variant="outline"
             size="icon"
             className="absolute top-11 -right-3.5 hidden transition-all group-hover/sidebar:inline-flex"
-            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+            onPress={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftOpenIcon className="size-4 text-neutral-600" />
           </Button>
@@ -54,8 +54,8 @@ export function AppSidebar() {
           <Button
             variant="ghost"
             size="sm"
-            className="p-1 text-gray-400 hover:text-neutral-600"
-            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+            className="p-1 text-gray-400 data-hovered:text-neutral-600"
+            onPress={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftCloseIcon className="size-5" />
           </Button>

@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import React from "react";
 
+import { Button } from "@/shared/components/aria/button";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -129,11 +129,10 @@ export const RelationshipHierarchicalManyInput = ({
                 <Button
                   size="icon"
                   variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onPress={() => {
                     onChange(value?.filter((item) => item.id !== node.id));
                   }}
-                  className="h-4 w-4 text-gray-500 hover:text-gray-800"
+                  className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
                   aria-label={`Remove ${getNodeLabel(node)}`}
                   data-testid="remove-option"
                 >

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { Button } from "@/shared/components/aria/button";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
@@ -15,7 +16,6 @@ import { updateFormFieldValue } from "@/shared/components/form/utils/updateFormF
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -130,7 +130,7 @@ export const NumberPoolForm = ({ currentObject, onSuccess, onCancel }: NumberPoo
         />
         <div className="text-right">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" className="mr-2" onPress={onCancel}>
               Cancel
             </Button>
           )}

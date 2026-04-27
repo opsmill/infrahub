@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
@@ -23,7 +23,7 @@ export const BranchDeleteButton = ({ branch }: BranchDeleteButtonProps) => {
 
   return (
     <>
-      <Button disabled={isDisabled} onClick={() => setDisplayModal(true)} variant="danger">
+      <Button isDisabled={isDisabled} onPress={() => setDisplayModal(true)} variant="danger">
         Delete
         <Icon icon="mdi:delete-outline" className="ml-2 text-base" aria-hidden="true" />
       </Button>

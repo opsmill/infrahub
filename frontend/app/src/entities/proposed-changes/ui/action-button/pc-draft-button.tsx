@@ -3,9 +3,9 @@ import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
@@ -47,9 +47,7 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     },
   });
 
-  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
+  const handleAction = () => {
     mutate({
       data: {
         id: proposedChangesDetails.id,
@@ -61,20 +59,21 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
-  const tooltipContent = isDraft
+  const tooltipMessage = isDraft
     ? unsetDraft.unavailability_reason
     : setDraft.unavailability_reason;
-  const tooltipEnabled = isDraft ? !unsetDraft.available : !setDraft.available;
+  const isUnavailable = isDraft ? !unsetDraft.available : !setDraft.available;
 
   return (
     <>
-      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+      <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
           className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
-          onClick={handleAction}
+          onPress={handleAction}
           variant={"outline"}
-          isLoading={isPending}
-          disabled={tooltipEnabled || isPending}
+          isPending={isPending}
+          isDisabled={isUnavailable || isPending}
+          isDisabledAndFocusable={isUnavailable && !isPending}
         >
           {isDraft ? "Open" : "Move to draft"}
         </Button>
@@ -84,13 +83,12 @@ export const DraftButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         className="h-full rounded-l-none border-l-0"
         variant={"outline"}
         size={"sm"}
-        onClick={() => {
+        onPress={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        isDisabled={isPending}
         data-testid="proposed-change-action-button-select"
         aria-label="More actions"
-        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

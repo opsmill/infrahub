@@ -1,6 +1,7 @@
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { Button } from "@/shared/components/aria/button";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
 import { NameSelect } from "@/shared/components/form/name-select";
@@ -11,7 +12,6 @@ import { getRelationshipDefaultValue } from "@/shared/components/form/utils/getR
 import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/utils/mutations/getCreateMutationFromFormData";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_ROLE_OBJECT, OBJECT_PERMISSION_OBJECT } from "@/shared/config/constants";
 
@@ -160,7 +160,7 @@ export const ObjectPermissionForm = ({
 
         <div className="text-right">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" className="mr-2" onPress={onCancel}>
               Cancel
             </Button>
           )}

@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 import {
   DropdownMenu,
   DropdownMenuContent,

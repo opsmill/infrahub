@@ -3,11 +3,11 @@ import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import {
   CHECKS_LABEL,
   PROPOSED_CHANGES_VALIDATOR_OBJECT,
@@ -81,10 +81,10 @@ export const ChecksSummary = (props: ChecksSummaryProps) => {
       <div className="relative flex flex-col-reverse items-center">
         <div className="flex items-center justify-between p-2 lg:absolute lg:top-1/2 lg:-left-28 lg:-translate-y-1/2 lg:transform">
           <Button
-            onClick={() => handleRetry("all")}
-            disabled={!isAuthenticated}
+            onPress={() => handleRetry("all")}
+            isDisabled={!isAuthenticated}
             variant="ghost"
-            className="gap-1 hover:bg-neutral-200"
+            className="gap-1 data-hovered:bg-neutral-200"
           >
             Retry all
             <Retry isLoading={isPending || isLoading} isDisabled={isPending || isLoading} />

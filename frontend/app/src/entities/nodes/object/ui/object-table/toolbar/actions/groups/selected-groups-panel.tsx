@@ -1,6 +1,6 @@
 import { ListBox } from "react-aria-components";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 
 import {
   GroupPanelBody,
@@ -39,7 +39,7 @@ export function SelectedGroupsPanel({
       </GroupPanelBody>
 
       <GroupPanelFooter>
-        <Button size="xs" onClick={onValidate}>
+        <Button size="xs" onPress={onValidate}>
           Validate
         </Button>
       </GroupPanelFooter>

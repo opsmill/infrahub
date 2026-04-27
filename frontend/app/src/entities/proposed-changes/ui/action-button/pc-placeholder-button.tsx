@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 
 export const PcPlaceholderButton = () => {
   return (
@@ -8,12 +8,17 @@ export const PcPlaceholderButton = () => {
       <Button
         className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
         variant={"primary"}
-        disabled
+        isDisabled
       >
         Please login
       </Button>
 
-      <Button className="h-full rounded-l-none border-l-0" variant={"primary"} size={"sm"} disabled>
+      <Button
+        className="h-full rounded-l-none border-l-0"
+        variant={"primary"}
+        size={"sm"}
+        isDisabled
+      >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>
     </>

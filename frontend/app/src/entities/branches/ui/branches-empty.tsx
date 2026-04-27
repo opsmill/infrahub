@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 import useFilters from "@/shared/hooks/useFilters";
 
 export function BranchesEmpty() {
@@ -23,7 +23,7 @@ export function BranchesEmpty() {
           <div className="font-medium text-lg">No matching branches</div>
           <div className="text-sm">Try adjusting or clearing your filters</div>
 
-          <Button size="sm" variant="outline" className="mt-4" onClick={handleClearFilters}>
+          <Button size="sm" variant="outline" className="mt-4" onPress={handleClearFilters}>
             <Icon icon="mdi:filter-variant-remove" className="mr-1.5" />
             Clear filters
           </Button>

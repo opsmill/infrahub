@@ -2,8 +2,9 @@ import { Icon } from "@iconify-icon/react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 
 import type { GroupData } from "@/entities/groups/domain/types";
 import { AddGroupForm } from "@/entities/groups/ui/add-group-form";
@@ -32,16 +33,16 @@ export function AddGroupTriggerButton({
 
   return (
     <>
-      <ButtonWithTooltip
-        onClick={() => setIsAddGroupFormOpen(true)}
-        size="square"
-        disabled={!permission.update.isAllowed}
-        tooltipContent={permission.update.message ?? "Add groups"}
-        tooltipEnabled
-        data-testid="open-group-form-button"
-      >
-        <Icon icon="mdi:plus" className="text-lg" />
-      </ButtonWithTooltip>
+      <Tooltip message={permission.update.message ?? "Add groups"}>
+        <Button
+          onPress={() => setIsAddGroupFormOpen(true)}
+          size="square"
+          isDisabledAndFocusable={!permission.update.isAllowed}
+          data-testid="open-group-form-button"
+        >
+          <Icon icon="mdi:plus" className="text-lg" />
+        </Button>
+      </Tooltip>
 
       <SlideOver
         offset={1}

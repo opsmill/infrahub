@@ -4,14 +4,14 @@ import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
+import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { treeQueryKeys, updateDiffMutationKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { useUpdateDiffMutation } from "@/entities/diff/ui/queries/update-diff.mutation";
 
-export interface DiffRefreshButtonProps extends Omit<ButtonProps, "onClick"> {
+export interface DiffRefreshButtonProps extends Omit<ButtonProps, "onPress"> {
   branchName: string;
 }
 
@@ -40,7 +40,7 @@ export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonPro
   };
 
   return (
-    <Button variant="primary-outline" onClick={handleRefreshDiff} {...props}>
+    <Button variant="primary-outline" onPress={handleRefreshDiff} {...props}>
       <Icon icon="mdi:reload" className={classNames("mr-1", isLoading && "animate-spin")} />
       {isLoading ? "Refreshing diff..." : "Refresh diff"}
     </Button>

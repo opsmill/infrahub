@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
 
+import { Button } from "@/shared/components/aria/button";
 import InputField from "@/shared/components/form/fields/input.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
@@ -24,8 +24,8 @@ export const Login = () => {
         <LoginWithSSOButtons providers={config.sso.providers} className="fade-in animate-in" />
         <Button
           variant="ghost"
-          onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
+          onPress={() => setDisplaySSO(!displaySSO)}
+          className="text-cyan-900 text-sm data-hovered:bg-transparent data-hovered:underline"
         >
           Log in with your credentials
         </Button>
@@ -35,8 +35,8 @@ export const Login = () => {
         <LoginForm className="fade-in animate-in" />
         <Button
           variant="ghost"
-          onClick={() => setDisplaySSO(!displaySSO)}
-          className="text-cyan-900 text-sm hover:bg-transparent hover:underline"
+          onPress={() => setDisplaySSO(!displaySSO)}
+          className="text-cyan-900 text-sm data-hovered:bg-transparent data-hovered:underline"
         >
           Log in with SSO
         </Button>

@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 
-import { LinkButton } from "@/shared/components/ui/button";
+import { LinkButton } from "@/shared/components/aria/button";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {
@@ -49,7 +49,7 @@ export function RelationshipNodeDisplay({ node }: { node: NodeCore }) {
     <LinkButton
       variant="outline"
       size="sm"
-      to={getObjectDetailsUrl(node.__typename, node.id)}
+      href={getObjectDetailsUrl(node.__typename, node.id)}
       className="truncate rounded-full pr-2.5 hover:border-custom-blue-700 hover:underline"
     >
       <Icon icon={getSchemaIcon(schema)} className="mr-1 text-custom-blue-800" />

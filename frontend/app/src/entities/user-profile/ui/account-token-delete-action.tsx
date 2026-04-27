@@ -3,12 +3,12 @@ import { useState } from "react";
 
 import type { AccountTokenNode } from "@/shared/api/graphql/generated/types";
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
+import { Button, type ButtonProps } from "@/shared/components/aria/button";
 
 import ModalDeleteObject from "@/entities/nodes/object/ui/modal-delete-object";
 import { getInfrahubAccountTokenQueryOptions } from "@/entities/user-profile/ui/queries/get-infrahub-account-token.query";
 
-export interface AccountTokenDeleteActionProps extends Omit<ButtonProps, "onClick"> {
+export interface AccountTokenDeleteActionProps extends Omit<ButtonProps, "onPress"> {
   token: AccountTokenNode;
 }
 
@@ -27,7 +27,7 @@ export function AccountTokenDeleteAction({ token, ...props }: AccountTokenDelete
       <Button
         variant="ghost"
         size="icon"
-        onClick={() => setTokenToDelete(token)}
+        onPress={() => setTokenToDelete(token)}
         aria-label={`Delete token ${token.name}`}
         {...props}
       >

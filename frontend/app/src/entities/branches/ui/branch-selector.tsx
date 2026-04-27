@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 
 import type { Branch } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
+import { Button, LinkButton } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ComboboxItem } from "@/shared/components/ui/combobox";
 import {
   Command,
@@ -34,8 +35,6 @@ export default function BranchSelector() {
   const { currentBranch } = useCurrentBranch();
   const [isOpen, setIsOpen] = useState(false);
   const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
-  const triggerNameRef = useRef<HTMLSpanElement>(null);
-  const isTriggerTruncated = useIsTruncated(triggerNameRef);
 
   return (
     <Popover
@@ -47,15 +46,14 @@ export default function BranchSelector() {
     >
       <PopoverTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           className="h-8 w-60 rounded-lg border-neutral-200 p-0 shadow-none"
           data-testid="branch-selector-trigger"
-          title={isTriggerTruncated ? currentBranch.name : undefined}
         >
           <div className="inline-flex h-full grow items-center justify-between gap-1.5 overflow-hidden border-gray-200 border-r px-3">
             <div className="inline-flex min-w-0 items-center gap-1.5">
               <Icon icon="mdi:source-branch" className="shrink-0" />
-              <span ref={triggerNameRef} className="truncate">
+              <span className="truncate" title={currentBranch.name}>
                 {currentBranch.name}
               </span>
             </div>
@@ -145,11 +143,11 @@ function BranchSelect({
       </Command>
       <div className="-mx-2 mt-2 border-neutral-200 border-t p-2 pb-0">
         <LinkButton
-          to={constructPath("/branches")}
+          href={constructPath("/branches")}
           variant="ghost"
           size="sm"
           className="w-full justify-start text-xs"
-          onClick={() => setPopoverOpen(false)}
+          onPress={() => setPopoverOpen(false)}
         >
           View all branches
         </LinkButton>
@@ -199,30 +197,21 @@ export const BranchFormTriggerButton = ({
 }) => {
   const { isAuthenticated } = useAuth();
 
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handlePress = () => {
     setOpen({ open: true });
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.stopPropagation();
-      setOpen({ open: true });
-    }
-  };
-
   return (
-    <ButtonWithTooltip
-      disabled={!isAuthenticated}
-      tooltipEnabled={!isAuthenticated}
-      tooltipContent="You need to be authenticated."
-      className="h-8 w-8 shadow-none"
-      onKeyDown={handleKeyDown}
-      onClick={handleClick}
-      data-testid="create-branch-button"
-    >
-      <Icon icon="mdi:plus" />
-    </ButtonWithTooltip>
+    <Tooltip message={!isAuthenticated ? "You need to be authenticated." : undefined}>
+      <Button
+        isDisabledAndFocusable={!isAuthenticated}
+        className="h-8 w-8 shadow-none"
+        onPress={handlePress}
+        data-testid="create-branch-button"
+      >
+        <Icon icon="mdi:plus" />
+      </Button>
+    </Tooltip>
   );
 };
 

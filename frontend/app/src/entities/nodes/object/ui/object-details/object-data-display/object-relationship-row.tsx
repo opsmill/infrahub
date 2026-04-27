@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import { LockIcon } from "lucide-react";
 
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { Link } from "@/shared/components/ui/link";
 
 import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
@@ -98,17 +99,17 @@ function RelationshipOneRow({
                     <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                       <div className="font-semibold">{relationshipSchema.label}</div>
 
-                      <ButtonWithTooltip
-                        variant="ghost"
-                        size="icon"
-                        disabled={!permission.update.isAllowed}
-                        tooltipEnabled={!permission.update.isAllowed}
-                        tooltipContent={permission.update.message ?? undefined}
-                        onClick={() => onClickMetadata(relationshipSchema)}
-                        data-testid="edit-metadata-button"
-                      >
-                        <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                      </ButtonWithTooltip>
+                      <Tooltip message={permission.update.message ?? undefined}>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          isDisabledAndFocusable={!permission.update.isAllowed}
+                          onPress={() => onClickMetadata(relationshipSchema)}
+                          data-testid="edit-metadata-button"
+                        >
+                          <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                        </Button>
+                      </Tooltip>
                     </div>
                   )
                 }

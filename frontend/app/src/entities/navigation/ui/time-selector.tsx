@@ -6,7 +6,7 @@ import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 import { QSP } from "@/shared/config/qsp";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";
@@ -41,12 +41,7 @@ export const TimeFrameSelector = () => {
     >
       <DateTimePicker
         customInput={
-          <Button
-            size="square"
-            variant="ghost"
-            className="h-8 w-8 bg-neutral-50"
-            data-testid="timeframe-selector"
-          >
+          <Button size="square-sm" variant="ghost" data-testid="timeframe-selector">
             <Icon icon="mdi:calendar-clock" className="text-xl" />
           </Button>
         }
@@ -83,9 +78,8 @@ export const TimeFrameSelector = () => {
         <Button
           size="square"
           variant="ghost"
-          type="button"
-          onClick={reset}
-          className="h-8 w-8 hover:bg-neutral-700"
+          onPress={reset}
+          className="h-8 w-8 data-hovered:bg-neutral-700"
           data-testid="reset-timeframe-selector"
         >
           <Icon icon="mdi:close" />

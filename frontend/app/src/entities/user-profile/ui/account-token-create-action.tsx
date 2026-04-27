@@ -3,11 +3,11 @@ import { useState } from "react";
 import { Heading } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
 import { Modal } from "@/shared/components/aria/modal";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { Col, Row } from "@/shared/components/container";
 import SlideOver from "@/shared/components/display/slide-over";
-import { Button } from "@/shared/components/ui/button";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { AccountTokenCreateForm } from "@/entities/user-profile/ui/account-token-create-form";
@@ -19,7 +19,7 @@ export function AccountTokenCreateAction() {
 
   return (
     <>
-      <Button className="ml-auto" onClick={() => setIsFormOpen(true)}>
+      <Button className="ml-auto" onPress={() => setIsFormOpen(true)}>
         <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
         Add account token
       </Button>
@@ -77,7 +77,7 @@ export function AccountTokenCreateAction() {
         </Col>
 
         <Row className="justify-end bg-gray-50 p-3">
-          <Button variant="primary" onClick={() => setNewToken("")}>
+          <Button variant="primary" onPress={() => setNewToken("")}>
             Confirm
           </Button>
         </Row>

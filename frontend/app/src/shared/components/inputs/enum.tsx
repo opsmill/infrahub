@@ -2,11 +2,11 @@ import { Icon } from "@iconify-icon/react";
 import React from "react";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
+import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -20,7 +20,7 @@ import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/e
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
 
-export interface EnumDeleteButtonProps extends ButtonProps {
+export interface EnumDeleteButtonProps extends Omit<ButtonProps, "value"> {
   fieldSchema: AttributeSchema;
   schema: ModelSchema;
   value: string | number;
@@ -32,11 +32,7 @@ export const EnumDeleteButton = ({
   fieldSchema,
   schema,
   onDelete,
-  className,
   value,
-  children,
-  ref,
-  ...props
 }: EnumDeleteButtonProps) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
   const [removeEnum, { loading }] = useMutation(ENUM_REMOVE_MUTATION, {
@@ -55,16 +51,12 @@ export const EnumDeleteButton = ({
   return (
     <>
       <Button
-        ref={ref}
-        tabIndex={-1}
         variant="ghost"
         size="sm"
         className="ml-auto h-6 text-red-800"
-        onClick={(e) => {
-          e.stopPropagation();
+        onPress={() => {
           setShowDeleteModal(true);
         }}
-        {...props}
       >
         <Icon icon="mdi:trash-can-outline" />
       </Button>
@@ -103,8 +95,8 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
         <Button
-          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-          onClick={() => setOpen(!open)}
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-700/20"
+          onPress={() => setOpen(!open)}
         >
           + Add option
         </Button>

@@ -5,8 +5,9 @@ import { useState } from "react";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import useQuery from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
+import { Button } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver from "@/shared/components/display/slide-over";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import {
   PROPOSED_CHANGES_EDITABLE_STATE,
   PROPOSED_CHANGES_OBJECT,
@@ -34,21 +35,26 @@ export const ProposedChangeEditTrigger = ({
 
   return (
     <>
-      <ButtonWithTooltip
-        disabled={
-          loading ||
-          !permission.update.isAllowed ||
-          !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails?.state?.value)
+      <Tooltip
+        message={
+          !permission.update.isAllowed ? (permission.update.message ?? undefined) : undefined
         }
-        variant="outline"
-        size="icon"
-        tooltipEnabled={!permission.update.isAllowed}
-        tooltipContent={permission.update.message ?? undefined}
-        onClick={() => setShowEditDrawer(true)}
-        data-testid="edit-button"
       >
-        <Icon icon="mdi:pencil" aria-hidden="true" />
-      </ButtonWithTooltip>
+        <Button
+          variant="outline"
+          size="icon"
+          isDisabled={
+            loading ||
+            !permission.update.isAllowed ||
+            !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails?.state?.value)
+          }
+          isDisabledAndFocusable={!permission.update.isAllowed}
+          onPress={() => setShowEditDrawer(true)}
+          data-testid="edit-button"
+        >
+          <Icon icon="mdi:pencil" aria-hidden="true" />
+        </Button>
+      </Tooltip>
 
       <SlideOver
         title={

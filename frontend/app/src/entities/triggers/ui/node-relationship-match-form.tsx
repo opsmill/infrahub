@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { Button } from "@/shared/components/aria/button";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -22,7 +23,6 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import type { DropdownOption } from "@/shared/components/inputs/dropdown";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
 import type { AttributeType } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -172,7 +172,7 @@ export const NodeRelationshipMatchForm = ({
 
         <div className="text-right">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" className="mr-2" onPress={onCancel}>
               Cancel
             </Button>
           )}

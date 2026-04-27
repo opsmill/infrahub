@@ -1,7 +1,7 @@
 import React from "react";
 import { ListBox } from "react-aria-components";
 
-import { Button } from "@/shared/components/ui/button";
+import { Button } from "@/shared/components/aria/button";
 import { pluralize } from "@/shared/utils/string";
 
 import {
@@ -59,7 +59,7 @@ export function ProcessingGroupsPanel({
       </GroupPanelBody>
 
       <GroupPanelFooter>
-        <Button size="xs" onClick={onClose}>
+        <Button size="xs" onPress={onClose}>
           Close
         </Button>
       </GroupPanelFooter>

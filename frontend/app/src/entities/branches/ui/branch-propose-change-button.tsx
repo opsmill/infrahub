@@ -1,9 +1,8 @@
 import { PlusIcon } from "lucide-react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/ui/button";
+import { LinkButton } from "@/shared/components/aria/button";
 import { QSP } from "@/shared/config/qsp";
-import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { BRANCH_STATUS } from "@/entities/branches/constants";
@@ -21,13 +20,10 @@ export const BranchProposeChangeButton = ({ branch }: BranchProposeChangeButtonP
 
   return (
     <LinkButton
-      onClick={(event) => {
-        if (isDisabled) {
-          event?.preventDefault();
-        }
-      }}
-      className={classNames(isDisabled && "cursor-not-allowed opacity-50")}
-      to={constructPath("/proposed-changes/new", [{ name: QSP.SOURCE_BRANCH, value: branch.name }])}
+      isDisabled={isDisabled}
+      href={constructPath("/proposed-changes/new", [
+        { name: QSP.SOURCE_BRANCH, value: branch.name },
+      ])}
     >
       Propose change
       <PlusIcon className="ml-2 h-4 w-4" aria-hidden="true" />

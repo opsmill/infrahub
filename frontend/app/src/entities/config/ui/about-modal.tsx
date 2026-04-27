@@ -2,12 +2,12 @@ import { XIcon } from "lucide-react";
 
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 
+import { Button } from "@/shared/components/aria/button";
 import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
 import { Modal } from "@/shared/components/aria/modal";
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";
-import { Button } from "@/shared/components/ui/button";
 
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useGetAppInfo } from "@/entities/config/ui/queries/get-app-info.query";
@@ -33,7 +33,7 @@ export function AboutModal({ isOpen, onOpenChange }: AboutModalProps) {
     >
       <Row className="mb-1 justify-between p-2">
         <InfrahubLogo className="h-8" role="img" aria-label="Infrahub logo" />
-        <Button variant="ghost" size="icon" onClick={() => onOpenChange(false)} aria-label="Close">
+        <Button variant="ghost" size="icon" onPress={() => onOpenChange(false)} aria-label="Close">
           <XIcon className="size-3.5" />
         </Button>
       </Row>

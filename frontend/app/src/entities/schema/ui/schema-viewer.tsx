@@ -4,9 +4,9 @@ import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
 
+import { Button, LinkButton } from "@/shared/components/aria/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button, LinkButton } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -103,9 +103,9 @@ export const SchemaViewer = ({
 
         <div className="flex items-center gap-2 text-gray-600">
           {schema.kind && (
-            <Tooltip content="View in graph" enabled>
+            <Tooltip message="View in graph">
               <LinkButton
-                to={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
+                href={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
                 size="icon"
                 variant="ghost"
                 aria-label="View in graph"
@@ -117,7 +117,7 @@ export const SchemaViewer = ({
 
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onClick={onClose}>
+          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onPress={onClose}>
             <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>

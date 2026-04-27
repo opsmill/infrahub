@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { BookTextIcon } from "lucide-react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/ui/button";
+import { LinkButton } from "@/shared/components/aria/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 
 import { HeaderContainer } from "@/entities/nodes/object/ui/object-details/object-details-header";
@@ -25,7 +25,7 @@ export function ObjectItemsHeader({ schema }: ObjectItemsHeaderProps) {
       <LinkButton
         variant="outline"
         size="sm"
-        to={constructPath("/schema", [{ name: "kind", value: schema.kind }])}
+        href={constructPath("/schema", [{ name: "kind", value: schema.kind }])}
       >
         <Icon icon="mdi:code-json" className="mr-1" />
         Schema
@@ -34,7 +34,7 @@ export function ObjectItemsHeader({ schema }: ObjectItemsHeaderProps) {
         <LinkButton
           variant="outline"
           size="sm"
-          to={
+          href={
             schema.documentation.startsWith("http")
               ? schema.documentation
               : INFRAHUB_DOC_LOCAL + schema.documentation

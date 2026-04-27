@@ -3,10 +3,10 @@ import React from "react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { LinkButton } from "@/shared/components/aria/button";
 import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
-import { LinkButton } from "@/shared/components/ui/button";
 import {
   ComboboxEmpty,
   ComboboxItem,
@@ -59,7 +59,7 @@ export default function IpNamespaceSelector({ className }: IpNamespaceSelectorPr
 
         <Col className="border-neutral-200 border-t p-2">
           <LinkButton
-            to={constructPath("/ipam/namespaces")}
+            href={constructPath("/ipam/namespaces")}
             variant="ghost"
             size="sm"
             className="justify-start text-xs"

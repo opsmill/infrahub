@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 
+import { LinkButton } from "@/shared/components/aria/button";
 import { Badge } from "@/shared/components/ui/badge";
-import { LinkButton } from "@/shared/components/ui/button";
 import { NODE_PATH_EXCLUDELIST } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
@@ -56,11 +56,7 @@ export const getThreadTitle = (thread?: any, label?: string) => {
         <Badge variant={"gray-outline"}>Object</Badge>
 
         <LinkButton
-          to={{
-            pathname,
-            search: `?${QSP.PROPOSED_CHANGES_TAB}=data`,
-            hash: `#${nodeId}`,
-          }}
+          href={`${pathname}?${QSP.PROPOSED_CHANGES_TAB}=data#${nodeId}`}
           className="flex items-center gap-2 px-1"
           variant={"ghost"}
         >
