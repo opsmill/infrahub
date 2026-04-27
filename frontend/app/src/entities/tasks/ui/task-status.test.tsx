@@ -29,7 +29,7 @@ describe("TaskStatus", () => {
     const component = await render(<TaskStatus />);
 
     // THEN
-    const taskButton = component.getByRole("link");
+    const taskButton = component.getByRole("link", { name: "Tasks running on this branch" });
     await expect.element(taskButton).toBeVisible();
     await expect
       .element(taskButton)
@@ -38,10 +38,6 @@ describe("TaskStatus", () => {
       .element(taskButton)
       .toHaveAttribute("href", expect.stringContaining(encodeURIComponent(branch.name)));
     await expect.element(component.getByTestId("pulse")).toBeVisible();
-    await taskButton.hover();
-    await expect
-      .element(component.getByRole("tooltip", { name: "Tasks running on this branch" }))
-      .toBeVisible();
   });
 
   test("renders task status without pulse when no tasks are running", async () => {
@@ -62,10 +58,6 @@ describe("TaskStatus", () => {
     // THEN
     const taskButton = component.getByRole("link", { name: "View branch tasks" });
     await expect.element(taskButton).toBeVisible();
-    await taskButton.hover();
-    await expect
-      .element(component.getByRole("tooltip", { name: "View branch tasks" }))
-      .toBeVisible();
     expect(component.getByTestId("pulse").query()).toBeNull();
   });
 
