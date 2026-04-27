@@ -133,7 +133,8 @@ Proposed changes follow a workflow with specific states that track progression f
 
 4. **Merged**: After receiving approval (if required) and passing all automated checks, the change is merged into the target branch. At this point:
    - The changes become part of the target branch.
-   - The source branch will be retained but could be manually deleted.
+   - The source branch transitions to a frozen `MERGED` state — no further mutations are allowed on it. It can still be viewed and deleted, but rebase, re-merge, and new Proposed Changes against it are blocked.
+   - Any other open Proposed Changes that use the same source branch are automatically moved to `cancelled` state.
 
 5. **Closed**: A proposed change can be closed without merging if it's determined to be unnecessary, superseded by another change, or otherwise no longer needed. This provides a clean resolution for abandoned changes.
 
