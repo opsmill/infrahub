@@ -7,14 +7,16 @@ from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.diff.merger.exclusion_plan import (
+        AttributePropertyPath,
+        CardinalityOneDiffResolution,
+        CarryOverBaseRelProperty,
+        CarryOverDiffRelProperty,
+        RelationshipPath,
+        RelationshipPropertyPath,
+    )
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-# TODO: is changing an edge multiple times captured correctly?
-# eg car.num = 1, car.num = 2, car.num = 1 before merge
-# should the merge queries start with the latest edge on the source branch between any two vertices and use that as a guide
-# instead of using every edge on the source branch?
 
 
 class BulkMergeNodeExistenceQuery(Query):
@@ -37,14 +39,14 @@ class BulkMergeNodeExistenceQuery(Query):
         self,
         at: Timestamp,
         target_branch: Branch,
-        excluded_uuids: list[str],
+        excluded_node_uuids: list[str],
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.at = at
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
-        self.excluded_uuids = excluded_uuids
+        self.excluded_node_uuids = excluded_node_uuids
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
@@ -53,7 +55,7 @@ class BulkMergeNodeExistenceQuery(Query):
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
             "global_branch": GLOBAL_BRANCH_NAME,
-            "excluded_uuids": self.excluded_uuids,
+            "excluded_node_uuids": self.excluded_node_uuids,
         }
         query = """
 // ==============================
@@ -62,7 +64,7 @@ class BulkMergeNodeExistenceQuery(Query):
 MATCH (n:Node)-[src:IS_PART_OF]->(root:Root)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
-AND NOT n.uuid IN $excluded_uuids
+AND NOT n.uuid IN $excluded_node_uuids
 AND n.branch_support = "aware"
 // ------------------------------
 // Skip nodes created and then deleted on the same branch (both edges exist)
@@ -82,13 +84,8 @@ AND NOT (
 WITH n, root, src
 // ------------------------------
 // Resolve the currently-active target-branch Node vertex for this UUID.
-// After a post-fork target-branch node-kind migration, a branch-side write
-// anchored on the pre-migration vertex (``n``) must act on the post-migration
-// sibling that holds the target-branch active IS_PART_OF. If no such vertex
-// exists (e.g. the UUID is new on the source branch), ``tgt_n = n``. Only
-// close / cascade operations use ``tgt_n``; creates stay anchored on ``n``
-// so a source-branch node-kind migration still lands its new-kind vertex on
-// target.
+// If the Node was migrated to a new kind/inheritance on the target branch,
+// we need to identify the new target Node vertex
 // ------------------------------
 CALL (n) {
     OPTIONAL MATCH (tgt_candidate:Node {uuid: n.uuid})-[tgt_ipo:IS_PART_OF {branch: $target_branch, status: "active"}]->(:Root)
@@ -100,9 +97,7 @@ CALL (n) {
 }
 WITH n, COALESCE(tgt_candidate, n) AS tgt_n, root, src
 // -------------------------
-// close active IS_PART_OF on target branch when deleting (operates on ``tgt_n``
-// so a branch-side delete on the pre-migration sibling closes the current
-// target-active post-migration sibling)
+// close active IS_PART_OF on target branch when deleting
 // -------------------------
 CALL (tgt_n, root, src) {
     OPTIONAL MATCH (tgt_n)-[tgt:IS_PART_OF {branch: $target_branch, status: "active"}]->(root)
@@ -141,7 +136,7 @@ CALL (n, root, src) {
 }
 // -------------------------
 // cascade close all attribute and relationship edges when node is deleted
-// (operates on ``tgt_n`` so the post-migration sibling's active sub-edges
+// (operates on ``tgt_n`` so the possible post-migration Node vertex's active sub-edges
 // are closed)
 // -------------------------
 CALL (n, tgt_n, src) {
@@ -149,8 +144,8 @@ CALL (n, tgt_n, src) {
     WHERE src.status = "deleted"
     // ------------------------------
     // Only cascade if the UUID is truly deleted (no other vertex with an active IS_PART_OF
-    // on the source branch). For migrated nodes, the old vertex is "deleted" but the new
-    // vertex, with the same UUID, is "active"
+    // on the source branch). For migrated nodes on the source branch, the old vertex is "deleted"
+    // but the new vertex, with the same UUID, is "active"
     // ------------------------------
     AND NOT EXISTS {
         MATCH (other:Node {uuid: n.uuid})-[active_ipo:IS_PART_OF {branch: $source_branch, status: "active"}]->(:Root)
@@ -185,7 +180,7 @@ WITH 1 AS phase_separator LIMIT 1
 MATCH (n:Node)-[src:HAS_ATTRIBUTE]->(a:Attribute)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
-AND NOT n.uuid IN $excluded_uuids
+AND NOT n.uuid IN $excluded_node_uuids
 AND n.branch_support = "aware"
 // ------------------------------
 // Skip attributes created and deleted on the same branch
@@ -227,7 +222,7 @@ WITH n, a, src
 WHERE src.status = "active"
 // -------------------------
 // the parent Node must be active on target/global branch to link an active HAS_ATTRIBUTE edge to it.
-// Uses the LATEST IS_PART_OF edge and checks (status = "active" AND to IS NULL).
+// Uses the latest IS_PART_OF edge and checks (status = "active" AND to IS NULL).
 // -------------------------
 CALL (n) {
     MATCH (n)-[ipo:IS_PART_OF]->(:Root)
@@ -262,6 +257,12 @@ class BulkMergeRelationshipEdgesQuery(Query):
     """Bulk merge IS_RELATED edges from source branch to target branch.
 
     Handles direction preservation and hierarchy properties.
+
+    `excluded_relationship_paths` skips IS_RELATED edges for paths whose conflict was
+    resolved to BASE
+
+    Cardinality-one Relationship element conflict cleanup (`BulkMergeCardinalityOneResolutionQuery`)
+    must run after this query.
     """
 
     name = "bulk_merge_relationship_edges"
@@ -273,14 +274,16 @@ class BulkMergeRelationshipEdgesQuery(Query):
         self,
         at: Timestamp,
         target_branch: Branch,
-        excluded_uuids: list[str],
+        excluded_node_uuids: list[str],
+        excluded_relationship_paths: list[RelationshipPath],
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.at = at
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
-        self.excluded_uuids = excluded_uuids
+        self.excluded_node_uuids = excluded_node_uuids
+        self.excluded_relationship_paths = excluded_relationship_paths
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
@@ -289,7 +292,10 @@ class BulkMergeRelationshipEdgesQuery(Query):
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
             "global_branch": GLOBAL_BRANCH_NAME,
-            "excluded_uuids": self.excluded_uuids,
+            "excluded_node_uuids": self.excluded_node_uuids,
+            "excluded_relationship_paths": [
+                [p.node_uuid, p.relationship_identifier, p.peer_uuid] for p in self.excluded_relationship_paths
+            ],
         }
         query = """
 // ==============================
@@ -302,21 +308,31 @@ class BulkMergeRelationshipEdgesQuery(Query):
 // Relationships added-and-deleted on the source branch are handled by the `src.to IS NULL`
 // filter: only the final-state edge (open) is picked up. For add+delete, only the trailing
 // deleted edge matches — its close subquery finds nothing on target (relationship never
-// existed there) and the status=active filter drops further processing. For delete+re-add
-// of an existing relationship, only the trailing active edge matches — the create subquery
-// finds the original active on target and skips creation.
+// existed there) and the status=active filter drops further processing
 // ==============================
 MATCH (n:Node)-[src:IS_RELATED {branch: $source_branch}]-(rel:Relationship)
 WHERE src.to IS NULL
 AND rel.branch_support = "aware"
-AND NOT n.uuid IN $excluded_uuids
+AND NOT n.uuid IN $excluded_node_uuids
 // -------------------------
-// No Node linked to this Relationship may be excluded
+// No Node linked to this Relationship may be excluded by node UUID
 // a Relationship is only ever between 2 UUIDs, so no extra filtering is required
 // -------------------------
 AND NOT EXISTS {
     MATCH (rel)-[:IS_RELATED]-(linked:Node)
-    WHERE linked.uuid IN $excluded_uuids
+    WHERE linked.uuid IN $excluded_node_uuids
+}
+// -------------------------
+// Skip paths whose Relationship-element conflict resolved to BASE. The check is symmetric so that
+// both direction rows (n=A peer=B and n=B peer=A) are excluded by a single path entry.
+// -------------------------
+AND NOT EXISTS {
+    MATCH (rel)-[:IS_RELATED]-(other:Node)
+    WHERE other.uuid <> n.uuid
+    AND (
+        [n.uuid, rel.name, other.uuid] IN $excluded_relationship_paths
+        OR [other.uuid, rel.name, n.uuid] IN $excluded_relationship_paths
+    )
 }
 WITH n, rel, src,
     CASE WHEN startNode(src) = n THEN "r" ELSE "l" END AS dir,
@@ -324,10 +340,9 @@ WITH n, rel, src,
     src.from_user_id AS from_user_id,
     src.status AS status
 // -------------------------
-// Resolve the target-active sibling Node for this UUID. After a post-fork
-// target-branch node-kind migration, target-branch writes must go on the
-// currently-active sibling rather than the source-branch vertex. Falls back
-// to ``n`` when no sibling is active on target.
+// Resolve the target-active sibling Node for this UUID. If the sibling Node had
+// its kind/inheritance migrated on the target branch, this ensures we link to the
+// correct Node vertex.
 // -------------------------
 CALL (n) {
     OPTIONAL MATCH (tgt_candidate:Node {uuid: n.uuid})-[tgt_ipo:IS_PART_OF {branch: $target_branch, status: "active"}]->(:Root)
@@ -339,11 +354,8 @@ CALL (n) {
 }
 WITH n, rel, dir, hierarchy, from_user_id, status, COALESCE(tgt_candidate, n) AS tgt_n
 // -------------------------
-// Close active IS_RELATED on target branch between any sibling of ``n`` (same
-// UUID) and ``rel``. UUID-scoping is needed so a branch-side delete closes the
-// right edge regardless of whether the target-active sibling (for target
-// migration) or the pre-migration sibling (source migration's pre-fork fixture
-// edge) currently holds the active IS_RELATED.
+// If deleting, then close active IS_RELATED edges on target branch between any Node vertices
+//with the same UUID and the ``rel`` vertex
 // -------------------------
 CALL (n, rel, status, from_user_id) {
     OPTIONAL MATCH (close_n:Node {uuid: n.uuid})-[tgt:IS_RELATED {branch: $target_branch, status: "active"}]-(rel)
@@ -362,18 +374,15 @@ CALL (tgt_n) {
     MATCH (tgt_n)-[ipo:IS_PART_OF]->(:Root)
     WHERE ipo.branch IN [$target_branch, $global_branch]
     RETURN (ipo.status = "active" AND ipo.to IS NULL) AS n_is_alive
-    ORDER BY ipo.branch_level DESC, ipo.from DESC, ipo.status ASC
+    ORDER BY ipo.from DESC
     LIMIT 1
 }
 WITH n, rel, dir, hierarchy, from_user_id, status, tgt_n, n_is_alive
 WHERE n_is_alive = TRUE
 // -------------------------
-// For active edges, some peer Node (uuid != n.uuid, to treat migrated-kind old/new as same node)
-// linked to the Relationship on source or target branch must be alive on target. The
-// ``IS_RELATED`` side of the peer and the active ``IS_PART_OF`` side are resolved
-// against UUID separately rather than the same vertex: under a target-branch node-kind
-// migration the peer's IS_RELATED edge can live on the pre-migration sibling while the
-// active IS_PART_OF lives on the post-migration sibling.
+// For active edges, some peer Node linked to the Relationship on source or target branch must be
+// alive. Must filter by UUID and not vertex in case the peer Node had its kind/inheritance
+// migrated on the target branch
 // -------------------------
 CALL (n, rel) {
     OPTIONAL MATCH (peer:Node)-[peer_ir:IS_RELATED]-(rel)
@@ -393,8 +402,7 @@ CALL (n, rel) {
 WITH n, rel, dir, hierarchy, from_user_id, status, tgt_n, has_alive_peer
 WHERE has_alive_peer = TRUE
 // -------------------------
-// Create IS_RELATED with correct direction if not already present (anchors on
-// ``tgt_n`` so the write lands on the target-active sibling)
+// Create IS_RELATED with correct direction if not already present
 // -------------------------
 CALL (tgt_n, rel, dir, hierarchy, status, from_user_id) {
     WITH *
@@ -430,6 +438,175 @@ SET rel.created_at = $at, rel.created_by = from_user_id
         self.add_to_query(query=query)
 
 
+class BulkMergeCardinalityOneResolutionQuery(Query):
+    """Apply cardinality-one Relationship element conflict resolutions on top of the bulk IS_RELATED
+    merge. Three concerns are handled in order:
+
+    1. ``carry_over_base_relationship_properties`` DIFF element + BASE prop. Copies base's
+       active prop edge from the displaced Relationship vertex onto the selected (source-side)
+       Relationship-vertex before the displaced vertex is closed.
+    2. ``carry_over_diff_relationship_properties`` BASE element + DIFF prop. Closes any
+       existing same-type active edge on the kept (base-side) Relationship vertex; if source has an
+       edge of that type, copies it onto the kept Relationship vertex.
+    3. ``cardinality_one_diff_resolutions`` DIFF element. Closes every active edge
+       (IS_RELATED + property edges) hanging off non-selected peer Relationship vertices on target,
+       fully tearing down the displaced base-only Relationship vertex.
+
+    Must run after `BulkMergeRelationshipEdgesQuery` (so the selected Relationship's IS_RELATED edges
+    exist on target) and before `BulkMergeRelationshipPropertyEdgesQuery`. Internal block
+    order matters: the carry-overs read base's active edges on the displaced Relationship that step 3
+    then closes.
+    """
+
+    name = "bulk_merge_cardinality_one_resolution"
+    type = QueryType.WRITE
+    insert_return = False
+    raise_error_if_empty = False
+
+    def __init__(
+        self,
+        at: Timestamp,
+        target_branch: Branch,
+        cardinality_one_diff_resolutions: list[CardinalityOneDiffResolution],
+        carry_over_base_relationship_properties: list[CarryOverBaseRelProperty],
+        carry_over_diff_relationship_properties: list[CarryOverDiffRelProperty],
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(**kwargs)
+        self.at = at
+        self.target_branch = target_branch
+        self.source_branch_name = self.branch.name
+        self.cardinality_one_diff_resolutions = cardinality_one_diff_resolutions
+        self.carry_over_base_relationship_properties = carry_over_base_relationship_properties
+        self.carry_over_diff_relationship_properties = carry_over_diff_relationship_properties
+
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
+        self.params = {
+            "at": self.at.to_string(),
+            "branch_level": self.target_branch.hierarchy_level,
+            "target_branch": self.target_branch.name,
+            "source_branch": self.source_branch_name,
+            "cardinality_one_diff_resolutions": [
+                [p.node_uuid, p.relationship_identifier, p.selected_peer_uuid]
+                for p in self.cardinality_one_diff_resolutions
+            ],
+            "carry_over_base_relationship_properties": [
+                [p.node_uuid, p.relationship_identifier, p.selected_peer_uuid, p.edge_type]
+                for p in self.carry_over_base_relationship_properties
+            ],
+            "carry_over_diff_relationship_properties": [
+                [p.node_uuid, p.relationship_identifier, p.kept_peer_uuid, p.source_peer_uuid, p.edge_type]
+                for p in self.carry_over_diff_relationship_properties
+            ],
+        }
+        query = """
+// ==============================
+// Step 1: Carry-over (DIFF element + BASE prop). Base's property edge lives on the
+// displaced Relationship vertex and would be lost when that vertex is closed in step 3. Copy
+// it onto the selected (source-side) Relationship vertex first.
+// ==============================
+// Use a subquery so the next steps still run when the param list is empty.
+CALL () {
+    UNWIND $carry_over_base_relationship_properties AS carry
+    WITH carry[0] AS node_uuid, carry[1] AS rel_name, carry[2] AS selected_peer_uuid, carry[3] AS edge_type
+    // The IS_RELATED edges are filtered to the active target-branch path so each MATCH binds
+    // to a single Relationship vertex even if historical (closed) rel-vertices exist for the
+    // same (node, rel_name, peer) tuple.
+    MATCH (carry_n:Node {uuid: node_uuid})
+        -[d_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(displaced_rel:Relationship {name: rel_name})
+        -[d_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(displaced_peer:Node)
+    WHERE displaced_peer.uuid <> selected_peer_uuid
+    AND d_ir1.to IS NULL AND d_ir2.to IS NULL
+    MATCH (displaced_rel)-[base_e {branch: $target_branch, status: "active"}]->(child)
+    WHERE type(base_e) = edge_type AND base_e.to IS NULL
+    MATCH (carry_n)
+        -[s_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(selected_rel:Relationship {name: rel_name})
+        -[s_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(:Node {uuid: selected_peer_uuid})
+    WHERE selected_rel <> displaced_rel
+    AND s_ir1.to IS NULL AND s_ir2.to IS NULL
+    // Collapse fan-out from multiple IS_RELATED bindings to a single row per carry entry.
+    WITH DISTINCT edge_type, selected_rel, base_e, child
+    CREATE (selected_rel)-[new_e:$(edge_type)]->(child)
+    SET new_e = properties(base_e)
+    SET new_e.branch = $target_branch, new_e.branch_level = $branch_level, new_e.from = $at, new_e.to = NULL, new_e.to_user_id = NULL
+}
+
+// ==============================
+// Step 2: Inverse carry-over (BASE element + DIFF prop). Source's property edge lives on
+// the source-side Relationship-vertex (which is excluded from the merge). Apply source's value to
+// the kept (base-side) Relationship-vertex, and close any pre-existing same-type active edge on
+// the kept Relationship.
+// ==============================
+WITH count(*) AS _carry_over_diff_separator
+CALL () {
+    UNWIND $carry_over_diff_relationship_properties AS carry
+    WITH carry[0] AS node_uuid, carry[1] AS rel_name, carry[2] AS kept_peer_uuid, carry[3] AS source_peer_uuid, carry[4] AS edge_type
+    // ------------------------------
+    // Step 2a: always close any existing same-type active edge on the kept Relationship.
+    // A separate CREATE step below applies source's value when present.
+    // The IS_RELATED edges are filtered to the active target-branch path so this binds to
+    // a single Relationship vertex even if historical (closed) rel-vertices exist for the
+    // same (node, rel_name, kept_peer) tuple.
+    // ------------------------------
+    MATCH (carry_n:Node {uuid: node_uuid})
+        -[k_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(kept_rel:Relationship {name: rel_name})
+        -[k_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(:Node {uuid: kept_peer_uuid})
+    WHERE k_ir1.to IS NULL AND k_ir2.to IS NULL
+    WITH DISTINCT node_uuid, rel_name, source_peer_uuid, edge_type, kept_rel
+    CALL (kept_rel, edge_type) {
+        OPTIONAL MATCH (kept_rel)-[existing_e:$(edge_type) {branch: $target_branch, status: "active"}]->()
+        WHERE existing_e.to IS NULL
+        SET existing_e.to = $at
+    }
+    // ------------------------------
+    // Step 2b: if source has an active edge of this type on the source branch's rel-vertex,
+    // copy it to the kept Relationship. The source-side rel-vertex was excluded from the
+    // bulk merge, so its IS_RELATED edges live on $source_branch only.
+    // ------------------------------
+    OPTIONAL MATCH (carry_n2:Node {uuid: node_uuid})
+        -[s_ir1:IS_RELATED {branch: $source_branch, status: "active"}]-(source_rel:Relationship {name: rel_name})
+        -[s_ir2:IS_RELATED {branch: $source_branch, status: "active"}]-(:Node {uuid: source_peer_uuid})
+    WHERE source_rel <> kept_rel
+    AND s_ir1.to IS NULL AND s_ir2.to IS NULL
+    OPTIONAL MATCH (source_rel)-[src_e {branch: $source_branch, status: "active"}]->(child)
+    WHERE type(src_e) = edge_type AND src_e.to IS NULL
+    WITH edge_type, kept_rel, src_e, child
+    WHERE src_e IS NOT NULL AND child IS NOT NULL
+    // ------------------------------
+    // Collapse fan-out from multiple IS_RELATED bindings to a single row per carry entry.
+    // ------------------------------
+    WITH DISTINCT edge_type, kept_rel, src_e, child
+    CREATE (kept_rel)-[new_e:$(edge_type)]->(child)
+    SET new_e = properties(src_e)
+    SET new_e.branch = $target_branch, new_e.branch_level = $branch_level, new_e.from = $at, new_e.to = NULL, new_e.to_user_id = NULL
+}
+
+// ==============================
+// Step 3: Cardinality-one DIFF resolutions. Source's IS_RELATED edge to the selected peer
+// was already created by `BulkMergeRelationshipEdgesQuery`. Close every active edge
+// hanging off any *other-peer* Relationship vertex on target so the dead target-branch
+// Relationship vertex is fully torn down.
+// ==============================
+WITH count(*) AS _extra_close_separator
+UNWIND $cardinality_one_diff_resolutions AS resolution
+WITH resolution[0] AS node_uuid, resolution[1] AS rel_name, resolution[2] AS selected_peer_uuid
+OPTIONAL MATCH (n:Node {uuid: node_uuid})-[ir1:IS_RELATED {branch: $target_branch, status: "active"}]-
+    (rel:Relationship {name: rel_name})-[ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(other:Node)
+WHERE other.uuid <> selected_peer_uuid
+AND ir1.to IS NULL
+AND ir2.to IS NULL
+SET ir1.to = $at, ir2.to = $at
+WITH DISTINCT rel
+WHERE rel IS NOT NULL
+CALL (rel) {
+    OPTIONAL MATCH (rel)-[prop_e:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE {branch: $target_branch, status: "active"}]->()
+    WHERE prop_e.to IS NULL
+    SET prop_e.to = $at
+}
+        """
+        self.add_to_query(query=query)
+
+
 class BulkMergeAttributePropertyEdgesQuery(Query):
     """Bulk merge HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE edges that hang off Attribute vertices.
 
@@ -437,6 +614,9 @@ class BulkMergeAttributePropertyEdgesQuery(Query):
     When merging an active edge, close any existing active target edge pointing to a different child
     and create the new one. For active creates, the parent Node must be alive on target (based on
     the LATEST IS_PART_OF edge). For HAS_SOURCE / HAS_OWNER, the target child Node must also be alive.
+
+    `excluded_attribute_property_paths` skips specific (node_uuid, attr_name, edge_type) paths whose
+    property conflict was resolved to BASE.
     """
 
     name = "bulk_merge_attribute_property_edges"
@@ -448,14 +628,16 @@ class BulkMergeAttributePropertyEdgesQuery(Query):
         self,
         at: Timestamp,
         target_branch: Branch,
-        excluded_uuids: list[str],
+        excluded_node_uuids: list[str],
+        excluded_attribute_property_paths: list[AttributePropertyPath],
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.at = at
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
-        self.excluded_uuids = excluded_uuids
+        self.excluded_node_uuids = excluded_node_uuids
+        self.excluded_attribute_property_paths = excluded_attribute_property_paths
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
@@ -464,7 +646,10 @@ class BulkMergeAttributePropertyEdgesQuery(Query):
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
             "global_branch": GLOBAL_BRANCH_NAME,
-            "excluded_uuids": self.excluded_uuids,
+            "excluded_node_uuids": self.excluded_node_uuids,
+            "excluded_attribute_property_paths": [
+                [p.node_uuid, p.attribute_name, p.edge_type] for p in self.excluded_attribute_property_paths
+            ],
         }
         query = """
 // ==============================
@@ -473,7 +658,8 @@ class BulkMergeAttributePropertyEdgesQuery(Query):
 MATCH (n:Node)-[:HAS_ATTRIBUTE]-(field:Attribute)-[src:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(child)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
-AND NOT n.uuid IN $excluded_uuids
+AND NOT n.uuid IN $excluded_node_uuids
+AND NOT [n.uuid, field.name, type(src)] IN $excluded_attribute_property_paths
 AND field.branch_support = "aware"
 WITH DISTINCT n, field, src, child,
     type(src) AS edge_type,
@@ -503,7 +689,7 @@ CALL (n) {
     MATCH (n)-[ipo:IS_PART_OF]->(:Root)
     WHERE ipo.branch IN [$target_branch, $global_branch]
     RETURN (ipo.status = "active" AND ipo.to IS NULL) AS parent_is_alive
-    ORDER BY ipo.branch_level DESC, ipo.from DESC, ipo.status ASC
+    ORDER BY ipo.from DESC
     LIMIT 1
 }
 WITH n, field, child, src, edge_type, prop_from_user_id, parent_is_alive
@@ -516,7 +702,7 @@ CALL (child) {
     WHERE c_ipo.branch IN [$target_branch, $global_branch]
     AND child:Node
     RETURN (c_ipo IS NULL OR (c_ipo.status = "active" AND c_ipo.to IS NULL)) AS child_is_alive
-    ORDER BY c_ipo.branch_level DESC, c_ipo.from DESC, c_ipo.status ASC
+    ORDER BY c_ipo.from DESC
     LIMIT 1
 }
 WITH field, child, src, edge_type, prop_from_user_id, child_is_alive
@@ -525,9 +711,8 @@ WHERE child_is_alive = TRUE
 // Create new property edge on target branch if not already present
 // -------------------------
 CALL (field, src, child, edge_type, prop_from_user_id) {
-    OPTIONAL MATCH (field)-[existing {branch: $target_branch, status: "active"}]->(child)
-    WHERE type(existing) = edge_type
-    AND existing.to IS NULL
+    OPTIONAL MATCH (field)-[existing:$(edge_type) {branch: $target_branch, status: "active"}]->(child)
+    WHERE existing.to IS NULL
     WITH field, src, child, edge_type, prop_from_user_id, existing
     WHERE existing IS NULL
     CREATE (field)-[new_e:$(edge_type)]->(child)
@@ -549,6 +734,14 @@ class BulkMergeRelationshipPropertyEdgesQuery(Query):
     to the same Relationship vertex must also be alive on target with an active IS_RELATED edge to
     the Relationship on the source or target branch. For HAS_SOURCE / HAS_OWNER, the target child
     Node must be alive too.
+
+    Exclusions:
+    - `excluded_relationship_paths` skips ALL property edges hanging off Relationship vertices for paths
+      whose Relationship-element conflict was resolved to BASE.
+    - `excluded_relationship_property_paths` skips a specific (node_uuid, rel_id, peer_uuid, edge_type)
+      whose property conflict was resolved to BASE.
+    Both checks are symmetric so the n-side and peer-side rows of the same Relationship vertex
+    are excluded by a single path entry.
     """
 
     name = "bulk_merge_relationship_property_edges"
@@ -560,14 +753,18 @@ class BulkMergeRelationshipPropertyEdgesQuery(Query):
         self,
         at: Timestamp,
         target_branch: Branch,
-        excluded_uuids: list[str],
+        excluded_node_uuids: list[str],
+        excluded_relationship_paths: list[RelationshipPath],
+        excluded_relationship_property_paths: list[RelationshipPropertyPath],
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
         self.at = at
         self.target_branch = target_branch
         self.source_branch_name = self.branch.name
-        self.excluded_uuids = excluded_uuids
+        self.excluded_node_uuids = excluded_node_uuids
+        self.excluded_relationship_paths = excluded_relationship_paths
+        self.excluded_relationship_property_paths = excluded_relationship_property_paths
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.params = {
@@ -576,24 +773,47 @@ class BulkMergeRelationshipPropertyEdgesQuery(Query):
             "target_branch": self.target_branch.name,
             "source_branch": self.source_branch_name,
             "global_branch": GLOBAL_BRANCH_NAME,
-            "excluded_uuids": self.excluded_uuids,
+            "excluded_node_uuids": self.excluded_node_uuids,
+            "excluded_relationship_paths": [
+                [p.node_uuid, p.relationship_identifier, p.peer_uuid] for p in self.excluded_relationship_paths
+            ],
+            "excluded_relationship_property_paths": [
+                [p.node_uuid, p.relationship_identifier, p.peer_uuid, p.edge_type]
+                for p in self.excluded_relationship_property_paths
+            ],
         }
         query = """
 // ==============================
 // Relationship property edges: (Node)-[:IS_RELATED]-(Relationship)-[src]->(child)
-//
-// Migrated-kind Nodes: for a migration A -> B, both the old vertex (A, marked deleted on source)
-// and the new vertex (B, active on source) share the same Relationship vertex, so WITH DISTINCT
-// can produce a row for each. The old vertex rows are dropped by the n-alive-on-target check
-// (the old vertex has a deleted IS_PART_OF on target after merge). The new vertex rows proceed
-// normally. For status=deleted src edges, both rows reach the close-subquery, but closing the
-// same target edge twice is a no-op.
 // ==============================
 MATCH (n:Node)-[:IS_RELATED]-(field:Relationship)-[src:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE]->(child)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
-AND NOT n.uuid IN $excluded_uuids
+AND NOT n.uuid IN $excluded_node_uuids
 AND field.branch_support = "aware"
+// -------------------------
+// Skip Relationship vertices to is exclude. Symmetric so both n-side and peer-side rows are filtered.
+// -------------------------
+AND NOT EXISTS {
+    MATCH (field)-[:IS_RELATED]-(other:Node)
+    WHERE other.uuid <> n.uuid
+    AND (
+        [n.uuid, field.name, other.uuid] IN $excluded_relationship_paths
+        OR [other.uuid, field.name, n.uuid] IN $excluded_relationship_paths
+    )
+}
+// -------------------------
+// Skip specific property paths whose property conflict resolved to BASE. Symmetric for the
+// same reason as above.
+// -------------------------
+AND NOT EXISTS {
+    MATCH (field)-[:IS_RELATED]-(other:Node)
+    WHERE other.uuid <> n.uuid
+    AND (
+        [n.uuid, field.name, other.uuid, type(src)] IN $excluded_relationship_property_paths
+        OR [other.uuid, field.name, n.uuid, type(src)] IN $excluded_relationship_property_paths
+    )
+}
 WITH DISTINCT n, field, src, child,
     type(src) AS edge_type,
     src.status AS prop_status,
@@ -622,17 +842,14 @@ CALL (n) {
     MATCH (n)-[ipo:IS_PART_OF]->(:Root)
     WHERE ipo.branch IN [$target_branch, $global_branch]
     RETURN (ipo.status = "active" AND ipo.to IS NULL) AS n_is_alive
-    ORDER BY ipo.branch_level DESC, ipo.from DESC, ipo.status ASC
+    ORDER BY ipo.from DESC
     LIMIT 1
 }
 WITH n, field, child, src, edge_type, prop_from_user_id, n_is_alive
 WHERE n_is_alive = TRUE
 // -------------------------
-// For active edges, some peer Node must be linked to the Relationship via an active IS_RELATED
-// edge on the source or target branch, be alive on target (latest IS_PART_OF), and not be excluded.
-// Use peer.uuid <> n.uuid so that migrated-kind/inheritance (old/new vertex with same UUID) is
-// treated as the same node. There is at most one such peer per Relationship vertex, so the check
-// is flattened to a single subquery that picks the latest IS_PART_OF directly.
+// Find the active peer Node vertex. Filter by UUID to account for Nodes that had
+// their kind/inheritance migrated on target branch
 // -------------------------
 CALL (n, field) {
     OPTIONAL MATCH (peer:Node)-[peer_ir:IS_RELATED]-(field), (peer)-[p_ipo:IS_PART_OF]->(:Root)
@@ -640,10 +857,10 @@ CALL (n, field) {
     AND peer_ir.branch IN [$source_branch, $target_branch]
     AND peer_ir.status = "active"
     AND peer_ir.to IS NULL
-    AND NOT peer.uuid IN $excluded_uuids
+    AND NOT peer.uuid IN $excluded_node_uuids
     AND p_ipo.branch IN [$target_branch, $global_branch]
     RETURN (p_ipo IS NOT NULL AND p_ipo.status = "active" AND p_ipo.to IS NULL) AS has_alive_peer
-    ORDER BY p_ipo.branch_level DESC, p_ipo.from DESC, p_ipo.status ASC
+    ORDER BY p_ipo.from DESC
     LIMIT 1
 }
 WITH n, field, child, src, edge_type, prop_from_user_id, has_alive_peer
@@ -656,7 +873,7 @@ CALL (child) {
     WHERE c_ipo.branch IN [$target_branch, $global_branch]
     AND child:Node
     RETURN (c_ipo IS NULL OR (c_ipo.status = "active" AND c_ipo.to IS NULL)) AS child_is_alive
-    ORDER BY c_ipo.branch_level DESC, c_ipo.from DESC, c_ipo.status ASC
+    ORDER BY c_ipo.from DESC
     LIMIT 1
 }
 WITH field, child, src, edge_type, prop_from_user_id, child_is_alive
@@ -665,9 +882,8 @@ WHERE child_is_alive = TRUE
 // Create new property edge on target branch if not already present
 // -------------------------
 CALL (field, src, child, edge_type, prop_from_user_id) {
-    OPTIONAL MATCH (field)-[existing {branch: $target_branch, status: "active"}]->(child)
-    WHERE type(existing) = edge_type
-    AND existing.to IS NULL
+    OPTIONAL MATCH (field)-[existing:$(edge_type) {branch: $target_branch, status: "active"}]->(child)
+    WHERE existing.to IS NULL
     WITH field, src, child, edge_type, prop_from_user_id, existing
     WHERE existing IS NULL
     CREATE (field)-[new_e:$(edge_type)]->(child)

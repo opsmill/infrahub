@@ -8,8 +8,8 @@ from infrahub import config, lock
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
+from infrahub.core.diff.merger.exclusion_plan import MergeExclusionPlanBuilder
 from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.merger.serializer import DiffMergeSerializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
@@ -189,7 +189,7 @@ class TestDiffCoordinatorLocks:
                 source_branch=diff_branch,
                 destination_branch=default_branch,
                 diff_repository=diff_repository,
-                serializer=DiffMergeSerializer(db=db, max_batch_size=50),
+                exclusion_plan_builder=MergeExclusionPlanBuilder(),
             ),
             diff_repository=diff_repository,
             source_branch=diff_branch,
@@ -232,7 +232,7 @@ class TestDiffCoordinatorLocks:
                 source_branch=diff_branch,
                 destination_branch=default_branch,
                 diff_repository=diff_repository_2,
-                serializer=DiffMergeSerializer(db=db2, max_batch_size=50),
+                exclusion_plan_builder=MergeExclusionPlanBuilder(),
             ),
             diff_repository=diff_repository_2,
             source_branch=diff_branch,
