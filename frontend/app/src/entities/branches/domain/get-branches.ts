@@ -50,7 +50,7 @@ export const getBranches: GetBranches = async (params = {}) => {
 
 // Fetch all branches without pagination (for branch selector and provider)
 export const getAllBranches = async (): Promise<GetBranchesResult> => {
-  const { data, errors } = await getBranchesFromApi({ limit: undefined });
+  const { data, errors } = await getBranchesFromApi({ limit: null });
 
   if (errors) {
     throw new Error(errors.map((e) => e.message).join("; "));

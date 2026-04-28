@@ -1,5 +1,6 @@
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
+import { Button } from "@infrahub/ui";
+
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 type tQuestionMark = {
@@ -11,9 +12,10 @@ export const QuestionMark = ({ className, message }: tQuestionMark) => {
   if (!message) return null;
 
   return (
-    <Tooltip content={message} enabled>
+    <Tooltip message={message}>
       <Button
-        size="icon"
+        size="xs"
+        shape="circle"
         variant="outline"
         className={classNames("h-4 w-4 p-2 text-[10px]", className)}
         data-cy="question-mark"

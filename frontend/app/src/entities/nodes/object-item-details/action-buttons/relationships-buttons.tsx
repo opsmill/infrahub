@@ -1,17 +1,18 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
@@ -116,17 +117,17 @@ export function RelationshipsButtons({
 
   return (
     <>
-      <ButtonWithTooltip
-        disabled={!isAddAllowed}
-        tooltipEnabled
-        tooltipContent={addTooltipMessage ?? "Add relationship"}
-        onClick={() => setShowAddDrawer(true)}
-        data-testid="open-relationship-form-button"
-        size="sm"
-      >
-        <Icon icon="mdi:plus" className="mr-1.5" aria-hidden="true" /> Add{" "}
-        {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
-      </ButtonWithTooltip>
+      <Tooltip message={addTooltipMessage ?? "Add relationship"}>
+        <Button
+          isDisabledAndFocusable={!isAddAllowed}
+          onPress={() => setShowAddDrawer(true)}
+          data-testid="open-relationship-form-button"
+          size="sm"
+        >
+          <Icon icon="mdi:plus" aria-hidden="true" /> Add{" "}
+          {relationshipSchema?.label ?? relationshipSchema?.kind ?? "relationship"}
+        </Button>
+      </Tooltip>
 
       <SlideOver
         title={

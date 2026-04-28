@@ -1,6 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { type ReactElement, useState } from "react";
 
-import { Button } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { debounce } from "@/shared/utils/common";
 
@@ -53,7 +53,11 @@ export function InlineDisplay({ items, render, maxDisplay = 3 }: InlineDisplayPr
             onMouseEnter={debounce(handleMouseEnter, 200)}
             onMouseLeave={debounce(handleMouseLeave, 200)}
           >
-            <Button variant="outline" size={"icon"}>{`+${remainingItems?.length}`}</Button>
+            <Button
+              variant="outline"
+              size="xs"
+              shape="circle"
+            >{`+${remainingItems?.length}`}</Button>
           </PopoverTrigger>
 
           <PopoverContent

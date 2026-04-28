@@ -1,5 +1,7 @@
+import { Button } from "@infrahub/ui";
 import type React from "react";
 
+import { Row } from "@/shared/components/container";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
@@ -17,7 +19,6 @@ import RelationshipManyField from "@/shared/components/form/fields/relationships
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
-import { Button } from "@/shared/components/ui/button";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
@@ -53,15 +54,15 @@ const DynamicForm = ({
         <DynamicField key={`${field.type}_${field.name}`} {...field} />
       ))}
 
-      <div className="text-right">
+      <Row className="justify-end">
         {onCancel && (
-          <Button variant="outline" className="mr-2" onClick={onCancel}>
+          <Button variant="outline" onPress={onCancel}>
             Cancel
           </Button>
         )}
 
         <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-      </div>
+      </Row>
     </Form>
   );
 };

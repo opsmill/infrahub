@@ -5,6 +5,7 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
 
 import { render } from "../../../../tests/components/render";
+import { initPointerTracking } from "../../../../tests/components/utils";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { TaskStatus } from "./task-status";
 
@@ -29,7 +30,7 @@ describe("TaskStatus", () => {
     const component = await render(<TaskStatus />);
 
     // THEN
-    const taskButton = component.getByRole("link");
+    const taskButton = component.getByRole("link", { name: "Tasks running on this branch" });
     await expect.element(taskButton).toBeVisible();
     await expect
       .element(taskButton)
@@ -38,6 +39,7 @@ describe("TaskStatus", () => {
       .element(taskButton)
       .toHaveAttribute("href", expect.stringContaining(encodeURIComponent(branch.name)));
     await expect.element(component.getByTestId("pulse")).toBeVisible();
+    await initPointerTracking(component.locator);
     await taskButton.hover();
     await expect
       .element(component.getByRole("tooltip", { name: "Tasks running on this branch" }))
@@ -62,6 +64,7 @@ describe("TaskStatus", () => {
     // THEN
     const taskButton = component.getByRole("link", { name: "View branch tasks" });
     await expect.element(taskButton).toBeVisible();
+    await initPointerTracking(component.locator);
     await taskButton.hover();
     await expect
       .element(component.getByRole("tooltip", { name: "View branch tasks" }))

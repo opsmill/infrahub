@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, Spinner } from "@infrahub/ui";
 import { Card, CardContent } from "@infrahub/ui/card";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
@@ -11,7 +12,6 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { LinkButton } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -22,7 +22,6 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
@@ -203,7 +202,7 @@ export const ProposedChangeCreateForm = () => {
       />
 
       <div className="flex w-full items-center justify-end gap-2">
-        <LinkButton variant="outline" to={constructPath("/proposed-changes")}>
+        <LinkButton variant="outline" href={constructPath("/proposed-changes")}>
           Cancel
         </LinkButton>
 

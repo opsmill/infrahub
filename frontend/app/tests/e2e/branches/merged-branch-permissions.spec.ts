@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { initPointerTracking } from "../../components/utils";
 import { ACCOUNT_STATE_PATH } from "../../constants";
 import { generateRandomBranchName } from "../../utils";
 import { createBranchAPI, deleteBranchAPI, mergeBranchAPI } from "../utils/graphql";
@@ -33,7 +34,8 @@ test.describe("Merged branch - disabled actions", () => {
 
     await test.step("create button is disabled with tooltip", async () => {
       await expect(page.getByTestId("create-object-button")).toBeDisabled();
-      await page.getByTestId("create-object-button").hover({ force: true });
+      initPointerTracking(page.locator("body"));
+      await page.getByTestId("create-object-button").hover();
       await expect(page.getByText(TOOLTIP_MESSAGE)).toBeVisible();
     });
 
@@ -52,7 +54,7 @@ test.describe("Merged branch - disabled actions", () => {
     await test.step("edit button is disabled with tooltip", async () => {
       await expect(page.getByTestId("edit-button")).toBeVisible();
       await expect(page.getByTestId("edit-button")).toBeDisabled();
-      await page.getByTestId("edit-button").hover({ force: true });
+      await page.getByTestId("edit-button").hover();
       await expect(page.getByText(TOOLTIP_MESSAGE)).toBeVisible();
     });
 
@@ -79,7 +81,7 @@ test.describe("Merged branch - disabled actions", () => {
     await test.step("add relationship button is disabled with tooltip", async () => {
       await expect(page.getByTestId("open-relationship-form-button")).toBeVisible();
       await expect(page.getByTestId("open-relationship-form-button")).toBeDisabled();
-      await page.getByTestId("open-relationship-form-button").hover({ force: true });
+      await page.getByTestId("open-relationship-form-button").hover();
       await expect(page.getByText(TOOLTIP_MESSAGE)).toBeVisible();
     });
   });

@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
@@ -53,9 +53,7 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     },
   });
 
-  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
+  const handleAction = () => {
     mutate({
       data: {
         id: proposedChangesDetails.id,
@@ -67,18 +65,19 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
-  const tooltipContent = merge.unavailability_reason;
-  const tooltipEnabled = !merge.available;
+  const tooltipMessage = merge.unavailability_reason;
+  const isUnavailable = !merge.available;
 
   return (
     <>
-      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+      <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
           className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
-          onClick={handleAction}
+          onPress={handleAction}
           variant={"active"}
-          isLoading={isPending}
-          disabled={tooltipEnabled || isPending}
+          isPending={isPending}
+          isDisabled={isUnavailable || isPending}
+          isDisabledAndFocusable={isUnavailable && !isPending}
         >
           Merge
         </Button>
@@ -88,13 +87,12 @@ export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         className="h-full rounded-l-none border-l-0"
         variant={"active"}
         size={"sm"}
-        onClick={() => {
+        onPress={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        isDisabled={isPending}
         data-testid="proposed-change-action-button-select"
         aria-label="More actions"
-        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>
