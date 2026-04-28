@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
@@ -8,7 +8,7 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 if TYPE_CHECKING:
-    from infrahub.core.protocols import CoreProposedChange
+    from infrahub.core.protocols import CoreThread
 from infrahub.events.node_action import (
     NodeCreatedEvent,
     NodeDeletedEvent,
@@ -103,7 +103,8 @@ async def generate_node_mutation_events(
         InfrahubKind.ARTIFACTTHREAD,
         InfrahubKind.FILETHREAD,
     ]:
-        proposed_change: CoreProposedChange = await node.change.get_peer(db=db)  # type: ignore[attr-defined]
+        proposed_change = await cast("CoreThread", node).change.get_peer(db=db)
+        assert proposed_change is not None
         action_to_event_map = {
             MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
             MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,
