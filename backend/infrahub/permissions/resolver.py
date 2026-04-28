@@ -117,14 +117,7 @@ class PermissionResolver:
         action: str,
         global_report: dict[GlobalPermissions, bool] | None = None,
     ) -> BranchRelativePermissionDecision:
-        """Unified branch-relative permission decision.
-
-        This method encodes the full priority chain:
-        1. Merged / need-rebase branches deny ALL mutations (even super admin).
-        2. Super admin allows everything else.
-        3. Kind-specific global permissions for mutations.
-        4. Object permissions converted to branch-relative decisions.
-        """
+        """Compute the branch-relative permission decision for a kind/action."""
         if global_report is None:
             global_report = self.build_global_report()
 

@@ -26,7 +26,6 @@ class PermissionManager:
 
     @property
     def resolver(self) -> PermissionResolver:
-        """Lazily create a PermissionResolver from the current loaded permissions."""
         if self._resolver is None:
             self._resolver = PermissionResolver(permissions=self.permissions)
         return self._resolver
