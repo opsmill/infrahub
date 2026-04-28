@@ -1,9 +1,13 @@
 from dataclasses import dataclass
+from unittest.mock import AsyncMock
 
 import pytest
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import MetadataOptions
+from infrahub.core.diff.coordinator import DiffCoordinator
+from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
+from infrahub.core.diff.merger.merger import DiffMerger
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
@@ -11,6 +15,7 @@ from infrahub.core.registry import registry
 from infrahub.core.relationship.model import Relationship
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
+from infrahub.dependencies.registry import get_component_registry
 from tests.conftest import do_car_person_schema_unregistered
 
 
@@ -177,3 +182,85 @@ class TestGetManyPrefetchRelationshipMetadataFiltering:
             assert rel._get_updated_by() is None
             assert rel._get_created_at() is None
             assert rel._get_created_by() is None
+
+
+class TestGetManyPrefetchRelationshipMetadataCleared:
+    """Cleared LINKED_NODES values must surface as None under prefetch.
+
+    Two paths exercise the same prefetch query: clearing on the same branch where
+    the relationship was created, and clearing on a feature branch and merging back.
+    """
+
+    @pytest.fixture(autouse=True)
+    async def _schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+    ) -> SchemaBranch:
+        return registry.schema.register_schema(schema=do_car_person_schema_unregistered(), branch=default_branch.name)
+
+    async def _get_diff_coordinator(self, db: InfrahubDatabase, branch: Branch) -> DiffCoordinator:
+        component_registry = get_component_registry()
+        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
+        diff_coordinator.data_check_synchronizer = AsyncMock(spec=DiffDataCheckSynchronizer)
+        return diff_coordinator
+
+    async def _get_diff_merger(self, db: InfrahubDatabase, branch: Branch) -> DiffMerger:
+        component_registry = get_component_registry()
+        return await component_registry.get_component(DiffMerger, db=db, branch=branch)
+
+    async def _build_car(self, db: InfrahubDatabase, branch: Branch) -> dict[str, Node]:
+        owner_person = await Node.init(db=db, schema="TestPerson", branch=branch)
+        await owner_person.new(db=db, name="Owner", height=180)
+        await owner_person.save(db=db)
+
+        source_person = await Node.init(db=db, schema="TestPerson", branch=branch)
+        await source_person.new(db=db, name="Source", height=170)
+        await source_person.save(db=db)
+
+        driver = await Node.init(db=db, schema="TestPerson", branch=branch)
+        await driver.new(db=db, name="Driver", height=190)
+        await driver.save(db=db)
+
+        car = await Node.init(db=db, schema="TestCar", branch=branch)
+        await car.new(
+            db=db,
+            name="volt",
+            nbr_seats=4,
+            is_electric=True,
+            owner={
+                "id": driver.id,
+                "_relation__source": source_person.id,
+                "_relation__owner": owner_person.id,
+            },
+        )
+        await car.save(db=db)
+        return {"car": car, "driver": driver, "source": source_person, "owner": owner_person}
+
+    async def _assert_cleared(self, db: InfrahubDatabase, branch: Branch, car_id: str, driver_id: str) -> None:
+        nodes = await NodeManager.get_many(
+            db=db,
+            ids=[car_id],
+            branch=branch,
+            prefetch_relationships=True,
+            include_metadata=MetadataQueryOptions(relationship_level=MetadataOptions.LINKED_NODES),
+        )
+        rel = await nodes[car_id].get_relationship("owner").get(db=db)
+        assert isinstance(rel, Relationship)
+        assert rel.peer_id == driver_id
+        assert rel.source_id is None
+        assert rel.owner_id is None
+
+    async def test_cleared_source_owner_same_branch(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+        fixture = await self._build_car(db=db, branch=default_branch)
+        car = fixture["car"]
+        driver = fixture["driver"]
+
+        car_reloaded = await NodeManager.get_one(db=db, branch=default_branch, id=car.id)
+        owner_rel = (await car_reloaded.get_relationship("owner").get_relationships(db=db))[0]
+        owner_rel.clear_source()
+        owner_rel.clear_owner()
+        await car_reloaded.save(db=db)
+
+        await self._assert_cleared(db=db, branch=default_branch, car_id=car.id, driver_id=driver.id)
