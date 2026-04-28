@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import type React from "react";
-
 import { PencilIcon, PlusIcon } from "lucide-react";
+import type React from "react";
 
 import { Button, type ButtonProps, buttonVariants } from "./button";
 
@@ -45,86 +44,76 @@ export const AllVariants: Story = {
     shape: { table: { disable: true } },
     children: { table: { disable: true } },
   },
-  render: ({ isDisabled }) => (
-    <div className="grid min-w-fit grid-cols-[8rem_auto_1px_auto_1px_auto_1px_auto] items-center gap-x-4 gap-y-3">
-      <div />
-      <ColumnLabel>Text + icon</ColumnLabel>
-      <div />
-      <ColumnLabel>Square</ColumnLabel>
-      <div />
-      <ColumnLabel>Circle</ColumnLabel>
-      <div />
-      <ColumnLabel>States</ColumnLabel>
+  render: ({ isDisabled }) => {
+    const renderRow = (
+      label: string,
+      variant: ButtonProps["variant"],
+      rowProps: Partial<ButtonProps> = {}
+    ) => (
+      <div key={label} className="contents">
+        <div className="font-medium text-neutral-700 text-sm">{label}</div>
 
-      {VARIANTS.map((variant) => (
-        <div key={variant} className="contents">
-          <div className="font-medium text-neutral-700 text-sm">{variant}</div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {SIZES.map((size) => (
-              <Button
-                key={`${variant}-${size}-text`}
-                variant={variant}
-                size={size}
-                isDisabled={isDisabled}
-              >
-                <PencilIcon className="h-3.5 w-3.5" />
-                {size}
-              </Button>
-            ))}
-          </div>
-
-          <Divider />
-
-          <div className="flex flex-wrap items-center gap-2">
-            {SIZES.map((size) => (
-              <Button
-                key={`${variant}-${size}-square`}
-                variant={variant}
-                size={size}
-                shape="square"
-                isDisabled={isDisabled}
-                aria-label={`${variant} ${size} square`}
-              >
-                <PlusIcon className="h-3.5 w-3.5" />
-              </Button>
-            ))}
-          </div>
-
-          <Divider />
-
-          <div className="flex flex-wrap items-center gap-2">
-            {SIZES.map((size) => (
-              <Button
-                key={`${variant}-${size}-circle`}
-                variant={variant}
-                size={size}
-                shape="circle"
-                isDisabled={isDisabled}
-                aria-label={`${variant} ${size} circle`}
-              >
-                <PlusIcon className="h-3.5 w-3.5" />
-              </Button>
-            ))}
-          </div>
-
-          <Divider />
-
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant={variant} isDisabled>
-              disabled
+        <div className="flex flex-wrap items-center gap-2">
+          {SIZES.map((size) => (
+            <Button key={`${label}-${size}-text`} variant={variant} size={size} {...rowProps}>
+              <PencilIcon className="h-3.5 w-3.5" />
+              {size}
             </Button>
-            <Button variant={variant} isPending>
-              loading
-            </Button>
-            <Button variant={variant} isDisabledAndFocusable>
-              focusable
-            </Button>
-          </div>
+          ))}
         </div>
-      ))}
-    </div>
-  ),
+
+        <Divider />
+
+        <div className="flex flex-wrap items-center gap-2">
+          {SIZES.map((size) => (
+            <Button
+              key={`${label}-${size}-square`}
+              variant={variant}
+              size={size}
+              shape="square"
+              aria-label={`${label} ${size} square`}
+              {...rowProps}
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+            </Button>
+          ))}
+        </div>
+
+        <Divider />
+
+        <div className="flex flex-wrap items-center gap-2">
+          {SIZES.map((size) => (
+            <Button
+              key={`${label}-${size}-circle`}
+              variant={variant}
+              size={size}
+              shape="circle"
+              aria-label={`${label} ${size} circle`}
+              {...rowProps}
+            >
+              <PlusIcon className="h-3.5 w-3.5" />
+            </Button>
+          ))}
+        </div>
+      </div>
+    );
+
+    return (
+      <div className="grid min-w-fit grid-cols-[8rem_auto_1px_auto_1px_auto] items-center gap-x-4 gap-y-3">
+        <div />
+        <ColumnLabel>Text + icon</ColumnLabel>
+        <div />
+        <ColumnLabel>Square</ColumnLabel>
+        <div />
+        <ColumnLabel>Circle</ColumnLabel>
+
+        {VARIANTS.map((variant) => renderRow(variant ?? "primary", variant, { isDisabled }))}
+
+        {renderRow("disabled", "primary", { isDisabled: true })}
+        {renderRow("pending", "primary", { isPending: true })}
+      </div>
+    );
+  },
   parameters: {
     layout: "padded",
   },

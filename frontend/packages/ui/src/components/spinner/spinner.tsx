@@ -11,7 +11,7 @@ export const Spinner = ({ className, ...props }: SpinnerProps) => {
     <div role="status" {...props}>
       <svg
         aria-hidden="true"
-        className={cn("size-4 animate-spin fill-cyan-600 text-gray-200", className)}
+        className={cn("size-4 animate-spin fill-cyan-600 text-neutral-200", className)}
         viewBox="0 0 100 101"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
