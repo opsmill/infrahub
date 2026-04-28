@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { PencilIcon } from "lucide-react";
 import { DialogTrigger } from "react-aria-components";
 
-import { Button } from "@/shared/components/aria/button";
 import { Popover } from "@/shared/components/aria/popover";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 

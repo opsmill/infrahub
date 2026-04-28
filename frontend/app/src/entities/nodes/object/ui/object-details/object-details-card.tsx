@@ -1,8 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { Card, CardHeader } from "@infrahub/ui/card";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
-
-import { Button } from "@/shared/components/aria/button";
 
 import { ObjectDataDisplay } from "@/entities/nodes/object/ui/object-details/object-data-display/object-data-display";
 import { hasExtraFields } from "@/entities/nodes/object/utils/has-extra-fields";

@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, Spinner } from "@infrahub/ui";
 import { Card, CardContent } from "@infrahub/ui/card";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
@@ -8,7 +9,6 @@ import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/aria/button";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -22,7 +22,6 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 

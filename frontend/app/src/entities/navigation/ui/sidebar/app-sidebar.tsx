@@ -1,3 +1,4 @@
+import { Button } from "@infrahub/ui";
 import { Card } from "@infrahub/ui/card";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Link } from "react-router";
@@ -6,7 +7,6 @@ import InfrahubWithTextLogo from "@/assets/Infrahub-SVG-hori.svg";
 import InfrahubLogo from "@/assets/infrahub-logo.svg";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button } from "@/shared/components/aria/button";
 import { Separator } from "@/shared/components/aria/separator";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";

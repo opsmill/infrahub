@@ -1,8 +1,8 @@
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { FileField } from "@/shared/components/form/fields/file.field";

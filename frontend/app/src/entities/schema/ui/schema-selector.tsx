@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { ListChevronsDownUpIcon, ListChevronsUpDown } from "lucide-react";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import * as R from "remeda";
 
-import { Button } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";

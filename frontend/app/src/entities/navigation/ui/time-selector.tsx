@@ -1,12 +1,12 @@
 import { Transition } from "@headlessui/react";
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { format, isPast } from "date-fns";
 import { useAtom } from "jotai";
 import { parseAsIsoDateTime, useQueryState } from "nuqs";
 import React from "react";
 import DateTimePicker from "react-datepicker";
 
-import { Button } from "@/shared/components/aria/button";
 import { QSP } from "@/shared/config/qsp";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 import { classNames } from "@/shared/utils/common";

@@ -1,10 +1,10 @@
 import { gql, useQuery } from "@apollo/client";
+import { Button } from "@infrahub/ui";
 import { Card } from "@infrahub/ui/card";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ModalConfirm } from "@/shared/components/modals/modal-confirm";

@@ -1,10 +1,10 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
 import type React from "react";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 

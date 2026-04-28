@@ -1,20 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import type React from "react";
 
-import { PencilIcon } from "lucide-react";
+import { PencilIcon, PlusIcon } from "lucide-react";
 
 import { Button, type ButtonProps, buttonVariants } from "./button";
 
 const VARIANTS = Object.keys(buttonVariants.variants.variant) as ButtonProps["variant"][];
 const SIZES = Object.keys(buttonVariants.variants.size) as ButtonProps["size"][];
-
-const ICON_SIZES = new Set(["icon", "square"]) as Set<ButtonProps["size"]>;
-
-function buttonContent(size: ButtonProps["size"]) {
-  if (ICON_SIZES.has(size)) {
-    return <PencilIcon size={14} />;
-  }
-  return size;
-}
+const SHAPES = Object.keys(buttonVariants.variants.shape) as ButtonProps["shape"][];
 
 const meta: Meta<typeof Button> = {
   component: Button,
@@ -22,14 +15,14 @@ const meta: Meta<typeof Button> = {
     layout: "centered",
   },
   args: {
-    disabled: false,
+    isDisabled: false,
   },
   argTypes: {
     variant: { control: "select", options: VARIANTS },
     size: { control: "select", options: SIZES },
-    disabled: { control: "boolean" },
-    ref: { table: { disable: true } },
-    type: { table: { disable: true } },
+    shape: { control: "select", options: SHAPES },
+    isDisabled: { control: "boolean" },
+    isPending: { control: "boolean" },
   },
 };
 
@@ -37,22 +30,97 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+const ColumnLabel = ({ children }: { children: React.ReactNode }) => (
+  <div className="font-medium text-[10px] text-neutral-400 uppercase tracking-wider">
+    {children}
+  </div>
+);
+
+const Divider = () => <div className="h-9 w-px self-center bg-neutral-200" />;
+
 export const AllVariants: Story = {
   argTypes: {
     variant: { table: { disable: true } },
     size: { table: { disable: true } },
+    shape: { table: { disable: true } },
     children: { table: { disable: true } },
   },
-  render: ({ disabled }) => (
-    <div className="flex flex-col gap-4">
+  render: ({ isDisabled }) => (
+    <div className="grid min-w-fit grid-cols-[8rem_auto_1px_auto_1px_auto_1px_auto] items-center gap-x-4 gap-y-3">
+      <div />
+      <ColumnLabel>Text + icon</ColumnLabel>
+      <div />
+      <ColumnLabel>Square</ColumnLabel>
+      <div />
+      <ColumnLabel>Circle</ColumnLabel>
+      <div />
+      <ColumnLabel>States</ColumnLabel>
+
       {VARIANTS.map((variant) => (
-        <div key={variant} className="flex items-center gap-2">
-          <span className="w-30 text-xs text-gray-500">{variant}</span>
-          {SIZES.map((size) => (
-            <Button key={`${variant}-${size}`} variant={variant} size={size} disabled={disabled}>
-              {buttonContent(size)}
+        <div key={variant} className="contents">
+          <div className="font-medium text-neutral-700 text-sm">{variant}</div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {SIZES.map((size) => (
+              <Button
+                key={`${variant}-${size}-text`}
+                variant={variant}
+                size={size}
+                isDisabled={isDisabled}
+              >
+                <PencilIcon className="h-3.5 w-3.5" />
+                {size}
+              </Button>
+            ))}
+          </div>
+
+          <Divider />
+
+          <div className="flex flex-wrap items-center gap-2">
+            {SIZES.map((size) => (
+              <Button
+                key={`${variant}-${size}-square`}
+                variant={variant}
+                size={size}
+                shape="square"
+                isDisabled={isDisabled}
+                aria-label={`${variant} ${size} square`}
+              >
+                <PlusIcon className="h-3.5 w-3.5" />
+              </Button>
+            ))}
+          </div>
+
+          <Divider />
+
+          <div className="flex flex-wrap items-center gap-2">
+            {SIZES.map((size) => (
+              <Button
+                key={`${variant}-${size}-circle`}
+                variant={variant}
+                size={size}
+                shape="circle"
+                isDisabled={isDisabled}
+                aria-label={`${variant} ${size} circle`}
+              >
+                <PlusIcon className="h-3.5 w-3.5" />
+              </Button>
+            ))}
+          </div>
+
+          <Divider />
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant={variant} isDisabled>
+              disabled
             </Button>
-          ))}
+            <Button variant={variant} isPending>
+              loading
+            </Button>
+            <Button variant={variant} isDisabledAndFocusable>
+              focusable
+            </Button>
+          </div>
         </div>
       ))}
     </div>
@@ -64,6 +132,9 @@ export const AllVariants: Story = {
 
 export const Playground: Story = {
   args: {
+    variant: "primary",
+    size: "md",
+    shape: "default",
     children: "Button",
   },
 };

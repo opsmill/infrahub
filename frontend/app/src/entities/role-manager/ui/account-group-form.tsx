@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
-import { Button } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
 import InputField from "@/shared/components/form/fields/input.field";

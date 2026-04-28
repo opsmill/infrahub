@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps } from "@infrahub/ui";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { Menu, MenuItem, MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";

@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import { MAX_PASSWORD_DOTS_DISPLAY, MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 

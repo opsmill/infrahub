@@ -1,8 +1,8 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlusIcon } from "lucide-react";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";

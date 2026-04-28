@@ -21,6 +21,7 @@ export default defineConfig({
     "oxc/no-rest-spread-properties": "off",
     "react-perf/jsx-no-new-object-as-prop": "off",
     "react/button-has-type": "off",
+    "react/forbid-component-props": "off",
     "react/jsx-filename-extension": ["error", { extensions: [".tsx"] }],
     "react/jsx-max-depth": "off",
     "react/jsx-props-no-spreading": "off",
@@ -30,5 +31,6 @@ export default defineConfig({
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",
     "typescript/no-empty-interface": "off",
+    "unicorn/no-null": "off",
   },
 });

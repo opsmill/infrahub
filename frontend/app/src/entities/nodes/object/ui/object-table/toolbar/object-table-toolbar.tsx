@@ -1,6 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { XIcon } from "lucide-react";
 
-import { Button } from "@/shared/components/aria/button";
 import { classNames } from "@/shared/utils/common";
 
 import { ToolbarAddToGroupsAction } from "@/entities/nodes/object/ui/object-table/toolbar/actions/groups/toolbar-add-to-groups-action";

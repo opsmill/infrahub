@@ -1,3 +1,4 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
 import {
@@ -9,7 +10,6 @@ import {
   useFormContext,
 } from "react-hook-form";
 
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { SlideOverContext } from "@/shared/components/display/slide-over";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
 import { inputErrorStyle } from "@/shared/components/ui/style";

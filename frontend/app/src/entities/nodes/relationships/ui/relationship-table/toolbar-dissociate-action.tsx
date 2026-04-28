@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import React from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import {

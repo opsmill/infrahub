@@ -1,4 +1,5 @@
-import { Button } from "@/shared/components/aria/button";
+import { Button } from "@infrahub/ui";
+
 import { Col } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
 

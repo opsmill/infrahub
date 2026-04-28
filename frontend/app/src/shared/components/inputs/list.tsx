@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import React from "react";
 import { toast } from "react-toastify";
 
-import { Button } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Input } from "@/shared/components/ui/input";

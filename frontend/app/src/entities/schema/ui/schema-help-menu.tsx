@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 
-import { Button } from "@/shared/components/aria/button";
 import { Menu, MenuItem, MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";

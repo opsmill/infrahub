@@ -1,7 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
 import type React from "react";
-
-import { Button } from "@/shared/components/aria/button";
 
 interface BreadcrumbItemTriggerProps {
   children: React.ReactNode;

@@ -1,6 +1,6 @@
+import { Button } from "@infrahub/ui";
 import type React from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";

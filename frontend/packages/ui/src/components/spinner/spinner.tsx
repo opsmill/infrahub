@@ -1,14 +1,17 @@
-import type { InputHTMLAttributes } from "react";
+import type React from "react";
 
-import { classNames } from "@/shared/utils/common";
+import { cn } from "tailwind-variants";
 
-interface SpinnerProps extends InputHTMLAttributes<HTMLDivElement> {}
-export const Spinner = ({ ...props }: SpinnerProps) => {
+export interface SpinnerProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "className"> {
+  className?: React.HTMLAttributes<SVGSVGElement>["className"];
+}
+
+export const Spinner = ({ className, ...props }: SpinnerProps) => {
   return (
     <div role="status" {...props}>
       <svg
         aria-hidden="true"
-        className={classNames("h-4 w-4 animate-spin fill-custom-blue-600 text-gray-200")}
+        className={cn("size-4 animate-spin fill-cyan-600 text-gray-200", className)}
         viewBox="0 0 100 101"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

@@ -1,9 +1,9 @@
+import { LinkButton, Spinner } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
 import React from "react";
 import { Button as AriaButton } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/aria/button";
 import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -13,7 +13,6 @@ import {
   ComboboxList,
   type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames, debounce } from "@/shared/utils/common";
 

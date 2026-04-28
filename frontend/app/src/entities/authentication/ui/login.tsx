@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-import { Button } from "@/shared/components/aria/button";
 import InputField from "@/shared/components/form/fields/input.field";
 import PasswordInputField from "@/shared/components/form/fields/password-input.field";
 import { isRequired } from "@/shared/components/form/utils/validation";

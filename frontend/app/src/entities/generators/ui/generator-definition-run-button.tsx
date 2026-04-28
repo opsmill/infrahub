@@ -1,3 +1,4 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
 import { useState } from "react";
 import { Text } from "react-aria-components";
@@ -5,7 +6,6 @@ import { Link } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";

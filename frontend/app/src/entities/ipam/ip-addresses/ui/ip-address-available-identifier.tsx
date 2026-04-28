@@ -1,6 +1,6 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { ArrowRightIcon, PlusIcon } from "lucide-react";
 
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { classNames } from "@/shared/utils/common";
 
 import type { IpAddressAvailableNode } from "@/entities/ipam/ip-addresses/domain/types";

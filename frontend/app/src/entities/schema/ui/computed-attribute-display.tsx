@@ -1,8 +1,8 @@
+import { Button } from "@infrahub/ui";
 import { EyeIcon } from "lucide-react";
 import { DialogTrigger } from "react-aria-components";
 
 import type { components } from "@/shared/api/rest/types.generated";
-import { Button } from "@/shared/components/aria/button";
 import { Modal } from "@/shared/components/aria/modal";
 import { Row } from "@/shared/components/container";
 import { DataViewer } from "@/shared/components/data-viewer/data-viewer";

@@ -1,7 +1,7 @@
+import { Button, LinkButton } from "@infrahub/ui";
 import type React from "react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, LinkButton } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { isRequired } from "@/shared/components/form/utils/validation";

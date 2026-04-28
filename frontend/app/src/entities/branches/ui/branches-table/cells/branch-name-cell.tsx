@@ -1,7 +1,7 @@
+import { LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/aria/button";
 import { Checkbox } from "@/shared/components/aria/checkbox";
 import { Col, Row } from "@/shared/components/container";
 

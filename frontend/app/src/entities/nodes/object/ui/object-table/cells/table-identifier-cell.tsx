@@ -1,6 +1,6 @@
+import { LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
-import { LinkButton } from "@/shared/components/aria/button";
 import { Checkbox } from "@/shared/components/aria/checkbox";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";

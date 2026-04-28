@@ -1,10 +1,10 @@
+import { Button } from "@infrahub/ui";
 import { useAtom, useAtomValue } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { SidebarIcon } from "lucide-react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Outlet } from "react-router";
 
-import { Button } from "@/shared/components/aria/button";
 import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";

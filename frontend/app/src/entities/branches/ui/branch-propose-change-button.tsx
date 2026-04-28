@@ -1,7 +1,7 @@
+import { LinkButton } from "@infrahub/ui";
 import { PlusIcon } from "lucide-react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/aria/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";

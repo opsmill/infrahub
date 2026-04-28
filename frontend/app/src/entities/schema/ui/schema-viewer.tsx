@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, LinkButton } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
 
-import { Button, LinkButton } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Badge } from "@/shared/components/ui/badge";
 import { QSP } from "@/shared/config/qsp";

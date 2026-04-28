@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, LinkButton } from "@infrahub/ui";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, LinkButton } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { classNames } from "@/shared/utils/common";

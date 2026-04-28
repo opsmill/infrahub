@@ -1,9 +1,9 @@
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/aria/button";
 import { Retry } from "@/shared/components/buttons/retry";
 import { PieChart } from "@/shared/components/display/pie-chart";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";

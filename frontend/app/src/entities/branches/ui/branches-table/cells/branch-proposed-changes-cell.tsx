@@ -1,10 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, Spinner } from "@infrahub/ui";
 import { Link } from "react-router";
 
-import { LinkButton } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import { TableCell } from "@/shared/components/table/table-cell";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";

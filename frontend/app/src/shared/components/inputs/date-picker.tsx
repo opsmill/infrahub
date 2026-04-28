@@ -3,9 +3,9 @@ import type React from "react";
 import DateTimePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+import { Button } from "@infrahub/ui";
 import { isValid } from "date-fns";
 
-import { Button } from "@/shared/components/aria/button";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 import { DATE_TIME_FORMAT } from "@/shared/utils/date";

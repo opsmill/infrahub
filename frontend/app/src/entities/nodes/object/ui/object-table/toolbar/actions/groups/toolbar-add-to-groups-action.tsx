@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { DialogTrigger } from "react-aria-components";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { Button } from "@/shared/components/aria/button";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 

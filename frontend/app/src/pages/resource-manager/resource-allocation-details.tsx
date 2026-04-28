@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton } from "@infrahub/ui";
 import { Card, CardContent } from "@infrahub/ui/card";
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton } from "@/shared/components/aria/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Table } from "@/shared/components/table/table";

@@ -1,6 +1,5 @@
+import { Button } from "@infrahub/ui";
 import { ListBox } from "react-aria-components";
-
-import { Button } from "@/shared/components/aria/button";
 
 import {
   GroupPanelBody,

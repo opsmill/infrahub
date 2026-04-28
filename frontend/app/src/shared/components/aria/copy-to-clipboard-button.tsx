@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { CopyCheckIcon, CopyIcon } from "lucide-react";
 import type { ButtonProps as AriaButtonProps } from "react-aria-components";
 
-import { Button } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 

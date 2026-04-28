@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, LinkButton, Spinner } from "@infrahub/ui";
 import React from "react";
 import { Link, useLocation } from "react-router";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, LinkButton } from "@/shared/components/aria/button";
 import { Avatar } from "@/shared/components/display/avatar";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import {
@@ -15,7 +15,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { Spinner } from "@/shared/components/ui/spinner";
 import {
   INFRAHUB_DISCORD_URL,
   INFRAHUB_DOC_LOCAL,

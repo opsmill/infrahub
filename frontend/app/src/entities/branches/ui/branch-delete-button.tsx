@@ -1,7 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
-
-import { Button } from "@/shared/components/aria/button";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";

@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 
-import { Button } from "@/shared/components/aria/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";

@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton } from "@infrahub/ui";
 
-import { LinkButton } from "@/shared/components/aria/button";
 import { Badge } from "@/shared/components/ui/badge";
 import { NODE_PATH_EXCLUDELIST } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";

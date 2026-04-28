@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Spinner } from "@infrahub/ui";
 import { useEffect, useId } from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
@@ -14,7 +14,6 @@ import {
 } from "@/shared/components/ui/combobox";
 import Label from "@/shared/components/ui/label";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 

@@ -1,6 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { Heading } from "react-aria-components";
 
-import { Button } from "@/shared/components/aria/button";
 import { Modal } from "@/shared/components/aria/modal";
 import { Col, Row } from "@/shared/components/container";
 

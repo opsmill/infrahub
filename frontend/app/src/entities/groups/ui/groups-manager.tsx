@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Col, Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { SearchInput } from "@/shared/components/inputs/search-input";

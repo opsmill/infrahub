@@ -1,9 +1,9 @@
 import { gql } from "@apollo/client";
+import { Button, Spinner } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
-import { Button } from "@/shared/components/aria/button";
 import type { PoolValue } from "@/shared/components/form/pool-selector";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -15,7 +15,6 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import type { PopoverTrigger } from "@/shared/components/ui/popover";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";

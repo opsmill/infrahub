@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import type React from "react";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
 

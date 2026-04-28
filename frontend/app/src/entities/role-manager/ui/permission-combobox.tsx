@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Spinner } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -13,7 +13,6 @@ import {
   ComboboxList,
 } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { ACCOUNT_PERMISSION_OBJECT } from "@/shared/config/constants";
 import { classNames, debounce } from "@/shared/utils/common";

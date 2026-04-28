@@ -1,8 +1,8 @@
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
-import { Button } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { TASK_OBJECT } from "@/shared/config/constants";
 

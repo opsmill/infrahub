@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import type React from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";

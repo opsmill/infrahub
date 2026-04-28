@@ -1,9 +1,9 @@
+import { Spinner } from "@infrahub/ui";
 import { useQueryState } from "nuqs";
 import { useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { TASK_TAB } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 

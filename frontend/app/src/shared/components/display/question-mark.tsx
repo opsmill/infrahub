@@ -1,4 +1,5 @@
-import { Button } from "@/shared/components/aria/button";
+import { Button } from "@infrahub/ui";
+
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { classNames } from "@/shared/utils/common";
 

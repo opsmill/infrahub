@@ -1,6 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { type ReactElement, useState } from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { debounce } from "@/shared/utils/common";
 

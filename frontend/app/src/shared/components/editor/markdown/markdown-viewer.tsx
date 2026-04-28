@@ -1,6 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { classNames } from "@/shared/utils/common";
 

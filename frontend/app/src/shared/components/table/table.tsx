@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { isValidElement, type ReactNode } from "react";
 import { Link } from "react-router";
 
-import { Button } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import {

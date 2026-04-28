@@ -1,6 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { Card, CardContent, type CardProps } from "@infrahub/ui/card";
 
-import { Button } from "@/shared/components/aria/button";
 import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";

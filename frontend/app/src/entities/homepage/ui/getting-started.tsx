@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, type LinkButtonProps } from "@infrahub/ui";
 import { BookOpen, ExternalLink } from "lucide-react";
 import type React from "react";
 import type { ReactNode } from "react";
 
-import { LinkButton, type LinkButtonProps } from "@/shared/components/aria/button";
 import { Separator } from "@/shared/components/aria/separator";
 
 import { HomeCard } from "@/entities/homepage/ui/home-card";

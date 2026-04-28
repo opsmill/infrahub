@@ -1,13 +1,12 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, type LinkButtonProps, Spinner } from "@infrahub/ui";
 import { useQuery } from "@tanstack/react-query";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { LinkButton, type LinkButtonProps } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Pulse } from "@/shared/components/ui/pulse";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { QSP } from "@/shared/config/qsp";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";

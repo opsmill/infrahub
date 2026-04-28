@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { classNames } from "@/shared/utils/common";
 
 import { Input, type InputProps } from "./input";

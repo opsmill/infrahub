@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-
-import { Button } from "@/shared/components/aria/button";
+import { Button } from "@infrahub/ui";
 
 export const PcPlaceholderButton = () => {
   return (

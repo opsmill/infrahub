@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { Trash2Icon } from "lucide-react";
 import React from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 
 import { useObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";

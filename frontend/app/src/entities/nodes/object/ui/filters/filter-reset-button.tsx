@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 
-import { Button } from "@/shared/components/aria/button";
 import useFilters from "@/shared/hooks/useFilters";
 
 export const FilterResetButton = () => {

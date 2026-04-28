@@ -1,6 +1,6 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";

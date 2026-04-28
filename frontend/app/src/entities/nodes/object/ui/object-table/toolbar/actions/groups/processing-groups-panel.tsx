@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import React from "react";
 import { ListBox } from "react-aria-components";
 
-import { Button } from "@/shared/components/aria/button";
 import { pluralize } from "@/shared/utils/string";
 
 import {

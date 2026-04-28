@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-
-import { LinkButton } from "@/shared/components/aria/button";
+import { LinkButton } from "@infrahub/ui";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type {

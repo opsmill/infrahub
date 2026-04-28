@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { Card, CardContent } from "@infrahub/ui/card";
 import { useEffect, useState } from "react";
 
-import { Button } from "@/shared/components/aria/button";
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
 import Kbd from "@/shared/components/ui/kbd";

@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
@@ -9,7 +10,6 @@ import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, type ButtonProps } from "@/shared/components/aria/button";
 import {
   CopyToClipboardMenuItem,
   Menu,

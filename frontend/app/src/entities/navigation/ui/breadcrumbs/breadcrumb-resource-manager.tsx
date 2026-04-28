@@ -1,3 +1,4 @@
+import { Button } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
 import { ListLayout, Virtualizer } from "react-aria-components";
 import { Link, useParams } from "react-router";
@@ -11,7 +12,6 @@ import {
   BreadcrumbItemLoading,
   Breadcrumbs,
 } from "@/shared/components/aria/breadcrumbs";
-import { Button } from "@/shared/components/aria/button";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";

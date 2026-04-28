@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
 import { useRef, useState } from "react";
 import type { Key } from "react-aria-components";
 
 import { Autocomplete } from "@/shared/components/aria/autocomplete";
-import { Button } from "@/shared/components/aria/button";
 import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { Popover, PopoverTrigger } from "@/shared/components/aria/popover";
 import { isFieldFiltered } from "@/shared/hooks/is-field-filtered";
