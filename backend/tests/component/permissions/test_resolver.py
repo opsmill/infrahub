@@ -89,8 +89,7 @@ class TestResolveGlobalPermission:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
@@ -100,12 +99,10 @@ class TestResolveGlobalPermission:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
                 ),
                 GlobalPermission(
-                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                    decision=PermissionDecision.DENY.value,
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.DENY.value
                 ),
             ]
         )
@@ -115,8 +112,7 @@ class TestResolveGlobalPermission:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.MANAGE_SCHEMA.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
@@ -126,8 +122,7 @@ class TestResolveGlobalPermission:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.SUPER_ADMIN.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
@@ -139,7 +134,23 @@ class TestResolveGlobalPermission:
 
 class TestReportObjectPermission:
     def test_no_permissions_returns_deny(self, empty_resolver: PermissionResolver) -> None:
-        assert empty_resolver.report_object_permission("Infra", "Device", "create") == PermissionDecisionFlag.DENY
+        assert (
+            empty_resolver.report_object_permission(namespace="Infra", name="Device", action="create")
+            == PermissionDecisionFlag.DENY
+        )
+
+    def test_unrelated_kind_does_not_grant(self) -> None:
+        resolver = _make_resolver(
+            object_permissions=[
+                ObjectPermission(
+                    namespace="Infra", name="Device", action="any", decision=PermissionDecision.ALLOW_ALL.value
+                )
+            ]
+        )
+        assert (
+            resolver.report_object_permission(namespace="Builtin", name="Tag", action="create")
+            == PermissionDecisionFlag.DENY
+        )
 
     def test_wildcard_allow(self) -> None:
         resolver = _make_resolver(
@@ -147,7 +158,10 @@ class TestReportObjectPermission:
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_ALL.value)
             ]
         )
-        assert resolver.report_object_permission("Infra", "Device", "create") == PermissionDecisionFlag.ALLOW_ALL
+        assert (
+            resolver.report_object_permission(namespace="Infra", name="Device", action="create")
+            == PermissionDecisionFlag.ALLOW_ALL
+        )
 
     def test_specific_deny_overrides_wildcard_allow(self) -> None:
         resolver = _make_resolver(
@@ -156,7 +170,10 @@ class TestReportObjectPermission:
                 ObjectPermission(namespace="Builtin", name="Tag", action="any", decision=PermissionDecision.DENY.value),
             ]
         )
-        assert resolver.report_object_permission("Builtin", "Tag", "create") == PermissionDecisionFlag.DENY
+        assert (
+            resolver.report_object_permission(namespace="Builtin", name="Tag", action="create")
+            == PermissionDecisionFlag.DENY
+        )
 
     def test_specific_allow_overrides_wildcard_deny(self) -> None:
         resolver = _make_resolver(
@@ -167,7 +184,10 @@ class TestReportObjectPermission:
                 ),
             ]
         )
-        assert resolver.report_object_permission("Builtin", "Tag", "create") == PermissionDecisionFlag.ALLOW_ALL
+        assert (
+            resolver.report_object_permission(namespace="Builtin", name="Tag", action="create")
+            == PermissionDecisionFlag.ALLOW_ALL
+        )
 
     def test_allow_default_only(self) -> None:
         resolver = _make_resolver(
@@ -175,7 +195,7 @@ class TestReportObjectPermission:
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_DEFAULT.value)
             ]
         )
-        result = resolver.report_object_permission("Infra", "Device", "create")
+        result = resolver.report_object_permission(namespace="Infra", name="Device", action="create")
         assert result == PermissionDecisionFlag.ALLOW_DEFAULT
         assert result & PermissionDecisionFlag.ALLOW_DEFAULT
         assert not (result & PermissionDecisionFlag.ALLOW_OTHER)
@@ -186,7 +206,7 @@ class TestReportObjectPermission:
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_OTHER.value)
             ]
         )
-        result = resolver.report_object_permission("Infra", "Device", "create")
+        result = resolver.report_object_permission(namespace="Infra", name="Device", action="create")
         assert result == PermissionDecisionFlag.ALLOW_OTHER
         assert result & PermissionDecisionFlag.ALLOW_OTHER
         assert not (result & PermissionDecisionFlag.ALLOW_DEFAULT)
@@ -200,7 +220,7 @@ class TestReportObjectPermission:
                 ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_OTHER.value),
             ]
         )
-        result = resolver.report_object_permission("Infra", "Device", "create")
+        result = resolver.report_object_permission(namespace="Infra", name="Device", action="create")
         assert result == PermissionDecisionFlag.ALLOW_ALL
 
 
@@ -214,7 +234,7 @@ class TestResolveObjectPermission:
         check = ObjectPermission(
             namespace="Infra", name="Device", action="create", decision=PermissionDecision.ALLOW_ALL.value
         )
-        assert resolver.resolve_object_permission(check) is True
+        assert resolver.resolve_object_permission(permission_to_check=check) is True
 
     def test_allow_default_denied_when_only_allow_other(self) -> None:
         resolver = _make_resolver(
@@ -225,7 +245,7 @@ class TestResolveObjectPermission:
         check = ObjectPermission(
             namespace="Infra", name="Device", action="create", decision=PermissionDecision.ALLOW_DEFAULT.value
         )
-        assert resolver.resolve_object_permission(check) is False
+        assert resolver.resolve_object_permission(permission_to_check=check) is False
 
     def test_allow_other_denied_when_only_allow_default(self) -> None:
         resolver = _make_resolver(
@@ -236,90 +256,106 @@ class TestResolveObjectPermission:
         check = ObjectPermission(
             namespace="Infra", name="Device", action="create", decision=PermissionDecision.ALLOW_OTHER.value
         )
-        assert resolver.resolve_object_permission(check) is False
+        assert resolver.resolve_object_permission(permission_to_check=check) is False
 
     def test_deny_is_denied(self, empty_resolver: PermissionResolver) -> None:
         check = ObjectPermission(
             namespace="Infra", name="Device", action="create", decision=PermissionDecision.ALLOW_ALL.value
         )
-        assert empty_resolver.resolve_object_permission(check) is False
+        assert empty_resolver.resolve_object_permission(permission_to_check=check) is False
 
 
 class TestHasPermission:
+    def test_object_permission_granted(self) -> None:
+        resolver = _make_resolver(
+            object_permissions=[
+                ObjectPermission(namespace="*", name="*", action="any", decision=PermissionDecision.ALLOW_ALL.value)
+            ]
+        )
+        check = ObjectPermission(
+            namespace="Infra", name="Device", action="create", decision=PermissionDecision.ALLOW_ALL.value
+        )
+        assert resolver.has_permission(permission=check) is True
+
+    def test_object_permission_denied(self, empty_resolver: PermissionResolver) -> None:
+        check = ObjectPermission(
+            namespace="Infra", name="Device", action="create", decision=PermissionDecision.ALLOW_ALL.value
+        )
+        assert empty_resolver.has_permission(permission=check) is False
+
+    def test_global_permission_granted(self) -> None:
+        check = GlobalPermission(
+            action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value
+        )
+        resolver = _make_resolver(global_permissions=[check])
+        assert resolver.has_permission(permission=check) is True
+
+    def test_global_permission_denied(self, empty_resolver: PermissionResolver) -> None:
+        check = GlobalPermission(
+            action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value
+        )
+        assert empty_resolver.has_permission(permission=check) is False
+
     def test_super_admin_bypass_for_object(self) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.SUPER_ADMIN.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
         check = ObjectPermission(
             namespace="Infra", name="Device", action="create", decision=PermissionDecision.ALLOW_ALL.value
         )
-        assert resolver.has_permission(check) is True
+        assert resolver.has_permission(permission=check) is True
 
     def test_super_admin_bypass_for_global(self) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.SUPER_ADMIN.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
         check = GlobalPermission(
-            action=GlobalPermissions.MANAGE_SCHEMA.value,
-            decision=PermissionDecision.ALLOW_ALL.value,
+            action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value
         )
-        assert resolver.has_permission(check) is True
+        assert resolver.has_permission(permission=check) is True
 
     def test_has_permissions_all_required(self) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
                 ),
                 GlobalPermission(
-                    action=GlobalPermissions.MANAGE_SCHEMA.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value
                 ),
             ]
         )
         checks = [
             GlobalPermission(
-                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                decision=PermissionDecision.ALLOW_ALL.value,
+                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
             ),
-            GlobalPermission(
-                action=GlobalPermissions.MANAGE_SCHEMA.value,
-                decision=PermissionDecision.ALLOW_ALL.value,
-            ),
+            GlobalPermission(action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value),
         ]
-        assert resolver.has_permissions(checks) is True
+        assert resolver.has_permissions(permissions=checks) is True
 
     def test_has_permissions_fails_if_one_missing(self) -> None:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
                 ),
             ]
         )
         checks = [
             GlobalPermission(
-                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value,
-                decision=PermissionDecision.ALLOW_ALL.value,
+                action=GlobalPermissions.EDIT_DEFAULT_BRANCH.value, decision=PermissionDecision.ALLOW_ALL.value
             ),
-            GlobalPermission(
-                action=GlobalPermissions.MANAGE_SCHEMA.value,
-                decision=PermissionDecision.ALLOW_ALL.value,
-            ),
+            GlobalPermission(action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value),
         ]
-        assert resolver.has_permissions(checks) is False
+        assert resolver.has_permissions(permissions=checks) is False
 
 
 class TestBuildGlobalReport:
@@ -332,8 +368,7 @@ class TestBuildGlobalReport:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.MANAGE_SCHEMA.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.MANAGE_SCHEMA.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
@@ -347,8 +382,7 @@ class TestGetBranchDecision:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.SUPER_ADMIN.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
@@ -362,8 +396,7 @@ class TestGetBranchDecision:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.SUPER_ADMIN.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
@@ -384,8 +417,7 @@ class TestGetBranchDecision:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.SUPER_ADMIN.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
@@ -400,8 +432,7 @@ class TestGetBranchDecision:
         resolver = _make_resolver(
             global_permissions=[
                 GlobalPermission(
-                    action=GlobalPermissions.MANAGE_ACCOUNTS.value,
-                    decision=PermissionDecision.ALLOW_ALL.value,
+                    action=GlobalPermissions.MANAGE_ACCOUNTS.value, decision=PermissionDecision.ALLOW_ALL.value
                 )
             ]
         )
