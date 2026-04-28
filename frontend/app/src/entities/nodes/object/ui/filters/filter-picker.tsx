@@ -62,7 +62,7 @@ export function FilterPicker({ schema, filters }: FilterPickerProps) {
           if (!isOpen) setSelectedField(null);
         }}
       >
-        <Button variant="outline" size="sm" className="rounded-xl">
+        <Button variant="ghost" size="sm" className="rounded-xl border-gray-300">
           <Icon icon="mdi:filter-variant" className="text-base" />
           Filter
           {filterCount > 0 && <FilterCountBadge count={filterCount} />}
