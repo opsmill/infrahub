@@ -103,7 +103,9 @@ export function Button({ variant, size, shape, isDisabledAndFocusable, ...props 
     >
       {composeRenderProps(props.children, (children, { isPending }) => (
         <>
-          {isPending && !isDisabledAndFocusable && <Spinner className="absolute" />}
+          {isPending && !isDisabledAndFocusable && (
+            <Spinner className="absolute inset-0 m-auto" />
+          )}
           {children}
         </>
       ))}
