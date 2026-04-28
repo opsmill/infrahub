@@ -79,7 +79,8 @@ export default function MetaDetailsTooltip({
     <Popover>
       <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
         <Button
-          size="icon"
+          size="xs"
+          shape="circle"
           variant="ghost"
           className="text-gray-500 focus-visible:ring-0"
           data-cy="metadata-button"

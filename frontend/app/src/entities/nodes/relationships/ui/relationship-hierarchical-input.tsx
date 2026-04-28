@@ -127,7 +127,8 @@ export const RelationshipHierarchicalManyInput = ({
                 {getNodeLabel(node)}
 
                 <Button
-                  size="icon"
+                  size="xs"
+                  shape="circle"
                   variant="ghost"
                   onPress={() => {
                     onChange(value?.filter((item) => item.id !== node.id));

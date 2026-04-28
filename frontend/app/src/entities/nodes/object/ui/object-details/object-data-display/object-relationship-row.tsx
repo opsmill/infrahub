@@ -102,7 +102,8 @@ function RelationshipOneRow({
                       <Tooltip message={permission.update.message ?? undefined}>
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="xs"
+                          shape="circle"
                           isDisabledAndFocusable={!permission.update.isAllowed}
                           onPress={() => onClickMetadata(relationshipSchema)}
                           data-testid="edit-metadata-button"

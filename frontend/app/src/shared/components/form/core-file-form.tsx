@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Button } from "@/shared/components/aria/button";
+import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { FileField } from "@/shared/components/form/fields/file.field";
 import type { ProfileData } from "@/shared/components/form/object-form";
@@ -181,14 +182,14 @@ export function CoreFileForm({
           <DynamicField key={`${field.type}_${field.name}`} {...field} />
         ))}
 
-        <div className="text-right">
+        <Row className="justify-end">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onPress={onCancel}>
+            <Button variant="outline" onPress={onCancel}>
               Cancel
             </Button>
           )}
           <FormSubmit>Save</FormSubmit>
-        </div>
+        </Row>
       </Form>
     </div>
   );

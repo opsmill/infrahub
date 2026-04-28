@@ -2,6 +2,7 @@ import { useQueryState } from "nuqs";
 
 import type { Branch } from "@/shared/api/graphql/generated/types";
 import { Button } from "@/shared/components/aria/button";
+import { Row } from "@/shared/components/container";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import InputField from "@/shared/components/form/fields/input.field";
 import { isMinLength, isRequired } from "@/shared/components/form/utils/validation";
@@ -71,13 +72,13 @@ const BranchCreateForm = ({ defaultBranchName, onCancel, onSuccess }: BranchCrea
 
       <CheckboxField name="sync_with_git" label="Sync with Git" rules={{ required: true }} />
 
-      <div className="text-right">
-        <Button variant="outline" className="mr-2" onPress={onCancel}>
+      <Row className="justify-end">
+        <Button variant="outline" onPress={onCancel}>
           Cancel
         </Button>
 
         <FormSubmit data-testid="submit-create-new-branch">Create a new branch</FormSubmit>
-      </div>
+      </Row>
     </Form>
   );
 };

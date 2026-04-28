@@ -106,7 +106,8 @@ export const SchemaViewer = ({
             <Tooltip message="View in graph">
               <LinkButton
                 href={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
-                size="icon"
+                size="xs"
+                shape="circle"
                 variant="outline"
                 aria-label="View in graph"
               >
@@ -117,7 +118,13 @@ export const SchemaViewer = ({
 
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onPress={onClose}>
+          <Button
+            size="xs"
+            shape="circle"
+            variant="ghost"
+            aria-label="Close schema viewer"
+            onPress={onClose}
+          >
             <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>

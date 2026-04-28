@@ -22,7 +22,7 @@ export const SchemaHelpMenu = ({ schema }: SchemaHelpMenuProps) => {
 
   return (
     <MenuTrigger>
-      <Button size="icon" variant="outline" data-testid="schema-help-menu-trigger">
+      <Button size="xs" shape="circle" variant="outline" data-testid="schema-help-menu-trigger">
         ?
       </Button>
 

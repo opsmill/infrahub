@@ -13,7 +13,8 @@ export const QuestionMark = ({ className, message }: tQuestionMark) => {
   return (
     <Tooltip message={message}>
       <Button
-        size="icon"
+        size="xs"
+        shape="circle"
         variant="outline"
         className={classNames("h-4 w-4 p-2 text-[10px]", className)}
         data-cy="question-mark"

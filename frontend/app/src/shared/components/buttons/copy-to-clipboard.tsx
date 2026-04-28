@@ -11,7 +11,8 @@ interface CopyToClipboardProps extends Omit<ButtonProps, "children"> {
 
 export const CopyToClipboard = ({
   text,
-  size = "icon",
+  size = "xs",
+  shape = "circle",
   variant = "ghost",
   children,
   ...props
@@ -19,7 +20,13 @@ export const CopyToClipboard = ({
   const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   return (
-    <Button size={size} variant={variant} onPress={() => copyToClipboard(text)} {...props}>
+    <Button
+      size={size}
+      shape={shape}
+      variant={variant}
+      onPress={() => copyToClipboard(text)}
+      {...props}
+    >
       <Icon
         icon={
           isCopied ? "mdi:checkbox-multiple-marked-outline" : "mdi:checkbox-multiple-blank-outline"

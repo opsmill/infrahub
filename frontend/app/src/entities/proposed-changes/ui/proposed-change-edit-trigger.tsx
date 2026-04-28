@@ -42,7 +42,8 @@ export const ProposedChangeEditTrigger = ({
       >
         <Button
           variant="outline"
-          size="icon"
+          size="xs"
+          shape="circle"
           isDisabled={
             loading ||
             !permission.update.isAllowed ||

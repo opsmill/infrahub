@@ -2,6 +2,7 @@ import type React from "react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Button, LinkButton } from "@/shared/components/aria/button";
+import { Row } from "@/shared/components/container";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { Form, type FormRef, FormSubmit } from "@/shared/components/ui/form";
@@ -44,14 +45,14 @@ export const AddComment = ({ ref, onSubmit, onCancel }: AddCommentProps) => {
           }}
         />
 
-        <div className="text-right">
+        <Row className="justify-end">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onPress={onCancel}>
+            <Button variant="outline" onPress={onCancel}>
               Cancel
             </Button>
           )}
           <FormSubmit>Comment</FormSubmit>
-        </div>
+        </Row>
       </Form>
     );
   }

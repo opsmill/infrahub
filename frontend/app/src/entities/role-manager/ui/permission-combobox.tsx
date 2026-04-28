@@ -64,7 +64,8 @@ export function PermissionCombobox({
                 {node.identifier?.value ?? node.display_label}
 
                 <Button
-                  size="icon"
+                  size="xs"
+                  shape="circle"
                   variant="ghost"
                   onPress={() => {
                     onChange(value.filter((item) => item.id !== node.id));

@@ -54,7 +54,8 @@ export function ObjectAttributeRow({
                           onClickMetadata(attributeSchema);
                         }}
                         variant="ghost"
-                        size="icon"
+                        size="xs"
+                        shape="circle"
                         data-testid="edit-metadata-button"
                       >
                         <Icon icon="mdi:pencil" className="text-custom-blue-500" />

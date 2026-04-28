@@ -72,7 +72,8 @@ export function NodeMetadataPopover(props: NodeMetadataProps) {
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          size="icon"
+          size="xs"
+          shape="circle"
           variant="ghost"
           className="text-gray-500"
           aria-label="View node metadata"

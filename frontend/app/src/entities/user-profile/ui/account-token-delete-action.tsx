@@ -26,7 +26,8 @@ export function AccountTokenDeleteAction({ token, ...props }: AccountTokenDelete
     <>
       <Button
         variant="ghost"
-        size="icon"
+        size="xs"
+        shape="circle"
         onPress={() => setTokenToDelete(token)}
         aria-label={`Delete token ${token.name}`}
         {...props}

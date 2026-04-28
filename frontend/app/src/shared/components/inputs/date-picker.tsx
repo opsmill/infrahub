@@ -80,7 +80,8 @@ export const DatePicker = ({
         <div className="absolute top-0 right-1 bottom-0 flex items-center">
           <Button
             variant="ghost"
-            size="icon"
+            size="xs"
+            shape="circle"
             onPress={() => {
               handleClear();
             }}

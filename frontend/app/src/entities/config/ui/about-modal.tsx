@@ -33,7 +33,13 @@ export function AboutModal({ isOpen, onOpenChange }: AboutModalProps) {
     >
       <Row className="mb-1 justify-between p-2">
         <InfrahubLogo className="h-8" role="img" aria-label="Infrahub logo" />
-        <Button variant="ghost" size="icon" onPress={() => onOpenChange(false)} aria-label="Close">
+        <Button
+          variant="ghost"
+          size="xs"
+          shape="circle"
+          onPress={() => onOpenChange(false)}
+          aria-label="Close"
+        >
           <XIcon className="size-3.5" />
         </Button>
       </Row>

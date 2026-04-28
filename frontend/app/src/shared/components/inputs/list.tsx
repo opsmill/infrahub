@@ -102,7 +102,8 @@ const ListItems = ({
             <span>{item}</span>
             {!disabled && (
               <Button
-                size="icon"
+                size="xs"
+                shape="circle"
                 variant="ghost"
                 onPress={() => onDelete(item)}
                 className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"

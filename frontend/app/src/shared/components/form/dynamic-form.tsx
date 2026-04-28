@@ -1,6 +1,7 @@
 import type React from "react";
 
 import { Button } from "@/shared/components/aria/button";
+import { Row } from "@/shared/components/container";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
@@ -53,15 +54,15 @@ const DynamicForm = ({
         <DynamicField key={`${field.type}_${field.name}`} {...field} />
       ))}
 
-      <div className="text-right">
+      <Row className="justify-end">
         {onCancel && (
-          <Button variant="outline" className="mr-2" onPress={onCancel}>
+          <Button variant="outline" onPress={onCancel}>
             Cancel
           </Button>
         )}
 
         <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-      </div>
+      </Row>
     </Form>
   );
 };

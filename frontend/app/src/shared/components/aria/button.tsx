@@ -14,8 +14,8 @@ import { focusVisibleStyle } from "./style-rac";
 
 const buttonVariants = cva(
   [
-    "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-lg border text-sm outline-none",
+    "relative inline-flex shrink-0 cursor-pointer items-center justify-center whitespace-nowrap",
+    "rounded-xl border text-sm outline-none",
     "shadow-[0px_3px_6px_-2px_rgba(0,0,0,0.02),0px_1px_1px_rgba(0,0,0,0.04)]",
     "transition-all duration-150 ease-out",
     "data-disabled:pointer-events-none data-disabled:cursor-default data-disabled:opacity-60 data-disabled:shadow-none",
@@ -27,7 +27,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         primary: [
-          "inset-shadow-[0_-1px_0_rgba(255,255,255,0.15),0_1px_0_rgba(255,255,255,0.15)] border-cyan-800 bg-gradient-to-b from-cyan-900 via-cyan-700 to-cyan-800 text-white",
+          "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-cyan-800 bg-gradient-to-b from-cyan-800 to-cyan-700 text-white",
           "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
         ],
         "primary-outline": [
@@ -35,19 +35,19 @@ const buttonVariants = cva(
           "data-hovered:from-neutral-100",
         ],
         danger: [
-          "inset-shadow-[0_-1px_0_rgba(255,255,255,0.15),0_1px_0_rgba(255,255,255,0.15)] border-red-700 bg-gradient-to-b from-red-800 via-red-600 to-red-700 text-white",
+          "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-rose-700 bg-gradient-to-b from-rose-700 to-rose-600 text-white",
           "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
         ],
         "danger-outline": [
-          "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-red-200 bg-gradient-to-b from-stone-100 to-white text-red-600",
-          "data-hovered:from-red-50",
+          "inset-shadow-[0_1px_0_rgba(255,255,255,0.9)] border-rose-200 bg-gradient-to-b from-stone-100 to-white text-rose-600",
+          "data-hovered:from-rose-50",
         ],
         warning: [
-          "inset-shadow-[0_-1px_0_rgba(255,255,255,0.15),0_1px_0_rgba(255,255,255,0.15)] border-yellow-600 bg-gradient-to-b from-yellow-700 via-yellow-500 to-yellow-600 text-white",
+          "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-amber-600 bg-gradient-to-b from-amber-600 to-amber-500 text-white",
           "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
         ],
         active: [
-          "inset-shadow-[0_-1px_0_rgba(255,255,255,0.15),0_1px_0_rgba(255,255,255,0.15)] border-green-700 bg-gradient-to-b from-green-800 via-green-600 to-green-700 text-white",
+          "inset-shadow-[0_1px_0_rgba(255,255,255,0.15)] border-emerald-700 bg-gradient-to-b from-emerald-700 to-emerald-700 text-white",
           "data-hovered:inset-shadow-[0_-2px_2px_rgba(255,255,255,0.15),0_2px_2px_rgba(255,255,255,0.15)]",
         ],
         outline: [
@@ -56,22 +56,30 @@ const buttonVariants = cva(
         ],
         ghost: [
           "border-transparent text-stone-800 shadow-none",
-          "data-hovered:bg-neutral-200/50",
+          "data-hovered:bg-neutral-200/70",
           "data-pressed:bg-neutral-200",
         ],
       },
       size: {
-        default: "h-9 px-4",
-        xs: "h-7 gap-1 px-2",
-        sm: "h-8 gap-1.5 px-2.5",
-        icon: "h-7 w-7 rounded-full",
-        square: "h-9 w-9",
-        "square-sm": "h-8 w-8",
+        xs: "h-7",
+        sm: "h-8",
+        md: "h-9",
+      },
+      shape: {
+        default: "rounded-lg",
+        square: "aspect-square rounded-lg",
+        circle: "aspect-square rounded-full",
       },
     },
+    compoundVariants: [
+      { shape: "default", size: "xs", class: "gap-1 px-2" },
+      { shape: "default", size: "sm", class: "gap-1.5 px-2" },
+      { shape: "default", size: "md", class: "gap-2 px-3" },
+    ],
     defaultVariants: {
       variant: "primary",
-      size: "default",
+      size: "md",
+      shape: "default",
     },
   }
 );
@@ -80,7 +88,7 @@ export interface ButtonProps extends AriaButtonProps, VariantProps<typeof button
   isDisabledAndFocusable?: boolean /** Uses isPending internally to keep the button hoverable/focusable while appearing disabled. Useful for tooltip triggers. */;
 }
 
-export function Button({ variant, size, isDisabledAndFocusable, ...props }: ButtonProps) {
+export function Button({ variant, size, shape, isDisabledAndFocusable, ...props }: ButtonProps) {
   return (
     <AriaButton
       slot={null}
@@ -89,7 +97,7 @@ export function Button({ variant, size, isDisabledAndFocusable, ...props }: Butt
       className={composeRenderProps(props.className, (className, { isPending }) =>
         classNames(
           focusVisibleStyle,
-          buttonVariants({ variant, size, className }),
+          buttonVariants({ variant, size, shape, className }),
           isPending && !isDisabledAndFocusable && "text-transparent",
           isDisabledAndFocusable && "opacity-60 shadow-none"
         )
@@ -107,12 +115,12 @@ export function Button({ variant, size, isDisabledAndFocusable, ...props }: Butt
 
 export interface LinkButtonProps extends AriaLinkProps, VariantProps<typeof buttonVariants> {}
 
-export function LinkButton({ variant, size, ...props }: LinkButtonProps) {
+export function LinkButton({ variant, size, shape, ...props }: LinkButtonProps) {
   return (
     <AriaLink
       {...props}
       className={composeRenderProps(props.className, (className) =>
-        classNames(focusVisibleStyle, buttonVariants({ variant, size, className }))
+        classNames(focusVisibleStyle, buttonVariants({ variant, size, shape, className }))
       )}
     />
   );

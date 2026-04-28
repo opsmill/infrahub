@@ -53,7 +53,11 @@ export function InlineDisplay({ items, render, maxDisplay = 3 }: InlineDisplayPr
             onMouseEnter={debounce(handleMouseEnter, 200)}
             onMouseLeave={debounce(handleMouseLeave, 200)}
           >
-            <Button variant="outline" size={"icon"}>{`+${remainingItems?.length}`}</Button>
+            <Button
+              variant="outline"
+              size="xs"
+              shape="circle"
+            >{`+${remainingItems?.length}`}</Button>
           </PopoverTrigger>
 
           <PopoverContent

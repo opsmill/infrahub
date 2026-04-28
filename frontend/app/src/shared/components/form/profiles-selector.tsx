@@ -92,7 +92,8 @@ export const ProfilesSelector = ({
                   {getNodeLabel(profile)}
 
                   <Button
-                    size="icon"
+                    size="xs"
+                    shape="circle"
                     variant="ghost"
                     onPress={() => {
                       handleRemove(profile);

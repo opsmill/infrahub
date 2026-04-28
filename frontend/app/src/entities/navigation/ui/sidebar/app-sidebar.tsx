@@ -44,7 +44,8 @@ export function AppSidebar() {
         {booleanCollapsed ? (
           <Button
             variant="outline"
-            size="icon"
+            size="xs"
+            shape="circle"
             className="absolute top-11 -right-3.5 hidden transition-all group-hover/sidebar:inline-flex"
             onPress={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >

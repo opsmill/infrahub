@@ -67,7 +67,8 @@ const ResourceAllocationDetailsPage = () => {
 
           <LinkButton
             href={constructPath(`/resource-manager/${resourcePoolId}`)}
-            size="icon"
+            size="xs"
+            shape="circle"
             variant="ghost"
             className="ml-auto"
           >
@@ -96,7 +97,8 @@ const ResourceAllocationPageSkeleton = () => {
 
           <LinkButton
             href={constructPath(`/resource-manager/${resourcePoolId}`)}
-            size="icon"
+            size="xs"
+            shape="circle"
             variant="ghost"
             className="ml-auto"
           >

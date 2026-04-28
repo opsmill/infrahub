@@ -69,7 +69,8 @@ export function RelationshipActionsCell({
           <PopoverAnchor>
             <DropdownMenuTrigger asChild>
               <Button
-                size="square-sm"
+                size="sm"
+                shape="square"
                 variant="ghost"
                 data-testid={`actions-cell-${relationshipLabel}`}
               >

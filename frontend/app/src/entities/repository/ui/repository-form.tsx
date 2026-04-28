@@ -1,6 +1,7 @@
 import { Card, CardContent, type CardProps } from "@infrahub/ui/card";
 
 import { Button } from "@/shared/components/aria/button";
+import { Row } from "@/shared/components/container";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import RelationshipField from "@/shared/components/form/fields/relationships/relationship.field";
 import type { NodeFormProps } from "@/shared/components/form/node-form";
@@ -100,15 +101,15 @@ const RepositoryForm = ({
         </FormGroup>
       )}
 
-      <div className="text-right">
+      <Row className="justify-end">
         {onCancel && (
-          <Button variant="outline" className="mr-2" onPress={onCancel}>
+          <Button variant="outline" onPress={onCancel}>
             Cancel
           </Button>
         )}
 
         <FormSubmit>Save</FormSubmit>
-      </div>
+      </Row>
     </Form>
   );
 };

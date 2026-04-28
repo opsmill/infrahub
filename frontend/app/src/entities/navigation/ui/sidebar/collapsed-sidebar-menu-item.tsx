@@ -19,7 +19,7 @@ export function CollapsedSidebarMenuItem({
     <Tooltip message={tooltipContent} placement="right">
       <Button
         variant="ghost"
-        size="square"
+        shape="square"
         className={classNames("h-10 w-10 p-2", className)}
         {...props}
       >

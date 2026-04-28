@@ -119,7 +119,7 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
         >
           <Button
             variant="ghost"
-            size="square"
+            shape="square"
             data-testid="unauthenticated-menu-trigger"
             className="ml-auto shrink-0 data-hovered:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
           >

@@ -72,7 +72,7 @@ function IpamToolbar({ className }: { className?: string }) {
       <Row className={classNames("h-11 gap-0", className)}>
         <Button
           variant="ghost"
-          size="square"
+          shape="square"
           aria-label="toggle IPAM tree"
           onPress={() => setCollapsed(!collapsed)}
           className="m-1 shrink-0 rounded-lg text-gray-400 data-hovered:text-neutral-600"

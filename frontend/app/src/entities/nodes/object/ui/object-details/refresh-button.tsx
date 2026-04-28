@@ -54,7 +54,8 @@ export function RefreshButton({ queryKey, ...props }: RefreshButtonProps) {
     >
       <Button
         variant="outline"
-        size="square-sm"
+        size="sm"
+        shape="square"
         isDisabledAndFocusable={isRefetching}
         onPress={handleRefresh}
         aria-label="Refresh data"

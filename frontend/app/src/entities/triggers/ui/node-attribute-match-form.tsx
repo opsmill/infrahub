@@ -2,6 +2,7 @@ import { type FieldValues, useForm, useFormContext } from "react-hook-form";
 import { toast } from "react-toastify";
 
 import { Button } from "@/shared/components/aria/button";
+import { Row } from "@/shared/components/container";
 import { DEFAULT_FORM_FIELD_VALUE } from "@/shared/components/form/constants";
 import { DynamicField } from "@/shared/components/form/dynamic-form";
 import { LabelFormField } from "@/shared/components/form/fields/common";
@@ -155,15 +156,15 @@ export const NodeAttributeMatchForm = ({
           return <DynamicField key={field.name} {...field} />;
         })}
 
-        <div className="text-right">
+        <Row className="justify-end">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onPress={onCancel}>
+            <Button variant="outline" onPress={onCancel}>
               Cancel
             </Button>
           )}
 
           <FormSubmit>Save</FormSubmit>
-        </div>
+        </Row>
       </Form>
     </div>
   );

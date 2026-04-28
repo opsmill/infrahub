@@ -29,7 +29,7 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
   const { schema } = useSchema(ARTIFACT_OBJECT);
   return (
     <MenuTrigger>
-      <Button variant="ghost" size="square-sm" data-testid="object-details-menu">
+      <Button variant="ghost" size="sm" shape="square" data-testid="object-details-menu">
         <EllipsisVertical className="size-4" />
       </Button>
 

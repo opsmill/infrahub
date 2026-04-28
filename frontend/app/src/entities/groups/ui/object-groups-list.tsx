@@ -107,7 +107,8 @@ function RemoveGroupButton({ objectId, group }: ObjectGroupItemProps) {
       <Tooltip message="Leave">
         <Button
           variant="ghost"
-          size="icon"
+          size="xs"
+          shape="circle"
           className="shrink-0 data-hovered:bg-gray-200"
           onPress={() => setShowDeleteModal(true)}
           data-testid="leave-group-button"

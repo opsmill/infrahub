@@ -31,7 +31,8 @@ const ObjectEditSlideOverTrigger = ({
       <Button
         className="ml-auto"
         variant="outline"
-        size="icon"
+        size="xs"
+        shape="circle"
         isDisabledAndFocusable
         data-testid="edit-button"
         {...props}
@@ -43,7 +44,8 @@ const ObjectEditSlideOverTrigger = ({
     <Button
       className="ml-auto"
       variant="outline"
-      size="icon"
+      size="xs"
+      shape="circle"
       onPress={() => setIsEditDrawerOpen(true)}
       data-testid="edit-button"
       {...props}

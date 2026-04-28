@@ -95,7 +95,7 @@ export function SchemaSelector({ className }: SchemaSelectorProps) {
         <SearchInput placeholder="Search schema" value={search} onChange={handleSearchChange} />
         <Tooltip message={anyOpen ? "Collapse all" : "Expand all"}>
           <Button
-            size="square"
+            shape="square"
             variant="outline"
             className="size-10 rounded-md border-gray-300"
             onPress={toggleAll}

@@ -34,7 +34,8 @@ export function SearchAnywhereInput({
       <Tooltip message="Case sensitive">
         <Button
           variant={caseSensitive ? "primary" : "ghost"}
-          size="icon"
+          size="xs"
+          shape="circle"
           onPress={() => setCaseSensitive(!caseSensitive)}
           className={classNames(
             "absolute top-1 right-1 size-8 rounded",

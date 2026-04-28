@@ -98,7 +98,7 @@ export const Table = ({ columns, rows, onDelete, onUpdate, className, permission
                       <Tooltip message="Actions">
                         <Button
                           variant="ghost"
-                          size="square"
+                          shape="square"
                           className="p-4"
                           data-testid="actions-row-button"
                         >

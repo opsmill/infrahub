@@ -22,7 +22,7 @@ export const ObjectHelpButton = ({ documentationUrl, kind, ...props }: ObjectHel
 
   return (
     <MenuTrigger>
-      <Button variant="outline" size="icon" {...props}>
+      <Button variant="outline" size="xs" shape="circle" {...props}>
         ?
       </Button>
 

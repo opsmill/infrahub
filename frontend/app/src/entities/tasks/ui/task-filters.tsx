@@ -49,7 +49,8 @@ export const TaskFilters = () => {
         <Tooltip message="Apply filters">
           <Button
             variant="ghost"
-            size="icon"
+            size="xs"
+            shape="circle"
             data-testid="apply-filters"
             onPress={() => setShowFilters(true)}
           >
@@ -60,7 +61,13 @@ export const TaskFilters = () => {
         <span className="text-xs">Filters: {currentFilters.length}</span>
 
         {!!currentFilters.length && (
-          <Button onPress={removeFilters} variant="ghost" size="icon" data-testid="remove-filters">
+          <Button
+            onPress={removeFilters}
+            variant="ghost"
+            size="xs"
+            shape="circle"
+            data-testid="remove-filters"
+          >
             <Icon icon="mdi:close" className="text-gray-400" />
           </Button>
         )}

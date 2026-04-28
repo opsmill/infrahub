@@ -67,7 +67,8 @@ export const DiffThread = ({ path }: tDiffThread) => {
                 onPress={() => setShowThread(true)}
                 className="h-6 rounded-full p-0"
                 variant={"outline"}
-                size={"icon"}
+                size={"xs"}
+                shape={"circle"}
                 data-testid="data-diff-add-comment"
               >
                 <Icon icon={"mdi:plus"} />

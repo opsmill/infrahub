@@ -29,7 +29,7 @@ export const ComputedAttributeDisplay = ({
         <SchemaKindDisplay kinds={["CoreTransformJinja2"]} onKindClick={onKindClick} />
 
         <DialogTrigger>
-          <Button variant="outline" size="icon" data-testid="jinja2-transform-button">
+          <Button variant="outline" size="xs" shape="circle" data-testid="jinja2-transform-button">
             <EyeIcon className="size-3.5" />
           </Button>
 

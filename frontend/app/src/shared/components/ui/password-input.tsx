@@ -22,7 +22,8 @@ export function PasswordInput({ className, ref, ...props }: PasswordInputProps) 
 
       <Button
         onPress={() => setShowPassword((v) => !v)}
-        size="icon"
+        size="xs"
+        shape="circle"
         variant="ghost"
         className="absolute top-0 right-0 h-10 rounded-md p-3.5 data-hovered:bg-transparent"
       >

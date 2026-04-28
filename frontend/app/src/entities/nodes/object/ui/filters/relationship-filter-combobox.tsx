@@ -25,7 +25,8 @@ export function RelationshipFilterCombobox({
               {display_label}
 
               <Button
-                size="icon"
+                size="xs"
+                shape="circle"
                 variant="ghost"
                 onPress={() => onChange(value.filter((item) => item.id !== id))}
                 className="h-4 w-4 text-gray-500 data-hovered:text-gray-800"
