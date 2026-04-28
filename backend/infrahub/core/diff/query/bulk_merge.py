@@ -499,83 +499,107 @@ class BulkMergeCardinalityOneResolutionQuery(Query):
                 for p in self.carry_over_diff_relationship_properties
             ],
         }
+
         query = """
 // ==============================
 // Step 1: Carry-over (DIFF element + BASE prop). Base's property edge lives on the
 // displaced Relationship vertex and would be lost when that vertex is closed in step 3. Copy
 // it onto the selected (source-side) Relationship vertex first.
 // ==============================
+// ------------------------------
 // Use a subquery so the next steps still run when the param list is empty.
+// ------------------------------
 CALL () {
     UNWIND $carry_over_base_relationship_properties AS carry
     WITH carry[0] AS node_uuid, carry[1] AS rel_name, carry[2] AS selected_peer_uuid, carry[3] AS edge_type
-    // The IS_RELATED edges are filtered to the active target-branch path so each MATCH binds
-    // to a single Relationship vertex even if historical (closed) rel-vertices exist for the
-    // same (node, rel_name, peer) tuple.
+    // ------------------------------
+    // Match the selected (source-side) Relationship-vertex first. Use it to determine the
+    // direction of the Relationship
+    // ------------------------------
     MATCH (carry_n:Node {uuid: node_uuid})
+        -[s_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(selected_rel:Relationship {name: rel_name})
+        -[s_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(:Node {uuid: selected_peer_uuid})
+    WHERE s_ir1.to IS NULL AND s_ir2.to IS NULL
+    WITH carry_n, selected_rel, edge_type, selected_peer_uuid, rel_name,
+        CASE
+            WHEN startNode(s_ir1) = carry_n AND startNode(s_ir2) = selected_rel THEN "outbound"
+            WHEN endNode(s_ir1) = carry_n AND endNode(s_ir2) = selected_rel THEN "inbound"
+            ELSE "bidir"
+        END AS direction
+    // ------------------------------
+    // Match the displaced (base-side) Relationship-vertex using the direction
+    // ------------------------------
+    MATCH (carry_n)
         -[d_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(displaced_rel:Relationship {name: rel_name})
         -[d_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(displaced_peer:Node)
     WHERE displaced_peer.uuid <> selected_peer_uuid
     AND d_ir1.to IS NULL AND d_ir2.to IS NULL
-    MATCH (displaced_rel)-[base_e {branch: $target_branch, status: "active"}]->(child)
-    WHERE type(base_e) = edge_type AND base_e.to IS NULL
-    MATCH (carry_n)
-        -[s_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(selected_rel:Relationship {name: rel_name})
-        -[s_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(:Node {uuid: selected_peer_uuid})
-    WHERE selected_rel <> displaced_rel
-    AND s_ir1.to IS NULL AND s_ir2.to IS NULL
-    // Collapse fan-out from multiple IS_RELATED bindings to a single row per carry entry.
-    WITH DISTINCT edge_type, selected_rel, base_e, child
+    AND displaced_rel <> selected_rel
+    AND (
+        (direction = "outbound" AND startNode(d_ir1) = carry_n AND startNode(d_ir2) = displaced_rel)
+        OR (direction = "inbound" AND endNode(d_ir1) = carry_n AND endNode(d_ir2) = displaced_rel)
+        OR direction = "bidir"
+    )
+    // ------------------------------
+    // The active+to-IS-NULL filter naturally short-circuits this carry-over when base's
+    // resolution is a delete b/c there is no active edge to copy, so the MATCH does not find an edge
+    // ------------------------------
+    MATCH (displaced_rel)-[target_e:$(edge_type) {branch: $target_branch, status: "active"}]->(child)
+    WHERE target_e.to IS NULL
+    WITH DISTINCT edge_type, selected_rel, target_e, child
     CREATE (selected_rel)-[new_e:$(edge_type)]->(child)
-    SET new_e = properties(base_e)
+    SET new_e = properties(target_e)
     SET new_e.branch = $target_branch, new_e.branch_level = $branch_level, new_e.from = $at, new_e.to = NULL, new_e.to_user_id = NULL
 }
 
 // ==============================
-// Step 2: Inverse carry-over (BASE element + DIFF prop). Source's property edge lives on
+// Step 2: Inverse carry-over (BASE peer + DIFF prop). Source's property edge lives on
 // the source-side Relationship-vertex (which is excluded from the merge). Apply source's value to
 // the kept (base-side) Relationship-vertex, and close any pre-existing same-type active edge on
 // the kept Relationship.
 // ==============================
-WITH count(*) AS _carry_over_diff_separator
+WITH 1 AS _carry_over_diff_separator
+LIMIT 1
 CALL () {
     UNWIND $carry_over_diff_relationship_properties AS carry
-    WITH carry[0] AS node_uuid, carry[1] AS rel_name, carry[2] AS kept_peer_uuid, carry[3] AS source_peer_uuid, carry[4] AS edge_type
+    WITH carry[0] AS node_uuid, carry[1] AS rel_name, carry[2] AS kept_peer_uuid,
+         carry[3] AS source_peer_uuid, carry[4] AS edge_type
     // ------------------------------
-    // Step 2a: always close any existing same-type active edge on the kept Relationship.
-    // A separate CREATE step below applies source's value when present.
-    // The IS_RELATED edges are filtered to the active target-branch path so this binds to
-    // a single Relationship vertex even if historical (closed) rel-vertices exist for the
-    // same (node, rel_name, kept_peer) tuple.
+    // Match source's Relationship-vertex (anchored by `source_peer_uuid`) to find source's
+    // active prop edge. The source-side Relationship-vertex was excluded from the bulk merge,
+    // so its IS_RELATED edges and prop edges live on $source_branch only.
     // ------------------------------
-    MATCH (carry_n:Node {uuid: node_uuid})
+    OPTIONAL MATCH (:Node {uuid: node_uuid})
+        -[s_ir1:IS_RELATED {branch: $source_branch, status: "active"}]-(source_rel:Relationship {name: rel_name})
+        -[s_ir2:IS_RELATED {branch: $source_branch, status: "active"}]-(:Node {uuid: source_peer_uuid})
+    WHERE s_ir1.to IS NULL AND s_ir2.to IS NULL
+    OPTIONAL MATCH (source_rel)-[src_e:$(edge_type) {branch: $source_branch, status: "active"}]->(child)
+    WHERE src_e.to IS NULL
+    // ------------------------------
+    // Match the kept (base-side) Relationship-vertex (anchored by `kept_peer_uuid`).
+    // IS_RELATED edges are filtered to the active target-branch path and this is only for
+    // a cardinality-one relationship, so we can assume a single Relationship vertex.
+    // ------------------------------
+    MATCH (:Node {uuid: node_uuid})
         -[k_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(kept_rel:Relationship {name: rel_name})
         -[k_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(:Node {uuid: kept_peer_uuid})
     WHERE k_ir1.to IS NULL AND k_ir2.to IS NULL
-    WITH DISTINCT node_uuid, rel_name, source_peer_uuid, edge_type, kept_rel
-    CALL (kept_rel, edge_type) {
+    WITH DISTINCT edge_type, kept_rel, src_e, child, src_e.from_user_id AS source_user_id
+    // ------------------------------
+    // Step 2a: always close any existing same-type active edge on the kept Relationship.
+    // The DIFF resolution wins regardless of whether source UPDATED/ADDED or REMOVED the
+    // prop, so this close runs even when there is no src_e to copy.
+    // ------------------------------
+    CALL (kept_rel, edge_type, source_user_id) {
         OPTIONAL MATCH (kept_rel)-[existing_e:$(edge_type) {branch: $target_branch, status: "active"}]->()
         WHERE existing_e.to IS NULL
-        SET existing_e.to = $at
+        SET existing_e.to = $at, existing_e.to_user_id = source_user_id
     }
     // ------------------------------
-    // Step 2b: if source has an active edge of this type on the source branch's rel-vertex,
-    // copy it to the kept Relationship. The source-side rel-vertex was excluded from the
-    // bulk merge, so its IS_RELATED edges live on $source_branch only.
+    // Step 2b: if source has an active edge of this type, copy it to the kept Relationship.
     // ------------------------------
-    OPTIONAL MATCH (carry_n2:Node {uuid: node_uuid})
-        -[s_ir1:IS_RELATED {branch: $source_branch, status: "active"}]-(source_rel:Relationship {name: rel_name})
-        -[s_ir2:IS_RELATED {branch: $source_branch, status: "active"}]-(:Node {uuid: source_peer_uuid})
-    WHERE source_rel <> kept_rel
-    AND s_ir1.to IS NULL AND s_ir2.to IS NULL
-    OPTIONAL MATCH (source_rel)-[src_e {branch: $source_branch, status: "active"}]->(child)
-    WHERE type(src_e) = edge_type AND src_e.to IS NULL
     WITH edge_type, kept_rel, src_e, child
     WHERE src_e IS NOT NULL AND child IS NOT NULL
-    // ------------------------------
-    // Collapse fan-out from multiple IS_RELATED bindings to a single row per carry entry.
-    // ------------------------------
-    WITH DISTINCT edge_type, kept_rel, src_e, child
     CREATE (kept_rel)-[new_e:$(edge_type)]->(child)
     SET new_e = properties(src_e)
     SET new_e.branch = $target_branch, new_e.branch_level = $branch_level, new_e.from = $at, new_e.to = NULL, new_e.to_user_id = NULL
@@ -587,21 +611,44 @@ CALL () {
 // hanging off any *other-peer* Relationship vertex on target so the dead target-branch
 // Relationship vertex is fully torn down.
 // ==============================
-WITH count(*) AS _extra_close_separator
+WITH 1 AS _extra_close_separator
+LIMIT 1
 UNWIND $cardinality_one_diff_resolutions AS resolution
 WITH resolution[0] AS node_uuid, resolution[1] AS rel_name, resolution[2] AS selected_peer_uuid
-OPTIONAL MATCH (n:Node {uuid: node_uuid})-[ir1:IS_RELATED {branch: $target_branch, status: "active"}]-
+// ------------------------------
+// Match the selected peer's Relationship-vertex to determine direction.
+// Expects that source's IS_RELATED edges have already been propagated to target branch.
+// ------------------------------
+MATCH (n:Node {uuid: node_uuid})
+    -[sel_ir1:IS_RELATED {branch: $target_branch, status: "active"}]-(sel_rel:Relationship {name: rel_name})
+    -[sel_ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(:Node {uuid: selected_peer_uuid})
+WHERE sel_ir1.to IS NULL AND sel_ir2.to IS NULL
+// `source_user_id` attributes the close on the displaced rel-vertex below to source's user
+// — the close is driven by source's DIFF-resolved peer change, and source's IS_RELATED
+// edge on target carries the source-side user who triggered it.
+WITH n, node_uuid, rel_name, selected_peer_uuid, sel_ir1.from_user_id AS source_user_id,
+    CASE
+        WHEN startNode(sel_ir1) = n AND startNode(sel_ir2) = sel_rel THEN "outbound"
+        WHEN endNode(sel_ir1) = n AND endNode(sel_ir2) = sel_rel THEN "inbound"
+        ELSE "bidir"
+    END AS direction
+OPTIONAL MATCH (n)-[ir1:IS_RELATED {branch: $target_branch, status: "active"}]-
     (rel:Relationship {name: rel_name})-[ir2:IS_RELATED {branch: $target_branch, status: "active"}]-(other:Node)
 WHERE other.uuid <> selected_peer_uuid
 AND ir1.to IS NULL
 AND ir2.to IS NULL
-SET ir1.to = $at, ir2.to = $at
-WITH DISTINCT rel
+AND (
+    (direction = "outbound" AND startNode(ir1) = n AND startNode(ir2) = rel)
+    OR (direction = "inbound" AND endNode(ir1) = n AND endNode(ir2) = rel)
+    OR direction = "bidir"
+)
+SET ir1.to = $at, ir1.to_user_id = source_user_id, ir2.to = $at, ir2.to_user_id = source_user_id
+WITH DISTINCT rel, source_user_id
 WHERE rel IS NOT NULL
-CALL (rel) {
+CALL (rel, source_user_id) {
     OPTIONAL MATCH (rel)-[prop_e:HAS_VALUE|IS_PROTECTED|HAS_OWNER|HAS_SOURCE {branch: $target_branch, status: "active"}]->()
     WHERE prop_e.to IS NULL
-    SET prop_e.to = $at
+    SET prop_e.to = $at, prop_e.to_user_id = source_user_id
 }
         """
         self.add_to_query(query=query)
