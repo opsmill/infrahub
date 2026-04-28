@@ -14,24 +14,24 @@ test.describe("/path-traversal", () => {
   test("should display mode toggle with Path and Dependencies buttons", async ({ page }) => {
     await page.goto("/path-traversal");
 
-    await expect(page.getByRole("button", { name: "Path" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Dependencies" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Path", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Dependencies", exact: true })).toBeVisible();
   });
 
   test("should show empty state message", async ({ page }) => {
     await page.goto("/path-traversal");
 
-    await expect(page.getByText('Select two nodes and click "Find Paths"')).toBeVisible();
+    await expect(page.getByText('Select two objects and click "Find Paths"')).toBeVisible();
   });
 
   test("should switch to Dependencies mode", async ({ page }) => {
     await page.goto("/path-traversal");
 
-    await page.getByRole("button", { name: "Dependencies" }).click();
+    await page.getByRole("button", { name: "Dependencies", exact: true }).click();
 
-    await expect(page.getByText("Dependencies")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dependencies" })).toBeVisible();
     await expect(
-      page.getByText('Select a source node, target kinds, and click "Find Dependencies"')
+      page.getByText('Select a source object, target kinds, and click "Find Dependencies"')
     ).toBeVisible();
   });
 
