@@ -42,10 +42,11 @@ RUN corepack enable && corepack prepare pnpm@10 --activate
 
 # Create directory structure that matches the relative paths in package.json
 # App is at /frontend/app, packages at /frontend/packages
-RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer
+RUN mkdir -p /frontend/app /frontend/packages/schema-visualizer /frontend/packages/ui
 
-# Copy the schema-visualizer package (app imports it via file: protocol)
+# Copy local packages (app imports them via file: protocol)
 COPY frontend/packages/schema-visualizer/ /frontend/packages/schema-visualizer/
+COPY frontend/packages/ui/ /frontend/packages/ui/
 
 # Copy the app package.json and install dependencies (pnpm file: protocol handles schema-visualizer deps)
 COPY frontend/app/package.json frontend/app/pnpm-lock.yaml /frontend/app/

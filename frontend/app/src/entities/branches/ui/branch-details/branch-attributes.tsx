@@ -1,3 +1,4 @@
+import { Card, CardContent } from "@infrahub/ui/card";
 import {
   BoxIcon,
   CheckIcon,
@@ -9,7 +10,6 @@ import {
 } from "lucide-react";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
-import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 import { BRANCH_STATUS } from "@/entities/branches/constants";
@@ -22,52 +22,54 @@ interface BranchAttributesProps {
 
 export function BranchAttributes({ branch }: BranchAttributesProps) {
   return (
-    <Card className="grid w-fit grid-cols-[auto_1fr] gap-x-6 gap-y-1.5">
-      <BranchAttributeLabel>
-        <IdCardIcon className="size-3.5" /> Name
-      </BranchAttributeLabel>
-      <BranchAttributeValue>{branch.name}</BranchAttributeValue>
+    <Card className="w-fit">
+      <CardContent className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-1.5">
+        <BranchAttributeLabel>
+          <IdCardIcon className="size-3.5" /> Name
+        </BranchAttributeLabel>
+        <BranchAttributeValue>{branch.name}</BranchAttributeValue>
 
-      {branch.status !== BRANCH_STATUS.OPEN && (
-        <>
-          <BranchAttributeLabel>
-            <CircleIcon className="size-3.5" /> Status
-          </BranchAttributeLabel>
-          <BranchAttributeValue>
-            <BranchStatusBadge status={branch.status} showOpen />
-          </BranchAttributeValue>
-        </>
-      )}
+        {branch.status !== BRANCH_STATUS.OPEN && (
+          <>
+            <BranchAttributeLabel>
+              <CircleIcon className="size-3.5" /> Status
+            </BranchAttributeLabel>
+            <BranchAttributeValue>
+              <BranchStatusBadge status={branch.status} showOpen />
+            </BranchAttributeValue>
+          </>
+        )}
 
-      <BranchAttributeLabel>
-        <RefreshCwIcon className="size-3.5" /> Sync with Git
-      </BranchAttributeLabel>
-      <BranchAttributeValue>
-        {branch.sync_with_git ? <CheckIcon className="size-4" /> : <XIcon className="size-4" />}
-      </BranchAttributeValue>
+        <BranchAttributeLabel>
+          <RefreshCwIcon className="size-3.5" /> Sync with Git
+        </BranchAttributeLabel>
+        <BranchAttributeValue>
+          {branch.sync_with_git ? <CheckIcon className="size-4" /> : <XIcon className="size-4" />}
+        </BranchAttributeValue>
 
-      {!branch.is_default && (
-        <>
-          <BranchAttributeLabel>
-            <BoxIcon className="size-3.5" /> Has schema changes
-          </BranchAttributeLabel>
-          <BranchAttributeValue>
-            {branch.has_schema_changes ? (
-              <CheckIcon className="size-4" />
-            ) : (
-              <XIcon className="size-4" />
-            )}
-          </BranchAttributeValue>
+        {!branch.is_default && (
+          <>
+            <BranchAttributeLabel>
+              <BoxIcon className="size-3.5" /> Has schema changes
+            </BranchAttributeLabel>
+            <BranchAttributeValue>
+              {branch.has_schema_changes ? (
+                <CheckIcon className="size-4" />
+              ) : (
+                <XIcon className="size-4" />
+              )}
+            </BranchAttributeValue>
 
-          <BranchAttributeLabel>
-            <GitCommitIcon className="size-3.5" /> Last rebase
-          </BranchAttributeLabel>
+            <BranchAttributeLabel>
+              <GitCommitIcon className="size-3.5" /> Last rebase
+            </BranchAttributeLabel>
 
-          <BranchAttributeValue>
-            <DateDisplay date={branch.branched_from} className="text-sm" />
-          </BranchAttributeValue>
-        </>
-      )}
+            <BranchAttributeValue>
+              <DateDisplay date={branch.branched_from} className="text-sm" />
+            </BranchAttributeValue>
+          </>
+        )}
+      </CardContent>
     </Card>
   );
 }

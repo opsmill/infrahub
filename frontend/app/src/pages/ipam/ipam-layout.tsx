@@ -38,7 +38,7 @@ export const Component = () => {
               maxSize="90%"
               className="flex grow flex-col"
             >
-              <Content.Card className="flex grow flex-col">
+              <Content.Card className="grow">
                 <IpamToolbar />
 
                 <ErrorBoundary
@@ -54,7 +54,7 @@ export const Component = () => {
         )}
 
         <ResizablePanel id="main-panel" className="flex grow flex-col">
-          <Content.Card className="flex grow flex-col">
+          <Content.Card className="grow">
             {ipamTreeCollapsed && <IpamToolbar className="max-w-74.5" />}
             <Outlet />
           </Content.Card>

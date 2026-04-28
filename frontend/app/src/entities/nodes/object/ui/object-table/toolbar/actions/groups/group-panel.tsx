@@ -1,17 +1,11 @@
+import { Card, type CardProps } from "@infrahub/ui/card";
 import type React from "react";
 
-import { Card, type CardProps } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 export function GroupCard({ className, ...props }: CardProps) {
   return (
-    <Card
-      className={classNames(
-        "flex max-h-[min(47rem,calc(100vh-6rem))] flex-col overflow-hidden p-0 shadow-sm",
-        className
-      )}
-      {...props}
-    />
+    <Card className={classNames("max-h-[min(47rem,calc(100vh-6rem))]", className)} {...props} />
   );
 }
 

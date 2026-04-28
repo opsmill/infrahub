@@ -65,7 +65,7 @@ export function Component() {
   const hasActivities = data.pages.some((page) => page.length > 0);
 
   return (
-    <Content.Card className="flex grow flex-col">
+    <Content.Card className="grow">
       <Content.CardTitle
         title="Activities"
         isReloadLoading={isRefetching}

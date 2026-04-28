@@ -6,6 +6,7 @@
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./card": "./src/components/card/card.tsx",
     "./styles.css": "./src/index.css"
   },
   "scripts": {

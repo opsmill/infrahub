@@ -95,11 +95,20 @@ A production Infrahub deployment runs as a single clustered instance with compon
 
 Running a single logical instance means one schema, one resource allocation authority for IPs, prefixes, and identifiers, and one target for monitoring and upgrades.
 
-### Can I run Infrahub across multiple regions or multiple instances?
+### Can I run multiple Infrahub instances?
 
-Yes. Some organisations have operational or regulatory reasons to run regionally independent infrastructure, and Infrahub supports a multi-instance model where each region runs its own HA topology and no state is shared between them.
+Yes. Infrahub supports deploying multiple independent instances, each as a fully autonomous deployment with its own database, schema, and resource allocation authority. Instances do not share state or synchronise data between them, making them suitable for:
 
-This pattern adds regional failure isolation: an issue in one instance has no impact on the others, and upgrades can follow a canary pattern region by region. The trade-off is that each instance manages its own resource allocation. It is a good fit when the organisation already has regional operational boundaries.
+- Organisations with distinct governance domains or regional operational boundaries, where each domain is authoritative for its own infrastructure data.
+- Regional deployments requiring data residency within specific geographies or regulatory jurisdictions.
+- Failure isolation: an outage or maintenance in one region has no impact on others.
+- Canary upgrade patterns, rolling out new versions region by region before global rollout.
+
+Each instance functions as a complete, independent source of truth for its domain. Use this model when your organisation already manages separate operational boundaries.
+
+### Can a single Infrahub instance span multiple regions?
+
+No. A single Infrahub instance is designed as one clustered deployment in one region. To operate Infrahub in multiple regions, you deploy independent instances per region. See [Can I run multiple Infrahub instances?](#can-i-run-multiple-infrahub-instances) above.
 
 ### How do I back up and restore Infrahub?
 
