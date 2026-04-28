@@ -4,14 +4,14 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import SchemaPathType
+from infrahub.core.constants import RelationshipCardinality, RelationshipKind, SchemaPathType
 from infrahub.core.migrations.schema.attribute_supports_generated_schema import (
     AttributeSupportsGeneratedSchemaMigration,
 )
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.template import core_object_component_template, core_object_template
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
@@ -282,32 +282,30 @@ async def test_migration_edge_timestamps(
     assert_edge_timestamps(before_snapshot, after_snapshot, at_str)
 
 
-# ---------------------------------------------------------------------------
-# Sub-template fixtures & tests (generate_template=False COMPONENT nodes)
-# ---------------------------------------------------------------------------
+_PART = NodeSchema(
+    name="Part",
+    namespace="Test",
+    attributes=[
+        AttributeSchema(name="name", kind="Text", unique=True),
+        AttributeSchema(name="serial_number", kind="Text", optional=True),
+    ],
+)
 
-_DEVICE_PART_NODES = [
-    {
-        "name": "Device",
-        "namespace": "Test",
-        "branch": "aware",
-        "generate_template": True,
-        "attributes": [{"name": "hostname", "kind": "Text", "unique": True}],
-        "relationships": [
-            {"name": "parts", "peer": "TestPart", "kind": "Component", "cardinality": "many", "optional": True}
-        ],
-    },
-    {
-        "name": "Part",
-        "namespace": "Test",
-        "branch": "aware",
-        "generate_template": False,
-        "attributes": [
-            {"name": "name", "kind": "Text", "unique": True},
-            {"name": "serial_number", "kind": "Text", "optional": True, "read_only": True},
-        ],
-    },
-]
+_DEVICE = NodeSchema(
+    name="Device",
+    namespace="Test",
+    generate_template=True,
+    attributes=[AttributeSchema(name="hostname", kind="Text", unique=True)],
+    relationships=[
+        RelationshipSchema(
+            name="parts",
+            peer="TestPart",
+            kind=RelationshipKind.COMPONENT,
+            cardinality=RelationshipCardinality.MANY,
+            optional=True,
+        )
+    ],
+)
 
 
 @pytest.fixture
@@ -316,11 +314,13 @@ async def device_part_schema_read_only_serial(
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
     serial_number starts read_only=True so it is NOT on template instances."""
+    part = _PART.model_copy(deep=True)
+    part.get_attribute("serial_number").read_only = True
     registry.schema.register_schema(
         schema=SchemaRoot(generics=[core_object_template, core_object_component_template]),
         branch=default_branch.name,
     )
-    return registry.schema.register_schema(schema=SchemaRoot(nodes=_DEVICE_PART_NODES), branch=default_branch.name)
+    return registry.schema.register_schema(schema=SchemaRoot(nodes=[_DEVICE, part]), branch=default_branch.name)
 
 
 @pytest.fixture
@@ -329,21 +329,11 @@ async def device_part_schema(
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
     serial_number starts read_only=False so it IS on template instances."""
-    nodes = [
-        {**_DEVICE_PART_NODES[0]},
-        {
-            **_DEVICE_PART_NODES[1],
-            "attributes": [
-                {"name": "name", "kind": "Text", "unique": True},
-                {"name": "serial_number", "kind": "Text", "optional": True, "read_only": False},
-            ],
-        },
-    ]
     registry.schema.register_schema(
         schema=SchemaRoot(generics=[core_object_template, core_object_component_template]),
         branch=default_branch.name,
     )
-    return registry.schema.register_schema(schema=SchemaRoot(nodes=nodes), branch=default_branch.name)
+    return registry.schema.register_schema(schema=SchemaRoot(nodes=[_DEVICE, _PART]), branch=default_branch.name)
 
 
 async def test_migration_enable_support_sub_template(
