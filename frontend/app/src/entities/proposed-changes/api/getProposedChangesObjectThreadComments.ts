@@ -1,41 +1,32 @@
-import Handlebars from "@/shared/libs/handlebars";
+import { graphql } from "gql.tada";
 
-export const getProposedChangesObjectThreadComments = Handlebars.compile(`
-query getProposedChangesObjectThreadCommentsFor{{kind}}{
-  {{kind}}(
-    change__ids: "{{id}}"
-    object_path__value: "{{path}}"
-  ) {
-    count
-    edges {
-      node {
-        __typename
-        id
-        display_label
-        resolved {
-          value
-        }
-        created_by {
-          node {
-            display_label
+export const GET_OBJECT_THREAD_COMMENTS = graphql(`
+  query GET_OBJECT_THREAD_COMMENTS($changeIds: [ID!], $objectPath: String) {
+    CoreObjectThread(change__ids: $changeIds, object_path__value: $objectPath) {
+      count
+      edges {
+        node {
+          __typename
+          id
+          display_label
+          resolved {
+            value
           }
-        }
-        comments {
-          count
-          edges {
-            node {
-              id
-              display_label
-              created_by {
-                node {
+          comments {
+            count
+            edges {
+              node_metadata {
+                created_at
+                created_by {
                   display_label
                 }
               }
-              created_at {
-                value
-              }
-              text {
-                value
+              node {
+                id
+                display_label
+                text {
+                  value
+                }
               }
             }
           }
@@ -43,5 +34,4 @@ query getProposedChangesObjectThreadCommentsFor{{kind}}{
       }
     }
   }
-}
 `);

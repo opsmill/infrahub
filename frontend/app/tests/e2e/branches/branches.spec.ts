@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { createBranch, generateRandomBranchName } from "../../utils";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI } from "../utils/graphql";
 
 test.describe("Branches creation and deletion", () => {
   test.describe("when logged in as Admin", () => {
@@ -47,9 +48,8 @@ test.describe("Branches creation and deletion", () => {
       expect(page.url()).toContain(`/branches/${BRANCH_NAME_1}`);
     });
 
-    test("create a new branch for next step", async ({ page }) => {
-      await page.goto("/");
-      await createBranch(page, BRANCH_NAME_2);
+    test("create a new branch for next step", async ({ request }) => {
+      await createBranchAPI(request, BRANCH_NAME_2);
     });
 
     test("should delete a non-selected branch and remain on the current branch", async ({

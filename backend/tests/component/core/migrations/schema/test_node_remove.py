@@ -1,6 +1,9 @@
+from typing import Any
+
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import SchemaPathType
+from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_remove import (
     NodeRemoveMigration,
     NodeRemoveMigrationQueryIn,
@@ -15,12 +18,13 @@ from infrahub.core.utils import count_nodes, count_relationships
 from infrahub.database import InfrahubDatabase
 from tests.component.core.migrations.schema.test_node_kind_update import validate_node_relationships
 from tests.db_snapshot import DbSnapshotter
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.edge_timestamps import assert_edge_timestamps
 from tests.helpers.schema import load_schema
 
 
 async def test_query_out_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
@@ -40,21 +44,23 @@ async def test_query_out_default_branch(
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 2
 
-    # we expect 9 new relationships per TestCar, 18 TOTAL
-    # 7 attributes, 1 relationship & 1 for the root node
-    assert await count_relationships(db=db) == count_rels + 18
+    # we expect 25 new relationships per TestCar, 50 TOTAL:
+    # - 9 deleted parent edges (7 attributes, 1 outbound relationship, 1 IS_PART_OF)
+    # - 16 deleted sub-edges (HAS_VALUE + IS_PROTECTED per attribute = 14, plus
+    #   far-side IS_RELATED + IS_PROTECTED per outbound relationship = 2)
+    assert await count_relationships(db=db) == count_rels + 50
     assert await count_nodes(db=db, label="TestCar") == 2
 
     # Re-execute the query once to ensure that it won't change anything
     query = await NodeRemoveMigrationQueryOut.init(db=db, branch=default_branch, migration=migration)
     await query.execute(db=db)
     assert query.get_nbr_migrations_executed() == 0
-    assert await count_relationships(db=db) == count_rels + 18
+    assert await count_relationships(db=db) == count_rels + 50
     assert await count_nodes(db=db, label="TestCar") == 2
 
 
 async def test_query_in_default_branch(
-    db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
 ) -> None:
     """This test is a bit silly for now because there is nothing to migrate but it least we validate that the generated query is valid"""
 
@@ -88,7 +94,9 @@ async def test_query_in_default_branch(
     assert await count_nodes(db=db, label="TestCar") == 2
 
 
-async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car_accord_main, car_camry_main) -> None:
+async def test_migration_aware(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     candidate_schema = schema.duplicate()
     candidate_schema.delete(name="TestCar")
@@ -116,7 +124,7 @@ async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car
     assert execution_result.nbr_migrations_executed == 2
 
     # 5. Validate nodes and relationships after migration
-    assert await count_relationships(db=db) == count_rels + 18
+    assert await count_relationships(db=db) == count_rels + 50
     assert await count_nodes(db=db, label="TestCar") == 2
 
     # 6. Validate edge timestamps
@@ -127,9 +135,46 @@ async def test_migration_aware(db: InfrahubDatabase, default_branch: Branch, car
     await validate_node_relationships(node=car_accord_main, db=db, branch=default_branch)
     await validate_node_relationships(node=car_camry_main, db=db, branch=default_branch)
 
+    # 8. Validate graph integrity
+    await verify_graph(db=db)
+
+
+async def test_migration_aware_inbound_relationship(
+    db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_camry_main: Node
+) -> None:
+    """Remove TestPerson, exercising the IN query path for IS_RELATED.
+
+    TestPerson.cars is defined with `direction: inbound`, so IS_RELATED edges from
+    TestPerson's perspective are stored as `Relationship -> TestPerson`. Removing
+    TestPerson must close the Relationship vertex's other sub-edges (IS_PROTECTED,
+    far-side IS_RELATED to TestCar) — verify_graph would otherwise flag orphaned
+    active sub-edges.
+    """
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    candidate_schema = schema.duplicate()
+    candidate_schema.delete(name="TestPerson")
+
+    # car_accord_main creates person_john_main, car_camry_main creates person_jane_main
+    assert await count_nodes(db=db, label="TestPerson") == 2
+    assert await count_nodes(db=db, label="TestCar") == 2
+
+    migration = NodeRemoveMigration(
+        previous_node_schema=schema.get(name="TestPerson"),
+        new_node_schema=None,
+        schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="TestPerson"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    # Cars themselves remain; only TestPerson nodes' edges are torn down.
+    assert await NodeManager.count(db=db, schema="TestCar", branch=default_branch) == 2
+    assert await NodeManager.count(db=db, schema="TestPerson", branch=default_branch) == 0
+
+    await verify_graph(db=db)
+
 
 async def test_migration_agnostic_relationship(
-    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema
+    db: InfrahubDatabase, default_branch: Branch, car_person_branch_agnostic_schema: dict[str, Any]
 ) -> None:
     await load_schema(db=db, schema=SchemaRoot(**car_person_branch_agnostic_schema))
 
@@ -161,6 +206,8 @@ async def test_migration_agnostic_relationship(
     await validate_node_relationships(node=person_john, db=db, branch=registry.get_global_branch())
     await validate_node_relationships(node=car, db=db, branch=registry.get_global_branch())
 
+    await verify_graph(db=db)
+
 
 async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
     """Test that metadata is set correctly when removing a node."""
@@ -180,6 +227,8 @@ async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, b
         migration_input=MigrationInput(db=db, at=migration_time, user_id=test_user_id), branch=branch
     )
     assert not execution_result.errors
+
+    await verify_graph(db=db)
 
     # Query for the deleted Node and its edge metadata
     query = """

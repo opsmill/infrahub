@@ -1,5 +1,5 @@
 ---
-# yamllint disable rule:truthy
+# yamllint disable rule:truthy rule:line-length
 name: Build And Push Bench image
 
 on:
@@ -10,20 +10,24 @@ env:
 
 jobs:
   build:
-    runs-on:
-      group: huge-runners
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       - name: Login to Docker Hub
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         id: login
         with:
           registry: ${{ vars.HARBOR_HOST }}
@@ -32,7 +36,65 @@ jobs:
 
       - name: Set docker image meta data
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            ${{ vars.HARBOR_HOST }}/opsmill/bench
+          labels: |
+            org.opencontainers.image.source=opsmill/bench
+
+      - name: Build and push by digest
+        uses: docker/build-push-action@v7
+        id: push
+        with:
+          context: utilities/benchmark
+          file: ${{ env.DOCKERFILE }}
+          provenance: false   # To avoid cross platform "unknown"
+          push: true
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=bench-${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=bench-${{ matrix.platform }}
+          outputs: type=image,name=${{ vars.HARBOR_HOST }}/opsmill/bench,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.push.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-digests-${{ matrix.platform == 'linux/amd64' && 'amd64' || 'arm64' }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v8
+        with:
+          path: /tmp/digests
+          pattern: bench-digests-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.HARBOR_HOST }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Set docker image meta data
+        id: meta
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/opsmill/bench
@@ -43,16 +105,13 @@ jobs:
           flavor: |
             latest=true
 
-      - name: Build and push
-        uses: docker/build-push-action@v6
-        id: push
-        with:
-          context: utilities/benchmark
-          file: ${{ env.DOCKERFILE }}
-          provenance: false   # To avoid cross platform "unknown"
-          push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          SOURCES=$(printf '${{ vars.HARBOR_HOST }}/opsmill/bench@sha256:%s ' *)
+          TAGS=""
+          while IFS= read -r tag; do
+            [ -z "$tag" ] && continue
+            TAGS="$TAGS --tag $tag"
+          done <<< "${{ steps.meta.outputs.tags }}"
+          docker buildx imagetools create $TAGS $SOURCES

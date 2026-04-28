@@ -127,6 +127,66 @@ class MyQuery(Query):
         self.add_to_query("RETURN n.uuid AS uuid, n.name AS name LIMIT 100")  # Manual pagination
 ```
 
+### Branch-Aware Edge Resolution
+
+Every edge in the graph has branch/temporal properties (`branch`, `branch_level`, `from`, `to`, `status`). When traversing multiple edges in a single query, filter each edge independently to resolve the correct active version:
+
+```cypher
+MATCH (n:Node)-[:HAS_ATTRIBUTE]->(attr:Attribute)
+CALL (n, attr) {
+    MATCH (n)-[r:HAS_ATTRIBUTE]->(attr)
+    WHERE %(branch_filter)s
+    RETURN r
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+WITH n, attr, r
+WHERE r.status = "active"
+```
+
+Each subquery:
+
+1. Re-matches the edge with branch filter applied
+2. Orders by `branch_level DESC, from DESC, status ASC` to prefer the most specific, most recent, active edge
+3. `LIMIT 1` picks the winning edge
+4. Outer `WHERE r.status = "active"` excludes soft-deleted edges
+
+Get `branch_filter` via `self.branch.get_query_filter_path(at=self.at)`. For queries filtering multiple edges with different variable names, use `variable_name="r_custom"` to generate a filter bound to a specific variable.
+
+Example: `NodeGetListByAttributeValueQuery` and `NodeGetByHFIDQuery` chain three such subqueries (`IS_PART_OF`, `HAS_ATTRIBUTE`, `HAS_VALUE`) to resolve the active attribute value for the requested branch/time.
+
+### Cypher Variable Shadowing (Neo4j 5+)
+
+Inside `CALL (var1, var2) { ... }` subqueries, Neo4j 5+ rejects re-declaring an imported variable:
+
+```cypher
+// ERROR: "Variable `r` already declared in outer scope"
+CALL (r) {
+    MATCH (a)-[r:REL]->(b)  // r is shadowed
+    RETURN r
+}
+```
+
+Either use different variable names inside the subquery, or return a fresh reference:
+
+```cypher
+CALL (attr) {
+    MATCH (attr)-[r:HAS_VALUE]->(av)
+    RETURN r
+}
+```
+
+Similarly, `CALL ... IN TRANSACTIONS` requires the `MATCH` to be outside the subquery — transform the input first with `MATCH`, then `CALL` only the write operations:
+
+```cypher
+UNWIND $updates AS update
+MATCH (attr:Attribute)-[old_r:HAS_VALUE]->(old_av)
+WHERE elementId(old_av) = update.element_id
+CALL (update, attr, old_r, old_av) {
+    // write operations here
+} IN TRANSACTIONS OF 500 ROWS
+```
+
 ## Result Dataclass Pattern
 
 All queries must expose results through frozen dataclasses. This provides type safety, IDE autocompletion, and a clear API contract between queries and callers.

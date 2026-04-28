@@ -3,7 +3,7 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 export const getObjectPermissionsQuery = (kind: string) => {
   const request = {
     query: {
-      __name: "getObjectPermissions",
+      __name: `getObjectPermissions_${kind}`,
       [kind]: {
         permissions: {
           edges: {

@@ -1,0 +1,1 @@
+Added schema graph visualizer plugin allowing users to view schemas as an interactive graph

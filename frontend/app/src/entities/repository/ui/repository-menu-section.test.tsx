@@ -32,7 +32,7 @@ describe("RepositoryMenuSection", () => {
     } as unknown as ReturnType<typeof useImportCurrentCommitMutation>);
   });
 
-  test("renders Check connectivity and Import latest commit menu items", async () => {
+  test("renders Check connectivity for regular repositories", async () => {
     // GIVEN
     const component = await render(
       <Menu aria-label="Repository actions">
@@ -50,6 +50,23 @@ describe("RepositoryMenuSection", () => {
     await expect
       .element(component.getByRole("menuitem", { name: /Check connectivity/i }))
       .toBeVisible();
+    await expect.element(component.baseElement).not.toHaveTextContent("Import latest commit");
+  });
+
+  test("renders Import latest commit only for read-only repositories", async () => {
+    // GIVEN
+    const component = await render(
+      <Menu aria-label="Repository actions">
+        <RepositoryMenuSection
+          repositoryId="repo-1"
+          objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
+          onCheckConnectivity={mockOnCheckConnectivity}
+          permission={generatePermission()}
+        />
+      </Menu>
+    );
+
+    // THEN
     await expect
       .element(component.getByRole("menuitem", { name: /Import latest commit/i }))
       .toBeVisible();
@@ -81,7 +98,7 @@ describe("RepositoryMenuSection", () => {
       <Menu aria-label="Repository actions">
         <RepositoryMenuSection
           repositoryId="repo-1"
-          objectSchema={generateNodeSchema({ kind: "CoreRepository" })}
+          objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
           permission={generatePermission()}
         />
@@ -101,7 +118,7 @@ describe("RepositoryMenuSection", () => {
       <Menu aria-label="Repository actions">
         <RepositoryMenuSection
           repositoryId="repo-1"
-          objectSchema={generateNodeSchema({ kind: "CoreRepository" })}
+          objectSchema={generateNodeSchema({ kind: "CoreReadOnlyRepository" })}
           onCheckConnectivity={mockOnCheckConnectivity}
           permission={generatePermission({ update: false })}
         />
@@ -112,6 +129,23 @@ describe("RepositoryMenuSection", () => {
     await expect
       .element(component.getByRole("menuitem", { name: /Import latest commit/i }))
       .toHaveAttribute("aria-disabled", "true");
+  });
+
+  test("does not show Import latest commit for non-read-only repositories", async () => {
+    // GIVEN
+    const component = await render(
+      <Menu aria-label="Repository actions">
+        <RepositoryMenuSection
+          repositoryId="repo-1"
+          objectSchema={generateNodeSchema({ kind: "CoreRepository" })}
+          onCheckConnectivity={mockOnCheckConnectivity}
+          permission={generatePermission()}
+        />
+      </Menu>
+    );
+
+    // THEN
+    await expect.element(component.baseElement).not.toHaveTextContent("Import latest commit");
   });
 
   test("shows Reimport current commit only for read-only repositories", async () => {
@@ -133,7 +167,7 @@ describe("RepositoryMenuSection", () => {
       .toBeVisible();
   });
 
-  test("does not show Reimport current commit for non-read-only repositories", async () => {
+  test("shows Reimport current commit for non-read-only repositories", async () => {
     // GIVEN
     const component = await render(
       <Menu aria-label="Repository actions">
@@ -147,7 +181,9 @@ describe("RepositoryMenuSection", () => {
     );
 
     // THEN
-    await expect.element(component.baseElement).not.toHaveTextContent("Reimport current commit");
+    await expect
+      .element(component.getByRole("menuitem", { name: /Reimport current commit/i }))
+      .toBeVisible();
   });
 
   test("calls importCurrentCommit mutation when clicking Reimport current commit", async () => {

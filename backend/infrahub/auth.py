@@ -3,13 +3,13 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import bcrypt
 import jwt
 from pydantic import BaseModel
 
-from infrahub import config, models
+from infrahub import config, lock, models
 from infrahub.config import (
     SecurityOAuth2Google,
     SecurityOAuth2Settings,
@@ -17,12 +17,12 @@ from infrahub.config import (
     SecurityOIDCSettings,
 )
 from infrahub.core.account import validate_token
-from infrahub.core.constants import AccountStatus, InfrahubKind
+from infrahub.core.constants import AccountStatus, AccountType, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreGenericAccount
+from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole, CoreGenericAccount
 from infrahub.core.registry import registry
-from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError
+from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError, ProcessingError
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -32,6 +32,21 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 log = get_logger()
+
+
+class AuthResult(BaseModel):
+    """Rich result returned from successful authentication, combining token with account metadata."""
+
+    model_config = {"frozen": True}
+
+    token: models.UserToken
+    kind: str
+    account_id: str
+    account_name: str
+    account_type: AccountType
+    session_id: uuid.UUID
+    groups: list[dict[str, str]]
+    roles: list[dict[str, str]]
 
 
 class AuthType(StrEnum):
@@ -62,6 +77,39 @@ class SSOStateCache(BaseModel):
     code_verifier: str | None = None
 
 
+async def fetch_account_groups_and_roles(
+    db: InfrahubDatabase, account_id: str
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
+    """Fetch group and role {id: name} for an account. Returns empty lists on any failure."""
+    group_names: list[dict[str, str]] = []
+    role_names: list[dict[str, str]] = []
+
+    groups = await NodeManager.query(
+        schema=CoreAccountGroup,
+        db=db,
+        filters={"members__ids": [account_id]},
+    )
+    group_names.extend({g.get_id(): g.name.value} for g in groups)
+    for group in groups:
+        roles = await group.roles.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccountRole)
+        role_names.extend({r.get_id(): r.name.value} for r in roles.values())
+
+    return group_names, role_names
+
+
+class ExternalAuthProtocol(StrEnum):
+    OAUTH2 = "oauth2"
+    OIDC = "oidc"
+
+
+class ExternalIdentity(BaseModel):
+    sub: str  # provider-issued subject identifier
+    provider_name: str  # as configured in Infrahub, e.g. "google", "provider1"
+    protocol: ExternalAuthProtocol
+    display_name: str  # user_info["name"] — used as label and as name on creation (if no conflict)
+    email: str  # user_info["email"] — fallback for name when display_name is already taken
+
+
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
     account = await NodeManager.get_one(db=db, kind=CoreGenericAccount, id=account_id, raise_on_error=True)
     if account.status.value != AccountStatus.ACTIVE.value:
@@ -70,7 +118,7 @@ async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None
 
 async def authenticate_with_password(
     db: InfrahubDatabase, credentials: models.PasswordCredential, branch: str | None = None
-) -> models.UserToken:
+) -> AuthResult:
     selected_branch = await registry.get_branch(db=db, branch=branch)
 
     response = await NodeManager.query(
@@ -105,7 +153,18 @@ async def authenticate_with_password(
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
-    return models.UserToken(access_token=access_token, refresh_token=refresh_token)
+    groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
+
+    return AuthResult(
+        token=models.UserToken(access_token=access_token, refresh_token=refresh_token),
+        account_id=account.id,
+        account_name=account.name.value,
+        account_type=account.account_type.value,
+        session_id=session_id,
+        groups=groups,
+        roles=roles,
+        kind=account.get_kind(),
+    )
 
 
 async def create_db_refresh_token(db: InfrahubDatabase, account_id: str, expiration: datetime) -> uuid.UUID:
@@ -138,13 +197,97 @@ async def create_fresh_access_token(
     return models.AccessTokenResponse(access_token=access_token)
 
 
-async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups: list[str]) -> models.UserToken:
-    account = await NodeManager.get_one_by_default_filter(db=db, id=account_name, kind=InfrahubKind.ACCOUNT)
+async def signin_sso_account(  # noqa: PLR0915
+    db: InfrahubDatabase, external_identity: ExternalIdentity, sso_groups: list[str]
+) -> AuthResult:
+    lock_key = f"{external_identity.protocol}:{external_identity.provider_name}:{external_identity.sub}"
 
-    if not account:
-        account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-        await account.new(db=db, name=account_name, account_type="User", password=str(uuid.uuid4()))
-        await account.save(db=db)
+    identity_nodes = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.EXTERNALIDENTITY,
+        filters={
+            "sub__value": external_identity.sub,
+            "provider_name__value": external_identity.provider_name,
+            "protocol__value": external_identity.protocol,
+        },
+        prefetch_relationships=True,
+        limit=1,
+    )
+
+    if identity_nodes:
+        identity_node = identity_nodes[0]
+        account = await identity_node.account.get_peer(db=db)
+        if account.label.value != external_identity.display_name:
+            account.label.value = external_identity.display_name
+            await account.save(db=db)
+    else:
+        async with lock.registry.get(name=lock_key, namespace="sso-account"):
+            account_by_name = await NodeManager.get_one_by_default_filter(
+                db=db, id=external_identity.display_name, kind=InfrahubKind.ACCOUNT
+            )
+
+            name_collision = False
+            if account_by_name:
+                existing_identities = await NodeManager.query(
+                    db=db,
+                    schema=InfrahubKind.EXTERNALIDENTITY,
+                    filters={"account__ids": [account_by_name.id]},
+                    limit=1,
+                )
+                if existing_identities:
+                    # Account belongs to a different SSO user — treat as name collision
+                    name_collision = True
+                else:
+                    # Unclaimed account: true transition case, safe to link
+                    account = account_by_name
+                    identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
+                    await identity_node.new(
+                        db=db,
+                        sub=external_identity.sub,
+                        provider_name=external_identity.provider_name,
+                        protocol=external_identity.protocol,
+                        account=account.id,
+                    )
+                    await identity_node.save(db=db)
+                    if account.label.value != external_identity.display_name:
+                        account.label.value = external_identity.display_name
+                        await account.save(db=db)
+
+            if not account_by_name or name_collision:
+                if name_collision:
+                    existing_by_email = await NodeManager.get_one_by_default_filter(
+                        db=db, id=external_identity.email, kind=InfrahubKind.ACCOUNT
+                    )
+                    if existing_by_email:
+                        raise ProcessingError(
+                            message=(
+                                f"Cannot create account: both '{external_identity.display_name}'"
+                                f" and '{external_identity.email}' are already in use as account names."
+                            )
+                        )
+                    account_name = external_identity.email
+                else:
+                    account_name = external_identity.display_name
+
+                account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+                await account.new(
+                    db=db,
+                    name=account_name,
+                    label=external_identity.display_name,
+                    account_type="User",
+                    password=str(uuid.uuid4()),
+                )
+                await account.save(db=db)
+
+                identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
+                await identity_node.new(
+                    db=db,
+                    sub=external_identity.sub,
+                    provider_name=external_identity.provider_name,
+                    protocol=external_identity.protocol,
+                    account=account.id,
+                )
+                await identity_node.save(db=db)
 
     if sso_groups:
         infrahub_groups = await NodeManager.query(
@@ -164,7 +307,20 @@ async def signin_sso_account(db: InfrahubDatabase, account_name: str, sso_groups
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
-    return models.UserToken(access_token=access_token, refresh_token=refresh_token)
+
+    groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
+    typed_account = cast("CoreAccount", account)
+
+    return AuthResult(
+        token=models.UserToken(access_token=access_token, refresh_token=refresh_token),
+        account_id=account.id,
+        account_name=typed_account.name.value,
+        account_type=typed_account.account_type.value,
+        session_id=session_id,
+        groups=groups,
+        roles=roles,
+        kind=account.get_kind(),
+    )
 
 
 def generate_access_token(account_id: str, session_id: uuid.UUID) -> str:
@@ -255,10 +411,12 @@ async def validate_api_key(db: InfrahubDatabase, token: str) -> AccountSession:
     return AccountSession(account_id=account_id, auth_type=AuthType.API)
 
 
-async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> None:
+async def invalidate_refresh_token(db: InfrahubDatabase, token_id: str) -> bool:
     refresh_token = await NodeManager.get_one(id=token_id, db=db)
     if refresh_token:
         await refresh_token.delete(db=db)
+        return True
+    return False
 
 
 async def get_groups_from_provider(

@@ -80,6 +80,23 @@ For more detailed explanations on how these events are used within Infrahub, see
 | **infrahub_branch_name** | Infrahub branch on which to sync the remote repository | string | None |
 | **infrahub_branch_id** | Id of the Infrahub branch on which to sync the remote repository | string | None |
 <!-- vale on -->
+<!-- vale off -->
+#### Event refresh.git.branch_deleted
+<!-- vale on -->
+
+**Description**: Notify workers that a branch was deleted from the remote repository.
+
+**Priority**: 3
+
+<!-- vale off -->
+| Key | Description | Type | Default Value |
+|-----|-------------|------|---------------|
+| **meta** | Meta properties for the message | N/A | None |
+| **repository_id** | The unique ID of the repository | string | None |
+| **repository_name** | The name of the repository | string | None |
+| **repository_kind** | The type of repository | string | None |
+| **branch_name** | The name of the branch that was deleted | string | None |
+<!-- vale on -->
 
 <!-- vale off -->
 ### Refresh Registry

@@ -9,11 +9,13 @@ from prefect import flow, task
 from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
+from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import KVTTL
 from infrahub.workers.dependencies import get_cache, get_client, get_http
 from infrahub.workflows.utils import add_tags
 
-from ..models import CustomWebhook, EventContext, StandardWebhook, TransformWebhook, Webhook
+from ..constants import CACHE_KEY_PREFIX
+from ..models import CustomWebhook, EventContext, HeaderKind, StandardWebhook, TransformWebhook, Webhook, WebhookHeader
 
 if TYPE_CHECKING:
     from httpx import Response
@@ -36,15 +38,33 @@ async def webhook_send(webhook: Webhook, context: EventContext, event_data: dict
     return response
 
 
+KIND_MAP: dict[str, HeaderKind] = {
+    InfrahubKind.STATICKEYVALUE: HeaderKind.STATIC,
+    InfrahubKind.ENVKEYVALUE: HeaderKind.ENVIRONMENT,
+}
+
+
+def _extract_custom_headers(webhook_node: CoreWebhook) -> list[WebhookHeader]:
+    """Extract WebhookHeader list from a webhook node's headers relationship."""
+    if not hasattr(webhook_node, "headers"):
+        return []
+    headers: list[WebhookHeader] = []
+    for related in webhook_node.headers.peers:
+        peer = related.peer
+        kind = KIND_MAP.get(peer.get_kind())
+        if kind is None:
+            continue
+        headers.append(WebhookHeader(key=peer.key.value, value=peer.value.value, kind=kind))
+    return headers
+
+
 @task(name="webhook-convert-node", task_run_name="Convert node to webhook", cache_policy=NONE)
 async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubClient) -> Webhook:
     webhook_kind = webhook_node.get_kind()
+    custom_headers = _extract_custom_headers(webhook_node)
 
-    if webhook_kind not in ["CoreStandardWebhook", "CoreCustomWebhook"]:
-        raise ValueError(f"Unsupported webhook kind: {webhook_kind}")
-
-    if webhook_kind == "CoreStandardWebhook":
-        return StandardWebhook.from_object(obj=webhook_node)
+    if webhook_kind == InfrahubKind.STANDARDWEBHOOK:
+        return StandardWebhook.from_object(obj=webhook_node, custom_headers=custom_headers)
 
     # Processing Custom Webhook
     if webhook_node.transformation.id:
@@ -54,9 +74,9 @@ async def convert_node_to_webhook(webhook_node: CoreWebhook, client: InfrahubCli
             prefetch_relationships=True,
             include=["name", "class_name", "file_path", "repository"],
         )
-        return TransformWebhook.from_object(obj=webhook_node, transform=transform)
+        return TransformWebhook.from_object(obj=webhook_node, transform=transform, custom_headers=custom_headers)
 
-    return CustomWebhook.from_object(obj=webhook_node)
+    return CustomWebhook.from_object(obj=webhook_node, custom_headers=custom_headers)
 
 
 @flow(name="webhook-process", flow_run_name="Send webhook for {webhook_name}")
@@ -78,13 +98,15 @@ async def webhook_process(
     if branch_name:
         await add_tags(branches=[branch_name])
 
-    webhook_data_str = await cache.get(key=f"webhook:{webhook_id}")
+    webhook_data_str = await cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook_id}")
     if not webhook_data_str:
         log.info(f"Webhook {webhook_id} not found in cache")
-        webhook_node = await client.get(kind=webhook_kind, id=webhook_id)
+        webhook_node = await client.get(kind=webhook_kind, id=webhook_id, prefetch_relationships=True)
         webhook = await convert_node_to_webhook(webhook_node=webhook_node, client=client)
         webhook_data = webhook.to_cache()
-        await cache.set(key=f"webhook:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS)
+        await cache.set(
+            key=f"{CACHE_KEY_PREFIX}:{webhook_id}", value=ujson.dumps(webhook_data), expires=KVTTL.TWO_HOURS
+        )
 
     else:
         webhook_data = ujson.loads(webhook_data_str)

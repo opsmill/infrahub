@@ -6,7 +6,7 @@ from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
 
-from infrahub.services.adapters.http.httpx import HttpxAdapter
+from infrahub import config, lock
 from infrahub.workers.utils import inject_context_parameter
 from infrahub.workflows.initialization import setup_task_manager, setup_task_manager_identifiers
 from infrahub.workflows.models import WorkflowInfo
@@ -17,22 +17,26 @@ if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
 
     from infrahub.context import InfrahubContext
+    from infrahub.tls.registry import TlsContextRegistry
     from infrahub.workflows.models import WorkflowDefinition
 
 
 class WorkflowWorkerExecution(InfrahubWorkflow):
-    # This is required to grab a cached SSLContext from the HttpAdapter.
-    # We cannot use the get_http() dependency since it introduces a circular dependency.
-    # We could remove this later on by introducing a cached SSLContext outside of this adapter.
-    _http_adapter = HttpxAdapter()
+    def __init__(self, tls_registry: TlsContextRegistry) -> None:
+        self._tls_registry = tls_registry
 
     @staticmethod
     async def initialize(component_is_primary_server: bool, is_initial_setup: bool = False) -> None:
-        if component_is_primary_server:
-            await setup_task_manager()
-
         if is_initial_setup:
+            await WorkflowWorkerExecution._setup_task_manager()
             await setup_task_manager_identifiers()
+        elif component_is_primary_server:
+            await WorkflowWorkerExecution._setup_task_manager()
+
+    @staticmethod
+    async def _setup_task_manager() -> None:
+        async with lock.registry.get(name="global.worker.taskmgr.init"):
+            await setup_task_manager()
 
     @overload
     async def execute_workflow(
@@ -89,6 +93,9 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
-        async with AsyncClientContext(httpx_settings={"verify": self._http_adapter.verify_tls()}):
+        tls_insecure = config.SETTINGS.http.tls_insecure
+        tls_ca_bundle = config.SETTINGS.http.tls_ca_bundle
+        tls_context = self._tls_registry.get(insecure=tls_insecure, ca_bundle=tls_ca_bundle)
+        async with AsyncClientContext(httpx_settings={"verify": tls_context}):
             flow_run = await run_deployment(name=workflow.full_name, timeout=0, parameters=parameters or {}, tags=tags)  # type: ignore[return-value, misc]
         return WorkflowInfo.from_flow(flow_run=flow_run)

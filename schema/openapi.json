@@ -1978,6 +1978,142 @@
                 ]
             }
         },
+        "/api/telemetry/snapshots": {
+            "get": {
+                "summary": "Get Telemetry Snapshots",
+                "operationId": "get_telemetry_snapshots_api_telemetry_snapshots_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Include snapshots created on or after this date (ISO 8601)",
+                            "title": "Start Date"
+                        },
+                        "description": "Include snapshots created on or after this date (ISO 8601)"
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Include snapshots created on or before this date (ISO 8601)",
+                            "title": "End Date"
+                        },
+                        "description": "Include snapshots created on or before this date (ISO 8601)"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Maximum number of snapshots to return",
+                            "default": 1000,
+                            "title": "Limit"
+                        },
+                        "description": "Maximum number of snapshots to return"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Number of snapshots to skip",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "Number of snapshots to skip"
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TelemetrySnapshotListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/transform/python/{transform_id}": {
             "get": {
                 "summary": "Transform Python",
@@ -2418,7 +2554,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -2473,6 +2609,22 @@
                         "title": "Used By",
                         "description": "List of Nodes that are referencing this Generic",
                         "update": "not_applicable"
+                    },
+                    "restricted_namespaces": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Restricted Namespaces",
+                        "description": "Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
+                        "update": "allowed"
                     },
                     "kind": {
                         "anyOf": [
@@ -2704,7 +2856,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3029,7 +3181,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3300,7 +3452,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3736,6 +3888,12 @@
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -3996,6 +4154,12 @@
                         "title": "Deprecation",
                         "description": "Mark attribute as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the attribute is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -4010,7 +4174,7 @@
                 "properties": {
                     "file": {
                         "type": "string",
-                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
                         "title": "File"
                     }
                 },
@@ -4617,7 +4781,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -4672,6 +4836,22 @@
                         "title": "Used By",
                         "description": "List of Nodes that are referencing this Generic",
                         "update": "not_applicable"
+                    },
+                    "restricted_namespaces": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Restricted Namespaces",
+                        "description": "Nodes inheriting from this Generic schema must belong to one of the listed namespaces",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -5011,6 +5191,12 @@
                         "title": "Diff Update After Merge",
                         "description": "When enabled, diff updates are triggered for active branches after a branch merge.",
                         "default": true
+                    },
+                    "delete_branch_after_merge": {
+                        "type": "boolean",
+                        "title": "Delete Branch After Merge",
+                        "description": "When enabled, the Infrahub branch is automatically deleted after a successful merge.",
+                        "default": false
                     }
                 },
                 "additionalProperties": false,
@@ -5386,7 +5572,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -5922,6 +6108,12 @@
                         "title": "Deprecation",
                         "description": "Mark relationship as deprecated and provide a user-friendly message to display",
                         "update": "allowed"
+                    },
+                    "display": {
+                        "$ref": "#/components/schemas/SchemaAttributeDisplay",
+                        "description": "Controls where the relationship is displayed. 'default' shows in the main view, 'extra' shows in an expanded/secondary section.",
+                        "default": "default",
+                        "update": "allowed"
                     }
                 },
                 "additionalProperties": false,
@@ -5976,6 +6168,16 @@
                 "additionalProperties": false,
                 "type": "object",
                 "title": "RemoteLoggingSettings"
+            },
+            "RemoteSendStatus": {
+                "type": "string",
+                "enum": [
+                    "pending",
+                    "sent",
+                    "skipped",
+                    "failed"
+                ],
+                "title": "RemoteSendStatus"
             },
             "SSOInfo": {
                 "properties": {
@@ -6044,6 +6246,14 @@
                     "token_path"
                 ],
                 "title": "SSOProviderInfo"
+            },
+            "SchemaAttributeDisplay": {
+                "type": "string",
+                "enum": [
+                    "default",
+                    "extra"
+                ],
+                "title": "SchemaAttributeDisplay"
             },
             "SchemaBranchHash": {
                 "properties": {
@@ -6347,6 +6557,80 @@
                 ],
                 "title": "SchemasLoadAPI"
             },
+            "TelemetrySnapshotListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count"
+                    },
+                    "snapshots": {
+                        "items": {
+                            "$ref": "#/components/schemas/TelemetrySnapshotResponse"
+                        },
+                        "type": "array",
+                        "title": "Snapshots"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "snapshots"
+                ],
+                "title": "TelemetrySnapshotListResponse"
+            },
+            "TelemetrySnapshotResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "title": "Kind"
+                    },
+                    "payload_format": {
+                        "type": "string",
+                        "title": "Payload Format"
+                    },
+                    "deployment_id": {
+                        "type": "string",
+                        "title": "Deployment Id"
+                    },
+                    "infrahub_version": {
+                        "type": "string",
+                        "title": "Infrahub Version"
+                    },
+                    "data": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Data"
+                    },
+                    "checksum": {
+                        "type": "string",
+                        "title": "Checksum"
+                    },
+                    "remote_send_status": {
+                        "$ref": "#/components/schemas/RemoteSendStatus"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "created_at",
+                    "kind",
+                    "payload_format",
+                    "deployment_id",
+                    "infrahub_version",
+                    "data",
+                    "checksum",
+                    "remote_send_status"
+                ],
+                "title": "TelemetrySnapshotResponse"
+            },
             "TextAttributeParameters": {
                 "properties": {
                     "id": {
@@ -6508,6 +6792,13 @@
                     "type": {
                         "type": "string",
                         "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
                     }
                 },
                 "type": "object",

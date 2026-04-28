@@ -63,6 +63,7 @@ export function ObjectConvert({ objectSchema, objectId, permission }: ObjectConv
             objectSchema={objectSchema}
             objectData={objectDetailsData}
             permission={permission}
+            showExtra
           />
         </Card>
 

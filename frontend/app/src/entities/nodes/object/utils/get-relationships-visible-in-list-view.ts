@@ -5,6 +5,8 @@ export function getRelationshipsVisibleInListView(
   relationships: RelationshipSchema[]
 ): RelationshipSchema[] {
   return relationships.filter((relationship) => {
+    if (relationship.display === "extra") return false;
+
     switch (relationship.kind) {
       case "Attribute":
       case "Parent":

@@ -7,8 +7,8 @@ import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 
 import {
   type GetReachableObjectsParams,
-  type ReachableObjectsResponse,
   getReachableObjects,
+  type ReachableObjectsResponse,
 } from "./get-reachable-objects";
 
 type UseReachableObjectsParams = Omit<GetReachableObjectsParams, "branchName" | "atDate">;

@@ -48,12 +48,12 @@ async def migration_055_data(
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_branch.set(name=modified_webhook.kind, schema=modified_webhook)
 
-    # Load only the CoreWebhook schema to the database
+    # Load CoreWebhook and its relationship peers to the database
     await registry.schema.load_schema_to_db(
         schema=schema_branch,
         db=db,
         branch=default_branch,
-        limit=["CoreWebhook"],
+        limit=["CoreWebhook", "CoreKeyValue"],
     )
 
 

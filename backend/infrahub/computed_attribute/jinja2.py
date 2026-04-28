@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
+    from infrahub_sdk import InfrahubClient
+
 __all__ = ["InfrahubJinja2Template"]
 
 
@@ -65,7 +67,11 @@ class InfrahubJinja2Template(Jinja2Template):
         template: str | Path,
         template_directory: Path | None = None,
         filters: dict[str, Callable[..., str]] | None = None,
+        client: InfrahubClient | None = None,
     ) -> None:
         super().__init__(
-            template=template, template_directory=template_directory, filters={**FILTERS, **(filters or {})}
+            template=template,
+            template_directory=template_directory,
+            filters={**FILTERS, **(filters or {})},
+            client=client,
         )

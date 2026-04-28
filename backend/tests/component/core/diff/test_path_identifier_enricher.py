@@ -3,6 +3,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.enricher.path_identifier import DiffPathIdentifierEnricher
 from infrahub.core.diff.model.diff import ModifiedPathType
 from infrahub.core.initialization import create_branch
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 from .factories import (
@@ -16,7 +17,7 @@ from .factories import (
 
 
 class TestPathIdentifierEnricher:
-    async def test_path_identifiers_added(self, db: InfrahubDatabase, car_person_schema) -> None:
+    async def test_path_identifiers_added(self, db: InfrahubDatabase, car_person_schema: SchemaBranch) -> None:
         branch = await create_branch(db=db, branch_name="branch")
         diff_attribute_value_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_VALUE)
         diff_attribute_property = EnrichedPropertyFactory.build(property_type=DatabaseEdgeType.HAS_OWNER)

@@ -400,7 +400,7 @@ class TestDiffCoordinator:
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
-        person_john_main,
+        person_john_main: Node,
     ) -> None:
         branch = await create_branch(db=db, branch_name="branch1")
         component_registry = get_component_registry()
@@ -535,23 +535,25 @@ class TestDiffCoordinator:
         for metadata in retrieved_metadata:
             assert metadata.proposed_change_id == proposed_change_id
 
-    async def test_open_proposed_change_discovered_when_not_provided(
+    @pytest.mark.parametrize("pc_state", [ProposedChangeState.OPEN, ProposedChangeState.MERGING])
+    async def test_active_proposed_change_discovered_when_not_provided(
         self,
         db: InfrahubDatabase,
         default_branch: Branch,
         person_john_main: Node,
+        pc_state: ProposedChangeState,
     ) -> None:
-        """When update_branch_diff is called without proposed_change_id but an OPEN
+        """When update_branch_diff is called without proposed_change_id but an OPEN or MERGING
         CoreProposedChange exists for the branch, the diff should be linked to it."""
         branch = await create_branch(db=db, branch_name="branch")
 
-        # Create a real OPEN CoreProposedChange for this branch
         proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
         await proposed_change.new(
             db=db,
-            name="test-pc",
+            name=f"test-pc-{pc_state.value}",
             source_branch=branch.name,
             destination_branch=default_branch.name,
+            state=pc_state.value,
         )
         await proposed_change.save(db=db)
 
@@ -567,7 +569,6 @@ class TestDiffCoordinator:
         # Update branch diff WITHOUT providing proposed_change_id
         diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
-        # The diff should have discovered and linked the open proposed change
         assert diff_metadata.proposed_change_id == proposed_change.id
 
         # Verify both diff roots are linked via the repository
@@ -588,7 +589,7 @@ class TestDiffCoordinator:
         """Diffs should not be linked to CLOSED, CANCELED, or MERGED proposed changes."""
         branch = await create_branch(db=db, branch_name="branch")
 
-        # Create proposed changes in non-open states for this branch
+        # Create proposed changes in terminal states for this branch
         for state in (ProposedChangeState.CLOSED, ProposedChangeState.CANCELED, ProposedChangeState.MERGED):
             pc = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)
             await pc.new(
@@ -611,7 +612,7 @@ class TestDiffCoordinator:
         # Update branch diff WITHOUT providing proposed_change_id
         diff_metadata = await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
 
-        # The diff should NOT be linked to any of the non-open proposed changes
+        # The diff should NOT be linked to any of the terminal proposed changes
         assert diff_metadata.proposed_change_id is None
 
     async def test_parent_reassigned_then_deleted(

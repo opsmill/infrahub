@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from infrahub.core import registry
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.schema import GenericSchema, NodeSchema, SchemaRoot, internal_schema
 from infrahub.core.schema.manager import SchemaManager
@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
-console = get_migration_console()
 
 
 @dataclass
@@ -148,6 +147,7 @@ class Migration057(ArbitraryMigration):
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
         at = migration_input.at
         user_id = migration_input.user_id

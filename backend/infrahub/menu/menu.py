@@ -329,6 +329,16 @@ default_menu = [
                 section=MenuSection.INTERNAL,
                 order_weight=2000,
             ),
+            MenuItemDefinition(
+                namespace="Builtin",
+                name="KeyValue",
+                label="Key/Value",
+                kind=InfrahubKind.KEYVALUE,
+                icon=_extract_node_icon(infrahub_schema.get(InfrahubKind.KEYVALUE)),
+                protected=True,
+                section=MenuSection.INTERNAL,
+                order_weight=4000,
+            ),
         ],
     ),
     MenuItemDefinition(

@@ -1,8 +1,6 @@
 import { gql, useQuery } from "@apollo/client";
-import { formatISO } from "date-fns";
 import { useState } from "react";
 import { toast } from "react-toastify";
-import * as R from "remeda";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -14,11 +12,9 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_THREAD_COMMENT_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
 import { getPermission } from "@/entities/permission/utils";
 
@@ -33,8 +29,6 @@ type tThread = {
 
 export const Thread = (props: tThread) => {
   const { thread, refetch, displayContext } = props;
-
-  const auth = useAuth();
 
   const [isLoading, setIsLoading] = useState(false);
   const [displayAddComment, setDisplayAddComment] = useState(false);
@@ -59,12 +53,6 @@ export const Thread = (props: tThread) => {
       },
       thread: {
         id: thread.id,
-      },
-      created_by: {
-        id: auth?.data?.sub,
-      },
-      created_at: {
-        value: formatISO(new Date()),
       },
     };
 
@@ -152,9 +140,11 @@ export const Thread = (props: tThread) => {
     );
   };
 
-  const comments = thread?.comments?.edges?.map((comment: any) => comment.node) ?? [];
-
-  const sortedComments = R.sortBy(comments, (x) => new Date(x.created_at.value).getTime());
+  const comments =
+    thread?.comments?.edges?.map((edge: any) => ({
+      ...edge.node,
+      metadata: edge.node_metadata,
+    })) ?? [];
 
   const isResolved = thread?.resolved?.value;
   const idForLabel = `checkbox-resolve-thread${thread?.id}`;
@@ -190,11 +180,11 @@ export const Thread = (props: tThread) => {
     >
       {displayContext && getThreadTitle(thread)}
 
-      {sortedComments.map((comment: any, index: number) => (
+      {comments.map((comment: any, index: number) => (
         <Comment
           key={index}
-          author={comment?.created_by?.node ? getNodeLabel(comment.created_by.node) : "Anonymous"}
-          createdAt={comment?.created_at?.value}
+          author={comment?.metadata?.created_by?.display_label}
+          createdAt={comment?.metadata?.created_at}
           content={comment?.text?.value ?? ""}
           className={"border border-gray-200"}
         />

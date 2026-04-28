@@ -8,16 +8,13 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import DefaultBranchNodeCount, Migration044
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.exceptions import SchemaNotFoundError
 
 from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
     from infrahub.core.schema import ProfileSchema, TemplateSchema
-
-
-console = get_migration_console()
 
 
 class Migration045(Migration044):
@@ -49,7 +46,7 @@ class Migration045(Migration044):
         hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 update_task = progress.add_task(
                     f"Set display_label and human_friendly_id for {total_nodes_count} nodes on default branch",
                     total=total_nodes_count,

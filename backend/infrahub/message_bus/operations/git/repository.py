@@ -52,3 +52,17 @@ async def fetch(message: messages.RefreshGitFetch) -> None:
         create_if_missing=True,
         update_commit_value=False,
     )
+
+
+@flow(
+    name="refresh-git-repository-branch-deleted",
+    flow_run_name="Delete local branch {message.branch_name} in {message.repository_name} on " + WORKER_IDENTITY,
+)
+async def branch_deleted(message: messages.RefreshGitRepositoryBranchDeleted) -> None:
+    repo = await get_initialized_repo(
+        client=get_client(),
+        repository_id=message.repository_id,
+        name=message.repository_name,
+        repository_kind=message.repository_kind,
+    )
+    await repo.delete_local_branch(branch_name=message.branch_name)

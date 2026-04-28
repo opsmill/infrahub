@@ -157,7 +157,7 @@ class ModifiedPath(BaseModel):
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, ModifiedPath):
-            raise NotImplementedError
+            raise NotImplementedError()
 
         if self.modification_type != other.modification_type:
             return False
@@ -174,7 +174,7 @@ class ModifiedPath(BaseModel):
 
     def __lt__(self, other: object) -> bool:
         if not isinstance(other, ModifiedPath):
-            raise NotImplementedError
+            raise NotImplementedError()
         return str(self) < str(other)
 
     def __hash__(self) -> int:

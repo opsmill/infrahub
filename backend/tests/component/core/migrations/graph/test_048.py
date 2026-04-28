@@ -381,7 +381,7 @@ CREATE (rel)-[:IS_RELATED {
     async def test_migration_048(
         self,
         db: InfrahubDatabase,
-        load_test_data,
+        load_test_data: None,
         relationship_dicts: list[dict[str, str | int | None]],
         duplicate_edge_relationship_dicts: list[dict[str, str | int | None]],
         multi_branch_relationship_dict: dict[str, str | int | None],

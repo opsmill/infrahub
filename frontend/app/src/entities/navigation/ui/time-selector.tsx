@@ -35,7 +35,7 @@ export const TimeFrameSelector = () => {
   return (
     <div
       className={classNames(
-        "inline-flex h-8 items-center overflow-hidden rounded-lg border border-neutral-200",
+        "inline-flex h-8 shrink-0 items-center overflow-hidden rounded-lg border border-neutral-200",
         date && "bg-neutral-800"
       )}
     >

@@ -24,7 +24,9 @@ Fast unittests that require no external services to run. I.e. no database or net
 - Fast feedback loop
 - Sanity checks
 
-**When to use:** Testing smaller functions that doesn't require network services.
+**When to use:** Pure logic — parsing, validation, transformation, data structures. No database, no network, no infrastructure. If the function under test doesn't need a DB connection or external service to do its job, it's a unit test.
+
+**When NOT to use:** If reproducing the bug requires database state, concurrent writes, constraint enforcement, or infrastructure behavior (locks, caches, message buses). Use component or functional tests instead — do not mock infrastructure to force a unit test.
 
 ### Component Tests (`backend/tests/component/`)
 
@@ -37,7 +39,7 @@ Many tests leverage the database and use TestContainers for external dependencie
 - Tests individual components with database interaction
 - Fast feedback loop
 
-**When to use:** Testing business logic that requires database state but doesn't need the full application context.
+**When to use:** Testing individual components that require external services — database state, cache behavior, lock coordination, message bus interactions, or any business logic that depends on infrastructure. See the [Key Root Fixtures](#key-root-fixtures) and [Test Adapters](#test-adapters) sections below for available test infrastructure.
 
 ### Functional Tests (`backend/tests/functional/`)
 
@@ -50,7 +52,7 @@ Multi-component tests running in a single thread/process. Async tasks execute in
 - Full debuggability with breakpoints
 - Uses `prefect_test_harness` for Prefect integration
 
-**When to use:** Testing features that span multiple components, including async workflows, while maintaining the ability to debug.
+**When to use:** Features that span multiple components, including async workflows, event-driven behavior, or end-to-end flows that cross service boundaries.
 
 ### Integration Tests (`backend/tests/integration/`)
 
@@ -67,7 +69,7 @@ True distributed tests with multiple Docker containers running the full Infrahub
 - Slowest but most realistic testing
 - Tests real distributed behavior
 
-**When to use:** Testing behavior that requires actual distributed execution, like computed attributes, triggered actions, or schema migrations in production-like environments.
+**When to use:** Testing behavior that requires actual distributed execution, like [computed attributes](computed-attributes.md), triggered actions, or schema migrations in production-like environments.
 
 ```python
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
@@ -335,6 +337,63 @@ For JSON-based schemas, use the helper methods:
 # Load schema from fixtures directory
 schema_dict = helper.schema_file("infra_simple_01.json")
 await client.schema.load(schemas=[schema_dict])
+```
+
+## Prefect Testing Patterns
+
+### Calling Flows in Unit Tests (`.fn`)
+
+`@flow`-decorated functions are wrapped in a Prefect `Flow` object. Calling them directly would create an actual Prefect flow run. Use `.fn` to access the original unwrapped coroutine:
+
+```python
+from infrahub.webhook.tasks.invalidate import invalidate_webhook_headers
+
+# .fn bypasses Prefect orchestration — calls the plain async function
+await invalidate_webhook_headers.fn(event_type="infrahub.node.updated", event_data={"node_id": "kv-123"})
+```
+
+Note: `.fn` is a dynamic attribute set at runtime by Prefect's decorator — IDEs and type checkers cannot resolve it.
+
+### Logging: Use `caplog` Instead of Mocking `get_run_logger`
+
+Prefect's `get_run_logger()` returns a Prefect-specific logger. In unit tests (via `.fn`), patch it to return a standard `logging.getLogger()` and use pytest's `caplog` for assertions:
+
+```python
+import logging
+from unittest.mock import patch
+
+import pytest
+
+LOGGER_NAME = "infrahub.my_module.tasks"
+
+@pytest.fixture(autouse=True)
+def _patch_prefect_logger():
+    with patch(
+        "infrahub.my_module.tasks.get_run_logger",
+        return_value=logging.getLogger(LOGGER_NAME),
+    ):
+        yield
+
+async def test_logs_warning(caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.WARNING, logger=LOGGER_NAME):
+        await my_flow.fn(...)
+    assert "expected message" in caplog.text
+```
+
+This matches the pattern used in `test_webhook_header.py` and `test_models.py`.
+
+### Functional Tests with `TestInfrahubApp`
+
+`TestInfrahubApp` provides a `memory_cache` fixture (class-scoped) that injects a `MemoryCache` via `dependency_provider.scope(build_cache, ...)`. Use it in functional tests to pre-fill and assert on cache state:
+
+```python
+from tests.helpers.test_app import TestInfrahubApp
+
+class TestMyFeature(TestInfrahubApp):
+    async def test_cache_cleared(self, memory_cache: MemoryCache, ...) -> None:
+        await memory_cache.set(key="webhook:abc", value='{"cached": true}')
+        # ... trigger invalidation ...
+        assert await memory_cache.get(key="webhook:abc") is None
 ```
 
 ## Running Tests

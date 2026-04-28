@@ -92,8 +92,6 @@ class CoreCheck(CoreNode):
 
 class CoreComment(CoreNode):
     text: String
-    created_at: DateTimeOptional
-    created_by: RelationshipManager
 
 
 class CoreCredential(CoreNode):
@@ -118,6 +116,7 @@ class CoreGenericAccount(CoreNode):
     account_type: Enum
     status: Dropdown
     tokens: RelationshipManager
+    external_identities: RelationshipManager
 
 
 class CoreGenericRepository(CoreNode):
@@ -145,6 +144,13 @@ class CoreGroup(CoreNode):
     subscribers: RelationshipManager
     parent: RelationshipManager
     children: RelationshipManager
+
+
+class CoreKeyValue(CoreNode):
+    name: String
+    key: String
+    description: StringOptional
+    value: String
 
 
 class CoreMenu(CoreNode):
@@ -192,10 +198,8 @@ class CoreTaskTarget(CoreNode):
 class CoreThread(CoreNode):
     label: StringOptional
     resolved: Boolean
-    created_at: DateTimeOptional
     change: RelationshipManager
     comments: RelationshipManager
-    created_by: RelationshipManager
 
 
 class CoreTransformation(CoreNode):
@@ -235,6 +239,7 @@ class CoreWebhook(CoreNode):
     description: StringOptional
     url: URL
     validate_certificates: BooleanOptional
+    headers: RelationshipManager
 
 
 class CoreWeightedPoolResource(CoreNode):
@@ -356,6 +361,10 @@ class CoreDataCheck(CoreCheck):
 
 
 class CoreDataValidator(CoreValidator):
+    pass
+
+
+class CoreEnvKeyValue(CoreKeyValue):
     pass
 
 
@@ -563,6 +572,10 @@ class CoreStandardWebhook(CoreWebhook, CoreTaskTarget):
     shared_key: String
 
 
+class CoreStaticKeyValue(CoreKeyValue):
+    pass
+
+
 class CoreThreadComment(CoreComment):
     thread: RelationshipManager
 
@@ -586,6 +599,13 @@ class InternalAccountToken(CoreNode):
     name: StringOptional
     token: String
     expiration: DateTimeOptional
+    account: RelationshipManager
+
+
+class InternalExternalIdentity(CoreNode):
+    sub: String
+    provider_name: String
+    protocol: String
     account: RelationshipManager
 
 

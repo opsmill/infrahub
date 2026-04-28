@@ -22,7 +22,11 @@ export const fetchUrl = async (url: string, payload?: RequestInit) => {
 
   const rawResponse = await fetch(url, newPayload);
 
-  return rawResponse?.json();
+  if (!rawResponse.ok) {
+    throw new Error(`Request failed with status ${rawResponse.status}`);
+  }
+
+  return rawResponse.json();
 };
 
 const QSP_TO_INCLUDE = [QSP.BRANCH, QSP.DATETIME];

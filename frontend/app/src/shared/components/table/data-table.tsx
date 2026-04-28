@@ -81,14 +81,6 @@ export function DataTable<T extends NodeCore>({
 
   return (
     <div className="grid content-start" style={style} {...props}>
-      {selectedRows.length > 0 && (
-        <ObjectTableToolbar
-          selectedRows={selectedRows}
-          onClose={table.resetRowSelection}
-          renderMore={toolbarActions}
-        />
-      )}
-
       {allHeaders.map((header) => {
         return flexRender(header.column.columnDef.header, {
           ...header.getContext(),
@@ -97,12 +89,16 @@ export function DataTable<T extends NodeCore>({
       })}
 
       {allRows.map((row) => {
-        return row.getVisibleCells().map((cell) => {
-          return flexRender(cell.column.columnDef.cell, {
-            ...cell.getContext(),
-            key: cell.id,
-          });
-        });
+        return (
+          <div key={row.id} className="contents" data-testid="data-table-row">
+            {row.getVisibleCells().map((cell) => {
+              return flexRender(cell.column.columnDef.cell, {
+                ...cell.getContext(),
+                key: cell.id,
+              });
+            })}
+          </div>
+        );
       })}
 
       {!isLoading && allRows.length === 0 && renderEmpty?.()}
@@ -126,6 +122,14 @@ export function DataTable<T extends NodeCore>({
             )}
           </div>
         ))}
+
+      {selectedRows.length > 0 && (
+        <ObjectTableToolbar
+          selectedRows={selectedRows}
+          onClose={table.resetRowSelection}
+          renderMore={toolbarActions}
+        />
+      )}
     </div>
   );
 }

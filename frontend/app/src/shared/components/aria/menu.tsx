@@ -8,30 +8,16 @@ import {
   MenuSection as AriaMenuSection,
   type MenuSectionProps as AriaMenuSectionProps,
   MenuTrigger as AriaMenuTrigger,
-  type PopoverProps as AriaPopoverProps,
   Collection,
   composeRenderProps,
 } from "react-aria-components";
 
-import { Popover } from "@/shared/components/aria/popover";
 import { disabledStyle } from "@/shared/components/aria/style-rac";
 import { Tooltip, type TooltipProps } from "@/shared/components/ui/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
 export const MenuTrigger = AriaMenuTrigger;
-
-export interface MenuPopoverProps extends AriaPopoverProps {}
-export const MenuPopover = ({ className, ...props }: MenuPopoverProps) => {
-  return (
-    <Popover
-      className={composeRenderProps(className, (className) => {
-        return classNames("border-stone-200 bg-stone-100", className);
-      })}
-      {...props}
-    />
-  );
-};
 
 export interface MenuProps<T> extends AriaMenuProps<T> {}
 export const Menu = <T extends object>({ className, ...props }: MenuProps<T>) => {

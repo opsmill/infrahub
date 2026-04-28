@@ -1,10 +1,11 @@
 from infrahub.core.branch import Branch
 from infrahub.core.ipam.constants import PrefixMemberType
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
+from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 
 
-async def test_use_percentage(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01) -> None:
+async def test_use_percentage(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]) -> None:
     net240 = ip_dataset_01["net240"]
     net240.member_type.value = PrefixMemberType.ADDRESS.value
     utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net240])

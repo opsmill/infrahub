@@ -36,7 +36,7 @@ class RelationshipProfileRemovalConstraint(RelationshipManagerConstraintInterfac
     def _get_required_attributes_names(self, schema: NodeSchema) -> set[str]:
         attr_names: set[str] = set()
         for attr_schema in schema.attributes:
-            if attr_schema.support_profiles and not attr_schema.optional:
+            if not attr_schema.optional and schema.check_if_attr_supports_profiles(attribute_schema=attr_schema):
                 attr_names.add(attr_schema.name)
         return attr_names
 

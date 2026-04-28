@@ -56,13 +56,21 @@ test.describe("Object update", () => {
 
       // Verify updates in view
       await expect(page.getByText("Nameatl1-core1-new-name")).toBeVisible();
-      await expect(page.getByText("New description")).toBeVisible();
-      await expect(page.getByRole("link", { name: "AS174 174" })).toBeVisible();
-      await expect(page.getByText("StatusMaintenance")).toBeVisible();
-      await expect(page.getByText("Edge Router")).toBeVisible();
-      await expect(page.getByRole("link", { name: "green" })).toBeVisible();
-      await expect(page.getByRole("link", { name: "red", exact: true })).toBeVisible();
-      await expect(page.getByRole("link", { name: "blue" })).not.toBeVisible();
+      await expect(page.getByTestId("object-details").getByText("New description")).toBeVisible();
+      await expect(
+        page.getByTestId("object-details").getByRole("link", { name: "AS174 174" })
+      ).toBeVisible();
+      await expect(page.getByTestId("object-details").getByText("StatusMaintenance")).toBeVisible();
+      await expect(page.getByTestId("object-details").getByText("Edge Router")).toBeVisible();
+      await expect(
+        page.getByTestId("object-details").getByRole("link", { name: "green" })
+      ).toBeVisible();
+      await expect(
+        page.getByTestId("object-details").getByRole("link", { name: "red", exact: true })
+      ).toBeVisible();
+      await expect(
+        page.getByTestId("object-details").getByRole("link", { name: "blue" })
+      ).not.toBeVisible();
 
       // Verify updates in form
       await page.getByTestId("edit-button").click();

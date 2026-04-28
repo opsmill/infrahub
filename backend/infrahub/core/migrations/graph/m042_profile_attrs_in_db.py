@@ -7,7 +7,7 @@ from rich.progress import Progress
 from infrahub.core.branch.models import Branch
 from infrahub.core.initialization import get_root_node
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.query import Query, QueryType
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
@@ -92,13 +92,15 @@ class Migration042(MigrationRequiringRebase):
         root_node = await get_root_node(db=db, initialize=False)
         default_branch_name = root_node.default_branch
         default_branch = await Branch.get_by_name(db=db, name=default_branch_name)
-        return await self._do_execute_for_branch(db=db, branch=default_branch)
+        return await self._do_execute_for_branch(migration_input=migration_input, db=db, branch=default_branch)
 
     async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
-        return await self._do_execute_for_branch(db=migration_input.db, branch=branch)
+        return await self._do_execute_for_branch(migration_input=migration_input, db=migration_input.db, branch=branch)
 
-    async def _do_execute_for_branch(self, db: InfrahubDatabase, branch: Branch) -> MigrationResult:
-        console = get_migration_console()
+    async def _do_execute_for_branch(
+        self, migration_input: MigrationInput, db: InfrahubDatabase, branch: Branch
+    ) -> MigrationResult:
+        console = migration_input.console
         result = MigrationResult()
         await get_or_load_schema_branch(db=db, branch=branch)
 

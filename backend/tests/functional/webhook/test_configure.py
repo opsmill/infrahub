@@ -3,23 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
-from infrahub_sdk.exceptions import NodeNotFoundError
-from infrahub_sdk.protocols import CoreStandardWebhook
-from prefect.events.actions import RunDeployment
 
+from infrahub.core.constants import InfrahubKind
+from infrahub.exceptions import NodeNotFoundError
 from infrahub.trigger.setup import gather_all_automations
+from infrahub.webhook.constants import CACHE_KEY_PREFIX
 from infrahub.webhook.gather import gather_trigger_webhook
-from infrahub.webhook.models import WebhookTriggerDefinition
 from infrahub.webhook.tasks import configure_webhook
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
-    from infrahub_sdk import InfrahubClient
     from prefect.client.orchestration import PrefectClient
     from prefect.events.actions import RunDeployment
 
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
+    from tests.adapters.cache import MemoryCache
 
 
 class TestWebhookConfigure(TestInfrahubApp):
@@ -41,7 +40,7 @@ class TestWebhookConfigure(TestInfrahubApp):
         assert "webhook_id" in action.parameters.keys()
         assert action.parameters["webhook_id"] == webhook1.id
         assert "webhook_kind" in action.parameters.keys()
-        assert action.parameters["webhook_kind"] == "CoreStandardWebhook"
+        assert action.parameters["webhook_kind"] == InfrahubKind.STANDARDWEBHOOK
 
         # Configure it a second time to ensure the function is idempotent
         await configure_webhook(
@@ -136,7 +135,31 @@ class TestWebhookConfigure(TestInfrahubApp):
         assert "webhook_id" in action.parameters.keys()
         assert action.parameters["webhook_id"] == webhook2.id
         assert "webhook_kind" in action.parameters.keys()
-        assert action.parameters["webhook_kind"] == "CoreCustomWebhook"
+        assert action.parameters["webhook_kind"] == InfrahubKind.CUSTOMWEBHOOK
+
+    async def test_configure_all_invalidates_cache(
+        self,
+        db: InfrahubDatabase,
+        memory_cache: MemoryCache,
+        webhook1: Node,
+        webhook2: Node,
+        webhook_deployment: None,
+    ) -> None:
+        """Test that reconcile_all invalidates caches for updated webhooks."""
+        # Modify webhook so reconcile detects it as needing an update
+        original_name = webhook1.name.value
+        webhook1.name.value = "Webhook1-modified"
+        await webhook1.save(db=db)
+
+        await memory_cache.set(key=f"{CACHE_KEY_PREFIX}:{webhook1.id}", value='{"cached": true}')
+
+        await configure_webhook()
+
+        assert await memory_cache.get(key=f"{CACHE_KEY_PREFIX}:{webhook1.id}") is None
+
+        # Restore original name
+        webhook1.name.value = original_name
+        await webhook1.save(db=db)
 
     async def test_configure_webhook_on_failure_logs_error(
         self, webhook_deployment: None, caplog: pytest.LogCaptureFixture
@@ -151,13 +174,3 @@ class TestWebhookConfigure(TestInfrahubApp):
         assert "non-existent-id" in caplog.text
         assert "Ghost" in caplog.text
         assert "configure" in caplog.text
-
-    async def test_trigger_definition_node_kind_match(
-        self,
-        db: InfrahubDatabase,
-        webhook4: Node,
-        client: InfrahubClient,
-    ) -> None:
-        webhook = await client.get(kind=CoreStandardWebhook, id=webhook4.id)
-        trigger_definition = WebhookTriggerDefinition.from_object(obj=webhook)
-        assert trigger_definition.trigger.match == {"infrahub.node.kind": "BuiltinTag"}

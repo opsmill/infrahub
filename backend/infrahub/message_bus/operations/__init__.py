@@ -12,6 +12,7 @@ COMMAND_MAP = {
     "git.file.get": git.file.get,
     "git.repository.connectivity": git.repository.connectivity,
     "refresh.git.fetch": git.repository.fetch,
+    "refresh.git.branch_deleted": git.repository.branch_deleted,
     "refresh.registry.branches": refresh.registry.branches,
     "refresh.registry.rebased_branch": refresh.registry.rebased_branch,
     "send.echo.request": send.echo.request,

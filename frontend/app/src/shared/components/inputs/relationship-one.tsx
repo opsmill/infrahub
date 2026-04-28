@@ -1,6 +1,6 @@
 import { gql } from "@apollo/client";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import type { PoolValue } from "@/shared/components/form/pool-selector";
@@ -32,20 +32,27 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   value: Node | PoolValue | null;
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
+  ref?: React.Ref<React.ComponentRef<typeof PopoverTrigger>>;
 }
 
 const PAGINATION = 20;
 
-export const RelationshipInput = React.forwardRef<
-  React.ElementRef<typeof PopoverTrigger>,
-  RelationshipInputProps
->(({ className, value, onChange, options, peer, parent, ...props }, ref) => {
+export const RelationshipInput = ({
+  className,
+  value,
+  onChange,
+  options,
+  peer,
+  parent,
+  ref,
+  ...props
+}: RelationshipInputProps) => {
   const [open, setOpen] = React.useState(false);
-  const [count, setCount] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [results, setResults] = useState([]);
-  const [search, setSearch] = useState("");
-  const [shouldAggregate, setShouldAggregate] = useState(true);
+  const [count, setCount] = React.useState(0);
+  const [offset, setOffset] = React.useState(0);
+  const [results, setResults] = React.useState([]);
+  const [search, setSearch] = React.useState("");
+  const [shouldAggregate, setShouldAggregate] = React.useState(true);
   const searchQuery = useDebounce(search, 500);
 
   const [loadRelationshipList, { loading: isRelationshipListLoading, data: RelationshipListData }] =
@@ -61,7 +68,7 @@ export const RelationshipInput = React.forwardRef<
       )
     );
 
-  useEffect(() => {
+  React.useEffect(() => {
     const newResults =
       RelationshipListData &&
       (RelationshipListData[peer] as RelationshipManyType).edges.map((edge) => edge.node);
@@ -185,4 +192,4 @@ export const RelationshipInput = React.forwardRef<
       </ComboboxContent>
     </Combobox>
   );
-});
+};

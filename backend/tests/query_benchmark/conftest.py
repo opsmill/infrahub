@@ -19,7 +19,7 @@ async def car_person_schema_root() -> SchemaRoot:
                 "name": "Car",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value", "color__value"],
+                "display_label": "{{ name__value }} {{ color__value }}",
                 "uniqueness_constraints": [["name__value"]],
                 "order_by": ["name__value"],
                 "branch": BranchSupportType.AWARE.value,
@@ -56,7 +56,7 @@ async def car_person_schema_root() -> SchemaRoot:
                 "name": "Person",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
                 "order_by": ["name__value"],
@@ -83,7 +83,7 @@ async def car_person_schema_root() -> SchemaRoot:
                 "name": "Engine",
                 "namespace": "Test",
                 "default_filter": "name__value",
-                "display_labels": ["name__value"],
+                "display_label": "name__value",
                 "order_by": ["name__value"],
                 "branch": BranchSupportType.AWARE.value,
                 "uniqueness_constraints": [["name__value"]],
@@ -110,7 +110,7 @@ async def graph_generator() -> GraphProfileGenerator:
     return GraphProfileGenerator()
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 async def increase_query_size_limit() -> None:
     original_query_size_limit = config.SETTINGS.database.query_size_limit
     config.SETTINGS.database.query_size_limit = 1_000_000

@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import ssl
-from functools import cached_property
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
@@ -10,6 +9,9 @@ from infrahub import config
 from infrahub.exceptions import HTTPServerError, HTTPServerSSLError, HTTPServerTimeoutError
 from infrahub.log import get_logger
 from infrahub.services.adapters.http import InfrahubHTTP
+
+if TYPE_CHECKING:
+    from infrahub.tls.registry import TlsContextRegistry
 
 log = get_logger()
 
@@ -24,7 +26,9 @@ class HttpxAdapter(InfrahubHTTP):
     allow users to define configurations such as timeout, TLS options
     and eventually proxy settings in one location."""
 
-    _settings: config.HTTPSettings | None = None
+    def __init__(self, tls_registry: TlsContextRegistry) -> None:
+        self._tls_registry = tls_registry
+        self._settings: config.HTTPSettings | None = None
 
     @property
     def settings(self) -> config.HTTPSettings:
@@ -33,24 +37,6 @@ class HttpxAdapter(InfrahubHTTP):
 
         self._settings = config.SETTINGS.http
         return self._settings
-
-    @cached_property
-    def tls_context(self) -> ssl.SSLContext:
-        """TLS context based on global HTTPSettings.
-
-        May be an unverified context if tls_insecure=True in settings.
-        """
-        return self.settings.get_tls_context()
-
-    @cached_property
-    def tls_context_verified(self) -> ssl.SSLContext:
-        """TLS context that always performs certificate validation.
-
-        Uses tls_ca_bundle from settings if configured, but ignores tls_insecure.
-        This allows callers to explicitly request certificate validation even when
-        the global setting disables it.
-        """
-        return self.settings.get_tls_context(force_verify=True)
 
     def verify_tls(self, verify: bool | None = None) -> bool | ssl.SSLContext:
         """Determine the TLS verification behavior for a request.
@@ -67,9 +53,11 @@ class HttpxAdapter(InfrahubHTTP):
         if verify is False:
             return False
         if verify is True:
-            return self.tls_context_verified
+            return self._tls_registry.get(
+                insecure=self.settings.tls_insecure, ca_bundle=self.settings.tls_ca_bundle, force_verify=True
+            )
 
-        return self.tls_context
+        return self._tls_registry.get(insecure=self.settings.tls_insecure, ca_bundle=self.settings.tls_ca_bundle)
 
     async def _request(
         self,

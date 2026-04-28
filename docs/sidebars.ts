@@ -5,14 +5,18 @@ const sidebars: SidebarsConfig = {
     "home",
     {
       type: 'category',
-      label: 'Getting Started',
+      label: 'Overview',
       collapsed: false,
       collapsible: false,
+      link: {
+        type: 'doc',
+        id: 'overview/overview',
+      },
       items: [
-        'getting-started/overview',
-        'getting-started/quick-start',
-        'getting-started/next-steps',
-        'getting-started/concepts',
+        'overview/concepts',
+        'overview/explore',
+        'overview/quickstart',
+        'overview/next-steps',
       ],
     },
     {
@@ -104,6 +108,7 @@ const sidebars: SidebarsConfig = {
             'guides/jinja2-transform',
             'guides/python-transform',
             'guides/artifact',
+            'guides/graphql-fragment',
             'guides/object-storage',
           ],
         },
@@ -115,6 +120,8 @@ const sidebars: SidebarsConfig = {
           },
           items: [
             'guides/generator',
+            'guides/chaining-generators',
+            'guides/modular-generator-best-practices',
           ],
         },
         {
@@ -126,6 +133,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'guides/events-rules-actions',
             'guides/webhooks',
+            'guides/log-forwarding',
           ],
         },
         {
@@ -202,6 +210,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'topics/generator',
+                'topics/modular-generators',
               ],
             },
             {
@@ -236,6 +245,7 @@ const sidebars: SidebarsConfig = {
               items: [
                 'topics/schema',
                 'topics/order-weight',
+                'topics/schema-display',
                 'topics/schema-attr-kind-number-pool',
                 'topics/computed-attributes',
                 'topics/schema-extensions',
@@ -301,6 +311,7 @@ const sidebars: SidebarsConfig = {
                 'topics/event-actions',
                 'topics/tasks',
                 'topics/webhooks',
+                'topics/log-forwarding',
               ],
             },
             {
@@ -424,6 +435,14 @@ const sidebars: SidebarsConfig = {
             slug: 'release-notes/infrahub',
           },
           items: [
+            'release-notes/infrahub/release-1_8_6',
+            'release-notes/infrahub/release-1_8_5',
+            'release-notes/infrahub/release-1_8_4',
+            'release-notes/infrahub/release-1_8_3',
+            'release-notes/infrahub/release-1_8_2',
+            'release-notes/infrahub/release-1_8_1',
+            'release-notes/infrahub/release-1_8_0',
+            'release-notes/infrahub/release-1_7_7',
             'release-notes/infrahub/release-1_7_6',
             'release-notes/infrahub/release-1_7_5',
             'release-notes/infrahub/release-1_7_4',

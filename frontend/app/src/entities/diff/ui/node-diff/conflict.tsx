@@ -2,7 +2,7 @@ import { Icon } from "@iconify-icon/react";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
-import type { ConflictSelection } from "@/shared/api/graphql/generated/graphql";
+import type { ConflictSelection } from "@/shared/api/graphql/generated/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
@@ -17,7 +17,7 @@ import { proposedChangedState } from "@/entities/proposed-changes/stores/propose
 
 interface ConflictData {
   id: string;
-  selectedBranch?: ConflictSelection;
+  selectedBranch?: ConflictSelection | null;
 }
 
 export const Conflict = ({ id, selectedBranch }: ConflictData) => {

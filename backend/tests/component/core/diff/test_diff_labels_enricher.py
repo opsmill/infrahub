@@ -1,8 +1,11 @@
+from infrahub.core.branch import Branch
 from infrahub.core.constants import DiffAction
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.diff.enricher.labels import DiffLabelsEnricher
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 
 from .factories import (
@@ -17,7 +20,12 @@ from .factories import (
 
 
 async def test_labels_added(
-    db: InfrahubDatabase, default_branch, car_yaris_main, person_jane_main, person_alfred_main, person_john_main
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_yaris_main: Node,
+    person_jane_main: Node,
+    person_alfred_main: Node,
+    person_john_main: Node,
 ) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     yaris_label_main = await car_yaris_main.get_display_label(db=db)
@@ -147,7 +155,7 @@ async def test_labels_added(
     assert deleted_node.label == await person_alfred_main.get_display_label(db=db)
 
 
-async def test_labels_skipped(db: InfrahubDatabase, default_branch, car_person_schema) -> None:
+async def test_labels_skipped(db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch) -> None:
     branch = await create_branch(db=db, branch_name="branch")
     diff_rel_element = EnrichedRelationshipElementFactory.build(peer_id="not-a-real-one", peer_label=None)
     diff_rel = EnrichedRelationshipGroupFactory.build(

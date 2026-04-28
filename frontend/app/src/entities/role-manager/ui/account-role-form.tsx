@@ -16,13 +16,13 @@ import { Button } from "@/shared/components/ui/button";
 import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 
-import type { AttributeType, RelationshipType } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
 import { PermissionCombobox } from "@/entities/role-manager/ui/permission-combobox";
 
 interface AccountRoleFormProps {
-  currentObject?: Record<string, AttributeType | RelationshipType>;
+  currentObject?: NodeFieldsWithMetadata;
   onCancel?: () => void;
   onSuccess?: NodeFormProps["onSuccess"];
 }
@@ -32,13 +32,13 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
   const updateObject = useUpdateObjectMutation();
 
   const groups = getRelationshipDefaultValue({
-    objectData: { groups: currentObject?.groups?.value },
+    objectData: currentObject,
     relationshipName: "groups",
   });
 
   const permissions = getRelationshipDefaultValue({
-    objectData: { identifier: currentObject?.permissions?.value },
-    relationshipName: "identifier",
+    objectData: currentObject,
+    relationshipName: "permissions",
   });
 
   const defaultValues = {
@@ -88,7 +88,7 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
         {
           onSuccess: async (newNode) => {
             toast(<Alert type={ALERT_TYPES.SUCCESS} message="Role created!" />, {
-              toastId: "alert-success-role-created",
+              toastId: `alert-success-role-created-${newNode.id}`,
             });
             if (onSuccess) await onSuccess(newNode);
           },

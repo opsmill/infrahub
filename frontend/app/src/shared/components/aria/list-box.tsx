@@ -1,4 +1,5 @@
 import { CheckIcon, LoaderIcon } from "lucide-react";
+import type React from "react";
 import {
   ListBox as AriaListBox,
   ListBoxItem as AriaListBoxItem,
@@ -32,21 +33,30 @@ export function ListBox<T extends object>({ className, emptyMessage, ...props }:
 }
 
 const listBoxItemBaseStyle =
-  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-md border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden transition-colors";
+  "flex min-w-40 cursor-pointer select-none items-center gap-2 rounded-lg border border-transparent px-2 py-1 text-sm text-stone-600 outline-hidden";
+export interface ListBoxItemProps<T> extends AriaListBoxItemProps<T> {
+  ref?: React.Ref<HTMLDivElement>;
+  selectionIndicator?: "checkmark" | "none";
+}
+
 export function ListBoxItem<T extends object>({
   children,
   className,
   textValue,
+  ref,
+  selectionIndicator = "checkmark",
   ...props
-}: AriaListBoxItemProps<T>) {
+}: ListBoxItemProps<T>) {
   return (
     <AriaListBoxItem
+      ref={ref}
       textValue={textValue || (typeof children === "string" ? children : undefined)}
-      className={composeRenderProps(className, (className) =>
+      className={composeRenderProps(className, (className, { isSelected, isFocused }) =>
         classNames(
           disabledStyle,
           listBoxItemBaseStyle,
-          "data-focused:border-stone-100 data-focused:bg-white data-focused:shadow-sm",
+          isFocused && "bg-stone-700/10 text-stone-800",
+          isSelected && selectionIndicator === "none" && "bg-stone-700/10",
           className
         )
       )}
@@ -54,8 +64,10 @@ export function ListBoxItem<T extends object>({
     >
       {(renderProps) => (
         <>
-          {renderProps.isSelected && <CheckIcon className="absolute left-2 size-4" />}
           {typeof children === "function" ? children(renderProps) : children}
+          {renderProps.isSelected && selectionIndicator === "checkmark" && (
+            <CheckIcon className={classNames("ml-auto size-4 shrink-0")} />
+          )}
         </>
       )}
     </AriaListBoxItem>

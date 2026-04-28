@@ -8,13 +8,12 @@
   "files": {
     "ignoreUnknown": false,
     "includes": [
+      "**",
       "!coverage",
       "!dist",
       "!playwright-report",
       "!test-results",
       "!tests/e2e/.auth",
-      "!src/shared/api/graphql/graphql-env.d.ts",
-      "!src/shared/api/graphql/graphql-cache.d.ts",
       "!src/shared/api/rest/types.generated.ts",
       "!src/shared/api/graphql/generated"
     ]
@@ -130,6 +129,7 @@
         "noUselessElse": "off",
         "useBlockStatements": "off",
         "useConsistentArrayType": "off",
+        "useConsistentArrowReturn": "off",
         "useConsistentBuiltinInstantiation": "off",
         "useConsistentTypeDefinitions": "off",
         "useConst": "off",
@@ -140,6 +140,7 @@
         "useImportType": "error",
         "useNamingConvention": "off",
         "useNumberNamespace": "off",
+        "noSubstr": "off",
         "useSelfClosingElements": "off",
         "noMagicNumbers": "off",
         "useTemplate": "off"

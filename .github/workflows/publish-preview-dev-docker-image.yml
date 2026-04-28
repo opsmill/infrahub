@@ -8,11 +8,15 @@ on:
       - labeled
       - synchronize
 
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
 jobs:
   meta_data:
     if: contains(github.event.pull_request.labels.*.name, 'cd/preview')
-    runs-on:
-      group: huge-runners
+    runs-on: ubuntu-24.04
     outputs:
       tags: ${{ steps.meta.outputs.tags }}
       labels: ${{ steps.meta.outputs.labels }}
@@ -27,7 +31,7 @@ jobs:
         id: short_ref
       - name: Set docker image meta data
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: |
             ${{ vars.HARBOR_HOST }}/${{ github.repository }}

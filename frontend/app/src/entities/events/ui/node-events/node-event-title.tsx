@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 
-import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/graphql";
+import type { NodeMutatedEvent } from "@/shared/api/graphql/generated/types";
 import { Link } from "@/shared/components/ui/link";
 import { QSP } from "@/shared/config/qsp";
 

@@ -1,4 +1,4 @@
-from infrahub.core.constants import AllowOverrideType
+from infrahub.core.constants import AllowOverrideType, SchemaAttributeDisplay
 
 from ...attribute_schema import AttributeSchema as Attr
 from ...generic_schema import GenericSchema
@@ -18,6 +18,7 @@ core_file_object = GenericSchema(
             optional=False,
             order_weight=99990,
             allow_override=AllowOverrideType.NONE,
+            display=SchemaAttributeDisplay.EXTRA,
         ),
         Attr(
             name="checksum",
@@ -27,6 +28,7 @@ core_file_object = GenericSchema(
             optional=False,
             order_weight=99991,
             allow_override=AllowOverrideType.NONE,
+            display=SchemaAttributeDisplay.EXTRA,
         ),
         Attr(
             name="file_size",
@@ -36,6 +38,7 @@ core_file_object = GenericSchema(
             optional=False,
             order_weight=99992,
             allow_override=AllowOverrideType.NONE,
+            display=SchemaAttributeDisplay.EXTRA,
         ),
         Attr(
             name="file_type",
@@ -45,6 +48,7 @@ core_file_object = GenericSchema(
             optional=False,
             order_weight=99993,
             allow_override=AllowOverrideType.NONE,
+            display=SchemaAttributeDisplay.EXTRA,
         ),
         Attr(
             name="storage_id",
@@ -54,6 +58,7 @@ core_file_object = GenericSchema(
             optional=False,
             order_weight=99994,
             allow_override=AllowOverrideType.NONE,
+            display=SchemaAttributeDisplay.EXTRA,
         ),
     ],
 )

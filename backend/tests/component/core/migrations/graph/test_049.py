@@ -1,10 +1,14 @@
-from infrahub.core.migrations.graph import Migration049
+from infrahub.core.branch.models import Branch
+from infrahub.core.migrations.graph.m049_remove_is_visible_relationship import Migration049
 from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.node import Node
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_migration_049(db: InfrahubDatabase, default_branch, person_john_main, car_accord_main) -> None:
+async def test_migration_049(
+    db: InfrahubDatabase, default_branch: Branch, person_john_main: Node, car_accord_main: Node
+) -> None:
     count_is_visible_relationship_query = """
     MATCH ()-[rel:IS_VISIBLE]-()
     RETURN count(*) AS is_visible_count;

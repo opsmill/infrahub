@@ -31,6 +31,22 @@ This combination allows you to use templates for structural definition (which po
 
 For more details, see the [Creating and assigning Profiles guide](../guides/profiles.mdx).
 
+## Integration with Resource Pools
+
+Templates can be wired to resource pools so that unique values are allocated automatically when objects are created from the template. Rather than manually assigning an IP address or number attribute to each new object, you define once on the template which pool to draw from and Infrahub handles allocation at creation time.
+
+### How it works
+
+When a schema node has a relationship or attribute whose peer type supports resource pool allocation (for example, a relationship to an IP address node, or a number attribute), Infrahub automatically generates a `<attribute_or_relationship_name>_from_resource_pool` field on the corresponding template node. Assigning a pool to that field is all that is needed — no changes to object creation are required.
+
+Allocation happens at object creation time, not at template creation time. Each object created from the template receives its own unique value drawn from the pool.
+
+### Why this matters
+
+Without pool integration, templates can only set static values. Any attribute that must be unique per object (IP addresses, circuit IDs, interface numbers) would have to be filled in manually each time. Pool integration closes that gap: the template defines the structural intent and the pool ensures each instance gets a valid, non-conflicting value automatically.
+
+For step-by-step instructions, see [Allocating resources from pools via templates](../guides/object-template.mdx#allocating-resources-from-pools-via-templates).
+
 ## Component relationship
 
 When enabling template generation on a given schema node, Infrahub automatically detects whether the object has any component relationships. If it does, Infrahub will generate corresponding templates for those related objects as well.

@@ -1,0 +1,1 @@
+Consistent headers across object list and detail pages. Object list pages now share the same header style as detail pages, with easy access to schema, docs, and refresh actions.

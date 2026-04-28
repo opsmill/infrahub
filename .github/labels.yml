@@ -82,6 +82,10 @@
   description: "Topic for brainstorming, discussions"
   color: "e19e0f"
 
+- name: "type/spec"
+  description: "A specification for an upcoming change to the project"
+  color: "8b5cf6"
+
 - name: "type/user-centric"
   description: "Issue that would improve the overall experience of our users"
   color: "ff8c00"
@@ -146,6 +150,14 @@
 - name: "state/need-testing"
   description: "This issue is ready and needs to be tested."
   color: "cccccc"
+
+- name: "state/needs-human-fix"
+  description: "The bug agent pipeline could not fix this issue automatically"
+  color: "e34918"
+
+- name: "state/needs-human-test"
+  description: "The bug agent pipeline could not write a test for this issue automatically"
+  color: "e34918"
 
 - name: "state/backlog"
   description: "This issue is part of the backlog"

@@ -1,6 +1,4 @@
-import { gql, useQuery } from "@apollo/client";
-import { formatISO } from "date-fns";
-import { useAtom } from "jotai";
+import { useQuery } from "@apollo/client";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "react-aria-components";
@@ -23,10 +21,9 @@ import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
+import { GET_ARTIFACT_THREADS } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import "react-diff-view/style/index.css";
 
@@ -95,15 +92,13 @@ interface ArtifactContentDiffProps {
 
 export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactContentDiffProps) => {
   const { proposedChangeId } = useParams();
-  const auth = useAuth();
-  const [schemaList] = useAtom(nodeSchemasAtom);
+  const { isAuthenticated } = useAuth();
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
-
   const {
     data: previousFile = "",
-    isPending: isPreviousPending,
+    isLoading: isPreviousLoading,
     error: previousFileError,
   } = useGetArtifactFile(
     { storageId: itemPrevious?.storage_id ?? "" },
@@ -112,25 +107,19 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
 
   const {
     data: newFile = "",
-    isPending: isNewPending,
+    isLoading: isNewLoading,
     error: newFileError,
   } = useGetArtifactFile(
     { storageId: itemNew?.storage_id ?? "" },
     { enabled: !!itemNew?.storage_id }
   );
 
-  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
-
-  const queryString = getProposedChangesArtifactsThreads({
-    id: proposedChangeId,
-    kind: schemaData?.kind,
+  const { loading, error, data, refetch } = useQuery(GET_ARTIFACT_THREADS, {
+    variables: { changeIds: [proposedChangeId!] },
+    skip: !proposedChangeId,
   });
 
-  const { loading, error, data, refetch } = useQuery(gql(queryString), {
-    skip: !schemaData || !proposedChangeId,
-  });
-
-  if (loading || isPreviousPending || isNewPending) {
+  if (loading || isPreviousLoading || isNewLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 
@@ -142,20 +131,16 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     return null;
   }
 
-  const threads =
-    data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
-  const approverId = auth?.data?.sub;
+  const threads = data?.CoreArtifactThread?.edges?.map((edge: any) => edge.node) ?? [];
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
   };
 
   const handleSubmitComment = async ({ comment }: { comment: string }) => {
-    if (!comment || !approverId || !id) {
+    if (!comment || !id) {
       return;
     }
-
-    const newDate = formatISO(new Date());
 
     const lineNumber = displayAddComment.isNormal
       ? displayAddComment.side === "new"
@@ -166,12 +151,6 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     const newThread = {
       change: {
         id: proposedChangeId,
-      },
-      created_at: {
-        value: newDate,
-      },
-      created_by: {
-        id: approverId,
       },
       resolved: {
         value: false,
@@ -199,12 +178,6 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
           const newComment = {
             text: {
               value: comment,
-            },
-            created_by: {
-              id: approverId,
-            },
-            created_at: {
-              value: newDate,
             },
             thread: {
               id: threadId,
@@ -300,7 +273,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
       itemNew?.storage_id
     );
 
-    if (thread || !auth?.isAuthenticated || !proposedChangeId) {
+    if (thread || !isAuthenticated || !proposedChangeId) {
       // Do not display the add button if there is already a thread
       return wrapInAnchor(renderDefault());
     }
