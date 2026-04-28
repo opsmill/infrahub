@@ -52,12 +52,7 @@ export function ObjectActionsCell({
       <StickyRightCell>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              size="square"
-              variant="ghost"
-              className="size-6"
-              data-testid={`actions-cell-${objectLabel}`}
-            >
+            <Button size="square-sm" variant="ghost" data-testid={`actions-cell-${objectLabel}`}>
               <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />
             </Button>
           </DropdownMenuTrigger>

@@ -62,7 +62,7 @@ export function ObjectDetailsHeader({
 export function HeaderContainer({ className, ...props }: RowProps) {
   return (
     <Row
-      className={classNames("w-full p-2 pb-1.5 pl-3", className)}
+      className={classNames("w-full p-3 pb-1.5", className)}
       data-testid="object-header"
       {...props}
     />

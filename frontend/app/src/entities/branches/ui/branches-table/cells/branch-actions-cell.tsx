@@ -37,9 +37,8 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              size="square"
+              size="square-sm"
               variant="ghost"
-              className="size-6"
               data-testid={`branch-actions-cell-${branch.name}`}
             >
               <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />

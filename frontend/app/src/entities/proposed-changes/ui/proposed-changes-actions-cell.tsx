@@ -29,9 +29,8 @@ export function ProposedChangesActionCell({ objectId, objectLabel, permission }:
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            size="square"
+            size="square-sm"
             variant="ghost"
-            className="size-6"
             data-testid={`actions-row-button-${objectLabel}`}
             aria-label="Actions"
           >

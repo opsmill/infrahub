@@ -100,6 +100,7 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
         variant="ghost"
         className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 data-hovered:bg-indigo-50"
         href="/login"
+        routerOptions={{ state: { from: location } }}
       >
         <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50">
           <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600" />

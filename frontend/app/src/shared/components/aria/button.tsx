@@ -15,7 +15,7 @@ import { focusVisibleStyle } from "./style-rac";
 const buttonVariants = cva(
   [
     "relative inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-xl border text-sm outline-none",
+    "rounded-lg border text-sm outline-none",
     "shadow-[0px_3px_6px_-2px_rgba(0,0,0,0.02),0px_1px_1px_rgba(0,0,0,0.04)]",
     "transition-all duration-150 ease-out",
     "data-disabled:pointer-events-none data-disabled:cursor-default data-disabled:opacity-60 data-disabled:shadow-none",
