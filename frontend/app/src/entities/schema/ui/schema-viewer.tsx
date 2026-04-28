@@ -107,10 +107,10 @@ export const SchemaViewer = ({
               <LinkButton
                 href={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
                 size="icon"
-                variant="ghost"
+                variant="outline"
                 aria-label="View in graph"
               >
-                <Icon icon="mdi:graph-outline" className="text-xl" />
+                <Icon icon="mdi:graph-outline" />
               </LinkButton>
             </Tooltip>
           )}
