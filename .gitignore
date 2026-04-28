@@ -51,3 +51,4 @@ schema/node_modules/*
 **/.playwright-mcp/**
 **/.worktrees/
 .bug-analysis-*.md
+.specify/**/.cache/
