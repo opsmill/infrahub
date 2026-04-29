@@ -45,7 +45,7 @@ Here are some quick ways to get started:
 
 ### What are the deployment options for Infrahub?
 
-This question is about *how* Infrahub is packaged and run. For *where* it can run (on-prem, airgapped, cloud), see [Where can I deploy Infrahub?](#where-can-i-deploy-infrahub) below.
+This question is about *how* Infrahub is packaged and run. For *where* it can run (on-prem, air-gapped, cloud), see [Where can I deploy Infrahub?](#where-can-i-deploy-infrahub) below.
 
 Infrahub supports the following packaging options:
 
@@ -72,7 +72,7 @@ This question is about *where* Infrahub can run. For *how* it is packaged (Docke
 Infrahub is platform-agnostic and runs in any environment that can host its supported packaging:
 
 - **On-premises** — Deploy in your own data center on virtual machines or Kubernetes clusters. This keeps all infrastructure data inside your network perimeter and under your existing operational controls.
-- **Airgapped environments** — Infrahub can be deployed in fully airgapped networks with no inbound or outbound internet connectivity. Container images, Helm charts, and dependencies can be mirrored to an internal registry, and telemetry can be disabled (see [Does Infrahub send telemetry?](#does-infrahub-send-telemetry-and-how-can-i-disable-it)). This pattern is common in regulated, classified, or otherwise isolated networks.
+- **Air-gapped environments** — Infrahub can be deployed in fully air-gapped networks with no inbound or outbound internet connectivity. Container images, Helm charts, and dependencies can be mirrored to an internal registry, and telemetry can be disabled (see [Does Infrahub send telemetry?](#does-infrahub-send-telemetry-and-how-can-i-disable-it)). This pattern is common in regulated, classified, or otherwise isolated networks.
 - **Customer-managed cloud** — Runs on any customer-managed instance in a public cloud, including AWS, Azure, and GCP. You operate it inside your own cloud account using your existing networking, IAM, and observability stack — there is no dependency on an OpsMill-managed control plane.
 - **Hybrid** — Multiple independent instances can be deployed across these environments, for example one on-premises and one in cloud, each acting as the source of truth for its own domain. See [Can I run multiple Infrahub instances?](#can-i-run-multiple-infrahub-instances) for details on this topology.
 
