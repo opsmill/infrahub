@@ -14,7 +14,7 @@ const TOP_OFFSET_PER_LAYER = 4;
 const BASE_SCALE = 1;
 const SCALE_DECREASE_PER_LAYER = 0.05;
 
-export type ModalOverlayProps = AriaModalOverlayProps;
+export interface ModalOverlayProps extends AriaModalOverlayProps {}
 
 export function ModalOverlay({ className, ...props }: ModalOverlayProps) {
   return (
@@ -32,8 +32,7 @@ export function ModalOverlay({ className, ...props }: ModalOverlayProps) {
 }
 
 export interface ModalProps
-  extends Omit<AriaModalOverlayProps, "children">,
-    Pick<DialogProps, "aria-label" | "children"> {}
+  extends Omit<AriaModalOverlayProps, "children">, Pick<DialogProps, "aria-label" | "children"> {}
 
 export function Modal({
   "aria-label": ariaLabel,

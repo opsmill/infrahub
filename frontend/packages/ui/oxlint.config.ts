@@ -32,6 +32,7 @@ export default defineConfig({
     "typescript/explicit-function-return-type": "off",
     "typescript/explicit-module-boundary-types": "off",
     "typescript/no-empty-interface": "off",
+    "typescript/no-empty-object-type": ["error", { allowInterfaces: "with-single-extends" }],
     "unicorn/no-null": "off",
   },
 });
