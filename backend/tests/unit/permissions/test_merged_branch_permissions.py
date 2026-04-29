@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock, patch
-
 import pytest
 
 from infrahub.core.account import GlobalPermission, ObjectPermission
@@ -13,7 +11,9 @@ from infrahub.permissions.resolver import PermissionResolver
 
 @pytest.fixture
 def empty_resolver() -> PermissionResolver:
-    return PermissionResolver(permissions={"global_permissions": [], "object_permissions": []})
+    return PermissionResolver(
+        permissions={"global_permissions": [], "object_permissions": []}, default_branch_name="main"
+    )
 
 
 @pytest.fixture
@@ -26,7 +26,8 @@ def super_admin_resolver() -> PermissionResolver:
                 )
             ],
             "object_permissions": [],
-        }
+        },
+        default_branch_name="main",
     )
 
 
@@ -54,9 +55,7 @@ class TestMergedBranchPermissions:
         result = super_admin_resolver.get_branch_decision(branch=branch, node_schema=node_schema, action=action)
         assert result == BranchRelativePermissionDecision.DENY
 
-    @patch("infrahub.permissions.resolver.registry")
-    def test_view_allowed(self, mock_registry: MagicMock, branch: Branch, node_schema: GenericSchema) -> None:
-        mock_registry.default_branch = "main"
+    def test_view_allowed(self, branch: Branch, node_schema: GenericSchema) -> None:
         resolver = PermissionResolver(
             permissions={
                 "global_permissions": [],
@@ -68,7 +67,8 @@ class TestMergedBranchPermissions:
                         decision=PermissionDecisionFlag.ALLOW_ALL.value,
                     )
                 ],
-            }
+            },
+            default_branch_name="main",
         )
         result = resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="view")
         assert result == BranchRelativePermissionDecision.ALLOW
@@ -93,9 +93,7 @@ class TestNeedRebaseBranchPermissions:
         result = super_admin_resolver.get_branch_decision(branch=branch, node_schema=node_schema, action=action)
         assert result == BranchRelativePermissionDecision.DENY
 
-    @patch("infrahub.permissions.resolver.registry")
-    def test_view_allowed(self, mock_registry: MagicMock, branch: Branch, node_schema: GenericSchema) -> None:
-        mock_registry.default_branch = "main"
+    def test_view_allowed(self, branch: Branch, node_schema: GenericSchema) -> None:
         resolver = PermissionResolver(
             permissions={
                 "global_permissions": [],
@@ -107,7 +105,8 @@ class TestNeedRebaseBranchPermissions:
                         decision=PermissionDecisionFlag.ALLOW_ALL.value,
                     )
                 ],
-            }
+            },
+            default_branch_name="main",
         )
         result = resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="view")
         assert result == BranchRelativePermissionDecision.ALLOW

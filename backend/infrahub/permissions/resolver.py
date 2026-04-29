@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Sequence
 
-from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, GlobalPermissions
@@ -27,8 +26,9 @@ class PermissionResolver:
     wildcard_values = ["*"]
     wildcard_actions = ["any"]
 
-    def __init__(self, permissions: AssignedPermissions) -> None:
+    def __init__(self, permissions: AssignedPermissions, default_branch_name: str) -> None:
         self.permissions = permissions
+        self.default_branch_name = default_branch_name
         self._global_report: dict[GlobalPermissions, bool] | None = None
 
     def _compute_specificity(self, permission: ObjectPermission) -> int:
@@ -138,7 +138,7 @@ class PermissionResolver:
                 )
 
         # Object permissions with branch-relative logic
-        is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
+        is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, self.default_branch_name)
         decision = self.report_object_permission(namespace=node_schema.namespace, name=node_schema.name, action=action)
 
         if (

@@ -27,7 +27,9 @@ class PermissionManager:
     @property
     def resolver(self) -> PermissionResolver:
         if self._resolver is None:
-            self._resolver = PermissionResolver(permissions=self.permissions)
+            self._resolver = PermissionResolver(
+                permissions=self.permissions, default_branch_name=registry.default_branch
+            )
         return self._resolver
 
     async def load_permissions(self, db: InfrahubDatabase, branch: Branch) -> None:
