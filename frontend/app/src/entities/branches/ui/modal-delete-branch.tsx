@@ -1,9 +1,8 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "@infrahub/ui";
+import { Button, Modal } from "@infrahub/ui";
 import { useState } from "react";
 import { Heading } from "react-aria-components";
 
-import { Modal } from "@/shared/components/aria/modal";
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Col, Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
