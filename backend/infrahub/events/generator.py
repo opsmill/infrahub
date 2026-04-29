@@ -104,21 +104,21 @@ async def generate_node_mutation_events(
         InfrahubKind.FILETHREAD,
     ]:
         proposed_change = await cast("CoreThread", node).change.get_peer(db=db)
-        assert proposed_change is not None
-        action_to_event_map = {
-            MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
-            MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,
-        }
-        if action in action_to_event_map:
-            specific_events.append(
-                action_to_event_map[action](
-                    proposed_change_id=proposed_change.id,
-                    proposed_change_name=proposed_change.name.value,
-                    proposed_change_state=proposed_change.state.value,
-                    thread_id=node.id,
-                    thread_kind=kind,
-                    meta=EventMeta.from_context(context=context),
+        if proposed_change:
+            action_to_event_map = {
+                MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
+                MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,
+            }
+            if action in action_to_event_map:
+                specific_events.append(
+                    action_to_event_map[action](
+                        proposed_change_id=proposed_change.id,
+                        proposed_change_name=proposed_change.name.value,
+                        proposed_change_state=proposed_change.state.value,
+                        thread_id=node.id,
+                        thread_kind=kind,
+                        meta=EventMeta.from_context(context=context),
+                    )
                 )
-            )
 
     return events + side_effect_events + group_events + specific_events
