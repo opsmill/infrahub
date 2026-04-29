@@ -157,6 +157,13 @@ class DiffMerger:
 
     @retry_db_transaction(name="bulk_merge_cardinality_one_resolution")
     async def _bulk_merge_cardinality_one_resolution(self, at: Timestamp, plan: MergeExclusionPlan) -> None:
+        if (
+            not plan.cardinality_one_diff_resolutions
+            and not plan.carry_over_base_relationship_properties
+            and not plan.carry_over_diff_relationship_properties
+        ):
+            log.info("No cardinality-one resolutions or relationship properties to carry over, skipping this step")
+            return
         query = await BulkMergeCardinalityOneResolutionQuery.init(
             db=self.db,
             branch=self.source_branch,

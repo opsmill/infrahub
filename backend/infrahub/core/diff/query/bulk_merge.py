@@ -175,13 +175,15 @@ CALL (n, tgt_n, src) {
 
 // ==============================
 // Phase 2: Merge HAS_ATTRIBUTE edges (attribute existence)
+// ``WITH count(*) AS ...`` aggregates the prior rows into exactly one row, so
+// phase 2 still runs when phase 1 produced zero matches
 // ==============================
-WITH 1 AS phase_separator LIMIT 1
+WITH count(*) AS _phase_separator
 MATCH (n:Node)-[src:HAS_ATTRIBUTE]->(a:Attribute)
 WHERE src.branch = $source_branch
 AND src.to IS NULL
 AND NOT n.uuid IN $excluded_node_uuids
-AND n.branch_support = "aware"
+AND a.branch_support = "aware"
 // ------------------------------
 // Skip attributes created and deleted on the same branch
 // ------------------------------
