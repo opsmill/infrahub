@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
@@ -8,7 +9,6 @@ import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import { Spinner } from "@/shared/components/ui/spinner";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { treeQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";

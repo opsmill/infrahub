@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { Card, CardHeader } from "@infrahub/ui/card";
 import { ChevronDownIcon, ChevronUpIcon, PenLineIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
@@ -9,7 +10,6 @@ import { Col, Row } from "@/shared/components/container";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -76,8 +76,7 @@ function ShowMoreButton({ showAll, onClick }: { showAll: boolean; onClick: () =>
     <Button
       variant="ghost"
       size="sm"
-      onClick={(e) => {
-        e.stopPropagation();
+      onPress={() => {
         onClick();
       }}
       className="h-auto gap-1 px-0.5 text-gray-500 text-xs"

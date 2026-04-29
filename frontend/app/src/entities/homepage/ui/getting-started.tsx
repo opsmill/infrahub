@@ -1,9 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, type LinkButtonProps } from "@infrahub/ui";
 import { BookOpen, ExternalLink } from "lucide-react";
+import type React from "react";
 import type { ReactNode } from "react";
 
 import { Separator } from "@/shared/components/aria/separator";
-import { LinkButton, type LinkButtonProps } from "@/shared/components/ui/button";
 
 import { HomeCard } from "@/entities/homepage/ui/home-card";
 
@@ -17,7 +18,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
           <LinkButton
             variant={"outline"}
             className="flex items-center gap-2"
-            to={"https://docs.infrahub.app/"}
+            href={"https://docs.infrahub.app/"}
             target="_blank"
             rel="noopener noreferrer"
           >
@@ -34,7 +35,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:graduation-cap-outline"} className="size-4" />
               Infrahub Labs
               <GettingStartedContentItem.Link
-                to={"https://opsmill.instruqt.com/pages/labs/"}
+                href={"https://opsmill.instruqt.com/pages/labs/"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -52,7 +53,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:server"} className="size-4" />
               Nornir
               <GettingStartedContentItem.Link
-                to={"https://docs.infrahub.app/nornir/nornir/"}
+                href={"https://docs.infrahub.app/nornir/nornir/"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -71,14 +72,14 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:code-json"} className="size-4" />
               Schema
               <GettingStartedContentItem.Link
-                to={"https://docs.infrahub.app/topics/schema/"}
+                href={"https://docs.infrahub.app/topics/schema/"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
                 Docs
               </GettingStartedContentItem.Link>
               <Separator orientation="vertical" className="h-6" />
-              <GettingStartedContentItem.Link to={"/schema"} hideExternal>
+              <GettingStartedContentItem.Link href={"/schema"} hideExternal>
                 Explore Schema
               </GettingStartedContentItem.Link>
             </GettingStartedContentItem.Title>
@@ -93,7 +94,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:subscriber-identification-module-outline"} className="size-4" />
               Infrahub Python SDK
               <GettingStartedContentItem.Link
-                to={"https://docs.infrahub.app/python-sdk/"}
+                href={"https://docs.infrahub.app/python-sdk/"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -112,7 +113,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:cloud-json"} className="size-4" />
               Schema Library
               <GettingStartedContentItem.Link
-                to={"https://github.com/opsmill/schema-library/"}
+                href={"https://github.com/opsmill/schema-library/"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -131,7 +132,7 @@ export const GettingStarted = ({ className }: { className?: string }) => {
               <Icon icon={"mdi:ansible"} className="size-4" />
               Infrahub Ansible Collection
               <GettingStartedContentItem.Link
-                to={"https://docs.infrahub.app/ansible/ansible/"}
+                href={"https://docs.infrahub.app/ansible/ansible/"}
                 target="_blank"
                 rel="noopener noreferrer"
               >
@@ -160,12 +161,12 @@ const GettingStartedContentItemTitle = ({ children }: GettingStartedContentItemP
 };
 
 interface GettingStartedContentItemLinkProps extends LinkButtonProps {
+  children?: React.ReactNode;
   hideExternal?: boolean;
 }
 
 const GettingStartedContentItemLink = ({
   children,
-  to,
   hideExternal,
   ...props
 }: GettingStartedContentItemLinkProps) => {
@@ -173,7 +174,6 @@ const GettingStartedContentItemLink = ({
     <LinkButton
       variant={"ghost"}
       className="flex items-center gap-2 px-2 py-1 text-gray-500 underline"
-      to={to}
       {...props}
     >
       {children}

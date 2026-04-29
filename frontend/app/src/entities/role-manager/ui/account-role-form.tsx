@@ -1,6 +1,8 @@
+import { Button } from "@infrahub/ui";
 import { type FieldValues, useForm } from "react-hook-form";
 import { toast } from "react-toastify";
 
+import { Row } from "@/shared/components/container";
 import { LabelFormField } from "@/shared/components/form/fields/common";
 import InputField from "@/shared/components/form/fields/input.field";
 import RelationshipManyField from "@/shared/components/form/fields/relationships/relationship-many.field";
@@ -12,7 +14,6 @@ import { getCreateMutationFromFormDataOnly } from "@/shared/components/form/util
 import { updateRelationshipFieldValue } from "@/shared/components/form/utils/updateFormFieldValue";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { Form, FormField, FormInput, FormSubmit } from "@/shared/components/ui/form";
 import { ACCOUNT_GROUP_OBJECT, ACCOUNT_ROLE_OBJECT } from "@/shared/config/constants";
 
@@ -152,15 +153,15 @@ export const AccountRoleForm = ({ currentObject, onCancel, onSuccess }: AccountR
           }}
         />
 
-        <div className="text-right">
+        <Row className="justify-end">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" onPress={onCancel}>
               Cancel
             </Button>
           )}
 
           <FormSubmit>Save</FormSubmit>
-        </div>
+        </Row>
       </Form>
     </div>
   );

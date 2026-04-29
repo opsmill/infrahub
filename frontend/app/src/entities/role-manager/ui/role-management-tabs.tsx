@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Spinner } from "@infrahub/ui";
 import { useMatch } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { Spinner } from "@/shared/components/ui/spinner";
 import {
   ACCOUNT_GENERIC_OBJECT,
   ACCOUNT_GROUP_OBJECT,

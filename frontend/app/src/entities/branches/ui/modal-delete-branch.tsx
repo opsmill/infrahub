@@ -1,12 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, Modal } from "@infrahub/ui";
 import { useState } from "react";
 import { Heading } from "react-aria-components";
 
-import { Modal } from "@/shared/components/aria/modal";
 import { Radio, RadioGroup } from "@/shared/components/aria/radio-group";
 import { Col, Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
-import { Button } from "@/shared/components/ui/button";
 import { REPOSITORY_KIND } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
@@ -146,14 +145,14 @@ export function ModalDeleteBranch({
       </Col>
 
       <Row className="justify-end bg-gray-50 p-3">
-        <Button variant="outline" onClick={() => handleOpenChange(false)} disabled={isLoading}>
+        <Button variant="outline" onPress={() => handleOpenChange(false)} isDisabled={isLoading}>
           Cancel
         </Button>
         <Button
           variant="danger"
-          onClick={() => onDelete(scope)}
-          isLoading={isLoading || isLoadingRepoCount}
-          disabled={isLoading || isLoadingRepoCount}
+          onPress={() => onDelete(scope)}
+          isPending={isLoading || isLoadingRepoCount}
+          isDisabled={isLoading || isLoadingRepoCount}
           data-testid="modal-delete-confirm"
         >
           Delete

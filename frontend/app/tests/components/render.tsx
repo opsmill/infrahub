@@ -1,4 +1,4 @@
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Provider } from "jotai";
 import { NuqsAdapter } from "nuqs/adapters/react-router/v7";
 import React from "react";
@@ -7,15 +7,23 @@ import { Slide, ToastContainer } from "react-toastify";
 import { render as renderFromVitest } from "vitest-browser-react";
 
 import { BranchContext } from "../../src/entities/branches/ui/branches-provider";
-import { queryClient } from "../../src/shared/api/rest/client";
 import { store } from "../../src/shared/stores";
 import { generateBranch } from "../fake/branch";
 
 import "/src/app/styles/index.css";
 import "react-toastify/dist/ReactToastify.css";
 
-export const render = (component: React.ReactElement, options = {}) =>
-  renderFromVitest(component, {
+export const render = (component: React.ReactElement, options = {}) => {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        staleTime: 2000,
+      },
+    },
+  });
+
+  return renderFromVitest(component, {
     wrapper: ({ children }) => {
       const [currentBranch, setCurrentBranch] = React.useState(generateBranch());
 
@@ -43,3 +51,4 @@ export const render = (component: React.ReactElement, options = {}) =>
     },
     ...options,
   });
+};

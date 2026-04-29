@@ -1,6 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps } from "@infrahub/ui";
 
-import { type ButtonProps, ButtonWithTooltip } from "@/shared/components/ui/button";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 export interface CollapsedSidebarMenuItemProps extends ButtonProps {
@@ -11,18 +12,19 @@ export interface CollapsedSidebarMenuItemProps extends ButtonProps {
 export function CollapsedSidebarMenuItem({
   className,
   icon,
+  tooltipContent,
   ...props
 }: CollapsedSidebarMenuItemProps) {
   return (
-    <ButtonWithTooltip
-      variant="ghost"
-      size="square"
-      side="right"
-      tooltipEnabled
-      className={classNames("h-10 w-10 p-2", className)}
-      {...props}
-    >
-      <Icon icon={icon} className="text-base" />
-    </ButtonWithTooltip>
+    <Tooltip message={tooltipContent} placement="right">
+      <Button
+        variant="ghost"
+        shape="square"
+        className={classNames("h-10 w-10 p-2", className)}
+        {...props}
+      >
+        <Icon icon={icon} className="text-base" />
+      </Button>
+    </Tooltip>
   );
 }
