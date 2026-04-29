@@ -1,0 +1,118 @@
+---
+title: Use a schema from the Marketplace
+---
+
+# Use a schema from the Marketplace
+
+The [Infrahub Marketplace](https://marketplace.infrahub.app) hosts pre-built schemas for common infrastructure domains.
+This guide walks you through fetching a schema from the Marketplace and loading it into a running Infrahub instance.
+
+## Prerequisites
+
+- A running Infrahub instance
+- `infrahubctl` installed and configured with your instance URL (see [installation guide](./installation.mdx))
+
+## Step 1: Find the schema
+
+Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) and identify the schema or collection you want.
+Each item has an identifier in `namespace/name` format — for example, `opsmill/dcim`.
+Note this identifier; you will use it in the next step.
+
+## Step 2: Fetch the schema
+
+Run `infrahubctl marketplace get` with the identifier:
+
+```shell
+infrahubctl marketplace get opsmill/dcim
+```
+
+The command downloads the schema YAML to `./schemas/` by default:
+
+```text
+Downloaded schema opsmill/dcim (version 1.4.2) → schemas/dcim.yml
+```
+
+### Fetch a specific version
+
+Pin to a published version with `--version`:
+
+```shell
+infrahubctl marketplace get opsmill/dcim --version 1.2.0
+```
+
+### Save to a custom directory
+
+Use `--output-dir` to change where files are saved:
+
+```shell
+infrahubctl marketplace get opsmill/dcim --output-dir ./infra/schemas
+```
+
+### Inspect before loading
+
+Use `--stdout` to print the schema YAML to stdout without writing to disk:
+
+```shell
+infrahubctl marketplace get opsmill/dcim --stdout
+```
+
+This is useful for reviewing the schema or piping it into another tool before committing to disk.
+
+### Collections
+
+The Marketplace also hosts collections — bundles of related schemas published together.
+The `get` command detects whether an identifier is a schema or a collection automatically.
+To force collection download when a name exists as both, add `--collection`:
+
+```shell
+infrahubctl marketplace get opsmill/starter-pack --collection
+```
+
+A collection download writes one file per schema in the bundle.
+
+## Step 3: Load the schema into Infrahub
+
+Use `infrahubctl schema load` to apply the downloaded file to your instance:
+
+```shell
+infrahubctl schema load schemas/dcim.yml
+```
+
+For a collection, load all files at once:
+
+```shell
+infrahubctl schema load schemas/
+```
+
+Infrahub validates the schema, applies the changes, and restarts the relevant services.
+
+:::tip Verify the schema loaded
+
+After loading, browse to the [schema page](http://localhost:8000/schema) in the Infrahub UI.
+The new nodes should appear in the node list.
+
+:::
+
+## Version compatibility
+
+Marketplace schemas are versioned independently from Infrahub itself.
+If a schema uses features from a newer version of Infrahub than you are running, `infrahubctl schema load` reports a validation error.
+Check the schema's Marketplace page for the minimum supported Infrahub version before loading.
+
+## Offline and air-gapped environments
+
+If your Infrahub instance cannot reach the internet, download the schema YAML from a machine that can, transfer the file, and then run `infrahubctl schema load` from the air-gapped environment.
+
+## Troubleshooting
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `No schema or collection named '…' found` | Identifier not found on Marketplace | Check spelling; browse the Marketplace for the correct `namespace/name` |
+| `Could not reach marketplace` | Network error | Check `--marketplace-url`; verify connectivity to `marketplace.infrahub.app` |
+| Schema validation errors on load | Incompatible Infrahub version or conflicting nodes | Check version compatibility; review error details for conflicting node names |
+
+## Related resources
+
+- [Infrahub Marketplace](../topics/marketplace.mdx) — concept overview
+- [Import schema file](./import-schema.mdx) — load a schema from a local file
+- [Schema](../topics/schema.mdx) — schema concepts and YAML format reference

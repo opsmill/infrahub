@@ -70,6 +70,16 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
+          label: 'Marketplace',
+          link: {
+            type: 'generated-index',
+          },
+          items: [
+            'guides/marketplace-install-schema',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Schema & Data Modeling',
           link: {
             type: 'generated-index',
@@ -171,6 +181,7 @@ const sidebars: SidebarsConfig = {
           items: [
             'topics/architecture',
             'topics/community-vs-enterprise',
+            'topics/marketplace',
           ],
         },
         {

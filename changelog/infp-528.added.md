@@ -1,0 +1,1 @@
+Added documentation for the Infrahub Marketplace, including a topic page explaining what the Marketplace is, a guide for fetching and loading schemas using `infrahubctl marketplace get`, and a guide for publishing schemas. Updated the quick-start guide, installation guide, and existing schema references to point to the Marketplace instead of the deprecated GitHub schema library.

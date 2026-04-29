@@ -1,0 +1,40 @@
+---
+title: Infrahub Marketplace
+---
+
+# Infrahub Marketplace
+
+The Infrahub Marketplace is a public catalog of pre-built schemas and schema collections that you can fetch and load into any Infrahub instance.
+It provides a curated starting point for common infrastructure domains — from physical device modeling to IP address management — so you can get a working data model without building one from scratch.
+
+## What the Marketplace contains
+
+The Marketplace hosts two types of content:
+
+- **Schemas** — versioned YAML files that define nodes, attributes, and relationships for a specific domain. A DCIM schema might define `Device`, `Interface`, and `Platform` nodes; an IPAM schema might define `IPAddress`, `Prefix`, and `VLAN`.
+- **Collections** — curated bundles of related schemas published together. A "network automation starter" collection might include DCIM, IPAM, location, and organization schemas in a single download.
+
+## How identifiers work
+
+Every item in the Marketplace is identified by a `namespace/name` reference, similar to Docker Hub image names or npm package scopes.
+
+- `opsmill/dcim` — the `dcim` schema published by the `opsmill` namespace
+- `opsmill/starter-pack` — the `starter-pack` collection published by `opsmill`
+
+Namespaces are tied to the account of the schema's author on the Marketplace.
+
+## Schemas and schema versions
+
+Marketplace schemas follow [semantic versioning](https://semver.org/). Each published schema has a version number (`MAJOR.MINOR.PATCH`). When you fetch a schema you can pin to a specific version or use the latest published release.
+
+Breaking changes — such as removing a node or changing a relationship cardinality — require a major version bump. Additive changes (new nodes, new optional attributes) use a minor or patch bump.
+
+## Relationship to an Infrahub instance
+
+The Marketplace is an external catalog — it stores schema definitions, not your infrastructure data. Fetching a schema from the Marketplace downloads its YAML to your local filesystem. You then load that YAML into your Infrahub instance using `infrahubctl schema load`. The Marketplace and your instance remain independent; updates to a schema on the Marketplace do not automatically change your loaded schema.
+
+## Related resources
+
+- [Schema](./schema.mdx) — core schema concepts and how schemas govern data in Infrahub
+- [Import schema file](../guides/import-schema.mdx) — loading a local schema YAML into Infrahub
+- [Use a schema from the Marketplace](../guides/marketplace-install-schema.mdx) — step-by-step guide for fetching and loading a Marketplace schema

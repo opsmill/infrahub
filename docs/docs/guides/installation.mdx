@@ -916,8 +916,22 @@ server {
 
 </details>
 
+## Load a schema
+
+Infrahub ships with a minimal built-in schema. After installation, load a domain schema to model your infrastructure.
+
+:::tip Use the Marketplace for pre-built schemas
+
+The [Infrahub Marketplace](https://marketplace.infrahub.app) hosts ready-to-use schemas for common domains such as DCIM, IPAM, locations, and routing.
+Fetch a schema with `infrahubctl marketplace get opsmill/dcim`, then load it with `infrahubctl schema load schemas/dcim.yml`.
+See [Use a schema from the Marketplace](./marketplace-install-schema.mdx) for the complete workflow.
+
+:::
+
 ## Related resources
 
+- [Use a schema from the Marketplace](./marketplace-install-schema.mdx) - Fetch and load pre-built schemas
+- [Infrahub Marketplace](../topics/marketplace.mdx) - Overview of available schemas and collections
 - [Database backup and restore](./database-backup.mdx) - Learn how to backup and restore your Infrahub database
 - [High availability architecture](../topics/architecture.mdx#scalability-and-high-availability) - Understand resilient deployment architectures
 - [Local demo environment](../topics/local-demo-environment.mdx) - Explore the demo environment configuration
