@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import shutil
+import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
@@ -700,12 +701,22 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             log.debug(f"Commit worktree created {commit}", repository=self.name)
             return worktree
         except GitCommandError as exc:
-            if "invalid reference" in exc.stderr:
-                raise CommitNotFoundError(
+            if "invalid reference" not in exc.stderr:
+                raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+
+            if not self.has_origin:
+                raise RepositoryError(
                     identifier=self.name,
-                    commit=commit,
+                    message=f"Commit {commit} not found and no remote origin configured to fetch from.",
                 ) from exc
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+
+            # Commit may exist on the remote but hasn't been fetched to this worker yet
+            log.info(f"Commit {commit} not found locally, fetching from remote.", repository=self.name)
+            repo.remotes.origin.fetch()
+
+            repo.git.worktree("add", directory, commit)
+            log.debug(f"Commit worktree created {commit} after fetch", repository=self.name)
+            return worktree
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch."""
@@ -1006,7 +1017,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @classmethod
     def check_connectivity(cls, name: str, url: str) -> None:
-        cmd = git.cmd.Git()
+        # Use a neutral working directory so git doesn't discover a .git pointer
+        # from the process CWD (e.g. worktree builds where /source/.git is a
+        # pointer file referencing a host path absent from a container).
+        cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
         try:
             cmd.ls_remote("--tags", url)
         except GitCommandError as exc:
