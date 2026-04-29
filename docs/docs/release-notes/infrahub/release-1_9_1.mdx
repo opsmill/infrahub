@@ -1,0 +1,32 @@
+---
+title: Release 1.9.1
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.9.1</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>April 29th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.9.1](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.9.1)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Added
+
+- Added InfrahubGraphQLQueryReport introspection query to report whether a GraphQL query targets unique nodes for artifact regeneration.
+
+### Fixed
+
+- Fixed a bug where object files in a git commit were imported using a stale schema cache when the same commit also contained schema changes. The schema cache is now refreshed after schema files are imported, ensuring object files are validated against the updated schema. ([#6814](https://github.com/opsmill/infrahub/issues/6814))
+- Fixed hierarchy queries returning duplicate parents after merging a branch that changed a node's hierarchical parent. ([#8395](https://github.com/opsmill/infrahub/issues/8395))
+- Fixed branch delete permission preventing users from deleting their own branch ([#8528](https://github.com/opsmill/infrahub/issues/8528))
+- Fixed attribute migration for sub-template schemas: changing `read_only` or `optional` on a node with `generate_template=False` that is a COMPONENT or PARENT peer of a `generate_template=True` node now correctly updates existing template instances. ([#8722](https://github.com/opsmill/infrahub/issues/8722))
+- Fixed git repository registration failing when the working directory contains a `.git` reference pointing to a path that is inaccessible to the process (for example, in containerized setups). ([#9008](https://github.com/opsmill/infrahub/issues/9008))
+- Fixed task failures (artifact generation, transforms) that could occur when a recently pushed commit had not yet been fetched locally. ([#9036](https://github.com/opsmill/infrahub/issues/9036))
