@@ -1,9 +1,10 @@
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import type React from "react";
 
+import { Row } from "@/shared/components/container";
 import { getObjectFromFilters } from "@/shared/components/filters/utils/getObjectFromFilters";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
-import { Button } from "@/shared/components/ui/button";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import type { Filter } from "@/shared/hooks/useFilters";
 import { classNames } from "@/shared/utils/common";
@@ -54,15 +55,15 @@ export const TasksFilterForm = ({
 
       <DropdownField name="state" label="State" items={statesOptions} />
 
-      <div className="text-right">
+      <Row className="justify-end">
         {onCancel && (
-          <Button variant="outline" className="mr-2" onClick={onCancel}>
+          <Button variant="outline" onPress={onCancel}>
             Cancel
           </Button>
         )}
 
         <FormSubmit>Apply filters</FormSubmit>
-      </div>
+      </Row>
     </Form>
   );
 };

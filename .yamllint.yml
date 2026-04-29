@@ -4,6 +4,7 @@ extends: default
 ignore: |
   /.git
   /.venv
+  /.specify
   /examples
   /repositories
   /frontend/**/playwright-report

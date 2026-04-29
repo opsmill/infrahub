@@ -23,6 +23,7 @@ from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaEleme
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.schema import (
     AttributeSchema,
@@ -352,7 +353,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
             attrs["schema"] = db.schema.get(name=schema, branch=branch)
-        elif hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:
+        elif isinstance(schema, type) and issubclass(schema, CoreNode):
             attrs["schema"] = db.schema.get(name=schema.__name__, branch=branch)
         else:
             raise ValueError(

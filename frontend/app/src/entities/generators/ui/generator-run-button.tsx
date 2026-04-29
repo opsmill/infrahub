@@ -1,10 +1,11 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
+import type React from "react";
 import { Link } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
@@ -12,6 +13,7 @@ import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-ge
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;
   targetNodeIds?: string[];
+  children?: React.ReactNode;
 }
 
 export function GeneratorRunButton({
@@ -54,13 +56,13 @@ export function GeneratorRunButton({
 
   return (
     <Button
-      isLoading={isPending}
-      disabled={isPending}
+      isPending={isPending}
+      isDisabled={isPending}
       variant={variant}
-      onClick={handleRunGenerator}
+      onPress={handleRunGenerator}
       {...props}
     >
-      {!isPending && <PlayIcon className="mr-2 size-4" />}
+      {!isPending && <PlayIcon className="size-4" />}
       {children ?? "Run"}
     </Button>
   );

@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton } from "@infrahub/ui";
 import { Card, CardContent } from "@infrahub/ui/card";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Table } from "@/shared/components/table/table";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Pagination } from "@/shared/components/ui/pagination";
 import { QSP } from "@/shared/config/qsp";
 import usePagination from "@/shared/hooks/usePagination";
@@ -65,11 +65,15 @@ const ResourceAllocationDetailsPage = () => {
           <h3 className="font-semibold">Allocated resources</h3>
           <Badge>{totalOfResourcesAllocated}</Badge>
 
-          <Link to={constructPath(`/resource-manager/${resourcePoolId}`)} className="ml-auto">
-            <Button size="icon" variant="ghost">
-              <Icon icon="mdi:close" className="text-xl" />
-            </Button>
-          </Link>
+          <LinkButton
+            href={constructPath(`/resource-manager/${resourcePoolId}`)}
+            size="xs"
+            shape="circle"
+            variant="ghost"
+            className="ml-auto"
+          >
+            <Icon icon="mdi:close" className="text-xl" />
+          </LinkButton>
         </div>
 
         <div className="overflow-y-auto">
@@ -91,11 +95,15 @@ const ResourceAllocationPageSkeleton = () => {
           <h3 className="font-semibold">Allocated resources</h3>
           <Badge>...</Badge>
 
-          <Link to={constructPath(`/resource-manager/${resourcePoolId}`)} className="ml-auto">
-            <Button size="icon" variant="ghost">
-              <Icon icon="mdi:close" className="text-xl" />
-            </Button>
-          </Link>
+          <LinkButton
+            href={constructPath(`/resource-manager/${resourcePoolId}`)}
+            size="xs"
+            shape="circle"
+            variant="ghost"
+            className="ml-auto"
+          >
+            <Icon icon="mdi:close" className="text-xl" />
+          </LinkButton>
         </div>
 
         <div className="space-y-1">

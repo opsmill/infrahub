@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,9 +37,9 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
-              size="square"
+              size="sm"
+              shape="square"
               variant="ghost"
-              className="size-6"
               data-testid={`branch-actions-cell-${branch.name}`}
             >
               <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />

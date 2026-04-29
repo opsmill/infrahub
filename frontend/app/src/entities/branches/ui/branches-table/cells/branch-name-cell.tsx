@@ -1,9 +1,9 @@
+import { LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Checkbox } from "@/shared/components/aria/checkbox";
 import { Col, Row } from "@/shared/components/container";
-import { LinkButton } from "@/shared/components/ui/button";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
@@ -40,8 +40,8 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
           <LinkButton
             variant="ghost"
             size="sm"
-            to={constructPath(`/branches/${branch.name}`)}
-            className="truncate rounded-full px-2.5 text-custom-blue-700 hover:bg-custom-blue-700/10 hover:underline"
+            href={constructPath(`/branches/${branch.name}`)}
+            className="truncate rounded-full px-2.5 text-custom-blue-700 data-hovered:bg-custom-blue-700/10 data-hovered:underline"
           >
             {branch.name}
           </LinkButton>

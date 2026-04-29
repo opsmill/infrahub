@@ -1,12 +1,12 @@
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
 import { TASK_OBJECT } from "@/shared/config/constants";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
@@ -86,8 +86,8 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
 
   return (
     <Button
-      disabled={isDisabled}
-      onClick={handleSubmit}
+      isDisabled={isDisabled}
+      onPress={handleSubmit}
       variant="active"
       className="flex items-center gap-2"
     >

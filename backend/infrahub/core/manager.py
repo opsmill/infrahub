@@ -15,6 +15,7 @@ from infrahub.core.metadata.model import MetadataQueryOptions
 from infrahub.core.node import Node
 from infrahub.core.node.delete_validator import NodeDeleteValidator
 from infrahub.core.order import OrderModel
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import (
     AttributeFromDB,
     GroupedPeerNodes,
@@ -75,7 +76,7 @@ def get_schema[SchemaProtocol](
 ) -> MainSchemaTypes:
     if isinstance(node_schema, str):
         return db.schema.get(name=node_schema, branch=branch.name, duplicate=duplicate)
-    if hasattr(node_schema, "_is_runtime_protocol") and node_schema._is_runtime_protocol:
+    if isinstance(node_schema, type) and issubclass(node_schema, CoreNode):
         return db.schema.get(name=node_schema.__name__, branch=branch.name, duplicate=duplicate)
     if not isinstance(node_schema, (MainSchemaTypes)):
         raise ValueError(f"Invalid schema provided {node_schema}")
@@ -1321,6 +1322,9 @@ class NodeManager:
                 peer_with_metadata.created_by = metadata_map.get(MetadataOptions.CREATED_BY)
                 peer_with_metadata.updated_at = metadata_map.get(MetadataOptions.UPDATED_AT)
                 peer_with_metadata.updated_by = metadata_map.get(MetadataOptions.UPDATED_BY)
+                peer_with_metadata.source_id = metadata_map.get(MetadataOptions.SOURCE)
+                peer_with_metadata.owner_id = metadata_map.get(MetadataOptions.OWNER)
+                peer_with_metadata.is_protected = metadata_map.get(MetadataOptions.IS_PROTECTED)
                 rel_peers_with_metadata.append(peer_with_metadata)
 
             rel_manager.has_fetched_relationships = True

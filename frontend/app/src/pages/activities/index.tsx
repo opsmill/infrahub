@@ -1,9 +1,9 @@
+import { Spinner } from "@infrahub/ui";
 import { useMemo } from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 

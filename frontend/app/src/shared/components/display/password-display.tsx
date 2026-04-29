@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
 import { Row } from "@/shared/components/container";
-import { Button } from "@/shared/components/ui/button";
 import { MAX_PASSWORD_DOTS_DISPLAY, MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
 
 type tPasswordDisplayProps = {
@@ -15,7 +15,7 @@ export const PasswordDisplay = (props: tPasswordDisplayProps) => {
   const [display, setDisplay] = useState(false);
 
   const displayButton = (
-    <Button variant="ghost" size="icon" onClick={() => setDisplay(!display)}>
+    <Button variant="ghost" size="xs" shape="circle" onPress={() => setDisplay(!display)}>
       <Icon icon={display ? "mdi:eye" : "mdi:eye-off"} className="text-gray-600" />
     </Button>
   );

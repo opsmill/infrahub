@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { Card, CardContent } from "@infrahub/ui/card";
 import { useEffect, useState } from "react";
 
 import { Col, Row } from "@/shared/components/container";
 import Accordion from "@/shared/components/display/accordion";
-import { Button } from "@/shared/components/ui/button";
 import Kbd from "@/shared/components/ui/kbd";
 
 interface ErrorFallbackProps {
@@ -62,7 +62,7 @@ function ErrorFallback({ error, onReset }: ErrorFallbackProps) {
             </div>
 
             <Row>
-              <Button onClick={onReset}>Refresh</Button>
+              <Button onPress={onReset}>Refresh</Button>
               <a href={window.location.origin}>
                 <Button variant="outline">Homepage</Button>
               </a>

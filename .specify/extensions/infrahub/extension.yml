@@ -1,0 +1,29 @@
+schema_version: "1.0"
+
+extension:
+  id: infrahub
+  name: "Infrahub Workflow"
+  version: "1.0.0"
+  description: "Infrahub-specific SpecKit customizations: enforces Jira/JPD ticket reference on feature branch creation"
+  author: opsmill
+  license: MIT
+
+requires:
+  speckit_version: ">=0.6.0"
+
+provides:
+  commands:
+    - name: speckit.infrahub.feature
+      file: commands/speckit.infrahub.feature.md
+      description: "Validate Jira/JPD ticket reference and create a feature branch"
+
+hooks:
+  before_specify:
+    command: speckit.infrahub.feature
+    optional: false
+    description: "Validate Jira/JPD reference and create feature branch"
+
+tags:
+  - "infrahub"
+  - "jira"
+  - "branching"

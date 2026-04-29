@@ -24,6 +24,7 @@ class BranchRelativePermissionDecision(StrEnum):
 GLOBAL_PERMISSION_DENIAL_MESSAGE = {
     GlobalPermissions.EDIT_DEFAULT_BRANCH.value: "You are not allowed to change data in the default branch",
     GlobalPermissions.MERGE_BRANCH.value: "You are not allowed to merge a branch",
+    GlobalPermissions.DELETE_BRANCH.value: "You are not allowed to delete a branch you did not create",
     GlobalPermissions.MERGE_PROPOSED_CHANGE.value: "You are not allowed to merge proposed changes",
     GlobalPermissions.REVIEW_PROPOSED_CHANGE.value: "You are not allowed to review proposed changes",
     GlobalPermissions.MANAGE_SCHEMA.value: "You are not allowed to manage the schema",
@@ -37,6 +38,7 @@ GLOBAL_PERMISSION_DENIAL_MESSAGE = {
 GLOBAL_PERMISSION_DESCRIPTION = {
     GlobalPermissions.EDIT_DEFAULT_BRANCH: "Allow a user to change data in the default branch",
     GlobalPermissions.MERGE_BRANCH: "Allow a user to merge branches",
+    GlobalPermissions.DELETE_BRANCH: "Allow a user to delete branches",
     GlobalPermissions.MERGE_PROPOSED_CHANGE: "Allow a user to merge proposed changes",
     GlobalPermissions.REVIEW_PROPOSED_CHANGE: "Allow a user to approve or reject proposed changes",
     GlobalPermissions.MANAGE_SCHEMA: "Allow a user to manage the schema",

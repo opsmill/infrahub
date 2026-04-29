@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import React from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -5,7 +6,6 @@ import { Col } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ObjectCreateFormTrigger } from "@/shared/components/form/object-create-form-trigger";
 import Content from "@/shared/components/layout/content";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { InfiniteScroll } from "@/shared/components/utils/infinite-scroll";
 import useFilters from "@/shared/hooks/useFilters";
 
