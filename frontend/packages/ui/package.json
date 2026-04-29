@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.4",
-    "lucide-react": "^1.11.0",
+    "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-aria-components": "^1.17.0",
     "react-dom": "^19.2.5",
@@ -40,7 +40,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "chromatic": "^16.6.0",
+    "chromatic": "^16.6.1",
     "globals": "^17.5.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
