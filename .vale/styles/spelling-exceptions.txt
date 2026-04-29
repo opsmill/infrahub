@@ -266,5 +266,8 @@ QRadar
 rsyslog
 sourcetype
 Splunk
+stderr
+stdin
+stdout
 syslog
 Syslog
