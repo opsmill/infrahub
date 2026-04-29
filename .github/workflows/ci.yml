@@ -478,7 +478,7 @@ jobs:
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
-    timeout-minutes: 50
+    timeout-minutes: 80
     env:
       INFRAHUB_DB_TYPE: neo4j
     steps:
