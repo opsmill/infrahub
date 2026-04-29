@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import shutil
+import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
@@ -1006,7 +1007,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @classmethod
     def check_connectivity(cls, name: str, url: str) -> None:
-        cmd = git.cmd.Git()
+        # Use a neutral working directory so git doesn't discover a .git pointer
+        # from the process CWD (e.g. worktree builds where /source/.git is a
+        # pointer file referencing a host path absent from a container).
+        cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
         try:
             cmd.ls_remote("--tags", url)
         except GitCommandError as exc:
