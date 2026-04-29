@@ -1,5 +1,3 @@
-from typing import cast
-
 from infrahub import lock
 from infrahub.core.branch import Branch
 from infrahub.core.convert_object_type.object_conversion import (
@@ -83,8 +81,8 @@ async def convert_repository_type(
         )
 
         # Delete the RepositoryGroup associated with the old repository, as a new one was created for the new repository.
-        repository_groups = (await repository.groups_objects.get_peers(db=db)).values()
+        repository_groups = (await repository.groups_objects.get_peers(db=db, peer_type=Node)).values()
         for repository_group in repository_groups:
-            await NodeManager.delete(db=db, branch=branch, nodes=[cast("Node", repository_group)], cascade_delete=False)
+            await NodeManager.delete(db=db, branch=branch, nodes=[repository_group], cascade_delete=False)
 
     return new_repository
