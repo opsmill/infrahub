@@ -125,13 +125,13 @@ Understanding the branch lifecycle helps teams manage the flow of changes throug
 2. **Development**: Changes accumulate in the branch without affecting the main branch, allowing for focused work and experimentation.
 3. **Validation**: Proposed Changes run automated checks and tests to verify the integrity and functionality of modifications before integration.
 4. **Conflict resolution**: Any conflicts with the main branch are identified and resolved, ensuring smooth integration of changes.
-5. **Merge**: Approved changes integrate into the main branch through a controlled process that preserves the integrity of the production environment. After the merge completes, the branch enters a **frozen state**: all further mutations (create, update, upsert, delete) are blocked on that branch, the UI disables editing controls with a visual indicator, and no new Proposed Change can be opened against it.
-6. **Cleanup**: After a successful merge, the branch can be deleted manually or automatically when `delete_branch_after_merge` is enabled in the [configuration](../reference/configuration.mdx). If the branch is synchronized with a Git repository, enabling `delete_git_branch_after_merge` also removes the corresponding remote branch.
+5. **Merge**: Approved changes integrate into the main branch through a controlled process that preserves the integrity of the production environment. After a successful merge, the branch transitions to a frozen **`MERGED`** state — all data and schema mutations are blocked, and creating a new Proposed Change against it is prevented. The branch can still be viewed and deleted, but no further changes can be made to it.
+6. **Cleanup**: The branch can be deleted after successful merge, maintaining a clean workspace and repository structure.
 
 :::warning
-Once merged, a branch enters a frozen state and no further mutations are allowed on it. Creating a new Proposed Change against a merged branch is also prevented.
+A merged branch enters a terminal **`MERGED`** state immediately after merge. No further mutations are allowed on it — rebase, re-merge, and creating new Proposed Changes are all blocked. Only deletion remains permitted.
 
-Once deleted, a branch enters a terminal state and can no longer be updated. Creating a Proposed Change against it, rebasing it, and triggering validation on it are no longer possible.
+Once deleted, a branch additionally enters a `DELETING` terminal state and is removed permanently.
 :::
 
 This structured approach ensures that changes are thoroughly validated before reaching production while giving teams the flexibility to work independently.

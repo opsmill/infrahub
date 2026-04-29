@@ -1,7 +1,7 @@
-import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
+import { EyeIcon, EyeOffIcon } from "lucide-react";
 import React from "react";
 
-import { Button } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { Input, type InputProps } from "./input";
@@ -21,12 +21,13 @@ export function PasswordInput({ className, ref, ...props }: PasswordInputProps) 
       />
 
       <Button
-        onClick={() => setShowPassword((v) => !v)}
-        size="icon"
+        onPress={() => setShowPassword((v) => !v)}
+        size="xs"
+        shape="circle"
         variant="ghost"
-        className="absolute end-0 top-0 h-10 rounded-md p-3.5 hover:bg-transparent"
+        className="absolute top-0 right-0 h-10 rounded-md p-3.5 data-hovered:bg-transparent"
       >
-        <Icon icon={showPassword ? "mdi:eye-off" : "mdi:eye"} />
+        {showPassword ? <EyeIcon className="size-3.5" /> : <EyeOffIcon className="size-3.5" />}
       </Button>
     </div>
   );

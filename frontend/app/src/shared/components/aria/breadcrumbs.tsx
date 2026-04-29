@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import { cva } from "class-variance-authority";
 import {
   Breadcrumb as AriaBreadcrumb,
@@ -12,7 +13,6 @@ import {
 } from "react-aria-components";
 
 import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 
 export function Breadcrumbs<T extends object>({ className, ...props }: AriaBreadcrumbsProps<T>) {

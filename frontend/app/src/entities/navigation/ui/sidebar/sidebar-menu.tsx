@@ -1,7 +1,8 @@
+import { Spinner } from "@infrahub/ui";
+
 import { Separator } from "@/shared/components/aria/separator";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { ScrollArea } from "@/shared/components/ui/scroll-area";
-import { Spinner } from "@/shared/components/ui/spinner";
 
 import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import { SidebarMenuSectionInternal } from "@/entities/navigation/ui/sidebar/sidebar-menu-section-internal";

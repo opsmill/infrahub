@@ -293,6 +293,14 @@ def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive:
     return f"{attr_name}: {value}"
 
 
+def _jinja2_filter_render_relationship(value: dict[str, Any]) -> str:
+    peer = value.get("peer", "")
+    name = value["name"]
+    if peer:
+        return f"{name}: RelationshipManager[{peer}]"
+    return f"{name}: RelationshipManager"
+
+
 def _sort_and_filter_models(
     models: list[dict[str, Any]], filters: list[tuple[str, str]] | None = None
 ) -> list[dict[str, Any]]:
@@ -325,6 +333,7 @@ def _generate_protocols(context: Context) -> None:
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
     env.filters["inheritance"] = _jinja2_filter_inheritance
     env.filters["render_attribute"] = _jinja2_filter_render_attribute
+    env.filters["render_relationship"] = _jinja2_filter_render_relationship
 
     # Export protocols for backend code use
     generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"

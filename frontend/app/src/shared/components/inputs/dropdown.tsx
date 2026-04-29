@@ -1,4 +1,5 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import React from "react";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
@@ -7,7 +8,6 @@ import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -84,12 +84,10 @@ export const DropdownItem = ({
       {schema && fieldSchema && (
         <>
           <Button
-            tabIndex={-1}
             variant="ghost"
             size="sm"
             className="ml-auto h-6 text-red-800"
-            onClick={(e) => {
-              e.stopPropagation();
+            onPress={() => {
               setShowDeleteModal(true);
             }}
           >
@@ -156,8 +154,8 @@ export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActio
     <div className="p-2 pt-0">
       {namespace?.user_editable && (
         <Button
-          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 enabled:hover:bg-custom-blue-700/20"
-          onClick={() => setOpen(!open)}
+          className="w-full border border-custom-blue-700/20 bg-custom-blue-700/10 text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-700/20"
+          onPress={() => setOpen(!open)}
           data-testid="add-option-button"
         >
           + Add option

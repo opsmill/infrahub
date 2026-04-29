@@ -1,11 +1,11 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
 import { queryClient } from "@/shared/api/rest/client";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { TableCell } from "@/shared/components/table/table-cell";
-import { Button } from "@/shared/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,9 +69,9 @@ export function RelationshipActionsCell({
           <PopoverAnchor>
             <DropdownMenuTrigger asChild>
               <Button
-                size="square"
+                size="sm"
+                shape="square"
                 variant="ghost"
-                className="size-6"
                 data-testid={`actions-cell-${relationshipLabel}`}
               >
                 <Icon icon={"mdi:dots-vertical"} className="text-gray-500" />

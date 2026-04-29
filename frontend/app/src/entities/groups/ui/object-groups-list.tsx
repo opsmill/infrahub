@@ -1,13 +1,13 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
@@ -104,12 +104,13 @@ function RemoveGroupButton({ objectId, group }: ObjectGroupItemProps) {
 
   return (
     <>
-      <Tooltip content="Leave" enabled>
+      <Tooltip message="Leave">
         <Button
           variant="ghost"
-          size="icon"
-          className="shrink-0 hover:bg-gray-200"
-          onClick={() => setShowDeleteModal(true)}
+          size="xs"
+          shape="circle"
+          className="shrink-0 data-hovered:bg-gray-200"
+          onPress={() => setShowDeleteModal(true)}
           data-testid="leave-group-button"
         >
           <Icon icon="mdi:link-variant-remove" className="text-lg text-red-600" />

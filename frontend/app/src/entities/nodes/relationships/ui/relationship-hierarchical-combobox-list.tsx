@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import type React from "react";
 import { useState } from "react";
@@ -6,7 +7,6 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { Badge } from "@/shared/components/ui/badge";
 import { ComboboxEmpty, ComboboxItem } from "@/shared/components/ui/combobox";
 import { Command, CommandInput, CommandList } from "@/shared/components/ui/command";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

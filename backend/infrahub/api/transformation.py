@@ -14,8 +14,6 @@ from infrahub.api.dependencies import (
 )
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import (
-    CoreGenericRepository,
-    CoreGraphQLQuery,
     CoreTransformJinja2,
     CoreTransformPython,
 )
@@ -53,8 +51,8 @@ async def transform_python(
         at=branch_params.at,
     )
 
-    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
-    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+    query = await transform.query.get_peer(db=db, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, raise_on_error=True)
 
     if repository.commit.value is None:  # type: ignore[attr-defined]
         raise TransformError(
@@ -118,8 +116,8 @@ async def transform_jinja2(
         at=branch_params.at,
     )
 
-    query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
-    repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
+    query = await transform.query.get_peer(db=db, raise_on_error=True)
+    repository = await transform.repository.get_peer(db=db, raise_on_error=True)
 
     if repository.commit.value is None:  # type: ignore[attr-defined]
         raise TransformError(
