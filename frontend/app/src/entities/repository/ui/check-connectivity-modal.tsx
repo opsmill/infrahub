@@ -1,8 +1,8 @@
+import { Button } from "@infrahub/ui";
 import { Heading } from "react-aria-components";
 
 import { Modal } from "@/shared/components/aria/modal";
 import { Col, Row } from "@/shared/components/container";
-import { Button } from "@/shared/components/ui/button";
 
 import { useCheckConnectivityMutation } from "@/entities/repository/ui/queries/check-connectivity.mutation";
 
@@ -45,10 +45,10 @@ function CheckConnectivity({ repositoryId, onClose }: CheckConnectivityProps) {
         description="Check the connectivity to this repository to validate your connection and authentication status."
         actions={
           <>
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onPress={onClose}>
               Cancel
             </Button>
-            <Button isLoading disabled>
+            <Button isPending isDisabled>
               Check now
             </Button>
           </>
@@ -64,10 +64,10 @@ function CheckConnectivity({ repositoryId, onClose }: CheckConnectivityProps) {
         description={error.message}
         actions={
           <>
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onPress={onClose}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={() => checkConnectivity({ repositoryId })}>
+            <Button variant="danger" onPress={() => checkConnectivity({ repositoryId })}>
               Retry
             </Button>
           </>
@@ -83,15 +83,15 @@ function CheckConnectivity({ repositoryId, onClose }: CheckConnectivityProps) {
         description={data.message}
         actions={
           data.ok ? (
-            <Button variant="active" onClick={onClose}>
+            <Button variant="active" onPress={onClose}>
               Done
             </Button>
           ) : (
             <>
-              <Button variant="outline" onClick={onClose}>
+              <Button variant="outline" onPress={onClose}>
                 Cancel
               </Button>
-              <Button variant="danger" onClick={() => checkConnectivity({ repositoryId })}>
+              <Button variant="danger" onPress={() => checkConnectivity({ repositoryId })}>
                 Retry
               </Button>
             </>
@@ -108,10 +108,10 @@ function CheckConnectivity({ repositoryId, onClose }: CheckConnectivityProps) {
       description="Check the connectivity to this repository to validate your connection and authentication status."
       actions={
         <>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onPress={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => checkConnectivity({ repositoryId })}>Check now</Button>
+          <Button onPress={() => checkConnectivity({ repositoryId })}>Check now</Button>
         </>
       }
     />

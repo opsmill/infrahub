@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import React from "react";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -7,7 +8,6 @@ import {
   ComboboxList,
   type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { debounce } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";

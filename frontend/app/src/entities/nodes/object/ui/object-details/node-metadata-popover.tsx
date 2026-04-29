@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { PropertyList } from "@/shared/components/table/property-list";
-import { Button } from "@/shared/components/ui/button";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { formatFullDate } from "@/shared/utils/date";
@@ -72,7 +72,8 @@ export function NodeMetadataPopover(props: NodeMetadataProps) {
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          size="icon"
+          size="xs"
+          shape="circle"
           variant="ghost"
           className="text-gray-500"
           aria-label="View node metadata"

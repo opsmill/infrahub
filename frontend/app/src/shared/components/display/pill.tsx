@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Spinner } from "@infrahub/ui";
 import type { ReactNode } from "react";
 
-import { Spinner } from "@/shared/components/ui/spinner";
 import { classNames } from "@/shared/utils/common";
 
 type tPill = {

@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 
-import { Button } from "@/shared/components/ui/button";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { classNames } from "@/shared/utils/common";
@@ -35,11 +35,8 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
                 className="flex gap-2 rounded-r-none border-r-white"
                 variant={"primary"}
                 type="submit"
-                onClick={(event) => {
-                  event.stopPropagation();
-                }}
-                isLoading={isLoading}
-                disabled={isLoading}
+                isPending={isLoading}
+                isDisabled={isLoading}
               >
                 {state && pcStatesList[state] && pcStatesList[state].message}
               </Button>
@@ -48,10 +45,10 @@ export const PcStateButton = ({ state = "open", setState }: PcStateButtonProps) 
                 className="h-9 rounded-l-none border-l-0"
                 variant={"primary"}
                 size={"sm"}
-                onClick={() => {
+                onPress={() => {
                   setOpen(true);
                 }}
-                disabled={isLoading}
+                isDisabled={isLoading}
                 data-testid="proposed-change-action-button-select"
               >
                 <Icon icon="mdi:unfold-more-horizontal" />

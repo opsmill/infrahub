@@ -12,6 +12,10 @@ export default defineConfig({
     port: 8080,
     watch: {
       ignored: ["**/graphql/generated/**", "**/rest/types.generated.ts", "**/playwright-report/**"],
+      followSymlinks: true,
+    },
+    fs: {
+      allow: [".."],
     },
   },
   preview: {

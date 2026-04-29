@@ -1,5 +1,6 @@
+import { Button } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { ListLayout, Pressable, Virtualizer } from "react-aria-components";
+import { ListLayout, Virtualizer } from "react-aria-components";
 import { Link, useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -15,7 +16,6 @@ import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
-import { Button } from "@/shared/components/ui/button";
 
 import { BreadcrumbObjectDetails } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-object-details";
 import { RESOURCE_GENERIC_KIND } from "@/entities/resource-manager/constants";
@@ -83,11 +83,9 @@ function ResourceSelector({
         </Col>
 
         <MenuTrigger>
-          <Pressable>
-            <Button variant="ghost" className="size-5 p-0" aria-label="Select a different resource">
-              <ChevronsUpDownIcon className="size-3.5" />
-            </Button>
-          </Pressable>
+          <Button variant="ghost" className="size-5 p-0" aria-label="Select a different resource">
+            <ChevronsUpDownIcon className="size-3.5" />
+          </Button>
 
           <Popover>
             <PopoverDialog>

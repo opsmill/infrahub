@@ -1,3 +1,5 @@
+import { Button } from "@infrahub/ui";
+import { Card } from "@infrahub/ui/card";
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from "lucide-react";
 import { Link } from "react-router";
 
@@ -6,8 +8,6 @@ import InfrahubLogo from "@/assets/infrahub-logo.svg";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Separator } from "@/shared/components/aria/separator";
-import { Button } from "@/shared/components/ui/button";
-import { Card } from "@/shared/components/ui/card";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { useLocalStorage } from "@/shared/hooks/useLocalStorage";
 import { classNames } from "@/shared/utils/common";
@@ -26,7 +26,7 @@ export function AppSidebar() {
     <Card
       data-collapsed={booleanCollapsed}
       className={classNames(
-        "relative flex w-[256px] shrink-0 flex-col gap-3",
+        "relative flex w-[256px] shrink-0 flex-col gap-3 p-3",
         "group/sidebar transition-all",
         booleanCollapsed && "w-auto items-center px-2"
       )}
@@ -44,9 +44,10 @@ export function AppSidebar() {
         {booleanCollapsed ? (
           <Button
             variant="outline"
-            size="icon"
+            size="xs"
+            shape="circle"
             className="absolute top-11 -right-3.5 hidden transition-all group-hover/sidebar:inline-flex"
-            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+            onPress={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftOpenIcon className="size-4 text-neutral-600" />
           </Button>
@@ -54,8 +55,8 @@ export function AppSidebar() {
           <Button
             variant="ghost"
             size="sm"
-            className="p-1 text-gray-400 hover:text-neutral-600"
-            onClick={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
+            className="p-1 text-gray-400 data-hovered:text-neutral-600"
+            onPress={() => setCollapsed(JSON.stringify(!booleanCollapsed))}
           >
             <PanelLeftCloseIcon className="size-5" />
           </Button>

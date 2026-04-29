@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Card, CardContent } from "@infrahub/ui/card";
 import { CheckIcon, RefreshCwIcon } from "lucide-react";
 import React from "react";
 
 import { Col, Row } from "@/shared/components/container";
-import { Card } from "@/shared/components/ui/card";
 
 import type { UpdateObjectParams } from "@/entities/nodes/object/domain/update-object";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
@@ -74,20 +74,22 @@ export function NodeCard({ node, children }: { node: NodeCore; children?: React.
 
   return (
     <Card className="w-100 text-sm">
-      <Col className="gap-1">
-        <Row className="justify-between text-gray-600 text-xs">
-          <Row className="gap-1">
-            <Icon icon={getSchemaIcon(schema)} />
-            <span>{schema?.label}</span>
-          </Row>
+      <CardContent>
+        <Col className="gap-1">
+          <Row className="justify-between text-gray-600 text-xs">
+            <Row className="gap-1">
+              <Icon icon={getSchemaIcon(schema)} />
+              <span>{schema?.label}</span>
+            </Row>
 
-          <span className="truncate">ID {node.id}</span>
-        </Row>
-        <Row className="justify-between">
-          <span className="shrink-0">{getNodeLabel(node)}</span>
-          <span>{children}</span>
-        </Row>
-      </Col>
+            <span className="truncate">ID {node.id}</span>
+          </Row>
+          <Row className="justify-between">
+            <span className="shrink-0">{getNodeLabel(node)}</span>
+            <span>{children}</span>
+          </Row>
+        </Col>
+      </CardContent>
     </Card>
   );
 }
