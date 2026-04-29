@@ -705,30 +705,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
 
             if not self.has_origin:
-                raise CommitNotFoundError(
+                raise RepositoryError(
                     identifier=self.name,
-                    commit=commit,
+                    message=f"Commit {commit} not found and no remote origin configured to fetch from.",
                 ) from exc
 
             # Commit may exist on the remote but hasn't been fetched to this worker yet
             log.info(f"Commit {commit} not found locally, fetching from remote.", repository=self.name)
-            try:
-                repo.remotes.origin.fetch()
-            except GitCommandError:
-                raise CommitNotFoundError(
-                    identifier=self.name,
-                    commit=commit,
-                ) from exc
+            repo.remotes.origin.fetch()
 
-            try:
-                repo.git.worktree("add", directory, commit)
-                log.debug(f"Commit worktree created {commit} after fetch", repository=self.name)
-                return worktree
-            except GitCommandError:
-                raise CommitNotFoundError(
-                    identifier=self.name,
-                    commit=commit,
-                ) from exc
+            repo.git.worktree("add", directory, commit)
+            log.debug(f"Commit worktree created {commit} after fetch", repository=self.name)
+            return worktree
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch."""
