@@ -1346,9 +1346,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
         object_template: RelationshipManager | None = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return (
-            await object_template.get_peer(db=db, peer_type=CoreObjectTemplate) if object_template is not None else None
-        )
+        return await object_template.get_peer(db=db) if object_template is not None else None
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None

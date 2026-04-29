@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from graphene import Boolean, Field, InputField, InputObjectType, List, Mutation, NonNull, String
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreGeneratorDefinition, CoreGenericRepository, CoreGraphQLQuery, CoreStandardGroup
+from infrahub.core.protocols import CoreGeneratorDefinition
 from infrahub.generators.models import ProposedChangeGeneratorDefinition, RequestGeneratorDefinitionRun
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.types.context import ContextInput
@@ -52,11 +52,9 @@ class GeneratorDefinitionRequestRun(Mutation):
             prefetch_relationships=True,
             raise_on_error=True,
         )
-        query = await generator_definition.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
-        repository = await generator_definition.repository.get_peer(
-            db=db, peer_type=CoreGenericRepository, raise_on_error=True
-        )
-        group = await generator_definition.targets.get_peer(db=db, peer_type=CoreStandardGroup, raise_on_error=True)
+        query = await generator_definition.query.get_peer(db=db, raise_on_error=True)
+        repository = await generator_definition.repository.get_peer(db=db, raise_on_error=True)
+        group = await generator_definition.targets.get_peer(db=db, raise_on_error=True)
 
         request_model = RequestGeneratorDefinitionRun(
             generator_definition=ProposedChangeGeneratorDefinition(

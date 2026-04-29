@@ -81,7 +81,7 @@ async def convert_repository_type(
         )
 
         # Delete the RepositoryGroup associated with the old repository, as a new one was created for the new repository.
-        repository_groups = (await repository.groups_objects.get_peers(db=db)).values()
+        repository_groups = (await repository.groups_objects.get_peers(db=db, peer_type=Node)).values()
         for repository_group in repository_groups:
             await NodeManager.delete(db=db, branch=branch, nodes=[repository_group], cascade_delete=False)
 
