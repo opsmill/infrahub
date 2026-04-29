@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 
 import { ObjectPicker } from "./object-picker";
+import { isVisibleNamespace } from "./utils";
 
 type SearchParams = {
   sourceId: string;
@@ -145,6 +146,7 @@ export function ObjectSelector({
             value={selectedKinds}
             onChange={setSelectedKinds}
             label="Include only these kinds"
+            filter={isVisibleNamespace}
           />
 
           <KindMultiSelect
@@ -154,6 +156,7 @@ export function ObjectSelector({
             placeholder="Search kinds to exclude..."
             showChips
             chipTone="red"
+            filter={isVisibleNamespace}
           />
         </div>
       )}

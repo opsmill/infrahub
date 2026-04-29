@@ -3,6 +3,7 @@ import { type FormEvent, useState } from "react";
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 
 import { ObjectPicker } from "./object-picker";
+import { isVisibleNamespace } from "./utils";
 
 type DependencySelectorProps = {
   onSearch: (params: { sourceId: string; targetKinds: string[]; maxDepth: number }) => void;
@@ -43,6 +44,7 @@ export function DependencySelector({
         value={selectedKinds}
         onChange={setSelectedKinds}
         label="What kinds to find?"
+        filter={isVisibleNamespace}
       />
 
       <div>

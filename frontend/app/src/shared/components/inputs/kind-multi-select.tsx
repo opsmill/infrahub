@@ -9,7 +9,6 @@ import {
 } from "@/shared/components/ui/command";
 import { classNames } from "@/shared/utils/common";
 
-import { HIDDEN_NAMESPACES } from "@/entities/path-traversal/ui/utils";
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 type ChipTone = "blue" | "red";
@@ -40,8 +39,6 @@ export interface KindMultiSelectProps {
   className?: string;
 }
 
-const defaultFilter = (namespace: string) => !HIDDEN_NAMESPACES.has(namespace);
-
 export function KindMultiSelect({
   value,
   onChange,
@@ -49,10 +46,11 @@ export function KindMultiSelect({
   placeholder = "Search kinds...",
   showChips = false,
   chipTone = "blue",
-  filter = defaultFilter,
+  filter,
   className,
 }: KindMultiSelectProps) {
-  const nodes = useAtomValue(nodeSchemasAtom).filter((s) => filter(s.namespace as string));
+  const allNodes = useAtomValue(nodeSchemasAtom);
+  const nodes = filter ? allNodes.filter((s) => filter(s.namespace as string)) : allNodes;
 
   function toggle(kind: string) {
     onChange(value.includes(kind) ? value.filter((k) => k !== kind) : [...value, kind]);
