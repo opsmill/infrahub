@@ -1,7 +1,6 @@
-import { Button } from "@infrahub/ui";
+import { Button, Modal } from "@infrahub/ui";
 import { Heading } from "react-aria-components";
 
-import { Modal } from "@/shared/components/aria/modal";
 import { Col, Row } from "@/shared/components/container";
 
 import { useCheckConnectivityMutation } from "@/entities/repository/ui/queries/check-connectivity.mutation";

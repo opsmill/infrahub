@@ -14,3 +14,9 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./components/card/card";
+export {
+  Modal,
+  ModalOverlay,
+  type ModalOverlayProps,
+  type ModalProps,
+} from "./components/modal/modal";
