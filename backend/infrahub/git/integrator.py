@@ -199,6 +199,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
             await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+            if config_file.schemas:
+                await self.sdk.schema.all(branch=infrahub_branch_name, refresh=True)
             await self.import_all_graphql_query(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )  # type: ignore[call-overload]
