@@ -178,6 +178,10 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: "/search",
+                lazy: () => import("@/pages/search-results"),
+              },
+              {
                 path: "/schema",
                 lazy: () => import("@/pages/schema/layout"),
                 children: [

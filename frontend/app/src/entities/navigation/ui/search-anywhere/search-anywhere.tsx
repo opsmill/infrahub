@@ -17,7 +17,7 @@ type SearchModalProps = {
 };
 
 export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
-  let [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   function closeDialog() {
     setIsOpen(false);
@@ -54,7 +54,7 @@ export function SearchAnywhere({ isCollapsed }: SearchModalProps) {
         <Command shouldFilter={false}>
           <SearchAnywhereInput />
 
-          <Command.List className="[&_[cmdk-group]]:mt-2">
+          <Command.List className="max-h-[60vh] overflow-y-auto [&_[cmdk-group]]:mt-2">
             <SearchAnywhereEmpty />
             <SearchActions />
             <SearchParentPrefixes />

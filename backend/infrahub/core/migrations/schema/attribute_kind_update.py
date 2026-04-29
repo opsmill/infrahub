@@ -66,7 +66,7 @@ CALL (av_is_default, av_value) {
     WHERE "AttributeValueIndexed" IN labels(existing_av) = $needs_index
     WITH existing_av WHERE existing_av IS NULL
     LIMIT 1
-    CREATE (:%(new_attr_value_labels)s {is_default: av_is_default, value: av_value})
+    CREATE (:%(new_attr_value_labels)s {is_default: av_is_default, value: av_value, value_lower: toLower(toString(av_value))})
 }
 
 // ------------

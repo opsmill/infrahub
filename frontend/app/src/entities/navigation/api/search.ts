@@ -5,7 +5,7 @@ import type { ContextParams } from "@/shared/api/types";
 
 const SEARCH = graphql(`
   query Search($search: String!, $caseSensitive: Boolean) {
-    InfrahubSearchAnywhere(q: $search, limit: 4, partial_match: true, case_sensitive: $caseSensitive) {
+    InfrahubSearchAnywhere(q: $search, limit: 10, partial_match: true, case_sensitive: $caseSensitive) {
       count
       edges {
         node {

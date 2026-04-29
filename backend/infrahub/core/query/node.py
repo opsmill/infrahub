@@ -280,6 +280,7 @@ class NodeCreateAllQuery(NodeQuery):
         iphost_prop = {
             "value": "attr.content.value",
             "is_default": "attr.content.is_default",
+            "value_lower": "attr.content.value_lower",
             "binary_address": "attr.content.binary_address",
             "version": "attr.content.version",
             "prefixlen": "attr.content.prefixlen",
@@ -289,6 +290,7 @@ class NodeCreateAllQuery(NodeQuery):
         ipnetwork_prop = {
             "value": "attr.content.value",
             "is_default": "attr.content.is_default",
+            "value_lower": "attr.content.value_lower",
             "binary_address": "attr.content.binary_address",
             "version": "attr.content.version",
             "prefixlen": "attr.content.prefixlen",
@@ -341,7 +343,8 @@ class NodeCreateAllQuery(NodeQuery):
         CALL (n, attr) {
             CREATE (a:Attribute %(attr_vertex)s)
             CREATE (n)-[:HAS_ATTRIBUTE %(attr_edge)s]->(a)
-            MERGE (av:AttributeValue:AttributeValueIndexed { value: attr.content.value, is_default: attr.content.is_default })
+            MERGE (av:AttributeValue:AttributeValueIndexed {
+                value: attr.content.value, is_default: attr.content.is_default, value_lower: attr.content.value_lower })
             WITH av, a
             LIMIT 1
             CREATE (a)-[:HAS_VALUE %(attr_edge)s]->(av)
@@ -2310,56 +2313,53 @@ class NodeGetListByAttributeValueQuery(Query):
         search_value: str,
         kinds: list[str] | None = None,
         partial_match: bool = True,
+        case_insensitive: bool = False,
+        allowed_kinds: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self.search_value = search_value
         self.kinds = kinds
         self.partial_match = partial_match
+        self.case_insensitive = case_insensitive
+        self.allowed_kinds = allowed_kinds
 
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = ["n.uuid"]
-        self.return_labels = ["DISTINCT n.uuid as uuid", "n.kind as kind"]
+        self.return_labels = ["n.uuid as uuid", "n.kind as kind"]
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
         )
         self.params.update(branch_params)
 
-        # Build search values for case-insensitive matching without using toLower/toString
-        # which would disable index lookup. We search for four case variations:
-        # 1. Original (as provided), 2. lowercase, 3. UPPERCASE, 4. Title Case (first char upper, rest lower)
-        search_original = self.search_value
-        search_lower = self.search_value.lower()
-        search_upper = self.search_value.upper()
-        search_title = self.search_value.capitalize()
-
-        # Build the search predicate based on partial_match
-        # We avoid toLower/toString to allow TEXT index usage
-        if self.partial_match:
-            # Use CONTAINS with multiple case variations to leverage TEXT index
-            search_predicate = (
-                "(av.value CONTAINS $search_original OR av.value CONTAINS $search_lower "
-                "OR av.value CONTAINS $search_upper OR av.value CONTAINS $search_title)"
-            )
+        if self.case_insensitive:
+            # Case-insensitive matching using pre-computed value_lower property (TEXT indexed)
+            self.params["search_value"] = self.search_value.lower()
+            if self.partial_match:
+                search_predicate = "av.value_lower CONTAINS $search_value"
+            else:
+                search_predicate = "av.value_lower = $search_value"
         else:
-            # Exact match with case variations
-            search_predicate = (
-                "(av.value = $search_original OR av.value = $search_lower "
-                "OR av.value = $search_upper OR av.value = $search_title)"
-            )
-
-        self.params["search_original"] = search_original
-        self.params["search_lower"] = search_lower
-        self.params["search_upper"] = search_upper
-        self.params["search_title"] = search_title
+            # Case-sensitive: exact match on the original value only
+            self.params["search_value"] = self.search_value
+            if self.partial_match:
+                search_predicate = "av.value CONTAINS $search_value"
+            else:
+                search_predicate = "av.value = $search_value"
 
         # Build kind filter if specified
         kind_filter = ""
         if self.kinds:
             kind_filter = "AND any(l IN labels(n) WHERE l in $kinds)"
             self.params["kinds"] = self.kinds
+
+        # Build permission-based kind filter
+        allowed_kinds_filter = ""
+        if self.allowed_kinds is not None:
+            allowed_kinds_filter = "AND n.kind IN $allowed_kinds"
+            self.params["allowed_kinds"] = self.allowed_kinds
 
         # The query starts from AttributeValueIndexed nodes to leverage the TEXT index
         # This approach is more efficient for search operations as it:
@@ -2371,7 +2371,7 @@ class NodeGetListByAttributeValueQuery(Query):
         // start with all possible Node-Attribute-AttributeValue combinations
         // --------------------------
         MATCH (av:AttributeValueIndexed)<-[:HAS_VALUE]-(attr:Attribute)<-[:HAS_ATTRIBUTE]-(n)
-        WHERE %(search_predicate)s %(kind_filter)s
+        WHERE %(search_predicate)s %(kind_filter)s %(allowed_kinds_filter)s
         WITH DISTINCT n, attr, av
         // --------------------------
         // filter HAS_VALUE edges
@@ -2400,10 +2400,12 @@ class NodeGetListByAttributeValueQuery(Query):
         """ % {
             "search_predicate": search_predicate,
             "kind_filter": kind_filter,
+            "allowed_kinds_filter": allowed_kinds_filter,
             "branch_filter": branch_filter,
         }
 
         self.add_to_query(query)
+        self.add_to_query("WITH DISTINCT n")
 
     def get_data(self) -> Generator[NodeGetListByAttributeValueQueryResult, None, None]:
         """Yield results as typed dataclass instances."""

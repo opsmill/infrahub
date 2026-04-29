@@ -142,7 +142,10 @@ WITH n, attr, existing_av, $values_by_id[n.uuid] AS required_value
 WHERE existing_av.value <> required_value
 OR existing_av IS NULL
 CALL (n, attr) {
-    MERGE (av:AttributeValue&AttributeValueIndexed {is_default: false, value: $values_by_id[n.uuid]} )
+    MERGE (av:AttributeValue&AttributeValueIndexed {
+        is_default: false,
+        value: $values_by_id[n.uuid],
+        value_lower: toLower(toString($values_by_id[n.uuid]))} )
     WITH av, attr
     LIMIT 1
     CREATE (attr)-[r:HAS_VALUE { branch: $branch, branch_level: $branch_level, status: "active", from: $at }]->(av)

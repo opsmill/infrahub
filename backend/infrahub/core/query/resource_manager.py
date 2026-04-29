@@ -572,6 +572,7 @@ class NumberPoolSetReserved(Query):
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["pool_id"] = self.pool_id
         self.params["reserved"] = self.reserved
+        self.params["reserved_lower"] = str(self.reserved).lower()
         self.params["identifier"] = self.identifier
 
         global_branch = registry.get_global_branch()
@@ -585,7 +586,7 @@ class NumberPoolSetReserved(Query):
 
         query = """
         MATCH (pool:%(number_pool)s { uuid: $pool_id })
-        MERGE (value:AttributeValue:AttributeValueIndexed { value: $reserved, is_default: false })
+        MERGE (value:AttributeValue:AttributeValueIndexed { value: $reserved, is_default: false, value_lower: $reserved_lower })
         WITH value, pool
         LIMIT 1
         CREATE (pool)-[rel:IS_RESERVED $rel_prop]->(value)

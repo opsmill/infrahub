@@ -7,10 +7,11 @@ import { classNames } from "@/shared/utils/common";
 
 export interface ObjectsTableSkeletonProps {
   headerCount: number;
+  rowCount?: number;
 }
 
-export function ObjectTableSkeleton({ headerCount }: ObjectsTableSkeletonProps) {
-  return [...Array(20)].map((_, rowIndex) => {
+export function ObjectTableSkeleton({ headerCount, rowCount = 20 }: ObjectsTableSkeletonProps) {
+  return [...Array(rowCount)].map((_, rowIndex) => {
     return (
       <React.Fragment key={`skeleton-row-${rowIndex}`}>
         {[...Array(headerCount)].map((_, colIndex) => {

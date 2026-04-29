@@ -3,6 +3,7 @@ import { Command, useCommandState } from "cmdk";
 import { format } from "date-fns";
 import { useAtomValue } from "jotai";
 import type { ReactElement } from "react";
+import { Link } from "react-router";
 
 import { Skeleton } from "@/shared/components/loading/skeleton";
 import { Badge } from "@/shared/components/ui/badge";
@@ -12,6 +13,7 @@ import { IP_ADDRESS_GENERIC, IP_PREFIX_GENERIC } from "@/entities/ipam/constants
 import type { ObjectResult } from "@/entities/navigation/domain/search-anywhere";
 import { searchCaseSensitiveAtom } from "@/entities/navigation/stores/search-case-sensitive.atom";
 import { useGetSearchAnywhere } from "@/entities/navigation/ui/queries/search-anywhere.query";
+import { useSearchAnywhereContext } from "@/entities/navigation/ui/search-anywhere/search-anywhere-context";
 import { SearchAnywhereGroup } from "@/entities/navigation/ui/search-anywhere/search-anywhere-group";
 import { SearchAnywhereItem } from "@/entities/navigation/ui/search-anywhere/search-anywhere-item";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
@@ -27,6 +29,7 @@ export const SearchNodes = () => {
   const query = useCommandState((state) => state.search);
   const queryDebounced = useDebounce(query.trim(), 300);
   const caseSensitive = useAtomValue(searchCaseSensitiveAtom);
+  const { closeDialog } = useSearchAnywhereContext();
 
   const { data, isPending, error } = useGetSearchAnywhere(
     { search: queryDebounced, caseSensitive },
@@ -58,6 +61,19 @@ export const SearchNodes = () => {
       {data.matchingObjects.map((node) => (
         <NodesOptions key={node.id} node={node} />
       ))}
+
+      <div className="px-2 py-1">
+        <Link
+          to={`/search?q=${encodeURIComponent(queryDebounced)}`}
+          onClick={closeDialog}
+          className="flex items-center justify-center gap-1 rounded px-2 py-1 text-custom-blue-700 text-xs hover:bg-gray-100"
+        >
+          <span>
+            View all {data.count} {data.count === 1 ? "result" : "results"}
+          </span>
+          <Icon icon="mdi:arrow-right" className="text-sm" />
+        </Link>
+      </div>
     </SearchAnywhereGroup>
   );
 };

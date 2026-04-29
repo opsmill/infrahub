@@ -27,6 +27,7 @@ export interface DataTableProps<T> extends React.HTMLAttributes<HTMLDivElement> 
   count?: number;
   data: Array<T>;
   isLoading?: boolean;
+  skeletonRowCount?: number;
   renderEmpty?: () => React.ReactNode;
   toolbarActions?: ObjectTableSelectionToolbarProps["renderMore"];
   enableRowSelection?: RowSelectionOptions<T>["enableRowSelection"];
@@ -42,6 +43,7 @@ export function DataTable<T extends NodeCore>({
   count,
   data,
   isLoading,
+  skeletonRowCount,
   renderEmpty,
   toolbarActions,
   enableRowSelection,
@@ -103,7 +105,9 @@ export function DataTable<T extends NodeCore>({
 
       {!isLoading && allRows.length === 0 && renderEmpty?.()}
 
-      {isLoading && <ObjectTableSkeleton headerCount={allHeaders.length} />}
+      {isLoading && (
+        <ObjectTableSkeleton headerCount={allHeaders.length} rowCount={skeletonRowCount} />
+      )}
 
       {count !== undefined &&
         Array.from({ length: allHeaders.length }).map((_, index) => (
