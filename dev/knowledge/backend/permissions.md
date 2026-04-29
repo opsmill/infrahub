@@ -70,7 +70,7 @@ Key methods:
 - `resolve_global_permission(action: str) -> bool` — Checks if a global permission is granted
 - `report_object_permission(namespace, name, action) -> PermissionDecisionFlag` — Returns the combined decision flag for a kind/action
 - `has_permission(permission) -> bool` — Unified check with super admin bypass
-- `get_branch_decision(branch, node, action) -> BranchRelativePermissionDecision` — Computes the full branch-relative decision for a kind/action, used by both the checker pipeline and permission reports
+- `get_branch_decision(branch, node_schema, action) -> BranchRelativePermissionDecision` — Computes the full branch-relative decision for a kind/action, used by both the checker pipeline and permission reports
 - `build_global_report() -> dict[GlobalPermissions, bool]` — Precomputes all global permission checks for batch operations
 
 ### PermissionManager (`permissions/manager.py`)

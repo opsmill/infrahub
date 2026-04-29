@@ -20,21 +20,13 @@ async def report_schema_permissions(
     Uses PermissionResolver.get_branch_decision() as the single source of truth,
     ensuring the report always matches what the pipeline enforces.
     """
-    global_report = resolver.build_global_report()
-
     return [
         {
-            "kind": node.kind,
-            "create": resolver.get_branch_decision(
-                branch=branch, node=node, action="create", global_report=global_report
-            ),
-            "delete": resolver.get_branch_decision(
-                branch=branch, node=node, action="delete", global_report=global_report
-            ),
-            "update": resolver.get_branch_decision(
-                branch=branch, node=node, action="update", global_report=global_report
-            ),
-            "view": resolver.get_branch_decision(branch=branch, node=node, action="view", global_report=global_report),
+            "kind": node_schema.kind,
+            "create": resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="create"),
+            "delete": resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="delete"),
+            "update": resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="update"),
+            "view": resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="view"),
         }
-        for node in schemas
+        for node_schema in schemas
     ]

@@ -29,6 +29,7 @@ class PermissionResolver:
 
     def __init__(self, permissions: AssignedPermissions) -> None:
         self.permissions = permissions
+        self._global_report: dict[GlobalPermissions, bool] | None = None
 
     def _compute_specificity(self, permission: ObjectPermission) -> int:
         """Return how specific a permission is.
@@ -63,8 +64,12 @@ class PermissionResolver:
         return grant_permission
 
     def build_global_report(self) -> dict[GlobalPermissions, bool]:
-        """Precompute the result of every global permission check."""
-        return {perm: self.resolve_global_permission(action=perm.value) for perm in GlobalPermissions}
+        """Precompute (and cache) the result of every global permission check."""
+        if self._global_report is None:
+            self._global_report = {
+                perm: self.resolve_global_permission(action=perm.value) for perm in GlobalPermissions
+            }
+        return self._global_report
 
     def report_object_permission(self, namespace: str, name: str, action: str) -> PermissionDecisionFlag:
         """Given loaded permissions, return the permission decision for a kind + action."""
@@ -111,15 +116,10 @@ class PermissionResolver:
         return all(self.has_permission(permission=permission) for permission in permissions)
 
     def get_branch_decision(  # noqa: PLR0911
-        self,
-        branch: Branch,
-        node: MainSchemaTypes,
-        action: str,
-        global_report: dict[GlobalPermissions, bool] | None = None,
+        self, branch: Branch, node_schema: MainSchemaTypes, action: str
     ) -> BranchRelativePermissionDecision:
         """Compute the branch-relative permission decision for a kind/action."""
-        if global_report is None:
-            global_report = self.build_global_report()
+        global_report = self.build_global_report()
 
         if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE) and action != "view":
             return BranchRelativePermissionDecision.DENY
@@ -129,7 +129,7 @@ class PermissionResolver:
 
         # Kind-specific global permissions for mutations
         if action != "view":
-            required_global = get_global_permission_for_kind(schema=node)
+            required_global = get_global_permission_for_kind(schema=node_schema)
             if required_global is not None:
                 return (
                     BranchRelativePermissionDecision.ALLOW
@@ -139,7 +139,7 @@ class PermissionResolver:
 
         # Object permissions with branch-relative logic
         is_default_branch = branch.name in (GLOBAL_BRANCH_NAME, registry.default_branch)
-        decision = self.report_object_permission(namespace=node.namespace, name=node.name, action=action)
+        decision = self.report_object_permission(namespace=node_schema.namespace, name=node_schema.name, action=action)
 
         if (
             decision == PermissionDecisionFlag.ALLOW_ALL
