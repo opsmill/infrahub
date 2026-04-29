@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
@@ -36,6 +37,11 @@ from .models import (
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
+
+
+def _chunk_ids(ids: list[str], chunk_size: int) -> list[list[str]]:
+    return [ids[i : i + chunk_size] for i in range(0, len(ids), chunk_size)]
+
 
 UPDATE_ATTRIBUTE = """
 mutation UpdateAttribute(
@@ -199,18 +205,20 @@ async def trigger_update_python_computed_attributes(
     if not object_ids:
         return
 
-    await get_workflow().submit_workflow(
-        workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
-        context=context,
-        parameters={
-            "branch_name": branch_name,
-            "node_kind": computed_attribute_kind,
-            "object_ids": object_ids,
-            "computed_attribute_name": computed_attribute_name,
-            "computed_attribute_kind": computed_attribute_kind,
-            "context": context,
-        },
-    )
+    chunk_size = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500"))
+    for chunk in _chunk_ids(object_ids, chunk_size):
+        await get_workflow().submit_workflow(
+            workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+            context=context,
+            parameters={
+                "branch_name": branch_name,
+                "node_kind": computed_attribute_kind,
+                "object_ids": chunk,
+                "computed_attribute_name": computed_attribute_name,
+                "computed_attribute_kind": computed_attribute_kind,
+                "context": context,
+            },
+        )
 
 
 @flow(
@@ -539,19 +547,21 @@ async def query_transform_targets(
                 key = (subscriber.kind, computed_attribute.name)
                 batches.setdefault(key, []).append(subscriber.object_id)
 
+    chunk_size = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500"))
     for (kind, attribute_name), batch_object_ids in batches.items():
-        await get_workflow().submit_workflow(
-            workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "node_kind": kind,
-                "object_ids": batch_object_ids,
-                "computed_attribute_name": attribute_name,
-                "computed_attribute_kind": kind,
-                "context": context,
-            },
-        )
+        for chunk in _chunk_ids(batch_object_ids, chunk_size):
+            await get_workflow().submit_workflow(
+                workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "node_kind": kind,
+                    "object_ids": chunk,
+                    "computed_attribute_name": attribute_name,
+                    "computed_attribute_kind": kind,
+                    "context": context,
+                },
+            )
 
 
 GATHER_GRAPHQL_QUERY_SUBSCRIBERS = """
