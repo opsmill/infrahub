@@ -342,7 +342,7 @@ exports[`fix ts error`] = {
       [25, 28, 10, "tsc: Property \'statusCode\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'statusCode\' does not exist on type \'Error\'.", "3382497788"],
       [26, 46, 6, "tsc: Property \'result\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'result\' does not exist on type \'Error\'.", "2123807084"]
     ],
-    "src/pages/resource-manager/resource-allocation-details.tsx:3222896826": [
+    "src/pages/resource-manager/resource-allocation-details.tsx:2550256922": [
       [79, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
     ],
     "src/pages/resource-manager/resource-pool-details.tsx:2798533623": [
