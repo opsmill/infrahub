@@ -1,23 +1,10 @@
-import { gql } from "@apollo/client";
-import { useAtomValue } from "jotai";
-import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { useEffect, useState } from "react";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import {
-  Combobox,
-  ComboboxContent,
-  ComboboxEmpty,
-  ComboboxItem,
-  ComboboxList,
-  ComboboxTrigger,
-} from "@/shared/components/ui/combobox";
+import { NodeKindSelect } from "@/shared/components/inputs/node-kind-select";
+import { PeerInput } from "@/shared/components/inputs/peer";
 
-import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
-import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
+import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 
 type ObjectPickerProps = {
   label: string;
@@ -26,92 +13,44 @@ type ObjectPickerProps = {
   onChange: (id: string, displayLabel: string) => void;
 };
 
-/** Resolve a UUID to its kind and display_label via CoreNode query */
-async function resolveUuid(
-  uuid: string,
-  branchName: string
-): Promise<{ kind: string; displayLabel: string } | null> {
-  const queryString = jsonToGraphQLQuery({
-    query: {
-      CoreNode: {
-        __args: { ids: [uuid] },
-        edges: { node: { __typename: true, display_label: true } },
-      },
-    },
-  });
-
-  const { data } = await graphqlClient.query({
-    query: gql(queryString),
-    context: { branch: branchName },
-  });
-
-  const result = data?.CoreNode?.edges?.[0]?.node;
-  if (!result) return null;
-
-  return {
-    kind: result.__typename ?? "",
-    displayLabel: result.display_label ?? result.__typename ?? "",
-  };
-}
-
 export function ObjectPicker({ label, value, displayLabel, onChange }: ObjectPickerProps) {
   const [mode, setMode] = useState<"search" | "uuid">("search");
-  const [selectedKind, setSelectedKind] = useState("");
-  const [kindOpen, setKindOpen] = useState(false);
-  const [objectOpen, setObjectOpen] = useState(false);
+  const [selectedKind, setSelectedKind] = useState<string | null>(null);
   const [uuidInput, setUuidInput] = useState(value);
-  const [isResolving, setIsResolving] = useState(false);
 
-  const nodeSchemas = useAtomValue(nodeSchemasAtom);
-  const { currentBranch } = useCurrentBranch();
+  const { data: resolvedNode, isFetching: isResolving } = useGetObject(
+    { objectId: value, objectSchema: { kind: "CoreNode" } },
+    { enabled: !!value && !displayLabel }
+  );
 
-  // Auto-resolve UUID on mount when value exists but no displayLabel
   useEffect(() => {
-    if (value && !displayLabel) {
-      setIsResolving(true);
-      resolveUuid(value, currentBranch.name)
-        .then((resolved) => {
-          if (resolved) {
-            onChange(value, resolved.displayLabel);
-          }
-        })
-        .catch(() => {})
-        .finally(() => setIsResolving(false));
+    if (value && !displayLabel && resolvedNode?.display_label) {
+      onChange(value, resolvedNode.display_label);
     }
-  }, []); // Only on mount
+  }, [value, displayLabel, resolvedNode?.display_label, onChange]);
 
-  function handleSelectObject(object: RelationshipNode) {
-    const objectLabel = getNodeLabel(object);
-    onChange(object.id, objectLabel);
-    setObjectOpen(false);
+  const peerValue: Node | null =
+    value && displayLabel
+      ? { id: value, display_label: displayLabel, __typename: selectedKind ?? "" }
+      : null;
+
+  function handlePeerChange(node: Node | null) {
+    if (node) onChange(node.id, node.display_label);
+    else onChange("", "");
   }
 
-  async function handleUuidSubmit() {
+  function handleUuidSubmit() {
     const trimmed = uuidInput.trim();
     if (!trimmed) return;
-
-    setIsResolving(true);
-    try {
-      const resolved = await resolveUuid(trimmed, currentBranch.name);
-      if (resolved) {
-        onChange(trimmed, resolved.displayLabel);
-      } else {
-        onChange(trimmed, `${trimmed.slice(0, 8)}...`);
-      }
-    } catch {
-      onChange(trimmed, `${trimmed.slice(0, 8)}...`);
-    } finally {
-      setIsResolving(false);
-    }
+    onChange(trimmed, "");
   }
 
   function handleClear() {
     onChange("", "");
     setUuidInput("");
-    setSelectedKind("");
+    setSelectedKind(null);
   }
 
-  const selectedSchema = nodeSchemas.find((s) => s.kind === selectedKind);
   const selectedDisplay = displayLabel || (value ? `${value.slice(0, 12)}...` : "");
 
   return (
@@ -148,53 +87,15 @@ export function ObjectPicker({ label, value, displayLabel, onChange }: ObjectPic
         </div>
       ) : (
         <div className="space-y-1.5">
-          <Combobox open={kindOpen} onOpenChange={setKindOpen}>
-            <ComboboxTrigger className="w-full">
-              {selectedSchema ? (
-                <span>{selectedSchema.label ?? selectedSchema.kind}</span>
-              ) : (
-                <span className="text-gray-400">Select a kind...</span>
-              )}
-            </ComboboxTrigger>
-            <ComboboxContent>
-              <ComboboxList>
-                <ComboboxEmpty>No kinds found</ComboboxEmpty>
-                {nodeSchemas.map((schema) => (
-                  <ComboboxItem
-                    key={schema.kind}
-                    value={schema.kind as string}
-                    selectedValue={selectedKind}
-                    onSelect={() => {
-                      setSelectedKind(schema.kind as string);
-                      setKindOpen(false);
-                      setObjectOpen(true);
-                    }}
-                  >
-                    <span className="truncate">{schema.label ?? schema.kind}</span>
-                    <span className="ml-auto text-gray-400 text-xs">{schema.namespace}</span>
-                  </ComboboxItem>
-                ))}
-              </ComboboxList>
-            </ComboboxContent>
-          </Combobox>
+          <NodeKindSelect value={selectedKind} onChange={setSelectedKind} className="w-full" />
 
           {selectedKind && (
-            <Combobox open={objectOpen} onOpenChange={setObjectOpen}>
-              <ComboboxTrigger className="w-full">
-                {value ? (
-                  <span className="truncate">{selectedDisplay}</span>
-                ) : (
-                  <span className="text-gray-400">Select an object...</span>
-                )}
-              </ComboboxTrigger>
-              <ComboboxContent>
-                <RelationshipComboboxList
-                  peer={selectedKind}
-                  value={value ? ({ id: value } as RelationshipNode) : null}
-                  onSelect={handleSelectObject}
-                />
-              </ComboboxContent>
-            </Combobox>
+            <PeerInput
+              peer={selectedKind}
+              value={peerValue}
+              onChange={handlePeerChange}
+              className="w-full"
+            />
           )}
         </div>
       )}
