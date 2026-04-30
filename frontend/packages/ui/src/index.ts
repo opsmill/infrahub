@@ -20,3 +20,4 @@ export {
   type ModalOverlayProps,
   type ModalProps,
 } from "./components/modal/modal";
+export { Meter, type MeterProps } from "./components/meter/meter";

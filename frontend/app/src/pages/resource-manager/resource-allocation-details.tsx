@@ -61,7 +61,7 @@ const ResourceAllocationDetailsPage = () => {
   return (
     <Card className="sticky right-0 ml-1 max-h-full min-w-min max-w-fit">
       <CardContent>
-        <div className="flex items-center gap-1 bg-white pb-2">
+        <div className="flex items-center gap-1 pb-2">
           <h3 className="font-semibold">Allocated resources</h3>
           <Badge>{totalOfResourcesAllocated}</Badge>
 
@@ -91,7 +91,7 @@ const ResourceAllocationPageSkeleton = () => {
   return (
     <Card className="sticky right-0 ml-1 w-full min-w-[450px] max-w-[606px]">
       <CardContent>
-        <div className="flex items-center gap-1 bg-white pb-2">
+        <div className="flex items-center gap-1 pb-2">
           <h3 className="font-semibold">Allocated resources</h3>
           <Badge>...</Badge>
 
