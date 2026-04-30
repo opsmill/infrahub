@@ -12,7 +12,7 @@ import redis.asyncio as redis
 from redis.asyncio.connection import Connection, ConnectionPool
 
 from tests.helpers import diagnostics
-from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic
+from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic, install_redis_loop_diagnostics
 
 
 @pytest.fixture
@@ -126,6 +126,7 @@ def test_dump_redis_pool_details(
         f"      conn={id(conn_available)} writer={id(closed_writer)} loop={id(closed_loop)} loop_closed=True"
     ) in output
     assert (f"      conn={id(conn_in_use)} writer={id(open_writer)} loop={id(open_loop)} loop_closed=False") in output
+    assert "creation_loop=None creation_loop_repr=None" in output
 
 
 def test_dump_redis_pool_with_empty_connection_buckets(
@@ -191,3 +192,122 @@ def test_dump_surfaces_attribute_error_when_pool_internals_change(
     assert "  redis pool: <redis.asyncio.connection.ConnectionPool(...)>" in output
     assert "  (diagnostic dump failed: AttributeError(" in output
     assert "_available_connections (n=0):" not in output
+
+
+@pytest.fixture
+def reset_diagnostics_install() -> Generator[None, None, None]:
+    """Snapshot and restore the patched redis methods so a test can reinstall
+    from a clean slate without leaking state into other tests."""
+    original_connect = Connection._connect
+    original_disconnect = ConnectionPool.disconnect
+    try:
+        yield
+    finally:
+        Connection._connect = original_connect
+        ConnectionPool.disconnect = original_disconnect
+
+
+async def test_install_stamps_creation_loop_id_on_connection(
+    reset_diagnostics_install: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def stub_connect(self: Connection) -> None:
+        return None
+
+    monkeypatch.setattr(Connection, "_connect", stub_connect)
+
+    install_redis_loop_diagnostics()
+
+    conn = Connection()
+    await conn._connect()
+
+    assert conn._creation_loop_id == id(asyncio.get_running_loop())
+    assert conn._creation_loop_repr == repr(asyncio.get_running_loop())
+
+
+async def test_install_pre_disconnect_logs_loop_divergence(
+    reset_diagnostics_install: None, monkeypatch: pytest.MonkeyPatch, captured_stderr: io.StringIO
+) -> None:
+    disconnected: list[ConnectionPool] = []
+
+    async def stub_disconnect(self: ConnectionPool, inuse_connections: bool = True) -> None:
+        disconnected.append(self)
+
+    monkeypatch.setattr(ConnectionPool, "disconnect", stub_disconnect)
+
+    install_redis_loop_diagnostics()
+
+    pool = ConnectionPool()
+    foreign_loop_id = id(asyncio.get_running_loop()) + 1  # guaranteed to differ
+    conn = Connection()
+    conn._creation_loop_id = foreign_loop_id
+    conn._creation_loop_repr = "<FakeLoop running=False>"
+    pool._available_connections.append(conn)
+
+    await pool.disconnect()
+
+    output = captured_stderr.getvalue()
+    assert "Redis pool disconnect loop divergence detected:" in output
+    assert f"creation_loop={foreign_loop_id}" in output
+    assert "creation_loop_repr='<FakeLoop running=False>'" in output
+    assert disconnected == [pool]  # original disconnect still runs
+
+
+async def test_install_pre_disconnect_silent_when_no_divergence(
+    reset_diagnostics_install: None, monkeypatch: pytest.MonkeyPatch, captured_stderr: io.StringIO
+) -> None:
+    async def stub_disconnect(self: ConnectionPool, inuse_connections: bool = True) -> None:
+        return None
+
+    monkeypatch.setattr(ConnectionPool, "disconnect", stub_disconnect)
+
+    install_redis_loop_diagnostics()
+
+    pool = ConnectionPool()
+    conn = Connection()
+    conn._creation_loop_id = id(asyncio.get_running_loop())
+    conn._creation_loop_repr = repr(asyncio.get_running_loop())
+    pool._available_connections.append(conn)
+
+    await pool.disconnect()
+
+    assert "loop divergence" not in captured_stderr.getvalue()
+
+
+def test_install_is_idempotent(reset_diagnostics_install: None) -> None:
+    install_redis_loop_diagnostics()
+    first_connect = Connection._connect
+    first_disconnect = ConnectionPool.disconnect
+
+    install_redis_loop_diagnostics()
+
+    assert Connection._connect is first_connect
+    assert ConnectionPool.disconnect is first_disconnect
+    assert getattr(Connection._connect, diagnostics._INSTALLED_MARKER, False) is True
+    assert getattr(ConnectionPool.disconnect, diagnostics._INSTALLED_MARKER, False) is True
+
+
+def test_dump_includes_creation_loop_when_stamped(
+    install_service_pool: Callable[[ConnectionPool | None], None], captured_stderr: io.StringIO
+) -> None:
+    pool = ConnectionPool()
+    conn = Connection()
+    conn._creation_loop_id = 424242
+    conn._creation_loop_repr = "<StampedLoop>"
+    pool._available_connections.append(conn)
+    install_service_pool(pool)
+
+    dump_event_loop_closed_diagnostic("nid", _caught_runtime_error())
+
+    output = captured_stderr.getvalue()
+    assert "creation_loop=424242 creation_loop_repr='<StampedLoop>'" in output
+
+
+async def test_dump_prints_current_loop(
+    install_service_pool: Callable[[ConnectionPool | None], None], captured_stderr: io.StringIO
+) -> None:
+    install_service_pool(None)
+
+    dump_event_loop_closed_diagnostic("nid", _caught_runtime_error())
+
+    output = captured_stderr.getvalue()
+    assert f"  current loop: id={id(asyncio.get_running_loop())} closed=False" in output

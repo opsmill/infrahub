@@ -74,6 +74,7 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
+from tests.helpers.diagnostics import install_redis_loop_diagnostics
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
@@ -112,6 +113,11 @@ def pytest_configure(config: pytest.Config) -> None:
 @pytest.fixture(scope="session", autouse=True)
 def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _install_redis_loop_diagnostics() -> None:
+    install_redis_loop_diagnostics()
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
