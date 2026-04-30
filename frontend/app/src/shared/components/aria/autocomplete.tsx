@@ -1,9 +1,9 @@
+import { Button } from "@infrahub/ui";
 import { SearchIcon, XIcon } from "lucide-react";
 import type React from "react";
 import {
   Autocomplete as AriaAutocomplete,
   type AutocompleteProps as AriaAutocompleteProps,
-  Button as AriaButton,
   Input as AriaInput,
   type InputProps as AriaInputProps,
   SearchField as AriaSearchField,
@@ -32,8 +32,8 @@ export function Autocomplete({
   return (
     <AriaAutocomplete filter={resolvedFilter} onInputChange={onInputChange} {...props}>
       <div className="max-h-[inherit] overflow-hidden">
-        <Row className="sticky w-full gap-0 overflow-hidden border-neutral-300 border-b">
-          <AutocompleteSearchField placeholder="Search..." />
+        <Row className="sticky w-full gap-0 overflow-hidden border-neutral-300 border-b pr-1">
+          <AutocompleteSearchField placeholder="Search..." className="grow" />
           {suffix}
         </Row>
         {children}
@@ -49,29 +49,25 @@ export interface SearchInputProps extends AriaSearchFieldProps {
 export function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
   return (
     <AriaSearchField
-      className="group flex items-center overflow-hidden text-sm"
+      className={classNames("group flex items-center text-sm", className)}
       aria-label="Search"
       autoFocus
       {...props}
     >
       <SearchIcon aria-hidden className="m-2 size-3.5 text-neutral-400" />
       <AriaInput
-        className={classNames(
-          "min-w-0 flex-1 border-none outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden",
-          className
-        )}
+        className="min-w-0 flex-1 border-none outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden"
         placeholder={placeholder}
       />
-      <AriaButton
-        className={classNames(
-          "m-1 inline-flex rounded-full p-1 opacity-70 transition-all",
-          "hover:bg-neutral-200 hover:opacity-100",
-          "data-disabled:pointer-events-none",
-          "group-data-empty:invisible"
-        )}
+      <Button
+        slot="remove"
+        variant="ghost"
+        shape="square"
+        size="xxs"
+        className="group-data-empty:invisible"
       >
-        <XIcon aria-hidden className="size-3.5" />
-      </AriaButton>
+        <XIcon />
+      </Button>
     </AriaSearchField>
   );
 }

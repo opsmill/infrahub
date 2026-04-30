@@ -122,12 +122,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
         filter={(textValue, input) =>
           textValue === CREATE_BRANCH_ITEM_VALUE || contains(textValue, input)
         }
-        suffix={
-          <BranchFormTriggerButton
-            onPress={() => openCreateForm(trimmedSearch)}
-            className="mr-1 ml-auto"
-          />
-        }
+        suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
         <Virtualizer
           layout={ListLayout}
@@ -154,8 +149,9 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
               <ListBoxItem
                 textValue={CREATE_BRANCH_ITEM_VALUE}
                 onAction={() => openCreateForm(trimmedSearch)}
+                className="gap-1 whitespace-nowrap"
               >
-                Create branch <span className="font-semibold">{trimmedSearch}</span>
+                Create branch <span className="truncate font-semibold">{trimmedSearch}</span>
               </ListBoxItem>
             )}
 
