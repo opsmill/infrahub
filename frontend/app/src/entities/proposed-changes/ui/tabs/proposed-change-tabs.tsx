@@ -1,5 +1,6 @@
+import { ScrollArea } from "@infrahub/ui";
+
 import { Row } from "@/shared/components/container";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { ArtifactsTab } from "./artifacts-tab";
 import { ChecksTab } from "./checks-tab";

@@ -23,6 +23,7 @@
     "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
+    "@radix-ui/react-scroll-area": "^1.2.10",
     "@tailwindcss/vite": "^4.2.4",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",

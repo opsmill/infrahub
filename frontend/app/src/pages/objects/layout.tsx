@@ -1,3 +1,4 @@
+import { ScrollArea } from "@infrahub/ui";
 import { Outlet, useLocation, useParams } from "react-router";
 
 import NoDataFound from "@/shared/components/errors/no-data-found";
@@ -7,7 +8,6 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/shared/components/ui/resizable";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { ObjectHierarchyTreeWrapper } from "@/entities/nodes/hierarchy/ui/object-hierarchy-tree-wrapper";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";

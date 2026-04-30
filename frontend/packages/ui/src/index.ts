@@ -21,3 +21,4 @@ export {
   type ModalProps,
 } from "./components/modal/modal";
 export { Meter, type MeterProps } from "./components/meter/meter";
+export { ScrollArea, type ScrollAreaProps } from "./components/scroll-area/scroll-area";
