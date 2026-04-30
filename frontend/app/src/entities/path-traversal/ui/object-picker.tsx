@@ -5,6 +5,7 @@ import { PeerInput } from "@/shared/components/inputs/peer";
 
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
+import type { ModelSchema } from "@/entities/schema/types";
 
 type ObjectPickerProps = {
   label: string;
@@ -19,7 +20,7 @@ export function ObjectPicker({ label, value, displayLabel, onChange }: ObjectPic
   const [uuidInput, setUuidInput] = useState(value);
 
   const { data: resolvedNode, isFetching: isResolving } = useGetObject(
-    { objectId: value, objectSchema: { kind: "CoreNode" } },
+    { objectId: value, objectSchema: { kind: "CoreNode" } as ModelSchema },
     { enabled: !!value && !displayLabel }
   );
 
