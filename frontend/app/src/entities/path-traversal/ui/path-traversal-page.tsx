@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 
-import { Spinner } from "@/shared/components/ui/spinner";
+import { Spinner } from "@infrahub/ui";
 
 import type { PathResult, PathTraversalResponse } from "../domain/get-path-traversal";
 import type { ReachableObjectsResponse } from "../domain/get-reachable-objects";
