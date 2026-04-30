@@ -1,20 +1,27 @@
 # AGENTS.md - Topic/Explanation Documentation
 
-> See [main docs/AGENTS.md](../../AGENTS.md) for general documentation guidelines.
+> See [main docs/AGENTS.md](../../AGENTS.md) for general documentation guidelines, site structure, and placement decisions.
 
 ## Purpose
 
-This file provides specialized instructions for AI agents writing **topic/explanation documentation** for Infrahub. Topics are understanding-oriented documents that help users grasp concepts, background, and context.
+This file provides specialized instructions for writing **explanation/topic pages** for Infrahub. These are understanding-oriented documents that help users grasp concepts, background, and context.
 
-## When to Use This Guide
+## Where new topic pages live in the nav
 
-Use this guide when creating documentation that:
+The `topics/` directory is a **file storage location**, not a nav section. Explanation content is surfaced under **Features** capability clusters in the sidebar, grouped with the how-to content for the same feature.
 
-- Explains how something works
-- Provides background and context
-- Clarifies concepts and terminology
-- Answers "why" questions
-- Describes architecture and design decisions
+Before creating a topic page, use the placement decision checklist in `docs/AGENTS.md` to identify which capability cluster owns it. Then add the file to `sidebars.ts` under that cluster — the file can stay in `topics/` but it will appear under Features in the rendered nav.
+
+**Do not create a new topic and add it to an old `Topics > <category>` sidebar node.** Those nodes are legacy structure being migrated into Features.
+
+## When to write an explanation page (vs. other content types)
+
+Write an explanation page when the content:
+
+- Explains how something works or why it was designed that way
+- Provides background and context a reader needs before using the feature
+- Answers "why" and "what is" questions, not "how do I" questions
+- Has no specific end state — the reader is building a mental model
 
 ## Role
 

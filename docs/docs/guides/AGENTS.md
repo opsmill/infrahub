@@ -1,19 +1,27 @@
 # AGENTS.md - How-to Guide Documentation
 
-> See [main docs/AGENTS.md](../../AGENTS.md) for general documentation guidelines.
+> See [main docs/AGENTS.md](../../AGENTS.md) for general documentation guidelines, site structure, and placement decisions.
 
 ## Purpose
 
-This file provides specialized instructions for AI agents writing **how-to guides** for Infrahub. How-to guides are task-oriented documents that help users solve real-world problems and achieve specific goals.
+This file provides specialized instructions for writing **how-to guides** for Infrahub. How-to guides are task-oriented documents that help users accomplish a specific goal.
 
-## When to Use This Guide
+## Where new guides live in the nav
 
-Use this guide when creating documentation that:
+The `guides/` directory is a **file storage location**, not a nav section. How-to content is surfaced under **Features** capability clusters in the sidebar, grouped with the explanation content for the same feature.
+
+Before creating a guide, use the placement decision checklist in `docs/AGENTS.md` to identify which capability cluster owns it. Then add the file to `sidebars.ts` under that cluster — the file can stay in `guides/` but it will appear under Features in the rendered nav.
+
+**Do not create a new guide and add it to an old `Guides > <category>` sidebar node.** Those nodes are legacy structure being migrated into Features.
+
+## When to write a guide (vs. other content types)
+
+Write a guide when the content:
 
 - Teaches users how to perform a specific task
-- Provides step-by-step instructions
-- Addresses a particular problem or use case
-- Can be completed independently by any user
+- Can be reduced to numbered steps with clear action verbs
+- Has a defined end state ("you now have X")
+- Should be scannable — the reader knows the goal and wants the fastest path
 
 ## Role
 
