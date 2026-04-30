@@ -47,3 +47,9 @@ const filtered = items.filter(item => item.active);
 const [filtered, setFiltered] = useState([]);
 useEffect(() => setFiltered(items.filter(i => i.active)), [items]);
 ```
+
+## URL is the source of truth for shareable state
+
+Anything a user might bookmark, share, or refresh-and-resume (filters, current selection, mode toggle) lives in the URL — not in `useState`. Use `nuqs` for typed URL params, or `useFilters` for the standard filter pattern.
+
+The page component reads URL params and passes them down. Children should not read `searchParams` for state the page already owns. See `dev/guidelines/frontend/page-architecture.md` for the full state-ownership rules.
