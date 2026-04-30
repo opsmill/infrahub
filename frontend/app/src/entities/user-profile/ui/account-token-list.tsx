@@ -17,7 +17,7 @@ export function AccountTokenList({ className, ...props }: AccountTokenListProps)
 
   return (
     <Card className={classNames("divide-y divide-neutral-200", className)} {...props}>
-      {data?.map((token) => (
+      {data.map((token) => (
         <AccountTokenItem key={token.id} token={token} />
       ))}
     </Card>
