@@ -1,10 +1,9 @@
-import { useAtomValue } from "jotai";
 import { type FormEvent, useState } from "react";
 
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
+import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 
 import { ObjectPicker } from "./object-picker";
-import { HIDDEN_NAMESPACES } from "./utils";
+import { isVisibleNamespace } from "./utils";
 
 type SearchParams = {
   sourceId: string;
@@ -46,28 +45,6 @@ export function ObjectSelector({
   const [destinationLabel, setDestinationLabel] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedKinds, setSelectedKinds] = useState<string[]>([]);
-  const [kindSearch, setKindSearch] = useState("");
-  const [excludeSearch, setExcludeSearch] = useState("");
-
-  const allNodeSchemas = useAtomValue(nodeSchemasAtom);
-  // Hide kinds from system namespaces that are always excluded by the backend
-  const nodeSchemas = allNodeSchemas.filter((s) => !HIDDEN_NAMESPACES.has(s.namespace as string));
-
-  const filteredKinds = kindSearch
-    ? nodeSchemas.filter(
-        (s) =>
-          (s.label ?? "").toLowerCase().includes(kindSearch.toLowerCase()) ||
-          (s.kind ?? "").toLowerCase().includes(kindSearch.toLowerCase())
-      )
-    : nodeSchemas;
-
-  const filteredExcludeKinds = excludeSearch
-    ? nodeSchemas.filter(
-        (s) =>
-          (s.label ?? "").toLowerCase().includes(excludeSearch.toLowerCase()) ||
-          (s.kind ?? "").toLowerCase().includes(excludeSearch.toLowerCase())
-      )
-    : nodeSchemas;
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -90,19 +67,6 @@ export function ObjectSelector({
     setSourceLabel(destinationLabel);
     setDestinationId(prevSourceId);
     setDestinationLabel(prevSourceLabel);
-  }
-
-  function toggleKind(kind: string) {
-    setSelectedKinds((prev) =>
-      prev.includes(kind) ? prev.filter((k) => k !== kind) : [...prev, kind]
-    );
-  }
-
-  function toggleExcludedKind(kind: string) {
-    const updated = excludedKinds.includes(kind)
-      ? excludedKinds.filter((k) => k !== kind)
-      : [...excludedKinds, kind];
-    onExcludedKindsChange?.(updated);
   }
 
   return (
@@ -136,39 +100,6 @@ export function ObjectSelector({
           setDestinationLabel(label);
         }}
       />
-
-      {/* Excluded kinds chips */}
-      {excludedKinds.length > 0 && (
-        <div className="space-y-1">
-          <span className="block font-medium text-gray-600 text-xs">
-            Excluded from paths ({excludedKinds.length})
-          </span>
-          <div className="flex flex-wrap gap-1">
-            {excludedKinds.map((kind) => (
-              <span
-                key={kind}
-                className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] text-red-700"
-              >
-                {kind}
-                <button
-                  type="button"
-                  onClick={() => toggleExcludedKind(kind)}
-                  className="text-red-400 hover:text-red-600"
-                >
-                  ✕
-                </button>
-              </span>
-            ))}
-            <button
-              type="button"
-              onClick={() => onExcludedKindsChange?.([])}
-              className="text-[10px] text-red-500 hover:text-red-700"
-            >
-              Clear all
-            </button>
-          </div>
-        </div>
-      )}
 
       <button
         type="button"
@@ -211,74 +142,22 @@ export function ObjectSelector({
             </div>
           </div>
 
-          <div>
-            <span className="mb-1 block font-medium text-gray-600 text-xs">
-              Include only these kinds {selectedKinds.length > 0 && `(${selectedKinds.length})`}
-            </span>
-            <input
-              type="text"
-              value={kindSearch}
-              onChange={(e) => setKindSearch(e.target.value)}
-              placeholder="Search kinds..."
-              className="mb-1 w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-400 focus:outline-none"
-            />
-            <div className="max-h-32 overflow-y-auto rounded border border-gray-200">
-              {filteredKinds.map((schema) => (
-                <label
-                  key={schema.kind}
-                  className="flex cursor-pointer items-center gap-2 px-2 py-1 text-xs hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedKinds.includes(schema.kind as string)}
-                    onChange={() => toggleKind(schema.kind as string)}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="truncate">{schema.label ?? schema.kind}</span>
-                  <span className="ml-auto text-gray-400">{schema.namespace}</span>
-                </label>
-              ))}
-            </div>
-            {selectedKinds.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSelectedKinds([])}
-                className="mt-1 text-blue-600 text-xs hover:text-blue-800"
-              >
-                Clear
-              </button>
-            )}
-          </div>
+          <KindMultiSelect
+            value={selectedKinds}
+            onChange={setSelectedKinds}
+            label="Include only these kinds"
+            filter={isVisibleNamespace}
+          />
 
-          <div>
-            <span className="mb-1 block font-medium text-gray-600 text-xs">
-              Exclude kinds {excludedKinds.length > 0 && `(${excludedKinds.length})`}
-            </span>
-            <input
-              type="text"
-              value={excludeSearch}
-              onChange={(e) => setExcludeSearch(e.target.value)}
-              placeholder="Search kinds to exclude..."
-              className="mb-1 w-full rounded border border-gray-200 px-2 py-1 text-xs focus:border-blue-400 focus:outline-none"
-            />
-            <div className="max-h-32 overflow-y-auto rounded border border-gray-200">
-              {filteredExcludeKinds.map((schema) => (
-                <label
-                  key={schema.kind}
-                  className="flex cursor-pointer items-center gap-2 px-2 py-1 text-xs hover:bg-gray-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={excludedKinds.includes(schema.kind as string)}
-                    onChange={() => toggleExcludedKind(schema.kind as string)}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="truncate">{schema.label ?? schema.kind}</span>
-                  <span className="ml-auto text-gray-400">{schema.namespace}</span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <KindMultiSelect
+            value={excludedKinds}
+            onChange={(kinds) => onExcludedKindsChange?.(kinds)}
+            label="Exclude kinds"
+            placeholder="Search kinds to exclude..."
+            showChips
+            chipTone="red"
+            filter={isVisibleNamespace}
+          />
         </div>
       )}
 
