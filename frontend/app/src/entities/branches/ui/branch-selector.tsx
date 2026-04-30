@@ -129,7 +129,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
           layout={ListLayout}
           layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
         >
-          <ListBox emptyMessage="No branch found" className="max-h-125">
+          <ListBox aria-label="branch list" emptyMessage="No branch found" className="max-h-125">
             <Collection items={branches}>
               {(branch) => (
                 <ListBoxItem textValue={branch.name} onAction={() => handleBranchChange(branch)}>
