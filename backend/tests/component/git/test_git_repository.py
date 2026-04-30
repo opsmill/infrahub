@@ -18,7 +18,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
-    CommitNotFoundError,
     RepositoryError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
@@ -210,7 +209,17 @@ async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubReposito
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(CommitNotFoundError):
+    with pytest.raises(GitCommandError, match="invalid reference"):
+        repo.create_commit_worktree(commit=commit)
+
+
+async def test_create_commit_worktree_wrong_commit_no_origin(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    repo.has_origin = False
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    with pytest.raises(RepositoryError, match="no remote origin configured"):
         repo.create_commit_worktree(commit=commit)
 
 

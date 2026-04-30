@@ -11,6 +11,28 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.9.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.2) - 2026-04-30
+
+### Fixed
+
+- Stop object-type conversion of agnostic nodes with aware attributes from re-opening merged or deleting branches. The "needs rebase" status now only applies to non-terminal branches. ([#9103](https://github.com/opsmill/infrahub/issues/9103))
+- Stop `infrahub upgrade` from overwriting the status of merged or deleting branches. Branches in a terminal state (`MERGED`, `DELETING`) are now skipped, so they no longer reappear as `NEED_UPGRADE_REBASE` after an upgrade. ([#9103](https://github.com/opsmill/infrahub/issues/9103))
+
+## [Infrahub - v1.9.1](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.1) - 2026-04-29
+
+### Added
+
+- Added InfrahubGraphQLQueryReport introspection query to report whether a GraphQL query targets unique nodes for artifact regeneration. ([#IFC-2504](https://github.com/opsmill/infrahub/issues/IFC-2504))
+
+### Fixed
+
+- Fixed a bug where object files in a git commit were imported using a stale schema cache when the same commit also contained schema changes. The schema cache is now refreshed after schema files are imported, ensuring object files are validated against the updated schema. ([#6814](https://github.com/opsmill/infrahub/issues/6814))
+- Fixed hierarchy queries returning duplicate parents after merging a branch that changed a node's hierarchical parent. ([#8395](https://github.com/opsmill/infrahub/issues/8395))
+- Fixed branch delete permission preventing users from deleting their own branch ([#8528](https://github.com/opsmill/infrahub/issues/8528))
+- Fixed attribute migration for sub-template schemas: changing `read_only` or `optional` on a node with `generate_template=False` that is a COMPONENT or PARENT peer of a `generate_template=True` node now correctly updates existing template instances. ([#8722](https://github.com/opsmill/infrahub/issues/8722))
+- Fixed git repository registration failing when the working directory contains a `.git` reference pointing to a path that is inaccessible to the process (for example, in containerized setups). ([#9008](https://github.com/opsmill/infrahub/issues/9008))
+- Fixed task failures (artifact generation, transforms) that could occur when a recently pushed commit had not yet been fetched locally. ([#9036](https://github.com/opsmill/infrahub/issues/9036))
+
 ## [Infrahub - v1.9.0](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.0) - 2026-04-24
 
 ### Removed

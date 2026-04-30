@@ -38,6 +38,7 @@ from .queries import (
     AccountToken,
     BranchQueryList,
     InfrahubBranchQueryList,
+    InfrahubGraphQLQueryReport,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
@@ -65,6 +66,7 @@ class InfrahubBaseQuery(ObjectType):
     Relationship = Relationship
 
     InfrahubBranch = InfrahubBranchQueryList
+    InfrahubGraphQLQueryReport = InfrahubGraphQLQueryReport
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
 
