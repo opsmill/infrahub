@@ -1,5 +1,5 @@
-import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps } from "@infrahub/ui";
+import { Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
 import type { AccountTokenNode } from "@/shared/api/graphql/generated/types";
@@ -26,13 +26,12 @@ export function AccountTokenDeleteAction({ token, ...props }: AccountTokenDelete
     <>
       <Button
         variant="ghost"
-        size="xs"
-        shape="circle"
+        shape="square"
         onPress={() => setTokenToDelete(token)}
         aria-label={`Delete token ${token.name}`}
         {...props}
       >
-        <Icon icon="mdi:delete" className="text-lg text-red-500" />
+        <Trash2Icon className="text-red-600" />
       </Button>
 
       {tokenToDelete && (
