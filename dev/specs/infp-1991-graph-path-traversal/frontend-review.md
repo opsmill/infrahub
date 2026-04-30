@@ -334,6 +334,75 @@ new `KindMultiSelect` are all primitive-level. None require a `react-hook-form`
 context or a fabricated `RelationshipSchema`. Selectors still own their own
 `useState` and `<form onSubmit>`; lifting them onto `useForm` is part of #5.
 
+### Hand-rolled inputs that should still migrate to shared primitives
+
+The review called this out at the table-row level ("plain `<input>` →
+`FormField` + shadcn `Input`"). Concrete sweep of what remains in the path
+traversal forms today, with the primitive each one should become. None of these
+require schema-driven wrappers; they're all bottom-of-stack components already
+in the codebase.
+
+Available primitives (already imported elsewhere in the app):
+
+- `Input` — `frontend/app/src/shared/components/ui/input.tsx`
+- `Label` — `frontend/app/src/shared/components/ui/label.tsx`
+- `Form` / `FormField` / `FormLabel` / `FormInput` / `FormMessage` / `FormSubmit`
+  — `frontend/app/src/shared/components/ui/form.tsx`
+- `Button`, `Spinner` — `@infrahub/ui` (post-#9048 home of the Button/Card/Modal
+  migration)
+
+Punch list, file by file:
+
+**`object-picker.tsx`** (uses `<input>` and `<button>` raw)
+
+| Line | Element | Replace with |
+| --- | --- | --- |
+| 60 | `<button type="button">` "Paste UUID / Search" mode toggle | `Button` from `@infrahub/ui`, ghost variant or text-only variant if available; otherwise keep as a plain text button but with `Button variant="ghost"` for consistent focus ring |
+| 71 | `<input type="text">` UUID paste field | `Input` from `@/shared/components/ui/input` (drop the hand-tuned `rounded-md border border-gray-300 px-3 py-2 ...` classes — `inputStyle` provides them) |
+| 109 | `<button>` clear ✕ on the confirmed-value chip | `Button variant="ghost" size="icon"` |
+
+**`object-selector.tsx`**
+
+| Line | Element | Replace with |
+| --- | --- | --- |
+| 85 | `<button>` ⇅ Swap | `Button variant="ghost"` (or `outline`); add `Icon` from `@iconify-icon/react` for ⇅ |
+| 104 | `<button>` "Show / Hide Advanced Options" toggle | `Button variant="ghost"` |
+| 116 / 130 | `<label htmlFor=...>` for Max Depth / Max Paths | `Label` from `@/shared/components/ui/label`, or `FormLabel` once the form is on `useForm` |
+| 119 / 133 | `<input type="number">` Max Depth / Max Paths | `Input type="number"` (drop hand-tuned classes; `inputStyle` covers them) |
+| 164 | `<button type="submit">` "Find Paths" | `Button type="submit"` from `@infrahub/ui`, or `FormSubmit` from `shared/components/ui/form` once on `useForm` |
+
+**`dependency-selector.tsx`**
+
+| Line | Element | Replace with |
+| --- | --- | --- |
+| 51 | `<label htmlFor="deps-depth">` Max Depth | `Label` (or `FormLabel`) |
+| 54 | `<input type="number">` Max Depth | `Input type="number"` |
+| 65 | `<button type="submit">` "Find Dependencies" | `Button type="submit"` (or `FormSubmit`) |
+
+**Form structure (both selectors)** — review #5
+
+Today both selectors use raw `<form onSubmit>` + `useState` per field. The
+review specifically recommends `useForm()` + `<Form>` + `FormSubmit`, with
+fields wrapped in `FormField` + `FormInput` + `Input`. The primitives above
+plug in cleanly under that wrapper. This is the same work as item #5 (state
+duplication) — the migration to `useForm` and the migration off raw `<input>`
+should land together.
+
+Sequencing notes:
+
+- The submit-button and number-input swaps can land *before* `useForm`
+  adoption: `Button` and `Input` work fine inside a raw `<form onSubmit>`.
+- `Label` swaps can land before `useForm` too; switching to `FormLabel` only
+  matters once a `FormField` context exists.
+- The mode-toggle button (`object-picker.tsx:60`) and the clear-✕ button
+  (`object-picker.tsx:109`) are not blocked on anything — pure styling cleanup.
+
+Out of scope for this list (intentionally): the buttons inside `path-flow-graph.tsx`
+and `path-traversal-page.tsx` (clipboard / pagination / mode tabs) — those are
+not *form* inputs, they're chrome around the result viewer. They should still
+migrate to `Button` from `@infrahub/ui` for consistency, but they're tracked
+under #6 (page split) rather than the form-fields punch list here.
+
 ### New shared primitives introduced by this work
 
 - `frontend/app/src/shared/components/inputs/node-kind-select.tsx` — controlled
