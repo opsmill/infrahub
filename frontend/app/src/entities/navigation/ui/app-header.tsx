@@ -1,6 +1,5 @@
+import { ScrollArea } from "@infrahub/ui";
 import { Card } from "@infrahub/ui/card";
-
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import BranchSelector from "@/entities/branches/ui/branch-selector";
 import { BreadcrumbNavigation } from "@/entities/navigation/ui/breadcrumbs/breadcrumb-navigation";

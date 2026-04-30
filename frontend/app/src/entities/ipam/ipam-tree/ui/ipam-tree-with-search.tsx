@@ -1,8 +1,8 @@
+import { ScrollArea } from "@infrahub/ui";
 import React from "react";
 import { useParams } from "react-router";
 
 import { SearchInput } from "@/shared/components/inputs/search-input";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { IpamTree } from "@/entities/ipam/ipam-tree/ui/ipam-tree";
