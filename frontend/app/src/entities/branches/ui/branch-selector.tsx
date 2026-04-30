@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, LinkButton } from "@infrahub/ui";
-import { ChevronsUpDownIcon, PlusIcon } from "lucide-react";
+import { ArrowUpRightIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
 import {
@@ -82,7 +82,6 @@ export function BranchSelector() {
                   close();
                 }}
                 defaultBranchName={initialBranchName}
-                data-testid="branch-create-form"
               />
             ) : (
               <BranchList closePopover={close} openCreateForm={openCreateForm} />
@@ -164,17 +163,16 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
 
       <Separator />
 
-      <Row className="p-1">
-        <LinkButton
-          variant="ghost"
-          size="sm"
-          href={constructPath("/branches")}
-          className="grow justify-start text-sm"
-          onPress={closePopover}
-        >
-          View all branches
-        </LinkButton>
-      </Row>
+      <LinkButton
+        variant="ghost"
+        size="sm"
+        href={constructPath("/branches")}
+        className="m-1 flex grow justify-between"
+        onPress={closePopover}
+      >
+        View all branches
+        <ArrowUpRightIcon className="text-stone-500" />
+      </LinkButton>
     </>
   );
 }
