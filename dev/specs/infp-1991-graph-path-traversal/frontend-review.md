@@ -403,6 +403,117 @@ not *form* inputs, they're chrome around the result viewer. They should still
 migrate to `Button` from `@infrahub/ui` for consistency, but they're tracked
 under #6 (page split) rather than the form-fields punch list here.
 
+### Form-context + state-management plumbing the selectors should reuse
+
+Beyond the per-input swaps above, the path-traversal forms reimplement
+behavior that Infrahub already provides via its `react-hook-form` wrapper and
+the `nuqs` URL-state convention. The review's #5 ("state duplication") flagged
+the symptom; this section enumerates the plumbing that would replace the
+hand-rolled equivalents.
+
+**`<Form>` wrapper from `shared/components/ui/form.tsx`** — currently both
+selectors use raw `<form onSubmit>` + `useState` per field. Adopting `<Form>`
+brings:
+
+- `FormProvider` context so any nested component (e.g. an extracted
+  `AdvancedOptions` block, or a future `KindMultiSelectField`) can read/write
+  form state via `useFormContext` instead of prop-drilling.
+- `useImperativeHandle(ref, () => currentForm)` so the page can imperatively
+  `reset` / `setValue` when URL params change, instead of the current "pass
+  initialSourceId once and pray" pattern.
+- `currentForm.reset(data)` on submit (built into `<Form>`'s `onSubmit`
+  handler) so `formState.isDirty` accurately reflects "user has changed
+  something since last submit" — useful for a "Reset" affordance on the
+  selector, and for unsaved-changes guarding.
+- `space-y-4` default + slide-over `setPreventClose` integration (only
+  relevant if the selector ever moves into a slide-over, but free either way).
+
+**`FormSubmit` with built-in pending state.** Today the page passes
+`isLoading={isFetching}` through to selectors, which thread it through to
+their submit `<button disabled={isLoading}>`. Switching to `FormSubmit` from
+`shared/components/ui/form.tsx` reads
+`formState.isSubmitting || formState.isValidating` automatically and forwards
+it to `<Button isPending>`. The `isLoading` prop drilling can disappear.
+
+**`FormMessage` + `FormInput` for validation feedback.** The forms have *no*
+error-display mechanism today; submit silently no-ops if `sourceId` is empty.
+Adopting `FormField` + `FormInput` (slot wrapper that auto-applies
+`inputErrorStyle` + `aria-invalid` on field error) + `FormMessage` (pulls
+`error.message` from RHF state) gives required-field + min/max validation for
+free, with consistent red-border styling.
+
+**`react-hook-form` `rules` instead of hand-rolled gating.** Today
+`object-selector.tsx` does
+`disabled={isLoading || !sourceId || !destinationId}` on the submit button.
+With RHF rules (`{ required: true }` on the source/destination fields, plus
+`{ min: 1, max: 20 }` on `maxDepth`, `{ min: 1, max: 100 }` on `maxPaths`),
+RHF gates submission and surfaces messages — same effect, less ad-hoc logic.
+Skip the schema-driven `rules` factory in `shared/components/form/utils/validation.ts`;
+inline rules are fine here (consistent with the review's "skip
+`InputField`/`NumberField`" guidance).
+
+**`nuqs` URL-state instead of raw `useSearchParams`.** `path-traversal-page.tsx`
+uses
+`const [searchParams, setSearchParams] = useSearchParams()` from react-router
+and hand-parses `Number(searchParams.get("depth"))`, etc. The rest of the
+codebase has converged on `nuqs`:
+
+- `frontend/app/src/shared/components/tabs.tsx` uses
+  `useQueryState("tab", parseAsString.withDefault(...))`.
+- `frontend/app/src/shared/hooks/useFilters.ts` and
+  `usePagination.ts` use `useQueryState` with `parseAsJson` for structured
+  state.
+
+Path-traversal should:
+
+- Replace per-key `searchParams.get(...)` reads with one
+  `useQueryStates({...})` call (or a per-field `useQueryState` if simpler),
+  using `parseAsString` / `parseAsInteger` / `parseAsStringEnum` for typed
+  parsing.
+- Drop the manual `setSearchParams((prev) => { const next = new URLSearchParams(prev); ... })`
+  reducer — `nuqs` handles merge + history mode.
+- Optionally extract a `usePathTraversalParams` hook (mirrors `useFilters` /
+  `usePagination`) so the page and selectors agree on a single shape.
+
+**`Accordion` for "Advanced Options".** `object-selector.tsx:104` has a
+hand-rolled `<button>` toggling a `showAdvanced` state. `shared/components/ui/accordion.tsx`
+provides `Accordion` / `AccordionItem` / `AccordionTrigger` / `AccordionContent`
+with built-in open/close animation, ARIA roles, and keyboard navigation.
+Drop-in replacement; removes the `showAdvanced` `useState`.
+
+**`FormContext` (parent schema/data) — does *not* apply.** The
+`shared/components/form/utils/form-context.tsx` provider carries
+`parentSchema` / `parentData` for nested object forms. Path traversal has no
+parent record and no schema-driven nested fields, so this provider is not
+needed. Listed here only to explicitly rule it out — it's a Form context
+that exists in the codebase but does not belong in path traversal.
+
+**`shared/components/form/utils/validation.ts` (`isRequired`, etc) — does
+*not* apply.** That utility builds RHF rules from `AttributeSchema` /
+`RelationshipSchema` fields. Path traversal isn't schema-driven; inline
+`{ required: true }` is the right call.
+
+**Guidelines reference.** `dev/guidelines/frontend/object-forms.md` documents
+the schema-driven object-form pattern (FormAttributeValue source tracking,
+profile-aware defaults, etc). It does **not** apply to path traversal — the
+review explicitly opted out of that wrapper layer. Document this explicitly
+when the migration to `useForm` lands so the next reader doesn't try to
+shoehorn FormAttributeValue into a query-builder form.
+
+**Sequencing combined with the per-input punch list above.** A reasonable
+ordering:
+
+1. Land `Button` / `Input` / `Label` swaps inside the existing raw
+   `<form onSubmit>` (no behavior change). Independent of everything below.
+2. Migrate `path-traversal-page.tsx` URL state from `useSearchParams` to
+   `useQueryState` / `useQueryStates`. Independent of #1.
+3. Lift selector state into `<Form>` + `useForm` + `FormField` / `FormSubmit`.
+   Replaces the raw `useState` mirroring + the `isLoading` prop drilling +
+   adds validation. This subsumes review item #5.
+4. Replace the "Advanced Options" toggle with `Accordion`. Trivial after #3.
+5. (Optional) extract a `usePathTraversalParams` hook so the page and
+   selectors share one source of truth for URL ↔ form state mapping.
+
 ### New shared primitives introduced by this work
 
 - `frontend/app/src/shared/components/inputs/node-kind-select.tsx` — controlled
