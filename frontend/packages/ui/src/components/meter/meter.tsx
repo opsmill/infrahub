@@ -7,11 +7,9 @@ import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 
 export interface MeterProps extends AriaMeterProps {
   label?: ReactNode;
-  trackClassName?: string;
-  fillClassName?: string;
 }
 
-export function Meter({ label, trackClassName, fillClassName, className, ...props }: MeterProps) {
+export function Meter({ label, className, ...props }: MeterProps) {
   return (
     <AriaMeter
       {...props}
@@ -30,7 +28,6 @@ export function Meter({ label, trackClassName, fillClassName, className, ...prop
               "inset-shadow-[0_1px_2px_rgba(0,0,0,0.15)] ring-1 ring-stone-300 ring-inset",
               "shadow-[0_1px_0_rgba(255,255,255,0.8)]",
               label ? "col-span-2 w-full" : "grow",
-              trackClassName,
             )}
           >
             <div
@@ -38,7 +35,6 @@ export function Meter({ label, trackClassName, fillClassName, className, ...prop
                 "h-full rounded-[inherit] transition-all",
                 "bg-linear-to-b from-cyan-800 to-cyan-600 border border-cyan-800",
                 "inset-shadow-[0_1px_0_rgba(255,255,255,0.4)]",
-                fillClassName,
               )}
               style={{ width: `${percentage}%` }}
             />
