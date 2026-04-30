@@ -14,7 +14,7 @@ test.describe("Branches creation and deletion", () => {
 
     test("should create a new branch", async ({ page }) => {
       await page.goto("/");
-      await page.getByTestId("branch-selector-trigger").click();
+      await page.getByRole("button", { name: "main" }).click();
       await page.getByTestId("create-branch-button").click();
 
       // Form
@@ -24,15 +24,15 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("button", { name: "Create a new branch" }).click();
 
       // After submit
-      await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
+      await expect(page.getByRole("button", { name: BRANCH_NAME_1 })).toBeVisible();
       await expect(page).toHaveURL(new RegExp(`.*?branch=${BRANCH_NAME_1}`));
     });
 
     test("should display the new branch", async ({ page }) => {
       await page.goto("/");
-      await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("branch-list")).toContainText(BRANCH_NAME_1);
+      await page.getByRole("button", { name: "main" }).click();
 
+      await expect(page.getByLabel("branch list")).toContainText(BRANCH_NAME_1);
       await page.getByRole("link", { name: "View all branches" }).click();
       await expect(page).toHaveURL(/.*\/branches/);
 
@@ -68,9 +68,10 @@ test.describe("Branches creation and deletion", () => {
 
       // we should stay on the branch
       await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
-      await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("branch-list")).toContainText(BRANCH_NAME_1);
-      await expect(page.getByTestId("branch-list")).not.toContainText(BRANCH_NAME_2);
+      await page.getByRole("button", { name: BRANCH_NAME_2 }).click();
+
+      await expect(page.getByLabel("branch list")).toContainText(BRANCH_NAME_1);
+      await expect(page.getByLabel("branch list")).not.toContainText(BRANCH_NAME_2);
       await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       expect(page.url()).toContain(`/branches?branch=${BRANCH_NAME_1}`);
     });
@@ -83,8 +84,9 @@ test.describe("Branches creation and deletion", () => {
 
       await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       expect(page.url()).toContain("/branches");
-      await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("branch-list")).not.toContainText(BRANCH_NAME_1);
+      await page.getByRole("button", { name: "main" }).click();
+
+      await expect(page.getByLabel("branch list")).not.toContainText(BRANCH_NAME_1);
     });
 
     test("should search for a branch", async ({ page }) => {

@@ -6,7 +6,7 @@ test.describe("Branch selector", () => {
   test.describe("when not logged in", () => {
     test("should not be able to create a branch if not logged in", async ({ page }) => {
       await page.goto("/");
-      await page.getByRole("button", { name: "Branch selector" }).click();
+      await page.getByRole("button", { name: "main" }).click();
       await expect(page.getByRole("button", { name: "Create branch" })).toBeDisabled();
 
       await test.step("to go branch list view", async () => {
@@ -19,7 +19,7 @@ test.describe("Branch selector", () => {
       page,
     }) => {
       await page.goto("/");
-      await page.getByRole("button", { name: "Branch selector" }).click();
+      await page.getByRole("button", { name: "main" }).click();
 
       const nonExistentBranchName = "non-existent-branch-123";
       await page.getByPlaceholder("Search...").fill(nonExistentBranchName);
@@ -31,10 +31,8 @@ test.describe("Branch selector", () => {
 
     test("should be able to search and switch branch", async ({ page }) => {
       await page.goto("/");
+      await page.getByRole("button", { name: "main" }).click();
 
-      const branchSelectorTrigger = page.getByRole("button", { name: "Branch selector" });
-      await expect(branchSelectorTrigger).toContainText("main");
-      await branchSelectorTrigger.click();
       const branchList = page.getByLabel("branch list");
       await expect(branchList.getByRole("option", { name: "main default" })).toBeVisible();
       await expect(branchList.getByRole("option", { name: "atl1-delete-upstream" })).toBeVisible();
@@ -43,7 +41,7 @@ test.describe("Branch selector", () => {
       await expect(branchList.getByRole("option", { name: "atl1-delete-upstream" })).toBeVisible();
       await expect(branchList.getByRole("option", { name: "main default" })).toBeHidden();
       await branchList.getByRole("option", { name: "atl1-delete-upstream" }).click();
-      await expect(branchSelectorTrigger).toContainText("atl1-delete-upstream");
+      await expect(page.getByRole("button", { name: "atl1-delete-upstream" })).toBeVisible();
     });
   });
 
@@ -52,7 +50,8 @@ test.describe("Branch selector", () => {
 
     test("allow to create a branch with a name that does not exists", async ({ page }) => {
       await page.goto("/");
-      await page.getByRole("button", { name: "Branch selector" }).click();
+      await page.getByRole("button", { name: "main" }).click();
+
       await page.getByPlaceholder("Search...").fill("quick-branch-form");
       await page.getByRole("option", { name: "Create branch quick-branch-form" }).click();
       await expect(page.getByLabel("New branch name *")).toHaveValue("quick-branch-form");
