@@ -52,7 +52,12 @@ export function BranchSelector() {
         if (open) closeCreateForm();
       }}
     >
-      <Button variant="outline" size="sm" className="w-64 px-2 data-pressed:scale-100">
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-64 px-2 data-pressed:scale-100"
+        data-testid="branch-selector-trigger"
+      >
         <Row className="grow gap-1.5 overflow-hidden">
           <Icon icon="mdi:source-branch" className="shrink-0" />
           <span className="min-w-0 truncate" title={currentBranch.name}>
