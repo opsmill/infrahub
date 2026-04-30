@@ -64,7 +64,7 @@ export function AutocompleteSearchField({ className, placeholder, ...props }: Se
         variant="ghost"
         shape="square"
         size="xxs"
-        className="group-data-empty:invisible"
+        className="opacity-50 hover:opacity-100 group-data-empty:invisible"
       >
         <XIcon />
       </Button>

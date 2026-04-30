@@ -55,6 +55,7 @@ export function BranchSelector() {
       <Button
         variant="outline"
         size="sm"
+        aria-label="Branch selector"
         className="w-64 px-2 data-pressed:scale-100"
         data-testid="branch-selector-trigger"
       >
@@ -103,6 +104,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const { setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const { contains } = useFilter({ sensitivity: "base" });
+  const { isAuthenticated } = useAuth();
   const [search, setSearch] = React.useState("");
   const trimmedSearch = search.trim();
   const branches = data?.pages.flat() ?? [];
@@ -127,7 +129,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
           layout={ListLayout}
           layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
         >
-          <ListBox className="max-h-125">
+          <ListBox emptyMessage="No branch found" className="max-h-125">
             <Collection items={branches}>
               {(branch) => (
                 <ListBoxItem textValue={branch.name} onAction={() => handleBranchChange(branch)}>
@@ -144,7 +146,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
               )}
             </Collection>
 
-            {trimmedSearch && (
+            {isAuthenticated && trimmedSearch && (
               <ListBoxItem
                 textValue={CREATE_BRANCH_ITEM_VALUE}
                 onAction={() => openCreateForm(trimmedSearch)}
@@ -186,7 +188,8 @@ export function BranchFormTriggerButton({ ...props }: AriaButtonProps) {
         variant="ghost"
         shape="square"
         size="xxs"
-        isPending={!isAuthenticated}
+        aria-label="Create branch"
+        isDisabledAndFocusable={!isAuthenticated}
         data-testid="create-branch-button"
         {...props}
       >
