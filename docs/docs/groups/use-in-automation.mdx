@@ -49,22 +49,31 @@ check_definitions:
 
 See [Checks](../topics/check.mdx) for check authoring.
 
-## Have a Generator own a group
+## Use with Generators
 
-Generators produce objects, and you typically want those objects grouped automatically so downstream automation can find them. A Generator can own a `CoreGeneratorGroup` that it populates as it runs.
+A Generator's `targets` field points to a `CoreStandardGroup`. The members of that group are the Generator's *inputs* — Infrahub creates one Generator run per member.
 
-This is a common pattern for service instantiation: the Generator creates the interfaces/circuits/endpoints for a service, and the Generator group is then targeted by an Artifact Definition that renders vendor configuration.
+As the Generator runs, Infrahub automatically tracks the objects it produces in a `CoreGeneratorGroup` via the SDK's tracking feature. You don't define this group; it's managed for you.
 
-See [Generator overview](../topics/generator.mdx) for how to declare the owned group.
+| Group | Role | Who manages it |
+|---|---|---|
+| `CoreStandardGroup` | **Input** — drives Generator runs (one run per member) | You — set in `targets:` and populate the group |
+| `CoreGeneratorGroup` | **Output** — tracks objects the Generator produced | Infrahub, automatically via SDK tracking |
+
+Downstream automation (Artifact Definitions, Checks) can target either group, depending on whether you want to operate on the inputs or the produced objects.
+
+See [Generator overview](../topics/generator.mdx) for full details, including the difference between Standard and Generator groups.
 
 ## Pattern: chain groups through the pipeline
 
 A typical production setup:
 
-1. A **Query group** selects "all devices at site X" from live data.
-2. A **Generator** targets that Query group, produces per-device service objects, and owns a **Generator group** tracking those objects.
-3. An **Artifact Definition** targets the Generator group and renders per-device configuration.
-4. A **Check Definition** targets the Query group to validate the fleet.
+1. A **`CoreStandardGroup`** lists the devices that need a service. You manage its membership directly, or have a workflow keep it in sync with a query.
+2. A **Generator** targets that group, producing per-device service objects. Infrahub automatically tracks the produced objects in a `CoreGeneratorGroup`.
+3. An **Artifact Definition** targets either:
+    - the input `CoreStandardGroup` (to render config per device), or
+    - the auto-managed `CoreGeneratorGroup` (to render per produced service object).
+4. A **Check Definition** targets the input group to validate the fleet.
 
 Groups are the glue between each stage — replace any stage without rewiring the rest.
 

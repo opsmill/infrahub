@@ -47,7 +47,34 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Capabilities',
+      label: 'Learn',
+      collapsible: false,
+      collapsed: false,
+      items: [
+        { type: 'doc', id: 'academy/academy', label: 'About Academy' },
+        {
+          type: 'category',
+          label: 'Getting Started',
+          link: { type: 'generated-index' },
+          items: [
+            'academy/getting-started/infrahub-introduction',
+            'academy/getting-started/deploy-first-configuration',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Tutorials',
+          link: { type: 'generated-index' },
+          items: [
+            'academy/tutorials/groups',
+          ],
+        },
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Features',
       collapsible: false,
       collapsed: false,
       items: [
@@ -265,126 +292,89 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Reference & learn',
+      label: 'Reference',
       collapsible: false,
       collapsed: false,
+      link: {
+        type: 'generated-index',
+        slug: 'reference',
+      },
       items: [
         {
           type: 'category',
-          label: 'Reference',
-          collapsible: true,
-          collapsed: true,
-          link: {
-            type: 'generated-index',
-            slug: 'reference',
-          },
+          label: 'API',
+          link: { type: 'generated-index' },
           items: [
-            {
-              type: 'category',
-              label: 'API',
-              link: { type: 'generated-index' },
-              items: [
-                'reference/api-server',
-                'reference/message-bus-events',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'CLI',
-              link: {
-                type: 'generated-index',
-                slug: 'reference/infrahub-cli',
-              },
-              items: [
-                'reference/infrahub-cli/infrahub-db',
-                'reference/infrahub-cli/infrahub-server',
-                'reference/infrahub-cli/infrahub-dev',
-                'reference/infrahub-cli/infrahub-upgrade',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Configuration Files',
-              link: { type: 'generated-index' },
-              items: [
-                { type: 'doc', id: 'reference/configuration', label: 'Infrahub Configuration' },
-                { type: 'doc', id: 'reference/dotinfrahub', label: 'Repository Config' },
-                { type: 'doc', id: 'reference/menu', label: 'Menu Configuration' },
-                { type: 'doc', id: 'reference/infrahub-tests', label: 'Tests Configuration' },
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Schema Specification',
-              link: {
-                type: 'generated-index',
-                slug: 'reference/schema',
-              },
-              items: [
-                'reference/schema/node',
-                'reference/schema/node-extension',
-                'reference/schema/attribute',
-                { type: 'doc', id: 'topics/schema-attr-kind-number-pool', label: 'Attribute - NumberPool' },
-                'reference/schema/relationship',
-                'reference/schema/generic',
-                'reference/schema/groups',
-                'reference/schema/validator-migration',
-                'reference/schema-validation',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Events',
-              link: { type: 'generated-index' },
-              items: [
-                'reference/infrahub-events',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Permissions',
-              link: { type: 'generated-index' },
-              items: [
-                'reference/permissions',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Authentication',
-              link: { type: 'generated-index' },
-              items: [
-                { type: 'doc', id: 'reference/sso', label: 'SSO Reference' },
-              ],
-            },
+            'reference/api-server',
+            'reference/message-bus-events',
           ],
         },
         {
           type: 'category',
-          label: 'Academy',
-          collapsible: true,
-          collapsed: true,
+          label: 'CLI',
           link: {
-            type: 'doc',
-            id: 'academy/academy',
+            type: 'generated-index',
+            slug: 'reference/infrahub-cli',
           },
           items: [
-            {
-              type: 'category',
-              label: 'Getting Started',
-              link: { type: 'generated-index' },
-              items: [
-                'academy/getting-started/infrahub-introduction',
-                'academy/getting-started/deploy-first-configuration',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Tutorials',
-              link: { type: 'generated-index' },
-              items: [
-                'academy/tutorials/groups',
-              ],
-            },
+            'reference/infrahub-cli/infrahub-db',
+            'reference/infrahub-cli/infrahub-server',
+            'reference/infrahub-cli/infrahub-dev',
+            'reference/infrahub-cli/infrahub-upgrade',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Configuration Files',
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'doc', id: 'reference/configuration', label: 'Infrahub Configuration' },
+            { type: 'doc', id: 'reference/dotinfrahub', label: 'Repository Config' },
+            { type: 'doc', id: 'reference/menu', label: 'Menu Configuration' },
+            { type: 'doc', id: 'reference/infrahub-tests', label: 'Tests Configuration' },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Schema Specification',
+          link: {
+            type: 'generated-index',
+            slug: 'reference/schema',
+          },
+          items: [
+            'reference/schema/node',
+            'reference/schema/node-extension',
+            'reference/schema/attribute',
+            { type: 'doc', id: 'topics/schema-attr-kind-number-pool', label: 'Attribute - NumberPool' },
+            'reference/schema/relationship',
+            'reference/schema/generic',
+            'reference/schema/groups',
+            'reference/schema/validator-migration',
+            'reference/schema-validation',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Events',
+          link: { type: 'generated-index' },
+          items: [
+            'reference/infrahub-events',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Permissions',
+          link: { type: 'generated-index' },
+          items: [
+            'reference/permissions',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Authentication',
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'doc', id: 'reference/sso', label: 'SSO Reference' },
           ],
         },
       ],
