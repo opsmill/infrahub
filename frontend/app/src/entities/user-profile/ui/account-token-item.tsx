@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@infrahub/ui/card";
 import { ClockAlertIcon, ClockFadingIcon, KeySquareIcon } from "lucide-react";
 
 import type { AccountTokenNode } from "@/shared/api/graphql/generated/types";
@@ -13,20 +12,16 @@ export interface AccountTokenItemProps {
 
 export function AccountTokenItem({ token }: AccountTokenItemProps) {
   return (
-    <Card data-testid={`account-token-${token.name}`}>
-      <CardContent>
-        <Row className="gap-3 text-sm">
-          <KeySquareIcon className="size-5 text-stone-600" />
+    <Row className="gap-3 p-3 text-sm" data-testid={`account-token-${token.name}`}>
+      <KeySquareIcon className="size-5 text-stone-600" />
 
-          <div className="min-w-0">
-            <div className="truncate font-medium">{token.name}</div>
-            <ExpirationDate date={token.expiration} />
-          </div>
+      <div className="min-w-0">
+        <div className="truncate font-medium">{token.name}</div>
+        <ExpirationDate date={token.expiration} />
+      </div>
 
-          <AccountTokenDeleteAction token={token} className="ml-auto" />
-        </Row>
-      </CardContent>
-    </Card>
+      <AccountTokenDeleteAction token={token} className="ml-auto" />
+    </Row>
   );
 }
 

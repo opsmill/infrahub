@@ -1,3 +1,5 @@
+import { Card } from "@infrahub/ui";
+
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { classNames } from "@/shared/utils/common";
 
@@ -14,10 +16,10 @@ export function AccountTokenList({ className, ...props }: AccountTokenListProps)
   if (error) return <div>Error: {error.message}</div>;
 
   return (
-    <div className={classNames("space-y-2", className)} {...props}>
+    <Card className={classNames("divide-y divide-neutral-200", className)} {...props}>
       {data?.map((token) => (
         <AccountTokenItem key={token.id} token={token} />
       ))}
-    </div>
+    </Card>
   );
 }
