@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Self, Sequence
 
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.permissions.constants import GLOBAL_PERMISSION_DENIAL_MESSAGE, PermissionDecisionFlag
+from infrahub.permissions.loader import PermissionLoader
 from infrahub.permissions.resolver import PermissionResolver
 
 if TYPE_CHECKING:
@@ -13,36 +14,21 @@ if TYPE_CHECKING:
     from infrahub.core.account import ObjectPermission
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
-    from infrahub.permissions.types import AssignedPermissions
 
 __all__ = ["PermissionManager"]
 
 
 class PermissionManager:
-    def __init__(self, account_session: AccountSession) -> None:
+    def __init__(self, account_session: AccountSession, resolver: PermissionResolver) -> None:
         self.account_session = account_session
-        self.permissions: AssignedPermissions = {"global_permissions": [], "object_permissions": []}
-        self._resolver: PermissionResolver | None = None
+        self.resolver = resolver
 
-    @property
-    def resolver(self) -> PermissionResolver:
-        if self._resolver is None:
-            self._resolver = PermissionResolver(
-                permissions=self.permissions, default_branch_name=registry.default_branch
-            )
-        return self._resolver
-
-    async def load_permissions(self, db: InfrahubDatabase, branch: Branch) -> None:
-        """Load permissions from the configured backends into memory."""
-        for permission_backend in registry.permission_backends:
-            backend_permissions = await permission_backend.load_permissions(
-                db=db, branch=branch, account_session=self.account_session
-            )
-            self.permissions["global_permissions"].extend(backend_permissions["global_permissions"])
-            self.permissions["object_permissions"].extend(backend_permissions["object_permissions"])
-
-        # Invalidate the cached resolver so it picks up new permissions
-        self._resolver = None
+    @classmethod
+    async def load_for_account(cls, db: InfrahubDatabase, branch: Branch, account_session: AccountSession) -> Self:
+        loader = PermissionLoader(account_session=account_session)
+        permissions = await loader.load(db=db, branch=branch)
+        resolver = PermissionResolver(permissions=permissions, default_branch_name=registry.default_branch)
+        return cls(account_session=account_session, resolver=resolver)
 
     def is_super_admin(self) -> bool:
         return self.resolver.is_super_admin()

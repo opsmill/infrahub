@@ -88,8 +88,9 @@ class TestDefaultBranchPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+        permission_manager = await PermissionManager.load_for_account(
+            db=db, branch=permissions_helper.default_branch, account_session=session
+        )
 
         graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.branch = MagicMock()
@@ -134,8 +135,9 @@ class TestDefaultBranchPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+        permission_manager = await PermissionManager.load_for_account(
+            db=db, branch=permissions_helper.default_branch, account_session=session
+        )
 
         graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.branch = MagicMock()
@@ -186,8 +188,9 @@ class TestDefaultBranchPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+        permission_manager = await PermissionManager.load_for_account(
+            db=db, branch=permissions_helper.default_branch, account_session=session
+        )
 
         graphql_query = create_autospec(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.branch = None

@@ -62,23 +62,39 @@ Account --[group_member]--> AccountGroup --[role__accountgroups]--> AccountRole 
 
 ## Key Classes
 
+The permission stack has three components, each with one responsibility:
+
+```
+PermissionLoader  →  PermissionResolver  →  PermissionManager
+   (I/O)              (decisions)            (enforcement)
+```
+
+A factory wires them together: `PermissionManager.load_for_account(db, branch, account_session)`.
+
+### PermissionLoader (`permissions/loader.py`)
+
+Loads permissions for an account session by orchestrating registered backends. Owns the `registry.permission_backends` dependency.
+
+Key methods:
+- `load(db, branch) -> AssignedPermissions` — Iterates registered backends and accumulates their permissions
+
 ### PermissionResolver (`permissions/resolver.py`)
 
-Stateless decision engine. Takes loaded permissions as input, computes decisions. No I/O, no exceptions, no side effects. This is the **single source of truth** for all permission decisions.
+Stateless decision engine. Takes loaded permissions and a default branch name as input, computes decisions. No I/O, no exceptions, no side effects. This is the **single source of truth** for all permission decisions.
 
 Key methods:
 - `resolve_global_permission(action: str) -> bool` — Checks if a global permission is granted
 - `report_object_permission(namespace, name, action) -> PermissionDecisionFlag` — Returns the combined decision flag for a kind/action
 - `has_permission(permission) -> bool` — Unified check with super admin bypass
 - `get_branch_decision(branch, node_schema, action) -> BranchRelativePermissionDecision` — Computes the full branch-relative decision for a kind/action, used by both the checker pipeline and permission reports
-- `build_global_report() -> dict[GlobalPermissions, bool]` — Precomputes all global permission checks for batch operations
+- `build_global_report() -> dict[GlobalPermissions, bool]` — Precomputes (and caches) all global permission checks for batch operations
 
 ### PermissionManager (`permissions/manager.py`)
 
-Per-request container. Handles permission loading from backends and enforcement (raising `PermissionDeniedError`). Delegates all resolution to `PermissionResolver` via the `resolver` property.
+Per-request facade. Holds the resolver and provides enforcement methods that raise `PermissionDeniedError` on denial. All resolution methods delegate to the injected resolver.
 
 Key methods:
-- `load_permissions(db, branch)` — Loads permissions from all configured backends
+- `load_for_account(db, branch, account_session)` (classmethod) — Factory that wires loader → resolver → manager
 - `raise_for_permission(permission, message)` — Raises if permission is denied
 - `raise_for_permissions(permissions, message)` — Raises if any permission is denied
 
