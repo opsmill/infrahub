@@ -1,0 +1,73 @@
+---
+title: Override specific Profile values
+---
+
+When a Profile-assigned object should differ for a specific field, set the value explicitly when creating or updating the object. Explicit values take precedence over Profile values; other attributes still inherit from the Profile.
+
+## Override on creation
+
+Set the override value alongside the `profiles` reference:
+
+```graphql
+mutation {
+  <Kind>Create(
+    data: {
+      name: { value: "<object-name>" }
+      <attribute>: { value: <override-value> }
+      profiles: [{ hfid: ["<profile-name>"] }]
+    }
+  ) {
+    ok
+    object { id }
+  }
+}
+```
+
+The object uses `<override-value>` for that attribute and inherits everything else from the Profile.
+
+## Override on an existing object
+
+If the object already exists with Profile-inherited values, update the specific attribute:
+
+```graphql
+mutation {
+  <Kind>Update(
+    data: {
+      hfid: ["<object-name>"]
+      <attribute>: { value: <override-value> }
+    }
+  ) {
+    ok
+  }
+}
+```
+
+## Verify
+
+Query the metadata for the overridden attribute to confirm it is no longer inherited:
+
+```graphql
+query {
+  <Kind>(name__value: "<object-name>") {
+    edges {
+      node {
+        <attribute> {
+          value
+          is_from_profile
+        }
+      }
+    }
+  }
+}
+```
+
+`is_from_profile: false` confirms the value was set explicitly and is not inherited from the Profile.
+
+## How precedence works
+
+Explicit values on the object beat Profile values. When multiple Profiles also define the attribute, priority decides which Profile would have applied if no explicit value was set — see [Priority and inheritance](./priority-and-inheritance.mdx).
+
+## Next
+
+- [Update a Profile](./update.mdx) — change Profile values without touching individual overrides
+- [Use multiple Profiles](./use-multiple.mdx) — composition with priority

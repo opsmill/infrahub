@@ -1,0 +1,49 @@
+---
+title: Update a Profile
+---
+
+Change Profile values; all objects assigned to the Profile inherit the change automatically. Objects that have explicitly overridden the attribute keep their override — only objects relying on the Profile value see the change.
+
+## Update the Profile
+
+```graphql
+mutation {
+  Profile<Kind>Update(
+    data: {
+      hfid: ["<profile-name>"]
+      <attribute>: { value: <new-value> }
+    }
+  ) {
+    ok
+  }
+}
+```
+
+You can update multiple attributes in a single mutation by adding more fields to `data`.
+
+## Verify the change propagated
+
+Query objects that use the Profile and confirm the attribute reflects the new value:
+
+```graphql
+query {
+  <Kind> {
+    edges {
+      node {
+        display_label
+        <attribute> {
+          value
+          is_from_profile
+        }
+      }
+    }
+  }
+}
+```
+
+Objects with `is_from_profile: true` will show the new value. Objects with `is_from_profile: false` for that attribute have an explicit override and will keep their existing value (see [Override specific Profile values](./override-values.mdx)).
+
+## Next
+
+- [Use multiple Profiles](./use-multiple.mdx)
+- [Priority and inheritance](./priority-and-inheritance.mdx) — understand which Profile wins when multiple define the same attribute

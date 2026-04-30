@@ -83,10 +83,11 @@ Follow the chosen pattern.
 - Guide content rewritten below as how-to sections (drop "Step 1/2/3" wording; replace running examples with placeholders like `<group-name>`, `<object-id>`)
 - Original guide file `docs/docs/guides/<slug>.mdx`: **leave on disk** during iteration (legacy URL still works); will be deleted in cleanup PR
 
-**Hub + spokes** (Groups precedent):
+**Hub + spokes** (Groups / Profiles precedent):
 
-- Hub at `docs/docs/<feature>/index.mdx` (mostly topic content + Common tasks links)
-- Spokes at `docs/docs/<feature>/<task>.mdx` — one per task
+- Hub at `docs/docs/<feature>/index.mdx` — topic content only. **Do NOT add a "Common tasks" or "Deeper concepts" link list** — the spokes already appear in the sidebar when the user is on the hub, so a body link list is redundant clutter. A "Learn by doing" body link to an Academy tutorial is OK because the tutorial lives in a different sidebar section.
+- Spokes at `docs/docs/<feature>/<task>.mdx` — one per task. Each spoke should have a brief "Next" or "Related" section at the bottom pointing to adjacent spokes.
+- Optional concept spoke at `docs/docs/<feature>/<concept>.mdx` for substantial deep-dive content (e.g. priority and inheritance) when it's a frequently-referenced topic and would otherwise bloat the hub.
 - Optional Academy tutorial at `docs/docs/academy/tutorials/<feature>.mdx`
 
 **Tutorial extraction:**
@@ -108,14 +109,43 @@ cd docs && npm run build
 
 Fix any broken doc IDs or links. Run `npm run serve` to visually check.
 
-### Step 7 — Cross-reference scan
+### Step 7 — Add redirects-pending file
+
+Each feature migration drops a YAML file in `docs/redirects-pending/` listing the URL redirects this migration introduces. At end-of-Phase-2 (cleanup PR), all files are aggregated into a single redirects array in `docs/docusaurus.config.ts` via `@docusaurus/plugin-client-redirects`. See `docs/redirects-pending/README.md` for the format.
+
+Create `docs/redirects-pending/<feature-slug>.yml`:
+
+```yaml
+feature: <Feature Name>
+pr: TBD
+description: |
+  Brief explanation of what changed and why these redirects exist.
+redirects:
+  - from: /docs/<old-path>
+    to: /docs/<new-path>
+```
+
+Common patterns:
+
+- **Hub + spokes (Groups / Profiles precedent)** — both legacy URLs redirect to the new hub:
+  - `/docs/topics/<feature>` → `/docs/<feature>/`
+  - `/docs/guides/<feature>` → `/docs/<feature>/`
+- **Single-page merge** — guide URL redirects to canonical topic:
+  - `/docs/guides/<feature>` → `/docs/topics/<feature>`
+- **Tutorial extraction only** — guide URL redirects to topic; tutorial URL is new (no redirect needed):
+  - `/docs/guides/<feature>` → `/docs/topics/<feature>`
+
+Update `docs/redirects-pending/README.md` "Files in this folder" table to add the new entry.
+
+### Step 8 — Cross-reference scan
 
 - Run `grep -rln '<feature-slug>' docs/docs/` to find inbound references.
 - For each, identify whether the page actually mentions / depends on the migrated feature (vs a path coincidence).
 - For pages in **other sections** that should reference this feature in CONTENT (not sidebar), add an entry to the Confluence [Open Questions](https://opsmill.atlassian.net/wiki/spaces/Product/pages/567279617) page under "Surface cross-section content via prose." **Do NOT modify those other-section pages in this PR** — out of scope.
-- For internal cross-links within the feature itself that are now stale, fix them.
+- For pages in other sections that have **stale Markdown links** to the legacy paths (will resolve via redirect once cleanup happens, but should be updated to the new paths), add to the Open Questions cleanup checklist with file paths and line numbers.
+- For internal cross-links within the feature itself that are now stale, fix them in this PR.
 
-### Step 8 — Generate PR description ★
+### Step 9 — Generate PR description ★
 
 Draft a slimmed-down summary as the PR body. Template below.
 
@@ -153,7 +183,7 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split>.
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-### Step 9 — Commit + push + open PR
+### Step 10 — Commit + push + open PR
 
 ```bash
 git add <files>
@@ -162,7 +192,7 @@ git push -u origin docs/migrate-<slug>
 gh pr create --base demo/groups-diataxis-example --title "docs: migrate <Feature> per docs revamp" --body "<approved description>"
 ```
 
-### Step 10 — End-of-migration audit ★
+### Step 11 — End-of-migration audit ★
 
 **After the user confirms the PR is open and content looks good**, do a separate audit pass.
 

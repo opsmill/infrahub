@@ -1,0 +1,70 @@
+---
+title: Use multiple Profiles
+---
+
+A single object can be assigned multiple Profiles. When multiple Profiles define the same attribute, the `profile_priority` value (lower number = higher priority) determines which Profile's value wins.
+
+## Assign multiple Profiles
+
+Add multiple HFIDs to the `profiles` array:
+
+```graphql
+mutation {
+  <Kind>Create(
+    data: {
+      name: { value: "<object-name>" }
+      profiles: [
+        { hfid: ["<lower-priority-profile>"] }
+        { hfid: ["<higher-priority-profile>"] }
+      ]
+    }
+  ) {
+    ok
+    object { id }
+  }
+}
+```
+
+The order in the `profiles:` array doesn't determine precedence — `profile_priority` does. A Profile with `profile_priority: 500` wins over one with `profile_priority: 1000`, regardless of array position.
+
+## Verify which Profile won for each attribute
+
+Query each attribute's `source` field to see which Profile provided its value:
+
+```graphql
+query {
+  <Kind>(name__value: "<object-name>") {
+    edges {
+      node {
+        <attribute-1> {
+          value
+          is_from_profile
+          source { hfid display_label }
+        }
+        <attribute-2> {
+          value
+          is_from_profile
+          source { hfid display_label }
+        }
+      }
+    }
+  }
+}
+```
+
+For each attribute, `source.hfid` identifies the winning Profile. Different attributes on the same object can come from different Profiles depending on which Profiles define them and at what priority.
+
+## Common composition patterns
+
+Use multiple Profiles when you want layered configuration — for example:
+
+- A **base** Profile (priority 1000) that sets common defaults for all objects of a kind
+- A **specialization** Profile (priority 500) that overrides selected values for a subset
+- Optional **exception** Profile (priority 100) for high-priority cases
+
+The result: objects inherit base defaults, then specialization overrides where defined, then exception overrides where defined. Any attribute can still be set explicitly on the object to bypass all Profiles.
+
+## Related
+
+- [Priority and inheritance](./priority-and-inheritance.mdx) — full resolution rules and design rationale
+- [Override specific Profile values](./override-values.mdx) — bypass all Profiles for a specific attribute on a specific object
