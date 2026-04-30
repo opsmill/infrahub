@@ -1,4 +1,5 @@
 import { SearchIcon, XIcon } from "lucide-react";
+import type React from "react";
 import {
   Autocomplete as AriaAutocomplete,
   type AutocompleteProps as AriaAutocompleteProps,
@@ -10,9 +11,20 @@ import {
   useFilter,
 } from "react-aria-components";
 
+import { Row } from "@/shared/components/container";
 import { classNames } from "@/shared/utils/common";
 
-export function Autocomplete({ filter, onInputChange, children, ...props }: AriaAutocompleteProps) {
+interface AutocompleteProps extends AriaAutocompleteProps {
+  suffix?: React.ReactNode;
+}
+
+export function Autocomplete({
+  filter,
+  onInputChange,
+  children,
+  suffix,
+  ...props
+}: AutocompleteProps) {
   const { contains } = useFilter({ sensitivity: "base" });
   // When onInputChange is provided, items are controlled externally (server-side search) — skip client-side filtering.
   const resolvedFilter = filter ?? (onInputChange ? undefined : contains);
@@ -20,7 +32,10 @@ export function Autocomplete({ filter, onInputChange, children, ...props }: Aria
   return (
     <AriaAutocomplete filter={resolvedFilter} onInputChange={onInputChange} {...props}>
       <div className="max-h-[inherit] overflow-hidden">
-        <AutocompleteSearchField placeholder="Search..." />
+        <Row className="sticky w-full gap-0 overflow-hidden border-neutral-300 border-b">
+          <AutocompleteSearchField placeholder="Search..." />
+          {suffix}
+        </Row>
         {children}
       </div>
     </AriaAutocomplete>
@@ -34,22 +49,22 @@ export interface SearchInputProps extends AriaSearchFieldProps {
 export function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
   return (
     <AriaSearchField
-      className="group sticky flex items-center border-neutral-300 border-b px-2 text-sm"
+      className="group flex items-center overflow-hidden text-sm"
       aria-label="Search"
       autoFocus
       {...props}
     >
-      <SearchIcon aria-hidden className="size-3.5 text-neutral-400" />
+      <SearchIcon aria-hidden className="m-2 size-3.5 text-neutral-400" />
       <AriaInput
         className={classNames(
-          "min-w-0 flex-1 border-none px-2 py-1.5 outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden",
+          "min-w-0 flex-1 border-none outline-hidden placeholder:text-neutral-400 [&::-webkit-search-cancel-button]:hidden",
           className
         )}
         placeholder={placeholder}
       />
       <AriaButton
         className={classNames(
-          "inline-flex rounded-full p-1 opacity-70 transition-all",
+          "m-1 inline-flex rounded-full p-1 opacity-70 transition-all",
           "hover:bg-neutral-200 hover:opacity-100",
           "data-disabled:pointer-events-none",
           "group-data-empty:invisible"

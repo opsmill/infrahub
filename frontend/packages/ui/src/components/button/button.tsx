@@ -55,11 +55,12 @@ const buttonVariants = tv({
       ],
       ghost: [
         "border-transparent text-stone-800 shadow-none",
-        "data-hovered:bg-neutral-200/50",
+        "data-hovered:bg-neutral-600/10",
         "data-pressed:bg-neutral-200",
       ],
     },
     size: {
+      xxs: "h-6",
       xs: "h-7",
       sm: "h-8",
       md: "h-9",
