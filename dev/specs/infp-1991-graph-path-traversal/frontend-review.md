@@ -235,3 +235,123 @@ negative in complexity.
 - `frontend/app/src/entities/nodes/relationships/ui/relationship-combobox-list.tsx` — searchable, paginated list by peer kind
 
 Review dated 2026-04-22.
+
+---
+
+## Resolution status — 2026-04-29
+
+Status of each item in the review above. The review body is left untouched as the
+2026-04-22 snapshot. This section reflects state on branch `ple-infrahub-components`
+after the develop merge `947089405e`.
+
+### Must fix before merge
+
+- **#1 — `package.json` ~25 unrelated downgrades.** ✅ **Resolved by develop merge.**
+  The merge `947089405e` brought develop's `package.json`, which sweeps the
+  downgrades. Spot-checked versions now: `@tanstack/react-query` `^5.99.2`,
+  `tailwindcss` `^4.2.4`, `jotai` `^2.19.1`, `lucide-react` `^1.8.0`,
+  `react-aria-components` `^1.17.0`, `react-router` `^7.14.2`, `recharts` `^3.8.1`,
+  `@biomejs/biome` `^2.4.12`. The three deliberate new deps for this feature
+  (`@xyflow/react ^12.10.2`, `dagre ^0.8.5`, `@types/dagre ^0.7.54`) are intact.
+  `pnpm-lock.yaml` was rewritten in commit `8f5753a673`.
+
+- **#2 — `resolveUuid` duplicates `useGetObject`.** ✅ **Done** in commit
+  `72cb84dfb8`. `object-picker.tsx` now calls
+  `useGetObject({ objectId, objectSchema: { kind: "CoreNode" } }, { enabled: !!value && !displayLabel })`,
+  matching the pattern in `peer.field.tsx`. Removed: the hand-rolled gql query,
+  `jsonToGraphQLQuery` import, `graphqlClient.query` call, mount `useEffect`,
+  `isResolving` state.
+
+- **#3 — `HIDDEN_NAMESPACES` duplicates backend filtering.** 🟡 **Partial.**
+  Commit `3d23f612fe` centralized the constant in
+  `frontend/app/src/entities/path-traversal/ui/utils.ts`, exported a named
+  `isVisibleNamespace` helper, and added a code comment pointing at
+  `backend/infrahub/core/query/path.py:35` (`DEFAULT_EXCLUDED_NAMESPACES`) so the
+  drift risk is at least discoverable. Selectors pass `filter={isVisibleNamespace}`
+  explicitly to `KindMultiSelect`; the shared input no longer hardcodes a default
+  filter. The review's preferred resolution (drop entirely, or surface via schema
+  metadata) requires backend work and is not done.
+
+### Simplicity / duplication
+
+- **#4 — `ObjectPicker` reimplements `PeerInput`.** ✅ **Done** in commit
+  `72cb84dfb8`. `object-picker.tsx` is now ~120 lines (was 219). Search mode
+  composes `NodeKindSelect` (new shared primitive) + `PeerInput` (existing).
+  UUID-mode toggle preserved. The hand-rolled kind+object combobox plumbing is gone.
+
+- **#5 — State duplicated between `PathTraversalPage` and selectors.** ❌ **Open.**
+  Selector components no longer mirror form-control state for include/exclude
+  kinds (commit `cef8d5c591` made `KindMultiSelect` controlled), but the
+  source/destination/maxDepth/maxPaths story is unchanged: `path-traversal-page.tsx`
+  still keeps `sourceId`/`destinationId`/`maxDepth`/`maxPaths`/`kindFilter`/`excludedKinds`
+  in `useState` while selectors keep parallel `useState` for source/destination
+  and only sync on submit. URL deep-link desync risk still applies.
+
+- **#6 — `path-traversal-page.tsx` 535 lines mixes concerns.** ❌ **Open.** Now
+  536 lines. Pure formatters (`formatPathAsText`, `copyAllPathsAsText`,
+  `pathPreview`, `getKindCounts`) are still inlined; mode routing, URL sync, and
+  rendering all live in the same file.
+
+- **#7 — `reachableObjectsToPathResponse` fabricates synthetic destination.**
+  ❌ **Open.** Defined at `path-traversal-page.tsx:58`, called at `:528`.
+  `PathFlowGraph` still requires a `destination` prop.
+
+- **#8 — `ObjectSelector` and `DependencySelector` share ~50% UI.** ✅ **Done**
+  across commits `cef8d5c591` and `3d23f612fe`. New shared primitive
+  `frontend/app/src/shared/components/inputs/kind-multi-select.tsx` (~115 lines):
+  pure controlled, no `useState` (cmdk owns search state), with optional chips
+  strip + tone (`"blue" | "red"`) + namespace `filter` prop. Both selectors call
+  it instead of hand-rolling the checkbox-list / chip-strip / clear-all. Line
+  counts: `dependency-selector.tsx` 124 → 74; `object-selector.tsx` 295 → 173.
+
+- **#9 — Extract schema-viewer card shell into the design system.** 🔀 **Stale
+  reference + still needed.** Develop merge `947089405e` includes #9048
+  (`517f745343`), which **deleted** `frontend/app/src/shared/components/ui/card.tsx`
+  (-69 lines) and moved Card into the new `@infrahub/ui` workspace package at
+  `frontend/packages/ui/src/components/card/card.tsx` (exports `Card`,
+  `CardHeader`, `CardContent`). The review's reference to the old path is
+  therefore stale — the new import is `import { Card, CardHeader, CardContent } from "@infrahub/ui"`.
+  The actual extraction work for `schema-viewer.tsx` (`<section>` markup at
+  lines 89–141) and `infra-node.tsx` (hand-rolled card markup) is still open.
+
+### Smaller nits
+
+- `path-traversal.query-keys.ts` — cache key shape unchanged. ❌ Open.
+- `utils.test.ts` — still covers only `formatRelName` and `getKindColor`. ❌ Open.
+  Will gain coverage once formatters move out of `path-traversal-page.tsx`
+  (depends on #6).
+- `path-traversal.spec.ts` (e2e) — unchanged, still static-text only. ❌ Open.
+- `object-details-menu.tsx` "Find paths" item — unchanged, no action needed
+  (review marked LGTM).
+
+### Migrating to shared form fields
+
+The review's recommendation was to reuse the *primitive* inputs (`PeerInput`,
+`NodeKindField`'s combobox, `RelationshipComboboxList`) and **not** adopt the
+schema-driven wrappers (`DynamicField`, `RelationshipField`, `PeerField`).
+Followed: ✅ — `useGetObject`, `PeerInput`, the new `NodeKindSelect`, and the
+new `KindMultiSelect` are all primitive-level. None require a `react-hook-form`
+context or a fabricated `RelationshipSchema`. Selectors still own their own
+`useState` and `<form onSubmit>`; lifting them onto `useForm` is part of #5.
+
+### New shared primitives introduced by this work
+
+- `frontend/app/src/shared/components/inputs/node-kind-select.tsx` — controlled
+  `(value: string | null, onChange: (kind: string | null) => void)` kind picker.
+  Mirrors the inner combobox of `NodeKindField` without the `react-hook-form`
+  context. Optional `filter(namespace)` prop.
+- `frontend/app/src/shared/components/inputs/kind-multi-select.tsx` — controlled
+  multi-kind picker. cmdk owns the search input; consumer owns `value`. Props:
+  `value`, `onChange`, `label`, `placeholder`, `showChips`, `chipTone`, `filter`,
+  `className`. Pure presentational, no internal state.
+
+### Suggested next moves (not blocked on backend)
+
+1. #7 — drop the synthetic destination: make `destination` optional on
+   `PathFlowGraph` and stop fabricating a node in
+   `reachableObjectsToPathResponse`.
+2. #5 + #6 together — lift selector state into the page (or a single `useForm`),
+   pull pure formatters into `utils.ts` (with unit tests), split path-mode and
+   impact-mode subtrees into separate components.
+3. #9 (post-merge) — refactor `schema-viewer.tsx` and `infra-node.tsx` to use
+   `Card` / `CardHeader` / `CardContent` from `@infrahub/ui`.
