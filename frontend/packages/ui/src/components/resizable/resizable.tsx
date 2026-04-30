@@ -1,11 +1,10 @@
 import * as ResizablePrimitive from "react-resizable-panels";
-
-import { classNames } from "@/shared/utils/common";
+import { cn } from "tailwind-variants";
 
 export function ResizablePanelGroup({ className, ...props }: ResizablePrimitive.GroupProps) {
   return (
     <ResizablePrimitive.Group
-      className={classNames("flex h-full w-full aria-[orientation=vertical]:flex-col", className)}
+      className={cn("flex h-full w-full aria-[orientation=vertical]:flex-col", className)}
       {...props}
     />
   );
@@ -16,11 +15,12 @@ export const ResizablePanel = ResizablePrimitive.Panel;
 export function ResizableHandle({ className, ...props }: ResizablePrimitive.SeparatorProps) {
   return (
     <ResizablePrimitive.Separator
-      className={classNames(
-        "relative w-0.5 bg-transparent outline-hidden",
-        "hover:bg-custom-blue-600",
-        "focus-visible:bg-custom-blue-600",
-        className
+      className={cn(
+        "w-0.5 rounded-full bg-transparent outline-hidden",
+        "aria-[orientation=horizontal]:h-0.5 aria-[orientation=horizontal]:w-full",
+        "hover:bg-cyan-600",
+        "focus-visible:bg-cyan-600",
+        className,
       )}
       {...props}
     />
