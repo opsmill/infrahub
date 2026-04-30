@@ -1,3 +1,4 @@
+import { Button } from "@infrahub/ui";
 import { useAtom, useAtomValue } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { SidebarIcon } from "lucide-react";
@@ -8,7 +9,6 @@ import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
-import { Button } from "@/shared/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -72,10 +72,10 @@ function IpamToolbar({ className }: { className?: string }) {
       <Row className={classNames("h-11 gap-0", className)}>
         <Button
           variant="ghost"
-          size="square"
+          shape="square"
           aria-label="toggle IPAM tree"
-          onClick={() => setCollapsed(!collapsed)}
-          className="m-1 shrink-0 rounded-lg text-gray-400 hover:text-neutral-600"
+          onPress={() => setCollapsed(!collapsed)}
+          className="m-1 shrink-0 rounded-lg text-gray-400 data-hovered:text-neutral-600"
         >
           <SidebarIcon className="size-4" />
         </Button>

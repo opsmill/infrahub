@@ -1,12 +1,11 @@
+import { Button } from "@infrahub/ui";
 import { ChevronsUpDownIcon } from "lucide-react";
-import { Pressable } from "react-aria-components";
 import { Link } from "react-router";
 
 import { Breadcrumb } from "@/shared/components/aria/breadcrumbs";
 import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
 import { Col, Row } from "@/shared/components/container";
-import { Button } from "@/shared/components/ui/button";
 
 import { ObjectAutocomplete } from "@/entities/nodes/object/ui/object-autocomplete";
 import { ObjectRelationshipList } from "@/entities/nodes/object/ui/object-relationship-list";
@@ -73,15 +72,13 @@ export function BreadcrumbItemObject({
         </Col>
 
         <MenuTrigger>
-          <Pressable>
-            <Button
-              variant="ghost"
-              className="size-5 p-0"
-              aria-label={`Select a different ${schema?.label ?? "object"}`}
-            >
-              <ChevronsUpDownIcon className="size-3.5" />
-            </Button>
-          </Pressable>
+          <Button
+            variant="ghost"
+            className="size-5 p-0"
+            aria-label={`Select a different ${schema?.label ?? "object"}`}
+          >
+            <ChevronsUpDownIcon className="size-3.5" />
+          </Button>
 
           <Popover>
             {parentRelationshipSchema &&

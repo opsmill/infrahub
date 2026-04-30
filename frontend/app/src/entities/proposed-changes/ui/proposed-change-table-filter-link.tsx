@@ -17,8 +17,8 @@ export function ProposedChangeTableFilterLink({
       className={classNames(
         cellsStyle,
         cellHeaderStyle,
-        "rounded-sm border-0 font-normal transition-all hover:bg-transparent hover:text-gray-500",
-        isActive && "font-semibold hover:text-black",
+        "rounded-sm border-0 font-normal transition-all data-hovered:bg-transparent data-hovered:text-gray-500",
+        isActive && "font-semibold data-hovered:text-black",
         className
       )}
       {...props}

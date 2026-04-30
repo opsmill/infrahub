@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, ChevronDownIcon, GroupIcon, PencilLineIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
-import { Pressable } from "react-aria-components";
 import { useNavigate } from "react-router";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
@@ -20,7 +20,6 @@ import {
 } from "@/shared/components/aria/menu";
 import { Popover } from "@/shared/components/aria/popover";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { GENERIC_REPOSITORY_KIND } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
@@ -67,11 +66,9 @@ export function ObjectDetailsMenu({
   return (
     <>
       <MenuTrigger>
-        <Pressable>
-          <Button variant="outline" size="sm" data-testid="object-details-menu" {...props}>
-            Actions <ChevronDownIcon className="ml-2 size-3.5" />
-          </Button>
-        </Pressable>
+        <Button variant="outline" size="sm" data-testid="object-details-menu" {...props}>
+          Actions <ChevronDownIcon className="size-3.5" />
+        </Button>
 
         <Popover placement="bottom end">
           <Menu>

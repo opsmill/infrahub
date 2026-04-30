@@ -1,12 +1,12 @@
 import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { use, useState } from "react";
 import { useParams } from "react-router";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
 import SlideOver from "@/shared/components/display/slide-over";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { getPermission } from "@/entities/permission/utils";
@@ -47,33 +47,28 @@ export const DiffThread = ({ path }: tDiffThread) => {
     <>
       <div className="flex cursor-pointer items-center">
         {thread?.comments?.count ? (
-          <Tooltip enabled content={"Add comment"}>
+          <Tooltip message={"Add comment"}>
             <Button
-              disabled={!permission?.create?.isAllowed}
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowThread(true);
-              }}
-              className="h-6 rounded-full px-2"
-              variant={"dark"}
+              isDisabled={!permission?.create?.isAllowed}
+              onPress={() => setShowThread(true)}
+              className="h-6 rounded-full bg-gray-200 px-2 shadow-xs data-hovered:bg-gray-300"
+              variant={"ghost"}
               data-testid="data-diff-add-comment"
             >
-              <Icon icon="mdi:chat-outline" className="mr-1" />
+              <Icon icon="mdi:chat-outline" />
               {thread?.comments?.count}
             </Button>
           </Tooltip>
         ) : (
           <div className="hidden group-hover:block">
-            <Tooltip enabled content={"Add comment"}>
+            <Tooltip message={"Add comment"}>
               <Button
-                disabled={!permission?.create?.isAllowed}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setShowThread(true);
-                }}
+                isDisabled={!permission?.create?.isAllowed}
+                onPress={() => setShowThread(true)}
                 className="h-6 rounded-full p-0"
                 variant={"outline"}
-                size={"icon"}
+                size={"xs"}
+                shape={"circle"}
                 data-testid="data-diff-add-comment"
               >
                 <Icon icon={"mdi:plus"} />
@@ -87,7 +82,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
         <DiffComments path={path} refetch={refetch} />
 
         <div className="flex items-center justify-end gap-x-6 border-gray-200 border-t py-3 pr-3">
-          <Button onClick={() => setShowThread(false)}>Close</Button>
+          <Button onPress={() => setShowThread(false)}>Close</Button>
         </div>
       </SlideOver>
     </>

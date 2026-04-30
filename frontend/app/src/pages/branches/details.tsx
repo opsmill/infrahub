@@ -1,3 +1,4 @@
+import { Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { Navigate, useParams } from "react-router";
@@ -6,7 +7,6 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { Tabs } from "@/shared/components/tabs";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { DIFF_TABS } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 import { useTitle } from "@/shared/hooks/useTitle";

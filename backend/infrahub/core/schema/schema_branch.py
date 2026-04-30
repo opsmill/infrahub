@@ -2645,7 +2645,12 @@ class SchemaBranch:
             if attr_pool_relationship:
                 template_schema.relationships.append(attr_pool_relationship)
 
-        if getattr(node, "generate_profile", False):
+        parent_generates_profile = isinstance(node, NodeSchema) and any(
+            getattr(self.get(name=kind, duplicate=False), "generate_profile", False)
+            for kind in node.inherit_from
+            if self.has(name=kind)
+        )
+        if getattr(node, "generate_profile", False) or parent_generates_profile:
             if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
                 settings = dict(profiles_rel_settings)
                 settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER

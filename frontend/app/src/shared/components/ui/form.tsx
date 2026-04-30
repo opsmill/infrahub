@@ -1,3 +1,4 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { Slot } from "@radix-ui/react-slot";
 import React from "react";
 import {
@@ -10,9 +11,7 @@ import {
 } from "react-hook-form";
 
 import { SlideOverContext } from "@/shared/components/display/slide-over";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import Label, { type LabelProps } from "@/shared/components/ui/label";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputErrorStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
@@ -137,17 +136,12 @@ export const FormMessage = ({
   );
 };
 
-interface FormSubmitProps extends ButtonProps {}
+interface FormSubmitProps extends Omit<ButtonProps, "type" | "slot"> {}
 
-export const FormSubmit = ({ children, ref, ...props }: FormSubmitProps) => {
+export const FormSubmit = ({ ...props }: FormSubmitProps) => {
   const { formState } = useFormContext();
 
   const isLoading = formState.isSubmitting || formState.isValidating;
 
-  return (
-    <Button ref={ref} disabled={isLoading} {...props} type="submit">
-      <span className={classNames(isLoading && "invisible")}>{children}</span>
-      {isLoading && <Spinner className="absolute" />}
-    </Button>
-  );
+  return <Button isPending={isLoading} {...props} type="submit" />;
 };

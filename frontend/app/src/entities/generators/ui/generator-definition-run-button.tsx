@@ -1,3 +1,4 @@
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
 import { useState } from "react";
 import { Text } from "react-aria-components";
@@ -8,7 +9,6 @@ import { constructPath } from "@/shared/api/rest/fetch";
 import { Menu, MenuItem } from "@/shared/components/aria/menu";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button, type ButtonProps } from "@/shared/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
 import { QSP } from "@/shared/config/qsp";
@@ -79,10 +79,10 @@ export function GeneratorDefinitionRunButton({
         <Button
           variant={variant}
           size={size}
-          isLoading={isPending}
-          disabled={isPending || !isAuthenticated}
+          isPending={isPending}
+          isDisabled={isPending || !isAuthenticated}
         >
-          {!isPending && <PlayIcon className="mr-2 size-4" />}
+          {!isPending && <PlayIcon className="size-4" />}
           Run
         </Button>
       </PopoverTrigger>
@@ -154,8 +154,8 @@ export function GeneratorTargetSelectionForm({
         <Button
           variant="ghost"
           size="xs"
-          onClick={onCancel}
-          className="h-5 p-1 text-gray-500 text-xs hover:text-gray-700"
+          onPress={onCancel}
+          className="h-5 p-1 text-gray-500 text-xs data-hovered:text-gray-700"
         >
           Back
         </Button>
@@ -201,7 +201,7 @@ export function GeneratorTargetSelectionForm({
         filterItem={(node) => !selectedTargetNodes.some((v) => v.id === node.id)}
       />
 
-      <Button disabled={selectedTargetNodes.length === 0} variant="active" onClick={handleSubmit}>
+      <Button isDisabled={selectedTargetNodes.length === 0} variant="active" onPress={handleSubmit}>
         Run Generator
       </Button>
     </div>

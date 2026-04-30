@@ -1,8 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { LockIcon } from "lucide-react";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import MetaDetailsTooltip from "@/shared/components/display/meta-details-tooltips";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 
 import { ObjectAttributeValue } from "@/entities/nodes/getObjectItemDisplayValue";
 import { ExtraFieldIndicator } from "@/entities/nodes/object/ui/object-details/object-data-display/extra-field-indicator";
@@ -46,19 +47,20 @@ export function ObjectAttributeRow({
                 <div className="flex items-center justify-between border-gray-200 border-b p-1 pt-0 pl-2">
                   <div className="font-semibold">{attributeLabel}</div>
                   {onClickMetadata && (
-                    <ButtonWithTooltip
-                      disabled={!permission.update.isAllowed}
-                      tooltipEnabled={!permission.update.isAllowed}
-                      tooltipContent={permission.update.message}
-                      onClick={() => {
-                        onClickMetadata(attributeSchema);
-                      }}
-                      variant="ghost"
-                      size="icon"
-                      data-testid="edit-metadata-button"
-                    >
-                      <Icon icon="mdi:pencil" className="text-custom-blue-500" />
-                    </ButtonWithTooltip>
+                    <Tooltip message={permission.update.message}>
+                      <Button
+                        isDisabledAndFocusable={!permission.update.isAllowed}
+                        onPress={() => {
+                          onClickMetadata(attributeSchema);
+                        }}
+                        variant="ghost"
+                        size="xs"
+                        shape="circle"
+                        data-testid="edit-metadata-button"
+                      >
+                        <Icon icon="mdi:pencil" className="text-custom-blue-500" />
+                      </Button>
+                    </Tooltip>
                   )}
                 </div>
               )

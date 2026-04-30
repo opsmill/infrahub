@@ -1,7 +1,7 @@
 <h1 align="center">
   <a href="https://docs.infrahub.app"><picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/static/img/infrahub-logo-color-white.svg">
-    <img src="docs/static/img/infrahub-logo-color.svg" alt="Infrahub" width="350">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/infrahub-logo-color-white.svg">
+    <img src="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/infrahub-logo-color.svg" alt="Infrahub" width="350">
   </picture></a>
 </h1>
 
@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://github.com/opsmill/infrahub/releases"><img src="https://img.shields.io/github/v/release/opsmill/infrahub" alt="Latest release"></a>
-  <a href="LICENSE.txt"><img src="https://img.shields.io/github/license/opsmill/infrahub" alt="License"></a>
+  <a href="https://github.com/opsmill/infrahub/blob/stable/LICENSE.txt"><img src="https://img.shields.io/github/license/opsmill/infrahub" alt="License"></a>
   <a href="https://github.com/opsmill/infrahub/graphs/contributors"><img src="https://img.shields.io/github/contributors/opsmill/infrahub?color=blue" alt="Contributors"></a>
   <a href="https://discord.gg/opsmill"><img src="https://img.shields.io/badge/Discord-7289DA?logo=discord&logoColor=white" alt="Discord"></a>
   <a href="https://www.linkedin.com/company/opsmill"><img src="https://img.shields.io/badge/LinkedIn-blue?logo=LinkedIn&logoColor=white" alt="LinkedIn"></a>
@@ -27,8 +27,8 @@ Infrahub is the data foundation for modern infrastructure automation, for teams 
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/static/img/infrahub-lifecycle-dark.svg">
-    <img src="docs/static/img/infrahub-lifecycle.svg" width="800" alt="Infrahub lifecycle: Unify, Generate, Deploy, Evolve" />
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/infrahub-lifecycle-dark.svg">
+    <img src="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/infrahub-lifecycle.svg" width="800" alt="Infrahub lifecycle: Unify, Generate, Deploy, Evolve" />
   </picture>
 </p>
 
@@ -105,22 +105,22 @@ The full set of OpsMill projects is at [github.com/opsmill](https://github.com/o
 
 <p align="center">
   <strong>Infrahub UI</strong><br />
-  <img src="docs/static/img/readme-screenshots/dashboard.webp" width="700" alt="Infrahub main dashboard view" />
+  <img src="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/readme-screenshots/dashboard.webp" width="700" alt="Infrahub main dashboard view" />
 </p>
 
 <p align="center">
   <strong>Branching and diff view — every change tracked, comparable, and queryable</strong><br />
-  <img src="docs/static/img/readme-screenshots/branch-diff.png" width="700" alt="Infrahub branch diff view showing additions, deletions, and updates across multiple objects" />
+  <img src="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/readme-screenshots/branch-diff.png" width="700" alt="Infrahub branch diff view showing additions, deletions, and updates across multiple objects" />
 </p>
 
 <p align="center">
   <strong>Proposed change — peer review and approve before merge</strong><br />
-  <img src="docs/static/img/readme-screenshots/proposed-change.png" width="700" alt="Infrahub proposed change interface with reviewers, comments, and merge controls" />
+  <img src="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/readme-screenshots/proposed-change.png" width="700" alt="Infrahub proposed change interface with reviewers, comments, and merge controls" />
 </p>
 
 <p align="center">
   <strong>CI checks — validation runs on every proposed change; merge blocked when checks fail</strong><br />
-  <img src="docs/static/img/readme-screenshots/ci-check-failure.png" width="700" alt="Infrahub CI check failure message inside a proposed change" />
+  <img src="https://raw.githubusercontent.com/opsmill/infrahub/stable/docs/static/img/readme-screenshots/ci-check-failure.png" width="700" alt="Infrahub CI check failure message inside a proposed change" />
 </p>
 
 ## Community and support
@@ -134,7 +134,7 @@ The Infrahub Community edition is open source and free. For deployments that nee
 
 ## Contributing
 
-Contributions of all sizes are welcome — bug fixes, schema accelerators, integrations, documentation, and core features. See [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
+Contributions of all sizes are welcome — bug fixes, schema accelerators, integrations, documentation, and core features. See [CONTRIBUTING.md](https://github.com/opsmill/infrahub/blob/stable/CONTRIBUTING.md) to get started.
 
 <a href="https://github.com/opsmill/infrahub/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=opsmill/infrahub" alt="Contributors" />
@@ -146,4 +146,4 @@ See our [security policy](https://github.com/opsmill/infrahub?tab=security-ov-fi
 
 ## License
 
-Infrahub is released under the [Apache 2.0 License](LICENSE.txt).
+Infrahub is released under the [Apache 2.0 License](https://github.com/opsmill/infrahub/blob/stable/LICENSE.txt).

@@ -13,7 +13,7 @@ const HomeCardTitle = ({ className, ...props }: HomeCardProps) => {
   return (
     <CardHeader
       className={classNames(
-        "flex items-center justify-between from-white font-semibold text-base",
+        "flex items-center justify-between from-white font-semibold",
         className
       )}
       {...props}

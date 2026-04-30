@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING, cast
+
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipChangelogGetter
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.protocols import CoreThread
 from infrahub.events.node_action import (
     NodeCreatedEvent,
     NodeDeletedEvent,
@@ -99,21 +103,22 @@ async def generate_node_mutation_events(
         InfrahubKind.ARTIFACTTHREAD,
         InfrahubKind.FILETHREAD,
     ]:
-        proposed_change: CoreProposedChange = await node.change.get_peer(db=db, peer_type=CoreProposedChange)  # type: ignore[attr-defined]
-        action_to_event_map = {
-            MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
-            MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,
-        }
-        if action in action_to_event_map:
-            specific_events.append(
-                action_to_event_map[action](
-                    proposed_change_id=proposed_change.id,
-                    proposed_change_name=proposed_change.name.value,
-                    proposed_change_state=proposed_change.state.value,
-                    thread_id=node.id,
-                    thread_kind=kind,
-                    meta=EventMeta.from_context(context=context),
+        proposed_change = await cast("CoreThread", node).change.get_peer(db=db)
+        if proposed_change:
+            action_to_event_map = {
+                MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
+                MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,
+            }
+            if action in action_to_event_map:
+                specific_events.append(
+                    action_to_event_map[action](
+                        proposed_change_id=proposed_change.id,
+                        proposed_change_name=proposed_change.name.value,
+                        proposed_change_state=proposed_change.state.value,
+                        thread_id=node.id,
+                        thread_kind=kind,
+                        meta=EventMeta.from_context(context=context),
+                    )
                 )
-            )
 
     return events + side_effect_events + group_events + specific_events
