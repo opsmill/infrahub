@@ -118,6 +118,7 @@ Each feature migration drops a YAML file in `docs/redirects-pending/` listing th
 Create `docs/redirects-pending/<feature-slug>.yml`:
 
 ```yaml
+---
 feature: <Feature Name>
 pr: TBD
 description: |
