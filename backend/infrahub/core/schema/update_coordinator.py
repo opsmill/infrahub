@@ -158,8 +158,7 @@ class SchemaUpdateCoordinator:
             user_id: User ID for all operations
             manage_rollback: When True (default), this coordinator handles its own rollback on
                 failure (DB rollback + registry restore). When False, exceptions propagate without
-                triggering internal rollback so the caller can manage rollback itself (used when
-                the coordinator runs inside a larger transactional flow that owns rollback).
+                triggering internal rollback.
 
         Returns:
             The updated schema hash, or None if the schema was not updated
