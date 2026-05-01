@@ -33,6 +33,31 @@
 
 [Gates determined based on constitution file]
 
+### Frontend principles (apply when feature includes UI)
+
+| Principle | Status | Notes |
+|---|---|---|
+| Reuse Before Reinvent | | New UI primitives require justification in Complexity Tracking. List shared components consumed (see "Shared Components Inventory" below). |
+| Single State Owner | | URL params owned by page, form state owned by `useForm`, server data owned by TanStack Query. No mirrored `useState` between page and selectors. |
+| Backend Authoritative | | No client-side duplication of server-side defaults, filters, or hidden lists. |
+| Component Contracts Designed for All Callers | | Visualizations / panels reused across modes have prop APIs that support every caller from day one (no synthetic-prop hacks). |
+| E2E Happy Path | | New pages ship with at least one full-flow Playwright test, not just static-text checks. |
+
+### Shared Components Inventory (frontend features only)
+
+*REQUIRED before writing tasks for any frontend feature. Forces discovery of existing primitives.*
+
+List the shared components, hooks, and entity exports this feature will consume. Cross-reference `dev/knowledge/frontend/shared-components.md` and `dev/knowledge/frontend/design-system.md`.
+
+| Need | Reusing | Source |
+|---|---|---|
+| [e.g., pick a peer object] | `PeerInput` | `shared/components/inputs/peer.tsx` |
+| [e.g., resolve UUID] | `useGetObject` | re-exported via `peer.field.tsx` |
+| [e.g., card surface] | `Card` / `CardHeader` / `CardContent` | `@infrahub/ui` |
+| [e.g., kind selector] | `NodeKindField` | `shared/components/form/fields/node-kind.field.tsx` |
+
+If a row reads "(building new)", add a Complexity Tracking entry justifying it.
+
 ## Project Structure
 
 ### Documentation (this feature)

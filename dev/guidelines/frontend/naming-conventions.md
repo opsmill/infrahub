@@ -42,3 +42,22 @@
 - Tests: colocate with source, never in `__tests__/`
 - Types: `{noun}.types.ts` in entity `domain/`, or inline in component
 - Avoid `index.ts` barrel exports; prefer direct imports
+
+## Query Keys
+
+Build query keys from a single object, not positional spreads. Object-shaped keys are easier to read in devtools, easier to invalidate by partial match, and easier to diff.
+
+```ts
+// ✅ Good
+export const pathTraversalKeys = {
+  all: ["path-traversal"] as const,
+  traverse: (params: { sourceId: string; destinationId: string; maxDepth: number }) =>
+    [...pathTraversalKeys.all, "traverse", params] as const,
+};
+
+// ❌ Bad: positional spread
+traverse: (sourceId, destinationId, maxDepth) =>
+  [...pathTraversalKeys.all, "traverse", sourceId, destinationId, maxDepth] as const,
+```
+
+Partial invalidation works naturally with the object form: `queryClient.invalidateQueries({ queryKey: pathTraversalKeys.all })`.
