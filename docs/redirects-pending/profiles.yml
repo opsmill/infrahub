@@ -1,11 +1,11 @@
 feature: Profiles
-pr: TBD
+pr: https://github.com/opsmill/infrahub/pull/9114
 description: |
   Profiles feature migration to hub + spokes pattern (matching Groups precedent).
   Hub now lives at /docs/profiles/ (was /docs/topics/profiles); five how-to spokes
-  and one concept spoke (priority-and-inheritance) live underneath. Tutorial
-  preserved at /docs/academy/tutorials/profiles. Both legacy URLs redirect to
-  the new hub.
+  and one concept spoke (priority-and-inheritance) live underneath. Both legacy
+  URLs redirect to the new hub. Tutorial deferred to a future "Managing network
+  interfaces at scale using Profiles" rewrite.
 redirects:
   - from: /docs/topics/profiles
     to: /docs/profiles/

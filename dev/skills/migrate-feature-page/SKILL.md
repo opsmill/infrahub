@@ -76,6 +76,8 @@ Recommend a pattern based on the audit. Get user approval before creating files.
 
 Follow the chosen pattern.
 
+**Match the interfaces shown in the existing guide / tutorial.** Before writing any how-to or spoke content, look at the existing guide and tutorial for that feature. They use Tabs to show the same task across the **UI**, **Python SDK**, and **GraphQL** — that ordering reflects how users actually interact with the feature (UI primary, SDK via generators, GraphQL last). When you create the new how-to spokes, preserve that same set of interface tabs and reuse the same running example. Do **not** reduce a multi-interface task to GraphQL-only because it's faster to write — the existing guide content is the source of truth for which interfaces matter and what the canonical UI navigation steps look like. If a new task isn't covered in the existing guide, mirror the interface set used elsewhere in the same feature's docs.
+
 **Single-page merge:**
 
 - Edit `docs/docs/topics/<slug>.mdx` (the existing topic file becomes the canonical feature page)

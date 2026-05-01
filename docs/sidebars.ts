@@ -67,7 +67,6 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             'academy/tutorials/groups',
-            'academy/tutorials/profiles',
           ],
         },
       ],

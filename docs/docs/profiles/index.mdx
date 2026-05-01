@@ -173,6 +173,18 @@ These constraints exist to:
 - Preserve hierarchy integrity (hierarchical relationships excluded)
 - Enable future enhancements without breaking changes
 
+## Common composition patterns
+
+A single object can be assigned multiple Profiles. When multiple Profiles define the same attribute, the `profile_priority` value (lower number = higher priority) decides which one wins. This enables layered configuration — for example:
+
+- A **base** Profile (priority 1000) that sets common defaults for all objects of a kind
+- A **specialization** Profile (priority 500) that overrides selected values for a subset
+- An optional **exception** Profile (priority 100) for high-priority cases
+
+The result: objects inherit base defaults, then specialization overrides where defined, then exception overrides where defined. Any attribute can still be set explicitly on the object to bypass all Profiles.
+
+For the mechanics of assigning multiple Profiles and verifying which one won, see [Use multiple Profiles](./use-multiple.mdx).
+
 ## Mental models for Profiles
 
 ### Object-oriented inheritance
@@ -248,10 +260,6 @@ The Profile system is designed to evolve toward:
 Profiles in Infrahub represent a thoughtful approach to configuration management that balances consistency with flexibility. By understanding the inheritance model, priority system, and design constraints, you can effectively use Profiles to manage infrastructure at scale while maintaining clear configuration lineage and enabling controlled exceptions.
 
 The system's design anticipates future needs while providing immediate value through reduced configuration drift, improved consistency, and clear audit trails. As Infrahub evolves, Profiles will become even more powerful while maintaining backward compatibility with current usage patterns.
-
-## Learn by doing
-
-New to Profiles? Walk through [Creating and assigning Profiles](../academy/tutorials/profiles.mdx) in Academy. It creates a Profile end-to-end using a working network interface example.
 
 ## Related resources
 
