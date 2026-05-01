@@ -54,15 +54,7 @@ query {
 
 For each attribute, `source.hfid` identifies the winning Profile. Different attributes on the same object can come from different Profiles depending on which Profiles define them and at what priority.
 
-## Common composition patterns
-
-Use multiple Profiles when you want layered configuration — for example:
-
-- A **base** Profile (priority 1000) that sets common defaults for all objects of a kind
-- A **specialization** Profile (priority 500) that overrides selected values for a subset
-- Optional **exception** Profile (priority 100) for high-priority cases
-
-The result: objects inherit base defaults, then specialization overrides where defined, then exception overrides where defined. Any attribute can still be set explicitly on the object to bypass all Profiles.
+Learn more about combining profiles in [Common composition patterns](index.mdx) section.
 
 ## Related
 
