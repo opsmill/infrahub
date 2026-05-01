@@ -134,8 +134,19 @@ const sidebars: SidebarsConfig = {
                 'groups/use-in-automation',
               ],
             },
-            { type: 'doc', id: 'topics/profiles', label: 'Profiles (Topic)' },
-            { type: 'doc', id: 'guides/profiles', label: 'Profiles (Guide)' },
+            {
+              type: 'category',
+              label: 'Profiles',
+              link: { type: 'doc', id: 'profiles/index' }, // hub
+              items: [
+                'profiles/priority-and-inheritance',
+                'profiles/create',
+                'profiles/assign',
+                'profiles/override-values',
+                'profiles/update',
+                'profiles/use-multiple',
+              ],
+            },
             { type: 'doc', id: 'topics/object-template', label: 'Object Templates (Topic)' },
             { type: 'doc', id: 'guides/object-template', label: 'Object Templates (Guide)' },
             { type: 'doc', id: 'topics/object-conversion', label: 'Object Conversion (Topic)' },

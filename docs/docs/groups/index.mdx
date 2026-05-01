@@ -57,20 +57,11 @@ Hiding internal groups by default reduces visual complexity while keeping the un
 
 Groups serve as a bridge between different Infrahub features, creating a unified way to target operations across the system:
 
-- **Artifact generation** — an Artifact Definition targets a group; the definition is decoupled from a specific device list, making it reusable.
+- **artifact generation** — an artifact definition targets a group; the definition is decoupled from a specific device list, making it reusable.
 - **Transformations** — Transformations can operate on entire groups, applying consistent changes across all members.
 - **Checks** — validation checks target groups, running the same logic across all members without duplicating code.
 
 For concrete patterns, see [Use groups in automation](./use-in-automation.mdx).
-
-## Common tasks
-
-- [Create a group](./create.mdx) — add a new Standard group.
-- [Add members to a group](./add-members.mdx) — attach objects to an existing group.
-- [Remove members from a group](./remove-members.mdx) — detach objects without deleting them.
-- [Delete a group](./delete.mdx) — remove a group (its members persist).
-- [Query group membership](./query-members.mdx) — inspect what's in a group or what groups an object belongs to.
-- [Use groups in automation](./use-in-automation.mdx) — target a group from an Artifact, Transformation, or Check.
 
 ## Learn by doing
 
