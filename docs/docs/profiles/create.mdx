@@ -2,6 +2,9 @@
 title: Create a Profile
 ---
 
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
 Define a reusable set of attribute values for a Profile-enabled node type.
 
 ## Prerequisites
@@ -11,7 +14,22 @@ Define a reusable set of attribute values for a Profile-enabled node type.
 
 ## Create the Profile
 
-In the GraphQL examples below, replace `<Kind>` with your node kind (e.g. `InfraInterface`), `<profile-name>` with a unique name (3–32 characters), and `<attribute>` / `<value>` with the values you want the Profile to set.
+Replace `<Kind>` with your node kind (e.g. `InfraInterface`), `<profile-name>` with a unique name (3-32 characters), and `<attribute>` / `<value>` with the values you want the Profile to set.
+
+<Tabs groupId="method" queryString>
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Object Management → Profiles**
+2. Click **Add Profile**
+3. Select your node kind as the Profile type
+4. Fill in:
+    - **Profile Name**: a unique name (3-32 characters)
+    - **Profile Priority**: a numeric value (default `1000`; lower = higher priority)
+    - Any attribute values this Profile should define
+5. Click **Save**
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
 
 ```graphql
 mutation {
@@ -28,9 +46,21 @@ mutation {
 }
 ```
 
+</TabItem>
+</Tabs>
+
 The `profile_priority` value defaults to `1000`. Lower numbers have higher priority — see [Priority and inheritance](./priority-and-inheritance.mdx).
 
 ## Verify
+
+<Tabs groupId="method" queryString>
+<TabItem value="web" label="Web interface">
+
+1. Navigate to **Object Management → Profiles**
+2. Locate the Profile by name and click it to confirm all attribute values are set
+
+</TabItem>
+<TabItem value="graphql" label="GraphQL">
 
 Query the Profile by name to confirm it exists and the values were set:
 
@@ -46,6 +76,9 @@ query {
   }
 }
 ```
+
+</TabItem>
+</Tabs>
 
 ## Next
 

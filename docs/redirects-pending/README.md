@@ -2,7 +2,7 @@
 
 Each feature-page migration drops a YAML file in this folder describing the URL redirects that the migration introduces. At the end of Phase 2 (when the docs revamp is ready to ship to production), all files here are aggregated into a single `redirects:` array in `docs/docusaurus.config.ts` via `@docusaurus/plugin-client-redirects`.
 
-This folder exists so we don't need to maintain a single growing redirects config across feature PRs — each PR lands its own self-contained file, and the cleanup PR at the end consolidates them.
+This folder exists so we don't need to maintain a single growing redirects configuration across feature PRs — each PR lands its own self-contained file, and the cleanup PR at the end consolidates them.
 
 ## File format
 
@@ -27,7 +27,7 @@ Fields:
 - **description** — short prose explaining what changed
 - **redirects** — list of `{from, to}` URL pairs
 
-## End-of-Phase-2 aggregation steps
+## End-of-phase-2 aggregation steps
 
 When ready to ship to production:
 

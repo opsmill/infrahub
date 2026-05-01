@@ -4,13 +4,13 @@ title: Use groups in automation
 
 # Use groups in automation
 
-Target a group from an Artifact Definition, Transformation, or Check so that the automation applies to every member without hard-coding a list.
+Target a group from an artifact definition, Transformation, or Check so that the automation applies to every member without hard-coding a list.
 
-This is the main reason to use groups: they decouple "what to operate on" from "what to do." Instead of listing 50 devices in an Artifact Definition, you target one group, and the group's contents can change independently.
+This is the main reason to use groups: they decouple "what to operate on" from "what to do." Instead of listing 50 devices in an artifact definition, you target one group, and the group's contents can change independently.
 
-## Target a group from an Artifact Definition
+## Target a group from an artifact definition
 
-An Artifact Definition has a `targets` field that points to a group. Infrahub generates one artifact per member.
+An artifact definition has a `targets` field that points to a group. Infrahub generates one artifact per member.
 
 ```yaml
 # .infrahub.yml excerpt
@@ -24,13 +24,13 @@ artifact_definitions:
     transformation: "switch-config-template"
 ```
 
-When the group's membership changes, the next artifact generation run picks up the new members automatically. See [Artifacts](../topics/artifact.mdx) for the full specification.
+When the group's membership changes, the next artifact generation run picks up the new members automatically. See [artifacts](../topics/artifact.mdx) for the full specification.
 
 ## Target a group from a Transformation
 
-Transformations that produce per-object output are wired up through an Artifact Definition pointing at a group (same pattern as above). The Transformation runs once per group member with that member passed as an input parameter.
+Transformations that produce per-object output are wired up through an artifact definition pointing at a group (same pattern as above). The Transformation runs once per group member with that member passed as an input parameter.
 
-See [Transformations](../topics/transformation.mdx) for Jinja2 and Python transformation details.
+See [Transformations](../topics/transformation.mdx) for Jinja2 and Python Transformation details.
 
 ## Scope a Check to a group
 
@@ -53,14 +53,14 @@ See [Checks](../topics/check.mdx) for check authoring.
 
 A Generator's `targets` field points to a `CoreStandardGroup`. The members of that group are the Generator's *inputs* — Infrahub creates one Generator run per member.
 
-As the Generator runs, Infrahub automatically tracks the objects it produces in a `CoreGeneratorGroup` via the SDK's tracking feature. You don't define this group; it's managed for you.
+As the Generator runs, Infrahub automatically tracks the objects it produces in a `CoreGeneratorGroup` via the SDK tracking feature. You don't define this group; it's managed for you.
 
 | Group | Role | Who manages it |
 |---|---|---|
 | `CoreStandardGroup` | **Input** — drives Generator runs (one run per member) | You — set in `targets:` and populate the group |
 | `CoreGeneratorGroup` | **Output** — tracks objects the Generator produced | Infrahub, automatically via SDK tracking |
 
-Downstream automation (Artifact Definitions, Checks) can target either group, depending on whether you want to operate on the inputs or the produced objects.
+Downstream automation (artifact definitions, Checks) can target either group, depending on whether you want to operate on the inputs or the produced objects.
 
 See [Generator overview](../topics/generator.mdx) for full details, including the difference between Standard and Generator groups.
 
@@ -70,8 +70,8 @@ A typical production setup:
 
 1. A **`CoreStandardGroup`** lists the devices that need a service. You manage its membership directly, or have a workflow keep it in sync with a query.
 2. A **Generator** targets that group, producing per-device service objects. Infrahub automatically tracks the produced objects in a `CoreGeneratorGroup`.
-3. An **Artifact Definition** targets either:
-    - the input `CoreStandardGroup` (to render config per device), or
+3. An **artifact definition** targets either:
+    - the input `CoreStandardGroup` (to render configuration per device), or
     - the auto-managed `CoreGeneratorGroup` (to render per produced service object).
 4. A **Check Definition** targets the input group to validate the fleet.
 

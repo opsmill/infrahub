@@ -11,7 +11,7 @@ Remove a group without affecting its member objects.
 
 ## What happens when you delete a group
 
-- **Members** are **not** deleted. They remain in the graph and simply lose the `member_of_groups` relationship to this group.
+- **Members** are **not** deleted. They remain in the graph and lose the `member_of_groups` relationship to this group.
 - **Subscribers** are **not** deleted. They lose the `subscriber_of_groups` relationship.
 - **Downstream automation** that targeted this group (Artifact Definitions, Transformations, Checks) will stop receiving this group's members. Review those integrations before deleting.
 
@@ -53,7 +53,7 @@ group.delete()
 
 ## Troubleshooting
 
-**Delete returns a reference error.** Something else is pointing at this group (an Artifact Definition, Transformation, or Check). Locate and update the reference before retrying.
+**Delete returns a reference error.** Something else is pointing at this group (an artifact definition, Transformation, or Check). Locate and update the reference before retrying.
 
 **Permission denied.** You need delete permission on groups on this branch.
 

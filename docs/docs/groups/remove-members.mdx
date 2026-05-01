@@ -89,7 +89,7 @@ The SDK handles the fetch-and-update internally.
 
 **Called update but nothing changed.** If you sent the full current member list back, no members were removed. Omit the IDs of the members you want to remove.
 
-**The objects disappeared, not just the membership.** They shouldn't — removing members detaches them; it does not delete them. If objects are missing entirely, look for a cascading delete elsewhere (e.g. a Generator that owned them).
+**The objects disappeared, not just the membership.** They shouldn't — removing members detaches them; it does not delete them. If objects are missing entirely, look for a cascading delete elsewhere (for example, a Generator that owned them).
 
 ## Next
 
