@@ -183,7 +183,25 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split>.
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-### Step 10 — Commit + push + open PR
+### Step 10 — Lint, commit, push, open PR
+
+**Always lint before committing** — required by `docs/AGENTS.md`:
+
+```bash
+uv run invoke docs.lint
+```
+
+This runs both markdownlint and Vale. Fix any reported issues before continuing. If Vale isn't installed locally a warning prints; that's fine — markdownlint coverage is the harder one to pass.
+
+Also check for AGENTS.md "Never Do" words that linters miss (`simple`, `easy`, `just`):
+
+```bash
+grep -ni '\bsimple\b\|\beasy\b\|\bjust\b' docs/docs/<feature-slug>/*.mdx docs/docs/academy/tutorials/<feature-slug>.mdx
+```
+
+If any matches are in NEW content, fix in place. If matches are in PRESERVED content, propose fixing as part of the migration since the file is shipping under the new structure (the Profiles migration set this precedent).
+
+Then commit, push, and open the PR:
 
 ```bash
 git add <files>
