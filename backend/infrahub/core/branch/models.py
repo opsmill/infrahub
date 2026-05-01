@@ -98,7 +98,7 @@ class Branch(StandardNode):
 
     @property
     def is_terminal(self) -> bool:
-        return self.status in (BranchStatus.MERGING, BranchStatus.MERGED, BranchStatus.DELETING)
+        return self.status in (BranchStatus.MERGED, BranchStatus.DELETING)
 
     @property
     def active_schema_hash(self) -> SchemaBranchHash:
