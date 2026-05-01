@@ -1,13 +1,15 @@
 ---
-title: Resource manager
+title: Resource Manager
 ---
 import VideoPlayer from '../../src/components/VideoPlayer';
 
 Resource Manager in Infrahub automates the allocation of network resources from predefined pools, eliminating manual assignment and preventing conflicts across your infrastructure. This system ensures consistent resource allocation while maintaining complete visibility and control over your available resources.
 
-## Core concepts
+<center>
+  <VideoPlayer url='https://www.youtube.com/watch?v=sVU4OKi9_9o' light />
+</center>
 
-### What is a resource manager?
+## What is a resource manager?
 
 A Resource Manager is a system component that automatically allocates resources from pools when creating or updating infrastructure objects. Instead of manually tracking available IP addresses, VLAN IDs, or other resources in spreadsheets, you define pools and let Infrahub handle the allocation.
 
@@ -23,7 +25,7 @@ When an attribute is assigned by a Resource Manager, the attribute cannot be use
 This is due to the dynamic nature of using Resource Manager and the idempotency of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
 :::
 
-### Branch-agnostic allocation
+## Branch-agnostic allocation
 
 <center>
   <VideoPlayer url='https://youtu.be/F7tvLRQULdg?si=S83VyA0xmXHQGQqV' light />
@@ -40,7 +42,65 @@ Consider this scenario:
 
 This behavior guarantees that resources remain unique and conflict-free when branches are eventually merged back to main.
 
-### Idempotent allocation
+### Verifying branch-agnostic behavior
+
+1. Create a test branch
+
+```shell
+infrahubctl branch create test
+```
+
+2. Allocate an IP address in the test branch
+
+```graphql
+mutation {
+  InfrahubIPAddressPoolGetResource(
+    data: {
+      hfid: ["My IP address pool"]
+      data: {description: "my IP allocated on branch test"}
+    }
+  ) {
+    ok
+    node {
+      id
+      display_label
+    }
+  }
+}
+```
+
+3. Check allocation status from the main branch
+
+```graphql
+query {
+  InfrahubResourcePoolAllocated(
+    pool_id: "<POOL-ID>"
+    resource_id: "<PREFIX-ID>"
+  ) {
+    edges {
+      node {
+        display_label
+        branch
+      }
+    }
+  }
+  IpamIPAddress {
+    edges {
+      node {
+        display_label
+      }
+    }
+  }
+}
+```
+
+:::success
+
+The query shows the IP address is allocated in the test branch, preventing duplicate allocation in main, even though the IP address object doesn't exist in main yet.
+
+:::
+
+## Idempotent allocation
 
 Resource Manager supports idempotent allocation through the use of identifiers. When you include an `identifier` parameter in your allocation request, the same resource will be returned on repeated calls:
 
@@ -56,7 +116,7 @@ mutation {
 This feature is essential for:
 
 - Automated workflows that may run multiple times
-- [Generators](./generator.mdx) that need consistent results
+- [Generators](../topics/generator.mdx) that need consistent results
 
 ## Pool types and use cases
 
@@ -160,7 +220,7 @@ mutation {
 
 ### Weighted allocation
 
-For IP pools containing multiple resources, you can control allocation priority using weights. Resources inherit from `CoreWeightedPoolResource` gain an `allocation_weight` attribute:
+For IP pools containing multiple resources, you can control allocation priority using weights. Resources that inherit from `CoreWeightedPoolResource` gain an `allocation_weight` attribute:
 
 ```yaml
 nodes:
@@ -199,7 +259,7 @@ Infrahub provides comprehensive visibility into resource utilization:
 
 ### With Generators
 
-Resource Manager integrates seamlessly with [Generators](./generator.mdx) to create fully automated provisioning workflows:
+Resource Manager integrates seamlessly with [Generators](../topics/generator.mdx) to create fully automated provisioning workflows:
 
 - Template configurations with dynamically allocated IPs
 - Generate DNS records based on allocations
@@ -248,6 +308,6 @@ Resource Manager exposes full functionality through GraphQL APIs:
 
 ## Related resources
 
-- [Resource Manager Guide](../guides/resource-manager.mdx) - Step-by-step instructions for creating and using pools
-- [Generator Documentation](./generator.mdx) - Automate configurations with allocated resources
-- [GraphQL Documentation](./graphql.mdx) - Learn about Infrahub's GraphQL interface
+- [Generator Documentation](../topics/generator.mdx) - Automate configurations with allocated resources
+- [GraphQL Documentation](../topics/graphql.mdx) - Learn about Infrahub's GraphQL interface
+- [IPAM topic](../topics/ipam.mdx) - Additional information about IP address management
