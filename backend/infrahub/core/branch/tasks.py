@@ -62,6 +62,7 @@ if TYPE_CHECKING:
     from logging import Logger, LoggerAdapter
 
     from infrahub.core.changelog.models import NodeChangelog
+    from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
 
@@ -321,6 +322,53 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
             await event_service.send(event=event)
 
 
+async def _rollback_merge(
+    db: InfrahubDatabase,
+    log: Logger | LoggerAdapter,
+    obj: Branch,
+    merger: BranchMerger | None,
+    pre_merge_schema: SchemaBranch,
+    original_exc: BaseException,
+) -> bool:
+    """Best-effort unified rollback for merge failures.
+
+    Returns True if all sub-steps succeeded — caller may treat the branch as fully recovered;
+    helper has reset status to OPEN. Returns False if any sub-step failed; helper leaves status
+    at MERGING for manual recovery. Does not raise.
+    """
+    log.error("Merge failed, beginning rollback", extra={"error": str(original_exc)})
+    all_ok = True
+
+    if merger is not None:
+        try:
+            await merger.rollback()
+        except Exception:
+            log.exception("DiffMerger rollback failed during merge rollback")
+            all_ok = False
+
+        try:
+            registry.schema.set_schema_branch(name=merger.destination_branch.name, schema=pre_merge_schema)
+            merger.destination_branch.update_schema_hash()
+            await merger.destination_branch.save(db=db)
+        except Exception:
+            log.exception("Registry restore failed during merge rollback")
+            all_ok = False
+
+    if all_ok:
+        obj.status = BranchStatus.OPEN
+        await obj.save(db=db)
+        registry.branch[obj.name] = obj
+        log.info("Merge rollback completed; branch returned to OPEN")
+
+    else:
+        log.error(
+            "Merge rollback completed with errors; branch left at MERGING for manual recovery",
+            extra={"branch": obj.name},
+        )
+
+    return all_ok
+
+
 async def _do_merge_branch(
     db: InfrahubDatabase,
     log: Logger | LoggerAdapter,
@@ -329,83 +377,102 @@ async def _do_merge_branch(
     proposed_change_id: str | None = None,
 ) -> Sequence[tuple[DiffAction, NodeChangelog]]:
     component_registry = get_component_registry()
-
-    merger: BranchMerger | None = None
     workflow = get_workflow()
     merge_at = Timestamp()
     pre_merge_schema = registry.schema.get_schema_branch(name=registry.default_branch).duplicate()
-    async with lock.registry.global_graph_lock():
-        diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
-        diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
-        diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
-        merger = BranchMerger(
+
+    # Set to MERGING to lock the branch while merge proceeds
+    obj.status = BranchStatus.MERGING
+    await obj.save(db=db)
+    registry.branch[obj.name] = obj
+
+    merger: BranchMerger | None = None
+    diff_repository: DiffRepository | None = None
+
+    try:
+        async with lock.registry.global_graph_lock():
+            diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=obj)
+            diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=obj)
+            diff_merger = await component_registry.get_component(DiffMerger, db=db, branch=obj)
+            merger = BranchMerger(
+                db=db,
+                diff_coordinator=diff_coordinator,
+                diff_merger=diff_merger,
+                diff_repository=diff_repository,
+                source_branch=obj,
+                diff_locker=DiffLocker(),
+                workflow=workflow,
+            )
+            branch_diff = await merger.merge(at=merge_at)
+
+        changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=obj, db=db)
+        node_events = changelog_collector.collect_changelogs()
+
+        # Handle schema updates and migrations after merge
+        if await merger.has_schema_changes():
+            # Load the updated schema from DB after merge
+            log.info("Loading updated schema")
+            updated_schema = await registry.schema.load_schema_from_db(
+                db=db,
+                branch=merger.destination_branch,
+            )
+            log.info("Calculating migrations")
+            migrations = await merger.calculate_migrations(target_schema=updated_schema)
+
+            # disable the coordinator's internal rollback, it is handled within this function
+            log.info("Running migrations")
+            coordinator = SchemaUpdateCoordinator(
+                db=db,
+                branch=merger.destination_branch,
+                schema_manager=registry.schema,
+                origin_schema=pre_merge_schema,
+                workflow=workflow,
+                context=context,
+                migration_executor=MigrationExecutor.WORKFLOW,
+                logger=log,
+            )
+            await coordinator.execute(
+                candidate_schema=updated_schema,
+                at=merge_at,
+                migrations=migrations,
+                update_db=False,  # Schema nodes already written by merge
+                update_registry=True,
+                user_id=context.account.account_id,
+                manage_rollback=False,
+            )
+            log.info("Migrations completed")
+        # -------------------------------------------------------------
+        # Trigger the reconciliation of IPAM data after the merge
+        # -------------------------------------------------------------
+        diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=obj)
+        ipam_node_details = await diff_parser.get_changed_ipam_node_details(
+            source_branch_name=obj.name,
+            target_branch_name=registry.default_branch,
+        )
+        if ipam_node_details:
+            await workflow.submit_workflow(
+                workflow=IPAM_RECONCILIATION,
+                context=context,
+                parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
+            )
+        # -------------------------------------------------------------
+        # remove tracking ID from the diff because there is no diff after the merge
+        # -------------------------------------------------------------
+        await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
+        await diff_repository.freeze_diffs_for_branch(branch_name=obj.name)
+    except BaseException as exc:
+        await _rollback_merge(
             db=db,
-            diff_coordinator=diff_coordinator,
-            diff_merger=diff_merger,
-            diff_repository=diff_repository,
-            source_branch=obj,
-            diff_locker=DiffLocker(),
-            workflow=workflow,
+            log=log,
+            obj=obj,
+            merger=merger,
+            pre_merge_schema=pre_merge_schema,
+            original_exc=exc,
         )
-        branch_diff = await merger.merge(at=merge_at)
-
-    changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=obj, db=db)
-    node_events = changelog_collector.collect_changelogs()
-
-    # Handle schema updates and migrations after merge
-    if merger and await merger.has_schema_changes():
-        # Load the updated schema from DB after merge
-        log.info("Loading updated schema")
-        updated_schema = await registry.schema.load_schema_from_db(
-            db=db,
-            branch=merger.destination_branch,
-        )
-        log.info("Calculating migrations")
-        migrations = await merger.calculate_migrations(target_schema=updated_schema)
-
-        # Use coordinator to update registry and run migrations with rollback on failure
-        log.info("Running migrations")
-        coordinator = SchemaUpdateCoordinator(
-            db=db,
-            branch=merger.destination_branch,
-            schema_manager=registry.schema,
-            origin_schema=pre_merge_schema,
-            workflow=workflow,
-            context=context,
-            migration_executor=MigrationExecutor.WORKFLOW,
-            logger=log,
-        )
-        await coordinator.execute(
-            candidate_schema=updated_schema,
-            at=merge_at,
-            migrations=migrations,
-            update_db=False,  # Schema nodes already written by merge
-            update_registry=True,
-            user_id=context.account.account_id,
-        )
-        log.info("Migrations completed")
-    # -------------------------------------------------------------
-    # Trigger the reconciliation of IPAM data after the merge
-    # -------------------------------------------------------------
-    diff_parser = await component_registry.get_component(IpamDiffParser, db=db, branch=obj)
-    ipam_node_details = await diff_parser.get_changed_ipam_node_details(
-        source_branch_name=obj.name,
-        target_branch_name=registry.default_branch,
-    )
-    if ipam_node_details:
-        await workflow.submit_workflow(
-            workflow=IPAM_RECONCILIATION,
-            context=context,
-            parameters={"branch": registry.default_branch, "ipam_node_details": ipam_node_details},
-        )
-    # -------------------------------------------------------------
-    # remove tracking ID from the diff because there is no diff after the merge
-    # -------------------------------------------------------------
-    await diff_repository.mark_tracking_ids_merged(tracking_ids=[BranchTrackingId(name=obj.name)])
-    await diff_repository.freeze_diffs_for_branch(branch_name=obj.name)
+        raise
 
     # -------------------------------------------------------------
-    # Set branch status to MERGED to make it read-only
+    # Point of no return: merge fully succeeded. Advance to MERGED.
     # -------------------------------------------------------------
     obj.status = BranchStatus.MERGED
     await obj.save(db=db)

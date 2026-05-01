@@ -30,7 +30,7 @@ def get_permission_report(  # noqa: PLR0911
     # Note: Branch delete is allowed via middleware, this covers node permissions
     # We want this check about the super admin permission as not even an admin account
     # should be able to modify merged branches or those that need a rebase
-    if branch.status in (BranchStatus.MERGED, BranchStatus.NEED_REBASE) and action != "view":
+    if branch.status in (BranchStatus.MERGED, BranchStatus.MERGING, BranchStatus.NEED_REBASE) and action != "view":
         return BranchRelativePermissionDecision.DENY
 
     if global_permission_report[GlobalPermissions.SUPER_ADMIN]:
