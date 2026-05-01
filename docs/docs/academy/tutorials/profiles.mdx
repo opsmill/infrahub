@@ -9,7 +9,7 @@ By the end of this tutorial you will have created a Profile that defines standar
 
 This tutorial uses a network interface schema so you can follow along end-to-end with a single running example. The same patterns apply to any Profile-enabled schema.
 
-For conceptual information about Profiles, including inheritance rules and priority systems, see [Profiles](../../topics/profiles.mdx).
+For conceptual information about Profiles, including inheritance rules and priority systems, see [Profiles](../../profiles/index.mdx).
 
 ## What you'll achieve
 
@@ -173,7 +173,7 @@ The Profile will define these standard settings:
 
 :::info Relationships in Profiles
 
-From Infrahub 1.7 relationships can also be defined in Profiles. If you are using an earlier version, you can skip the untagged VLAN part. Learn more in the [Understanding Profiles in Infrahub](../../topics/profiles#relationships-in-profiles) topic.
+From Infrahub 1.7 relationships can also be defined in Profiles. If you are using an earlier version, you can skip the untagged VLAN part. Learn more in the [Understanding Profiles in Infrahub](../../profiles/index.mdx#relationships-in-profiles) topic.
 
 :::
 
@@ -673,7 +673,7 @@ You've successfully set up Profiles for your interfaces in Infrahub. Here's what
 
 Infrahub lets you assign multiple Profiles to a single node, giving you powerful composition capabilities. When multiple Profiles define the same attribute, the `profile_priority` value controls which takes precedence (lower number = higher priority).
 
-Learn more about Profile priorities in the [Profile priority system](../../topics/profiles.mdx#profile-priority-system) section.
+Learn more about Profile priorities in the [Profile priority system](../../profiles/priority-and-inheritance.mdx#profile-priority-system) section.
 
 #### Step 1: creating another Profile
 
@@ -877,7 +877,7 @@ For more information, see:
 
 ## Related resources
 
-- [Understanding Profiles in Infrahub](../../topics/profiles.mdx) - Detailed explanation of Profile concepts, inheritance rules, and design decisions
+- [Understanding Profiles in Infrahub](../../profiles/index.mdx) - Detailed explanation of Profile concepts, inheritance rules, and design decisions
 - [Metadata](../../topics/metadata.mdx) - Learn how Infrahub tracks data lineage and attribute sources
 - [Creating a schema](../../guides/create-schema.mdx) - Learn to create schemas that generate Profile support
 - [Creating an object template](../../guides/object-template.mdx) - Learn how to combine templates with Profiles for powerful configuration management
