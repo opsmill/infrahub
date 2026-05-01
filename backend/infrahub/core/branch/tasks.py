@@ -328,6 +328,7 @@ async def _rollback_merge(
     merger: BranchMerger,
     branch: Branch,
     pre_merge_schema: SchemaBranch,
+    pre_merge_branched_from: str | None,
 ) -> bool:
     """Best-effort unified rollback for merge failures.
 
@@ -349,6 +350,7 @@ async def _rollback_merge(
     except Exception:
         log.exception("Registry restore failed during merge rollback")
 
+    branch.branched_from = pre_merge_branched_from
     branch.status = BranchStatus.OPEN
     await branch.save(db=db)
     registry.branch[branch.name] = branch
@@ -368,6 +370,7 @@ async def _do_merge_branch(
     workflow = get_workflow()
     merge_at = Timestamp()
     pre_merge_schema = registry.schema.get_schema_branch(name=registry.default_branch).duplicate()
+    pre_merge_branched_from = branch.branched_from
 
     diff_repository = await component_registry.get_component(DiffRepository, db=db, branch=branch)
     diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)
@@ -447,6 +450,7 @@ async def _do_merge_branch(
             merger=merger,
             branch=branch,
             pre_merge_schema=pre_merge_schema,
+            pre_merge_branched_from=pre_merge_branched_from,
         )
         raise
 
