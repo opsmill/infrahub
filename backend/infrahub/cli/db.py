@@ -24,7 +24,6 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -439,11 +438,7 @@ async def migrate_database(
 
 
 async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
-    branches = [
-        b
-        for b in await Branch.get_list(db=db)
-        if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME] and not b.is_terminal
-    ]
+    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
     if not branches:
         return []
 

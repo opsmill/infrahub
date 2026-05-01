@@ -305,7 +305,7 @@ class StandardNode(BaseModel):
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> list[Self]:
         node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await StandardNodeGetListQuery.init(
