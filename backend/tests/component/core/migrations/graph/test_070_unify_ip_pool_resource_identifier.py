@@ -1,11 +1,11 @@
-from typing import Any
+from dataclasses import dataclass
 
 import pytest
 import ujson
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.constants import BranchSupportType, InfrahubKind
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m070_unify_ip_pool_resource_identifier import (
     NEW_IDENTIFIER,
@@ -20,106 +20,70 @@ from infrahub.core.schema import SchemaRoot, core_models
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
+from tests.helpers.db_validation import verify_graph
 
 # ---------------------------------------------------------------------------
-# Cypher used by the test to verify low-level data shape
+# Typed result types — what the helpers below return so each assertion reads
+# as a typed Python check rather than dict-key indexing.
 # ---------------------------------------------------------------------------
 
-COUNT_RELATIONSHIPS_BY_NAME = """
-MATCH (pool:CoreIPPrefixPool|CoreIPAddressPool)-[:IS_RELATED]-(r:Relationship)-[:IS_RELATED]-(prefix:BuiltinIPPrefix)
-WHERE r.name IN $names
-WITH DISTINCT r
-RETURN r.name AS name, count(r) AS total
-"""
 
-POOL_LABELS = """
-MATCH (n:CoreIPPrefixPool|CoreIPAddressPool)
-RETURN labels(n) AS labels, n.kind AS kind
-ORDER BY n.kind
-"""
-
-CORE_IP_POOL_GENERIC_COUNT = """
-MATCH (g:SchemaGeneric)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
-    -[:HAS_VALUE]->(v)
-WHERE v.value = "IPPool"
-RETURN count(g) AS total
-"""
-
-INHERIT_FROM_VALUE = """
-MATCH (sn:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
-    -[:HAS_VALUE]->(v_name)
-WHERE v_name.value = $node_name
-MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})
-    -[:HAS_VALUE]->(v_ns)
-WHERE v_ns.value = "Core"
-MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "inherit_from"})
-    -[:HAS_VALUE]->(av:AttributeValue)
-RETURN av.value AS value
-"""
-
-SCHEMA_REL_ATTRIBUTE_VALUE = """
-MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
-    -[:HAS_VALUE]->(v_kind)
-WHERE v_kind.value = $parent_name
-MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})
-    -[:HAS_VALUE]->(v_ns)
-WHERE v_ns.value = $parent_namespace
-MATCH (parent)-[:IS_RELATED]-(:Relationship)-[:IS_RELATED]-(sr:SchemaRelationship)
-    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
-    -[:HAS_VALUE]->(v_rel)
-WHERE v_rel.value = $relationship_name
-MATCH (sr)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute_name})
-    -[:HAS_VALUE]->(av:AttributeValue)
-RETURN av.value AS value
-"""
-
-IPAM_SCHEMA: dict[str, Any] = {
-    "nodes": [
-        {
-            "name": "IPPrefix",
-            "namespace": "Ipam",
-            "default_filter": "prefix__value",
-            "display_label": "prefix__value",
-            "branch": BranchSupportType.AWARE.value,
-            "inherit_from": [InfrahubKind.IPPREFIX],
-        },
-        {
-            "name": "IPAddress",
-            "namespace": "Ipam",
-            "default_filter": "address__value",
-            "display_label": "address__value",
-            "branch": BranchSupportType.AWARE.value,
-            "inherit_from": [InfrahubKind.IPADDRESS],
-        },
-    ],
-}
+@dataclass(frozen=True)
+class PoolLabelRow:
+    kind: str
+    labels: list[str]
 
 
 # ---------------------------------------------------------------------------
-# Helpers — read Cypher results into typed Python values so the assertions
-# below read like assertions against an API rather than raw query results.
+# Helpers — each one owns the Cypher it runs and converts the result into a
+# typed primitive or dataclass before returning.
 # ---------------------------------------------------------------------------
 
 
 async def _count_pool_relationships_by_name(db: InfrahubDatabase, names: list[str]) -> dict[str, int]:
-    rows = await db.execute_query(query=COUNT_RELATIONSHIPS_BY_NAME, params={"names": names})
-    return {row["name"]: row["total"] for row in rows}
+    query = """
+MATCH (pool:CoreIPPrefixPool|CoreIPAddressPool)-[:IS_RELATED]-(r:Relationship)-[:IS_RELATED]-(:BuiltinIPPrefix)
+WHERE r.name IN $names
+WITH DISTINCT r
+RETURN r.name AS name, count(r) AS total
+    """
+    rows = await db.execute_query(query=query, params={"names": names})
+    return {row["name"]: int(row["total"]) for row in rows}
 
 
-async def _get_pool_label_rows(db: InfrahubDatabase) -> list[Any]:
-    return await db.execute_query(query=POOL_LABELS)
+async def _get_pool_label_rows(db: InfrahubDatabase) -> list[PoolLabelRow]:
+    query = """
+MATCH (n:CoreIPPrefixPool|CoreIPAddressPool)
+RETURN labels(n) AS labels, n.kind AS kind
+ORDER BY n.kind
+    """
+    rows = await db.execute_query(query=query)
+    return [PoolLabelRow(kind=row["kind"], labels=list(row["labels"])) for row in rows]
 
 
 async def _count_core_ip_pool_generic(db: InfrahubDatabase) -> int:
-    rows = await db.execute_query(query=CORE_IP_POOL_GENERIC_COUNT)
+    query = """
+MATCH (g:SchemaGeneric)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v)
+WHERE v.value = "IPPool"
+RETURN count(g) AS total
+    """
+    rows = await db.execute_query(query=query)
     return int(rows[0]["total"]) if rows else 0
 
 
 async def _get_inherit_from_value(db: InfrahubDatabase, node_name: str) -> list[str]:
-    rows = await db.execute_query(query=INHERIT_FROM_VALUE, params={"node_name": node_name})
+    query = """
+MATCH (sn:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v_name)
+WHERE v_name.value = $node_name
+MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(v_ns)
+WHERE v_ns.value = "Core"
+MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "inherit_from"})-[:HAS_VALUE]->(av:AttributeValue)
+RETURN av.value AS value
+    """
+    rows = await db.execute_query(query=query, params={"node_name": node_name})
     if not rows:
         return []
-    return ujson.loads(rows[0]["value"])
+    return list(ujson.loads(rows[0]["value"]))
 
 
 async def _get_schema_relationship_attribute_value(
@@ -129,8 +93,19 @@ async def _get_schema_relationship_attribute_value(
     relationship_name: str,
     attribute_name: str,
 ) -> str:
+    query = """
+MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v_kind)
+WHERE v_kind.value = $parent_name
+MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(v_ns)
+WHERE v_ns.value = $parent_namespace
+MATCH (parent)-[:IS_RELATED]-(:Relationship)-[:IS_RELATED]-(sr:SchemaRelationship)
+    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v_rel)
+WHERE v_rel.value = $relationship_name
+MATCH (sr)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute_name})-[:HAS_VALUE]->(av:AttributeValue)
+RETURN av.value AS value
+    """
     rows = await db.execute_query(
-        query=SCHEMA_REL_ATTRIBUTE_VALUE,
+        query=query,
         params={
             "parent_name": parent_name,
             "parent_namespace": parent_namespace,
@@ -138,10 +113,10 @@ async def _get_schema_relationship_attribute_value(
             "attribute_name": attribute_name,
         },
     )
-    return rows[0]["value"]
+    return str(rows[0]["value"])
 
 
-def _downgrade_schema_in_memory(schema_branch: SchemaBranch) -> None:
+def _downgrade_schema(schema_branch: SchemaBranch) -> None:
     """Mutate the in-memory schema back to the pre-migration shape, before processing.
 
     This is what gets persisted to the DB so the rest of the test exercises a
@@ -174,17 +149,19 @@ async def pre_migration_schema_db(
     db: InfrahubDatabase,
     default_branch: Branch,
     register_internal_models_schema: SchemaBranch,
+    ipam_schema: SchemaRoot,
 ) -> SchemaBranch:
     """Persist a downgraded core schema (+ concrete IPAM nodes) to the database.
 
     Mirrors :func:`do_register_core_models_schema` but runs the in-memory downgrade
     between ``load_schema`` and ``process`` so the SchemaBranch is validated in its
-    pre-migration shape and persisted as such.
+    pre-migration shape and persisted as such. The IPAM concrete nodes come from the
+    shared ``ipam_schema`` fixture.
     """
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     schema_branch.load_schema(schema=SchemaRoot(**core_models))
-    _downgrade_schema_in_memory(schema_branch)
-    schema_branch.load_schema(schema=SchemaRoot(**IPAM_SCHEMA))
+    _downgrade_schema(schema_branch)
+    schema_branch.load_schema(schema=ipam_schema)
     schema_branch.process()
     default_branch.update_schema_hash()
 
@@ -246,9 +223,7 @@ async def test_migration_070(
     assert pre_counts.get(NEW_IDENTIFIER, 0) == 0
 
     for row in await _get_pool_label_rows(db):
-        assert "CoreIPPool" not in row["labels"], (
-            f"{row['kind']} unexpectedly already has :CoreIPPool ({row['labels']})"
-        )
+        assert "CoreIPPool" not in row.labels, f"{row.kind} unexpectedly already has :CoreIPPool ({row.labels})"
 
     assert await _count_core_ip_pool_generic(db) == 0
 
@@ -317,7 +292,7 @@ async def test_migration_070(
     pool_labels = await _get_pool_label_rows(db)
     assert pool_labels
     for row in pool_labels:
-        assert "CoreIPPool" in row["labels"], f"{row['kind']} missing :CoreIPPool after migration ({row['labels']})"
+        assert "CoreIPPool" in row.labels, f"{row.kind} missing :CoreIPPool after migration ({row.labels})"
 
     assert await _count_core_ip_pool_generic(db) >= 1
 
@@ -407,6 +382,11 @@ async def test_migration_070(
     assert loaded_address_pool is not None
     assert loaded_address_pool.get_kind() == InfrahubKind.IPADDRESSPOOL
 
+    # ---------------------------------------------------------------------
+    # 7. Run the cross-cutting graph integrity checks.
+    # ---------------------------------------------------------------------
+    await verify_graph(db=db)
+
 
 async def test_migration_070_is_idempotent(
     db: InfrahubDatabase,
@@ -424,3 +404,5 @@ async def test_migration_070_is_idempotent(
 
     validation_result = await migration.validate_migration(db=db)
     assert not validation_result.errors, validation_result.errors
+
+    await verify_graph(db=db)
