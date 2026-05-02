@@ -175,8 +175,8 @@ builtin_ip_prefix = GenericSchema(
         ),
         Rel(
             name="resource_pool",
-            peer="CoreIPAddressPool",
-            identifier="ipaddresspool__resource",
+            peer=InfrahubKind.IPPOOL,
+            identifier="ippool__resource",
             cardinality=Cardinality.MANY,
             branch=BranchSupportType.AGNOSTIC,
             optional=True,
