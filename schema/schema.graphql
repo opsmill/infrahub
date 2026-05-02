@@ -545,7 +545,7 @@ interface BuiltinIPPrefix {
   """The IP prefix in CIDR notation"""
   prefix: IPNetwork
   profiles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
-  resource_pool(default_address_type__is_protected: Boolean, default_address_type__owner__id: ID, default_address_type__source__id: ID, default_address_type__value: String, default_address_type__values: [String], default_prefix_length__is_protected: Boolean, default_prefix_length__owner__id: ID, default_prefix_length__source__id: ID, default_prefix_length__value: BigInt, default_prefix_length__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreIPAddressPool!
+  resource_pool(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreIPPool!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Percentage of the prefix that is allocated"""
   utilization: NumberAttribute
@@ -4084,7 +4084,7 @@ input CoreGroupUpdateInput {
 }
 
 """A pool of IP address resources"""
-type CoreIPAddressPool implements CoreNode & CoreResourcePool & LineageSource {
+type CoreIPAddressPool implements CoreIPPool & CoreNode & CoreResourcePool & LineageSource {
   """
   The object type to create when reserving a resource in the pool (required)
   """
@@ -4179,8 +4179,32 @@ input CoreIPAddressPoolUpsertInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+interface CoreIPPool {
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type CoreIPPoolUpdate {
+  object: CoreIPPool
+  ok: Boolean
+}
+
+input CoreIPPoolUpdateInput {
+  hfid: [String]
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
 """A pool of IP prefix resources"""
-type CoreIPPrefixPool implements CoreNode & CoreResourcePool & LineageSource {
+type CoreIPPrefixPool implements CoreIPPool & CoreNode & CoreResourcePool & LineageSource {
   """Default member type for allocated prefixes"""
   default_member_type: TextAttribute
   """
@@ -7779,6 +7803,12 @@ type EdgedCoreIPAddressPool {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+type EdgedCoreIPPool {
+  node: CoreIPPool
+  node_metadata: InfrahubNodeMetadata
+}
+
 """A pool of IP prefix resources"""
 type EdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
@@ -8584,7 +8614,7 @@ type InternalIPPrefixAvailable implements BuiltinIPPrefix & CoreNode {
   """The IP prefix in CIDR notation"""
   prefix: IPNetwork
   profiles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
-  resource_pool(default_address_type__is_protected: Boolean, default_address_type__owner__id: ID, default_address_type__source__id: ID, default_address_type__value: String, default_address_type__values: [String], default_prefix_length__is_protected: Boolean, default_prefix_length__owner__id: ID, default_prefix_length__source__id: ID, default_prefix_length__value: BigInt, default_prefix_length__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreIPAddressPool!
+  resource_pool(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreIPPool!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Percentage of the prefix that is allocated"""
   utilization: NumberAttribute
@@ -9156,6 +9186,8 @@ type Mutation {
   CoreIPAddressPoolUpdate(context: ContextInput, data: CoreIPAddressPoolUpdateInput!): CoreIPAddressPoolUpdate
   """A pool of IP address resources"""
   CoreIPAddressPoolUpsert(context: ContextInput, data: CoreIPAddressPoolUpsertInput!): CoreIPAddressPoolUpsert
+  """A pool of IP resources (prefixes or addresses)."""
+  CoreIPPoolUpdate(context: ContextInput, data: CoreIPPoolUpdateInput!): CoreIPPoolUpdate
   """A pool of IP prefix resources"""
   CoreIPPrefixPoolCreate(context: ContextInput, data: CoreIPPrefixPoolCreateInput!): CoreIPPrefixPoolCreate
   """A pool of IP prefix resources"""
@@ -9835,6 +9867,14 @@ type NestedEdgedCoreGroupTriggerRule {
 type NestedEdgedCoreIPAddressPool {
   node: CoreIPAddressPool
   node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type NestedEdgedCoreIPPool {
+  node: CoreIPPool
+  node_metadata: InfrahubNodeMetadata!
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
 }
@@ -10572,6 +10612,12 @@ type NestedPaginatedCoreIPAddressPool {
   count: Int!
   edges: [NestedEdgedCoreIPAddressPool!]!
   permissions: PaginatedObjectPermission!
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type NestedPaginatedCoreIPPool {
+  count: Int!
+  edges: [NestedEdgedCoreIPPool!]
 }
 
 """A pool of IP prefix resources"""
@@ -11371,6 +11417,13 @@ type PaginatedCoreGroupTriggerRule {
 type PaginatedCoreIPAddressPool {
   count: Int!
   edges: [EdgedCoreIPAddressPool!]!
+  permissions: PaginatedObjectPermission!
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type PaginatedCoreIPPool {
+  count: Int!
+  edges: [EdgedCoreIPPool!]!
   permissions: PaginatedObjectPermission!
 }
 
@@ -13001,31 +13054,8 @@ type Query {
     profiles__profile_priority__source__id: ID
     profiles__profile_priority__value: BigInt
     profiles__profile_priority__values: [BigInt]
-    resource_pool__default_address_type__is_protected: Boolean
-    resource_pool__default_address_type__owner__id: ID
-    resource_pool__default_address_type__source__id: ID
-    resource_pool__default_address_type__value: String
-    resource_pool__default_address_type__values: [String]
-    resource_pool__default_prefix_length__is_protected: Boolean
-    resource_pool__default_prefix_length__owner__id: ID
-    resource_pool__default_prefix_length__source__id: ID
-    resource_pool__default_prefix_length__value: BigInt
-    resource_pool__default_prefix_length__values: [BigInt]
-    resource_pool__description__is_protected: Boolean
-    resource_pool__description__owner__id: ID
-    resource_pool__description__source__id: ID
-    resource_pool__description__value: String
-    resource_pool__description__values: [String]
-    resource_pool__display_label__isnull: Boolean
-    resource_pool__display_label__value: String
-    resource_pool__display_label__values: [String]
     resource_pool__ids: [ID]
     resource_pool__isnull: Boolean
-    resource_pool__name__is_protected: Boolean
-    resource_pool__name__owner__id: ID
-    resource_pool__name__source__id: ID
-    resource_pool__name__value: String
-    resource_pool__name__values: [String]
     subscriber_of_groups__description__value: String
     subscriber_of_groups__description__values: [String]
     subscriber_of_groups__display_label__isnull: Boolean
@@ -18708,6 +18738,64 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreIPAddressPool!
+  CoreIPPool(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    ids: [ID]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+  ): PaginatedCoreIPPool!
   CoreIPPrefixPool(
     any__is_protected: Boolean
     any__owner__id: ID
