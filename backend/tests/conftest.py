@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import logging
 import os
@@ -74,7 +75,7 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
-from tests.helpers.diagnostics import install_redis_loop_diagnostics
+from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
@@ -119,6 +120,12 @@ def add_tracker() -> None:
 def _install_redis_loop_diagnostics() -> None:
     # This fixture should be deleted once the flakiness is gone
     install_redis_loop_diagnostics()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def _register_pytest_session_loop() -> None:
+    # This fixture should be deleted once the flakiness is gone
+    register_known_loop("pytest-session", asyncio.get_running_loop())
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

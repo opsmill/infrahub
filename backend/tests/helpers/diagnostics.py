@@ -12,6 +12,24 @@ from infrahub.server import app
 _INSTALLED_MARKER = "__diag_installed__"
 _CREATION_STACK_DEPTH = 12
 
+# Maps `id(loop)` to a human-readable label of the subsystem that owns the loop.
+# Populated by `register_known_loop` (e.g. `register_known_loop("pytest-session", loop)` from
+# the autouse pytest fixture). Looked up by `_loop_label` to annotate dumps; without an entry,
+# the dump falls back to `None` for that field. Best-effort: a loop with no registration is
+# still reported by id/repr/thread/stack — the label just won't be human-readable.
+_KNOWN_LOOPS: dict[int, str] = {}
+
+
+def register_known_loop(label: str, loop: asyncio.AbstractEventLoop) -> None:
+    """Tag `loop` with `label` so divergence and post-mortem dumps can name its owner."""
+    _KNOWN_LOOPS[id(loop)] = label
+
+
+def _loop_label(loop_id: int | None) -> str | None:
+    if loop_id is None:
+        return None
+    return _KNOWN_LOOPS.get(loop_id)
+
 
 def _current_loop_info() -> tuple[int | None, bool | None]:
     try:
@@ -50,7 +68,8 @@ def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
         lines.extend(f"    {sub}" for sub in line.rstrip().splitlines())
     try:
         current_loop_id, current_loop_closed = _current_loop_info()
-        lines.append(f"  current loop: id={current_loop_id} closed={current_loop_closed}")
+        current_loop_label = _loop_label(current_loop_id)
+        lines.append(f"  current loop: id={current_loop_id} label={current_loop_label!r} closed={current_loop_closed}")
         service = getattr(app.state, "service", None)
         cache = getattr(service, "_cache", None)
         connection = getattr(cache, "connection", None)
@@ -76,9 +95,11 @@ def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
                         creation_thread_name,
                         creation_stack,
                     ) = _conn_creation_info(conn)
+                    creation_loop_label = _loop_label(creation_loop_id)
                     lines.append(
                         f"      conn={id(conn)} writer={writer_id} loop={loop_id} loop_closed={loop_closed}"
-                        f" creation_loop={creation_loop_id} creation_loop_repr={creation_loop_repr!r}"
+                        f" creation_loop={creation_loop_id} creation_loop_label={creation_loop_label!r}"
+                        f" creation_loop_repr={creation_loop_repr!r}"
                         f" creation_thread={creation_thread_name!r}"
                     )
                     lines.extend(_format_stack_block(creation_stack, indent="        "))
@@ -95,6 +116,7 @@ def _dump_pool_loop_divergence(pool: ConnectionPool) -> None:
     current_loop_id, _ = _current_loop_info()
     if current_loop_id is None:
         return
+    current_loop_label = _loop_label(current_loop_id)
     diverged: list[str] = []
     for attr in ("_available_connections", "_in_use_connections"):
         for conn in list(getattr(pool, attr, None) or []):
@@ -106,10 +128,12 @@ def _dump_pool_loop_divergence(pool: ConnectionPool) -> None:
             ) = _conn_creation_info(conn)
             if creation_loop_id is None or creation_loop_id == current_loop_id:
                 continue
+            creation_loop_label = _loop_label(creation_loop_id)
             diverged.append(
                 f"  {attr}: conn={id(conn)} creation_loop={creation_loop_id}"
+                f" creation_loop_label={creation_loop_label!r}"
                 f" creation_loop_repr={creation_loop_repr!r} creation_thread={creation_thread_name!r}"
-                f" current_loop={current_loop_id}"
+                f" current_loop={current_loop_id} current_loop_label={current_loop_label!r}"
             )
             diverged.extend(_format_stack_block(creation_stack, indent="    "))
     if diverged:

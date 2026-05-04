@@ -14,7 +14,25 @@ import redis.asyncio as redis
 from redis.asyncio.connection import Connection, ConnectionPool
 
 from tests.helpers import diagnostics
-from tests.helpers.diagnostics import dump_event_loop_closed_diagnostic, install_redis_loop_diagnostics
+from tests.helpers.diagnostics import (
+    dump_event_loop_closed_diagnostic,
+    install_redis_loop_diagnostics,
+    register_known_loop,
+)
+
+
+@pytest.fixture(autouse=True)
+def _reset_known_loops() -> Generator[None, None, None]:
+    """Snapshot and clear the loop-label registry around each test so the session-scope
+    `_register_pytest_session_loop` fixture (and any registrations from other tests) do
+    not leak into substring assertions here."""
+    snapshot = diagnostics._KNOWN_LOOPS.copy()
+    diagnostics._KNOWN_LOOPS.clear()
+    try:
+        yield
+    finally:
+        diagnostics._KNOWN_LOOPS.clear()
+        diagnostics._KNOWN_LOOPS.update(snapshot)
 
 
 @pytest.fixture
@@ -128,7 +146,7 @@ def test_dump_redis_pool_details(
         f"      conn={id(conn_available)} writer={id(closed_writer)} loop={id(closed_loop)} loop_closed=True"
     ) in output
     assert (f"      conn={id(conn_in_use)} writer={id(open_writer)} loop={id(open_loop)} loop_closed=False") in output
-    assert "creation_loop=None creation_loop_repr=None creation_thread=None" in output
+    assert "creation_loop=None creation_loop_label=None creation_loop_repr=None creation_thread=None" in output
 
 
 def test_dump_redis_pool_with_empty_connection_buckets(
@@ -315,7 +333,10 @@ def test_dump_includes_creation_loop_when_stamped(
     dump_event_loop_closed_diagnostic("nid", _caught_runtime_error())
 
     output = captured_stderr.getvalue()
-    assert "creation_loop=424242 creation_loop_repr='<StampedLoop>' creation_thread='StampedThread'" in output
+    assert (
+        "creation_loop=424242 creation_loop_label=None creation_loop_repr='<StampedLoop>'"
+        " creation_thread='StampedThread'"
+    ) in output
     assert "        creation_stack:" in output
     assert '          File "stamped.py", line 9, in stamped_call' in output
 
@@ -328,4 +349,61 @@ async def test_dump_prints_current_loop(
     dump_event_loop_closed_diagnostic("nid", _caught_runtime_error())
 
     output = captured_stderr.getvalue()
-    assert f"  current loop: id={id(asyncio.get_running_loop())} closed=False" in output
+    assert f"  current loop: id={id(asyncio.get_running_loop())} label=None closed=False" in output
+
+
+async def test_register_known_loop_labels_current_loop_in_dump(
+    install_service_pool: Callable[[ConnectionPool | None], None], captured_stderr: io.StringIO
+) -> None:
+    register_known_loop("pytest-session", asyncio.get_running_loop())
+    install_service_pool(None)
+
+    dump_event_loop_closed_diagnostic("nid", _caught_runtime_error())
+
+    output = captured_stderr.getvalue()
+    assert f"  current loop: id={id(asyncio.get_running_loop())} label='pytest-session' closed=False" in output
+
+
+def test_dump_uses_label_for_known_creation_loop(
+    install_service_pool: Callable[[ConnectionPool | None], None], captured_stderr: io.StringIO
+) -> None:
+    diagnostics._KNOWN_LOOPS[424242] = "prefect-worker"
+    pool = ConnectionPool()
+    conn = Connection()
+    cast("Any", conn)._creation_loop_id = 424242
+    cast("Any", conn)._creation_loop_repr = "<StampedLoop>"
+    cast("Any", conn)._creation_thread_name = "StampedThread"
+    pool._available_connections.append(conn)
+    install_service_pool(pool)
+
+    dump_event_loop_closed_diagnostic("nid", _caught_runtime_error())
+
+    assert "creation_loop=424242 creation_loop_label='prefect-worker'" in captured_stderr.getvalue()
+
+
+async def test_pre_disconnect_dump_includes_known_loop_labels(
+    reset_diagnostics_install: None, monkeypatch: pytest.MonkeyPatch, captured_stderr: io.StringIO
+) -> None:
+    async def stub_disconnect(self: ConnectionPool, inuse_connections: bool = True) -> None:
+        return None
+
+    monkeypatch.setattr(ConnectionPool, "disconnect", stub_disconnect)
+
+    register_known_loop("pytest-session", asyncio.get_running_loop())
+    foreign_loop_id = id(asyncio.get_running_loop()) + 1
+    diagnostics._KNOWN_LOOPS[foreign_loop_id] = "prefect-worker"
+
+    install_redis_loop_diagnostics()
+
+    pool = ConnectionPool()
+    conn = Connection()
+    cast("Any", conn)._creation_loop_id = foreign_loop_id
+    cast("Any", conn)._creation_loop_repr = "<ForeignLoop>"
+    cast("Any", conn)._creation_thread_name = "ForeignThread"
+    pool._available_connections.append(conn)
+
+    await pool.disconnect()
+
+    output = captured_stderr.getvalue()
+    assert "creation_loop_label='prefect-worker'" in output
+    assert "current_loop_label='pytest-session'" in output
