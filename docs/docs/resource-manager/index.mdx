@@ -25,99 +25,6 @@ When an attribute is assigned by a Resource Manager, the attribute cannot be use
 This is due to the dynamic nature of using Resource Manager and the idempotency of using the `allow_upsert=True`, which uses the HFID to understand if an object already exists within the database.
 :::
 
-## Branch-agnostic allocation
-
-<center>
-  <VideoPlayer url='https://youtu.be/F7tvLRQULdg?si=S83VyA0xmXHQGQqV' light />
-</center>
-
-One of the most powerful features of Infrahub's Resource Manager is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
-
-Consider this scenario:
-
-1. You create a new branch "datacenter-expansion"
-2. You allocate IP address 10.0.0.50 to a new device in this branch
-3. Another team member working in a different branch "network-refresh" tries to allocate the same IP
-4. Infrahub prevents the duplicate allocation, even though the branches haven't been merged
-
-This behavior guarantees that resources remain unique and conflict-free when branches are eventually merged back to main.
-
-### Verifying branch-agnostic behavior
-
-1. Create a test branch
-
-```shell
-infrahubctl branch create test
-```
-
-2. Allocate an IP address in the test branch
-
-```graphql
-mutation {
-  InfrahubIPAddressPoolGetResource(
-    data: {
-      hfid: ["My IP address pool"]
-      data: {description: "my IP allocated on branch test"}
-    }
-  ) {
-    ok
-    node {
-      id
-      display_label
-    }
-  }
-}
-```
-
-3. Check allocation status from the main branch
-
-```graphql
-query {
-  InfrahubResourcePoolAllocated(
-    pool_id: "<POOL-ID>"
-    resource_id: "<PREFIX-ID>"
-  ) {
-    edges {
-      node {
-        display_label
-        branch
-      }
-    }
-  }
-  IpamIPAddress {
-    edges {
-      node {
-        display_label
-      }
-    }
-  }
-}
-```
-
-:::success
-
-The query shows the IP address is allocated in the test branch, preventing duplicate allocation in main, even though the IP address object doesn't exist in main yet.
-
-:::
-
-## Idempotent allocation
-
-Resource Manager supports idempotent allocation through the use of identifiers. When you include an `identifier` parameter in your allocation request, the same resource will be returned on repeated calls:
-
-```graphql
-mutation {
-  InfrahubIPAddressPoolGetResource(data: {
-    id: "<pool-id>",
-    identifier: "web-server-primary-ip",
-  })
-}
-```
-
-This feature is essential for:
-
-- Automated workflows that may run multiple times
-- [Generators](../topics/generator.mdx) that need consistent results
-
 ## Pool types and use cases
 
 ### IP address pools
@@ -215,6 +122,99 @@ mutation {
   })
 }
 ```
+
+## Branch-agnostic allocation
+
+<center>
+  <VideoPlayer url='https://youtu.be/F7tvLRQULdg?si=S83VyA0xmXHQGQqV' light />
+</center>
+
+One of the most powerful features of Infrahub's Resource Manager is branch-agnostic allocation. When you allocate a resource in any branch, that allocation is immediately reserved across all branches in your system. This prevents conflicts when merging branches and ensures resource uniqueness across your entire infrastructure.
+
+Consider this scenario:
+
+1. You create a new branch "datacenter-expansion"
+2. You allocate IP address 10.0.0.50 to a new device in this branch
+3. Another team member working in a different branch "network-refresh" tries to allocate the same IP
+4. Infrahub prevents the duplicate allocation, even though the branches haven't been merged
+
+This behavior guarantees that resources remain unique and conflict-free when branches are eventually merged back to main.
+
+### Verifying branch-agnostic behavior
+
+1. Create a test branch
+
+```shell
+infrahubctl branch create test
+```
+
+2. Allocate an IP address in the test branch
+
+```graphql
+mutation {
+  InfrahubIPAddressPoolGetResource(
+    data: {
+      hfid: ["My IP address pool"]
+      data: {description: "my IP allocated on branch test"}
+    }
+  ) {
+    ok
+    node {
+      id
+      display_label
+    }
+  }
+}
+```
+
+3. Check allocation status from the main branch
+
+```graphql
+query {
+  InfrahubResourcePoolAllocated(
+    pool_id: "<POOL-ID>"
+    resource_id: "<PREFIX-ID>"
+  ) {
+    edges {
+      node {
+        display_label
+        branch
+      }
+    }
+  }
+  IpamIPAddress {
+    edges {
+      node {
+        display_label
+      }
+    }
+  }
+}
+```
+
+:::success
+
+The query shows the IP address is allocated in the test branch, preventing duplicate allocation in main, even though the IP address object doesn't exist in main yet.
+
+:::
+
+## Idempotent allocation
+
+Resource Manager supports idempotent allocation through the use of identifiers. When you include an `identifier` parameter in your allocation request, the same resource will be returned on repeated calls:
+
+```graphql
+mutation {
+  InfrahubIPAddressPoolGetResource(data: {
+    id: "<pool-id>",
+    identifier: "web-server-primary-ip",
+  })
+}
+```
+
+This feature is essential for:
+
+- Automated workflows that may run multiple times
+- [Generators](../topics/generator.mdx) that need consistent results
 
 ## Advanced features
 
