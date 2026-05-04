@@ -439,8 +439,6 @@ async def migrate_database(
 
 async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
     branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
-    if not branches:
-        return []
 
     branches_needing_rebase: list[Branch] = []
     for branch in branches:
