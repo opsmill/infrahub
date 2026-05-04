@@ -163,7 +163,6 @@ async def run_generator(
     node_ids: list[str],
     generator_definition_id: str,
     context: InfrahubContext,
-    service: InfrahubServices,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
 
