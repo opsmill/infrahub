@@ -2,7 +2,7 @@
 import asyncio
 import threading
 from sys import stderr
-from traceback import format_exception
+from traceback import format_exception, format_stack
 from typing import Any, cast
 
 from redis.asyncio.connection import Connection, ConnectionPool
@@ -10,6 +10,7 @@ from redis.asyncio.connection import Connection, ConnectionPool
 from infrahub.server import app
 
 _INSTALLED_MARKER = "__diag_installed__"
+_CREATION_STACK_DEPTH = 12
 
 
 def _current_loop_info() -> tuple[int | None, bool | None]:
@@ -20,12 +21,21 @@ def _current_loop_info() -> tuple[int | None, bool | None]:
     return id(loop), loop.is_closed()
 
 
-def _conn_creation_info(conn: object) -> tuple[int | None, str | None, str | None]:
+def _conn_creation_info(conn: object) -> tuple[int | None, str | None, str | None, str | None]:
     return (
         getattr(conn, "_creation_loop_id", None),
         getattr(conn, "_creation_loop_repr", None),
         getattr(conn, "_creation_thread_name", None),
+        getattr(conn, "_creation_stack", None),
     )
+
+
+def _format_stack_block(creation_stack: str | None, indent: str) -> list[str]:
+    if not creation_stack:
+        return []
+    block = [f"{indent}creation_stack:"]
+    block.extend(f"{indent}  {line}" for line in creation_stack.rstrip().splitlines())
+    return block
 
 
 def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
@@ -60,12 +70,18 @@ def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
                     writer_id = id(writer) if writer else None
                     loop_id = id(loop) if loop else None
                     loop_closed = loop.is_closed() if loop is not None else "n/a"
-                    creation_loop_id, creation_loop_repr, creation_thread_name = _conn_creation_info(conn)
+                    (
+                        creation_loop_id,
+                        creation_loop_repr,
+                        creation_thread_name,
+                        creation_stack,
+                    ) = _conn_creation_info(conn)
                     lines.append(
                         f"      conn={id(conn)} writer={writer_id} loop={loop_id} loop_closed={loop_closed}"
                         f" creation_loop={creation_loop_id} creation_loop_repr={creation_loop_repr!r}"
                         f" creation_thread={creation_thread_name!r}"
                     )
+                    lines.extend(_format_stack_block(creation_stack, indent="        "))
         else:
             lines.append("  redis pool: <none>")
     except Exception as diag_exc:
@@ -82,7 +98,12 @@ def _dump_pool_loop_divergence(pool: ConnectionPool) -> None:
     diverged: list[str] = []
     for attr in ("_available_connections", "_in_use_connections"):
         for conn in list(getattr(pool, attr, None) or []):
-            creation_loop_id, creation_loop_repr, creation_thread_name = _conn_creation_info(conn)
+            (
+                creation_loop_id,
+                creation_loop_repr,
+                creation_thread_name,
+                creation_stack,
+            ) = _conn_creation_info(conn)
             if creation_loop_id is None or creation_loop_id == current_loop_id:
                 continue
             diverged.append(
@@ -90,6 +111,7 @@ def _dump_pool_loop_divergence(pool: ConnectionPool) -> None:
                 f" creation_loop_repr={creation_loop_repr!r} creation_thread={creation_thread_name!r}"
                 f" current_loop={current_loop_id}"
             )
+            diverged.extend(_format_stack_block(creation_stack, indent="    "))
     if diverged:
         print(
             "\n".join(["Redis pool disconnect loop divergence detected:", *diverged]),
@@ -101,11 +123,12 @@ def _dump_pool_loop_divergence(pool: ConnectionPool) -> None:
 def install_redis_loop_diagnostics() -> None:
     """Monkey-patch redis.asyncio Connection / ConnectionPool to record event-loop identity.
 
-    Stamps `_creation_loop_id`, `_creation_loop_repr`, and `_creation_thread_name` on each Connection
-    right after `_connect` succeeds. The fields survive `Connection.disconnect()`'s `finally:`, so the
-    post-mortem dump can identify which loop and thread the writer was bound to. Also wraps
-    `ConnectionPool.disconnect` to log per-connection loop divergence to stderr *before* the disconnect
-    runs — gives a proactive signal even when the underlying disconnect doesn't raise.
+    Stamps `_creation_loop_id`, `_creation_loop_repr`, `_creation_thread_name`, and `_creation_stack`
+    on each Connection right after `_connect` succeeds. The fields survive `Connection.disconnect()`'s
+    `finally:`, so the post-mortem dump can identify which loop and thread the writer was bound to and
+    which call site triggered the connect. Also wraps `ConnectionPool.disconnect` to log per-connection
+    loop divergence to stderr *before* the disconnect runs — gives a proactive signal even when the
+    underlying disconnect doesn't raise.
 
     Idempotent: calling it again is a no-op once the marker is set on both patched targets.
     """
@@ -125,6 +148,9 @@ def install_redis_loop_diagnostics() -> None:
         cast("Any", self)._creation_loop_id = id(loop)
         cast("Any", self)._creation_loop_repr = repr(loop)
         cast("Any", self)._creation_thread_name = threading.current_thread().name
+        # format_stack returns frames oldest-first; drop the topmost (this wrapper) so the
+        # innermost shown frame is the awaiter of `_connect`.
+        cast("Any", self)._creation_stack = "".join(format_stack(limit=_CREATION_STACK_DEPTH)[:-1])
 
     original_disconnect = ConnectionPool.disconnect
 

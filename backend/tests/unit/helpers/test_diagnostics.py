@@ -225,6 +225,12 @@ async def test_install_stamps_creation_loop_id_on_connection(
     assert cast("Any", conn)._creation_loop_id == id(asyncio.get_running_loop())
     assert cast("Any", conn)._creation_loop_repr == repr(asyncio.get_running_loop())
     assert cast("Any", conn)._creation_thread_name == threading.current_thread().name
+    creation_stack = cast("Any", conn)._creation_stack
+    assert isinstance(creation_stack, str)
+    assert creation_stack
+    # Topmost frame (the wrapper itself) is dropped — innermost should be the awaiter.
+    assert "_instrumented_connect" not in creation_stack
+    assert "test_install_stamps_creation_loop_id_on_connection" in creation_stack
 
 
 async def test_install_pre_disconnect_logs_loop_divergence(
@@ -245,6 +251,7 @@ async def test_install_pre_disconnect_logs_loop_divergence(
     cast("Any", conn)._creation_loop_id = foreign_loop_id
     cast("Any", conn)._creation_loop_repr = "<FakeLoop running=False>"
     cast("Any", conn)._creation_thread_name = "ForeignThread-7"
+    cast("Any", conn)._creation_stack = '  File "fake.py", line 1, in fake_call\n    await connect()\n'
     pool._available_connections.append(conn)
 
     await pool.disconnect()
@@ -254,6 +261,8 @@ async def test_install_pre_disconnect_logs_loop_divergence(
     assert f"creation_loop={foreign_loop_id}" in output
     assert "creation_loop_repr='<FakeLoop running=False>'" in output
     assert "creation_thread='ForeignThread-7'" in output
+    assert "    creation_stack:" in output
+    assert '      File "fake.py", line 1, in fake_call' in output
     assert disconnected == [pool]  # original disconnect still runs
 
 
@@ -299,6 +308,7 @@ def test_dump_includes_creation_loop_when_stamped(
     cast("Any", conn)._creation_loop_id = 424242
     cast("Any", conn)._creation_loop_repr = "<StampedLoop>"
     cast("Any", conn)._creation_thread_name = "StampedThread"
+    cast("Any", conn)._creation_stack = '  File "stamped.py", line 9, in stamped_call\n    await x()\n'
     pool._available_connections.append(conn)
     install_service_pool(pool)
 
@@ -306,6 +316,8 @@ def test_dump_includes_creation_loop_when_stamped(
 
     output = captured_stderr.getvalue()
     assert "creation_loop=424242 creation_loop_repr='<StampedLoop>' creation_thread='StampedThread'" in output
+    assert "        creation_stack:" in output
+    assert '          File "stamped.py", line 9, in stamped_call' in output
 
 
 async def test_dump_prints_current_loop(
