@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Self
+from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from infrahub_sdk.graphql import Query
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import RelationshipCardinality
+from infrahub.core.query.node_query import NodeIDQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent
@@ -161,6 +162,10 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
             actions=[workflow],
             target_kind=trigger_definition_target_kind,
         )
+
+
+class DisplayLabelNodeIDQuery(NodeIDQuery):
+    query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"
 
 
 class DisplayLabelJinja2GraphQLResponse(BaseModel):

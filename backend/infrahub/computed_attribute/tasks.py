@@ -32,6 +32,7 @@ from .models import (
     ComputedAttrJinja2TriggerDefinition,
     PythonTransformTarget,
 )
+from .queries import ComputedAttributeNodeIDQuery
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -309,8 +310,9 @@ async def trigger_update_jinja2_computed_attributes(
 
     client = get_client()
 
-    # NOTE we only need the id of the nodes, we need to ooptimize the query here
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
+    node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
+    response = await client.execute_graphql(query=node_query.render_query(), branch_name=branch_name)
+    nodes = node_query.parse_response(response=response)
 
     for node in nodes:
         await get_workflow().submit_workflow(
