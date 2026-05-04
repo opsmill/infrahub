@@ -93,7 +93,7 @@ dev = [
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
     "ruff==0.15.0",
-    "invoke==2.2.0",
+    "invoke==2.2.1",
     "pytest-benchmark>=4.0.0,<5",
     "pytest-codspeed>=4.2.0,<5",
     "polyfactory==2.16.2",
