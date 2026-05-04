@@ -70,7 +70,9 @@ Recommend a pattern based on the audit. Get user approval before creating files.
 
 **Default**: single-page merge unless the feature genuinely warrants more complexity.
 
-★ **Gate**: present the recommended pattern with rationale. User approves or chooses different.
+**Tutorial scenario-shape test.** If the chosen pattern preserves an Academy tutorial (Tutorial extraction or Split), apply this check before keeping it: read the source guide and ask "does this teach a coherent end-to-end scenario someone would actually want to learn — routers/switches at scale, modeling a service, onboarding a new team — or is it the same content as the existing guide with sequence numbers stuck on it?" If the latter, the tutorial is feature-oriented, not scenario-oriented; flag it to the user and recommend **dropping the tutorial** from this PR with a follow-up entry on the Open Questions Confluence page describing the scenario rewrite. Do not ship feature-oriented tutorials — they don't earn their sidebar slot. (Precedent: the Profiles tutorial was dropped on PR #9114 review for exactly this reason.)
+
+★ **Gate**: present the recommended pattern with rationale, including the tutorial scenario-shape verdict if applicable. User approves or chooses different.
 
 ### Step 4 — Create new files
 
@@ -196,13 +198,14 @@ uv run invoke docs.lint
 
 This runs both markdownlint and Vale. Fix any reported issues before continuing. If Vale isn't installed locally a warning prints; that's fine — markdownlint coverage is the harder one to pass.
 
-Also check for AGENTS.md "Never Do" words that linters miss (`simple`, `easy`, `just`):
+Also check for AGENTS.md "Never Do" words that linters miss (`simple`, `easy`, `just`). Run this against **every file changed in the PR** — not just the docs pages, but also any skill, agent guide, or dev doc you touched. The forbidden-words rule is global; in-house dev docs aren't exempt.
 
 ```bash
-grep -ni '\bsimple\b\|\beasy\b\|\bjust\b' docs/docs/<feature-slug>/*.mdx docs/docs/academy/tutorials/<feature-slug>.mdx
+git diff --name-only origin/demo/groups-diataxis-example...HEAD \
+  | xargs grep -niE '\bsimple\b|\beasy\b|\bjust\b' 2>/dev/null
 ```
 
-If any matches are in NEW content, fix in place. If matches are in PRESERVED content, propose fixing as part of the migration since the file is shipping under the new structure (the Profiles migration set this precedent).
+If any matches are in NEW content (whether docs or skill/dev files), fix in place. If matches are in PRESERVED content, propose fixing as part of the migration since the file is shipping under the new structure (the Profiles migration set this precedent).
 
 Then commit, push, and open the PR:
 

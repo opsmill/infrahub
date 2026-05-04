@@ -1,20 +1,46 @@
 ---
-title: Creating a computed attribute
+title: Computed attributes
 ---
 
-# Creating a computed attribute in Infrahub
+The computed attributes feature enables the dynamic calculation of attribute values based on user-defined logic.
 
-Infrahub supports two different types of computed attributes:
+Currently, Infrahub supports two main types of computed attributes:
 
-- [**Jinja2**](../computed-attributes/index.mdx#jinja-computed-attribute) uses a concise Jinja2 template directly within the schema definition.
-- [**Python**](../computed-attributes/index.mdx#python-computed-attribute) leverages Infrahub's [Python Transformation](../topics/transformation.mdx) feature to offer endless possibilities.
+* **Jinja2** – Lightweight, but limited in relationship handling.
+* **Python** – More flexible and powerful, but requires async execution.
 
-## Recommendations
+::::info Limitations
 
-- We recommend to keep Python Transformations straightforward to not impact system performance.
-- Use `Jinja2` when the calculation logic is straightforward and concise.
+Computed attributes have some inherent restrictions due to system constraints and performance considerations. Keep these in mind when designing your schema:
 
-## Adding a Jinja2 computed attribute
+* Only `URL` and `Text` attribute kinds are supported for computed attributes.
+
+::::
+
+## Choosing between Jinja2 and Python
+
+| Computed Attribute Kind | Mandatory Attribute Support | Relationship Constraints                                 | Complexity Handling                   |
+|-------------------------|-----------------------------|----------------------------------------------------------|---------------------------------------|
+| **Jinja2**              | ✅ Supported                | Cannot use `many` cardinality; only direct relationships | Best for straightforward operations   |
+| **Python**              | ❌ Not supported            | No restrictions                                          | Suitable for complex logic            |
+
+## Jinja2 computed attributes {#jinja-computed-attribute}
+
+Users can input a concise Jinja2 template directly within the schema definition. Any change to any field used to compute the value will automatically update it.
+
+Use Jinja2 when the calculation logic is straightforward and concise.
+
+### Restrictions
+
+::::warning
+
+* Jinja2 computed attributes **cannot** reference relationships with cardinality `many`.
+* Only **direct** relationships can be used (i.e., a relationship of a relationship is not accessible).
+* A computed attribute can only be inherited from one generic, as the order of operations would be unclear if the same computed attribute was defined on multiple generics.
+
+::::
+
+### How to add a Jinja2 computed attribute
 
 To create a Jinja2 computed attribute everything happens directly in the schema definition. Refer to this guide to find further information about [Schema Creation](../guides/create-schema.mdx).
 
@@ -74,7 +100,51 @@ For more information, please consult the [SDK Templating Reference]($(base_url)p
 
 You can now load this schema into your Infrahub instance. For more details, refer to the [Schema Creation Guide](../guides/create-schema.mdx).
 
-## Adding Python computed attribute
+### How to test Jinja2 computed attributes locally
+
+When developing Jinja2 computed attributes, it can be difficult to get the filter syntax right, especially if you need to push the schema every time to test a change. Instead, you can test your Jinja2 computed attribute logic locally using Pytest and the `Jinja2Template` class from the Infrahub Python SDK.
+
+Example:
+
+```python
+import pytest
+from infrahub_sdk.template import Jinja2Template
+
+INTF_INDEX_JINJA2 = "{{ \"%03d\"| format(name__value | split_interface | last | int) }}"
+
+@pytest.mark.parametrize(
+    "intf_name,expected",
+    [
+        ("Ethernet12", "012"),
+        ("Ethernet4", "004"),
+    ]
+)
+async def test_intf_index(intf_name, expected):
+    tpl = Jinja2Template(template=INTF_INDEX_JINJA2)
+    rendered = await tpl.render(variables={"name__value": intf_name})
+    assert rendered == expected
+```
+
+This approach allows you to quickly iterate and validate your computed attribute logic without needing to push changes to the schema. Adjust the template and test cases as needed to cover different scenarios.
+
+## Python computed attributes {#python-computed-attribute}
+
+Python computed attributes leverage Infrahub's [Python Transformation](../topics/transformation.mdx) feature. Users can define which Transformation to apply directly within the schema. The computation of the value is delegated to workers as asynchronous tasks, which may cause the value to take a few seconds to update.
+
+Python scripts do not have the limitations of Jinja2 computed attributes and can include more complex logic, including relationships with cardinality `many` and nested relationships.
+
+Keep Python Transformations straightforward to avoid impacting system performance.
+
+### Restrictions
+
+::::warning
+
+* Mandatory attributes **cannot** use Python computed attributes.
+* Complex scripts **may impact system performance**.
+
+::::
+
+### How to add a Python computed attribute
 
 Creating a Python computed attribute is a two-step process:
 
@@ -83,7 +153,7 @@ Creating a Python computed attribute is a two-step process:
 
 In the following example we will create a computed attribute `description` for our `InfraCircuit` node. The value will be a combination of all endpoints locations.
 
-### Add the attribute to the schema
+#### Add the attribute to the schema
 
 Here's the schema we'll use as a starting point:
 
@@ -153,9 +223,9 @@ You can specify a Transformation that doesn't yet exist in Infrahub, and the att
 
 :::
 
-### Create the Python Transformation
+#### Create the Python Transformation
 
-Please refer to the [Python Transformation guide](./python-transform.mdx) for further details.
+Please refer to the [Python Transformation guide](../guides/python-transform.mdx) for further details.
 
 1. First we prepare a GraphQL query that returns the data we need
 
@@ -265,30 +335,3 @@ You need to commit these files to a Git repository and link the repository to In
 The circuit's description is now automatically computed (this process may take a few seconds). Any changes to related attributes (i.e., endpoint name) will trigger a reevaluation and update the value accordingly.
 
 :::
-
-## How to test Jinja2 computed attributes locally
-
-When developing Jinja2 computed attributes, it can be difficult to get the filter syntax right, especially if you need to push the schema every time to test a change. Instead, you can test your Jinja2 computed attribute logic locally using Pytest and the `Jinja2Template` class from the Infrahub Python SDK.
-
-Example:
-
-```python
-import pytest
-from infrahub_sdk.template import Jinja2Template
-
-INTF_INDEX_JINJA2 = "{{ \"%03d\"| format(name__value | split_interface | last | int) }}"
-
-@pytest.mark.parametrize(
-    "intf_name,expected",
-    [
-        ("Ethernet12", "012"),
-        ("Ethernet4", "004"),
-    ]
-)
-async def test_intf_index(intf_name, expected):
-    tpl = Jinja2Template(template=INTF_INDEX_JINJA2)
-    rendered = await tpl.render(variables={"name__value": intf_name})
-    assert rendered == expected
-```
-
-This approach allows you to quickly iterate and validate your computed attribute logic without needing to push changes to the schema. Adjust the template and test cases as needed to cover different scenarios.

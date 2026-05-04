@@ -46,3 +46,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | File | Feature | PR |
 |---|---|---|
 | `profiles.yml` | Profiles | TBD |
+| `computed-attributes.yml` | Computed Attributes | TBD |
