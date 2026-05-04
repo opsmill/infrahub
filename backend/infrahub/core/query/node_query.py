@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, ClassVar
 
 from infrahub_sdk.graphql import Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
-@dataclass(frozen=True)
-class NodeID:
+class NodeID(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     id: str
 
 
