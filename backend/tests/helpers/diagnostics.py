@@ -2,6 +2,7 @@
 import asyncio
 from sys import stderr
 from traceback import format_exception
+from typing import Any, cast
 
 from redis.asyncio.connection import Connection, ConnectionPool
 
@@ -114,8 +115,8 @@ def install_redis_loop_diagnostics() -> None:
             loop = asyncio.get_running_loop()
         except RuntimeError:
             return
-        self._creation_loop_id = id(loop)
-        self._creation_loop_repr = repr(loop)
+        cast("Any", self)._creation_loop_id = id(loop)
+        cast("Any", self)._creation_loop_repr = repr(loop)
 
     original_disconnect = ConnectionPool.disconnect
 
@@ -128,5 +129,5 @@ def install_redis_loop_diagnostics() -> None:
 
     setattr(_instrumented_connect, _INSTALLED_MARKER, True)
     setattr(_instrumented_disconnect, _INSTALLED_MARKER, True)
-    Connection._connect = _instrumented_connect
-    ConnectionPool.disconnect = _instrumented_disconnect
+    cast("Any", Connection)._connect = _instrumented_connect
+    cast("Any", ConnectionPool).disconnect = _instrumented_disconnect

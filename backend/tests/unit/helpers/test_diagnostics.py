@@ -5,7 +5,7 @@ import contextlib
 import io
 import socket
 from types import SimpleNamespace
-from typing import Callable, Generator
+from typing import Any, Callable, Generator, cast
 
 import pytest
 import redis.asyncio as redis
@@ -203,8 +203,8 @@ def reset_diagnostics_install() -> Generator[None, None, None]:
     try:
         yield
     finally:
-        Connection._connect = original_connect
-        ConnectionPool.disconnect = original_disconnect
+        cast("Any", Connection)._connect = original_connect
+        cast("Any", ConnectionPool).disconnect = original_disconnect
 
 
 async def test_install_stamps_creation_loop_id_on_connection(
@@ -220,8 +220,8 @@ async def test_install_stamps_creation_loop_id_on_connection(
     conn = Connection()
     await conn._connect()
 
-    assert conn._creation_loop_id == id(asyncio.get_running_loop())
-    assert conn._creation_loop_repr == repr(asyncio.get_running_loop())
+    assert cast("Any", conn)._creation_loop_id == id(asyncio.get_running_loop())
+    assert cast("Any", conn)._creation_loop_repr == repr(asyncio.get_running_loop())
 
 
 async def test_install_pre_disconnect_logs_loop_divergence(
@@ -239,8 +239,8 @@ async def test_install_pre_disconnect_logs_loop_divergence(
     pool = ConnectionPool()
     foreign_loop_id = id(asyncio.get_running_loop()) + 1  # guaranteed to differ
     conn = Connection()
-    conn._creation_loop_id = foreign_loop_id
-    conn._creation_loop_repr = "<FakeLoop running=False>"
+    cast("Any", conn)._creation_loop_id = foreign_loop_id
+    cast("Any", conn)._creation_loop_repr = "<FakeLoop running=False>"
     pool._available_connections.append(conn)
 
     await pool.disconnect()
@@ -264,8 +264,8 @@ async def test_install_pre_disconnect_silent_when_no_divergence(
 
     pool = ConnectionPool()
     conn = Connection()
-    conn._creation_loop_id = id(asyncio.get_running_loop())
-    conn._creation_loop_repr = repr(asyncio.get_running_loop())
+    cast("Any", conn)._creation_loop_id = id(asyncio.get_running_loop())
+    cast("Any", conn)._creation_loop_repr = repr(asyncio.get_running_loop())
     pool._available_connections.append(conn)
 
     await pool.disconnect()
@@ -291,8 +291,8 @@ def test_dump_includes_creation_loop_when_stamped(
 ) -> None:
     pool = ConnectionPool()
     conn = Connection()
-    conn._creation_loop_id = 424242
-    conn._creation_loop_repr = "<StampedLoop>"
+    cast("Any", conn)._creation_loop_id = 424242
+    cast("Any", conn)._creation_loop_repr = "<StampedLoop>"
     pool._available_connections.append(conn)
     install_service_pool(pool)
 
