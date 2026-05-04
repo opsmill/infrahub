@@ -52,6 +52,7 @@ from .models import (
     GitRepositoryAddReadOnly,
     GitRepositoryImportObjects,
     GitRepositoryMerge,
+    GitRepositoryNodeQuery,
     GitRepositoryPullReadOnly,
     RequestArtifactDefinitionGenerate,
     RequestArtifactGenerate,
@@ -142,7 +143,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
 
     client = get_client()
 
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
@@ -150,9 +153,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
             client=client,
             branch=branch,
             branch_id=branch_id,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
             message_bus=await get_message_bus(),
         )
 
@@ -164,16 +167,18 @@ async def create_branch(branch: str, branch_id: str) -> None:
 async def delete_git_branch(branch: str) -> None:
     """Fan out branch deletion across all CoreRepository instances."""
     client = get_client()
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
             task=git_branch_delete,
             client=client,
             branch=branch,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
         )
     async for _, _ in batch.execute():
         pass

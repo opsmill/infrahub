@@ -1,9 +1,56 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any, ClassVar
+
+from infrahub_sdk.graphql import Query
 from pydantic import BaseModel, ConfigDict, Field
 
-from infrahub.context import InfrahubContext
-from infrahub.core.node import Node
-from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
-from infrahub.message_bus.types import ProposedChangeBranchDiff
+if TYPE_CHECKING:
+    from infrahub.context import InfrahubContext
+    from infrahub.core.node import Node
+    from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
+    from infrahub.message_bus.types import ProposedChangeBranchDiff
+
+
+class GitRepoNode(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str
+    location: str
+
+
+class GitRepositoryNodeQuery(BaseModel):
+    query_name: ClassVar[str] = "GitFetchRepositories"
+
+    def render_query(self) -> str:
+        query = Query(
+            name=self.query_name,
+            query={
+                "CoreRepository": {
+                    "edges": {
+                        "node": {
+                            "id": None,
+                            "name": {"value": None},
+                            "location": {"value": None},
+                        }
+                    }
+                }
+            },
+        )
+        return query.render()
+
+    def parse_response(self, response: dict[str, Any]) -> list[GitRepoNode]:
+        result: list[GitRepoNode] = []
+        if kind_payload := response.get("CoreRepository"):
+            for edge in kind_payload.get("edges", []):
+                if node := edge.get("node"):
+                    node_id = node.get("id")
+                    name = (node.get("name") or {}).get("value")
+                    location = (node.get("location") or {}).get("value")
+                    if node_id and name and location:
+                        result.append(GitRepoNode(id=node_id, name=name, location=location))
+        return result
 
 
 class RequestArtifactDefinitionGenerate(BaseModel):

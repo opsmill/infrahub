@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from infrahub_sdk.protocols import CoreTransformPython
+from infrahub_sdk.graphql import Query as GraphQLQuery
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
@@ -32,7 +32,7 @@ from .models import (
     ComputedAttrJinja2TriggerDefinition,
     PythonTransformTarget,
 )
-from .queries import ComputedAttributeNodeIDQuery
+from .queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -82,47 +82,56 @@ async def process_transform(
         return
 
     for attribute_name, transform_attribute in transform_attributes.items():
-        transform = await client.get(
-            kind=CoreTransformPython,
-            branch=branch_name,
-            id=transform_attribute.transform,
-            prefetch_relationships=True,
-            populate_store=True,
-        )
+        if not transform_attribute.transform:
+            continue
+        transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
+        transform_response = await client.execute_graphql(query=transform_query.render_query(), branch_name=branch_name)
+        transform = transform_query.parse_response(response=transform_response)
 
         if not transform:
             continue
 
-        repo_node = await client.get(
-            kind=str(transform.repository.peer.typename),
-            branch=branch_name,
-            id=transform.repository.peer.id,
-            raise_when_missing=True,
+        commit_query = GraphQLQuery(
+            name="FetchRepositoryCommit",
+            query={
+                transform.repository_typename: {
+                    "@filters": {"ids": [transform.repository_id]},
+                    "edges": {"node": {"commit": {"value": None}}},
+                }
+            },
+        )
+        commit_response = await client.execute_graphql(query=commit_query.render(), branch_name=branch_name)
+        repository_commit = (
+            commit_response.get(transform.repository_typename, {})
+            .get("edges", [{}])[0]
+            .get("node", {})
+            .get("commit", {})
+            .get("value")
         )
 
         repo = await get_initialized_repo(
             client=client,
-            repository_id=transform.repository.peer.id,
-            name=transform.repository.peer.name.value,
-            repository_kind=str(transform.repository.peer.typename),
-            commit=repo_node.commit.value,
+            repository_id=transform.repository_id,
+            name=transform.repository_name,
+            repository_kind=transform.repository_typename,
+            commit=repository_commit,
         )
 
         data = await client.query_gql_query(
-            name=transform.query.id,
+            name=transform.query_id,
             branch_name=branch_name,
             variables={"id": object_id},
             update_group=True,
             subscribers=[object_id],
         )
 
-        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout.value)(
+        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout)(
             client=client,
             branch_name=branch_name,
-            commit=repo_node.commit.value,
-            location=f"{transform.file_path.value}::{transform.class_name.value}",
+            commit=repository_commit,
+            location=f"{transform.file_path}::{transform.class_name}",
             data=data,
-            convert_query_response=transform.convert_query_response.value,
+            convert_query_response=transform.convert_query_response,
         )  # type: ignore[call-overload]
 
         await client.execute_graphql(

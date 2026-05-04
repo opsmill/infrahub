@@ -17,6 +17,7 @@ from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.generators.constants import GeneratorDefinitionRunSource
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
+    GeneratorInstanceQuery,
     ProposedChangeGeneratorDefinition,
     RequestGeneratorDefinitionRun,
     RequestGeneratorRun,
@@ -109,16 +110,21 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
         async with lock.registry.get(
             f"{model.target_id}-{model.generator_definition.definition_id}", namespace="generator"
         ):
-            instances = await client.filters(
-                kind=CoreGeneratorInstance,
-                definition__ids=[model.generator_definition.definition_id],
-                object__ids=[model.target_id],
-                branch=model.branch_name,
+            gen_query = GeneratorInstanceQuery(
+                definition_id=model.generator_definition.definition_id,
+                object_id=model.target_id,
             )
-            if instances:
-                instance = instances[0]
+            response = await client.execute_graphql(query=gen_query.render_query(), branch_name=model.branch_name)
+            instance_nodes = gen_query.parse_response(response=response)
+            if instance_nodes:
+                instance = await client.get(
+                    kind=CoreGeneratorInstance,
+                    id=instance_nodes[0].id,
+                    branch=model.branch_name,
+                    include=["status"],
+                )
                 instance.status.value = GeneratorInstanceStatus.PENDING.value
-                await instance.update(do_full_update=True)
+                await instance.update(do_full_update=False)
             else:
                 instance = await client.create(
                     kind=CoreGeneratorInstance,
