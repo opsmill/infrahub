@@ -208,11 +208,12 @@ async def run_generator_group_event(
 async def configure_action_rules(
     service: InfrahubServices,
 ) -> None:
-    await setup_triggers_specific(
-        gatherer=gather_trigger_action_rules,  # type: ignore[arg-type]
-        trigger_type=TriggerType.ACTION_TRIGGER_RULE,
-        db=service.database,
-    )
+    async with service.database.start_session(read_only=True) as db:
+        await setup_triggers_specific(
+            gatherer=gather_trigger_action_rules,  # type: ignore[arg-type]
+            trigger_type=TriggerType.ACTION_TRIGGER_RULE,
+            db=db,
+        )
 
 
 async def _get_targets(
