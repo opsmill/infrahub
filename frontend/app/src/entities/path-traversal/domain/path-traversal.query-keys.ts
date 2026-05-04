@@ -3,7 +3,7 @@ type ContextParams = {
   atDate: Date | string | null;
 };
 
-type TraversalParams = ContextParams & {
+export type TraversalParams = ContextParams & {
   sourceId: string;
   destinationId: string;
   maxDepth?: number;
@@ -16,16 +16,6 @@ type TraversalParams = ContextParams & {
 export const pathTraversalKeys = {
   all: ["path-traversal"] as const,
   allWithContext: ({ branchName, atDate }: ContextParams) =>
-    [...pathTraversalKeys.all, branchName, atDate] as const,
-  traverse: (params: TraversalParams) =>
-    [
-      ...pathTraversalKeys.allWithContext(params),
-      params.sourceId,
-      params.destinationId,
-      params.maxDepth,
-      params.maxPaths,
-      params.kindFilter,
-      params.relationshipFilter,
-      params.excludedKinds,
-    ] as const,
+    [...pathTraversalKeys.all, { branchName, atDate }] as const,
+  traverse: (params: TraversalParams) => [...pathTraversalKeys.all, "traverse", params] as const,
 };
