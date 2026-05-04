@@ -92,8 +92,8 @@ def shell() -> None:
         )
         initialize_lock(service=service)
 
-        async with service.database as db:
-            await initialization(db=db)
+        async with service.database.start_session() as safe_db:
+            await initialization(db=safe_db)
         await service.component.refresh_schema_hash()
 
         return service
