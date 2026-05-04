@@ -185,17 +185,12 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Generators',
-          collapsible: true,
-          collapsed: true,
+          link: { type: 'doc', id: 'generator/index' }, // hub
           items: [
-            { type: 'doc', id: 'topics/generator', label: 'Generator Overview (Topic)' },
-            { type: 'doc', id: 'guides/generator', label: 'Generator Overview (Guide)' },
-            { type: 'doc', id: 'guides/chaining-generators', label: 'Chaining Generators' },
-            { type: 'doc', id: 'topics/modular-generators', label: 'Modular Generators (Topic)' },
-            { type: 'doc', id: 'guides/modular-generator-best-practices', label: 'Modular Generator Best Practices' },
-            // Cross-links to Development Resources
-            { type: 'ref', id: 'topics/developer-guide', label: 'Developer Guide' },
-            { type: 'ref', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
+            'generator/create',
+            'generator/modular-generators',
+            'generator/chaining-generators',
+            'generator/best-practices',
           ],
         },
         {

@@ -4,7 +4,7 @@ title: Best practices for modular Generators
 
 This page collects practical guidance for building and operating modular Generator cascades in Infrahub. These patterns come from real-world experience — they address problems that are not obvious until you have built a multi-layer cascade and run it in production.
 
-For foundational concepts, see [modular Generators](../topics/modular-generators). For the chaining mechanism, see [how to chain Generators](chaining-generators).
+For foundational concepts, see [Modular Generators](./modular-generators). For the chaining mechanism, see [How to chain Generators](./chaining-generators).
 
 ## 1. One Generator, one layer
 
@@ -118,7 +118,7 @@ A cascade has no single log showing the full chain. Each Generator runs independ
 
 | Symptom                            | Where to look first                                                                                                              |
 |------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| Expected objects were not created  | Check whether the Generator for that layer ran at all ([Generator instances](../topics/generator#generator-instances) in the UI) |
+| Expected objects were not created  | Check whether the Generator for that layer ran at all ([Generator instances](./#generator-instances) in the UI) |
 | Generator ran but created nothing  | Check the Generator's task log — likely an upstream validation failure                                                           |
 | Cascade stopped after layer N      | Check whether layer N wrote checksums to layer N+1 targets                                                                       |
 | Objects were created but are wrong | Check the query results — the query may be returning unexpected data                                                             |
@@ -126,7 +126,7 @@ A cascade has no single log showing the full chain. Each Generator runs independ
 
 ### Check Generator instances
 
-The Infrahub UI shows [Generator instances](../topics/generator#generator-instances) per definition. Each instance corresponds to one target and shows its status:
+The Infrahub UI shows [Generator instances](./#generator-instances) per definition. Each instance corresponds to one target and shows its status:
 
 - `ready` — the Generator ran successfully for this target
 - `error` — the Generator failed for this target (check the task log for details)
@@ -192,7 +192,7 @@ Generators work best when the schema supports the generation pattern. A few sche
 
 ### Add `GeneratorTarget` to all downstream target nodes
 
-Any node kind that participates in a cascade as a downstream target should inherit from the `GeneratorTarget` generic (see [how to chain Generators](chaining-generators)). This gives it the `checksum` attribute needed for trigger-based chaining.
+Any node kind that participates in a cascade as a downstream target should inherit from the `GeneratorTarget` generic (see [How to chain Generators](./chaining-generators)). This gives it the `checksum` attribute needed for trigger-based chaining.
 
 ```yaml
 nodes:
@@ -255,12 +255,11 @@ Always test cascades in a branch, not on the default branch. This lets you:
 - Delete the branch and start over if something goes wrong
 - Review the cascade output in a proposed change before merging
 
-The `branch_scope: "other_branches"` trigger configuration (from the [chaining guide](chaining-generators)) ensures triggers only fire in branches, giving you a controlled testing environment.
+The `branch_scope: "other_branches"` trigger configuration (from the [chaining guide](./chaining-generators)) ensures triggers only fire in branches, giving you a controlled testing environment.
 
 ### Monitor Generator instances after changes
 
 After modifying a Generator or its schema, run the cascade in a test branch and check:
-
 
 1. All Generator instances show `ready` status
 2. Object counts match expectations at each layer
@@ -299,3 +298,9 @@ Use this checklist when building a new modular Generator cascade:
 - [ ] **Trigger rules use** `branch_scope: "other_branches"` — test in branches before production
 - [ ] **Each layer tested independently** — before running the full cascade
 - [ ] **Generator instances checked after runs** — verify `ready` status across all targets
+
+## Related
+
+- [Modular Generators](./modular-generators) — concepts, mental model, and when to use multiple Generators
+- [How to chain Generators](./chaining-generators) — checksum+trigger pattern step by step
+- [Generator overview](./) — single-Generator fundamentals, instances, and execution lifecycle

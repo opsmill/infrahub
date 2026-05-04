@@ -1,16 +1,13 @@
 ---
-title: How to Create a Generator
+title: Create a Generator
 ---
+
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# How to create a Generator in Infrahub
+Generators in Infrahub allow you to automatically create or modify data based on existing information in your database. They are defined in [external repositories](../topics/repository) and can be developed and tested locally using [infrahubctl generator]($(base_url)infrahubctl/infrahubctl-generator).
 
-Generators in Infrahub allow you to automatically create or modify data based on existing information in your database. They are defined in [external repositories](../topics/repository.mdx) and can be developed and tested locally using [infrahubctl generator]($(base_url)infrahubctl/infrahubctl-generator).
-
-In this guide, you'll learn how to develop a Generator and integrate it into Infrahub.
-
-For conceptual information about Generators and their architecture, see [Generators](../topics/generator.mdx).
+For conceptual information about Generators and their architecture, see [Generators](./).
 
 ## What you'll build
 
@@ -20,30 +17,18 @@ You'll build a basic Generator that:
 2. Creates a number of Resource objects based on each Widget's count property
 3. Automatically runs when changes to Widget objects are proposed
 
-## Steps overview
-
-1. Prepare the data model by creating a schema and objects
-2. Create a GraphQL query to fetch data from Infrahub
-3. Implement a Python Generator that creates the data
-4. Tie everything together in an `.infrahub.yml` file
-5. Test the Generator locally with infrahubctl
-6. Deploy the Generator to Infrahub
-7. Validate that the Generator works in Infrahub's CI pipeline
-
 ## Prerequisites
 
-Before you begin, you'll need:
-
 - Basic knowledge of Infrahub, Python, GraphQL, YAML, and Git
-- Familiarity with Generators and how they work in Infrahub (see [Generators topic](../topics/generator.mdx))
+- Familiarity with Generators and how they work in Infrahub (see [Generators](./) )
 - An Infrahub instance running locally or remotely
-- A Git repository connected to Infrahub (see [Adding an External Repository guide](./repository.mdx))
+- A Git repository connected to Infrahub (see [Adding an External Repository guide](../guides/repository))
 - [infrahubctl]($(base_url)infrahubctl/infrahubctl) installed and configured locally
 - The repository cloned locally where you'll develop the Generator
 
-## Step 1: Setting up the data model
+## Prepare the data model
 
-In this step, you'll create the data structures needed for your Generator, including a schema, group, and sample objects that the Generator will process.
+In this section, you'll create the data structures needed for your Generator, including a schema, group, and sample objects that the Generator will process.
 
 ### Create a new branch
 
@@ -220,7 +205,7 @@ You can also use an object file to create the widgets, though it's less relevant
     - Count: `2`
     - Member of groups: `widgets`
 
-## Step 2: Create the GraphQL query
+## Create the GraphQL query
 
 Next, create a GraphQL query that fetches the data your Generator needs to process.
 
@@ -298,7 +283,7 @@ You now have a working GraphQL query that retrieves the necessary data from Infr
 
 :::
 
-## Step 3: Implement the Generator
+## Implement the Generator class
 
 Now create a Python class that implements your Generator logic. The Generator creates `TestResource` objects equal to the widget's count value.
 
@@ -336,9 +321,9 @@ class WidgetGenerator(InfrahubGenerator):
 
 ```
 
-## Step 4: Tie everything together in the .infrahub.yml file
+## Configure .infrahub.yml
 
-Now that you have your GraphQL query and Python Generator, edit your [.infrahub.yml](../topics/infrahub-yml.mdx) file to tie everything together.
+Now that you have your GraphQL query and Python Generator, edit your [.infrahub.yml](../topics/infrahub-yml) file to tie everything together.
 
 1. Add the following configuration to the file `.infrahub.yml`:
 
@@ -359,7 +344,7 @@ queries:
     file_path: "queries/widget_query.gql"
 ```
 
-For a complete explanation of the `.infrahub.yml` file format, see the [infrahub.yml topic](../topics/infrahub-yml.mdx).
+For a complete explanation of the `.infrahub.yml` file format, see the [infrahub.yml topic](../topics/infrahub-yml).
 
 2. Verify the configuration
 
@@ -380,7 +365,7 @@ widget_generator (generators/widget_generator.py::WidgetGenerator) Target: widge
 
 :::
 
-## Step 5: Test the Generator locally
+## Test locally
 
 Before deploying your Generator to Infrahub, test it locally using the `infrahubctl` command-line tool.
 
@@ -415,7 +400,7 @@ Your Generator worked as expected, it's now time to deploy it to Infrahub.
 
 :::
 
-## Step 6: Deploy to Infrahub
+## Deploy to Infrahub
 
 Now that you've tested your Generator, deploy it to Infrahub.
 
@@ -482,7 +467,7 @@ Your Generator is now deployed to Infrahub in the `main` branch and ready to be 
 
 :::
 
-## Step 7: Run the Generator in Infrahub's CI pipeline
+## Validate in the CI pipeline
 
 Now let's verify that your Generator automatically runs when new widgets are created:
 
@@ -526,3 +511,9 @@ Now that you've created a basic Generator, you can:
 Want to see how Generators can be used in production? Read our blog post on [How to Turn Your Source of Truth into a Service Factory](https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/).
 
 :::
+
+## Related
+
+- [Generator overview](./) — concepts, execution model, and lifecycle flags
+- [Modular Generators](./modular-generators) — split generation across multiple focused layers
+- [How to chain Generators](./chaining-generators) — connect modular Generators with the checksum+trigger pattern

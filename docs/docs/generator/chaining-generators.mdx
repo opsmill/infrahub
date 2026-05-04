@@ -1,15 +1,15 @@
 ---
-title: How to connect modular Generators with checksums and triggers
+title: How to chain Generators with checksums and triggers
 ---
 
-[Modular Generators](../topics/modular-generators) split automation into focused layers, each handled by its own Generator. But each Generator runs independently — there's no built-in way to say "run Generator B after Generator A finishes."
+[Modular Generators](./modular-generators) split automation into focused layers, each handled by its own Generator. But each Generator runs independently — there's no built-in way to say "run Generator B after Generator A finishes."
 
 This guide shows how to connect modular Generators using Infrahub's [event framework](../topics/event-actions): when a Generator finishes, it computes a checksum of what it created, writes it to the downstream target objects, and a trigger rule detects the change and runs the next Generator automatically.
 
 **Prerequisites:**
 
-- Familiarity with [Generators](../topics/generator) and [how to create one](generator)
-- Understanding of the [modular Generators concept](../topics/modular-generators)
+- Familiarity with [Generators](./) and [how to create one](./create)
+- Understanding of the [modular Generators concept](./modular-generators)
 - Basic understanding of [event rules and actions](../topics/event-actions)
 
 ## How the pattern works
@@ -29,7 +29,7 @@ Generator A finishes
         → CoreGeneratorAction runs Generator B for the updated target
 ```
 
-## Step 1: Add a checksum attribute to target objects
+## Add a checksum attribute to target objects
 
 To signal downstream Generators, the target objects need an attribute that the upstream Generator can write to. The recommended approach is to define a schema generic with a `checksum` attribute and have target nodes inherit from it.
 
@@ -63,9 +63,9 @@ nodes:
     # ... rest of the node definition
 ```
 
-**Why a generic?** It keeps the pattern reusable. Any node kind that participates in a modular Generator setup just inherits from `GeneratorTarget` — no need to manually add checksum attributes to each schema.
+**Why a generic?** It keeps the pattern reusable. Any node kind that participates in a modular Generator setup inherits from `GeneratorTarget` — no need to manually add checksum attributes to each schema.
 
-## Step 2: Calculate and write the checksum in your Generator
+## Calculate and write the checksum in your Generator
 
 After the Generator creates or modifies its objects, it needs to compute a checksum and write it to the downstream targets. This should be the **last step** in your `generate()` method — only signal completion after all work is done.
 
@@ -124,7 +124,7 @@ class FabricGenerator(InfrahubGenerator, GeneratorMixin):
 - `update_checksum()` must be the **last step** in `generate()`. Only signal downstream after all work is complete.
 - The checksum naturally reflects everything the Generator touched, because it's derived from the SDK tracking context.
 
-## Step 3: Validate upstream dependencies before generating
+## Validate upstream dependencies before generating
 
 In a modular Generator setup there is no central orchestrator sequencing execution. A checksum change fires a trigger per target — which means a downstream Generator could start before the upstream Generator has finished creating all its objects. Each Generator must therefore protect itself by validating that upstream work is complete before proceeding.
 
@@ -221,7 +221,7 @@ class RackGenerator(InfrahubGenerator):
 
 Both checks should happen at the top of `generate()`, before any objects are created.
 
-## Step 4: Create trigger rules and actions
+## Create trigger rules and actions
 
 With the checksum being written to downstream targets, you need trigger rules to detect the change and fire the next Generator. You can define these as object files in your repository (recommended) or create them via the UI.
 
@@ -333,7 +333,7 @@ For each pair of (upstream Generator, downstream Generator), define one `CoreGen
 
 ### Using the UI (alternative)
 
-If you prefer to create trigger rules via the Infrahub UI, follow the [creating event trigger rules and actions](events-rules-actions) guide. The configuration is the same:
+If you prefer to create trigger rules via the Infrahub UI, follow the [creating event trigger rules and actions](../guides/events-rules-actions) guide. The configuration is the same:
 
 1. Create a **Generator Action** (Actions > Create > Generator Action) pointing to the downstream Generator
 2. Create a **Node Trigger Rule** (Trigger Rules > Create > Node Trigger) for the downstream target kind, with mutation action `updated`
@@ -342,7 +342,7 @@ If you prefer to create trigger rules via the Infrahub UI, follow the [creating 
 
 UI-created triggers work identically but aren't version-controlled.
 
-## Step 5: Disable CI-based execution (optional)
+## Disable CI-based execution (optional)
 
 Generators that are entirely event-driven should have their CI execution disabled to avoid double-runs:
 
@@ -367,7 +367,7 @@ Set both `execute_in_proposed_change` and `execute_after_merge` to `false` for a
 This is a design choice. Some teams keep CI execution enabled for the first Generator (the entry point) and only use event triggers for downstream Generators.
 :::
 
-## Step 6: Test the modular setup
+## Test the modular setup
 
 ### Run the first Generator manually
 
@@ -412,8 +412,10 @@ You should see a checksum value on each pod.
 | Generator runs in a loop                     | The downstream Generator modifies an attribute that triggers the upstream Generator                 | Ensure Generators only write checksums to *downstream* targets, never upstream. The checksum guard (`if checksum != old`) should also prevent repeated triggers for the same output.                            |
 | Checksum unchanged after re-run            | Generator produced the same output as before                                                       | This is **expected behavior** — execution correctly stops when nothing changed.                                                                                                                              |
 | Trigger fires but Generator errors         | Generator definition name doesn't match the action's Generator reference                           | Verify that the `generator` field in `CoreGeneratorAction` matches the `name` field in your Generator definition in `.infrahub.yml`.                                                                           |
-| Generator fails with "not fully generated" | Upstream validation caught incomplete data — the upstream Generator hasn't finished yet             | This is the validation from Step 3 working as intended. The Generator will succeed on the next trigger once the upstream layer is complete.                                                                     |
+| Generator fails with "not fully generated" | Upstream validation caught incomplete data — the upstream Generator hasn't finished yet             | This is the validation from the upstream validation section working as intended. The Generator will succeed on the next trigger once the upstream layer is complete.                                                                     |
 
-:::info Next steps
-For additional debugging techniques, pool scoping strategies, and operational guidance for running cascades in production, see [best practices for modular Generators](modular-generator-best-practices).
-:::
+## Related
+
+- [Modular Generators](./modular-generators) — concepts, mental model, and trade-offs
+- [Best practices for modular Generators](./best-practices) — idempotency, debugging cascades, and operational guidance
+- [Generator overview](./) — single-Generator fundamentals and execution lifecycle

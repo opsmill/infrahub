@@ -6,7 +6,7 @@ title: Using GraphQL fragments
 
 [GraphQL fragments](../topics/graphql.mdx#graphql-fragments) allow you to define reusable field selections that can be shared across multiple queries. Instead of duplicating the same field selections in every query, define them once as a fragment and reference them with standard GraphQL spread syntax (`...fragmentName`).
 
-This is particularly useful when multiple [Transformations](../topics/transformation.mdx) or [Generators](../topics/generator.mdx) need to query the same fields from a model. Update the fragment once, and all queries that reference it pick up the change on their next execution.
+This is particularly useful when multiple [Transformations](../topics/transformation.mdx) or [Generators](../generator/) need to query the same fields from a model. Update the fragment once, and all queries that reference it pick up the change on their next execution.
 
 ## Prerequisites
 

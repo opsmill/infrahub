@@ -1,0 +1,18 @@
+---
+feature: Generator
+pr: TBD
+description: |
+  Migrated Generator documentation from a topic+guide pair (plus three supplementary guides)
+  to a hub+spokes structure under docs/generator/. All five legacy files were removed as part
+  of this migration (user requested immediate cleanup rather than the standard iteration-phase approach).
+redirects:
+  - from: /docs/topics/generator
+    to: /docs/generator/
+  - from: /docs/guides/generator
+    to: /docs/generator/create
+  - from: /docs/topics/modular-generators
+    to: /docs/generator/modular-generators
+  - from: /docs/guides/chaining-generators
+    to: /docs/generator/chaining-generators
+  - from: /docs/guides/modular-generator-best-practices
+    to: /docs/generator/best-practices
