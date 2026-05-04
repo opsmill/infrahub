@@ -1,3 +1,5 @@
+from typing import Any
+
 from infrahub.core.query.node_query import NodeID
 from infrahub.display_labels.models import DisplayLabelNodeIDQuery
 
@@ -32,7 +34,7 @@ class TestDisplayLabelNodeIDQuery:
 
     def test_parse_response_empty_edges(self) -> None:
         q = DisplayLabelNodeIDQuery(kind="CoreTag")
-        response = {"CoreTag": {"edges": []}}
+        response: dict[str, Any] = {"CoreTag": {"edges": []}}
         assert q.parse_response(response=response) == []
 
     def test_parse_response_missing_kind_key(self) -> None:
