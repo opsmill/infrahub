@@ -1,5 +1,6 @@
 # This file should be deleted once the flakiness is gone
 import asyncio
+import threading
 from sys import stderr
 from traceback import format_exception
 from typing import Any, cast
@@ -19,8 +20,12 @@ def _current_loop_info() -> tuple[int | None, bool | None]:
     return id(loop), loop.is_closed()
 
 
-def _conn_creation_info(conn: object) -> tuple[int | None, str | None]:
-    return getattr(conn, "_creation_loop_id", None), getattr(conn, "_creation_loop_repr", None)
+def _conn_creation_info(conn: object) -> tuple[int | None, str | None, str | None]:
+    return (
+        getattr(conn, "_creation_loop_id", None),
+        getattr(conn, "_creation_loop_repr", None),
+        getattr(conn, "_creation_thread_name", None),
+    )
 
 
 def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
@@ -55,10 +60,11 @@ def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
                     writer_id = id(writer) if writer else None
                     loop_id = id(loop) if loop else None
                     loop_closed = loop.is_closed() if loop is not None else "n/a"
-                    creation_loop_id, creation_loop_repr = _conn_creation_info(conn)
+                    creation_loop_id, creation_loop_repr, creation_thread_name = _conn_creation_info(conn)
                     lines.append(
                         f"      conn={id(conn)} writer={writer_id} loop={loop_id} loop_closed={loop_closed}"
                         f" creation_loop={creation_loop_id} creation_loop_repr={creation_loop_repr!r}"
+                        f" creation_thread={creation_thread_name!r}"
                     )
         else:
             lines.append("  redis pool: <none>")
@@ -76,12 +82,13 @@ def _dump_pool_loop_divergence(pool: ConnectionPool) -> None:
     diverged: list[str] = []
     for attr in ("_available_connections", "_in_use_connections"):
         for conn in list(getattr(pool, attr, None) or []):
-            creation_loop_id, creation_loop_repr = _conn_creation_info(conn)
+            creation_loop_id, creation_loop_repr, creation_thread_name = _conn_creation_info(conn)
             if creation_loop_id is None or creation_loop_id == current_loop_id:
                 continue
             diverged.append(
                 f"  {attr}: conn={id(conn)} creation_loop={creation_loop_id}"
-                f" creation_loop_repr={creation_loop_repr!r} current_loop={current_loop_id}"
+                f" creation_loop_repr={creation_loop_repr!r} creation_thread={creation_thread_name!r}"
+                f" current_loop={current_loop_id}"
             )
     if diverged:
         print(
@@ -94,11 +101,11 @@ def _dump_pool_loop_divergence(pool: ConnectionPool) -> None:
 def install_redis_loop_diagnostics() -> None:
     """Monkey-patch redis.asyncio Connection / ConnectionPool to record event-loop identity.
 
-    Stamps `_creation_loop_id` and `_creation_loop_repr` on each Connection right after
-    `_connect` succeeds. The fields survive `Connection.disconnect()`'s `finally:`, so the post-mortem dump can
-    identify which loop the writer was bound to. Also wraps `ConnectionPool.disconnect` to log per-connection
-    loop divergence to stderr *before* the disconnect runs — gives a proactive signal even when the underlying
-    disconnect doesn't raise.
+    Stamps `_creation_loop_id`, `_creation_loop_repr`, and `_creation_thread_name` on each Connection
+    right after `_connect` succeeds. The fields survive `Connection.disconnect()`'s `finally:`, so the
+    post-mortem dump can identify which loop and thread the writer was bound to. Also wraps
+    `ConnectionPool.disconnect` to log per-connection loop divergence to stderr *before* the disconnect
+    runs — gives a proactive signal even when the underlying disconnect doesn't raise.
 
     Idempotent: calling it again is a no-op once the marker is set on both patched targets.
     """
@@ -117,6 +124,7 @@ def install_redis_loop_diagnostics() -> None:
             return
         cast("Any", self)._creation_loop_id = id(loop)
         cast("Any", self)._creation_loop_repr = repr(loop)
+        cast("Any", self)._creation_thread_name = threading.current_thread().name
 
     original_disconnect = ConnectionPool.disconnect
 

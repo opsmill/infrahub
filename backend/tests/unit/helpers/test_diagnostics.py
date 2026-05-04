@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import io
 import socket
+import threading
 from types import SimpleNamespace
 from typing import Any, Callable, Generator, cast
 
@@ -127,7 +128,7 @@ def test_dump_redis_pool_details(
         f"      conn={id(conn_available)} writer={id(closed_writer)} loop={id(closed_loop)} loop_closed=True"
     ) in output
     assert (f"      conn={id(conn_in_use)} writer={id(open_writer)} loop={id(open_loop)} loop_closed=False") in output
-    assert "creation_loop=None creation_loop_repr=None" in output
+    assert "creation_loop=None creation_loop_repr=None creation_thread=None" in output
 
 
 def test_dump_redis_pool_with_empty_connection_buckets(
@@ -223,6 +224,7 @@ async def test_install_stamps_creation_loop_id_on_connection(
 
     assert cast("Any", conn)._creation_loop_id == id(asyncio.get_running_loop())
     assert cast("Any", conn)._creation_loop_repr == repr(asyncio.get_running_loop())
+    assert cast("Any", conn)._creation_thread_name == threading.current_thread().name
 
 
 async def test_install_pre_disconnect_logs_loop_divergence(
@@ -242,6 +244,7 @@ async def test_install_pre_disconnect_logs_loop_divergence(
     conn = Connection()
     cast("Any", conn)._creation_loop_id = foreign_loop_id
     cast("Any", conn)._creation_loop_repr = "<FakeLoop running=False>"
+    cast("Any", conn)._creation_thread_name = "ForeignThread-7"
     pool._available_connections.append(conn)
 
     await pool.disconnect()
@@ -250,6 +253,7 @@ async def test_install_pre_disconnect_logs_loop_divergence(
     assert "Redis pool disconnect loop divergence detected:" in output
     assert f"creation_loop={foreign_loop_id}" in output
     assert "creation_loop_repr='<FakeLoop running=False>'" in output
+    assert "creation_thread='ForeignThread-7'" in output
     assert disconnected == [pool]  # original disconnect still runs
 
 
@@ -294,13 +298,14 @@ def test_dump_includes_creation_loop_when_stamped(
     conn = Connection()
     cast("Any", conn)._creation_loop_id = 424242
     cast("Any", conn)._creation_loop_repr = "<StampedLoop>"
+    cast("Any", conn)._creation_thread_name = "StampedThread"
     pool._available_connections.append(conn)
     install_service_pool(pool)
 
     dump_event_loop_closed_diagnostic("nid", _caught_runtime_error())
 
     output = captured_stderr.getvalue()
-    assert "creation_loop=424242 creation_loop_repr='<StampedLoop>'" in output
+    assert "creation_loop=424242 creation_loop_repr='<StampedLoop>' creation_thread='StampedThread'" in output
 
 
 async def test_dump_prints_current_loop(
