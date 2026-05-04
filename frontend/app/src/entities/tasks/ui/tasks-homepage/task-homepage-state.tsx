@@ -1,4 +1,4 @@
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
+import { ScrollArea } from "@infrahub/ui";
 
 import { EmptyHomeCard } from "@/entities/homepage/ui/empty-home-card";
 import { useGetTasksHomepage } from "@/entities/tasks/ui/queries/get-tasks-homepage.query";

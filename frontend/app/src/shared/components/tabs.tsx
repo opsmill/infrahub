@@ -1,10 +1,9 @@
+import { ScrollArea } from "@infrahub/ui";
 import { parseAsString, useQueryState } from "nuqs";
 
 import { Pill } from "@/shared/components/display/pill";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
-
-import { ScrollArea } from "./ui/scroll-area";
 
 type Tab = {
   name: string;

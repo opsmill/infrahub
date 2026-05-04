@@ -1,7 +1,7 @@
+import { ScrollArea } from "@infrahub/ui";
 import { useQueryState } from "nuqs";
 
 import { Row } from "@/shared/components/container";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { GENERIC_REPOSITORY_KIND, TASK_TARGET } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 

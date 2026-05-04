@@ -99,6 +99,29 @@ import { getSchemaFromApi } from "@/entities/schema/api/get-schema-from-api"; //
 
 Mappers are optional. Use them only when transformation is non-trivial (more than 5-6 lines of field access). For simple entities, inline the transformation in the domain async function.
 
+## GraphQL fetching: go through the entity layer
+
+The `ui/` layer **never** builds `gql` strings inline or calls `graphqlClient.query` directly. Either:
+
+1. Use a hook from another entity's `ui/queries/` (e.g. `useGetObject` from `entities/nodes/object`).
+2. Add a new fetcher: `api/get-{noun}-from-api.ts` → `domain/get-{noun}.ts` → `ui/queries/get-{noun}.query.ts`.
+
+Inline `gql` in `ui/` bypasses caching, branch context, schema typing, and the layered architecture. It is a pattern bug, not a shortcut.
+
+### Single-object reads
+
+For "I have a UUID, give me the node", always use `useGetObject({ objectId, objectSchema: { kind: "CoreNode" } })` from `entities/nodes/object/ui/queries/get-object.query.ts`. Do not write a one-off `resolveUuid` function.
+
+## Backend is authoritative
+
+If the server defaults, filters, sorts, or hides something, the client must not maintain a parallel constant. Examples:
+
+- Default namespace exclusions (Core, Internal, Builtin, Lineage, Profile, Template) are applied server-side. Do not duplicate them in a client `HIDDEN_NAMESPACES` constant.
+- Schema kinds and their hidden flags come from `useGetSchema`.
+- Pagination defaults, sort order, and ACL checks live on the server.
+
+If the client genuinely needs to display a server-side default, surface it via the API response — do not mirror the constant.
+
 ## Reference Example: branches
 
 ```text

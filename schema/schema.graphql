@@ -8177,6 +8177,13 @@ String, Boolean, Int, Float, List or Object.
 """
 scalar GenericScalar
 
+type GraphQLQueryReport {
+  """
+  True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change.
+  """
+  targets_unique_nodes: Boolean!
+}
+
 type GroupEvent implements EventNodeInterface {
   """The account ID that triggered the event."""
   account_id: String
@@ -24414,6 +24421,13 @@ type Query {
     """Search events until this timestamp, defaults the current time"""
     until: DateTime
   ): Events!
+  """
+  Analyze a GraphQL query string and return a report describing how Infrahub will interpret it.
+  """
+  InfrahubGraphQLQueryReport(
+    """The raw GraphQL query string to analyze."""
+    query: String!
+  ): GraphQLQueryReport!
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!

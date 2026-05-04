@@ -1,6 +1,5 @@
+import { ScrollArea, type ScrollAreaProps } from "@infrahub/ui";
 import React from "react";
-
-import { ScrollArea, type ScrollAreaProps } from "@/shared/components/ui/scroll-area";
 
 export interface InfiniteScrollProps extends ScrollAreaProps {
   hasNextPage: boolean;

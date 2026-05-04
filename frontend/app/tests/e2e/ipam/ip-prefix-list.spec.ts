@@ -12,8 +12,7 @@ test.describe("/ipam/ip_prefixes - Ip Prefix list", () => {
     const objectDetailsCard = page.getByTestId("object-details");
     await expect(objectDetailsCard.getByText("Details", { exact: true })).toBeVisible();
     await expect(objectDetailsCard.getByText("Prefix203.111.0.0/16")).toBeVisible();
-    await expect(objectDetailsCard.getByText("Utilization0%")).toBeVisible();
-    await expect(objectDetailsCard.getByRole("progressbar")).toBeVisible();
+    await expect(page.getByLabel("Utilization")).toContainText("0%");
     await expect(objectDetailsCard.getByText("IP Namespacedefault")).toBeVisible();
     await expect(page.getByText("Groups", { exact: true })).toBeVisible();
     await expect(page.getByText("Activities", { exact: true })).toBeVisible();
