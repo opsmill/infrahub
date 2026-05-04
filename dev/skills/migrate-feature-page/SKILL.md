@@ -35,6 +35,8 @@ For section-wide restructures, look for a per-section recommendation page on Con
 
 Use TodoWrite to track. Stop and confirm with the user at every ★ gate. For section-wide migrations, also see [Recommendations for large or section-wide migrations](#recommendations-for-large-or-section-wide-migrations) at the bottom — apply those on top of the standard workflow.
 
+**Meta-rule: never recommend silently.** When the spec-review (Step 2.5) or implementation surfaces additional changes beyond what the recommendations doc already states — like merging two pages into one, adding a missing spoke, renaming a label, restructuring a sub-category — **present the recommendation to the user with rationale and wait for a decision before implementing.** The recommendations doc is the canonical spec; deviations get explicit approval, not silent application.
+
 ### Step 1 — Pre-flight
 
 - Verify current branch is `demo/groups-diataxis-example` (the consolidated parent branch). If not, switch.
@@ -61,18 +63,37 @@ Produce a compact summary covering:
 
 ★ **Gate**: present the audit to the user. Wait for confirmation before proceeding.
 
-### Step 3 — Pattern decision ★
+### Step 2.5 — Spec review against skill rules ★ (when a recommendations doc exists)
 
-Recommend a pattern based on the audit. Get user approval before creating files. For section-wide migrations, this happens per feature within the section — but the section recommendation doc usually has these decisions pre-made.
+**When the user provides a Confluence recommendations doc** (typical for section-wide migrations), the doc replaces Steps 2 and 3 as the planning artifact. But the doc may have gaps — review it critically against the skill's decision rules before implementing.
+
+Read the doc end-to-end. Then run this checklist against the proposed structure:
+
+- **Topic+guide pairs being treated as separate moves.** A topic file + a guide file describing the same single feature → **single-page-merge candidate** per the decision rules below. Don't preserve the split.
+- **Shared name roots that suggest merging.** If multiple files share a name root (e.g. `branch-synchronization` + `selective-branch-sync`) AND describe related procedural work, they're merge candidates. Treat them as one feature unless there's a specific reason to keep them separate.
+- **Hub categories without a clickable link.** Every category that becomes a hub in `sidebars.ts` must have `link: { type: 'doc', id: '<feature>/index' }`. Without that, the category caret expands but the label is dead. Confirm the doc specifies an explicit hub for each new category.
+- **Tutorial-shaped guides not being extracted.** Run the tutorial-shape check (Step 1/2/3 headings, single running example, narrative arc) on every guide in the spec. If a guide is tutorial-shaped but the doc says "keep here," ask whether to extract or reframe.
+- **Missing common spokes.** When converting a feature to hub+spokes, common operations (`create`, `update`, `delete`, `query`, etc.) typically each get a spoke. If the doc lists 3 spokes but obvious operations are missing, flag it.
+- **Legacy `(Topic)` / `(Guide)` sidebar labels.** If the new sidebar still has these suffixes, that means the migration is half-done — those labels should disappear when files convert to hub+spokes or single-page merge. Check.
+- **Broken cross-link patterns.** When a feature moves into a sub-section (e.g. Git Integration nesting under Branches & Change Control), pages from that sub-section reference each other via paths that may need updating.
+
+**Per the meta-rule**: every finding gets presented to the user with rationale, not silently applied. The user updates the doc, then you implement against the updated spec.
+
+★ **Gate**: present spec-review findings. User decides which to add to the spec, which to leave as-is. Once decisions land, the user (or you, on their behalf) updates the recommendations doc to reflect the final spec. Then proceed to Step 4.
+
+### Step 3 — Pattern decision ★ (when no recommendations doc exists)
+
+When no doc exists (typical for single-feature migrations), recommend a pattern based on the Step 2 audit. Get user approval before creating files.
 
 **Decision rules:**
 
 | Condition | Pattern |
 |---|---|
-| Single concept + one workflow, content fits under ~300 lines | **Single-page merge** — topic content as overview at top, guide content rewritten as `## How to X` sections below |
+| Single concept + one workflow, content fits under ~300 lines | **Single-page merge** — both files combined into `docs/docs/<feature>/index.mdx` |
 | Multiple distinct tasks (3+ separable workflows) | **Hub + spokes** — short hub explaining the concept; one spoke page per task (Groups precedent) |
 | Guide is genuinely tutorial-shaped | **Tutorial extraction** — guide content moves to `academy/tutorials/<slug>.mdx` (preserve original title); topic content becomes the canonical feature page |
 | Mix of tutorial + recipes | **Split** — tutorial portion → Academy; recipe portion → feature page (Groups precedent) |
+| Multiple files sharing a name root + related procedural scope | **Likely single-page merge** even if file count > 2 — they're describing one feature |
 
 **Default**: single-page merge unless the feature genuinely warrants more complexity.
 
@@ -86,12 +107,16 @@ Follow the chosen pattern. For section-wide migrations, do this **one feature at
 
 **Match the interfaces shown in the existing guide / tutorial.** Before writing any how-to or spoke content, look at the existing guide and tutorial for that feature. They use Tabs to show the same task across the **UI**, **Python SDK**, and **GraphQL** — that ordering reflects how users actually interact with the feature (UI primary, SDK via generators, GraphQL last). When you create the new how-to spokes, preserve that same set of interface tabs and reuse the same running example. Do **not** reduce a multi-interface task to GraphQL-only because it's faster to write — the existing guide content is the source of truth for which interfaces matter and what the canonical UI navigation steps look like. If a new task isn't covered in the existing guide, mirror the interface set used elsewhere in the same feature's docs.
 
-**Single-page merge:**
+**Single-page merge** (Computed Attributes precedent — PR #9120):
 
-- Edit `docs/docs/topics/<slug>.mdx` (the existing topic file becomes the canonical feature page)
-- Topic content stays at the top, light edits OK
-- Guide content rewritten below as how-to sections (drop "Step 1/2/3" wording; replace running examples with placeholders like `<group-name>`, `<object-id>`)
-- Original guide file `docs/docs/guides/<slug>.mdx`: **leave on disk** during iteration (legacy URL still works); will be deleted in cleanup PR
+- Create `docs/docs/<feature>/index.mdx` — combine topic content (top) and guide content (rewritten below as how-to sections)
+- Drop "Step 1/2/3" wording from headers; use action-named section headers ("Configure your X", "Verify your X")
+- Numbered procedural lists *inside* sections stay numbered when sequence matters
+- Replace running examples with placeholders like `<group-name>`, `<object-id>`
+- Original `docs/docs/topics/<slug>.mdx` and `docs/docs/guides/<slug>.mdx`: **leave on disk** during iteration (legacy URLs work); deleted in cleanup PR
+- Sidebar entry: `{ type: 'doc', id: '<feature>/index', label: '<Feature>' }` — the merged page IS the canonical sidebar entry; no folder/category needed
+
+> **Why folder + index.mdx for single-page merges too?** Even when there's only one page, using `<feature>/index.mdx` keeps URLs stable (`/<feature>/`) regardless of future restructures. If the page later grows into hub+spokes, no file move is needed — only adding sibling spokes. Computed Attributes shipped this way; it's the established pattern.
 
 **Hub + spokes** (Groups / Profiles precedent):
 
@@ -99,6 +124,8 @@ Follow the chosen pattern. For section-wide migrations, do this **one feature at
 - Spokes at `docs/docs/<feature>/<task>.mdx` — one per task. Each spoke should have a brief "Next" or "Related" section at the bottom pointing to adjacent spokes.
 - Optional concept spoke at `docs/docs/<feature>/<concept>.mdx` for substantial deep-dive content (e.g. priority and inheritance) when it's a frequently-referenced topic and would otherwise bloat the hub.
 - Optional Academy tutorial at `docs/docs/academy/tutorials/<feature>.mdx`
+
+> **Critical: hub categories must have a clickable link.** In `sidebars.ts`, every category that becomes a hub must include `link: { type: 'doc', id: '<feature>/index' }`. Without this, the category caret expands but the label itself is dead — clicking "Profiles" or "Branches" does nothing. The Groups, Profiles, and Branches categories all have this; it's a recurring bug to forget. Verify after writing the sidebar entry.
 
 **Tutorial extraction:**
 
@@ -177,6 +204,12 @@ Update `docs/redirects-pending/README.md` "Files in this folder" table to add th
 
 **Before opening the PR**, do a thorough audit pass. (This used to be the end-of-migration audit; moved earlier so issues land in the PR clean rather than as fix-up commits afterward.)
 
+> **The audit is a real read-through, not a tool run.** Build + markdownlint + Vale + word-check are necessary but not sufficient. They catch syntax problems and policy violations, not factual drift or content gaps. The audit means **reading every new/modified file end-to-end with the source content open alongside**, looking for: extraction faithfulness (did the new spoke preserve every claim from the source?), hub coherence (does the hub still read as a complete concept page after the spokes were extracted?), invented content (did you write anything that has no analog in the source?), cross-link target accuracy (does each link land on the right page and section?). If the audit feels short, you're not doing it.
+>
+> **For section-wide migrations with 10+ pages, delegate to an Explore agent** with a focused brief. That's what scales — the agent reads everything in parallel and produces a structured findings report. Do not skip this with "I built clean and lint passed" — those caught zero of the real issues last time.
+
+Specific things to verify:
+
 - Re-read every new / modified file in this PR.
 - For each **factual claim**, find a source: existing docs (current topic, guide, reference, schema specs, related feature docs), schema definitions, code comments. If a claim can't be sourced, flag it.
 - Verify GraphQL mutations / queries match actual schema. Cross-check against:
@@ -239,7 +272,21 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split / secti
 uv run invoke docs.lint
 ```
 
-This runs both markdownlint and Vale. Fix any reported issues before continuing. If Vale isn't installed locally a warning prints; that's fine — markdownlint coverage is the harder one to pass.
+This runs both markdownlint and Vale. **Both must pass** — Vale (documentation style) failures block CI in the `validate-documentation-style` check. Fix every error reported before committing. Warnings are not blocking but should be triaged: if a warning is in NEW content, fix it; if it's in pre-existing content unrelated to this PR, leave it.
+
+> **Verify each lint tool actually ran** — don't infer from a clean wrapper exit. Some tools silently skip if not installed — `uv run invoke docs.lint` exits 0 even when Vale didn't run because the binary is missing. Run `which vale` first, or look for Vale's per-file output. Markdownlint passing ≠ Vale ran.
+
+If Vale isn't installed locally, install it first — `brew install vale` on macOS, or download from https://github.com/errata-ai/vale/releases. Don't skip Vale checks; CI will catch what you missed and you'll have to push fix-up commits.
+
+Common Vale rules to watch for:
+
+- **`Infrahub.spelling`** — flags non-dictionary words. Either rephrase, or if it's a real word that should be in the vocabulary, add it to `.vale/styles/spelling-exceptions.txt`.
+- **`Infrahub.swap`** — substitutes specific terms (e.g. "repo" → "repository"). Use the preferred term.
+- **`Infrahub.branded-terms-case-swap`** — Infrahub product names should be capitalized (Transformations, Generators, Profiles, etc.) when used as branded references.
+- **`Infrahub.eg-ie`** (warning) — replace `e.g.` and `i.e.` with `for example,` or `that is,`.
+- **`Infrahub.sentence-case`** (warning) — headings should use sentence case, not title case.
+
+For dev-internal docs that shouldn't be subject to Vale style rules (team workflow READMEs, planning artifacts), add a `BasedOnStyles =` exclusion in `.vale.ini` rather than fighting individual rules. Examples already excluded: `docs/docs/reference/**`, `docs/redirects-pending/**`, `**/AGENTS.md`.
 
 Also check for AGENTS.md "Never Do" words that linters miss (`simple`, `easy`, `just`). Run this against **every file changed in the PR** — not just the docs pages, but also any skill, agent guide, or dev doc you touched. The forbidden-words rule is global; in-house dev docs aren't exempt.
 
@@ -287,13 +334,28 @@ When migrating multiple features in a single PR (a whole docs section like Branc
 
 **Do NOT** update the Navigation Map for individual feature migrations during iteration. The Map gets a single end-of-revamp update once Phase 2 is complete.
 
+## Spec drift during implementation is normal
+
+When implementation surfaces a gap in the recommendations doc (a missing spoke, a topic+guide that should merge, a hub click-target, a mistaken page move), **update the doc first, then implement against the updated spec.** The doc stays canonical; deviations are explicit. A few cycles of doc edits during a section-wide migration is expected — that's the planning-vs-implementation separation working as designed. The skill's meta-rule (above) catches the moment-of-decision; this section is the broader workflow note.
+
+What this looks like in practice:
+
+1. You hit a finding (e.g. "Git Integration category has no clickable hub link")
+2. Per the meta-rule, present it to the user with rationale
+3. User decides: yes, fix it / no, leave as-is / different approach
+4. If yes, update the recommendations doc on Confluence to reflect the new spec
+5. Then implement against the updated doc
+
+Don't quietly diverge from the doc — that breaks the "one canonical spec" property and makes future review harder.
+
 ## What's explicitly NOT done in feature-migration PRs
 
 - URL redirects (handled in cleanup PR before production merge)
-- Modifications to other-section pages (cross-section work goes in Open Questions; out of scope)
+- Modifications to other-section content (cross-section work goes in Open Questions; out of scope)
 - Renaming or moving legacy `topics/<slug>.mdx` / `guides/<slug>.mdx` files (left in place so old URLs keep working)
-- Sidebar restructure outside the feature/section being migrated
 - Bulk rewriting / voice-and-tone polishing
+
+> **Distinction**: cross-section *content* changes are out of scope, but moving an *entire sub-category's sidebar position* is in scope when the recommendations doc specifies it. Example: in PR #9125, the Git Integration sub-category moved into Branches & Change Control as a nested sub-category. The pages inside Git Integration weren't rewritten — only their sidebar position changed (and their containing folder, since hub+spokes uses `docs/<feature>/`). That's allowed when the doc says so.
 
 ## After merge to `demo/groups-diataxis-example`
 
