@@ -89,7 +89,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'guides/import-schema', label: 'Import a Schema' },
             { type: 'doc', id: 'topics/schema-extensions', label: 'Schema Extensions' },
             { type: 'doc', id: 'topics/schema-display', label: 'Schema Display' },
-            { type: 'doc', id: 'topics/computed-attributes', label: 'Computed Attributes' },
+            { type: 'doc', id: 'computed-attributes/index', label: 'Computed Attributes' },
             { type: 'doc', id: 'topics/order-weight', label: 'Field Ordering (Topic)' },
             { type: 'doc', id: 'guides/customize-field-ordering', label: 'Field Ordering (Guide)' },
             { type: 'doc', id: 'topics/labels', label: 'Labels' },
