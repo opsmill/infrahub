@@ -186,7 +186,6 @@ async def run_generator_group_event(
     members: list[EventGroupMember],
     generator_definition_id: str,
     context: InfrahubContext,
-    service: InfrahubServices,  # noqa: ARG001
 ) -> None:
     node_ids = [node.id for node in members]
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
