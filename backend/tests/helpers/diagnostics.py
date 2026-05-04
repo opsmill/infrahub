@@ -13,10 +13,6 @@ _INSTALLED_MARKER = "__diag_installed__"
 _CREATION_STACK_DEPTH = 12
 
 # Maps `id(loop)` to a human-readable label of the subsystem that owns the loop.
-# Populated by `register_known_loop` (e.g. `register_known_loop("pytest-session", loop)` from
-# the autouse pytest fixture). Looked up by `_loop_label` to annotate dumps; without an entry,
-# the dump falls back to `None` for that field. Best-effort: a loop with no registration is
-# still reported by id/repr/thread/stack — the label just won't be human-readable.
 _KNOWN_LOOPS: dict[int, str] = {}
 
 
