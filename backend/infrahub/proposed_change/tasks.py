@@ -168,15 +168,14 @@ async def merge_proposed_change(
     await add_tags(nodes=[proposed_change_id])
     database = await get_database()
 
-    proposed_change = await registry.manager.get_one(
-        db=database,
-        id=proposed_change_id,
-        kind=InternalCoreProposedChange,
-        raise_on_error=True,
-        prefetch_relationships=True,
-    )
-
     async with database.start_session() as db:
+        proposed_change = await registry.manager.get_one(
+            db=db,
+            id=proposed_change_id,
+            kind=InternalCoreProposedChange,
+            raise_on_error=True,
+            prefetch_relationships=True,
+        )
         log.info("Validating if all conditions are met to merge the proposed change")
 
         try:
