@@ -117,11 +117,11 @@
 
 **Purpose**: Validation, measurement, and project housekeeping.
 
-- [ ] T032 [P] Measure final post-migration execution times for all migrated tasks vs T002 baselines — confirm SC-001 (≥30% reduction per task); document results in `specs/infp-501-optimize-prefect-queries/research.md`
-- [ ] T033 [P] Measure final post-migration data volumes for all migrated tasks vs T003 baselines — confirm SC-002 (≥50% data volume reduction per task); document results alongside T032
-- [ ] T034 [P] Add a `changelog/` Towncrier fragment for the optimization (e.g., `changelog/<issue-num>.changed.md`)
-- [ ] T035 Run full backend test suite (`uv run invoke backend.test-unit && uv run invoke backend.test-integration`) — confirm zero regressions
-- [ ] T036 [P] Update `dev/knowledge/` documentation if the query model pattern is not already documented — specifically note the `infrahub_sdk.graphql.Query` + `execute_graphql()` approach for Prefect task read optimization
+- [x] T032 [P] Measure final post-migration execution times for all migrated tasks vs T002 baselines — confirm SC-001 (≥30% reduction per task); document results in `specs/infp-501-optimize-prefect-queries/research.md`
+- [x] T033 [P] Measure final post-migration data volumes for all migrated tasks vs T003 baselines — confirm SC-002 (≥50% data volume reduction per task); document results alongside T032
+- [x] T034 [P] Add a `changelog/` Towncrier fragment for the optimization (e.g., `changelog/<issue-num>.changed.md`)
+- [x] T035 Run full backend test suite (`uv run invoke backend.test-unit && uv run invoke backend.test-integration`) — confirm zero regressions
+- [x] T036 [P] Update `dev/knowledge/` documentation if the query model pattern is not already documented — specifically note the `infrahub_sdk.graphql.Query` + `execute_graphql()` approach for Prefect task read optimization
 
 ---
 
