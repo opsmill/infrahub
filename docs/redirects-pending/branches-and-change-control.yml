@@ -10,8 +10,8 @@ description: |
   - Git Integration converted to hub+spokes (was 4 flat pages); topic page becomes the hub
     titled "Git Integration"; (Topic)/(Guide) labels dropped from spokes
   - guides/selective-branch-sync.mdx moved into Git Integration sub-category
-  - guides/change-approval-workflow.mdx kept here, sidebar label "Change Approval Policy",
-    content reframed from tutorial → recipe (numbered steps and named personas removed)
+  - guides/change-approval-workflow.mdx moved to change-approval/change-approval-workflow.mdx,
+    sidebar label "Change Approval Policy", content reframed from tutorial → recipe (numbered steps and named personas removed)
   - Sidebar label changes: "Version Control" → "Immutable History"
 
 # Legacy URLs that will redirect to new locations
@@ -42,6 +42,8 @@ redirects:
     to: /git-integration/branch-synchronization
   - from: /guides/selective-branch-sync
     to: /git-integration/branch-synchronization
+  - from: /guides/change-approval-workflow
+    to: /change-approval/change-approval-workflow
 
 # Net-new pages introduced by this migration (canonical URLs for cross-reference)
 new_pages:
