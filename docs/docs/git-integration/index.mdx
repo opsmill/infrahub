@@ -1,10 +1,12 @@
 ---
-title: Git repository
+title: Git Integration
 ---
 
 import ReferenceLink from "../../src/components/Card";
 
-# Understanding Git repositories in Infrahub
+Git Integration in Infrahub connects your data layer to external Git repositories, letting you store and version-control the code that drives Infrahub — transformations, generators, checks, and other automation resources — alongside your infrastructure data. This page covers the underlying concepts; specific tasks like [connecting a repository](./connect-repository.mdx), [configuring `.infrahub.yml`](./infrahub-yml.mdx), and [filtering which branches sync](./branch-synchronization.mdx) live in the pages below.
+
+## Understanding Git repositories in Infrahub
 
 Infrahub integrates with external Git repositories to enable comprehensive version-controlled infrastructure management. This integration allows you to store and manage transformations, queries, Generators, and other automation resources alongside your infrastructure data. This topic explains how Infrahub's Git integration works, the available repository types, and the architectural decisions behind these features.
 
@@ -103,7 +105,7 @@ By default, Infrahub performs fast-forward only (ff-only) merges between branche
 
 You can configure Infrahub to always create a merge commit by setting the `INFRAHUB_GIT_USE_EXPLICIT_MERGE_COMMIT` environment variable to `true`. This approach maintains a more explicit commit history and improves auditability.
 
-<ReferenceLink title="Enabling explicit merge commits" url="../guides/repository#customizing-git-merge-behavior"/>
+<ReferenceLink title="Enabling explicit merge commits" url="./connect-repository#customizing-git-merge-behavior"/>
 
 ## The `.infrahub.yml` configuration file {#infrahub-yaml}
 
@@ -113,7 +115,7 @@ The `.infrahub.yml` file acts as a manifest, declaring which resources Infrahub 
 - Clear boundaries between Infrahub-managed and external resources
 - Version-specific configurations (different branches can have different `.infrahub.yml` files)
 
-For detailed information about `.infrahub.yml` configuration and syntax, see [Infrahub configuration file](../topics/infrahub-yml.mdx).
+For detailed information about `.infrahub.yml` configuration and syntax, see [Infrahub configuration file](./infrahub-yml.mdx).
 
 ## Status tracking and health monitoring {#repository-statuses}
 
@@ -176,8 +178,8 @@ The polling-based synchronization approach:
 
 ## Further reading
 
-- [How to connect external Git repositories](../guides/repository.mdx) - Practical guide for setting up repositories
-- [Infrahub configuration file](../topics/infrahub-yml.mdx) - Detailed `.infrahub.yml` reference
-- [Selective branch synchronization](../topics/branch-synchronization.mdx) - Controlling which Git branches sync to Infrahub
+- [How to connect external Git repositories](./connect-repository.mdx) - Practical guide for setting up repositories
+- [Infrahub configuration file](./infrahub-yml.mdx) - Detailed `.infrahub.yml` reference
+- [Selective branch synchronization](./branch-synchronization.mdx) - Controlling which Git branches sync to Infrahub
 - [Proposed Changes](../proposed-changes/index.mdx) - Understanding the merge and review process
 - [Version control in Infrahub](../topics/version-control.mdx) - Broader context of Infrahub's version control features

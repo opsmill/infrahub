@@ -1,0 +1,149 @@
+---
+feature: Branches & Change Control
+pr: TBD
+description: |
+  Section-wide restructure of Branches & Change Control:
+  - branching.mdx becomes a hub with 5 spokes (create / merge / rebase / delete / resolve-conflicts)
+  - proposed-change.mdx becomes a hub with 3 spokes (lifecycle / review-and-stamp / resolve-conflict)
+  - check.mdx becomes a hub-only page (the how-to extracted to Academy)
+  - guides/check.mdx → academy/tutorials/build-a-check.mdx (tutorial extraction)
+  - Git Integration converted to hub+spokes (was 4 flat pages); topic page becomes the hub
+    titled "Git Integration"; (Topic)/(Guide) labels dropped from spokes
+  - guides/selective-branch-sync.mdx moved into Git Integration sub-category
+  - guides/change-approval-workflow.mdx kept here, sidebar label "Change Approval Policy",
+    content reframed from tutorial → recipe (numbered steps and named personas removed)
+  - Sidebar label changes: "Version Control" → "Immutable History"
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  # Branches feature
+  - from: /branching
+    to: /branches/
+  - from: /topics/branching
+    to: /branches/
+  # Proposed Changes feature
+  - from: /proposed-change
+    to: /proposed-changes/
+  - from: /topics/proposed-change
+    to: /proposed-changes/
+  # Checks
+  - from: /topics/check
+    to: /checks/
+  - from: /guides/check
+    to: /academy/tutorials/build-a-check
+  # Git Integration moves
+  - from: /topics/repository
+    to: /git-integration/
+  - from: /guides/repository
+    to: /git-integration/connect-repository
+  - from: /topics/infrahub-yml
+    to: /git-integration/infrahub-yml
+  - from: /topics/branch-synchronization
+    to: /git-integration/branch-synchronization
+  - from: /guides/selective-branch-sync
+    to: /git-integration/branch-synchronization
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /branches/
+    title: Branches (hub)
+  - path: /branches/create
+    title: Create a branch
+  - path: /branches/merge
+    title: Merge a branch
+  - path: /branches/rebase
+    title: Rebase a branch
+  - path: /branches/delete
+    title: Delete a branch
+  - path: /branches/resolve-conflicts
+    title: Resolve conflicts
+  - path: /proposed-changes/
+    title: Proposed Changes (hub)
+  - path: /proposed-changes/lifecycle
+    title: Lifecycle and state transitions
+  - path: /proposed-changes/review-and-stamp
+    title: Review and stamp
+  - path: /proposed-changes/resolve-conflict
+    title: Resolve a proposed-change conflict
+  - path: /checks/
+    title: Checks & Validation (hub)
+  - path: /academy/tutorials/build-a-check
+    title: Build a check (Academy tutorial)
+  - path: /git-integration/
+    title: Git Integration (hub)
+  - path: /git-integration/connect-repository
+    title: Connect a repository
+  - path: /git-integration/infrahub-yml
+    title: infrahub.yml configuration
+  - path: /git-integration/branch-synchronization
+    title: Selective branch synchronization (merged concept + setup)
+
+# Internal cross-link references in OTHER files that point at legacy paths.
+# These will resolve via runtime redirects but should be rewritten to new paths at cleanup.
+# In-section references (within B&CC) were updated in this PR; the entries below
+# capture the cross-section references that were left in place to keep PR scope bounded.
+#
+# Many files across the docs reference these legacy paths. At cleanup time, easiest
+# approach is a project-wide find-and-replace for the patterns below. The sample of
+# affected files at the bottom is for reference, not exhaustive.
+cross_links_to_update:
+  # Replacement patterns (apply project-wide via sed/grep at cleanup):
+  patterns:
+    - find: ../topics/branching.mdx
+      replace: ../branches/index.mdx
+    - find: ../topics/proposed-change.mdx
+      replace: ../proposed-changes/index.mdx
+    - find: ../topics/check.mdx
+      replace: ../checks/index.mdx
+    - find: ../topics/repository.mdx
+      replace: ../git-integration/index.mdx
+    - find: ../guides/repository.mdx
+      replace: ../git-integration/connect-repository.mdx
+    - find: ../topics/infrahub-yml.mdx
+      replace: ../git-integration/infrahub-yml.mdx
+    - find: ../topics/branch-synchronization.mdx
+      replace: ../git-integration/branch-synchronization.mdx
+    - find: ../guides/selective-branch-sync.mdx
+      replace: ../git-integration/selective-branch-sync.mdx
+    # Same patterns at deeper relative depths (e.g. ../../topics/...)
+    # apply for files in academy/tutorials/, tutorials/getting-started/, etc.
+
+  # Sample of affected files (for orientation; full list via project-wide grep at cleanup):
+  sample_affected_files:
+    - docs/docs/development/git-best-practices.mdx
+    - docs/docs/overview/quickstart.mdx
+    - docs/docs/overview/overview.mdx
+    - docs/docs/topics/resources-testing-framework.mdx
+    - docs/docs/topics/schema.mdx
+    - docs/docs/topics/graphql.mdx
+    - docs/docs/tutorials/getting-started/branches.mdx
+    - docs/docs/tutorials/getting-started/git-integration.mdx
+    - docs/docs/groups/use-in-automation.mdx
+    - docs/docs/computed-attributes/index.mdx
+    - docs/docs/guides/object-load.mdx
+    - docs/docs/guides/graphql-fragment.mdx
+    - docs/docs/guides/artifact-content-composition.mdx
+    - docs/docs/guides/artifact.mdx
+    - docs/docs/guides/import-schema.mdx
+    - docs/docs/guides/create-schema.mdx
+    - docs/docs/guides/generator.mdx
+    - docs/docs/guides/jinja2-transform.mdx
+    - docs/docs/guides/python-transform.mdx
+    - docs/docs/guides/computed-attributes.mdx
+    - docs/docs/guides/menu.mdx
+    - docs/docs/reference/schema-validation.mdx
+    - docs/docs/reference/infrahub-tests.mdx
+    - docs/docs/reference/dotinfrahub.mdx
+
+  # Excluded from rewrite (historical content; rely on the runtime redirect):
+  excluded:
+    - docs/docs/release-notes/infrahub/release-0_16_0.mdx
+    - docs/docs/topics/branching.mdx (legacy file, will be deleted at cleanup)
+    - docs/docs/topics/proposed-change.mdx (legacy)
+    - docs/docs/topics/check.mdx (legacy)
+    - docs/docs/topics/repository.mdx (legacy)
+    - docs/docs/topics/infrahub-yml.mdx (legacy)
+    - docs/docs/topics/branch-synchronization.mdx (legacy)
+    - docs/docs/guides/check.mdx (legacy)
+    - docs/docs/guides/repository.mdx (legacy)
+    - docs/docs/guides/selective-branch-sync.mdx (legacy)

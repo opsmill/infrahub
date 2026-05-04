@@ -67,6 +67,7 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             'academy/tutorials/groups',
+            'academy/tutorials/build-a-check',
           ],
         },
       ],
@@ -102,13 +103,41 @@ const sidebars: SidebarsConfig = {
           collapsible: true,
           collapsed: true,
           items: [
-            { type: 'doc', id: 'topics/version-control', label: 'Version Control' },
-            { type: 'doc', id: 'topics/branching', label: 'Branching' },
-            { type: 'doc', id: 'topics/proposed-change', label: 'Proposed Changes' },
-            { type: 'doc', id: 'topics/check', label: 'Checks & Validation (Topic)' },
-            { type: 'doc', id: 'guides/check', label: 'Checks & Validation (Guide)' },
-            { type: 'doc', id: 'guides/change-approval-workflow', label: 'Change Approval Workflow' },
-            { type: 'doc', id: 'guides/selective-branch-sync', label: 'Selective Branch Sync' },
+            { type: 'doc', id: 'topics/version-control', label: 'Immutable History' },
+            {
+              type: 'category',
+              label: 'Branches',
+              link: { type: 'doc', id: 'branches/index' }, // hub
+              items: [
+                'branches/create',
+                'branches/merge',
+                'branches/rebase',
+                'branches/delete',
+                'branches/resolve-conflicts',
+              ],
+            },
+            {
+              type: 'category',
+              label: 'Proposed Changes',
+              link: { type: 'doc', id: 'proposed-changes/index' }, // hub
+              items: [
+                'proposed-changes/lifecycle',
+                'proposed-changes/review-and-stamp',
+                'proposed-changes/resolve-conflict',
+              ],
+            },
+            { type: 'doc', id: 'checks/index', label: 'Checks & Validation' },
+            { type: 'doc', id: 'guides/change-approval-workflow', label: 'Change Approval Policy' },
+            {
+              type: 'category',
+              label: 'Git Integration',
+              link: { type: 'doc', id: 'git-integration/index' }, // hub
+              items: [
+                { type: 'doc', id: 'git-integration/connect-repository', label: 'Connect a repository' },
+                { type: 'doc', id: 'git-integration/infrahub-yml', label: 'infrahub.yml configuration' },
+                { type: 'doc', id: 'git-integration/branch-synchronization', label: 'Selective branch synchronization' },
+              ],
+            },
           ],
         },
         {
@@ -196,18 +225,6 @@ const sidebars: SidebarsConfig = {
             // Cross-links to Development Resources
             { type: 'ref', id: 'topics/developer-guide', label: 'Developer Guide' },
             { type: 'ref', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Git Integration',
-          collapsible: true,
-          collapsed: true,
-          items: [
-            { type: 'doc', id: 'topics/repository', label: 'Repository Management (Topic)' },
-            { type: 'doc', id: 'guides/repository', label: 'Repository Management (Guide)' },
-            { type: 'doc', id: 'topics/infrahub-yml', label: 'Infrahub.yml Configuration' },
-            { type: 'doc', id: 'topics/branch-synchronization', label: 'Branch Synchronization' },
           ],
         },
         {
