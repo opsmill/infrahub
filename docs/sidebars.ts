@@ -127,7 +127,7 @@ const sidebars: SidebarsConfig = {
               ],
             },
             { type: 'doc', id: 'checks/index', label: 'Checks & Validation' },
-            { type: 'doc', id: 'guides/change-approval-workflow', label: 'Change Approval Policy' },
+            { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
             {
               type: 'category',
               label: 'Git Integration',
