@@ -40,9 +40,7 @@ export function ObjectSelector({
   onExcludedKindsChange,
 }: ObjectSelectorProps) {
   const [sourceId, setSourceId] = useState(initialSourceId);
-  const [sourceLabel, setSourceLabel] = useState("");
   const [destinationId, setDestinationId] = useState(initialDestinationId);
-  const [destinationLabel, setDestinationLabel] = useState("");
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedKinds, setSelectedKinds] = useState<string[]>([]);
 
@@ -61,25 +59,14 @@ export function ObjectSelector({
   }
 
   function handleSwap() {
-    const prevSourceId = sourceId;
-    const prevSourceLabel = sourceLabel;
+    const prev = sourceId;
     setSourceId(destinationId);
-    setSourceLabel(destinationLabel);
-    setDestinationId(prevSourceId);
-    setDestinationLabel(prevSourceLabel);
+    setDestinationId(prev);
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
-      <ObjectPicker
-        label="Source Object"
-        value={sourceId}
-        displayLabel={sourceLabel}
-        onChange={(id, label) => {
-          setSourceId(id);
-          setSourceLabel(label);
-        }}
-      />
+      <ObjectPicker label="Source Object" value={sourceId} onChange={setSourceId} />
 
       {(sourceId || destinationId) && (
         <button
@@ -91,15 +78,7 @@ export function ObjectSelector({
         </button>
       )}
 
-      <ObjectPicker
-        label="Destination Object"
-        value={destinationId}
-        displayLabel={destinationLabel}
-        onChange={(id, label) => {
-          setDestinationId(id);
-          setDestinationLabel(label);
-        }}
-      />
+      <ObjectPicker label="Destination Object" value={destinationId} onChange={setDestinationId} />
 
       <button
         type="button"

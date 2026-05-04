@@ -17,7 +17,6 @@ export function DependencySelector({
   initialSourceId = "",
 }: DependencySelectorProps) {
   const [sourceId, setSourceId] = useState(initialSourceId);
-  const [sourceLabel, setSourceLabel] = useState("");
   const [selectedKinds, setSelectedKinds] = useState<string[]>([]);
   const [maxDepth, setMaxDepth] = useState(5);
 
@@ -30,15 +29,7 @@ export function DependencySelector({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-4">
-      <ObjectPicker
-        label="Source Object"
-        value={sourceId}
-        displayLabel={sourceLabel}
-        onChange={(id, label) => {
-          setSourceId(id);
-          setSourceLabel(label);
-        }}
-      />
+      <ObjectPicker label="Source Object" value={sourceId} onChange={setSourceId} />
 
       <KindMultiSelect
         value={selectedKinds}
