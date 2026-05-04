@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Self, Sequence
 
-from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.exceptions import PermissionDeniedError
 from infrahub.permissions.constants import GLOBAL_PERMISSION_DENIAL_MESSAGE, PermissionDecisionFlag
@@ -24,10 +23,12 @@ class PermissionManager:
         self.resolver = resolver
 
     @classmethod
-    async def load_for_account(cls, db: InfrahubDatabase, branch: Branch, account_session: AccountSession) -> Self:
+    async def load_for_account(
+        cls, db: InfrahubDatabase, branch: Branch, default_branch_name: str, account_session: AccountSession
+    ) -> Self:
         loader = PermissionLoader(account_session=account_session)
         permissions = await loader.load(db=db, branch=branch)
-        resolver = PermissionResolver(permissions=permissions, default_branch_name=registry.default_branch)
+        resolver = PermissionResolver(permissions=permissions, default_branch_name=default_branch_name)
         return cls(account_session=account_session, resolver=resolver)
 
     def is_super_admin(self) -> bool:

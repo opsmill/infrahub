@@ -63,7 +63,7 @@ async def test_has_permission_global(
     await group2.members.save(db=db)
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_first_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
     )
     assert permission_manager.has_permission(permission=allow_default_branch_edition)
     try:
@@ -72,7 +72,7 @@ async def test_has_permission_global(
         pytest.fail("PermissionDeniedError raised unexpectedly")
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_second_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
     )
     assert not permission_manager.has_permission(permission=allow_default_branch_edition)
     with pytest.raises(PermissionDeniedError):
@@ -149,14 +149,14 @@ async def test_has_permission_object(
     )
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_first_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
     )
     assert not permission_manager.has_permission(permission=permission)
     with pytest.raises(PermissionDeniedError, match=r"You do not have the following permission"):
         permission_manager.raise_for_permission(permission=permission)
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_second_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
     )
     assert permission_manager.has_permission(permission=permission)
     try:
@@ -255,14 +255,14 @@ async def test_has_permissions_object(
     ]
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_first_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
     )
     assert not permission_manager.has_permissions(permissions=permissions)
     with pytest.raises(PermissionDeniedError, match=r"You do not have one of the following permissions"):
         permission_manager.raise_for_permissions(permissions=permissions)
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_second_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
     )
     assert permission_manager.has_permissions(permissions=permissions)
     try:
@@ -334,7 +334,7 @@ async def test_report_permission_object(
     await group2.members.save(db=db)
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_first_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
     )
     assert (
         permission_manager.report_object_permission(namespace="Builtin", name="Tag", action="create")
@@ -346,7 +346,7 @@ async def test_report_permission_object(
     )
 
     permission_manager = await PermissionManager.load_for_account(
-        db=db, branch=default_branch, account_session=session_second_account
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
     )
     assert (
         permission_manager.report_object_permission(namespace="Builtin", name="Tag", action="create")

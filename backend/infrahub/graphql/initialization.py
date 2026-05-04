@@ -113,7 +113,9 @@ async def prepare_graphql_params(
 
     permissions: PermissionManager | None = None
     if account_session:
-        permissions = await PermissionManager.load_for_account(db=db, branch=branch, account_session=account_session)
+        permissions = await PermissionManager.load_for_account(
+            db=db, branch=branch, default_branch_name=registry.default_branch, account_session=account_session
+        )
 
     return GraphqlParams(
         schema=gql_schema,
