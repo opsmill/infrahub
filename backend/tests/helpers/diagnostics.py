@@ -1,4 +1,4 @@
-# This file should be deleted once the flakiness reason
+# This file should be deleted once the flakiness is gone
 import asyncio
 from sys import stderr
 from traceback import format_exception

@@ -117,6 +117,7 @@ def add_tracker() -> None:
 
 @pytest.fixture(scope="session", autouse=True)
 def _install_redis_loop_diagnostics() -> None:
+    # This fixture should be deleted once the flakiness is gone
     install_redis_loop_diagnostics()
 
 

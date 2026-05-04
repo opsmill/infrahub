@@ -1,5 +1,6 @@
 """Tests for the diagnostic helper in tests.helpers.diagnostics."""
 
+# This file should be deleted once the flakiness is gone
 import asyncio
 import contextlib
 import io
