@@ -1,55 +1,61 @@
 ---
 name: migrate-feature-page
-description: Migrate a single Infrahub docs feature page (Layer 2 capability content like Profiles, Resource Manager, Webhooks) from the legacy topic+guide pair to a single merged page or hub+spokes pattern. Trigger when the user names a specific feature to migrate (e.g. "let's migrate profiles", "start the Resource Manager migration", "do the webhooks page next"). Each migration is its own branch off `demo/groups-diataxis-example`, its own PR back to that branch, scoped to one feature only.
+description: Migrate Infrahub docs feature pages from the legacy topic+guide pair into a cleaner structure (single merged page, hub+spokes, or tutorial extraction). Supports both single-feature migrations (one feature like Profiles or Webhooks) and section-wide migrations (a whole section like Branches & Change Control with multiple features migrated together) when the team has agreed on a section-wide restructure plan. Trigger when the user names a specific feature or section to migrate (e.g. "let's migrate profiles", "start the Resource Manager migration", "do the entire Branches & Change Control section"). Each migration is its own branch off `demo/groups-diataxis-example`, its own PR back to that branch.
 ---
 
 # Migrate Feature Page
 
-Used during the Infrahub docs revamp to migrate one feature page (Layer 2 content under a Features sub-category) from a topic + guide pair to a cleaner structure. Each feature gets its own branch and PR for scoped review.
+Used during the Infrahub docs revamp to migrate one feature page (Layer 2 content under a Features sub-category) — or an entire docs section — from a topic + guide pair to a cleaner structure. Each migration gets its own branch and PR for scoped review.
 
 ## Reference precedent
 
-The Groups feature was the first migration. Files to reference when in doubt:
+The Groups feature was the first single-feature migration. Files to reference when in doubt:
 
 - `docs/docs/groups/index.mdx` — hub
 - `docs/docs/groups/*.mdx` — spokes
 - `docs/docs/academy/tutorials/groups.mdx` — preserved tutorial
 - Confluence: [Docs Revamp — Groups Before/After Content Diff](https://opsmill.atlassian.net/wiki/spaces/Product/pages/566755331)
 
+For section-wide restructures, look for a per-section recommendation page on Confluence (e.g. [Branches & Change Control Recommendations](https://opsmill.atlassian.net/wiki/spaces/Product/pages/572358657)) — these capture the team-approved structure before migration starts.
+
 ## Inputs the user provides
 
-- **Feature name** (e.g. "Profiles", "Resource Manager", "Webhooks")
-- **Optional notes** about this feature
+- **Feature or section name** (e.g. "Profiles", "Resource Manager", "Webhooks", "Branches & Change Control section")
+- **Recommendation doc** (Confluence link) for section-wide migrations — confirms the approved structure
+- **Optional notes** about this feature/section
 
 ## Inputs the skill derives
 
-- Topic file: `docs/docs/topics/<slug>.mdx`
-- Guide file: `docs/docs/guides/<slug>.mdx`
+- Topic file(s): `docs/docs/topics/<slug>.mdx`
+- Guide file(s): `docs/docs/guides/<slug>.mdx`
 - Sidebar location: usually `Features > <Section>` in `docs/sidebars.ts`
 - Inbound links from other docs (via grep)
 
 ## Workflow
 
-Use TodoWrite to track. Stop and confirm with the user at every ★ gate.
+Use TodoWrite to track. Stop and confirm with the user at every ★ gate. For section-wide migrations, also see [Recommendations for large or section-wide migrations](#recommendations-for-large-or-section-wide-migrations) at the bottom — apply those on top of the standard workflow.
 
 ### Step 1 — Pre-flight
 
 - Verify current branch is `demo/groups-diataxis-example` (the consolidated parent branch). If not, switch.
 - Run `git status -s`. Any uncommitted changes? Stop and ask user how to handle them before creating a new branch.
-- Create new branch: `docs/migrate-<feature-slug>` (e.g. `docs/migrate-profiles`).
+- Create new branch:
+  - **Single-feature migration**: `docs/migrate-<feature-slug>` (e.g. `docs/migrate-profiles`)
+  - **Section-wide migration**: `docs/migrate-<section-slug>` (e.g. `docs/migrate-branches-and-change-control`)
 - Confirm the local serve and build work as a baseline.
 
 ### Step 2 — Audit existing content ★
 
-Read both files completely:
+Read the source files completely:
 
 - `docs/docs/topics/<slug>.mdx`
 - `docs/docs/guides/<slug>.mdx`
+- For section-wide migrations: read every page that's part of the section, not only one feature
 
 Produce a compact summary covering:
 
-- **Topic page**: section headings, line count, observations on quality / gaps
-- **Guide page**: section headings, line count, **is it tutorial-shaped?** Tutorial-shape signals: Step 1/2/3 headings, single running example used throughout, "Next steps" closer, linear narrative
+- **Topic page(s)**: section headings, line count, observations on quality / gaps
+- **Guide page(s)**: section headings, line count, **is it tutorial-shaped?** Tutorial-shape signals: Step 1/2/3 headings, single running example used throughout, "Next steps" closer, linear narrative
 - **Inconsistencies / gaps** — flag for user review (don't silently fix)
 - **Inbound cross-links** — `grep -rln 'topics/<slug>\|guides/<slug>' docs/docs/` (excluding the files themselves and other obvious matches). List which other docs reference them.
 
@@ -57,7 +63,7 @@ Produce a compact summary covering:
 
 ### Step 3 — Pattern decision ★
 
-Recommend a pattern based on the audit. Get user approval before creating files.
+Recommend a pattern based on the audit. Get user approval before creating files. For section-wide migrations, this happens per feature within the section — but the section recommendation doc usually has these decisions pre-made.
 
 **Decision rules:**
 
@@ -76,7 +82,7 @@ Recommend a pattern based on the audit. Get user approval before creating files.
 
 ### Step 4 — Create new files
 
-Follow the chosen pattern.
+Follow the chosen pattern. For section-wide migrations, do this **one feature at a time** with a build verification between each — see the section-wide recommendations below.
 
 **Match the interfaces shown in the existing guide / tutorial.** Before writing any how-to or spoke content, look at the existing guide and tutorial for that feature. They use Tabs to show the same task across the **UI**, **Python SDK**, and **GraphQL** — that ordering reflects how users actually interact with the feature (UI primary, SDK via generators, GraphQL last). When you create the new how-to spokes, preserve that same set of interface tabs and reuse the same running example. Do **not** reduce a multi-interface task to GraphQL-only because it's faster to write — the existing guide content is the source of truth for which interfaces matter and what the canonical UI navigation steps look like. If a new task isn't covered in the existing guide, mirror the interface set used elsewhere in the same feature's docs.
 
@@ -115,22 +121,39 @@ Fix any broken doc IDs or links. Run `npm run serve` to visually check.
 
 ### Step 7 — Add redirects-pending file
 
-Each feature migration drops a YAML file in `docs/redirects-pending/` listing the URL redirects this migration introduces. At end-of-Phase-2 (cleanup PR), all files are aggregated into a single redirects array in `docs/docusaurus.config.ts` via `@docusaurus/plugin-client-redirects`. See `docs/redirects-pending/README.md` for the format.
+Each migration drops a YAML file in `docs/redirects-pending/` recording the URL changes the migration introduces. The file has three sections — redirects (legacy → new), new pages introduced (canonical URLs for cross-reference), and cross-links in other files that need updating at cleanup. At end-of-Phase-2 (cleanup PR), all files are aggregated. See `docs/redirects-pending/README.md` for the schema.
 
-Create `docs/redirects-pending/<feature-slug>.yml`:
+Create `docs/redirects-pending/<feature-or-section-slug>.yml`:
 
 ```yaml
 ---
-feature: <Feature Name>
+feature: <Feature Name or Section Name>
 pr: TBD
 description: |
   Brief explanation of what changed and why these redirects exist.
+
+# Legacy URLs that will redirect to new locations
 redirects:
   - from: /docs/<old-path>
     to: /docs/<new-path>
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/<feature>/
+    title: <Feature> (hub)
+  - path: /docs/<feature>/<task>
+    title: <Task title>
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (will resolve via redirect at runtime but should be updated to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/topics/some-other-page.mdx
+    line: 42
+    current: ../topics/<slug>
+    should_be: ../<feature>/
 ```
 
-Common patterns:
+Common patterns for the `redirects` section:
 
 - **Hub + spokes (Groups / Profiles precedent)** — both legacy URLs redirect to the new hub:
   - `/docs/topics/<feature>` → `/docs/<feature>/`
@@ -144,13 +167,32 @@ Update `docs/redirects-pending/README.md` "Files in this folder" table to add th
 
 ### Step 8 — Cross-reference scan
 
-- Run `grep -rln '<feature-slug>' docs/docs/` to find inbound references.
+- Run `grep -rln '<feature-slug>' docs/docs/` to find inbound references to the legacy paths.
 - For each, identify whether the page actually mentions / depends on the migrated feature (vs a path coincidence).
 - For pages in **other sections** that should reference this feature in CONTENT (not sidebar), add an entry to the Confluence [Open Questions](https://opsmill.atlassian.net/wiki/spaces/Product/pages/567279617) page under "Surface cross-section content via prose." **Do NOT modify those other-section pages in this PR** — out of scope.
-- For pages in other sections that have **stale Markdown links** to the legacy paths (will resolve via redirect once cleanup happens, but should be updated to the new paths), add to the Open Questions cleanup checklist with file paths and line numbers.
-- For internal cross-links within the feature itself that are now stale, fix them in this PR.
+- For pages in other sections that have **stale Markdown links** to legacy paths (will resolve via redirect at runtime but should be updated to new paths at cleanup): **add an entry to the redirects-pending file's `cross_links_to_update` section** with `file`, `line`, `current` link target, and `should_be` link target. This gives the cleanup PR a complete inventory.
+- For internal cross-links **within the feature itself** (e.g. spokes referencing each other, hub referencing spokes) that are now stale, fix them in this PR.
 
-### Step 9 — Generate PR description ★
+### Step 9 — Pre-PR audit ★
+
+**Before opening the PR**, do a thorough audit pass. (This used to be the end-of-migration audit; moved earlier so issues land in the PR clean rather than as fix-up commits afterward.)
+
+- Re-read every new / modified file in this PR.
+- For each **factual claim**, find a source: existing docs (current topic, guide, reference, schema specs, related feature docs), schema definitions, code comments. If a claim can't be sourced, flag it.
+- Verify GraphQL mutations / queries match actual schema. Cross-check against:
+  - `docs/docs/reference/schema/<feature>.mdx` if present
+  - `docs/docs/topics/schema-attr-kind-*.mdx` for attribute kinds
+  - Other feature docs that reference the same primitives
+- Verify SDK examples are syntactically plausible. Compare against existing working examples in other feature pages.
+- Verify all cross-links resolve to the correct page and section.
+- Verify any new diagrams / tables / callouts are factually correct.
+- For section-wide migrations: do a **user-perspective walk-through** as well — spin up the dev server, click through every new page in the order a real user would encounter them, look for orphan paragraphs / broken sidebar order / hub pages that read like stubs.
+- Report findings with specific file paths + line numbers, e.g.:
+  - `groups/use-in-automation.mdx:54` — claim about "Generator owns a CoreGeneratorGroup" is incorrect; per `topics/generator.mdx`, the SDK manages the CoreGeneratorGroup automatically.
+
+★ **Gate**: present audit findings to the user. User decides which to fix in this PR vs defer. Fix the in-PR ones before continuing.
+
+### Step 10 — Generate PR description ★
 
 Draft a slimmed-down summary as the PR body. Template below.
 
@@ -161,8 +203,8 @@ Draft a slimmed-down summary as the PR body. Template below.
 ```markdown
 ## Summary
 
-Migrate the **<Feature>** feature page per the Infrahub docs revamp.
-Pattern: <single-page merge / hub + spokes / tutorial extraction / split>.
+Migrate the **<Feature or Section>** per the Infrahub docs revamp.
+Pattern: <single-page merge / hub + spokes / tutorial extraction / split / section-wide restructure>.
 
 ## Content changes
 
@@ -184,11 +226,12 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split>.
 
 - `cd docs && npm run build` succeeds
 - Local preview: `npm run serve` → http://localhost:3000
+- Pre-PR audit completed (Step 9 of migrate-feature-page skill)
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 ```
 
-### Step 10 — Lint, commit, push, open PR
+### Step 11 — Lint, commit, push, open PR
 
 **Always lint before committing** — required by `docs/AGENTS.md`:
 
@@ -211,28 +254,10 @@ Then commit, push, and open the PR:
 
 ```bash
 git add <files>
-git commit -m "docs: migrate <Feature> page per docs revamp"
+git commit -m "docs: migrate <Feature or Section> per docs revamp"
 git push -u origin docs/migrate-<slug>
-gh pr create --base demo/groups-diataxis-example --title "docs: migrate <Feature> per docs revamp" --body "<approved description>"
+gh pr create --base demo/groups-diataxis-example --title "docs: migrate <Feature or Section> per docs revamp" --body "<approved description>"
 ```
-
-### Step 11 — End-of-migration audit ★
-
-**After the user confirms the PR is open and content looks good**, do a separate audit pass.
-
-- Re-read every new / modified file in this PR.
-- For each **factual claim**, find a source: existing docs (current topic, guide, reference, schema specs, related feature docs), schema definitions, code comments. If a claim can't be sourced, flag it.
-- Verify GraphQL mutations / queries match actual schema. Cross-check against:
-  - `docs/docs/reference/schema/<feature>.mdx` if present
-  - `docs/docs/topics/schema-attr-kind-*.mdx` for attribute kinds
-  - Other feature docs that reference the same primitives
-- Verify SDK examples are syntactically plausible. Compare against existing working examples in other feature pages.
-- Verify all cross-links resolve to the correct page and section.
-- Verify any new diagrams / tables / callouts are factually correct.
-- Report findings with specific file paths + line numbers, e.g.:
-  - `groups/use-in-automation.mdx:54` — claim about "Generator owns a CoreGeneratorGroup" is incorrect; per `topics/generator.mdx`, the SDK manages the CoreGeneratorGroup automatically.
-
-★ **Gate**: present audit findings to the user. User decides which to fix in this PR vs defer.
 
 ## Decision rules — content edits during migration
 
@@ -243,6 +268,18 @@ gh pr create --base demo/groups-diataxis-example --title "docs: migrate <Feature
 | Stylistic improvement | Flag to user; default is defer |
 | Outdated example | Flag to user; ask |
 | Stale terminology / voice inconsistency | Defer (out of scope for this revamp) |
+
+## Recommendations for large or section-wide migrations
+
+When migrating multiple features in a single PR (a whole docs section like Branches & Change Control), apply these patterns on top of the standard workflow above:
+
+- **One feature at a time, with build verification between each.** Don't extract spokes from all hubs at once. Convert one feature → build → verify the pages render → move to the next. For B&CC: do Branches first (hub + 4 spokes + verify), then Proposed Changes (hub + 3 spokes + verify), then Checks (hub only). Catches problems early instead of compounding them.
+- **Hub-after-extraction review.** When a hub loses its H3 content to spokes, verify the hub still reads as a coherent concept page on its own — not a stub. Re-read the hub cold after extraction; add bridging prose if the structure feels gappy. The Groups and Profiles hubs are good shape references.
+- **Cross-link verification pass.** When pages move, internal `[link](../topics/foo)` references in OTHER files become broken at the URL level even though redirects will catch them. Run `grep -rn 'topics/<slug>\|guides/<slug>' docs/docs/` after each file move. For each match: fix immediately if it's within the feature being migrated, or log to the `cross_links_to_update` section of the redirects-pending file if it's in another feature/section.
+- **Tutorial extraction is its own mini-migration.** If a feature's guide moves to Academy, treat it as a self-contained subtask with its own checklist: source location → destination, title change, placement decision (which Tutorials sub-category), cross-link from the source feature page back to the tutorial. Don't fold it into the hub-conversion work for the same feature.
+- **Pre-PR user-perspective walk-through.** Already part of Step 9 for section-wide migrations. Spin up the dev server and click through every new page in the order a real user would encounter them. Look for: orphan paragraphs (content that lost its context when extracted), broken sidebar order, missing breadcrumbs, hub pages that read like stubs. This is a separate pass from the fact-check audit — it's a usability pass.
+- **TodoWrite per page.** With 10+ pages being created, edited, or moved, a per-page todo prevents losing track. Each todo: "Extract <X> spoke from <hub>.mdx → docs/<feature>/<x>.mdx + verify build."
+- **Stop at build verification gates.** If feature N doesn't build cleanly, don't proceed to feature N+1. Compounding failures are harder to debug.
 
 ## Confluence updates done as part of each feature migration
 
@@ -255,7 +292,7 @@ gh pr create --base demo/groups-diataxis-example --title "docs: migrate <Feature
 - URL redirects (handled in cleanup PR before production merge)
 - Modifications to other-section pages (cross-section work goes in Open Questions; out of scope)
 - Renaming or moving legacy `topics/<slug>.mdx` / `guides/<slug>.mdx` files (left in place so old URLs keep working)
-- Sidebar restructure outside the one feature being migrated
+- Sidebar restructure outside the feature/section being migrated
 - Bulk rewriting / voice-and-tone polishing
 
 ## After merge to `demo/groups-diataxis-example`
@@ -267,7 +304,7 @@ The feature PR merges into the consolidated parent branch (`demo/groups-diataxis
 When all feature migrations land in `demo/groups-diataxis-example` and the team is ready to ship to production:
 
 - Delete legacy `topics/<slug>.mdx` and `guides/<slug>.mdx` files
-- Update inbound cross-links in other docs to point at new paths
-- Install `@docusaurus/plugin-client-redirects` and add redirect entries
+- Update inbound cross-links in other docs to point at new paths (use each `redirects-pending/*.yml` file's `cross_links_to_update` section for the inventory)
+- Install `@docusaurus/plugin-client-redirects` and add redirect entries (aggregate from each `redirects-pending/*.yml`'s `redirects` section)
 - Single-pass content audit
 - Single Navigation Map / Confluence update reflecting final state
