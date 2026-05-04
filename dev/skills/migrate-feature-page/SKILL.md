@@ -239,7 +239,18 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split / secti
 uv run invoke docs.lint
 ```
 
-This runs both markdownlint and Vale. Fix any reported issues before continuing. If Vale isn't installed locally a warning prints; that's fine — markdownlint coverage is the harder one to pass.
+This runs both markdownlint and Vale. **Both must pass** — Vale (documentation style) failures block CI in the `validate-documentation-style` check. Fix every error reported before committing. Warnings are not blocking but should be triaged: if a warning is in NEW content, fix it; if it's in pre-existing content unrelated to this PR, leave it.
+
+If Vale isn't installed locally, install it first — `brew install vale` on macOS, or download from https://github.com/errata-ai/vale/releases. Don't skip Vale checks; CI will catch what you missed and you'll have to push fix-up commits.
+
+Common Vale rules to watch for:
+- **`Infrahub.spelling`** — flags non-dictionary words. Either rephrase, or if it's a real word that should be in the vocabulary, add it to `.vale/styles/spelling-exceptions.txt`.
+- **`Infrahub.swap`** — substitutes specific terms (e.g. "repo" → "repository"). Just use the preferred term.
+- **`Infrahub.branded-terms-case-swap`** — Infrahub product names should be capitalized (Transformations, Generators, Profiles, etc.) when used as branded references.
+- **`Infrahub.eg-ie`** (warning) — replace `e.g.` and `i.e.` with `for example,` or `that is,`.
+- **`Infrahub.sentence-case`** (warning) — headings should use sentence case, not title case.
+
+For dev-internal docs that shouldn't be subject to Vale style rules (e.g. team workflow READMEs), add a `BasedOnStyles =` exclusion in `.vale.ini` rather than fighting individual rules.
 
 Also check for AGENTS.md "Never Do" words that linters miss (`simple`, `easy`, `just`). Run this against **every file changed in the PR** — not just the docs pages, but also any skill, agent guide, or dev doc you touched. The forbidden-words rule is global; in-house dev docs aren't exempt.
 

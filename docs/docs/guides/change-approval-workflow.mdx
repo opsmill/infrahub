@@ -30,15 +30,15 @@ This step can be skipped if appropriate users and groups are already configured 
 
 The pattern below uses two groups representing a typical separation:
 
-- A **`<requester-group>`** (e.g. a `Support team`) — proposes changes but cannot approve or merge them
-- A **`<reviewer-group>`** (e.g. a `Network team`) — reviews, approves, and merges proposed changes
+- A **`<requester-group>`** (for example, a `Support team`) — proposes changes but cannot approve or merge them
+- A **`<reviewer-group>`** (for example, a `Network team`) — reviews, approves, and merges proposed changes
 
 Steps:
 
 1. Navigate to **Admin → Users & Permissions**
 2. Open the **Groups** tab and create:
-   - `<requester-group>` (e.g. `Support team`)
-   - `<reviewer-group>` (e.g. `Network team`)
+   - `<requester-group>` (for example, `Support team`)
+   - `<reviewer-group>` (for example, `Network team`)
 3. Open the **Accounts** tab and create the user accounts your organization needs, assigning each to the appropriate group
 
 ## Configure roles and permissions
@@ -122,7 +122,7 @@ Ensure that only the Infrahub service account can push to the default branch of 
 2. Select **Branches** in the left sidebar
 3. Click **Add classic protection rule**, or edit the existing rule for the default branch
 4. Configure:
-   - Branch name pattern: the default branch name (e.g. `main`)
+   - Branch name pattern: the default branch name (for example, `main`)
    - Enable **Require pull request reviews before merging**
        - Enable **Require approvals**, set count to `<minimum-approvals>`
        - Enable **Dismiss stale pull request approvals when new commits are pushed**
