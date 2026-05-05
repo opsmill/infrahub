@@ -18,6 +18,9 @@ checkout:
   fetch-depth: 0
   submodules: true
 safe-outputs:
+  github-app:
+    client-id: ${{ vars.GH_AW_APP_ID }}
+    private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
   add-comment:
     max: 3
   add-labels:

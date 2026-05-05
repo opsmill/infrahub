@@ -37,7 +37,7 @@ steps:
 
       if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
         REQ=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-          --jq '[.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+          --jq '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
             and (.body | contains("AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-fix: fix already complete and no FIX_CHANGES_REQUESTED verdict from reviewer."
@@ -50,7 +50,7 @@ steps:
       fi
 
       APPROVED=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-        --jq '[.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+        --jq '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
           and (.body | contains("AGENT_REVIEW_VERDICT: TEST_APPROVED")))] | length')
       if [ "$APPROVED" = "0" ]; then
         fail "Cannot run /bug-fix: test not yet approved by reviewer. Wait for TEST_APPROVED verdict."
@@ -71,6 +71,9 @@ steps:
   - run: cd frontend/app && pnpm install --frozen-lockfile
   - run: cd frontend/app && pnpm exec playwright install chromium
 safe-outputs:
+  github-app:
+    client-id: ${{ vars.GH_AW_APP_ID }}
+    private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
   add-comment:
     max: 3
   add-labels:

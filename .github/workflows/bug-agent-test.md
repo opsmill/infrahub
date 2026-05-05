@@ -46,7 +46,7 @@ steps:
         fi
 
         REQ=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
-          --jq '[.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+          --jq '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
             and (.body | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
         if [ "$REQ" = "0" ]; then
           fail "Cannot run /bug-tdd: no TEST_CHANGES_REQUESTED verdict from reviewer to act on."
@@ -55,7 +55,7 @@ steps:
       fi
 
       ANALYSIS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
-        --jq '[.[] | select((.user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+        --jq '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
           and (.body | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
       if [ "$ANALYSIS" = "0" ]; then
         fail "Cannot run /bug-tdd: no AGENT_ANALYSIS_COMPLETE comment from analyst. Run /bug-analyze first."
@@ -76,6 +76,9 @@ steps:
   - run: cd frontend/app && pnpm install --frozen-lockfile
   - run: cd frontend/app && pnpm exec playwright install chromium
 safe-outputs:
+  github-app:
+    client-id: ${{ vars.GH_AW_APP_ID }}
+    private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
   add-comment:
     max: 3
   add-labels:
