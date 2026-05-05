@@ -53,11 +53,7 @@ async def setup_triggers_specific(
     async with lock.registry.get(
         name=f"configure-action-rules-{trigger_type.value}", namespace="trigger-rules", local=False
     ):
-        if db:
-            async with db.start_session(read_only=True) as dbs:
-                triggers = await gatherer(dbs)
-        else:
-            triggers = await gatherer(db)
+        triggers = await gatherer(db)
         async with get_client(sync_client=False) as prefect_client:
             return await setup_triggers(
                 client=prefect_client,

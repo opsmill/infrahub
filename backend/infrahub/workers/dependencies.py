@@ -24,6 +24,11 @@ from infrahub.tls.registry import TlsContextRegistry
 _singletons: dict[str, Any] = {}
 
 
+def clear_singletons() -> None:
+    """Drop every cached singleton"""
+    _singletons.clear()
+
+
 def set_component_type(component_type: ComponentType) -> None:
     if "component_type" not in _singletons:
         _singletons["component_type"] = component_type
