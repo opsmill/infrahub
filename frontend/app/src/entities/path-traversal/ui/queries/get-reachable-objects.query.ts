@@ -1,14 +1,12 @@
-import { queryOptions, type UseQueryOptions, useQuery } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { useAtomValue } from "jotai";
 
+import type { QueryConfig } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getReachableObjects } from "@/entities/path-traversal/domain/get-reachable-objects";
-import type {
-  GetReachableObjectsParams,
-  ReachableObjectsResponse,
-} from "@/entities/path-traversal/domain/path-traversal.types";
+import type { GetReachableObjectsParams } from "@/entities/path-traversal/domain/path-traversal.types";
 import { pathTraversalQueryKeys } from "@/entities/path-traversal/ui/queries/path-traversal.query-keys";
 
 export function getReachableObjectsQueryOptions(params: GetReachableObjectsParams) {
@@ -19,11 +17,10 @@ export function getReachableObjectsQueryOptions(params: GetReachableObjectsParam
 }
 
 type UseGetReachableObjectsParams = Omit<GetReachableObjectsParams, "branchName" | "atDate">;
-type UseGetReachableObjectsConfig = Partial<UseQueryOptions<ReachableObjectsResponse>>;
 
 export function useGetReachableObjects(
   params: UseGetReachableObjectsParams,
-  config?: UseGetReachableObjectsConfig
+  config?: QueryConfig<typeof getReachableObjectsQueryOptions>
 ) {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
