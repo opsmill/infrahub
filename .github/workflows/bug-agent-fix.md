@@ -67,8 +67,6 @@ steps:
   - uses: actions/setup-node@v6
     with:
       node-version: 24
-      cache: pnpm
-      cache-dependency-path: frontend/app/pnpm-lock.yaml
   - run: cd frontend/app && pnpm install --frozen-lockfile
   - run: cd frontend/app && pnpm exec playwright install chromium
 safe-outputs:
