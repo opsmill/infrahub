@@ -147,8 +147,17 @@ const sidebars: SidebarsConfig = {
           collapsed: true,
           items: [
             { type: 'doc', id: 'guides/object-load', label: 'Loading Data' },
-            { type: 'doc', id: 'topics/resource-manager', label: 'Resource Manager (Topic)' },
-            { type: 'doc', id: 'guides/resource-manager', label: 'Resource Manager (Guide)' },
+            {
+              type: 'category',
+              label: 'Resource Manager',
+              link: { type: 'doc', id: 'resource-manager/index' }, // hub
+              items: [
+                'resource-manager/allocate-ip-address',
+                'resource-manager/allocate-ip-prefix',
+                'resource-manager/allocate-number',
+                'resource-manager/weighted-allocation',
+              ],
+            },
             {
               type: 'category',
               label: 'Groups',
