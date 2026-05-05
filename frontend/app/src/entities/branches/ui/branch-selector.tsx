@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, LinkButton } from "@infrahub/ui";
-import { ArrowUpRightIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
+import { ArrowUpRightIcon, ChevronsUpDownIcon, LoaderIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
 import {
@@ -99,7 +99,8 @@ interface BranchListProps {
 }
 
 function BranchList({ closePopover, openCreateForm }: BranchListProps) {
-  const { data, hasNextPage, fetchNextPage, isFetchingNextPage } = useGetBranchesPaginated();
+  const { data, hasNextPage, fetchNextPage, isFetchingNextPage, isPending } =
+    useGetBranchesPaginated();
   const { setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const { contains } = useFilter({ sensitivity: "base" });
@@ -128,7 +129,19 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
           layout={ListLayout}
           layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
         >
-          <ListBox aria-label="branch list" emptyMessage="No branch found" className="max-h-125">
+          <ListBox
+            aria-label="branch list"
+            className="max-h-125"
+            renderEmptyState={() =>
+              isPending ? (
+                <Row className="p-2 text-sm text-stone-500">
+                  <LoaderIcon className="size-3.5 animate-spin" /> Loading...
+                </Row>
+              ) : (
+                <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
+              )
+            }
+          >
             <Collection items={branches}>
               {(branch) => (
                 <ListBoxItem textValue={branch.name} onAction={() => handleBranchChange(branch)}>
