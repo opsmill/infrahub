@@ -1,80 +1,14 @@
 import pytest
 
 from infrahub.auth import AccountSession
-from infrahub.core import registry
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import PermissionDeniedError
-from infrahub.permissions import AssignedPermissions, PermissionBackend, PermissionManager
+from infrahub.permissions import PermissionManager
 from infrahub.permissions.constants import PermissionDecisionFlag
-
-
-class DummyBackendAllow(PermissionBackend):
-    async def load_permissions(
-        self, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
-    ) -> AssignedPermissions:
-        return {
-            "global_permissions": [],
-            "object_permissions": [ObjectPermission("*", "*", "*", PermissionDecisionFlag.ALLOW_ALL.value)],
-        }
-
-
-class DummyBackendDeny(PermissionBackend):
-    async def load_permissions(
-        self, db: InfrahubDatabase, branch: Branch, account_session: AccountSession
-    ) -> AssignedPermissions:
-        return {
-            "global_permissions": [],
-            "object_permissions": [ObjectPermission("Ipam", "*", "*", PermissionDecisionFlag.DENY.value)],
-        }
-
-
-async def test_load_permissions(
-    db: InfrahubDatabase,
-    default_permission_backend: None,
-    default_branch: Branch,
-    session_admin: AccountSession,
-    session_first_account: AccountSession,
-) -> None:
-    permission_manager = PermissionManager(account_session=session_admin)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
-
-    assert "global_permissions" in permission_manager.permissions
-    assert permission_manager.permissions["global_permissions"][0].action == GlobalPermissions.SUPER_ADMIN.value
-
-    assert "object_permissions" in permission_manager.permissions
-    assert str(permission_manager.permissions["object_permissions"][0]) == str(
-        ObjectPermission(
-            namespace="*", name="*", action=PermissionAction.ANY.value, decision=PermissionDecision.ALLOW_ALL.value
-        )
-    )
-
-    permission_manager = PermissionManager(account_session=session_first_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
-
-    assert "global_permissions" in permission_manager.permissions
-    assert not permission_manager.permissions["global_permissions"]
-
-    assert "object_permissions" in permission_manager.permissions
-    assert not permission_manager.permissions["object_permissions"]
-
-
-async def test_load_permissions_multiple_backends(
-    db: InfrahubDatabase, default_branch: Branch, session_first_account: AccountSession
-) -> None:
-    registry.permission_backends = [DummyBackendAllow(), DummyBackendDeny()]
-
-    permission_manager = PermissionManager(account_session=session_first_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
-
-    assert "global_permissions" in permission_manager.permissions
-    assert not permission_manager.permissions["global_permissions"]
-
-    assert "object_permissions" in permission_manager.permissions
-    assert len(permission_manager.permissions["object_permissions"]) == 2
 
 
 async def test_has_permission_global(
@@ -128,16 +62,18 @@ async def test_has_permission_global(
     await group2.members.add(db=db, data={"id": session_second_account.account_id})
     await group2.members.save(db=db)
 
-    permission_manager = PermissionManager(account_session=session_first_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
+    )
     assert permission_manager.has_permission(permission=allow_default_branch_edition)
     try:
         permission_manager.raise_for_permission(permission=allow_default_branch_edition)
     except PermissionDeniedError:
         pytest.fail("PermissionDeniedError raised unexpectedly")
 
-    permission_manager = PermissionManager(account_session=session_second_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
+    )
     assert not permission_manager.has_permission(permission=allow_default_branch_edition)
     with pytest.raises(PermissionDeniedError):
         permission_manager.raise_for_permission(permission=allow_default_branch_edition)
@@ -212,14 +148,16 @@ async def test_has_permission_object(
         decision=PermissionDecision.ALLOW_ALL.value,
     )
 
-    permission_manager = PermissionManager(account_session=session_first_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
+    )
     assert not permission_manager.has_permission(permission=permission)
     with pytest.raises(PermissionDeniedError, match=r"You do not have the following permission"):
         permission_manager.raise_for_permission(permission=permission)
 
-    permission_manager = PermissionManager(account_session=session_second_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
+    )
     assert permission_manager.has_permission(permission=permission)
     try:
         permission_manager.raise_for_permission(permission=permission)
@@ -316,14 +254,16 @@ async def test_has_permissions_object(
         ),
     ]
 
-    permission_manager = PermissionManager(account_session=session_first_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
+    )
     assert not permission_manager.has_permissions(permissions=permissions)
     with pytest.raises(PermissionDeniedError, match=r"You do not have one of the following permissions"):
         permission_manager.raise_for_permissions(permissions=permissions)
 
-    permission_manager = PermissionManager(account_session=session_second_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
+    )
     assert permission_manager.has_permissions(permissions=permissions)
     try:
         permission_manager.raise_for_permissions(permissions=permissions)
@@ -393,8 +333,9 @@ async def test_report_permission_object(
     await group2.members.add(db=db, data={"id": session_second_account.account_id})
     await group2.members.save(db=db)
 
-    permission_manager = PermissionManager(account_session=session_first_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_first_account
+    )
     assert (
         permission_manager.report_object_permission(namespace="Builtin", name="Tag", action="create")
         == PermissionDecisionFlag.DENY
@@ -404,8 +345,9 @@ async def test_report_permission_object(
         == PermissionDecisionFlag.ALLOW_ALL
     )
 
-    permission_manager = PermissionManager(account_session=session_second_account)
-    await permission_manager.load_permissions(db=db, branch=default_branch)
+    permission_manager = await PermissionManager.load_for_account(
+        db=db, branch=default_branch, default_branch_name=default_branch.name, account_session=session_second_account
+    )
     assert (
         permission_manager.report_object_permission(namespace="Builtin", name="Tag", action="create")
         == PermissionDecisionFlag.ALLOW_ALL
