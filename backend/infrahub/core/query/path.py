@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core import registry
 from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import Query, QueryType
 
@@ -131,7 +130,6 @@ class PathTraversalQuery(Query):
         self.params.update(branch_params)
         self.params["source_uuid"] = self.source_id
         self.params["target_uuid"] = self.destination_id
-        self.params["default_branch"] = registry.default_branch
 
         max_edge_length = self.max_depth * 2
 
@@ -178,62 +176,41 @@ class PathTraversalQuery(Query):
             "branch_filter": branch_filter,
         }
 
-        if self.branch.is_default:
-            # On the default branch we can require every edge to be active AND
-            # verify no twin deleted edge exists between the same pair of vertices
-            # (status="deleted" edges can coexist with status="active" ones when
-            # a relationship has been recreated).
-            query_params["candidate_limit"] = self.max_paths
-            query = (
-                """
-            MATCH (source:Node { uuid: $source_uuid }), (target:Node { uuid: $target_uuid })
-            MATCH path = (source)-[:IS_RELATED*2..%(max_edge_length)s]-(target)
-            WHERE %(where_str)s
-            AND all(r IN relationships(path) WHERE r.status = "active")
-            AND none(
-                r IN relationships(path) WHERE exists(
-                    (startNode(r))-[:IS_RELATED {branch: $default_branch, status: "deleted"}]-(endNode(r))
-                )
-            )
-            RETURN path, length(path) AS path_length
-            ORDER BY path_length ASC
-            LIMIT %(max_paths)s
+        # For each pair of adjacent vertices on a candidate path we take the
+        # latest-version IS_RELATED edge (highest branch_level, then most
+        # recent `from`, then active before deleted on ties) and require that
+        # latest version to be active. This handles deleted-then-recreated
+        # relationships and per-branch overrides uniformly. Off-default
+        # branches need a wider candidate pool because superseded edges from
+        # the origin branch produce more "false" candidates that get filtered.
+        query_params["candidate_limit"] = self.max_paths if self.branch.is_default else self.max_paths * 5
+        query = (
             """
-                % query_params
-            )
-        else:
-            # Off the default branch a candidate edge may be active on the default
-            # branch but deleted on this branch. We take the latest-version edge
-            # per (sn, en) pair (pattern mirrored from attribute.py) and require
-            # each hop's latest version to be active.
-            query_params["candidate_limit"] = self.max_paths * 5
-            query = (
-                """
-            MATCH (source:Node { uuid: $source_uuid }), (target:Node { uuid: $target_uuid })
-            MATCH path = (source)-[:IS_RELATED*2..%(max_edge_length)s]-(target)
-            WHERE %(where_str)s
-            WITH path, length(path) AS path_length
-            ORDER BY path_length ASC
-            LIMIT %(candidate_limit)s
-            WITH path, path_length, relationships(path) AS rels
-            UNWIND range(0, size(rels) - 1) AS idx
-            WITH path, path_length, startNode(rels[idx]) AS sn, endNode(rels[idx]) AS en
-            CALL (sn, en) {
-                MATCH (sn)-[r:IS_RELATED]-(en)
-                WHERE (%(branch_filter)s)
-                RETURN r
-                ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
-                LIMIT 1
-            }
-            WITH path, path_length, r.status = "active" AS edge_active
-            WITH path, path_length, collect(edge_active) AS edge_statuses
-            WHERE ALL(s IN edge_statuses WHERE s = true)
-            RETURN DISTINCT path, path_length
-            ORDER BY path_length ASC
-            LIMIT %(max_paths)s
-            """
-                % query_params
-            )
+        MATCH (source:Node { uuid: $source_uuid }), (target:Node { uuid: $target_uuid })
+        MATCH path = (source)-[:IS_RELATED*2..%(max_edge_length)s]-(target)
+        WHERE %(where_str)s
+        WITH path, length(path) AS path_length
+        ORDER BY path_length ASC
+        LIMIT %(candidate_limit)s
+        WITH path, path_length, relationships(path) AS rels
+        UNWIND range(0, size(rels) - 1) AS idx
+        WITH path, path_length, startNode(rels[idx]) AS sn, endNode(rels[idx]) AS en
+        CALL (sn, en) {
+            MATCH (sn)-[r:IS_RELATED]-(en)
+            WHERE (%(branch_filter)s)
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH path, path_length, r.status = "active" AS edge_active
+        WITH path, path_length, collect(edge_active) AS edge_statuses
+        WHERE ALL(s IN edge_statuses WHERE s = true)
+        RETURN DISTINCT path, path_length
+        ORDER BY path_length ASC
+        LIMIT %(max_paths)s
+        """
+            % query_params
+        )
 
         self.add_to_query(query)
         self.return_labels = ["path", "length(path) AS path_length"]
