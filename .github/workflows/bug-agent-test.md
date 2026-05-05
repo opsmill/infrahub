@@ -291,10 +291,15 @@ Push the branch and open a **draft Pull Request**:
 
 <what the test asserts and any edge cases it covers -- NOT how to fix the bug>
 
-<!-- AGENT_TEST_COMPLETE -->
+AGENT_TEST_COMPLETE
 ````
 
-Post a short comment on the issue linking to the draft PR.
+The literal text `AGENT_TEST_COMPLETE` MUST appear in the PR body. The downstream
+`/bug-fix` gate scans the PR body for this exact substring; if it is missing, the
+pipeline halts.
+
+Post a short comment on the issue linking to the draft PR. Do NOT include
+`AGENT_TEST_COMPLETE` in that issue comment -- it belongs only in the PR body.
 
 ### Failure handling
 
@@ -308,8 +313,8 @@ You were triggered by `/bug-tdd` on an existing draft test PR (the reviewer's pr
 verdict was `TEST_CHANGES_REQUESTED`).
 
 1. Check out the PR branch.
-2. Read the reviewer's latest comment with
-   `<!-- AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED -->` carefully. Each requested change
+2. Read the reviewer's latest comment containing
+   `AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED` carefully. Each requested change
    should reference specific files and lines -- address every one of them.
 3. Read the analyst's original comment on the linked issue to keep the root cause
    in mind. Do not drift from the original scope.

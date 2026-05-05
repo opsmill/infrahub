@@ -114,11 +114,11 @@ Determine which mode you are in:
 
 - **Initial fix mode:** `/bug-fix` was triggered on a draft PR that contains the
   `AGENT_TEST_COMPLETE` marker AND a reviewer comment containing
-  `<!-- AGENT_REVIEW_VERDICT: TEST_APPROVED -->`. No `AGENT_FIX_COMPLETE` marker yet.
+  `AGENT_REVIEW_VERDICT: TEST_APPROVED`. No `AGENT_FIX_COMPLETE` marker yet.
   Follow the "Initial fix" section.
 - **Revision mode:** `/bug-fix` was triggered on a PR that already contains the
   `AGENT_FIX_COMPLETE` marker. A reviewer requested changes (latest review comment
-  contains `<!-- AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED -->`).
+  contains `AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED`).
   Skip to the "Revision mode" section below.
 
 The workflow has already validated the gate markers (`AGENT_TEST_COMPLETE`,
@@ -240,7 +240,9 @@ contract, post a comment on the issue explaining the scope, add the label
   repository and fill in every section using the context from this task.
   Do not skip or remove any section. For sections where you have nothing meaningful to add
   (e.g., Screenshots), write "N/A" rather than inventing content.
-- Make sure the hidden marker `<!-- AGENT_FIX_COMPLETE -->` appears somewhere in the PR body.
+- Make sure the literal text `AGENT_FIX_COMPLETE` appears somewhere in the PR body.
+  The downstream gate scans the PR body for this exact substring; if it is missing,
+  the pipeline halts.
 
 ### Step 9: Push
 
@@ -256,7 +258,7 @@ Post a comment on the issue linking to the updated PR.
 ## Revision mode
 
 You were triggered by `/bug-fix` on a PR whose latest reviewer comment contains
-`<!-- AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED -->`.
+`AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED`.
 
 1. Check out the PR branch.
 2. Read the reviewer's PR review carefully. Each requested change should reference

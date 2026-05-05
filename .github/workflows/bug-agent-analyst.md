@@ -135,9 +135,9 @@ should be>
 ## Notes for downstream steps
 <edge cases, risks, or constraints the test-writer and fixer should know about>
 
-<!-- AGENT_ANALYSIS_COMPLETE -->
+AGENT_ANALYSIS_COMPLETE
 ````
 
-The `<!-- AGENT_ANALYSIS_COMPLETE -->` marker must be the **last line** of the comment.
-It signals to the user that analysis is complete and they may now trigger the
+The `AGENT_ANALYSIS_COMPLETE` marker must appear verbatim as the **last line** of the
+comment. It signals to the user that analysis is complete and they may now trigger the
 test-writer with `/bug-tdd` on the same issue.

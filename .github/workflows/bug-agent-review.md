@@ -72,8 +72,8 @@ If neither marker is present, do nothing and stop.
 2. Read the internal documentation in the repository (look for docs/, CONTRIBUTING.md,
    ADRs, architecture docs, coding standards, etc.).
 3. Evaluate according to the review dimensions for your mode (see below).
-4. **Check the iteration count.** Look for `<!-- AGENT_REVIEW_ITERATION: test-N -->` or
-   `<!-- AGENT_REVIEW_ITERATION: fix-N -->` markers in previous PR review comments
+4. **Check the iteration count.** Look for `AGENT_REVIEW_ITERATION: test-N` or
+   `AGENT_REVIEW_ITERATION: fix-N` markers in previous PR review comments
    (matching the current mode). Count only the markers for your current mode.
    - If there are already **3 or more** previous iterations for the current mode, add the
      label `state/needs-human-fix` to the PR and post a comment explaining that automated
@@ -82,11 +82,11 @@ If neither marker is present, do nothing and stop.
 5. Post a **GitHub PR comment** (do NOT submit a PR review -- no approve, no request-changes).
    Downstream pipeline agents trigger on the verdict marker in your comment.
    Your comment must contain:
-   - A verdict marker as the **very first line**, exactly one of these HTML comments:
-     - `<!-- AGENT_REVIEW_VERDICT: TEST_APPROVED -->` -- test meets quality standards
-     - `<!-- AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED -->` -- test needs revision
-     - `<!-- AGENT_REVIEW_VERDICT: FIX_APPROVED -->` -- fix meets quality standards
-     - `<!-- AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED -->` -- fix needs revision
+   - A verdict marker as the **very first line**, exactly one of these strings:
+     - `AGENT_REVIEW_VERDICT: TEST_APPROVED` -- test meets quality standards
+     - `AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED` -- test needs revision
+     - `AGENT_REVIEW_VERDICT: FIX_APPROVED` -- fix meets quality standards
+     - `AGENT_REVIEW_VERDICT: FIX_CHANGES_REQUESTED` -- fix needs revision
      Pick the marker matching your current mode (test review or fix review) and verdict.
      For APPROVED WITH SUGGESTIONS, use the APPROVED marker -- suggestions do not block
      the pipeline.
@@ -94,9 +94,9 @@ If neither marker is present, do nothing and stop.
    - One section per dimension for your current mode
    - Actionable suggestions with file paths and line numbers where relevant
    - A final "Recommended next steps" section
-   - The hidden marker `<!-- AGENT_REVIEW_ITERATION: test-N -->` or
-     `<!-- AGENT_REVIEW_ITERATION: fix-N -->` where N is the current iteration number
-     for this mode (1 for first review, 2 for second, etc.)
+   - The marker `AGENT_REVIEW_ITERATION: test-N` or `AGENT_REVIEW_ITERATION: fix-N`
+     where N is the current iteration number for this mode (1 for first review,
+     2 for second, etc.)
 
    When your verdict is CHANGES REQUESTED:
    - Be specific: each requested change must reference a file, line, and what to do.
