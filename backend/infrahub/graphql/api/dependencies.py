@@ -11,6 +11,7 @@ from ..auth.query_permission_checker.object_permission_checker import (
     PermissionManagerPermissionChecker,
     RepositoryManagerPermissionChecker,
 )
+from ..auth.query_permission_checker.rebase_operation_checker import RebaseBranchPermissionChecker
 from ..auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
 
 
@@ -26,6 +27,7 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
             SuperAdminPermissionChecker(),
             DefaultBranchPermissionChecker(),
             MergeBranchPermissionChecker(),
+            RebaseBranchPermissionChecker(),
             AccountManagerPermissionChecker(),
             RepositoryManagerPermissionChecker(),
             PermissionManagerPermissionChecker(),

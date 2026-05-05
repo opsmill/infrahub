@@ -109,6 +109,10 @@ class InfrahubProposedChangeMutation(InfrahubMutationMixin, Mutation):
             raise ValidationError(
                 input_value=f"Cannot create proposed change: branch '{source_branch_name}' has been merged"
             )
+        if source_branch_obj.status == BranchStatus.MERGING:
+            raise ValidationError(
+                input_value=f"Cannot create proposed change: branch '{source_branch_name}' is currently being merged"
+            )
 
         async with graphql_context.db.start_transaction() as dbt:
             proposed_change, result = await super().mutate_create(

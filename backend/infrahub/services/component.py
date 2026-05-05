@@ -77,26 +77,27 @@ class InfrahubComponent:
 
     async def refresh_schema_hash(self, branches: list[str] | None = None) -> None:
         branches = branches or list(registry.branch.keys())
-        for branch in branches:
-            if branch == GLOBAL_BRANCH_NAME:
-                continue
-            schema_branch = registry.schema.get_schema_branch(name=branch)
-            hash_value = schema_branch.get_hash()
+        async with self.db.start_session(read_only=True) as safe_db:
+            for branch in branches:
+                if branch == GLOBAL_BRANCH_NAME:
+                    continue
+                schema_branch = registry.schema.get_schema_branch(name=branch)
+                hash_value = schema_branch.get_hash()
 
-            # Use branch name if we cannot find branch id in cache
-            branch_id: str | None = None
-            if branch_obj := await registry.get_branch(branch=branch, db=self.db):
-                branch_id = str(branch_obj.uuid)
+                # Use branch name if we cannot find branch id in cache
+                branch_id: str | None = None
+                if branch_obj := await registry.get_branch(branch=branch, db=safe_db):
+                    branch_id = str(branch_obj.uuid)
 
-            if not branch_id:
-                branch_id = branch
+                if not branch_id:
+                    branch_id = branch
 
-            for component in self.component_names:
-                await self.cache.set(
-                    key=f"workers:schema_hash:branch:{branch_id}:{component}:worker:{WORKER_IDENTITY}",
-                    value=hash_value,
-                    expires=KVTTL.TWO_HOURS,
-                )
+                for component in self.component_names:
+                    await self.cache.set(
+                        key=f"workers:schema_hash:branch:{branch_id}:{component}:worker:{WORKER_IDENTITY}",
+                        value=hash_value,
+                        expires=KVTTL.TWO_HOURS,
+                    )
 
     async def refresh_heartbeat(self) -> None:
         for component in self.component_names:
