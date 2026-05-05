@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 
-import { useGetPathTraversal } from "../../domain/path-traversal.query";
+import { useGetPathTraversal } from "../queries/get-path-traversal.query";
 import { PathModeForm } from "./path-mode-form";
 import { PathModeResults } from "./path-mode-results";
 import {

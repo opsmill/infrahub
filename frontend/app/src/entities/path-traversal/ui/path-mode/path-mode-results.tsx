@@ -1,7 +1,7 @@
 import { Spinner } from "@infrahub/ui";
 import { useState } from "react";
 
-import type { PathTraversalResponse } from "../../domain/get-path-traversal";
+import type { PathTraversalResponse } from "../../domain/path-traversal.types";
 import { copyAllPathsAsText, formatPathAsText, getKindCounts, pathPreview } from "../format-paths";
 import { PathFlowGraph } from "../path-flow-graph";
 

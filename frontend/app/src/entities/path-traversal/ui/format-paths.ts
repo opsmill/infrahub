@@ -1,4 +1,4 @@
-import type { PathResult, PathTraversalResponse } from "../domain/get-path-traversal";
+import type { PathResult, PathTraversalResponse } from "../domain/path-traversal.types";
 import { formatRelName } from "./utils";
 
 export function formatPathAsText(data: PathTraversalResponse, pathIndex: number): string {

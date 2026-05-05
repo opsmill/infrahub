@@ -1,6 +1,6 @@
 import { Spinner } from "@infrahub/ui";
 
-import type { ReachableObjectsResponse } from "../../domain/get-reachable-objects";
+import type { ReachableObjectsResponse } from "../../domain/path-traversal.types";
 import { PathFlowGraph } from "../path-flow-graph";
 import { getKindColor } from "../utils";
 

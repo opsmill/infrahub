@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import type { PathResult, PathTraversalResponse } from "../domain/get-path-traversal";
+import type { PathResult, PathTraversalResponse } from "../domain/path-traversal.types";
 import { copyAllPathsAsText, formatPathAsText, getKindCounts, pathPreview } from "./format-paths";
 
 const a = { id: "a", kind: "InfraDevice", display_label: "router-1" };

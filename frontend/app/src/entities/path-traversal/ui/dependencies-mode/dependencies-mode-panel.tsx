@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { useGetReachableObjects } from "../../domain/reachable-objects.query";
+import { useGetReachableObjects } from "../queries/get-reachable-objects.query";
 import { DependenciesModeForm } from "./dependencies-mode-form";
 import { DependenciesModeResults } from "./dependencies-mode-results";
 import {
