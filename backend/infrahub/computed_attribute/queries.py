@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+import uuid
 from typing import Any, ClassVar
 
 from infrahub_sdk.graphql import Query
 from pydantic import BaseModel, ConfigDict
 
 from infrahub.core.query.node_query import NodeIDQuery
+
+
+def _is_uuid(value: str) -> bool:
+    try:
+        uuid.UUID(value)
+        return True
+    except ValueError:
+        return False
 
 
 class ComputedAttributeNodeIDQuery(NodeIDQuery):
@@ -35,7 +44,9 @@ class ComputedAttributeTransformQuery(BaseModel):
             name=self.query_name,
             query={
                 "CoreTransformPython": {
-                    "@filters": {"ids": [self.transform_id]},
+                    "@filters": {"ids": [self.transform_id]}
+                    if _is_uuid(self.transform_id)
+                    else {"name__value": self.transform_id},
                     "edges": {
                         "node": {
                             "id": None,
