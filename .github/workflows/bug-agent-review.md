@@ -24,6 +24,38 @@ if: |
     contains(github.event.pull_request.body, 'AGENT_TEST_COMPLETE') ||
     contains(github.event.pull_request.body, 'AGENT_FIX_COMPLETE')
   )
+steps:
+  - name: Gate check - skip if current mode already approved
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_BODY: ${{ github.event.pull_request.body }}
+      REPO: ${{ github.repository }}
+    run: |
+      set -euo pipefail
+      skip() {
+        echo "::notice::$1"
+        echo "### Reviewer skipped" >> "$GITHUB_STEP_SUMMARY"
+        echo "$1" >> "$GITHUB_STEP_SUMMARY"
+        exit 1
+      }
+
+      if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
+        MARKER="AGENT_REVIEW_VERDICT: FIX_APPROVED"
+        SKIP_MSG="Skipping reviewer: fix already FIX_APPROVED, pipeline complete."
+      else
+        MARKER="AGENT_REVIEW_VERDICT: TEST_APPROVED"
+        SKIP_MSG="Skipping reviewer: test already TEST_APPROVED, waiting for fix."
+      fi
+
+      COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
+        --jq --arg marker "$MARKER" \
+          '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
+            and (.body | contains($marker)))] | length')
+
+      if [ "$COUNT" -gt 0 ]; then
+        skip "$SKIP_MSG"
+      fi
 safe-outputs:
   add-comment:
     max: 3
