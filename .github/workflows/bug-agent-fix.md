@@ -76,6 +76,7 @@ safe-outputs:
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
   add-comment:
     max: 3
+    discussions: false
   add-labels:
     max: 2
   update-pull-request:
