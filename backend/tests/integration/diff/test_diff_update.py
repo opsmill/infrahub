@@ -18,6 +18,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
 from tests.constants import TestKind
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -1218,3 +1219,5 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # validate diff not updated for deleted branch
         fresh_deleted_branch_diff = await self.get_branch_diff(db=db, branch=deleted_branch)
         assert fresh_deleted_branch_diff.to_time == diff_on_deleted_branch.to_time
+
+        await verify_graph(db=db)

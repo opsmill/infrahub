@@ -1,10 +1,10 @@
 from typing import Any
 
-from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.node import Node
 from infrahub.core.query import Query, QueryType
+from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase
 
 

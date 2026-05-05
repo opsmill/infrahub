@@ -12,6 +12,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
 from infrahub.core.node import Node
 from tests.constants import TestKind
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -163,6 +164,8 @@ class TestBranchMergeRollback(TestInfrahubApp):
 
         ocp_main = await NodeManager.get_one(db=db, id=initial_dataset["omnicorp"].id)
         assert ocp_main.name.value == "Omnicorp"
+
+        await verify_graph(db=db)
 
         # Verify the branch is back to OPEN with branched_from restored to its pre-merge value.
         reloaded_branch = await Branch.get_by_name(db=db, name=branch1.name)
