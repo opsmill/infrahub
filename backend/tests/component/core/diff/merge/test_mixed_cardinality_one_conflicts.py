@@ -113,7 +113,7 @@ async def test_mixed_cardinality_one_element_and_property_conflicts(
     assert parent_source.id == initial["paris-r2"].id
 
     assert await _children_ids(db=db, branch=default_branch, site=paris) == expected_children
-    # TODO assert children have no source metadata
+    await _assert_children_rels_have_no_source(db=db, branch=default_branch, site=paris)
 
     await verify_graph(db=db)
 
