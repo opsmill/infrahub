@@ -4,6 +4,8 @@ on:
   slash_command:
     name: bug-tdd
     events: [issue_comment, pull_request_comment]
+  reaction: none
+  status-comment: false
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
