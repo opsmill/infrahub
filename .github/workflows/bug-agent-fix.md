@@ -3,7 +3,7 @@ description: Implement a bug fix on the draft PR (triggered by /bug-fix after re
 on:
   slash_command:
     name: bug-fix
-    events: [issue_comment]
+    events: [issue_comment, pull_request_comment]
 engine: claude
 timeout-minutes: 60
 permissions:
@@ -32,7 +32,10 @@ steps:
         exit 1
       }
 
-      PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER")
+      PR_JSON=$(gh api "repos/$REPO/pulls/$PR_NUMBER" 2>/dev/null || echo "")
+      if [ -z "$PR_JSON" ] || [ "$(echo "$PR_JSON" | jq -r '.number // empty')" = "" ]; then
+        fail "Cannot run /bug-fix here: must be invoked on a PR comment."
+      fi
       PR_BODY=$(echo "$PR_JSON" | jq -r '.body // ""')
 
       if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
