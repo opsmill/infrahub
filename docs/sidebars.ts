@@ -3,10 +3,16 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 // NOTE: External "↗" links below are stubbed with https://TODO-FILL-IN-*.example.com
 // URLs. Replace each TODO URL with the real destination before merging this PR.
 //
-// Top-level "section" entries (Get started, Capabilities, etc.) are
-// non-collapsible categories — same pattern the original sidebar used for
-// Overview/Guides/Topics. This gives them real menu-link styling without
-// any custom CSS for spacing or padding.
+// V3 navigation structure (Phase 2 nav restructure). For unmigrated content,
+// sidebar entries point at existing legacy `topics/X` and `guides/X` paths so
+// no URLs change. New top-level landing pages and empty sub-categories use
+// `generated-index` until real landing/hub pages are authored. NEW pages
+// referenced in the recommendation docs (About Objects, Build a generator,
+// Write a Jinja2 transformation, etc.) are intentionally omitted from the
+// sidebar until the per-feature migration PRs add them.
+//
+// Top-level "section" entries are non-collapsible categories — gives them
+// real menu-link styling without custom CSS.
 
 const sidebars: SidebarsConfig = {
   docsSidebar: [
@@ -75,193 +81,237 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Features',
+      label: 'Schema & Data',
       collapsible: false,
       collapsed: false,
+      link: { type: 'generated-index', slug: 'schema-and-data' },
       items: [
         {
           type: 'category',
-          label: 'Schema & Data Modeling',
-          collapsible: true,
-          collapsed: true,
+          label: 'Schema',
+          link: { type: 'doc', id: 'topics/schema' }, // hub
           items: [
-            { type: 'doc', id: 'topics/schema', label: 'Understanding Schemas' },
-            { type: 'doc', id: 'guides/create-schema', label: 'Create a Schema' },
-            { type: 'doc', id: 'guides/import-schema', label: 'Import a Schema' },
-            { type: 'doc', id: 'topics/schema-extensions', label: 'Schema Extensions' },
-            { type: 'doc', id: 'topics/schema-display', label: 'Schema Display' },
-            { type: 'doc', id: 'computed-attributes/index', label: 'Computed Attributes' },
-            { type: 'doc', id: 'topics/order-weight', label: 'Field Ordering (Topic)' },
-            { type: 'doc', id: 'guides/customize-field-ordering', label: 'Field Ordering (Guide)' },
+            { type: 'doc', id: 'guides/create-schema', label: 'Create a schema' },
+            { type: 'doc', id: 'guides/import-schema', label: 'Import a schema' },
+            { type: 'doc', id: 'topics/schema-extensions', label: 'Schema extensions' },
+            { type: 'doc', id: 'topics/schema-display', label: 'Schema display' },
+            { type: 'doc', id: 'topics/order-weight', label: 'Field ordering' },
             { type: 'doc', id: 'topics/labels', label: 'Labels' },
-            { type: 'doc', id: 'menu/index', label: 'Menu Customization' },
+          ],
+        },
+        { type: 'doc', id: 'computed-attributes/index', label: 'Computed Attributes' },
+        { type: 'doc', id: 'menu/index', label: 'Menu Customization' },
+        {
+          type: 'category',
+          label: 'Templates', // [Object Blueprints — rename pending]
+          link: { type: 'doc', id: 'topics/object-template' }, // hub
+          items: [
+            { type: 'doc', id: 'guides/object-template', label: 'Use Templates' },
           ],
         },
         {
           type: 'category',
-          label: 'Branches & Change Control',
-          collapsible: true,
-          collapsed: true,
+          label: 'Resource Manager',
+          link: { type: 'doc', id: 'resource-manager/index' }, // hub
           items: [
-            { type: 'doc', id: 'topics/version-control', label: 'Immutable History' },
-            {
-              type: 'category',
-              label: 'Branches',
-              link: { type: 'doc', id: 'branches/index' }, // hub
-              items: [
-                'branches/create',
-                'branches/merge',
-                'branches/rebase',
-                'branches/delete',
-                'branches/resolve-conflicts',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Proposed Changes',
-              link: { type: 'doc', id: 'proposed-changes/index' }, // hub
-              items: [
-                'proposed-changes/lifecycle',
-                'proposed-changes/review-and-stamp',
-                'proposed-changes/resolve-conflict',
-              ],
-            },
-            { type: 'doc', id: 'checks/index', label: 'Checks & Validation' },
-            { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
-            {
-              type: 'category',
-              label: 'Git Integration',
-              link: { type: 'doc', id: 'git-integration/index' }, // hub
-              items: [
-                { type: 'doc', id: 'git-integration/connect-repository', label: 'Connect a repository' },
-                { type: 'doc', id: 'git-integration/infrahub-yml', label: 'infrahub.yml configuration' },
-                { type: 'doc', id: 'git-integration/branch-synchronization', label: 'Selective branch synchronization' },
-              ],
-            },
+            'resource-manager/allocate-ip-address',
+            'resource-manager/allocate-ip-prefix',
+            'resource-manager/allocate-number',
+            'resource-manager/weighted-allocation',
+          ],
+        },
+        { type: 'doc', id: 'topics/ipam', label: 'IPAM' },
+        {
+          type: 'category',
+          label: 'Objects',
+          link: { type: 'generated-index' }, // About Objects hub page not yet authored
+          items: [
+            { type: 'doc', id: 'topics/object-conversion', label: 'Convert object kind' },
+            { type: 'doc', id: 'topics/file-object', label: 'File objects' },
+            { type: 'doc', id: 'topics/metadata', label: 'Metadata & lineage' },
+            { type: 'doc', id: 'guides/object-load', label: 'Load data from YAML file' },
           ],
         },
         {
           type: 'category',
-          label: 'Data Management',
-          collapsible: true,
-          collapsed: true,
+          label: 'Groups',
+          link: { type: 'doc', id: 'groups/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/object-load', label: 'Loading Data' },
-            {
-              type: 'category',
-              label: 'Resource Manager',
-              link: { type: 'doc', id: 'resource-manager/index' }, // hub
-              items: [
-                'resource-manager/allocate-ip-address',
-                'resource-manager/allocate-ip-prefix',
-                'resource-manager/allocate-number',
-                'resource-manager/weighted-allocation',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Groups',
-              link: { type: 'doc', id: 'groups/index' }, // hub (explanation)
-              items: [
-                'groups/create',
-                'groups/add-members',
-                'groups/remove-members',
-                'groups/delete',
-                'groups/query-members',
-                'groups/use-in-automation',
-              ],
-            },
-            {
-              type: 'category',
-              label: 'Profiles',
-              link: { type: 'doc', id: 'profiles/index' }, // hub
-              items: [
-                'profiles/priority-and-inheritance',
-                'profiles/create',
-                'profiles/assign',
-                'profiles/override-values',
-                'profiles/update',
-                'profiles/use-multiple',
-              ],
-            },
-            { type: 'doc', id: 'topics/object-template', label: 'Object Templates (Topic)' },
-            { type: 'doc', id: 'guides/object-template', label: 'Object Templates (Guide)' },
-            { type: 'doc', id: 'topics/object-conversion', label: 'Object Conversion (Topic)' },
-            { type: 'doc', id: 'guides/object-conversion', label: 'Object Conversion (Guide)' },
-            { type: 'doc', id: 'topics/metadata', label: 'Metadata & Lineage' },
-            { type: 'doc', id: 'topics/file-object', label: 'File Objects' },
+            'groups/create',
+            'groups/add-members',
+            'groups/remove-members',
+            'groups/delete',
+            'groups/query-members',
+            'groups/use-in-automation',
           ],
         },
         {
           type: 'category',
-          label: 'IPAM',
-          collapsible: true,
-          collapsed: true,
+          label: 'Profiles',
+          link: { type: 'doc', id: 'profiles/index' }, // hub
           items: [
-            { type: 'doc', id: 'topics/ipam', label: 'IPAM Overview' },
+            'profiles/priority-and-inheritance',
+            'profiles/create',
+            'profiles/assign',
+            'profiles/override-values',
+            'profiles/update',
+            'profiles/use-multiple',
+          ],
+        },
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Branches & Change Control',
+      collapsible: false,
+      collapsed: false,
+      link: { type: 'generated-index', slug: 'branches-and-change-control' },
+      items: [
+        { type: 'doc', id: 'topics/version-control', label: 'Immutable History' },
+        {
+          type: 'category',
+          label: 'Branches',
+          link: { type: 'doc', id: 'branches/index' }, // hub
+          items: [
+            'branches/create',
+            'branches/merge',
+            'branches/rebase',
+            'branches/delete',
+            'branches/resolve-conflicts',
           ],
         },
         {
           type: 'category',
-          label: 'Transforms & Artifacts',
-          collapsible: true,
-          collapsed: true,
+          label: 'Proposed Changes',
+          link: { type: 'doc', id: 'proposed-changes/index' }, // hub
           items: [
-            { type: 'doc', id: 'topics/transformation', label: 'Transformations' },
-            { type: 'doc', id: 'guides/jinja2-transform', label: 'Jinja2 Transforms' },
-            { type: 'doc', id: 'guides/python-transform', label: 'Python Transforms' },
-            { type: 'doc', id: 'topics/artifact', label: 'Artifacts (Topic)' },
-            { type: 'doc', id: 'guides/artifact', label: 'Artifacts (Guide)' },
-            { type: 'doc', id: 'guides/artifact-content-composition', label: 'Artifact Content Composition' },
-            { type: 'doc', id: 'topics/object-storage', label: 'Object Storage (Topic)' },
-            { type: 'doc', id: 'guides/object-storage', label: 'Object Storage (Guide)' },
-            // Cross-links to Development Resources (canonical home is its own top-level section)
-            { type: 'ref', id: 'topics/developer-guide', label: 'Developer Guide' },
-            { type: 'ref', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
+            'proposed-changes/lifecycle',
+            'proposed-changes/review-and-stamp',
+            'proposed-changes/resolve-conflict',
           ],
         },
+        { type: 'doc', id: 'checks/index', label: 'Checks & Validation' },
+        { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
+        {
+          type: 'category',
+          label: 'Git Integration',
+          link: { type: 'doc', id: 'git-integration/index' }, // hub
+          items: [
+            { type: 'doc', id: 'git-integration/connect-repository', label: 'Connect a repository' },
+            { type: 'doc', id: 'git-integration/infrahub-yml', label: 'infrahub.yml configuration' },
+            { type: 'doc', id: 'git-integration/branch-synchronization', label: 'Branch synchronization' },
+          ],
+        },
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Automation & Outputs',
+      collapsible: false,
+      collapsed: false,
+      link: { type: 'generated-index', slug: 'automation-and-outputs' },
+      items: [
         {
           type: 'category',
           label: 'Generators',
-          collapsible: true,
-          collapsed: true,
+          link: { type: 'doc', id: 'topics/generator' }, // hub
           items: [
-            { type: 'doc', id: 'topics/generator', label: 'Generator Overview (Topic)' },
-            { type: 'doc', id: 'guides/generator', label: 'Generator Overview (Guide)' },
-            { type: 'doc', id: 'guides/chaining-generators', label: 'Chaining Generators' },
-            { type: 'doc', id: 'topics/modular-generators', label: 'Modular Generators (Topic)' },
-            { type: 'doc', id: 'guides/modular-generator-best-practices', label: 'Modular Generator Best Practices' },
-            // Cross-links to Development Resources
-            { type: 'ref', id: 'topics/developer-guide', label: 'Developer Guide' },
-            { type: 'ref', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
+            { type: 'doc', id: 'guides/generator', label: 'Build a generator' },
+            { type: 'doc', id: 'guides/chaining-generators', label: 'Chaining generators' },
+            { type: 'doc', id: 'topics/modular-generators', label: 'Modular generators' },
+            { type: 'doc', id: 'guides/modular-generator-best-practices', label: 'Modular generator best practices' },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Transformations',
+          link: { type: 'doc', id: 'topics/transformation' }, // hub
+          items: [
+            { type: 'doc', id: 'guides/jinja2-transform', label: 'Write a Jinja2 transformation' },
+            { type: 'doc', id: 'guides/python-transform', label: 'Write a Python transformation' },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Artifacts',
+          link: { type: 'doc', id: 'topics/artifact' }, // hub
+          items: [
+            { type: 'doc', id: 'guides/artifact', label: 'Use artifacts' },
+            { type: 'doc', id: 'guides/artifact-content-composition', label: 'Artifact content composition' },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Artifact & File Storage',
+          link: { type: 'doc', id: 'topics/object-storage' }, // hub (renamed from "Object Storage")
+          items: [
+            { type: 'doc', id: 'guides/object-storage', label: 'Configure storage' },
           ],
         },
         {
           type: 'category',
           label: 'Events',
-          collapsible: true,
-          collapsed: true,
+          link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'topics/events', label: 'Events System' },
             { type: 'doc', id: 'topics/event-actions', label: 'Event Actions' },
             { type: 'doc', id: 'guides/events-rules-actions', label: 'Rules & Actions' },
-            { type: 'doc', id: 'topics/webhooks', label: 'Webhooks (Topic)' },
-            { type: 'doc', id: 'guides/webhooks', label: 'Webhooks (Guide)' },
-            { type: 'doc', id: 'topics/activity-log', label: 'Activity Log' },
-            { type: 'doc', id: 'topics/log-forwarding', label: 'Log Forwarding (Topic)' },
-            { type: 'doc', id: 'guides/log-forwarding', label: 'Log Forwarding (Guide)' },
           ],
         },
         {
           type: 'category',
+          label: 'Webhooks',
+          link: { type: 'doc', id: 'topics/webhooks' }, // hub
+          items: [
+            { type: 'doc', id: 'guides/webhooks', label: 'Use Webhooks' },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Integrations',
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'link', label: 'Ansible Integration ↗', href: 'https://TODO-FILL-IN-ansible.example.com' },
+            { type: 'link', label: 'Nornir Integration ↗', href: 'https://TODO-FILL-IN-nornir.example.com' },
+            { type: 'link', label: 'Infrahub Sync ↗', href: 'https://TODO-FILL-IN-infrahub-sync.example.com' },
+          ],
+        },
+      ],
+    },
+
+    {
+      type: 'category',
+      label: 'Deployment & Management',
+      collapsible: false,
+      collapsed: false,
+      link: { type: 'generated-index', slug: 'deployment-and-management' },
+      // Internal sub-grouping (Plan & install / Configure / Run / Observe /
+      // Maintain & upgrade) deferred — Fatih hasn't picked an option yet.
+      // Flat layout for now; sub-groupings added in follow-up PRs once chosen.
+      items: [
+        { type: 'doc', id: 'topics/hardware-requirements', label: 'Hardware requirements' },
+        { type: 'doc', id: 'guides/installation', label: 'Installation' },
+        { type: 'doc', id: 'guides/production-deployment', label: 'Production deployment' },
+        { type: 'doc', id: 'reference/configuration', label: 'Configuration' },
+        { type: 'doc', id: 'guides/configuration-changes', label: 'Configuration changes' },
+        { type: 'doc', id: 'topics/tasks', label: 'Tasks' },
+        { type: 'doc', id: 'reference/task-worker', label: 'Task worker' },
+        { type: 'doc', id: 'guides/telemetry', label: 'Telemetry' },
+        { type: 'doc', id: 'topics/activity-log', label: 'Activity log' },
+        { type: 'doc', id: 'topics/log-forwarding', label: 'Log forwarding' },
+        { type: 'doc', id: 'topics/database-backup', label: 'Database backup' },
+        { type: 'doc', id: 'guides/upgrade', label: 'Upgrade' },
+        { type: 'link', label: 'Infrahub Backup Tool ↗', href: 'https://TODO-FILL-IN-infrahub-backup.example.com' },
+        {
+          type: 'category',
           label: 'User Management & Security',
-          collapsible: true,
-          collapsed: true,
+          link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'topics/authentication', label: 'Authentication' },
             { type: 'doc', id: 'guides/sso', label: 'SSO' },
-            { type: 'doc', id: 'topics/permissions-roles', label: 'Permissions & Roles (Topic)' },
-            { type: 'doc', id: 'guides/accounts-permissions', label: 'Permissions & Roles (Guide)' },
+            { type: 'doc', id: 'topics/permissions-roles', label: 'Permissions & Roles' },
             { type: 'doc', id: 'guides/managing-api-tokens', label: 'Managing API Tokens' },
           ],
         },
@@ -270,73 +320,26 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Operate & extend',
+      label: 'Development Resources',
       collapsible: false,
       collapsed: false,
+      link: { type: 'generated-index', slug: 'development-resources' },
       items: [
+        { type: 'doc', id: 'topics/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
+        { type: 'doc', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
         {
           type: 'category',
-          label: 'Deploying & Managing Infrahub',
+          label: 'APIs & interfaces',
           collapsible: true,
           collapsed: true,
           items: [
-            { type: 'doc', id: 'guides/installation', label: 'Installation' },
-            { type: 'doc', id: 'guides/production-deployment', label: 'Production Deployment' },
-            { type: 'doc', id: 'topics/hardware-requirements', label: 'Hardware Requirements' },
-            { type: 'doc', id: 'reference/configuration', label: 'Configuration' },
-            { type: 'doc', id: 'guides/configuration-changes', label: 'Configuration Changes' },
-            { type: 'doc', id: 'topics/database-backup', label: 'Database Backup (Topic)' },
-            { type: 'doc', id: 'guides/database-backup', label: 'Database Backup (Guide)' },
-            { type: 'doc', id: 'guides/upgrade', label: 'Upgrade' },
-            { type: 'doc', id: 'topics/tasks', label: 'Tasks' },
-            { type: 'doc', id: 'reference/task-worker', label: 'Task Worker' },
-            { type: 'doc', id: 'guides/telemetry', label: 'Telemetry' },
-            { type: 'link', label: 'Infrahub Backup Tool ↗', href: 'https://TODO-FILL-IN-infrahub-backup.example.com' },
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Development Resources',
-          collapsible: true,
-          collapsed: true,
-          items: [
-            { type: 'doc', id: 'topics/developer-guide', label: 'Developer Guide' },
-            { type: 'doc', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
-            { type: 'doc', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
-            {
-              type: 'category',
-              label: 'APIs & interfaces',
-              collapsible: true,
-              collapsed: true,
-              items: [
-                { type: 'doc', id: 'topics/graphql', label: 'GraphQL (Topic)' },
-                { type: 'doc', id: 'guides/graphql-fragment', label: 'GraphQL Fragments (Guide)' },
-                { type: 'ref', id: 'reference/api-server', label: 'REST API' },
-                { type: 'link', label: 'Python SDK ↗', href: 'https://TODO-FILL-IN-python-sdk.example.com' },
-                { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://TODO-FILL-IN-infrahubctl.example.com' },
-                { type: 'link', label: 'MCP Server ↗', href: 'https://TODO-FILL-IN-mcp-server.example.com' },
-              ],
-            },
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Integrations',
-          collapsible: true,
-          collapsed: true,
-          items: [
-            { type: 'link', label: 'Ansible Integration ↗', href: 'https://TODO-FILL-IN-ansible.example.com' },
-            { type: 'link', label: 'Nornir Integration ↗', href: 'https://TODO-FILL-IN-nornir.example.com' },
-            { type: 'link', label: 'Infrahub Sync ↗', href: 'https://TODO-FILL-IN-infrahub-sync.example.com' },
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Solutions',
-          collapsible: true,
-          collapsed: true,
-          items: [
-            { type: 'link', label: 'AI Datacenter ↗', href: 'https://TODO-FILL-IN-ai-datacenter.example.com' },
+            { type: 'doc', id: 'topics/graphql', label: 'GraphQL' },
+            { type: 'doc', id: 'guides/graphql-fragment', label: 'GraphQL fragments' },
+            { type: 'ref', id: 'reference/api-server', label: 'REST API' },
+            { type: 'link', label: 'Python SDK ↗', href: 'https://TODO-FILL-IN-python-sdk.example.com' },
+            { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://TODO-FILL-IN-infrahubctl.example.com' },
+            { type: 'link', label: 'MCP Server ↗', href: 'https://TODO-FILL-IN-mcp-server.example.com' },
           ],
         },
       ],
