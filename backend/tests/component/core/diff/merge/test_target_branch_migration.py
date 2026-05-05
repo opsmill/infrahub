@@ -19,8 +19,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from infrahub.core.initialization import create_branch
 from infrahub.core.timestamp import Timestamp
 from tests.helpers.db_validation import verify_graph
@@ -36,7 +34,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-@pytest.mark.xfail(reason="to be fixed in upcoming merge refactor")
 async def test_target_branch_migration(
     db: InfrahubDatabase,
     default_branch: Branch,

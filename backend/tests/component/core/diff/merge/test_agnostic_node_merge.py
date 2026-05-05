@@ -5,8 +5,10 @@ import pytest
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import (
+    BranchSupportType,
     DiffAction,
     MetadataOptions,
+    RelationshipCardinality,
 )
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.data_check_synchronizer import DiffDataCheckSynchronizer
@@ -15,6 +17,11 @@ from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
+from infrahub.core.relationship.model import Relationship
+from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -83,15 +90,15 @@ class TestAgnosticNodeMerge:
         updated_person = await NodeManager.get_one(
             db=db, id=person.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
         )
-        assert updated_person.height.value == 180
-        assert updated_person.name.value == "Guy"
+        assert updated_person.get_attribute("height").value == 180
+        assert updated_person.get_attribute("name").value == "Guy"
         # Person Node metadata - updated_at reflects merge (relationship added)
         assert before_person_create < updated_person._get_created_at() < after_person_create
         assert updated_person._get_created_by() == "branch-user-person"
         assert updated_person._get_updated_at() == merge_at
         assert updated_person._get_updated_by() == "branch-user-car"
 
-        cars_rels = await updated_person.cars.get_relationships(db=db)
+        cars_rels = await updated_person.get_relationship("cars").get_relationships(db=db)
         assert len(cars_rels) == 1
         assert cars_rels[0].peer_id == car.id
         # Person cars relationship metadata
@@ -104,10 +111,11 @@ class TestAgnosticNodeMerge:
         updated_car = await NodeManager.get_one(
             db=db, id=car.id, include_metadata=MetadataOptions.USER_TIMESTAMPS, prefetch_relationships=True
         )
-        assert updated_car.name.value == "camry"
-        assert updated_car.nbr_seats.value == 3
-        assert updated_car.is_electric.value is False
-        owner_rel = await updated_car.owner.get(db=db)
+        assert updated_car.get_attribute("name").value == "camry"
+        assert updated_car.get_attribute("nbr_seats").value == 3
+        assert updated_car.get_attribute("is_electric").value is False
+        owner_rel = await updated_car.get_relationship("owner").get(db=db)
+        assert isinstance(owner_rel, Relationship)
         assert owner_rel.peer_id == person.id
         # Car Node metadata - created on branch, merged to main
         assert updated_car._get_created_at() == merge_at
@@ -120,8 +128,8 @@ class TestAgnosticNodeMerge:
         assert owner_rel._get_updated_at() == merge_at
         assert owner_rel._get_updated_by() == "branch-user-car"
         # Car Attribute metadata
-        assert updated_car.name._get_created_at() == merge_at
-        assert updated_car.name._get_created_by() == "branch-user-car"
+        assert updated_car.get_attribute("name")._get_created_at() == merge_at
+        assert updated_car.get_attribute("name")._get_created_by() == "branch-user-car"
 
         # validate relationships on default branch
         person_schema = registry.schema.get(name="TestPerson", duplicate=False)
@@ -194,4 +202,76 @@ class TestAgnosticNodeMerge:
         assert owner_rels[0]._get_created_by() == "branch-user-car"
         assert before_car_create < owner_rels[0]._get_updated_at() < after_car_create
         assert owner_rels[0]._get_updated_by() == "branch-user-car"
+        await verify_graph(db=db)
+
+    async def test_agnostic_node_with_aware_attr_and_aware_rel(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+    ) -> None:
+        """Regression test for Phase 2 of ``BulkMergeNodeExistenceQuery``.
+
+        Schema: an agnostic Node with an aware attribute and an
+        aware relationship to an aware peer. Edges are created on the source
+        branch and must be propagated to target by the merge.
+        """
+        schema_root = SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Peer",
+                    namespace="Agn",
+                    branch=BranchSupportType.AWARE,
+                    attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                ),
+                NodeSchema(
+                    name="Item",
+                    namespace="Agn",
+                    default_filter="name__value",
+                    branch=BranchSupportType.AGNOSTIC,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text", unique=True),
+                        # Aware attribute on an agnostic Node — the case the fix targets.
+                        AttributeSchema(name="tag", kind="Text", optional=True, branch=BranchSupportType.AWARE),
+                    ],
+                    relationships=[
+                        # Aware relationship on an agnostic Node.
+                        RelationshipSchema(
+                            name="owner",
+                            peer="AgnPeer",
+                            optional=True,
+                            cardinality=RelationshipCardinality.ONE,
+                            branch=BranchSupportType.AWARE,
+                        ),
+                    ],
+                ),
+            ],
+        )
+        registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+        # Peer exists on the default branch.
+        peer = await Node.init(db=db, schema="AgnPeer", branch=default_branch)
+        await peer.new(db=db, name="owner1")
+        await peer.save(db=db)
+
+        # Create the agnostic Item the branch with both the aware ``tag``
+        # attribute and the aware ``owner`` relationship set
+        branch = await create_branch(db=db, branch_name="branch_agn_aware")
+        item = await Node.init(db=db, schema="AgnItem", branch=branch)
+        await item.new(db=db, name="alpha", tag="branch-tag", owner=peer.id)
+        await item.save(db=db, user_id="branch-user")
+
+        diff_coordinator = await self._get_diff_coordinator(db=db, branch=branch)
+        await diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
+
+        diff_merger = await self._get_diff_merger(db=db, branch=branch)
+        await diff_merger.merge_graph(at=Timestamp())
+
+        # After merge, the aware attribute value AND the aware relationship must be
+        # reachable on the default branch.
+        merged_item = await NodeManager.get_one(db=db, id=item.id, prefetch_relationships=True)
+        assert merged_item is not None
+        assert merged_item.get_attribute("tag").value == "branch-tag"
+        owner_rel = await merged_item.get_relationship("owner").get(db=db)
+        assert isinstance(owner_rel, Relationship)
+        assert owner_rel.peer_id == peer.id
         await verify_graph(db=db)

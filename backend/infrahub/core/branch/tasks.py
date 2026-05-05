@@ -392,8 +392,12 @@ async def _do_merge_branch(
             branch.status = BranchStatus.MERGING
             await branch.save(db=db, user_id=user_id)
             registry.branch[branch.name] = branch
-            branch_diff = await merger.merge(at=merge_at)
+            await merger.merge(at=merge_at)
 
+        log.info("Loading enriched diff for changelog collection")
+        branch_diff = await diff_repository.get_one(
+            diff_branch_name=branch.name, tracking_id=BranchTrackingId(name=branch.name)
+        )
         changelog_collector = DiffChangelogCollector(diff=branch_diff, branch=branch, db=db)
         node_events = changelog_collector.collect_changelogs()
 
