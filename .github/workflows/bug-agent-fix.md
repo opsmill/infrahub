@@ -3,6 +3,7 @@ description: Implement a bug fix on the draft PR (triggered by /bug-fix after re
 on:
   slash_command:
     name: bug-fix
+    events: [issue_comment]
 engine: claude
 timeout-minutes: 60
 permissions:

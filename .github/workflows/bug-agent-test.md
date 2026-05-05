@@ -3,6 +3,7 @@ description: Write a failing test that reproduces a confirmed bug (triggered by 
 on:
   slash_command:
     name: bug-tdd
+    events: [issue_comment]
 engine: claude
 timeout-minutes: 60
 permissions:

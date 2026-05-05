@@ -3,6 +3,7 @@ description: Root cause analysis for bug issues triggered by /bug-analyze comman
 on:
   slash_command:
     name: bug-analyze
+    events: [issues, issue_comment]
 engine: claude
 timeout-minutes: 40
 permissions:
