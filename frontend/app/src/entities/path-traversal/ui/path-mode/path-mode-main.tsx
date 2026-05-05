@@ -47,17 +47,27 @@ export function PathModeMain() {
   }
 
   return (
-    <PathFlowGraph
-      data={query.data}
-      selectedPathIndex={params.selectedPath}
-      onPathSelect={(index) => setParams({ selectedPath: index })}
-      onExcludeKind={(kind) =>
-        setParams((prev) => ({
-          excludedKinds: prev.excludedKinds.includes(kind)
-            ? prev.excludedKinds
-            : [...prev.excludedKinds, kind],
-        }))
-      }
-    />
+    <div className="relative h-full w-full">
+      <PathFlowGraph
+        data={query.data}
+        selectedPathIndex={params.selectedPath}
+        onPathSelect={(index) => setParams({ selectedPath: index })}
+        onExcludeKind={(kind) =>
+          setParams((prev) => ({
+            excludedKinds: prev.excludedKinds.includes(kind)
+              ? prev.excludedKinds
+              : [...prev.excludedKinds, kind],
+          }))
+        }
+      />
+      {query.isFetching && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 text-gray-500">
+            <Spinner />
+            <span className="text-sm">Finding paths...</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
