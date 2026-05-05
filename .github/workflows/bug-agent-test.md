@@ -3,6 +3,7 @@ description: Write a failing test that reproduces a confirmed bug (triggered by 
 on:
   slash_command:
     name: bug-tdd
+engine: claude
 permissions:
   contents: read
   issues: read

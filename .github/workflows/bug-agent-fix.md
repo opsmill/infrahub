@@ -3,6 +3,7 @@ description: Implement a bug fix on the draft PR (triggered by /bug-fix after re
 on:
   slash_command:
     name: bug-fix
+engine: claude
 permissions:
   contents: read
   issues: read

@@ -6,6 +6,7 @@ on:
     branches: [stable]
     paths-ignore:
       - "**/*.md"
+engine: claude
 permissions:
   contents: read
   issues: read
