@@ -2,27 +2,23 @@
 title: Menu customization
 ---
 
-# Menu customization
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-Infrahub allows you to control the menu on the left side of the web interface.
+Infrahub lets you control the menu on the left side of the web interface.
 
-The menu is made up of 2 sections. The bottom section is fixed and cannot be changed — it lists menu items related to the working of multiple Infrahub features.
+The menu has two sections. The bottom section is fixed — it lists navigation for built-in Infrahub features. The top section is user-controlled: organize your schema's node types in the order that makes sense for your use case, with custom groupings and icons.
 
-The top section can be changed, or controlled by the user. The goal of this top section is to list the different types of nodes that you have defined in your schema, in an order and organized in a way that is most relevant for your use case.
+By default, nodes without a menu placement are grouped under **Other**.
 
-By default the top section of the menu will contain an Other section, which groups nodes that don't have a custom menu defined. The IPAM section will also appear if your schema includes any nodes that inherit from `BuiltinIPAddress` or `BuiltinIPPrefix`.
+## Prerequisites
 
-## Load an example schema
+- A running Infrahub instance
 
-We assume that you have an empty instance of Infrahub started.
+<details>
+<summary>Schema used in this guide</summary>
 
-Save the following schema into a file on your disk.
-
-The schema contains the following nodes:
-
-- A location hierarchy with a Country and a Site
-- A network device with a relation to network interfaces and a site
-- A network interface with a relation to a network device
+The examples on this page use the following schema nodes. Adapt the type names to match your own schema.
 
 ```yaml
 ---
@@ -88,23 +84,17 @@ nodes:
         peer: NetworkDevice
 ```
 
-Load the schema into Infrahub using the following command:
-
-```bash
-infrahubctl schema load /path/to/schema.yml
-```
-
-In the web interface you will now see that all the nodes defined in the schema are available in the top section of the menu.
+</details>
 
 ## Define a menu file
 
-Our goal is to define a menu in which we define 2 top sections: Location and Infrastructure.
+A menu file is a YAML file with a defined structure. See the [menu file reference](../reference/menu.mdx) for the full schema.
 
-Under the Location section we want to define 2 items: Countries and Sites. Under the Infrastructure section we want to define 2 items: Devices and Interfaces.
+Icons support any entry from the [Material Design Icons](https://icon-sets.iconify.design/mdi/) library on iconify.design.
 
-We can define this menu structure in a menu file. A menu file is a YAML file that has a particular structure (schema). For more information on the structure of the file, visit the [menu file reference](../reference/menu.mdx).
+An [Infrahub skill](https://github.com/opsmill/infrahub-skills) called `/infrahub-menu-creator` can generate this file for you. For production-grade examples, see the menus in [infrahub-demo-dc](https://github.com/opsmill/infrahub-demo-dc/blob/main/menus/menu-full.yml) and [infrahub-solution-ai-dc](https://github.com/opsmill/infrahub-solution-ai-dc/blob/main/menus/menu.yml).
 
-Save the following menu definition file on your local disk:
+The following example defines two top-level sections — Location and Infrastructure. Adjust namespaces and kinds to match your schema:
 
 ```yaml
 # yaml-language-server: $schema=https://schema.infrahub.app/infrahub/menu/latest.json
@@ -150,29 +140,58 @@ spec:
             icon: "mdi:ethernet"
 ```
 
-At the top of the file we find some required boilerplate to indicate the type of the contents of the file, so that we understand what content is going to be provided and what the expected structure should be.
-
-In the spec mapping we find a data key which defines a sequence. Here we can clearly find the 2 menu items Location and Infrastructure. Each item in the menu structure has a name and namespace defined and some additional properties to control how it is displayed in the web interface, like the icon.
-
-The Location and Infrastructure menu items have children defined. The children are menu items that reference a kind defined in the schema. This will result in a sub menu item which, when clicked, will open the list view of the referenced kind in the schema.
-
 :::info
 
-In more complex scenarios where you have to define a lot of different menu structures, you may want to split the menu definitions into multiple files, similar to how we do this with schema files.
+For complex schemas, split menu definitions across multiple files — the same pattern used for schema files. By convention, keep them in a `menus/` folder; you can then pass the folder path to `infrahubctl menu load` to load all files at once.
 
 :::
 
 ## Load a menu file
 
-You can load the menu file into Infrahub using the `menu` subcommand of the `infrahubctl` utility.
+:::info
 
-Load the menu into Infrahub using the following command:
+Use `infrahubctl` for development and testing. The git integration option is better suited for production.
+
+:::
+
+<Tabs groupId="method" queryString>
+  <TabItem value="infrahubctl" label="infrahubctl" default>
 
 ```bash
-infrahubctl menu load /path/to/menu.yml
+infrahubctl menu load menus/menu.yml
 ```
 
-More information on the `infrahubctl` command line utility can be found in the [infrahubctl documentation]($(base_url)infrahubctl/infrahubctl).
-More information on the `menu` subcommand can be found in the [infrahubctl menu documentation]($(base_url)infrahubctl/infrahubctl-menu).
+See the [infrahubctl menu documentation]($(base_url)infrahubctl/infrahubctl-menu) for details.
 
-The menu can also be loaded into Infrahub using the git repository integration. To do this, add the menu file to the `.infrahub.yml` file — see the [infrahub.yml documentation](../git-integration/infrahub-yml.mdx) for details.
+  </TabItem>
+  <TabItem value="git" label="Git integration">
+
+Add the menu file to `.infrahub.yml`:
+
+```yaml
+---
+menus:
+  - menus/menu.yml
+```
+
+See the [infrahub.yml documentation](../git-integration/infrahub-yml.mdx) for details.
+
+  </TabItem>
+</Tabs>
+
+## Good practices
+
+### Disable schema-driven menu entries
+
+The schema's `include_in_menu` flag provides basic menu control. When you introduce a custom menu file, set it to `false` on every node and generic — otherwise the schema and the menu file both drive the same entries, which can produce unexpected behavior.
+
+```yaml {4}
+nodes:
+  - name: Node
+    namespace: Example
+    include_in_menu: false
+```
+
+### The IPAM section is built in
+
+If your schema includes nodes that inherit from `BuiltinIPPrefix` or `BuiltinIPAddress`, Infrahub automatically adds an IPAM section to the menu. You do not need to define it in your menu file.
