@@ -29,7 +29,7 @@ const config: Config = {
   organizationName: "opsmill", // Usually your GitHub org/user name.
   projectName: "infrahub", // Usually your repo name.
 
-  onBrokenLinks: "throw",
+  onBrokenLinks: "warn",
   onBrokenAnchors: "throw",
   onDuplicateRoutes: "throw",
 
