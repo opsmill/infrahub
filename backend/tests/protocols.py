@@ -57,7 +57,7 @@ class BuiltinIPPrefix(CoreNode):
     broadcast_address: StringOptional
     ip_namespace: RelationshipManager[BuiltinIPNamespace]
     ip_addresses: RelationshipManager[BuiltinIPAddress]
-    resource_pool: RelationshipManager[CoreIPAddressPool]
+    resource_pool: RelationshipManager[CoreIPPool]
     parent: RelationshipManager[BuiltinIPPrefix]
     children: RelationshipManager[BuiltinIPPrefix]
 
