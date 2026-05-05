@@ -329,6 +329,7 @@ async def _rollback_merge(
     branch: Branch,
     pre_merge_schema: SchemaBranch,
     pre_merge_branched_from: str | None,
+    user_id: str,
 ) -> bool:
     """Best-effort unified rollback for merge failures.
 
@@ -346,13 +347,13 @@ async def _rollback_merge(
         # reset destination branch's schema
         registry.schema.set_schema_branch(name=merger.destination_branch.name, schema=pre_merge_schema)
         merger.destination_branch.update_schema_hash()
-        await merger.destination_branch.save(db=db)
+        await merger.destination_branch.save(db=db, user_id=user_id)
     except Exception:
         log.exception("Registry restore failed during merge rollback")
 
     branch.branched_from = pre_merge_branched_from
     branch.status = BranchStatus.OPEN
-    await branch.save(db=db)
+    await branch.save(db=db, user_id=user_id)
     registry.branch[branch.name] = branch
     log.info(f"Merge rollback completed; branch '{branch.name}' returned to OPEN")
 
@@ -369,6 +370,7 @@ async def _do_merge_branch(
     component_registry = get_component_registry()
     workflow = get_workflow()
     merge_at = Timestamp()
+    user_id = context.account.account_id
     pre_merge_schema = registry.schema.get_schema_branch(name=registry.default_branch).duplicate()
     pre_merge_branched_from = branch.branched_from
 
@@ -388,7 +390,7 @@ async def _do_merge_branch(
         async with lock.registry.global_graph_lock():
             # Set to MERGING to lock the branch while merge proceeds
             branch.status = BranchStatus.MERGING
-            await branch.save(db=db)
+            await branch.save(db=db, user_id=user_id)
             registry.branch[branch.name] = branch
             branch_diff = await merger.merge(at=merge_at)
 
@@ -424,7 +426,7 @@ async def _do_merge_branch(
                 migrations=migrations,
                 update_db=False,  # Schema nodes already written by merge
                 update_registry=True,
-                user_id=context.account.account_id,
+                user_id=user_id,
                 manage_rollback=False,
             )
             log.info("Migrations completed")
@@ -451,6 +453,7 @@ async def _do_merge_branch(
             branch=branch,
             pre_merge_schema=pre_merge_schema,
             pre_merge_branched_from=pre_merge_branched_from,
+            user_id=context.account.account_id,
         )
         raise
 
@@ -464,7 +467,7 @@ async def _do_merge_branch(
     # Point of no return: merge fully succeeded. Advance to MERGED.
     # -------------------------------------------------------------
     branch.status = BranchStatus.MERGED
-    await branch.save(db=db)
+    await branch.save(db=db, user_id=user_id)
     registry.branch[branch.name] = branch
 
     # -------------------------------------------------------------
