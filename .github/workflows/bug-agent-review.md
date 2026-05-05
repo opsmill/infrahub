@@ -6,6 +6,8 @@ on:
     branches: [stable]
     paths-ignore:
       - "**/*.md"
+  bots:
+    - "infrahub-bug-pipeline[bot]"
 engine: claude
 permissions:
   contents: read
@@ -49,9 +51,8 @@ steps:
       fi
 
       COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate \
-        --jq --arg marker "$MARKER" \
-          '[.[] | select((.user.login == "infrahub-bug-pipeline[bot]" or .user.login == "github-actions[bot]" or .user.login == "claude[bot]")
-            and (.body | contains($marker)))] | length')
+        --jq "[.[] | select((.user.login == \"infrahub-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
+          and (.body | contains(\"$MARKER\")))] | length")
 
       if [ "$COUNT" -gt 0 ]; then
         skip "$SKIP_MSG"
