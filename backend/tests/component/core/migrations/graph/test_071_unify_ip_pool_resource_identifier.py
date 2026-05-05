@@ -1,7 +1,4 @@
-from dataclasses import dataclass
-
 import pytest
-import ujson
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
@@ -9,7 +6,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m071_unify_ip_pool_resource_identifier import (
     NEW_IDENTIFIER,
-    OLD_IDENTIFIERS,
     Migration071,
 )
 from infrahub.core.migrations.shared import MigrationInput
@@ -22,98 +18,16 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from tests.helpers.db_validation import verify_graph
 
-# ---------------------------------------------------------------------------
-# Typed result types — what the helpers below return so each assertion reads
-# as a typed Python check rather than dict-key indexing.
-# ---------------------------------------------------------------------------
 
-
-@dataclass(frozen=True)
-class PoolLabelRow:
-    kind: str
-    labels: list[str]
-
-
-# ---------------------------------------------------------------------------
-# Helpers — each one owns the Cypher it runs and converts the result into a
-# typed primitive or dataclass before returning.
-# ---------------------------------------------------------------------------
-
-
-async def _count_pool_relationships_by_name(db: InfrahubDatabase, names: list[str]) -> dict[str, int]:
-    query = """
-MATCH (pool:CoreIPPrefixPool|CoreIPAddressPool)-[:IS_RELATED]-(r:Relationship)-[:IS_RELATED]-(:BuiltinIPPrefix)
-WHERE r.name IN $names
-WITH DISTINCT r
-RETURN r.name AS name, count(r) AS total
-    """
-    rows = await db.execute_query(query=query, params={"names": names})
-    return {row["name"]: int(row["total"]) for row in rows}
-
-
-async def _get_pool_label_rows(db: InfrahubDatabase) -> list[PoolLabelRow]:
+async def _get_pool_labels(db: InfrahubDatabase) -> dict[str, list[str]]:
+    """Return ``{pool_kind: [neo4j_labels...]}`` for every existing pool vertex."""
     query = """
 MATCH (n:CoreIPPrefixPool|CoreIPAddressPool)
-RETURN labels(n) AS labels, n.kind AS kind
+RETURN n.kind AS kind, labels(n) AS labels
 ORDER BY n.kind
     """
     rows = await db.execute_query(query=query)
-    return [PoolLabelRow(kind=row["kind"], labels=list(row["labels"])) for row in rows]
-
-
-async def _count_core_ip_pool_generic(db: InfrahubDatabase) -> int:
-    query = """
-MATCH (g:SchemaGeneric)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v)
-WHERE v.value = "IPPool"
-RETURN count(g) AS total
-    """
-    rows = await db.execute_query(query=query)
-    return int(rows[0]["total"]) if rows else 0
-
-
-async def _get_inherit_from_value(db: InfrahubDatabase, node_name: str) -> list[str]:
-    query = """
-MATCH (sn:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v_name)
-WHERE v_name.value = $node_name
-MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(v_ns)
-WHERE v_ns.value = "Core"
-MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "inherit_from"})-[:HAS_VALUE]->(av:AttributeValue)
-RETURN av.value AS value
-    """
-    rows = await db.execute_query(query=query, params={"node_name": node_name})
-    if not rows:
-        return []
-    return list(ujson.loads(rows[0]["value"]))
-
-
-async def _get_schema_relationship_attribute_value(
-    db: InfrahubDatabase,
-    parent_name: str,
-    parent_namespace: str,
-    relationship_name: str,
-    attribute_name: str,
-) -> str:
-    query = """
-MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v_kind)
-WHERE v_kind.value = $parent_name
-MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(v_ns)
-WHERE v_ns.value = $parent_namespace
-MATCH (parent)-[:IS_RELATED]-(:Relationship)-[:IS_RELATED]-(sr:SchemaRelationship)
-    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v_rel)
-WHERE v_rel.value = $relationship_name
-MATCH (sr)-[:HAS_ATTRIBUTE]->(:Attribute {name: $attribute_name})-[:HAS_VALUE]->(av:AttributeValue)
-RETURN av.value AS value
-    """
-    rows = await db.execute_query(
-        query=query,
-        params={
-            "parent_name": parent_name,
-            "parent_namespace": parent_namespace,
-            "relationship_name": relationship_name,
-            "attribute_name": attribute_name,
-        },
-    )
-    return str(rows[0]["value"])
+    return {row["kind"]: list(row["labels"]) for row in rows}
 
 
 def _downgrade_schema(schema_branch: SchemaBranch) -> None:
@@ -178,9 +92,7 @@ async def test_migration_071(
     pre_migration_schema_db: SchemaBranch,
 ) -> None:
     # ---------------------------------------------------------------------
-    # 1. Create data using NodeManager / ORM-style Node objects.  The DB is
-    #    in pre-migration shape, so the resources relationship identifiers
-    #    naturally land on the old `prefixpool__resource` / `ipaddresspool__resource`.
+    # 1. Create data for pre-migration schema
     # ---------------------------------------------------------------------
     ip_namespace = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await ip_namespace.new(db=db, name="default")
@@ -191,7 +103,9 @@ async def test_migration_071(
     await ip_prefix.new(db=db, prefix="10.0.0.0/8", ip_namespace=ip_namespace)
     await ip_prefix.save(db=db)
 
-    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+    prefix_pool_schema = registry.schema.get_node_schema(
+        name=InfrahubKind.IPPREFIXPOOL, branch=default_branch, duplicate=False
+    )
     prefix_pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
     await prefix_pool.new(
         db=db,
@@ -203,7 +117,9 @@ async def test_migration_071(
     )
     await prefix_pool.save(db=db)
 
-    address_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPADDRESSPOOL, branch=default_branch)
+    address_pool_schema = registry.schema.get_node_schema(
+        name=InfrahubKind.IPADDRESSPOOL, branch=default_branch, duplicate=False
+    )
     address_pool = await CoreIPAddressPool.init(schema=address_pool_schema, db=db)
     await address_pool.new(
         db=db,
@@ -215,61 +131,36 @@ async def test_migration_071(
     await address_pool.save(db=db)
 
     # ---------------------------------------------------------------------
-    # 2. Verify pre-migration shape via Cypher (data + schema graph).
+    # 2. Verify the pre-migration schema shape
     # ---------------------------------------------------------------------
-    pre_counts = await _count_pool_relationships_by_name(db, OLD_IDENTIFIERS + [NEW_IDENTIFIER])
-    assert pre_counts.get("prefixpool__resource", 0) == 1
-    assert pre_counts.get("ipaddresspool__resource", 0) == 1
-    assert pre_counts.get(NEW_IDENTIFIER, 0) == 0
+    pre_schema = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
 
-    for row in await _get_pool_label_rows(db):
-        assert "CoreIPPool" not in row.labels, f"{row.kind} unexpectedly already has :CoreIPPool ({row.labels})"
+    assert InfrahubKind.IPPOOL not in pre_schema.generics
 
-    assert await _count_core_ip_pool_generic(db) == 0
+    pre_prefix_pool_node = pre_schema.get_node(name=InfrahubKind.IPPREFIXPOOL, duplicate=False)
+    assert InfrahubKind.IPPOOL not in pre_prefix_pool_node.inherit_from
+    assert pre_prefix_pool_node.get_relationship(name="resources").identifier == "prefixpool__resource"
 
-    assert InfrahubKind.IPPOOL not in await _get_inherit_from_value(db, node_name="IPPrefixPool")
-    assert InfrahubKind.IPPOOL not in await _get_inherit_from_value(db, node_name="IPAddressPool")
+    pre_address_pool_node = pre_schema.get_node(name=InfrahubKind.IPADDRESSPOOL, duplicate=False)
+    assert InfrahubKind.IPPOOL not in pre_address_pool_node.inherit_from
+    assert pre_address_pool_node.get_relationship(name="resources").identifier == "ipaddresspool__resource"
 
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPPrefixPool",
-            parent_namespace="Core",
-            relationship_name="resources",
-            attribute_name="identifier",
-        )
-        == "prefixpool__resource"
-    )
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPAddressPool",
-            parent_namespace="Core",
-            relationship_name="resources",
-            attribute_name="identifier",
-        )
-        == "ipaddresspool__resource"
-    )
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPPrefix",
-            parent_namespace="Builtin",
-            relationship_name="resource_pool",
-            attribute_name="identifier",
-        )
-        == "ipaddresspool__resource"
-    )
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPPrefix",
-            parent_namespace="Builtin",
-            relationship_name="resource_pool",
-            attribute_name="peer",
-        )
-        == InfrahubKind.IPADDRESSPOOL
-    )
+    pre_builtin_prefix = pre_schema.get_generic(name=InfrahubKind.IPPREFIX, duplicate=False)
+    pre_resource_pool_rel = pre_builtin_prefix.get_relationship(name="resource_pool")
+    assert pre_resource_pool_rel.identifier == "ipaddresspool__resource"
+    assert pre_resource_pool_rel.peer == InfrahubKind.IPADDRESSPOOL
+
+    pre_pool_labels = await _get_pool_labels(db)
+    assert "CoreIPPool" not in pre_pool_labels[InfrahubKind.IPPREFIXPOOL]
+    assert "CoreIPPool" not in pre_pool_labels[InfrahubKind.IPADDRESSPOOL]
+
+    # verify that only the address pool instance is visible from the prefix at this point
+    pre_loaded_prefix = await NodeManager.get_one(db=db, id=ip_prefix.id)
+    assert pre_loaded_prefix is not None
+    pre_peer_ids = {
+        r.peer_id for r in await pre_loaded_prefix.get_relationship(name="resource_pool").get_relationships(db=db)
+    }
+    assert pre_peer_ids == {address_pool.id}
 
     # ---------------------------------------------------------------------
     # 3. Run the migration.
@@ -282,66 +173,7 @@ async def test_migration_071(
     assert not validation_result.errors, validation_result.errors
 
     # ---------------------------------------------------------------------
-    # 4. Verify post-migration shape via Cypher.
-    # ---------------------------------------------------------------------
-    post_counts = await _count_pool_relationships_by_name(db, OLD_IDENTIFIERS + [NEW_IDENTIFIER])
-    assert post_counts.get(NEW_IDENTIFIER, 0) == 2
-    assert post_counts.get("prefixpool__resource", 0) == 0
-    assert post_counts.get("ipaddresspool__resource", 0) == 0
-
-    pool_labels = await _get_pool_label_rows(db)
-    assert pool_labels
-    for row in pool_labels:
-        assert "CoreIPPool" in row.labels, f"{row.kind} missing :CoreIPPool after migration ({row.labels})"
-
-    assert await _count_core_ip_pool_generic(db) >= 1
-
-    assert InfrahubKind.IPPOOL in await _get_inherit_from_value(db, node_name="IPPrefixPool")
-    assert InfrahubKind.IPPOOL in await _get_inherit_from_value(db, node_name="IPAddressPool")
-
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPPrefixPool",
-            parent_namespace="Core",
-            relationship_name="resources",
-            attribute_name="identifier",
-        )
-        == NEW_IDENTIFIER
-    )
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPAddressPool",
-            parent_namespace="Core",
-            relationship_name="resources",
-            attribute_name="identifier",
-        )
-        == NEW_IDENTIFIER
-    )
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPPrefix",
-            parent_namespace="Builtin",
-            relationship_name="resource_pool",
-            attribute_name="identifier",
-        )
-        == NEW_IDENTIFIER
-    )
-    assert (
-        await _get_schema_relationship_attribute_value(
-            db,
-            parent_name="IPPrefix",
-            parent_namespace="Builtin",
-            relationship_name="resource_pool",
-            attribute_name="peer",
-        )
-        == InfrahubKind.IPPOOL
-    )
-
-    # ---------------------------------------------------------------------
-    # 5. Reload the schema from the database and verify the high-level shape.
+    # 4. Verify the post-migration shape via the schema loaded from the DB.
     # ---------------------------------------------------------------------
     reloaded = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
     registry.schema.set_schema_branch(name=default_branch.name, schema=reloaded)
@@ -363,27 +195,37 @@ async def test_migration_071(
     assert resource_pool_rel.identifier == NEW_IDENTIFIER
     assert resource_pool_rel.peer == InfrahubKind.IPPOOL
 
+    post_pool_labels = await _get_pool_labels(db)
+    assert "CoreIPPool" in post_pool_labels[InfrahubKind.IPPREFIXPOOL]
+    assert "CoreIPPool" in post_pool_labels[InfrahubKind.IPADDRESSPOOL]
+
     # ---------------------------------------------------------------------
-    # 6. Verify high-level objects through NodeManager — both pools must be
+    # 5. Verify high-level objects through NodeManager — both pools must now be
     #    visible on the prefix's resource_pool relationship.
     # ---------------------------------------------------------------------
     loaded_prefix = await NodeManager.get_one(db=db, id=ip_prefix.id)
     assert loaded_prefix is not None
-    rel_mgr = loaded_prefix.get_relationship(name="resource_pool")
-    peers = await rel_mgr.get_relationships(db=db)
-    peer_ids = {r.peer_id for r in peers}
+    peer_ids = {r.peer_id for r in await loaded_prefix.get_relationship(name="resource_pool").get_relationships(db=db)}
     assert peer_ids == {prefix_pool.id, address_pool.id}
 
     loaded_prefix_pool = await NodeManager.get_one(db=db, id=prefix_pool.id)
     assert loaded_prefix_pool is not None
     assert loaded_prefix_pool.get_kind() == InfrahubKind.IPPREFIXPOOL
+    prefix_pool_resource_ids = {
+        r.peer_id for r in await loaded_prefix_pool.get_relationship(name="resources").get_relationships(db=db)
+    }
+    assert prefix_pool_resource_ids == {ip_prefix.id}
 
     loaded_address_pool = await NodeManager.get_one(db=db, id=address_pool.id)
     assert loaded_address_pool is not None
     assert loaded_address_pool.get_kind() == InfrahubKind.IPADDRESSPOOL
+    address_pool_resource_ids = {
+        r.peer_id for r in await loaded_address_pool.get_relationship(name="resources").get_relationships(db=db)
+    }
+    assert address_pool_resource_ids == {ip_prefix.id}
 
     # ---------------------------------------------------------------------
-    # 7. Run the cross-cutting graph integrity checks.
+    # 6. Run the graph integrity checks.
     # ---------------------------------------------------------------------
     await verify_graph(db=db)
 

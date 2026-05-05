@@ -65,7 +65,7 @@ class InheritFromRow:
 
 
 class RenameRelationshipVerticesQuery(Query):
-    name = "m070_rename_relationship_vertices"
+    name = "m071_rename_relationship_vertices"
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
 
@@ -86,7 +86,7 @@ SET r.name = $new_name
 
 
 class AddCoreIPPoolLabelQuery(Query):
-    name = "m070_add_core_ip_pool_label"
+    name = "m071_add_core_ip_pool_label"
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
 
@@ -110,7 +110,7 @@ class GetSchemaAnchorTimestampQuery(Query):
     for the rewritten HAS_VALUE edges in Steps 4 and 5.
     """
 
-    name = "m070_get_schema_anchor"
+    name = "m071_get_schema_anchor"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -142,15 +142,18 @@ LIMIT 1
 
 
 class CountCoreIPPoolGenericQuery(Query):
-    name = "m070_count_core_ip_pool_generic"
+    name = "m071_count_core_ip_pool_generic"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         query = """
-MATCH (g:SchemaGeneric)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(v)
-WHERE v.value = "IPPool"
+MATCH (g:SchemaGeneric)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]->(nv)
+WHERE nv.value = "IPPool"
+MATCH (g)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(nsv)
+WHERE nsv.value = "Core"
+WITH DISTINCT g
 RETURN count(g) AS total
         """
         self.add_to_query(query)
@@ -165,7 +168,7 @@ RETURN count(g) AS total
 class ReadInheritFromValuesQuery(Query):
     """Read the current ``inherit_from`` value for the two pool SchemaNodes."""
 
-    name = "m070_read_inherit_from_values"
+    name = "m071_read_inherit_from_values"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -185,15 +188,17 @@ MATCH (sn:SchemaNode)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})-[:HAS_VALUE]
 WHERE v_name.value IN $pool_node_names
 MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})-[:HAS_VALUE]->(v_ns)
 WHERE v_ns.value = "Core"
+WITH DISTINCT sn, v_name
 // ---------------
 // get the latest inherit_from value for each
 // ---------------
 CALL (sn) {
     MATCH (sn)-[:HAS_ATTRIBUTE]->(:Attribute {name: "inherit_from"})
         -[r:HAS_VALUE]->(av:AttributeValue)
-    WHERE r.branch IN [$default_branch] AND r.status = "active"
+    WHERE r.branch = $default_branch
+    AND r.status = "active"
+    AND r.to IS NULL
     RETURN av.value AS inherit_from_value
-    ORDER BY r.branch_level DESC, r.from DESC
     LIMIT 1
 }
 RETURN v_name.value AS node_name, inherit_from_value
@@ -205,7 +210,7 @@ RETURN v_name.value AS node_name, inherit_from_value
         rows: list[InheritFromRow] = []
         for result in self.results:
             node_name = result.get_as_type("node_name", return_type=str)
-            raw_value = result.get_as_optional_type("inherit_from_value", return_type=str) or ""
+            raw_value = result.get_as_optional_type("inherit_from_value", return_type=str)
             try:
                 current = ujson.loads(raw_value) if raw_value else []
             except ValueError:
@@ -234,7 +239,7 @@ class BulkRewriteSchemaAttributeQuery(Query):
     detach-deleted.
     """
 
-    name = "m070_bulk_rewrite_schema_attribute"
+    name = "m071_bulk_rewrite_schema_attribute"
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
 
@@ -261,23 +266,27 @@ WITH DISTINCT parent, rw
 CALL (parent) {
     MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
         -[r:HAS_VALUE]->(av_name:AttributeValue)
-    WHERE r.branch IN [$default_branch] AND r.status = "active"
+    WHERE r.branch = $default_branch
+    AND r.status = "active"
+    AND r.to IS NULL
     RETURN av_name.value AS name_value
-    ORDER BY r.branch_level DESC, r.from DESC
+    ORDER BY r.from DESC
     LIMIT 1
 }
 CALL (parent) {
     MATCH (parent)-[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})
         -[r:HAS_VALUE]->(av_ns:AttributeValue)
-    WHERE r.branch IN [$default_branch] AND r.status = "active"
+    WHERE r.branch = $default_branch
+    AND r.status = "active"
+    AND r.to IS NULL
     RETURN av_ns.value AS namespace_value
-    ORDER BY r.branch_level DESC, r.from DESC
+    ORDER BY r.from DESC
     LIMIT 1
 }
 // --------------------
 // filter to the correct parent vertexes
 // --------------------
-WITH parent, rw, name_value, namespace_value
+WITH parent, rw
 WHERE name_value = rw.parent_name AND namespace_value = rw.parent_namespace
 // --------------------
 // pick the vertex whose attribute we'll rewrite: either the parent itself
@@ -285,20 +294,24 @@ WHERE name_value = rw.parent_name AND namespace_value = rw.parent_namespace
 // given name/identifier. If relationship_name is set but no active path is
 // found, vertex_to_update resolves to NULL and the row is dropped.
 // --------------------
-OPTIONAL MATCH (parent)-[r1:IS_RELATED]-(:Relationship)
-    -[r2:IS_RELATED]-(sr:SchemaRelationship)
-    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
-    -[r3:HAS_VALUE]->(:AttributeValue {value: rw.relationship_name})
-WHERE rw.relationship_name IS NOT NULL
-  AND r1.branch IN [$default_branch] AND r1.status = "active" AND r1.to IS NULL
-  AND r2.branch IN [$default_branch] AND r2.status = "active" AND r2.to IS NULL
-  AND r3.branch IN [$default_branch] AND r3.status = "active" AND r3.to IS NULL
-WITH parent, rw, head(collect(DISTINCT sr)) AS sr
+CALL (parent, rw) {
+    OPTIONAL MATCH (parent)-[r1:IS_RELATED]-(:Relationship)
+        -[r2:IS_RELATED]-(sr:SchemaRelationship)
+        -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
+        -[r3:HAS_VALUE]->(:AttributeValue {value: rw.relationship_name})
+    WHERE rw.relationship_name IS NOT NULL
+    AND r1.branch = $default_branch AND r1.status = "active" AND r1.to IS NULL
+    AND r2.branch = $default_branch AND r2.status = "active" AND r2.to IS NULL
+    AND r3.branch = $default_branch AND r3.status = "active" AND r3.to IS NULL
+    RETURN sr
+    ORDER BY r3.from DESC, r2.from DESC, r1.from DESC
+    LIMIT 1
+}
 WITH rw,
     CASE WHEN rw.relationship_name IS NULL THEN parent ELSE sr END AS vertex_to_update
 WHERE vertex_to_update IS NOT NULL
 // --------------------
-// get the attribute of the vertex_to_update
+// get the Attribute, HAS_VALUE, and AttributeValue groups to update
 // --------------------
 CALL (vertex_to_update, rw) {
     MATCH (vertex_to_update)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: rw.attribute_name})
@@ -310,9 +323,13 @@ CALL (vertex_to_update, rw) {
 // regardless of time, branch, or active-ness
 // --------------------
 WITH DISTINCT rw, attr, hv_old, av_old
-MERGE (av_new:AttributeValue {value: rw.new_value})
+CALL (rw, av_old) {
+    MERGE (av_new:AttributeValue {value: rw.new_value, is_default: av_old.is_default})
+    RETURN av_new
+    LIMIT 1
+}
 WITH attr, hv_old, av_old, av_new
-WHERE av_new <> av_old
+WHERE av_new.value <> av_old.value
 CREATE (attr)-[hv_new:HAS_VALUE]->(av_new)
 SET hv_new = properties(hv_old)
 DELETE hv_old
@@ -336,7 +353,7 @@ class CountLeftoverPoolRelationshipsQuery(Query):
     same identifier strings on unrelated relationships don't trip the validation.
     """
 
-    name = "m070_count_leftover_pool_relationships"
+    name = "m071_count_leftover_pool_relationships"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -363,7 +380,7 @@ RETURN count(r) AS leftover
 
 
 class CountUnlabeledPoolsQuery(Query):
-    name = "m070_count_unlabeled_pools"
+    name = "m071_count_unlabeled_pools"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -412,8 +429,8 @@ class Migration071(ArbitraryMigration):
       copy-and-hard-delete pattern.
     """
 
-    name: str = "070_unify_ip_pool_resource_identifier"
-    minimum_version: int = 69
+    name: str = "071_unify_ip_pool_resource_identifier"
+    minimum_version: int = 70
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
@@ -493,7 +510,7 @@ class Migration071(ArbitraryMigration):
         """Read inherit_from for both pool SchemaNodes, then rewrite the ones whose
         value doesn't yet contain ``CoreIPPool`` in a single bulk write.
 
-        The new HAS_VALUE edge inherits the original edge's properties (incl. ``from``)
+        The new HAS_VALUE edge inherits the original edge's properties
         so past-timestamp queries see the new value as if it were always there.
         """
         default_branch_name = registry.default_branch
@@ -510,7 +527,7 @@ class Migration071(ArbitraryMigration):
                     parent_name=row.node_name,
                     parent_namespace="Core",
                     attribute_name="inherit_from",
-                    new_value=ujson.dumps(list(row.current) + [InfrahubKind.IPPOOL]),
+                    new_value=ujson.dumps(row.current + [InfrahubKind.IPPOOL]),
                 )
             )
 
