@@ -159,22 +159,12 @@ class Branch(StandardNode):
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-<<<<<<< HEAD
-        **kwargs: Any,
-    ) -> list[Self]:
-        # Extract branch-specific params from kwargs, a future refactoring could update the parent signature for
-        # standard nodes instead. Should be considered when additional StandardNode subclasses are introduced
-        branch_filters: BranchListFilters | None = kwargs.pop("branch_filters", None)
-        exclude_global: bool = kwargs.pop("exclude_global", False)
-
-=======
         branch_filters: BranchListFilters | None = None,
         exclude_global: bool = False,
         exclude_default: bool = False,
         exclude_terminal: bool = False,
         **kwargs: Any,  # noqa: ARG003
     ) -> list[Self]:
->>>>>>> stable
         if branch_filters is None:
             branch_filters = BranchListFilters(name=name, ids=ids)
         else:

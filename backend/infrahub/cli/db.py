@@ -646,7 +646,6 @@ async def migrate_database(
     return True
 
 
-<<<<<<< HEAD
 async def check_core_schema_diff(db: InfrahubDatabase) -> bool:
     """Check if the core schema has pending changes. Returns True if an update is needed."""
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
@@ -667,22 +666,12 @@ async def check_core_schema_diff(db: InfrahubDatabase) -> bool:
 
 async def get_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
     """Return branches that need rebase without modifying their status."""
-    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
     return [b for b in branches if b.graph_version != GRAPH_VERSION]
 
 
 async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
-    branches = [
-        b
-        for b in await Branch.get_list(db=db)
-        if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME] and not b.is_terminal
-    ]
-    if not branches:
-        return []
-=======
-async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
     branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
->>>>>>> stable
 
     branches_needing_rebase: list[Branch] = []
     for branch in branches:

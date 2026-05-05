@@ -79,12 +79,9 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
-<<<<<<< HEAD
+from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
-=======
-from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
->>>>>>> stable
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
