@@ -1,4 +1,3 @@
-import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
 import { NodeKindSelect } from "@/shared/components/inputs/node-kind-select";
@@ -18,21 +17,41 @@ type ObjectPickerProps = {
 
 export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
   const [selectedKind, setSelectedKind] = useState<string | null>(null);
+  const [pickedNode, setPickedNode] = useState<Node | null>(null);
 
-  // Resolve the display label whenever the picker has a value but no
-  // selection in flight. Cheap when cached by React Query.
+  // When the form holds an id we didn't pick this session (e.g. a deep link),
+  // resolve it through CoreNode so the trigger can render display_label and
+  // the concrete __typename.
+  const needsResolution = !!value && pickedNode?.id !== value;
   const { data: resolved } = useGetObject(
     { objectId: value, objectSchema: { kind: "CoreNode" } as ModelSchema },
-    { enabled: !!value }
+    { enabled: needsResolution }
   );
 
-  const peerValue: Node | null = value
-    ? {
-        id: value,
-        display_label: resolved?.display_label ?? value,
-        __typename: selectedKind ?? "",
-      }
-    : null;
+  const peerValue: Node | null = !value
+    ? null
+    : pickedNode?.id === value
+      ? pickedNode
+      : resolved
+        ? {
+            id: resolved.id ?? value,
+            display_label: resolved.display_label ?? value,
+            __typename: resolved.__typename ?? "",
+          }
+        : null;
+
+  function handleKindChange(kind: string | null) {
+    setSelectedKind(kind);
+    if (kind && pickedNode && pickedNode.__typename !== kind) {
+      setPickedNode(null);
+      onChange("");
+    }
+  }
+
+  function handlePeerChange(node: Node | null) {
+    setPickedNode(node);
+    onChange(node?.id ?? "");
+  }
 
   return (
     <div className="space-y-1.5">
@@ -40,7 +59,7 @@ export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
 
       <NodeKindSelect
         value={selectedKind}
-        onChange={setSelectedKind}
+        onChange={handleKindChange}
         filter={isVisibleNamespace}
         className="w-full"
       />
@@ -48,30 +67,9 @@ export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
       <PeerInput
         peer={selectedKind ?? "CoreNode"}
         value={peerValue}
-        onChange={(node) => onChange(node?.id ?? "")}
+        onChange={handlePeerChange}
         className="w-full"
       />
-
-      {value && (
-        <div className="flex items-center gap-2 rounded bg-blue-50 px-2 py-1.5">
-          <div className="min-w-0 flex-1">
-            <div className="truncate font-medium text-blue-800 text-xs">
-              {resolved?.display_label ?? value}
-            </div>
-            <div className="truncate font-mono text-blue-600 text-xs">{value}</div>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              onChange("");
-              setSelectedKind(null);
-            }}
-          >
-            Clear
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
