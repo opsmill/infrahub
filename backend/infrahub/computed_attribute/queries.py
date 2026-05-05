@@ -40,13 +40,14 @@ class ComputedAttributeTransformQuery(BaseModel):
     transform_id: str
 
     def render_query(self) -> str:
+        filters: dict[str, str | list[str]] = (
+            {"ids": [self.transform_id]} if _is_uuid(self.transform_id) else {"name__value": self.transform_id}
+        )
         query = Query(
             name=self.query_name,
             query={
                 "CoreTransformPython": {
-                    "@filters": {"ids": [self.transform_id]}
-                    if _is_uuid(self.transform_id)
-                    else {"name__value": self.transform_id},
+                    "@filters": filters,
                     "edges": {
                         "node": {
                             "id": None,
