@@ -20,7 +20,7 @@ from infrahub.git import InfrahubRepository
 from infrahub.server import app, lifespan
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.utils import get_models_dir
-from infrahub.workers.dependencies import build_database
+from infrahub.workers.dependencies import build_database, clear_singletons
 from infrahub.workflows.initialization import setup_task_manager
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_app import TestInfrahubApp
@@ -75,6 +75,12 @@ class TestInfrahubClient:
     ) -> AsyncGenerator[InfrahubTestClient, None]:
         async def _db(singleton: bool = True) -> InfrahubDatabase:
             return db_class
+
+        # Each class gets its own db_class with its own driver, and lifespan shutdown
+        # closes that driver. Cached singletons (notably the InfrahubComponent) hold
+        # references to the prior class's driver; drop them so the next lifespan()
+        # rebuilds them against the current db_class.
+        clear_singletons()
 
         with dependency_provider.scope(build_database, _db):
             async with lifespan(app):

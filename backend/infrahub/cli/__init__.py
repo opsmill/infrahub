@@ -92,7 +92,7 @@ def shell() -> None:
         )
         initialize_lock(service=service)
 
-        async with service.database as db:
+        async with service.database.start_session() as db:
             await initialization(db=db)
         await service.component.refresh_schema_hash()
 
