@@ -52,14 +52,6 @@ export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
           }
         : null;
 
-  function handleKindChange(kind: string | null) {
-    setSelectedKind(kind);
-    if (kind && pickedNode && pickedNode.__typename !== kind) {
-      setPickedNode(null);
-      onChange("");
-    }
-  }
-
   function handlePeerChange(node: Node | null) {
     setPickedNode(node);
     onChange(node?.id ?? "");
@@ -71,7 +63,7 @@ export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
 
       <NodeKindSelect
         value={selectedKind}
-        onChange={handleKindChange}
+        onChange={setSelectedKind}
         filter={isVisibleNamespace}
         className="w-full"
       />

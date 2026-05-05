@@ -52,6 +52,7 @@ export const PeerInput = ({
       <ComboboxContent>
         <RelationshipComboboxList
           peer={peer}
+          value={value}
           filterItem={filterItem}
           onSelect={(newValue) => {
             onChange(newValue);
