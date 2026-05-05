@@ -588,3 +588,88 @@ For more information about resource pools, see:
 
 - [Managing resource pools](../guides/resource-manager.mdx) - Guide for creating and using pools
 - [Resource Manager concepts](../topics/resource-manager.mdx) - Deep dive into allocation behaviour
+
+## Assigning groups via templates
+
+Object templates expose a dedicated `member_of_groups_for_instances` relationship (and a `subscriber_of_groups_for_instances` counterpart). Groups assigned through this field are propagated to every object created from the template, while the template node itself is **not** added to those groups. This is useful when every instance produced from a given template should belong to the same operational group — for example, "all devices created from `staged-spine` go into the `staged_devices` group" — without having to wire up a `CoreNodeTriggerRule` and `CoreGroupAction`.
+
+:::info
+
+If you want the template node itself to belong to a group (for example, to track templates as a set), use the regular `member_of_groups` field on the template instead — it behaves like on any other node and is independent from the `_for_instances` field.
+
+:::
+
+### Create a group
+
+Create a `CoreStandardGroup` to hold the staged devices.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+  1. Navigate to `Object Management` > `Groups`
+  2. Click `+ Add Standard Group`
+  3. Fill in:
+      - **Name**: `staged_devices`
+      - **Description**: `Devices created from staging templates`
+  4. Save
+
+  </TabItem>
+  <TabItem value="graphql" label="Via GraphQL">
+
+  ```graphql
+  mutation CreateStagedGroup {
+    CoreStandardGroupCreate(
+      data: { name: { value: "staged_devices" } }
+    ) {
+      ok
+      object { id }
+    }
+  }
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Assign the group on the device template
+
+Add `staged_devices` to the device template's `member_of_groups_for_instances` relationship.
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Via the Web Interface" default>
+
+  1. Open the device template (`Object Management` > `Object Templates` > the device template you created earlier)
+  2. In the `Member Of Groups For Instances` relationship, click `+ Add` and pick `staged_devices`
+  3. Save
+
+  </TabItem>
+  <TabItem value="graphql" label="Via GraphQL">
+
+  ```graphql
+  mutation AssignTemplateInstancesToGroup($template_id: String!, $group_id: String!) {
+    TemplateInfraDeviceUpdate(
+      data: {
+        id: $template_id
+        member_of_groups_for_instances: [{ id: $group_id }]
+      }
+    ) {
+      ok
+    }
+  }
+  ```
+
+  </TabItem>
+</Tabs>
+
+### Create objects — instances inherit the configured groups
+
+Creating a device from the template works exactly as described in [Create object instances](#create-object-instances-using-the-predefined-template) above. No additional steps are required — when the device is saved, Infrahub copies the peers from the template's `member_of_groups_for_instances` onto the new device's `member_of_groups`. The same applies to `subscriber_of_groups_for_instances` → `subscriber_of_groups`.
+
+:::info
+
+Groups supplied directly on the create call take precedence: if the user explicitly sets `member_of_groups` when creating an object, those groups replace (rather than extend) the ones the template would have propagated.
+
+:::
+
+For more information about groups, see:
+
+- [Groups topic](../topics/groups.mdx) - Concepts and the role of `member_of_groups` / `subscriber_of_groups`
