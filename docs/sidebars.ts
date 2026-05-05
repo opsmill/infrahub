@@ -94,7 +94,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'topics/order-weight', label: 'Field Ordering (Topic)' },
             { type: 'doc', id: 'guides/customize-field-ordering', label: 'Field Ordering (Guide)' },
             { type: 'doc', id: 'topics/labels', label: 'Labels' },
-            { type: 'doc', id: 'guides/menu', label: 'Menu Customization' },
+            { type: 'doc', id: 'menu/index', label: 'Menu Customization' },
           ],
         },
         {
