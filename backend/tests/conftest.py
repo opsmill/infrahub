@@ -1,3 +1,4 @@
+import asyncio
 import importlib
 import logging
 import os
@@ -78,8 +79,12 @@ from tests.helpers.constants import (
     PORT_PREFECT,
     PORT_REDIS,
 )
+<<<<<<< HEAD
 from tests.helpers.file_repo import FileRepo
 from tests.helpers.test_client import dummy_async_request
+=======
+from tests.helpers.diagnostics import install_redis_loop_diagnostics, register_known_loop
+>>>>>>> stable
 from tests.helpers.utils import get_exposed_port, start_neo4j_container, start_prefect_server_container
 
 ResponseClass = TypeVar("ResponseClass")
@@ -118,6 +123,18 @@ def pytest_configure(config: pytest.Config) -> None:
 @pytest.fixture(scope="session", autouse=True)
 def add_tracker() -> None:
     os.environ["PYTEST_RUNNING"] = "true"
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _install_redis_loop_diagnostics() -> None:
+    # This fixture should be deleted once the flakiness is gone
+    install_redis_loop_diagnostics()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def _register_pytest_session_loop() -> None:
+    # This fixture should be deleted once the flakiness is gone
+    register_known_loop("pytest-session", asyncio.get_running_loop())
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:

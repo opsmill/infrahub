@@ -15,6 +15,16 @@ def test_check_merged_status_raises_for_merged_branch() -> None:
         BranchStatusChecker().check_merge_status(branch=branch)
 
 
+def test_check_merged_status_raises_for_merging_branch() -> None:
+    branch = Branch(name="merging-branch", status=BranchStatus.MERGING)
+
+    with pytest.raises(
+        BranchAlreadyMergedError,
+        match=r"merging-branch.*is currently being merged and is read-only. No modifications are allowed",
+    ):
+        BranchStatusChecker().check_merge_status(branch=branch)
+
+
 @pytest.mark.parametrize(
     "status",
     [

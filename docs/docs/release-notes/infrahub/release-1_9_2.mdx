@@ -1,0 +1,24 @@
+---
+title: Release 1.9.2
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.9.2</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>April 30th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.9.2](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.9.2)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Stop object-type conversion of agnostic nodes with aware attributes from re-opening merged or deleting branches. The "needs rebase" status now only applies to non-terminal branches. ([#9103](https://github.com/opsmill/infrahub/issues/9103))
+- Stop `infrahub upgrade` from overwriting the status of merged or deleting branches. Branches in a terminal state (`MERGED`, `DELETING`) are now skipped, so they no longer reappear as `NEED_UPGRADE_REBASE` after an upgrade. ([#9103](https://github.com/opsmill/infrahub/issues/9103))

@@ -27,7 +27,6 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -647,6 +646,7 @@ async def migrate_database(
     return True
 
 
+<<<<<<< HEAD
 async def check_core_schema_diff(db: InfrahubDatabase) -> bool:
     """Check if the core schema has pending changes. Returns True if an update is needed."""
     default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
@@ -679,6 +679,10 @@ async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
     ]
     if not branches:
         return []
+=======
+async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
+    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
+>>>>>>> stable
 
     branches_needing_rebase: list[Branch] = []
     for branch in branches:

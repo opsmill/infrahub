@@ -102,6 +102,7 @@ class SchemaUpdateCoordinator:
         update_db: Literal[True] = True,
         update_registry: bool = True,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str: ...
 
     @overload
@@ -115,6 +116,7 @@ class SchemaUpdateCoordinator:
         update_db: Literal[False] = ...,
         update_registry: Literal[True] = ...,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str: ...
 
     @overload
@@ -128,6 +130,7 @@ class SchemaUpdateCoordinator:
         update_db: Literal[False] = ...,
         update_registry: Literal[False] = ...,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str | None: ...
 
     async def execute(
@@ -140,6 +143,7 @@ class SchemaUpdateCoordinator:
         update_db: bool = True,
         update_registry: bool = True,
         user_id: str = SYSTEM_USER_ID,
+        manage_rollback: bool = True,
     ) -> str | None:
         """Execute the schema update with migrations and rollback on failure.
 
@@ -152,6 +156,9 @@ class SchemaUpdateCoordinator:
             update_db: Whether to update the database
             update_registry: Whether to update the registry (used when DB already updated externally)
             user_id: User ID for all operations
+            manage_rollback: When True (default), this coordinator handles its own rollback on
+                failure (DB rollback + registry restore). When False, exceptions propagate without
+                triggering internal rollback.
 
         Returns:
             The updated schema hash, or None if the schema was not updated
@@ -175,7 +182,9 @@ class SchemaUpdateCoordinator:
                     user_id=user_id,
                 )
             except Exception as exc:
-                await self._handle_failure_and_rollback(at=at, phase="update", exception=exc, error_msgs=[])
+                if manage_rollback:
+                    await self._handle_failure_and_rollback(at=at, phase="update", exception=exc, error_msgs=[])
+                raise
 
         if not migrations:
             return updated_hash
@@ -189,9 +198,13 @@ class SchemaUpdateCoordinator:
         )
 
         if error_msgs or exception is not None:
-            await self._handle_failure_and_rollback(
-                at=at, phase="migration", exception=exception, error_msgs=error_msgs
-            )
+            if manage_rollback:
+                await self._handle_failure_and_rollback(
+                    at=at, phase="migration", exception=exception, error_msgs=error_msgs
+                )
+            if exception:
+                raise exception
+            raise MigrationError(message=",\n".join(error_msgs))
 
         return updated_hash
 

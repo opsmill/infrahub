@@ -90,11 +90,14 @@ async def get_unidirectional_rels_peers_ids(
     return query.get_peers_uuids()
 
 
+<<<<<<< HEAD
 async def _get_other_active_branches(db: InfrahubDatabase) -> list[Branch]:
     branches = await Branch.get_list(db=db)
     return [branch for branch in branches if not (branch.is_global or branch.is_default or branch.is_terminal)]
 
 
+=======
+>>>>>>> stable
 def _has_pass_thru_aware_attributes(node_schema: NodeSchema, mapping: dict[str, ConversionFieldInput]) -> bool:
     aware_attributes = [attr for attr in node_schema.attributes if attr.branch != BranchSupportType.AGNOSTIC]
     aware_attributes_pass_thru = [
@@ -175,8 +178,10 @@ async def convert_object_type(
 
         # When converting an agnostic node with aware attributes, we need to put other branches in NEED_REBASE state
         # as aware attributes do not exist in other branches after conversion
-        other_branches = await _get_other_active_branches(db=db)
-        for br in other_branches:
+        active_user_branches = await Branch.get_list(
+            db=db, exclude_global=True, exclude_default=True, exclude_terminal=True
+        )
+        for br in active_user_branches:
             br.status = BranchStatus.NEED_REBASE
             await br.save(db=db)
             # Registry of other API workers are updated outside the transaction
