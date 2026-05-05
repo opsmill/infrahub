@@ -4,6 +4,7 @@ on:
   slash_command:
     name: bug-analyze
 engine: claude
+timeout-minutes: 40
 permissions:
   contents: read
   issues: read
