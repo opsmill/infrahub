@@ -16,7 +16,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 ### Fixed
 
 - Increase coverage of rollback protection over merge logic to prevent partially merged branches during unexpected failures ([#9115](https://github.com/opsmill/infrahub/issues/9115))
-- Fix a critical race condition where concurrent coroutines in API and task workers could share the same neo4j async driver session, causing non-deterministic failures including `RuntimeError: read() called while another coroutine is already waiting for incoming data`, hung tasks, and in some cases infinite loops. ([#9121](https://github.com/opsmill/infrahub/issues/9121))
+- Fix a critical race condition where concurrent coroutines in API and task workers could share the same Neo4j async driver session, causing non-deterministic failures including `RuntimeError: read() called while another coroutine is already waiting for incoming data`, hung tasks, and in some cases infinite loops. ([#9121](https://github.com/opsmill/infrahub/issues/9121))
 
 ## [Infrahub - v1.9.2](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.2) - 2026-04-30
 
