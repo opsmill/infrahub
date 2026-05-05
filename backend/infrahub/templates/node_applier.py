@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     from infrahub.pools.allocator import PoolAllocator
 
 
+TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP: dict[str, str] = {
+    "member_of_groups_for_instances": "member_of_groups",
+    "subscriber_of_groups_for_instances": "subscriber_of_groups",
+}
+
+
 class NodeTemplateApplier:
     """Applies a template to produce field data for a new node."""
 
@@ -74,6 +80,15 @@ class NodeTemplateApplier:
                 )
                 continue
 
+            if rel_name in TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP:
+                await self._handle_group_for_instances_relationship(
+                    template=template,
+                    template_rel_name=rel_name,
+                    instance_rel_name=TEMPLATE_GROUP_FOR_INSTANCES_REL_MAP[rel_name],
+                    fields=fields,
+                )
+                continue
+
             if rel_name in fields:
                 continue
 
@@ -89,6 +104,20 @@ class NodeTemplateApplier:
                     fields[rel_name] = {"id": peer.id}
             elif peers := await relationship.get_peers(db=self.db):
                 fields[rel_name] = [{"id": peer_id} for peer_id in peers]
+
+    async def _handle_group_for_instances_relationship(
+        self, template: CoreObjectTemplate, template_rel_name: str, instance_rel_name: str, fields: dict[str, Any]
+    ) -> None:
+        """Translate a template-side `*_for_instances` field into instance group membership.
+
+        Reads peers set on the template's _for_instances relationship and writes them under the matching real
+        group-membership relationship name on the new instance.
+        """
+        if instance_rel_name in fields:
+            return
+        relationship = template.get_relationship(name=template_rel_name)
+        if peers := await relationship.get_peers(db=self.db):
+            fields[instance_rel_name] = [{"id": peer_id} for peer_id in peers]
 
     async def _handle_pool_relationship(
         self,
