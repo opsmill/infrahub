@@ -6,6 +6,7 @@ from unittest.mock import patch
 import pytest
 from infrahub_sdk.exceptions import GraphQLError
 
+from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.merge import BranchMerger
@@ -18,7 +19,6 @@ from tests.helpers.test_app import TestInfrahubApp
 if TYPE_CHECKING:
     from infrahub_sdk import InfrahubClient
 
-    from infrahub.core.branch.models import Branch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
     from tests.adapters.message_bus import BusSimulator
@@ -141,6 +141,9 @@ class TestBranchMergeRollback(TestInfrahubApp):
         branch1: Branch,
         branch1_data: dict[str, Node],
     ) -> None:
+        # Capture the branch's pre-merge `branched_from` so we can verify rollback restored it.
+        pre_merge_branched_from = branch1.branched_from
+
         with patch("infrahub.core.branch.tasks.BranchMerger", new=BrokenBranchMerger):
             with pytest.raises(GraphQLError) as exc:
                 await client.execute_graphql(query=BRANCH_MERGE, variables={"branch": branch1.name})
@@ -163,3 +166,8 @@ class TestBranchMergeRollback(TestInfrahubApp):
         assert ocp_main.name.value == "Omnicorp"
 
         await verify_graph(db=db)
+
+        # Verify the branch is back to OPEN with branched_from restored to its pre-merge value.
+        reloaded_branch = await Branch.get_by_name(db=db, name=branch1.name)
+        assert reloaded_branch.status.value == "OPEN"
+        assert reloaded_branch.branched_from == pre_merge_branched_from

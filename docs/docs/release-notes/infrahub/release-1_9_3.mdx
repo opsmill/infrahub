@@ -1,0 +1,24 @@
+---
+title: Release 1.9.3
+---
+<table>
+  <tbody>
+    <tr>
+      <th>Release Number</th>
+      <td>1.9.3</td>
+    </tr>
+    <tr>
+      <th>Release Date</th>
+      <td>May 5th, 2026</td>
+    </tr>
+    <tr>
+      <th>Tag</th>
+      <td>[infrahub-v1.9.3](https://github.com/opsmill/infrahub/releases/tag/infrahub-v1.9.3)</td>
+    </tr>
+  </tbody>
+</table>
+
+### Fixed
+
+- Increase coverage of rollback protection over merge logic to prevent partially merged branches during unexpected failures ([#9115](https://github.com/opsmill/infrahub/issues/9115))
+- Fix a critical race condition where concurrent coroutines in API and task workers could share the same Neo4j async driver session, causing non-deterministic failures including `RuntimeError: read() called while another coroutine is already waiting for incoming data`, hung tasks, and in some cases infinite loops. ([#9121](https://github.com/opsmill/infrahub/issues/9121))

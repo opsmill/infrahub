@@ -1,175 +1,112 @@
-from unittest.mock import MagicMock, patch
+import pytest
 
+from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
-from infrahub.core.constants import GlobalPermissions
+from infrahub.core.constants import GlobalPermissions, PermissionDecision
 from infrahub.core.schema.generic_schema import GenericSchema
 from infrahub.permissions.constants import BranchRelativePermissionDecision, PermissionDecisionFlag
-from infrahub.permissions.report import get_permission_report
+from infrahub.permissions.resolver import PermissionResolver
 
 
-def _create_branch(status: BranchStatus, name: str = "test-branch") -> Branch:
-    return Branch(name=name, status=status)
+@pytest.fixture
+def empty_resolver() -> PermissionResolver:
+    return PermissionResolver(
+        permissions={"global_permissions": [], "object_permissions": []}, default_branch_name="main"
+    )
 
 
-def _create_node() -> GenericSchema:
+@pytest.fixture
+def super_admin_resolver() -> PermissionResolver:
+    return PermissionResolver(
+        permissions={
+            "global_permissions": [
+                GlobalPermission(
+                    action=GlobalPermissions.SUPER_ADMIN.value, decision=PermissionDecision.ALLOW_ALL.value
+                )
+            ],
+            "object_permissions": [],
+        },
+        default_branch_name="main",
+    )
+
+
+@pytest.fixture
+def node_schema() -> GenericSchema:
     return GenericSchema(namespace="Testing", name="TestNode")
 
 
-def _create_global_permission_report(super_admin: bool = False) -> dict[GlobalPermissions, bool]:
-    return {perm: super_admin if perm == GlobalPermissions.SUPER_ADMIN else False for perm in GlobalPermissions}
-
-
 class TestMergedBranchPermissions:
-    def test_permission_denies_create_on_merged_branch(self) -> None:
-        """Test that create permission is DENY on merged branch."""
-        mock_manager = MagicMock()
+    @pytest.fixture
+    def branch(self) -> Branch:
+        return Branch(name="test-branch", status=BranchStatus.MERGED)
 
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.MERGED),
-            node=_create_node(),
-            action="create",
-            global_permission_report=_create_global_permission_report(),
-        )
+    @pytest.mark.parametrize("action", ["create", "update", "delete"])
+    def test_mutations_denied(
+        self, empty_resolver: PermissionResolver, branch: Branch, node_schema: GenericSchema, action: str
+    ) -> None:
+        result = empty_resolver.get_branch_decision(branch=branch, node_schema=node_schema, action=action)
         assert result == BranchRelativePermissionDecision.DENY
-        # Should not have called the permission manager since it returns early
-        mock_manager.report_object_permission.assert_not_called()
 
-    def test_permission_denies_update_on_merged_branch(self) -> None:
-        """Test that update permission is DENY on merged branch."""
-        mock_manager = MagicMock()
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.MERGED),
-            node=_create_node(),
-            action="update",
-            global_permission_report=_create_global_permission_report(),
-        )
+    @pytest.mark.parametrize("action", ["create", "update", "delete"])
+    def test_super_admin_doesnt_bypass(
+        self, super_admin_resolver: PermissionResolver, branch: Branch, node_schema: GenericSchema, action: str
+    ) -> None:
+        result = super_admin_resolver.get_branch_decision(branch=branch, node_schema=node_schema, action=action)
         assert result == BranchRelativePermissionDecision.DENY
-        mock_manager.report_object_permission.assert_not_called()
 
-    def test_permission_denies_delete_on_merged_branch(self) -> None:
-        """Test that delete permission is DENY on merged branch."""
-        mock_manager = MagicMock()
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.MERGED),
-            node=_create_node(),
-            action="delete",
-            global_permission_report=_create_global_permission_report(),
+    def test_view_allowed(self, branch: Branch, node_schema: GenericSchema) -> None:
+        resolver = PermissionResolver(
+            permissions={
+                "global_permissions": [],
+                "object_permissions": [
+                    ObjectPermission(
+                        namespace="Testing",
+                        name="TestNode",
+                        action="view",
+                        decision=PermissionDecisionFlag.ALLOW_ALL.value,
+                    )
+                ],
+            },
+            default_branch_name="main",
         )
-        assert result == BranchRelativePermissionDecision.DENY
-        mock_manager.report_object_permission.assert_not_called()
-
-    def test_super_admin_doesnt_bypass_merged_check(self) -> None:
-        """Test that super admin can't perform actions on merged branches."""
-        mock_branch = _create_branch(BranchStatus.MERGED)
-        mock_node = _create_node()
-        mock_manager = MagicMock()
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=mock_branch,
-            node=mock_node,
-            action="create",
-            global_permission_report=_create_global_permission_report(super_admin=True),
-        )
-        assert result == BranchRelativePermissionDecision.DENY
-        mock_manager.report_object_permission.assert_not_called()
-
-    @patch("infrahub.permissions.report.registry")
-    def test_permission_allows_view_on_merged_branch(self, mock_registry: MagicMock) -> None:
-        """Test that view permission proceeds to normal logic on merged branch."""
-        mock_registry.default_branch = "main"
-        mock_manager = MagicMock()
-        mock_manager.report_object_permission.return_value = PermissionDecisionFlag.ALLOW_ALL
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.MERGED),
-            node=_create_node(),
-            action="view",
-            global_permission_report=_create_global_permission_report(),
-        )
+        result = resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="view")
         assert result == BranchRelativePermissionDecision.ALLOW
-        mock_manager.report_object_permission.assert_called_once()
 
 
 class TestNeedRebaseBranchPermissions:
-    """Tests for permission blocking on branches needing rebase."""
+    @pytest.fixture
+    def branch(self) -> Branch:
+        return Branch(name="test-branch", status=BranchStatus.NEED_REBASE)
 
-    def test_permission_denies_create_on_need_rebase_branch(self) -> None:
-        """Test that create permission is DENY on branch needing rebase."""
-        mock_manager = MagicMock()
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.NEED_REBASE),
-            node=_create_node(),
-            action="create",
-            global_permission_report=_create_global_permission_report(),
-        )
+    @pytest.mark.parametrize("action", ["create", "update", "delete"])
+    def test_mutations_denied(
+        self, empty_resolver: PermissionResolver, branch: Branch, node_schema: GenericSchema, action: str
+    ) -> None:
+        result = empty_resolver.get_branch_decision(branch=branch, node_schema=node_schema, action=action)
         assert result == BranchRelativePermissionDecision.DENY
-        mock_manager.report_object_permission.assert_not_called()
 
-    def test_permission_denies_update_on_need_rebase_branch(self) -> None:
-        """Test that update permission is DENY on branch needing rebase."""
-        mock_manager = MagicMock()
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.NEED_REBASE),
-            node=_create_node(),
-            action="update",
-            global_permission_report=_create_global_permission_report(),
-        )
+    @pytest.mark.parametrize("action", ["create", "update", "delete"])
+    def test_super_admin_doesnt_bypass(
+        self, super_admin_resolver: PermissionResolver, branch: Branch, node_schema: GenericSchema, action: str
+    ) -> None:
+        result = super_admin_resolver.get_branch_decision(branch=branch, node_schema=node_schema, action=action)
         assert result == BranchRelativePermissionDecision.DENY
-        mock_manager.report_object_permission.assert_not_called()
 
-    def test_permission_denies_delete_on_need_rebase_branch(self) -> None:
-        """Test that delete permission is DENY on branch needing rebase."""
-        mock_manager = MagicMock()
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.NEED_REBASE),
-            node=_create_node(),
-            action="delete",
-            global_permission_report=_create_global_permission_report(),
+    def test_view_allowed(self, branch: Branch, node_schema: GenericSchema) -> None:
+        resolver = PermissionResolver(
+            permissions={
+                "global_permissions": [],
+                "object_permissions": [
+                    ObjectPermission(
+                        namespace="Testing",
+                        name="TestNode",
+                        action="view",
+                        decision=PermissionDecisionFlag.ALLOW_ALL.value,
+                    )
+                ],
+            },
+            default_branch_name="main",
         )
-        assert result == BranchRelativePermissionDecision.DENY
-        mock_manager.report_object_permission.assert_not_called()
-
-    def test_super_admin_doesnt_bypass_need_rebase_check(self) -> None:
-        """Test that super admin can't perform actions on branches needing rebase."""
-        mock_manager = MagicMock()
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.NEED_REBASE),
-            node=_create_node(),
-            action="create",
-            global_permission_report=_create_global_permission_report(super_admin=True),
-        )
-        assert result == BranchRelativePermissionDecision.DENY
-        mock_manager.report_object_permission.assert_not_called()
-
-    @patch("infrahub.permissions.report.registry")
-    def test_permission_allows_view_on_need_rebase_branch(self, mock_registry: MagicMock) -> None:
-        """Test that view permission proceeds to normal logic on branch needing rebase."""
-        mock_registry.default_branch = "main"
-        mock_manager = MagicMock()
-        mock_manager.report_object_permission.return_value = PermissionDecisionFlag.ALLOW_ALL
-
-        result = get_permission_report(
-            permission_manager=mock_manager,
-            branch=_create_branch(BranchStatus.NEED_REBASE),
-            node=_create_node(),
-            action="view",
-            global_permission_report=_create_global_permission_report(),
-        )
+        result = resolver.get_branch_decision(branch=branch, node_schema=node_schema, action="view")
         assert result == BranchRelativePermissionDecision.ALLOW
-        mock_manager.report_object_permission.assert_called_once()

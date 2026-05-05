@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, Optional, Self, Union
 
 from pydantic import Field, field_validator
 
-from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, SYSTEM_USER_ID
 from infrahub.core.graph import GRAPH_VERSION
@@ -96,7 +96,7 @@ class Branch(StandardNode):
 
     @property
     def is_terminal(self) -> bool:
-        return self.status in (BranchStatus.MERGED, BranchStatus.DELETING)
+        return self.status in TERMINAL_BRANCH_STATUSES
 
     @property
     def active_schema_hash(self) -> SchemaBranchHash:
@@ -159,13 +159,12 @@ class Branch(StandardNode):
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        **kwargs: Any,
+        branch_filters: BranchListFilters | None = None,
+        exclude_global: bool = False,
+        exclude_default: bool = False,
+        exclude_terminal: bool = False,
+        **kwargs: Any,  # noqa: ARG003
     ) -> list[Self]:
-        # Extract branch-specific params from kwargs, a future refactoring could update the parent signature for
-        # standard nodes instead. Should be considered when additional StandardNode subclasses are introduced
-        branch_filters: BranchListFilters | None = kwargs.pop("branch_filters", None)
-        exclude_global: bool = kwargs.pop("exclude_global", False)
-
         if branch_filters is None:
             branch_filters = BranchListFilters(name=name, ids=ids)
         else:
@@ -178,6 +177,8 @@ class Branch(StandardNode):
             node_class=cls,
             branch_filters=branch_filters,
             exclude_global=exclude_global,
+            exclude_default=exclude_default,
+            exclude_terminal=exclude_terminal,
             limit=limit,
             offset=offset,
             node_ordering=node_ordering,

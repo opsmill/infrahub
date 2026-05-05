@@ -82,8 +82,7 @@ class Migration056(ArbitraryMigration):
         console.log(f"Updating on default branch: {default_branch.name}")
         await update_schema_on_branch(db=db, branch=default_branch, at=at, user_id=user_id)
 
-        branches = await Branch.get_list(db=db)
-        branches = [b for b in branches if not b.is_default and not b.is_global]
+        branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True)
         console.log(f"Found {len(branches)} branches to update")
         for branch in branches:
             console.log(f"Updating on branch: {branch.name}")

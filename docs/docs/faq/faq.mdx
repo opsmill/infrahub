@@ -45,29 +45,38 @@ Here are some quick ways to get started:
 
 ### What are the deployment options for Infrahub?
 
-Infrahub is a platform-agnostic solution that can be deployed on cloud platforms like AWS, Azure, and GCP, as well as in on-premises data centers.
+This question is about *how* Infrahub is packaged and run. For *where* it can run (on-prem, air-gapped, cloud), see [Where can I deploy Infrahub?](#where-can-i-deploy-infrahub) below.
 
-Common deployment types include:
+Infrahub supports the following packaging options:
 
-- **Docker Compose** — A virtual machine running Docker, with Infrahub and its dependencies deployed via Docker Compose.
-- **Kubernetes** — A high-availability setup using a Helm Chart to deploy Infrahub.
+- **Docker Compose** — A virtual machine running Docker, with Infrahub and its dependencies deployed via Docker Compose. Suited to evaluation, development, and smaller production environments.
+- **Kubernetes** — A high-availability setup using the official Helm chart to deploy Infrahub. This is the recommended topology for production deployments that require HA, because it provides the cleanest upgrade path and native handling of component failover.
 - **Bare metal** — Infrahub Enterprise supports direct installation on physical servers without containerization, for environments where containers are not an option.
 
 :::note
 
 Infrahub depends on several supporting services that must be installed either within the same environment or externally. See the [What is Infrahub](../overview/overview.mdx) page for more details.
 
-Each deployment option comes with trade-offs. It's important to also consider your existing tools and processes when choosing the best fit.
+Each packaging option comes with trade-offs. It's important to also consider your existing tools and processes when choosing the best fit.
 
 :::
-
-For production deployments that require high availability, Kubernetes with the official Helm chart is the recommended topology because it provides the cleanest upgrade path and native handling of component failover.
-
-We're also working on a managed cloud SaaS version of Infrahub. Please [subscribe to our mailing list](https://opsmill.com) to stay updated.
 
 ### How can I install Infrahub?
 
 Check out the [Installing Infrahub](../guides/installation.mdx) guide for detailed setup instructions.
+
+### Where can I deploy Infrahub?
+
+This question is about *where* Infrahub can run. For *how* it is packaged (Docker Compose, Kubernetes, bare metal), see [What are the deployment options for Infrahub?](#what-are-the-deployment-options-for-infrahub) above.
+
+Infrahub is platform-agnostic and runs in any environment that can host its supported packaging:
+
+- **On-premises** — Deploy in your own data center on virtual machines or Kubernetes clusters. This keeps all infrastructure data inside your network perimeter and under your existing operational controls.
+- **Air-gapped environments** — Infrahub can be deployed in fully air-gapped networks with no inbound or outbound internet connectivity. Container images, Helm charts, and dependencies can be mirrored to an internal registry, and telemetry can be disabled (see [Does Infrahub send telemetry?](#does-infrahub-send-telemetry-and-how-can-i-disable-it)). This pattern is common in regulated, classified, or otherwise isolated networks.
+- **Customer-managed cloud** — Runs on any customer-managed instance in a public cloud, including AWS, Azure, and GCP. You operate it inside your own cloud account using your existing networking, IAM, and observability stack — there is no dependency on an OpsMill-managed control plane.
+- **Hybrid** — Multiple independent instances can be deployed across these environments, for example one on-premises and one in cloud, each acting as the source of truth for its own domain. See [Can I run multiple Infrahub instances?](#can-i-run-multiple-infrahub-instances) for details on this topology.
+
+A managed cloud SaaS version of Infrahub is in development. [Subscribe to our mailing list](https://opsmill.com) to stay updated.
 
 ### I deployed Infrahub, now what?
 
