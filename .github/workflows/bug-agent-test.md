@@ -4,6 +4,7 @@ on:
   slash_command:
     name: bug-tdd
 engine: claude
+timeout-minutes: 60
 permissions:
   contents: read
   issues: read
