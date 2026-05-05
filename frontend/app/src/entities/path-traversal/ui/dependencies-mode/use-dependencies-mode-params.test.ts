@@ -9,6 +9,7 @@ describe("paramsToFormValues", () => {
         source: "src-id",
         targetKinds: ["InfraDevice", "InfraInterface"],
         depth: 8,
+        selectedIndex: 0,
       })
     ).toEqual({
       sourceId: "src-id",
@@ -19,7 +20,7 @@ describe("paramsToFormValues", () => {
 });
 
 describe("formValuesToParams", () => {
-  test("maps form values to URL param updates", () => {
+  test("maps form values to URL param updates and resets selection", () => {
     expect(
       formValuesToParams({
         sourceId: "src-id",
@@ -30,6 +31,7 @@ describe("formValuesToParams", () => {
       source: "src-id",
       targetKinds: ["InfraDevice"],
       depth: 3,
+      selectedIndex: 0,
     });
   });
 });

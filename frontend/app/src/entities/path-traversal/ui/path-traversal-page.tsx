@@ -1,8 +1,10 @@
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import { useState } from "react";
 
-import { DependenciesModePanel } from "./dependencies-mode/dependencies-mode-panel";
-import { PathModePanel } from "./path-mode/path-mode-panel";
+import { DependenciesModeMain } from "./dependencies-mode/dependencies-mode-main";
+import { DependenciesModeSidebar } from "./dependencies-mode/dependencies-mode-sidebar";
+import { PathModeMain } from "./path-mode/path-mode-main";
+import { PathModeSidebar } from "./path-mode/path-mode-sidebar";
 
 const MODES = ["path", "dependencies"] as const;
 type Mode = (typeof MODES)[number];
@@ -80,10 +82,14 @@ export function PathTraversalPage() {
               </div>
             </div>
 
-            {mode === "path" ? <PathModePanel /> : <DependenciesModePanel />}
+            {mode === "path" ? <PathModeSidebar /> : <DependenciesModeSidebar />}
           </>
         )}
       </div>
+
+      <main className="relative flex-1 overflow-hidden">
+        {mode === "path" ? <PathModeMain /> : <DependenciesModeMain />}
+      </main>
     </div>
   );
 }

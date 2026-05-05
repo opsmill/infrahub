@@ -4,12 +4,14 @@ export const DEPENDENCIES_MODE_PARAMS = {
   source: parseAsString.withDefault(""),
   targetKinds: parseAsNativeArrayOf(parseAsString).withDefault([]),
   depth: parseAsInteger.withDefault(5),
+  selectedIndex: parseAsInteger.withDefault(0),
 } as const;
 
 export type DependenciesModeParams = {
   source: string;
   targetKinds: string[];
   depth: number;
+  selectedIndex: number;
 };
 
 export type DependenciesModeFormValues = {
@@ -31,6 +33,7 @@ export function formValuesToParams(v: DependenciesModeFormValues): Partial<Depen
     source: v.sourceId,
     targetKinds: v.targetKinds,
     depth: v.maxDepth,
+    selectedIndex: 0,
   };
 }
 
