@@ -83,6 +83,7 @@ safe-outputs:
     max: 1
     draft: true
     base-branch: stable
+    allowed-base-branches: [stable]
   push-to-pull-request-branch:
     max: 3
   missing-tool:
