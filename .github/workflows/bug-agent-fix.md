@@ -4,6 +4,9 @@ on:
   slash_command:
     name: bug-fix
     events: [issue_comment, pull_request_comment]
+  github-app:
+    client-id: ${{ secrets.GH_AW_APP_ID }}
+    private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
 engine: claude
 timeout-minutes: 60
 permissions:
