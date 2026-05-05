@@ -392,7 +392,7 @@ RETURN count(n) AS unlabeled
 # ---------------------------------------------------------------------------
 
 
-class Migration070(ArbitraryMigration):
+class Migration071(ArbitraryMigration):
     """Unify the IP pool resource relationship under a new ``CoreIPPool`` generic.
 
     Pre-existing ``CoreIPPrefixPool`` and ``CoreIPAddressPool`` data must be reachable
