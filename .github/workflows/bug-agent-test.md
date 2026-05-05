@@ -15,6 +15,48 @@ checkout:
   fetch-depth: 0
   submodules: true
 steps:
+  - name: Gate check - require prior pipeline state
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ISSUE_NUMBER: ${{ github.event.issue.number }}
+      REPO: ${{ github.repository }}
+    run: |
+      set -euo pipefail
+      fail() {
+        echo "::error::$1"
+        echo "### Gate failed" >> "$GITHUB_STEP_SUMMARY"
+        echo "$1" >> "$GITHUB_STEP_SUMMARY"
+        exit 1
+      }
+
+      ISSUE_JSON=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER")
+      IS_PR=$(echo "$ISSUE_JSON" | jq -r 'if .pull_request then "true" else "false" end')
+
+      if [ "$IS_PR" = "true" ]; then
+        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // ""')
+
+        if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
+          fail "Cannot run /bug-tdd here: PR has no AGENT_TEST_COMPLETE marker."
+        fi
+        if [[ "$PR_BODY" == *"AGENT_FIX_COMPLETE"* ]]; then
+          fail "Cannot run /bug-tdd: fix already applied (AGENT_FIX_COMPLETE present). Test revision after fix is unsupported."
+        fi
+
+        REQ=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
+          --jq '[.[] | select(.user.login == "claude[bot]"
+            and (.body | contains("AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED")))] | length')
+        if [ "$REQ" = "0" ]; then
+          fail "Cannot run /bug-tdd: no TEST_CHANGES_REQUESTED verdict from reviewer to act on."
+        fi
+        exit 0
+      fi
+
+      ANALYSIS=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER/comments" --paginate \
+        --jq '[.[] | select(.user.login == "claude[bot]"
+          and (.body | contains("AGENT_ANALYSIS_COMPLETE")))] | length')
+      if [ "$ANALYSIS" = "0" ]; then
+        fail "Cannot run /bug-tdd: no AGENT_ANALYSIS_COMPLETE comment from analyst. Run /bug-analyze first."
+      fi
   - uses: actions/setup-python@v6
     with:
       python-version: "3.12"
@@ -85,6 +127,9 @@ You can tell which mode from the GitHub context: if the command was posted on a 
 you are in revision mode; otherwise, initial test mode.
 
 ### Initial test -- setup
+
+The workflow has already validated that an `AGENT_ANALYSIS_COMPLETE` comment from the
+analyst exists on the issue before invoking you.
 
 1. Read the most recent analyst comment on the issue (the one containing
    `AGENT_ANALYSIS_COMPLETE`). Use the root cause and affected files it contains.
