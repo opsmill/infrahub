@@ -423,6 +423,7 @@ enum BranchRelativePermissionDecision {
 enum BranchStatus {
   DELETING
   MERGED
+  MERGING
   NEED_REBASE
   NEED_UPGRADE_REBASE
   OPEN

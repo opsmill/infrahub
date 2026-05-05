@@ -10,8 +10,8 @@ from infrahub.core.diff.query.merge import (
     DiffMergeMigratedKindsQuery,
     DiffMergePropertiesQuery,
     DiffMergeQuery,
-    DiffMergeRollbackQuery,
 )
+from infrahub.core.query.rollback import RollbackQuery
 from infrahub.database import retry_db_transaction
 from infrahub.log import get_logger
 
@@ -154,7 +154,7 @@ class DiffMerger:
     async def rollback(self, at: Timestamp) -> None:
         if not self._affected_node_uuids:
             return
-        rollback_query = await DiffMergeRollbackQuery.init(
+        rollback_query = await RollbackQuery.init(
             db=self.db,
             branch=self.source_branch,
             target_branch=self.destination_branch,

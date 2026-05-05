@@ -127,7 +127,7 @@ async def resolve_account_permissions(
 
     response: dict[str, dict[str, Any]] = {}
     if "global_permissions" in fields:
-        global_list = graphql_context.active_permissions.permissions["global_permissions"]
+        global_list = graphql_context.active_permissions.resolver.permissions["global_permissions"]
         response["global_permissions"] = {"count": len(global_list)}
         response["global_permissions"]["edges"] = [
             {
@@ -143,7 +143,7 @@ async def resolve_account_permissions(
             for obj in global_list
         ]
     if "object_permissions" in fields:
-        object_list = graphql_context.active_permissions.permissions["object_permissions"]
+        object_list = graphql_context.active_permissions.resolver.permissions["object_permissions"]
         response["object_permissions"] = {"count": len(object_list)}
         response["object_permissions"]["edges"] = [
             {
