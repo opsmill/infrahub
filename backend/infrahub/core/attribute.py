@@ -155,6 +155,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         if self.value is not None:
             self.validate(value=self.value, name=self.name, schema=self.schema)
+            self.value = self._normalize_value(self.value)
 
         if self.is_enum and self.value:
             self.value = self.schema.convert_value_to_enum(self.value)
@@ -358,6 +359,10 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     def deserialize_value(self, data: AttributeFromDB) -> Any:
         """Deserialize the value coming from the database."""
         return data.value
+
+    def _normalize_value(self, value: Any) -> Any:
+        """Return the canonical form of a value."""
+        return value
 
     async def save(
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
@@ -1235,9 +1240,12 @@ class MacAddress(BaseAttribute):
         if not netaddr.valid_mac(addr=str(value)):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
+    def _normalize_value(self, value: Any) -> str:
+        return netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()
+
     def serialize_value(self) -> str:
         """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
-        return str(netaddr.EUI(addr=self.value))
+        return self._normalize_value(self.value)
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
