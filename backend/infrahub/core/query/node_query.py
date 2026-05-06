@@ -1,9 +1,14 @@
 from __future__ import annotations
 
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub_sdk.graphql import Query
 from pydantic import BaseModel, ConfigDict
+
+if TYPE_CHECKING:
+    from infrahub_sdk.client import InfrahubClient
+
+_PAGE_SIZE = 50
 
 
 class NodeID(BaseModel):
@@ -21,7 +26,13 @@ class NodeIDQuery(BaseModel):
     def render_query(self) -> str:
         query = Query(
             name=self.query_name,
-            query={self.kind: {"edges": {"node": {"id": None}}}},
+            variables={"offset": int | None, "limit": int | None},
+            query={
+                self.kind: {
+                    "@filters": {"offset": "$offset", "limit": "$limit"},
+                    "edges": {"node": {"id": None}},
+                }
+            },
         )
         return query.render()
 
@@ -33,3 +44,21 @@ class NodeIDQuery(BaseModel):
                     if node_id := node.get("id"):
                         result.append(NodeID(id=node_id))
         return result
+
+    async def fetch_all(self, client: InfrahubClient, branch_name: str) -> list[NodeID]:
+        """Fetch all node IDs for this kind, paginating automatically."""
+        rendered_query = self.render_query()
+        offset = 0
+        nodes: list[NodeID] = []
+        while True:
+            response = await client.execute_graphql(
+                query=rendered_query,
+                variables={"offset": offset, "limit": _PAGE_SIZE},
+                branch_name=branch_name,
+            )
+            page = self.parse_response(response=response)
+            nodes.extend(page)
+            if len(page) < _PAGE_SIZE:
+                break
+            offset += _PAGE_SIZE
+        return nodes

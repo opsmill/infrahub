@@ -16,6 +16,10 @@ class TestComputedAttributeNodeIDQuery:
         rendered = q.render_query()
         assert "InfraDevice" in rendered
         assert "FetchNodeIDs" in rendered
+        assert "$offset" in rendered
+        assert "$limit" in rendered
+        assert "offset: $offset" in rendered
+        assert "limit: $limit" in rendered
 
     def test_parse_response_returns_node_ids(self) -> None:
         q = ComputedAttributeNodeIDQuery(kind="CoreTag")
