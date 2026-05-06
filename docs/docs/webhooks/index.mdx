@@ -8,7 +8,7 @@ import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_receiv
 
 # What are webhooks?
 
-Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](./events.mdx) occurs within Infrahub. They allow you to:
+Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](../topics/events.mdx) occurs within Infrahub. They allow you to:
 
 - Notify external systems about changes in your infrastructure (for example new configuration generated)
 - Trigger automated workflows in CI/CD pipelines
@@ -16,15 +16,15 @@ Webhooks are HTTP callbacks that deliver data to external systems in real-time w
 - Build custom integrations with your existing toolchain
 
 :::info
-The **Webhook System** also powers the [Activity Log](./activity-log.mdx).
+The **Webhook System** also powers the [Activity Log](../topics/activity-log.mdx).
 :::
 
 ## Configuring webhooks
 
 Infrahub supports two different types of webhooks:
 
-- `Standard Webhook` sends event information to an external endpoint.
-- `Custom Webhook` allows the ability to tie events to a [Transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint.
+- `Standard Webhook` sends event information to an external endpoint. See [Create a webhook](./create) for setup.
+- `Custom Webhook` allows the ability to tie events to a [Transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation) for the full walkthrough.
 
 :::note
 
@@ -269,9 +269,9 @@ For environment-variable-based headers, the value is resolved from `os.environ` 
 - If the environment variable is **not found**, the header is skipped, a warning is logged, and all remaining headers are still sent.
 
 :::note
-Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not just the token).
+Authentication header values must include the full value including any type prefix. For example, for Bearer token authentication, set the value to `Bearer eyJhbGci...` (not only the token).
 :::
 
 ## Custom webhook transformation
 
-The `data` object from the payloads above is passed to the `transform` method of your [Python transform](../guides/python-transform.mdx).
+The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation).

@@ -295,9 +295,10 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Webhooks',
-          link: { type: 'doc', id: 'topics/webhooks' }, // hub
+          link: { type: 'doc', id: 'webhooks/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/webhooks', label: 'Use Webhooks' },
+            { type: 'doc', id: 'webhooks/create', label: 'Create a webhook' },
+            { type: 'doc', id: 'webhooks/custom-transformation', label: 'Webhook with custom Transformation' },
           ],
         },
         {

@@ -28,7 +28,7 @@ Infrahub provides two complementary mechanisms for event visibility:
 - The [activity log](./activity-log.mdx) provides in-app visibility for browsing and filtering events through the web interface
 - Log forwarding exports those same events to purpose-built external tools for long-term retention, alerting, and cross-system correlation
 
-Log forwarding is distinct from [webhooks](./webhooks.mdx). Webhooks are HTTP callbacks designed for real-time integrations with custom payloads. Log forwarding uses the syslog protocol for compliance and SIEM use cases where standardized log ingestion is required.
+Log forwarding is distinct from [webhooks](../webhooks/). Webhooks are HTTP callbacks designed for real-time integrations with custom payloads. Log forwarding uses the syslog protocol for compliance and SIEM use cases where standardized log ingestion is required.
 
 ## Architecture overview
 
@@ -200,6 +200,6 @@ In all cases, configure the receiver to parse JSON from the MSG field to extract
 ## Relationship to other features
 
 - **Activity log**: The in-app UI for browsing and filtering events. Log forwarding exports the same events to external systems. See [Activity log](./activity-log.mdx).
-- **Webhooks**: HTTP callbacks for real-time integrations with custom payloads. Log forwarding uses syslog for compliance and SIEM use cases. See [Webhooks](./webhooks.mdx).
+- **Webhooks**: HTTP callbacks for real-time integrations with custom payloads. Log forwarding uses syslog for compliance and SIEM use cases. See [Webhooks](../webhooks/).
 - **Event framework**: Log forwarding consumes the same events that power the activity log, webhooks, and event rules. See [Events](./events.mdx) and the [Infrahub events reference](../reference/infrahub-events.mdx).
 - **Configuration reference**: All log forwarding parameters are documented in the [configuration reference](../reference/configuration.mdx#log-forwarding).
