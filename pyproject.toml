@@ -16,8 +16,8 @@ classifiers = [
 ]
 
 dependencies = [
-    "neo4j==6.0.3",
-    "neo4j-rust-ext==6.0.3.0",
+    "neo4j==6.2.0",
+    "neo4j-rust-ext==6.2.0.0",
     "pydantic>=2.12,<2.13",
     "pydantic-settings>=2.8,<2.9",
     "pytest>=9.0,<9.1",
