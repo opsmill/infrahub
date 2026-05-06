@@ -107,6 +107,39 @@ Follow the chosen pattern. For section-wide migrations, do this **one feature at
 
 **Match the interfaces shown in the existing guide / tutorial.** Before writing any how-to or spoke content, look at the existing guide and tutorial for that feature. They use Tabs to show the same task across the **UI**, **Python SDK**, and **GraphQL** — that ordering reflects how users actually interact with the feature (UI primary, SDK via generators, GraphQL last). When you create the new how-to spokes, preserve that same set of interface tabs and reuse the same running example. Do **not** reduce a multi-interface task to GraphQL-only because it's faster to write — the existing guide content is the source of truth for which interfaces matter and what the canonical UI navigation steps look like. If a new task isn't covered in the existing guide, mirror the interface set used elsewhere in the same feature's docs.
 
+#### Voice and tone
+
+Match the voice of the canonical Infrahub docs and the conventions of well-regarded open-source documentation (Stripe, Tailwind, FastAPI, Docusaurus). The reader knows they are reading a docs page — do not narrate that fact at them.
+
+**Do not refer to the page, guide, document, or section as a thing.** Headers and the URL already do that work. Banned phrases (in prose; tutorial genre markers excepted, see below):
+
+- ❌ "This page covers …" / "This page applies to …" / "This page collects …"
+- ❌ "This guide will provide you with …" / "This guide shows …"
+- ❌ "This document explains …" / "This section describes …"
+- ❌ "In this guide, we'll …"
+
+Instead, just state what is true. If you genuinely need to direct the reader to nearby content, use **"below"** or **"here"**:
+
+- ✅ "The steps below cover the canonical workflow for creating one."
+- ✅ "The patterns below come from real-world experience …"
+- ✅ "Standard groups only — Generator and Query groups …"
+
+When the legacy source content uses these self-referential phrases (it often does), **rewrite them on extraction** — don't carry them forward. The new file is shipping under the new structure; legacy slop doesn't get a free pass just because it was already there.
+
+**Tutorial genre markers are an exception.** Academy tutorials use one established opener that frames the learning context — keep this pattern verbatim:
+
+- ✅ "By the end of this tutorial you will have built, deployed, and validated …" (consolidated into ONE paragraph, then the body — see `academy/tutorials/groups.mdx` and `academy/tutorials/build-a-check.mdx` for the precedent)
+- ✅ "This tutorial uses `BuiltinTag` objects so you can follow along …" (sparingly, when genre framing genuinely helps)
+
+Do **not** use both an "This tutorial walks you through …" intro AND a "By the end of this tutorial you will:" bullet list — that's redundant. Pick one paragraph that combines the framing with the outcomes, matching the established academy pattern.
+
+**Other voice rules** (carryover from project house style — apply to any new prose you author):
+
+- No "Let me walk you through …" / "Let's get started …" — drop the meta and start the work
+- No apologies, compliments, or filler ("Great!", "Awesome!", "Now you've successfully …")
+- No "simply", "easily", "just", "simple", "easy" — they imply the reader is failing if it isn't simple for them (also caught by the AGENTS.md word check at PR time, but cheaper to avoid up front)
+- Active voice, present tense, second person ("you create a Generator …", not "a Generator can be created by you")
+
 **Single-page merge** (Computed Attributes precedent — PR #9120):
 
 - Create `docs/docs/<feature>/index.mdx` — combine topic content (top) and guide content (rewritten below as how-to sections)

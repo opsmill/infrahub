@@ -4,15 +4,7 @@ title: Build chained generators
 
 # Build chained generators
 
-This tutorial walks through wiring two layers of [modular Generators](../../../generators/modular) together — fabric → pod → rack — using a checksum attribute and Infrahub's [event framework](../../../topics/event-actions). When an upstream Generator finishes, it writes a checksum to its downstream target objects; a `CoreNodeTriggerRule` detects that change and fires a `CoreGeneratorAction` that runs the next Generator.
-
-By the end of this tutorial you will:
-
-- Understand how a checksum makes Generator chaining idempotent (re-runs that produce the same output do not re-trigger the next layer)
-- Have added a `GeneratorTarget` generic with a `checksum` attribute to your downstream node kinds
-- Have implemented a `GeneratorMixin` that calculates the checksum and writes it to downstream targets as the last step of `generate()`
-- Have built downstream Generators that validate upstream completeness before doing any work
-- Have created `CoreGeneratorAction` and `CoreNodeTriggerRule` objects via object files so the chain runs automatically when an upstream layer finishes
+By the end of this tutorial you will have wired two layers of [modular Generators](../../../generators/modular) together — fabric → pod → rack — using a checksum attribute and Infrahub's [event framework](../../../topics/event-actions). You will have added a `GeneratorTarget` generic with a `checksum` attribute to your downstream node kinds, implemented a `GeneratorMixin` that writes the checksum to downstream targets as the last step of `generate()`, built downstream Generators that validate upstream completeness before doing any work, and created `CoreGeneratorAction` and `CoreNodeTriggerRule` objects so the chain runs automatically when an upstream layer finishes. You will leave with a concrete model of how a checksum makes Generator chaining idempotent — re-runs that produce the same output do not re-trigger the next layer.
 
 **Prerequisites:**
 

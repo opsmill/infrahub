@@ -6,14 +6,7 @@ import TabItem from '@theme/TabItem';
 
 # Build your first generator
 
-This tutorial walks you through building a working Generator end-to-end. You will model two object kinds, write a GraphQL query, implement a Python Generator class, register it, test it locally with `infrahubctl`, and verify it runs automatically as part of a proposed change.
-
-By the end of this tutorial you will:
-
-- Have a `Widget` and `Resource` schema loaded into Infrahub
-- Have a Generator that creates `Resource` objects automatically based on each `Widget`'s `count` attribute
-- Understand how the GraphQL query, the Python class, and `.infrahub.yml` fit together
-- Have run the Generator both locally with `infrahubctl` and through Infrahub's CI pipeline via a proposed change
+By the end of this tutorial you will have built a working Generator end-to-end: modeled two object kinds, written a GraphQL query, implemented a Python Generator class, registered it in `.infrahub.yml`, run it locally with `infrahubctl`, and verified it runs automatically as part of a proposed change. You will leave with a `Widget` and `Resource` schema loaded into Infrahub and a Generator that creates `Resource` objects from each `Widget`'s `count` attribute.
 
 For conceptual background, see [Generators](../../../generators/). For a recipe-form how-to without the running example, see [Build a generator](../../../generators/build).
 
