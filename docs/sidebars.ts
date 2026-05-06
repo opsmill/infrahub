@@ -72,6 +72,7 @@ const sidebars: SidebarsConfig = {
           label: 'Tutorials',
           link: { type: 'generated-index' },
           items: [
+            'academy/tutorials/build-your-first-schema',
             'academy/tutorials/groups',
             'academy/tutorials/build-a-check',
           ],
@@ -86,21 +87,53 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'schema-and-data' },
       items: [
+        // ── About Schema ──────────────────────────────────────
         {
           type: 'category',
-          label: 'Schema',
-          link: { type: 'doc', id: 'topics/schema' }, // hub
+          label: 'About Schema',
+          link: { type: 'doc', id: 'schema/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/create-schema', label: 'Create a schema' },
-            { type: 'doc', id: 'guides/import-schema', label: 'Import a schema' },
-            { type: 'doc', id: 'topics/schema-extensions', label: 'Schema extensions' },
-            { type: 'doc', id: 'topics/schema-display', label: 'Schema display' },
-            { type: 'doc', id: 'topics/order-weight', label: 'Field ordering' },
-            { type: 'doc', id: 'topics/labels', label: 'Labels' },
+            { type: 'doc', id: 'schema/nodes-and-attributes', label: 'Nodes & attributes' },
+            { type: 'doc', id: 'schema/relationships', label: 'Relationships' },
+            { type: 'doc', id: 'schema/generics-and-inheritance', label: 'Generics & inheritance' },
+            { type: 'doc', id: 'schema/branch-awareness', label: 'Branch awareness' },
+            { type: 'doc', id: 'schema/hierarchy', label: 'Hierarchy' },
+            { type: 'doc', id: 'schema/extensions', label: 'Schema extensions' },
           ],
         },
-        { type: 'doc', id: 'computed-attributes/index', label: 'Computed Attributes' },
-        { type: 'doc', id: 'menu/index', label: 'Menu Customization' },
+        // ── Schema operations ─────────────────────────────────
+        {
+          type: 'category',
+          label: 'Schema operations',
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
+            { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
+          ],
+        },
+        // ── Extended schema kinds ─────────────────────────────
+        {
+          type: 'category',
+          label: 'Extended schema kinds',
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'doc', id: 'computed-attributes/index', label: 'Computed attributes' },
+            { type: 'doc', id: 'schema/number-pool', label: 'Number pool attribute' },
+            { type: 'doc', id: 'schema/file-object', label: 'File object node' },
+          ],
+        },
+        // ── Display & presentation ────────────────────────────
+        {
+          type: 'category',
+          label: 'Display & presentation',
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'doc', id: 'schema/field-visibility', label: 'Controlling field visibility in the UI' },
+            { type: 'doc', id: 'schema/display_label', label: 'Labels' },
+            { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
+            { type: 'doc', id: 'menu/index', label: 'Menu customization' },
+          ],
+        },
         {
           type: 'category',
           label: 'Templates', // [Object Blueprints — rename pending]
@@ -127,7 +160,6 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' }, // About Objects hub page not yet authored
           items: [
             { type: 'doc', id: 'topics/object-conversion', label: 'Convert object kind' },
-            { type: 'doc', id: 'topics/file-object', label: 'File objects' },
             { type: 'doc', id: 'topics/metadata', label: 'Metadata & lineage' },
             { type: 'doc', id: 'guides/object-load', label: 'Load data from YAML file' },
           ],

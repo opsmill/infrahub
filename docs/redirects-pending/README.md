@@ -77,3 +77,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `computed-attributes.yml` | Computed Attributes | https://github.com/opsmill/infrahub/pull/9120 |
 | `branches-and-change-control.yml` | Branches & Change Control | TBD |
 | `menu.yml` | Menu Customization | TBD |
+| `schema.yml` | Schema & Data | TBD |
