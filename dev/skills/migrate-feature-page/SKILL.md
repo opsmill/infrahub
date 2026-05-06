@@ -245,6 +245,16 @@ Pattern: <single-page merge / hub + spokes / tutorial extraction / split / secti
 
 - **<Section name>**: <preserved as-is / rewritten as how-to / moved to Academy tutorial / etc.>
 
+## What needs reviewer attention
+
+[List the actual NEW prose the reviewer should read carefully. Skip anything that's verbatim extraction with only cross-link updates — the reviewer can trust those.]
+
+Most of this PR is preserved content with cross-link updates. The actual NEW prose to review is small:
+
+- **`<file>:<lines>` — <one-line description of new section/prose>.** <Brief rationale or where it came from — e.g. "Sourced from the Confluence net-new content draft" or "Standard spoke 'Related' closer matching Generators/Transformations precedent.">
+
+Everything else (~XX% of the lines changed) is verbatim from the source legacy files with only cross-link path updates — safe to skim.
+
 ## What didn't change
 
 - All factual content preserved; no new claims invented
