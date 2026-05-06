@@ -145,6 +145,16 @@ Do **not** use both a "This tutorial walks you through …" intro AND a separate
 - No "simply", "easily", "just", "simple", "easy" — they imply the reader is failing if it isn't simple for them (also caught by the AGENTS.md word check at PR time, but cheaper to avoid up front)
 - Active voice, present tense, second person ("you create a Generator …", not "a Generator can be created by you")
 
+**Banned jargon — words that don't earn their place:**
+
+- ❌ "canonical" (as in "the canonical workflow", "the canonical way", "the canonical pattern") — implies "the official/authoritative one," which is meaningless when there's only one workflow being described. Drop the qualifier or use a plain alternative.
+  - ❌ "The steps below cover the canonical workflow for creating a Generator."
+  - ✅ "The steps below cover how to create a Generator."
+  - ✅ "The steps below cover the recommended workflow." (when "recommended" actually adds information — e.g. there is a known alternative being deprecated)
+- Watch for similar empty qualifiers in your own writing: "**proper**", "**correct**", "**right**" (as in "the proper way to do X"). If there's only one way, just describe it. If there are multiple ways, name them and explain trade-offs.
+
+When in doubt, ask: *would this sentence read better with the qualifier removed?* If yes, remove it.
+
 **Single-page merge** (Computed Attributes precedent — PR #9120):
 
 - Create `docs/docs/<feature>/index.mdx` — combine topic content (top) and guide content (rewritten below as how-to sections)
