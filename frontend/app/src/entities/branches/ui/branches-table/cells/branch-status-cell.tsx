@@ -1,5 +1,4 @@
 import type { BranchStatus } from "@/shared/api/graphql/generated/types";
-
 import { TableCell } from "@/shared/components/table/table-cell";
 
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
