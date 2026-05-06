@@ -195,8 +195,7 @@ async def trigger_update_hfid(
     client = get_client()
 
     node_query = HFIDNodeIDQuery(kind=kind)
-    response = await client.execute_graphql(query=node_query.render_query(), branch_name=branch_name)
-    nodes = node_query.parse_response(response=response)
+    nodes = await node_query.fetch_all(client=client, branch_name=branch_name)
 
     for node in nodes:
         await get_workflow().submit_workflow(

@@ -6,7 +6,7 @@ from typing import Any, ClassVar
 from infrahub_sdk.graphql import Query
 from pydantic import BaseModel, ConfigDict
 
-from infrahub.core.query.node_query import NodeIDQuery
+from infrahub.core.graphql_query.node_query import NodeIDQuery
 
 
 def _is_uuid(value: str) -> bool:

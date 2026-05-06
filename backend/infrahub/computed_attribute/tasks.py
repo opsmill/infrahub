@@ -25,6 +25,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
+from .graphql_queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
 from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,
@@ -32,7 +33,6 @@ from .models import (
     ComputedAttrJinja2TriggerDefinition,
     PythonTransformTarget,
 )
-from .queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
 
 if TYPE_CHECKING:
     from infrahub.core.schema.computed_attribute import ComputedAttribute
@@ -320,8 +320,7 @@ async def trigger_update_jinja2_computed_attributes(
     client = get_client()
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
-    response = await client.execute_graphql(query=node_query.render_query(), branch_name=branch_name)
-    nodes = node_query.parse_response(response=response)
+    nodes = await node_query.fetch_all(client=client, branch_name=branch_name)
 
     for node in nodes:
         await get_workflow().submit_workflow(

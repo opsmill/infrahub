@@ -1,7 +1,7 @@
 from typing import Any
 
-from infrahub.core.query.node_query import NodeID
-from infrahub.display_labels.models import DisplayLabelNodeIDQuery
+from infrahub.core.graphql_query.node_query import NodeID
+from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 
 
 class TestDisplayLabelNodeIDQuery:
@@ -18,6 +18,10 @@ class TestDisplayLabelNodeIDQuery:
         rendered = q.render_query()
         assert "InfraDevice" in rendered
         assert "FetchNodeIDs" in rendered
+        assert "$offset" in rendered
+        assert "$limit" in rendered
+        assert "offset: $offset" in rendered
+        assert "limit: $limit" in rendered
 
     def test_parse_response_returns_node_ids(self) -> None:
         q = DisplayLabelNodeIDQuery(kind="CoreTag")
