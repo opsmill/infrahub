@@ -6,7 +6,7 @@ title: Event rules
 
 An event rule is a node you create in Infrahub that names a set of conditions and ties one or more actions to fire when those conditions match. Rules turn raw events into useful automation: instead of reacting to every `infrahub.node.updated` event, you describe the precise update you care about — "an `InfraDevice` whose status changed to `active`" — and Infrahub runs your action only when that pattern shows up.
 
-Rules inherit from the `CoreTriggerRule` generic. There are two kinds today:
+Rules inherit from the `CoreTriggerRule` generic. Two rule kinds exist because matchable events come from two sources: mutations on specific nodes, and changes to group membership.
 
 | Rule kind | Use it to match | Example |
 |---|---|---|
@@ -56,6 +56,8 @@ A node trigger rule fires when a node is created, updated, or deleted.
 
 ![Node Trigger matches form](../media/guides/events/node-trigger-matches-form-creation.png)
 
+After saving, the rule appears in the trigger rules list as inactive. Activate it when you're ready to start matching events.
+
 :::success Best practice
 Keep the rule inactive until you've configured all match conditions, then activate it. An active rule starts evaluating events immediately.
 :::
@@ -75,6 +77,8 @@ A group trigger rule fires when a group's membership changes (member added or re
    - Click **Save**.
 
 ![Group Trigger form creation](../media/guides/events/group-trigger-form-creation.png)
+
+After saving, the rule appears in the trigger rules list as inactive. Activate it when you're ready to start matching events.
 
 ## Related
 

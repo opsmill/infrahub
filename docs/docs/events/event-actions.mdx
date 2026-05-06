@@ -6,7 +6,7 @@ title: Event actions
 
 An event action is a node you create in Infrahub that defines an outcome: add a device to a group, run a Generator definition. Actions on their own do nothing — they fire only when an [event rule](./event-rules) matches and points at them.
 
-Actions inherit from the `CoreAction` generic. There are two kinds today:
+Actions inherit from the `CoreAction` generic. Two action kinds exist because the most common automated outcomes fall into two categories: modifying group membership, or running a Generator against the impacted object.
 
 | Action kind | Effect | Example |
 |---|---|---|
@@ -33,6 +33,8 @@ After saving, the details page shows the action's configuration:
 
 ![Group Action details](../media/guides/events/grp_actions-details.png)
 
+The action appears in the actions list and can be referenced by any trigger rule.
+
 ## Configure a Generator action
 
 A Generator action runs a Generator definition when triggered. The Generator receives the impacted object as its target.
@@ -45,6 +47,8 @@ A Generator action runs a Generator definition when triggered. The Generator rec
    - Click **Save**.
 
 ![Generator Action creation form](../media/guides/events/generator-action-form-creation.png)
+
+The action appears in the actions list and can be referenced by any trigger rule.
 
 ## Related
 
