@@ -277,9 +277,9 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Artifact & File Storage',
-          link: { type: 'doc', id: 'topics/object-storage' }, // hub (renamed from "Object Storage")
+          link: { type: 'doc', id: 'artifact-file-storage/index' }, // hub (renamed from "Object Storage")
           items: [
-            { type: 'doc', id: 'guides/object-storage', label: 'Configure storage' },
+            { type: 'doc', id: 'artifact-file-storage/configure', label: 'Configure storage' },
           ],
         },
         {
