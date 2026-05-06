@@ -208,7 +208,6 @@ export type AnyAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -255,7 +254,6 @@ export type ArtifactEvent = EventNodeInterface & {
 
 export type AttributeInterface = {
   is_default: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   updated_at: Maybe<Scalars['DateTime']['output']>;
 };
@@ -457,6 +455,7 @@ export type BranchRelativePermissionDecision =
 export type BranchStatus =
   | 'DELETING'
   | 'MERGED'
+  | 'MERGING'
   | 'NEED_REBASE'
   | 'NEED_UPGRADE_REBASE'
   | 'OPEN';
@@ -1394,7 +1393,6 @@ export type CheckboxAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -16297,7 +16295,6 @@ export type Dropdown = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   label: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -17052,6 +17049,12 @@ export type GenericPoolInput = {
   identifier?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type GraphQlQueryReport = {
+  __typename: 'GraphQLQueryReport';
+  /** True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
+  targets_unique_nodes: Scalars['Boolean']['output'];
+};
+
 export type GroupEvent = EventNodeInterface & {
   __typename: 'GroupEvent';
   /** The account ID that triggered the event. */
@@ -17121,7 +17124,6 @@ export type IpHost = AttributeInterface & {
   ip: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -17145,7 +17147,6 @@ export type IpNetwork = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
   num_addresses: Maybe<Scalars['Int']['output']>;
@@ -18391,7 +18392,6 @@ export type JsonAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -18441,7 +18441,6 @@ export type ListAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -18481,7 +18480,6 @@ export type MacAddress = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   oui: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -22525,7 +22523,6 @@ export type NumberAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -24590,6 +24587,8 @@ export type Query = {
   /** Retrieve paginated information about active branches. */
   InfrahubBranch: InfrahubBranchType;
   InfrahubEvent: Events;
+  /** Analyze a GraphQL query string and return a report describing how Infrahub will interpret it. */
+  InfrahubGraphQLQueryReport: GraphQlQueryReport;
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
   InfrahubIPPrefixGetNextAvailable: IpPrefixGetNextAvailable;
   InfrahubInfo: Info;
@@ -35905,6 +35904,11 @@ export type QueryInfrahubEventArgs = {
 };
 
 
+export type QueryInfrahubGraphQlQueryReportArgs = {
+  query: Scalars['String']['input'];
+};
+
+
 export type QueryInfrahubIpAddressGetNextAvailableArgs = {
   prefix_id: Scalars['String']['input'];
   prefix_length?: InputMaybe<Scalars['Int']['input']>;
@@ -37006,7 +37010,6 @@ export type TextAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;

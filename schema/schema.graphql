@@ -163,7 +163,6 @@ type AnyAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -213,7 +212,6 @@ type ArtifactEvent implements EventNodeInterface {
 
 interface AttributeInterface {
   is_default: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   updated_at: DateTime
 }
@@ -669,7 +667,6 @@ type CheckboxAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -7479,7 +7476,6 @@ type Dropdown implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   label: String
   owner: LineageOwner
@@ -8252,7 +8248,6 @@ type IPHost implements AttributeInterface {
   ip: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   netmask: String
   owner: LineageOwner
@@ -8277,7 +8272,6 @@ type IPNetwork implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   netmask: String
   num_addresses: Int
@@ -8705,7 +8699,6 @@ type JSONAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -8756,7 +8749,6 @@ type ListAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -8797,7 +8789,6 @@ type MacAddress implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   oui: String
   owner: LineageOwner
@@ -10992,7 +10983,6 @@ type NumberAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -25445,7 +25435,6 @@ type TextAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
