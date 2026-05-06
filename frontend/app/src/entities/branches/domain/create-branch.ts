@@ -1,8 +1,9 @@
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
+
 import {
   type CreateBranchFromApiParams,
   createBranchFromApi,
 } from "@/entities/branches/api/create-branch-from-api";
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 
 export type CreateBranchParams = CreateBranchFromApiParams;
@@ -24,7 +25,7 @@ export const createBranch = async (params: CreateBranchParams): Promise<BranchLi
     name: branch.name,
     description: branch.description,
     branched_from: branch.branched_from,
-    status: BRANCH_STATUS.OPEN,
+    status: BranchStatus.OPEN,
     sync_with_git: branch.sync_with_git,
     is_default: branch.is_default,
     has_schema_changes: false,
