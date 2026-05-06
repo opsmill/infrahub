@@ -9,6 +9,7 @@ import {
   type ComboboxListProps,
 } from "@/shared/components/ui/combobox";
 import { debounce } from "@/shared/utils/common";
+import { isUuid } from "@/shared/utils/is-uuid";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
@@ -36,8 +37,16 @@ export const RelationshipComboboxList = ({
 }: RelationshipComboboxListProps) => {
   const [search, setSearch] = React.useState("");
   const { schema } = useSchema(peer);
+  // When the user types or pastes a UUID, switch the underlying query from a
+  // label search to an ids filter. UUID is a maximally specific match, so it
+  // intentionally overrides any caller-provided filterQuery.
+  const isUuidSearch = search.length > 0 && isUuid(search);
   const { isPending, data, error, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useRelationships({ peer, search, filterQuery });
+    useRelationships({
+      peer,
+      search: isUuidSearch ? undefined : search,
+      filterQuery: isUuidSearch ? { ids: [search.trim()] } : filterQuery,
+    });
 
   if (error) return <ErrorScreen message={error.message} />;
 

@@ -1,0 +1,98 @@
+import type { UseFormReturn } from "react-hook-form";
+
+import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
+import {
+  Form,
+  FormField,
+  FormInput,
+  FormLabel,
+  FormMessage,
+  FormSubmit,
+} from "@/shared/components/ui/form";
+import { Input } from "@/shared/components/ui/input";
+
+import { ObjectPicker } from "../object-picker";
+import { isVisibleNamespace } from "../utils";
+import type { DependenciesModeFormValues } from "./use-dependencies-mode-params";
+
+type DependenciesModeFormProps = {
+  form: UseFormReturn<DependenciesModeFormValues>;
+  onSubmit: (values: DependenciesModeFormValues) => void;
+  isPending: boolean;
+};
+
+export function DependenciesModeForm({ form, onSubmit, isPending }: DependenciesModeFormProps) {
+  return (
+    <Form
+      form={form as unknown as UseFormReturn}
+      onSubmit={(values) => onSubmit(values as DependenciesModeFormValues)}
+      className="p-4"
+    >
+      <FormField
+        name="sourceId"
+        rules={{ required: "Source is required" }}
+        render={({ field }) => (
+          <div className="space-y-1">
+            <ObjectPicker
+              label="Source Object"
+              value={(field.value as string) ?? ""}
+              onChange={field.onChange}
+            />
+            <FormMessage />
+          </div>
+        )}
+      />
+
+      <FormField
+        name="targetKinds"
+        rules={{
+          validate: (value) => {
+            const arr = value as string[];
+            return (Array.isArray(arr) && arr.length > 0) || "Select at least one target kind";
+          },
+        }}
+        render={({ field }) => (
+          <div className="space-y-1">
+            <KindMultiSelect
+              value={(field.value as string[]) ?? []}
+              onChange={field.onChange}
+              label="Target kinds"
+              showChips
+              chipTone="blue"
+              filter={isVisibleNamespace}
+            />
+            <FormMessage />
+          </div>
+        )}
+      />
+
+      <FormField
+        name="maxDepth"
+        rules={{
+          required: "Max depth is required",
+          min: { value: 1, message: "Must be ≥ 1" },
+          max: { value: 20, message: "Must be ≤ 20" },
+        }}
+        render={({ field }) => (
+          <div className="space-y-1">
+            <FormLabel>Max Depth</FormLabel>
+            <FormInput>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={(field.value as number) ?? 5}
+                onChange={(e) => field.onChange(Number(e.target.value))}
+              />
+            </FormInput>
+            <FormMessage />
+          </div>
+        )}
+      />
+
+      <FormSubmit isPending={isPending} className="w-full bg-amber-600 hover:bg-amber-700">
+        Find Dependencies
+      </FormSubmit>
+    </Form>
+  );
+}

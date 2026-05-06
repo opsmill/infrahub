@@ -14,7 +14,7 @@ import "@xyflow/react/dist/style.css";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 
-import type { PathTraversalResponse } from "../domain/get-path-traversal";
+import type { PathTraversalResponse } from "../domain/path-traversal.types";
 import { InfraNode, type InfraNodeData } from "./infra-node";
 import { PathEdge } from "./path-edge";
 
