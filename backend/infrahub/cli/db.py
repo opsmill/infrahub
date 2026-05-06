@@ -27,7 +27,6 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.branch.tasks import rebase_branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.graph import GRAPH_VERSION
 from infrahub.core.graph.constraints import ConstraintManagerBase, ConstraintManagerMemgraph, ConstraintManagerNeo4j
 from infrahub.core.graph.index import node_indexes, rel_indexes
@@ -667,18 +666,12 @@ async def check_core_schema_diff(db: InfrahubDatabase) -> bool:
 
 async def get_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
     """Return branches that need rebase without modifying their status."""
-    branches = [b for b in await Branch.get_list(db=db) if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME]]
+    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
     return [b for b in branches if b.graph_version != GRAPH_VERSION]
 
 
 async def mark_branches_needing_rebase(db: InfrahubDatabase) -> list[Branch]:
-    branches = [
-        b
-        for b in await Branch.get_list(db=db)
-        if b.name not in [registry.default_branch, GLOBAL_BRANCH_NAME] and not b.is_terminal
-    ]
-    if not branches:
-        return []
+    branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
 
     branches_needing_rebase: list[Branch] = []
     for branch in branches:

@@ -42,6 +42,7 @@ Containerlab
 content_type
 convert_query_response
 coroutine
+coroutines
 created_at
 created_by
 customizable

@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from infrahub.core.diff.coordinator import DiffCoordinator
     from infrahub.core.diff.diff_locker import DiffLocker
     from infrahub.core.diff.merger.merger import DiffMerger
-    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
     from infrahub.core.schema.manager import SchemaDiff
@@ -150,7 +149,7 @@ class BranchMerger:
     async def merge(
         self,
         at: str | Timestamp | None = None,
-    ) -> EnrichedDiffRoot:
+    ) -> None:
         """Merge the current branch into main."""
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
@@ -181,16 +180,13 @@ class BranchMerger:
                         f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
                     )
 
-                # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
-                # From the Graph or From the repositories
                 self._merge_at = Timestamp(at)
-                branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
+                await self.diff_merger.merge_graph(at=self._merge_at)
             except Exception as exc:
                 log.exception("Merge failed, beginning rollback")
                 await self.rollback()
                 raise MergeFailedError(branch_name=self.source_branch.name) from exc
         await self.merge_repositories()
-        return branch_diff
 
     async def rollback(self) -> None:
         await self.diff_merger.rollback(at=self._merge_at)

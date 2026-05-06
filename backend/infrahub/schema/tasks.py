@@ -20,13 +20,12 @@ async def schema_updated(
     service: InfrahubServices,
 ) -> None:
     log = get_run_logger()
-    await wait_for_schema_to_converge(
-        branch_name=branch_name, component=service.component, db=service.database, log=log
-    )
+
+    async with service.database.start_session() as db:
+        await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)
 
     updated_branches = await validate_schema_number_pools(branch_name=branch_name, context=context, service=service)
 
     if updated_branches:
-        await wait_for_schema_to_converge(
-            branch_name=branch_name, component=service.component, db=service.database, log=log
-        )
+        async with service.database.start_session() as db:
+            await wait_for_schema_to_converge(branch_name=branch_name, component=service.component, db=db, log=log)

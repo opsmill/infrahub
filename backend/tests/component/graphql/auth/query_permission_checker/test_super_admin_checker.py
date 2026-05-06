@@ -78,8 +78,12 @@ class TestSuperAdminPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+        permission_manager = await PermissionManager.load_for_account(
+            db=db,
+            branch=permissions_helper.default_branch,
+            default_branch_name=permissions_helper.default_branch.name,
+            account_session=session,
+        )
 
         graphql_context = MagicMock(spec=GraphqlContext)
         graphql_context.permissions = permission_manager
@@ -102,8 +106,12 @@ class TestSuperAdminPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+        permission_manager = await PermissionManager.load_for_account(
+            db=db,
+            branch=permissions_helper.default_branch,
+            default_branch_name=permissions_helper.default_branch.name,
+            account_session=session,
+        )
 
         graphql_context = GraphqlContext(
             db=MagicMock(),
