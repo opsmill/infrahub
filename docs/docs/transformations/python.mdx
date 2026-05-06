@@ -1,0 +1,121 @@
+---
+title: Write a Python Transformation
+---
+
+# Write a Python Transformation
+
+A Python Transformation processes graph data through user-written Python code, producing JSON output (or any structured data you serialize). Use this when Jinja templating isn't enough — for example, conditional logic, external API calls, or complex aggregation. The steps below cover how to write one.
+
+For conceptual background, see [Transformations](./).
+For a step-by-step walkthrough with a running example, see [Build a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) in the Academy tutorials.
+
+> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../guides/installation) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+
+## Write the GraphQL query
+
+Create a `.gql` file with the data your transform needs.
+
+```graphql title="queries/your_query.gql"
+query MyQuery($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        name { value }
+        # ... other fields
+      }
+    }
+  }
+}
+```
+
+For reusable query fragments, see [GraphQL fragments](../guides/graphql-fragment).
+
+## Implement the Transformation class
+
+Create a Python file under `transforms/` (or wherever fits your repository structure):
+
+```python title="transforms/your_transform.py"
+from infrahub_sdk.transforms import InfrahubTransform
+
+
+class YourTransform(InfrahubTransform):
+    query = "<your_query>"
+
+    async def transform(self, data):
+        # Process the query response into your output format
+        device = data["InfraDevice"]["edges"][0]["node"]
+        return {
+            "name": device["name"]["value"],
+            # ... build your structured output
+        }
+```
+
+The class must inherit from `InfrahubTransform` and implement an async `transform()` method that accepts a `dict` (the GraphQL response) and returns a `dict` (the JSON output). Set `query` to the query name you'll register in `.infrahub.yml`.
+
+With `convert_query_response: true`, use `self.nodes[0]` (SDK objects with attribute access like `device.name.value`); otherwise use the raw `data` dict (`data["InfraDevice"]["edges"][0]["node"]["name"]["value"]`).
+
+## Access local files (optional)
+
+If your transform needs to read templates or other files from the repository, use `self.root_directory`:
+
+```python
+async def transform(self, data):
+    templates_path = f"{self.root_directory}/templates"
+    # ... load and use template files
+```
+
+## Register in `.infrahub.yml`
+
+Add the Transformation definition to your repository's `.infrahub.yml`:
+
+```yaml
+python_transforms:
+  - name: <your_transform>
+    description: "<one-line description>"
+    file_path: "transforms/<your_transform>.py"
+    class_name: YourTransform
+
+queries:
+  - name: <your_query>
+    file_path: "queries/<your_query>.gql"
+```
+
+Set `convert_query_response: true` if you want the SDK to convert the response into `InfrahubNode` objects accessible via `self.nodes`.
+
+For full `.infrahub.yml` syntax, see [infrahub.yml configuration](../git-integration/infrahub-yml).
+
+## Test locally
+
+```shell
+infrahubctl transform <your_transform> <var_name>=<value>
+```
+
+Use `--branch=<branch_name>` to render against a specific branch. Output prints to the terminal as JSON.
+
+For debugging, add `breakpoint()` inside `transform()` to inspect data at runtime.
+
+## Deploy to Infrahub
+
+Push the branch and merge it. The Transformation registers with Infrahub when the repository syncs.
+
+## Render via the API
+
+Once deployed, render on demand:
+
+```text
+GET https://<host>/api/transform/python/<your_transform>?branch=<branch_name>&<var>=<value>
+```
+
+The endpoint is branch-aware. Pass query variables as URL parameters.
+
+## Generate as an artifact
+
+To cache transform output and tie it to a specific target object, define an artifact that uses this Transformation. See [Use artifacts](../guides/artifact).
+
+## Related
+
+- [Transformations](./) — concept and architecture
+- [Write a Jinja2 transformation](./jinja2) — for template-based output
+- [GraphQL fragments](../guides/graphql-fragment) — share query fragments across Transformations
+- [Use artifacts](../guides/artifact) — cache Transformation output
+- [infrahub.yml configuration](../git-integration/infrahub-yml)
