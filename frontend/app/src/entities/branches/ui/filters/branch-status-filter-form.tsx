@@ -4,7 +4,7 @@ import { getCurrentFilterCondition } from "@/shared/components/filters/utils/get
 import { FormField } from "@/shared/components/ui/form";
 import useFilters, { type Filter } from "@/shared/hooks/useFilters";
 
-import type { BranchStatus } from "@/entities/branches/constants";
+import type { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { BRANCH_FIELD_SCHEMAS } from "@/entities/branches/ui/branches-table/branch-field-schemas";
 import { BranchStatusEnum } from "@/entities/branches/ui/filters/branch-status-enum";
 import {

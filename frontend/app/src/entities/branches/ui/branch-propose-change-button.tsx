@@ -1,12 +1,12 @@
 import { PlusIcon } from "lucide-react";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { LinkButton } from "@/shared/components/ui/button";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 
 type BranchProposeChangeButtonProps = {
@@ -17,7 +17,7 @@ export const BranchProposeChangeButton = ({ branch }: BranchProposeChangeButtonP
   const { isAuthenticated } = useAuth();
 
   const isDisabled =
-    !isAuthenticated || !!branch.is_default || branch.status === BRANCH_STATUS.MERGED;
+    !isAuthenticated || !!branch.is_default || branch.status === BranchStatus.MERGED;
 
   return (
     <LinkButton
