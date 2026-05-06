@@ -299,11 +299,11 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Events',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'events/index' }, // hub
           items: [
-            { type: 'doc', id: 'topics/events', label: 'Events System' },
-            { type: 'doc', id: 'topics/event-actions', label: 'Event Actions' },
-            { type: 'doc', id: 'guides/events-rules-actions', label: 'Rules & Actions' },
+            { type: 'doc', id: 'events/event-system', label: 'Event system' },
+            { type: 'doc', id: 'events/event-rules', label: 'Event rules' },
+            { type: 'doc', id: 'events/event-actions', label: 'Event actions' },
           ],
         },
         {
