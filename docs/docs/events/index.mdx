@@ -6,9 +6,9 @@ title: Events
 
 Infrahub emits events on every significant mutation in the system — node creates, branch operations, group membership changes, and more. The event system lets you react to those events automatically: when a device is updated, when a circuit joins a provisioning group, when a branch merges. Common uses include keeping groups in sync as data changes, triggering Generators on attribute updates, and notifying external systems through webhooks.
 
-You build these automations from three components:
+Build automations using events, rules, and actions:
 
-- **[Event system](./event-system)** — the underlying framework. Infrahub generates a structured event for every key operation (`infrahub.node.created`, `infrahub.group.member_added`, etc.). Events feed multiple consumers: the [activity log](../topics/activity-log), the rule/action automation below, [webhooks](../topics/webhooks), and [log forwarding](../topics/log-forwarding).
+- **[Events](./event-system)** — the underlying framework. Infrahub generates a structured event for every key operation (`infrahub.node.created`, `infrahub.group.member_added`, etc.). Events feed multiple consumers: the [activity log](../topics/activity-log), the rule/action automation below, [webhooks](../topics/webhooks), and [log forwarding](../topics/log-forwarding).
 - **[Event rules](./event-rules)** — the conditions you match against events. You create a rule that names which events it cares about (a node kind, a group, a particular attribute change) and ties one or more actions to fire when the conditions match.
 - **[Event actions](./event-actions)** — the outcomes that fire when a rule matches. You create an action of one of two kinds today: a group action (add or remove members from a group) or a Generator action (run a Generator definition against the impacted object).
 
