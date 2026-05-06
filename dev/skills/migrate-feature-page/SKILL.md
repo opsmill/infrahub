@@ -111,12 +111,11 @@ Follow the chosen pattern. For section-wide migrations, do this **one feature at
 
 Match the voice of the canonical Infrahub docs and the conventions of well-regarded open-source documentation (Stripe, Tailwind, FastAPI, Docusaurus). The reader knows they are reading a docs page — do not narrate that fact at them.
 
-**Do not refer to the page, guide, document, or section as a thing.** Headers and the URL already do that work. Banned phrases (in prose; tutorial genre markers excepted, see below):
+**Do not refer to "this page", "this section", or "this document".** Those describe the layout/medium, not the content — the reader knows they are reading a page, and headers and the URL already do that wayfinding work. Banned phrases:
 
 - ❌ "This page covers …" / "This page applies to …" / "This page collects …"
-- ❌ "This guide will provide you with …" / "This guide shows …"
 - ❌ "This document explains …" / "This section describes …"
-- ❌ "In this guide, we'll …"
+- ❌ "On this page you'll find …"
 
 Instead, just state what is true. If you genuinely need to direct the reader to nearby content, use **"below"** or **"here"**:
 
@@ -124,14 +123,20 @@ Instead, just state what is true. If you genuinely need to direct the reader to 
 - ✅ "The patterns below come from real-world experience …"
 - ✅ "Standard groups only — Generator and Query groups …"
 
-When the legacy source content uses these self-referential phrases (it often does), **rewrite them on extraction** — don't carry them forward. The new file is shipping under the new structure; legacy slop doesn't get a free pass just because it was already there.
+**"This guide" and "this tutorial" are fine** — those refer to the *functional kind of document* (a guide guides you, a tutorial teaches you). They are genre markers, not layout descriptors. Use them when the genre framing actually helps the reader:
 
-**Tutorial genre markers are an exception.** Academy tutorials use one established opener that frames the learning context — keep this pattern verbatim:
+- ✅ "This guide shows how to connect a remote repository …"
+- ✅ "In this guide, we'll walk through three approaches and when to pick each."
+- ✅ "By the end of this tutorial you will have built, deployed, and validated …"
+- ✅ "This tutorial uses `BuiltinTag` objects so you can follow along without any special schema."
 
-- ✅ "By the end of this tutorial you will have built, deployed, and validated …" (consolidated into ONE paragraph, then the body — see `academy/tutorials/groups.mdx` and `academy/tutorials/build-a-check.mdx` for the precedent)
-- ✅ "This tutorial uses `BuiltinTag` objects so you can follow along …" (sparingly, when genre framing genuinely helps)
+When the legacy source content uses the banned "this page / this section / this document" phrases (it often does), **rewrite them on extraction** — don't carry them forward. The new file is shipping under the new structure; legacy slop doesn't get a free pass just because it was already there. Legacy "this guide" / "this tutorial" usage on a guide or tutorial page is fine to keep.
 
-Do **not** use both an "This tutorial walks you through …" intro AND a "By the end of this tutorial you will:" bullet list — that's redundant. Pick one paragraph that combines the framing with the outcomes, matching the established academy pattern.
+**Tutorial opener convention.** Academy tutorials use ONE consolidated opener — see `academy/tutorials/groups.mdx` and `academy/tutorials/build-a-check.mdx` for the precedent:
+
+- ✅ "By the end of this tutorial you will have built, deployed, and validated …" — one paragraph combining the framing with the outcomes, then the body
+
+Do **not** use both a "This tutorial walks you through …" intro AND a separate "By the end of this tutorial you will:" bullet list — that's redundant. Pick one paragraph that does both jobs.
 
 **Other voice rules** (carryover from project house style — apply to any new prose you author):
 
