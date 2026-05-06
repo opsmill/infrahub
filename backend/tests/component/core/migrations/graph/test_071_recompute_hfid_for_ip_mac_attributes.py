@@ -63,15 +63,6 @@ CASES: list[NormalizedKindCase] = [
         canonical_value="10.0.0.0/24",
         node_name="lan-a",
     ),
-    NormalizedKindCase(
-        kind="TestingInterface",
-        schema_name="Interface",
-        attr_name="mac",
-        attr_kind="MacAddress",
-        raw_value="aa:bb:cc:dd:ee:ff",
-        canonical_value="AA:BB:CC:DD:EE:FF",
-        node_name="eth0",
-    ),
 ]
 
 

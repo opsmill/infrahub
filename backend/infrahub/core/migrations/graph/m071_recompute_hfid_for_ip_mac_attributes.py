@@ -40,12 +40,12 @@ if TYPE_CHECKING:
 
 console = get_migration_console()
 
-NORMALIZED_KINDS = {"IPHost", "IPNetwork", "MacAddress"}
+NORMALIZED_KINDS = {"IPHost", "IPNetwork"}
 
 _RowFormatter = Callable[[str, list[str | None]], Awaitable[str | None]]
 
 
-def _path_uses_ip_mac(schema_path: SchemaAttributePath) -> bool:
+def _path_uses_ip(schema_path: SchemaAttributePath) -> bool:
     return bool(schema_path.attribute_schema and schema_path.attribute_schema.kind in NORMALIZED_KINDS)
 
 
@@ -97,14 +97,14 @@ def _hfid_paths_if_affected(
     if not schema.human_friendly_id:
         return None
     paths = [schema.parse_schema_path(path=str(p), schema=schema_branch) for p in schema.human_friendly_id]
-    return paths if any(_path_uses_ip_mac(p) for p in paths) else None
+    return paths if any(_path_uses_ip(p) for p in paths) else None
 
 
 def _display_label_paths_if_affected(
     schema: NodeSchema | ProfileSchema | TemplateSchema, schema_branch: SchemaBranch
 ) -> list[SchemaAttributePath] | None:
     paths = _extract_display_label_schema_paths(schema, schema_branch)
-    return paths if paths and any(_path_uses_ip_mac(p) for p in paths) else None
+    return paths if paths and any(_path_uses_ip(p) for p in paths) else None
 
 
 def _collect_plans(schema_branch: SchemaBranch) -> dict[str, _RecomputePlan]:
@@ -125,15 +125,17 @@ def _collect_plans(schema_branch: SchemaBranch) -> dict[str, _RecomputePlan]:
 class Migration071(MigrationRequiringRebase):
     """
     Recompute `human_friendly_id` and `display_label` for nodes whose schema
-    references an IPHost, IPNetwork, or MacAddress attribute.
+    references an IPHost or IPNetwork attribute.
 
     These kinds are normalized at input time as of #8896. HFIDs and display
     labels created before that fix were rendered from raw user input (e.g.
-    "192.0.2.1", "aa:bb:cc:dd:ee:ff") while the underlying attribute values
-    were stored in their normalized form ("192.0.2.1/32", "AA:BB:CC:DD:EE:FF" —
-    MAC values are already in colon form by the time this migration runs because
-    m070 ran first), so API responses surface inconsistent forms. This migration
-    reads the (already-canonical) DB values and rewrites both attributes to match.
+    "192.0.2.1") while the underlying attribute values were stored in their
+    normalized form ("192.0.2.1/32"), so API responses surface inconsistent
+    forms. This migration reads the (already-canonical) DB values and rewrites
+    both attributes to match.
+
+    MacAddress is intentionally not handled here — m070 has already rewritten
+    every MAC value plus its dependent HFID / display_label to colon form.
     """
 
     name: str = "071_recompute_hfid_for_ip_mac_attributes"
