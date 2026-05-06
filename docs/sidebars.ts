@@ -224,6 +224,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         { type: 'doc', id: 'checks/index', label: 'Checks & Validation' },
+        { type: 'doc', id: 'testing-framework/index', label: 'Testing Framework' },
         { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
         {
           type: 'category',
@@ -359,7 +360,6 @@ const sidebars: SidebarsConfig = {
       items: [
         { type: 'doc', id: 'topics/developer-guide', label: 'Developer Guide' },
         { type: 'doc', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
-        { type: 'doc', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
         {
           type: 'category',
           label: 'APIs & interfaces',
@@ -393,9 +393,9 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             'reference/api-server',
-            'reference/message-bus-events',
           ],
         },
+        { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         {
           type: 'category',
           label: 'CLI',
