@@ -324,8 +324,10 @@ async def load_schema(
     permission_manager: PermissionManager = Depends(get_permission_manager),
     context: InfrahubContext = Depends(get_context),
 ) -> SchemaUpdate:
+
+    branch_status_checker = BranchStatusChecker(db=db)
     try:
-        BranchStatusChecker().check(branch=branch)
+        await branch_status_checker.check(branch=branch)
     except BranchStatusError as err:
         raise ValidationError(input_value=str(err)) from err
 

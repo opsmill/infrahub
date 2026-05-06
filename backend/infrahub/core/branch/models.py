@@ -130,6 +130,29 @@ class Branch(StandardNode):
         return True
 
     @classmethod
+    async def get_branch_names_by_status(
+        cls, db: InfrahubDatabase, statuses: list[BranchStatus] | None
+    ) -> dict[BranchStatus, list[str]]:
+        """Return the names of every branch currently in the given status"""
+        query = """
+        MATCH (n:Branch)
+        WHERE n.status IN $statuses OR $statuses IS NULL
+        RETURN n.name AS name, n.status AS status
+        """
+        results = await db.execute_query(
+            query=query,
+            params={"statuses": [status.value for status in statuses] if statuses else None},
+            name="branch_get_names_with_status",
+            type=QueryType.READ,
+        )
+        branch_status_map: dict[BranchStatus, list[str]] = {}
+        for result in results:
+            name = result.get("name")
+            status = BranchStatus(result.get("status"))
+            branch_status_map.setdefault(status, []).append(name)
+        return branch_status_map
+
+    @classmethod
     async def get_by_name(cls, name: str, db: InfrahubDatabase, ignore_deleting: bool = True) -> Branch:
         query = """
         MATCH (n:Branch)
