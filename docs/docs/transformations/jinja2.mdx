@@ -4,7 +4,7 @@ title: Write a Jinja2 Transformation
 
 # Write a Jinja2 Transformation
 
-A Jinja2 Transformation renders graph data through a Jinja template, producing plain text output (configurations, manifests, payloads). The steps below cover how to write one.
+A Jinja2 Transformation renders Infrahub data through a Jinja template, producing plain text output (configurations, manifests, payloads). The steps below cover how to write one.
 
 For conceptual background, see [Transformations](./).
 For a step-by-step walkthrough with a running example, see [Build a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) in the Academy tutorials.
@@ -13,7 +13,7 @@ For a step-by-step walkthrough with a running example, see [Build a Jinja2 Trans
 
 ## Write the GraphQL query
 
-Create a `.gql` file with the data you need to render. Use variables for per-target scoping.
+Create a `.gql` file with the data you need to render in the Git repository. Use variables for per-target scoping.
 
 ```graphql title="queries/your_query.gql"
 query MyQuery($device_name: String!) {
@@ -32,7 +32,7 @@ For reusable query fragments shared across Transformations or Generators, see [G
 
 ## Write the Jinja template
 
-Create a `.j2` template that consumes the query response. The result is available as `data` in the template context.
+Create a `.j2` template under `templates/` (or wherever fits your repository structure). The GraphQL query result is available as `data` in the template context.
 
 ```jinja title="templates/your_template.j2"
 {% set device = data.InfraDevice.edges[0].node %}
@@ -72,7 +72,7 @@ Use `--branch=<branch_name>` to render against a specific branch. Output prints 
 
 ## Deploy to Infrahub
 
-Push the branch and merge it. The Transformation registers with Infrahub when the repository syncs.
+Commit your changes to the repository and push them up to your remote. The Transformation registers with Infrahub when the repository syncs.
 
 ## Render via the API
 

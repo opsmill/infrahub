@@ -4,7 +4,7 @@ title: Write a Python Transformation
 
 # Write a Python Transformation
 
-A Python Transformation processes graph data through user-written Python code, producing JSON output (or any structured data you serialize). Use this when Jinja templating isn't enough — for example, conditional logic, external API calls, or complex aggregation. The steps below cover how to write one.
+A Python Transformation processes Infrahub data through user-written Python code, producing JSON output (or any structured data you serialize). Use this when Jinja templating isn't enough — for example, conditional logic, external API calls, or complex aggregation. The steps below cover how to write one.
 
 For conceptual background, see [Transformations](./).
 For a step-by-step walkthrough with a running example, see [Build a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) in the Academy tutorials.
@@ -13,7 +13,7 @@ For a step-by-step walkthrough with a running example, see [Build a Python Trans
 
 ## Write the GraphQL query
 
-Create a `.gql` file with the data your transform needs.
+Create a `.gql` file with the data your transform needs in the Git repository. Use variables for per-target scoping.
 
 ```graphql title="queries/your_query.gql"
 query MyQuery($device_name: String!) {
@@ -28,7 +28,7 @@ query MyQuery($device_name: String!) {
 }
 ```
 
-For reusable query fragments, see [GraphQL fragments](../guides/graphql-fragment).
+For reusable query fragments shared across Transformations or Generators, see [GraphQL fragments](../guides/graphql-fragment).
 
 ## Implement the Transformation class
 
@@ -52,7 +52,7 @@ class YourTransform(InfrahubTransform):
 
 The class must inherit from `InfrahubTransform` and implement an async `transform()` method that accepts a `dict` (the GraphQL response) and returns a `dict` (the JSON output). Set `query` to the query name you'll register in `.infrahub.yml`.
 
-With `convert_query_response: true`, use `self.nodes[0]` (SDK objects with attribute access like `device.name.value`); otherwise use the raw `data` dict (`data["InfraDevice"]["edges"][0]["node"]["name"]["value"]`).
+Whether you read from the `data` dictionary or `self.nodes` depends on `convert_query_response` in the Python Transform definition.
 
 ## Access local files (optional)
 
@@ -74,13 +74,12 @@ python_transforms:
     description: "<one-line description>"
     file_path: "transforms/<your_transform>.py"
     class_name: YourTransform
+	convert_query_response: <false|true>
 
 queries:
   - name: <your_query>
     file_path: "queries/<your_query>.gql"
 ```
-
-Set `convert_query_response: true` if you want the SDK to convert the response into `InfrahubNode` objects accessible via `self.nodes`.
 
 For full `.infrahub.yml` syntax, see [infrahub.yml configuration](../git-integration/infrahub-yml).
 
@@ -96,7 +95,7 @@ For debugging, add `breakpoint()` inside `transform()` to inspect data at runtim
 
 ## Deploy to Infrahub
 
-Push the branch and merge it. The Transformation registers with Infrahub when the repository syncs.
+Commit your changes to the repository and push them up to your remote. The Transformation registers with Infrahub when the repository syncs.
 
 ## Render via the API
 
