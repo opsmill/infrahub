@@ -1,10 +1,28 @@
-import { BaseEdge, EdgeLabelRenderer, type EdgeProps, getBezierPath } from "@xyflow/react";
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  getBezierPath,
+  getSmoothStepPath,
+} from "@xyflow/react";
+import { useMemo } from "react";
 
 import { formatRelName } from "./utils";
+
+export type EdgeStyle = "bezier" | "smoothstep";
 
 export type PathEdgeData = {
   label: string;
   highlighted?: boolean;
+  edgeStyle?: EdgeStyle;
+};
+
+const HIGHLIGHTED_GLOW_STYLE: React.CSSProperties = {
+  stroke: "#60a5fa",
+  strokeWidth: 10,
+  opacity: 0.3,
+  filter: "blur(4px)",
+  animation: "pulse-glow 1.5s ease-in-out infinite",
 };
 
 export function PathEdge({
@@ -20,44 +38,27 @@ export function PathEdge({
 }: EdgeProps) {
   const edgeData = data as PathEdgeData | undefined;
   const highlighted = edgeData?.highlighted ?? true;
+  const edgeStyle = edgeData?.edgeStyle ?? "bezier";
 
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    sourcePosition,
-    targetX,
-    targetY,
-    targetPosition,
-  });
+  const [edgePath, labelX, labelY] = useMemo(() => {
+    const args = { sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition };
+    return edgeStyle === "smoothstep" ? getSmoothStepPath(args) : getBezierPath(args);
+  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, edgeStyle]);
+
+  const baseStyle = useMemo<React.CSSProperties>(
+    () => ({
+      stroke: highlighted ? "#3b82f6" : "#94a3b8",
+      strokeWidth: highlighted ? 2.5 : 1,
+      opacity: highlighted ? 1 : 0.6,
+      strokeDasharray: highlighted ? undefined : "6 4",
+    }),
+    [highlighted]
+  );
 
   return (
     <>
-      {/* Animated glow under highlighted edges */}
-      {highlighted && (
-        <BaseEdge
-          id={`${id}-glow`}
-          path={edgePath}
-          style={{
-            stroke: "#60a5fa",
-            strokeWidth: 10,
-            opacity: 0.3,
-            filter: "blur(4px)",
-            animation: "pulse-glow 1.5s ease-in-out infinite",
-          }}
-        />
-      )}
-      <BaseEdge
-        id={id}
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{
-          stroke: highlighted ? "#3b82f6" : "#94a3b8",
-          strokeWidth: highlighted ? 2.5 : 1,
-          opacity: highlighted ? 1 : 0.6,
-          strokeDasharray: highlighted ? undefined : "6 4",
-        }}
-      />
-      {/* Only show labels on highlighted edges */}
+      {highlighted && <BaseEdge id={`${id}-glow`} path={edgePath} style={HIGHLIGHTED_GLOW_STYLE} />}
+      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={baseStyle} />
       {highlighted && edgeData?.label && (
         <EdgeLabelRenderer>
           <div

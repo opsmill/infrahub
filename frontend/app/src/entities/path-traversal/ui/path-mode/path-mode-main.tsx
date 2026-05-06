@@ -1,10 +1,14 @@
-import { Spinner } from "@infrahub/ui";
-
 import { PathFlowGraph } from "../path-flow-graph";
 import { useGetPathTraversal } from "../queries/get-path-traversal.query";
+import { getQueryStateOverlay } from "../query-state-overlay";
 import { usePathModeParams } from "./use-path-mode-params";
 
-export function PathModeMain() {
+type PathModeMainProps = {
+  parametersOpen: boolean;
+  onParametersClick: () => void;
+};
+
+export function PathModeMain({ parametersOpen, onParametersClick }: PathModeMainProps) {
   const [params, setParams] = usePathModeParams();
 
   const query = useGetPathTraversal(
@@ -19,55 +23,33 @@ export function PathModeMain() {
     { enabled: !!params.source && !!params.destination }
   );
 
-  if (query.error) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="max-w-md rounded-md border border-red-200 bg-red-50 p-4">
-          <p className="text-red-700 text-sm">{(query.error as Error).message}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (query.isPending && query.fetchStatus === "fetching") {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-3 text-gray-500">
-        <Spinner />
-        <span className="text-sm">Finding paths...</span>
-      </div>
-    );
-  }
-
-  if (!query.data || query.data.paths.length === 0) {
-    return (
-      <div className="flex h-full items-center justify-center text-gray-300 text-sm">
-        {query.data ? "No paths found" : 'Select two objects and click "Find Paths"'}
-      </div>
-    );
-  }
+  const overlay = getQueryStateOverlay({
+    error: query.error as Error | null,
+    isLoading: query.isPending && query.fetchStatus === "fetching",
+    isEmpty: !query.data || query.data.paths.length === 0,
+    hasRun: !!query.data,
+    loadingMessage: "Finding paths...",
+    emptyMessage: "No paths found",
+    idleMessage: 'Select two objects and click "Find Paths"',
+  });
 
   return (
-    <div className="relative h-full w-full">
-      <PathFlowGraph
-        data={query.data}
-        selectedPathIndex={params.selectedPath}
-        onPathSelect={(index) => setParams({ selectedPath: index })}
-        onExcludeKind={(kind) =>
-          setParams((prev) => ({
-            excludedKinds: prev.excludedKinds.includes(kind)
-              ? prev.excludedKinds
-              : [...prev.excludedKinds, kind],
-          }))
-        }
-      />
-      {query.isFetching && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 text-gray-500">
-            <Spinner />
-            <span className="text-sm">Finding paths...</span>
-          </div>
-        </div>
-      )}
-    </div>
+    <PathFlowGraph
+      data={query.data ?? null}
+      selectedPathIndex={params.selectedPath}
+      onPathSelect={(index) => setParams({ selectedPath: index })}
+      onExcludeKind={(kind) =>
+        setParams((prev) => ({
+          excludedKinds: prev.excludedKinds.includes(kind)
+            ? prev.excludedKinds
+            : [...prev.excludedKinds, kind],
+        }))
+      }
+      parametersOpen={parametersOpen}
+      onParametersClick={onParametersClick}
+      onReload={query.data ? () => query.refetch() : undefined}
+      isReloading={query.isFetching}
+      overlay={overlay}
+    />
   );
 }

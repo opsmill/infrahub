@@ -6,17 +6,18 @@ import {
   type Node,
   Position,
   ReactFlow,
-  useReactFlow,
 } from "@xyflow/react";
 import dagre from "dagre";
-import { useCallback, useMemo, useState } from "react";
+import { exportGraph } from "infrahub-schema-visualizer";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 
 import type { PathTraversalResponse } from "../domain/path-traversal.types";
+import { BottomToolbar, type LayoutDirection } from "./bottom-toolbar";
 import { InfraNode, type InfraNodeData } from "./infra-node";
-import { PathEdge } from "./path-edge";
+import { type EdgeStyle, PathEdge } from "./path-edge";
 
 const nodeTypes = { infra: InfraNode };
 const edgeTypes = { path: PathEdge };
@@ -24,10 +25,15 @@ const edgeTypes = { path: PathEdge };
 const NODE_WIDTH = 180;
 const NODE_HEIGHT = 65;
 
+const PULSE_GLOW_KEYFRAMES = `@keyframes pulse-glow {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.5; }
+}`;
+
 function getLayoutedElements(
   nodes: Node[],
   edges: Edge[],
-  direction: "LR" | "TB" = "LR"
+  direction: LayoutDirection
 ): { nodes: Node[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
@@ -59,10 +65,15 @@ function getLayoutedElements(
 }
 
 type PathFlowGraphProps = {
-  data: PathTraversalResponse;
+  data: PathTraversalResponse | null;
   selectedPathIndex: number;
   onPathSelect?: (index: number) => void;
   onExcludeKind?: (kind: string) => void;
+  parametersOpen: boolean;
+  onParametersClick: () => void;
+  onReload?: () => void;
+  isReloading?: boolean;
+  overlay?: ReactNode;
 };
 
 type ContextMenuState = {
@@ -72,32 +83,6 @@ type ContextMenuState = {
   nodeKind: string;
   nodeLabel: string;
 } | null;
-
-function FitViewButton() {
-  const reactFlowInstance = useReactFlow();
-  return (
-    <button
-      type="button"
-      onClick={() => reactFlowInstance.fitView()}
-      className="rounded border border-gray-200 bg-white p-1.5 shadow-sm hover:bg-gray-50"
-      title="Fit view"
-    >
-      <svg
-        className="size-4 text-gray-600"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-        strokeWidth={2}
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
-        />
-      </svg>
-    </button>
-  );
-}
 
 function NodeContextMenu({
   menu,
@@ -180,12 +165,22 @@ function NodeContextMenu({
   );
 }
 
-export function PathFlowGraph({ data, selectedPathIndex, onExcludeKind }: PathFlowGraphProps) {
-  const [direction, setDirection] = useState<"LR" | "TB">("LR");
+export function PathFlowGraph({
+  data,
+  selectedPathIndex,
+  onExcludeKind,
+  parametersOpen,
+  onParametersClick,
+  onReload,
+  isReloading,
+  overlay,
+}: PathFlowGraphProps) {
+  const [direction, setDirection] = useState<LayoutDirection>("LR");
+  const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>("bezier");
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
 
-  const { nodes: flowNodes, edges: flowEdges } = useMemo(() => {
-    if (!data.paths.length) {
+  const { nodes: flowNodes, edges: layoutedEdges } = useMemo(() => {
+    if (!data?.paths.length) {
       return { nodes: [] as Node[], edges: [] as Edge[] };
     }
 
@@ -269,9 +264,10 @@ export function PathFlowGraph({ data, selectedPathIndex, onExcludeKind }: PathFl
     return getLayoutedElements(nodes, edges, direction);
   }, [data, selectedPathIndex, direction]);
 
-  const onInit = useCallback((instance: { fitView: () => void }) => {
-    instance.fitView();
-  }, []);
+  const flowEdges = useMemo<Edge[]>(
+    () => layoutedEdges.map((edge) => ({ ...edge, data: { ...edge.data, edgeStyle } })),
+    [layoutedEdges, edgeStyle]
+  );
 
   const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
     event.preventDefault();
@@ -285,80 +281,52 @@ export function PathFlowGraph({ data, selectedPathIndex, onExcludeKind }: PathFl
     });
   }, []);
 
-  if (!data.paths.length) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-400">
-        <svg
-          className="size-12"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={1}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M13.19 8.688a4.5 4.5 0 011.242 7.244l-4.5 4.5a4.5 4.5 0 01-6.364-6.364l1.757-1.757m9.07-9.07a4.5 4.5 0 00-6.364 0l-4.5 4.5a4.5 4.5 0 001.242 7.244"
-          />
-        </svg>
-        <span>No paths found between these nodes.</span>
-      </div>
-    );
-  }
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+  const handleExport = useCallback(
+    (format: Parameters<typeof exportGraph>[1]) => exportGraph(flowNodes, format),
+    [flowNodes]
+  );
 
   return (
     <div className="relative h-full w-full">
-      {/* Glow animation CSS */}
-      <style>
-        {`@keyframes pulse-glow {
-          0%, 100% { opacity: 0.2; }
-          50% { opacity: 0.5; }
-        }`}
-      </style>
+      <style>{PULSE_GLOW_KEYFRAMES}</style>
 
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        onInit={onInit}
         onNodeContextMenu={onNodeContextMenu}
-        onPaneClick={() => setContextMenu(null)}
+        onPaneClick={closeContextMenu}
         fitView
         nodesConnectable={false}
         elementsSelectable={false}
         proOptions={{ hideAttribution: true }}
       >
-        <div className="absolute top-2 right-2 z-10 flex gap-1">
-          <button
-            type="button"
-            onClick={() => setDirection((d) => (d === "LR" ? "TB" : "LR"))}
-            className="rounded border border-gray-200 bg-white p-1.5 shadow-sm hover:bg-gray-50"
-            title={`Switch to ${direction === "LR" ? "top-bottom" : "left-right"} layout`}
-          >
-            <svg
-              className="size-4 text-gray-600"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              {direction === "LR" ? (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m-6-6l6 6 6-6" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4 12h16m-6-6l6 6-6 6" />
-              )}
-            </svg>
-          </button>
-          <FitViewButton />
-        </div>
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#e5e7eb" />
+
+        <BottomToolbar
+          isParametersOpen={parametersOpen}
+          onParametersClick={onParametersClick}
+          edgeStyle={edgeStyle}
+          onEdgeStyleChange={setEdgeStyle}
+          onLayout={setDirection}
+          onExport={handleExport}
+          onReload={onReload}
+          isReloading={isReloading}
+        />
       </ReactFlow>
+
+      {overlay && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div className="pointer-events-auto">{overlay}</div>
+        </div>
+      )}
 
       {contextMenu && (
         <NodeContextMenu
           menu={contextMenu}
-          onClose={() => setContextMenu(null)}
+          onClose={closeContextMenu}
           onExcludeKind={onExcludeKind}
         />
       )}
