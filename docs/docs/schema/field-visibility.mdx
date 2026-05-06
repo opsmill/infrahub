@@ -1,10 +1,10 @@
 ---
-title: Controlling field visibility in the UI
+title: Field visibility
 ---
 
 import ReferenceLink from "../../src/components/Card";
 
-# Controlling field visibility in the UI
+# Field visibility
 
 Infrahub schemas can declare how attributes and relationships should appear in the frontend, independently of their presence in the data model. These declarations are purely UI hints — they do not affect data access via the API, GraphQL, or forms.
 
@@ -75,7 +75,7 @@ Relationships with `cardinality: many` and `kind: Component` or `kind: Generic` 
 
 The `display` property is intentionally a UI hint rather than an access control mechanism. It does not prevent users from reading or writing `extra` fields — it only removes them from default views. Data integrity and API contracts are unaffected.
 
-For controlling who can read or write a field, use [permissions and roles](./permissions-roles.mdx) instead.
+For controlling who can read or write a field, use [permissions and roles](../topics/permissions-roles) instead.
 
 ## Interaction with other schema properties
 
@@ -85,7 +85,7 @@ For controlling who can read or write a field, use [permissions and roles](./per
 
 ## Related concepts
 
-- [Order weight](./order-weight.mdx) — Controls field ordering within views
-- [Labels](../schema/display_label) — Controls how fields and nodes are named in the UI
-- [Permissions and roles](./permissions-roles.mdx) — Controls who can read and write data
-- [Schema reference](../reference/schema/attribute.mdx) — Full attribute property reference
+- [Order weight](./order-weight) — Controls field ordering within views
+- [Labels](./display_label) — Controls how fields and nodes are named in the UI
+- [Permissions and roles](../topics/permissions-roles) — Controls who can read and write data
+- [Schema reference](../reference/schema/attribute) — Full attribute property reference
