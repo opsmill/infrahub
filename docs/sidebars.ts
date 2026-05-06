@@ -318,11 +318,11 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Integrations',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'integrations/index' }, // landing page
           items: [
-            { type: 'link', label: 'Ansible Integration ↗', href: 'https://TODO-FILL-IN-ansible.example.com' },
-            { type: 'link', label: 'Nornir Integration ↗', href: 'https://TODO-FILL-IN-nornir.example.com' },
-            { type: 'link', label: 'Infrahub Sync ↗', href: 'https://TODO-FILL-IN-infrahub-sync.example.com' },
+            { type: 'link', label: 'Ansible Integration ↗', href: 'https://docs.infrahub.app/ansible' },
+            { type: 'link', label: 'Nornir Integration ↗', href: 'https://docs.infrahub.app/nornir' },
+            { type: 'link', label: 'Infrahub Sync ↗', href: 'https://docs.infrahub.app/sync' },
           ],
         },
       ],
