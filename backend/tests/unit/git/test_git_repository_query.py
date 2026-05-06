@@ -1,4 +1,5 @@
-from infrahub.git.models import GitRepoNode, GitRepositoryNodeQuery
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery
+from infrahub.git.models import GitRepoNode
 
 
 class TestGitRepositoryNodeQuery:

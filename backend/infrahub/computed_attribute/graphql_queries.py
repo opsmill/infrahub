@@ -39,15 +39,19 @@ class ComputedAttributeTransformQuery(BaseModel):
     query_name: ClassVar[str] = "ComputedAttributeFetchTransform"
     transform_id: str
 
+    def get_variables(self) -> dict[str, str]:
+        return {"transform_id": self.transform_id}
+
     def render_query(self) -> str:
-        filters: dict[str, str | list[str]] = (
-            {"ids": [self.transform_id]} if _is_uuid(self.transform_id) else {"name__value": self.transform_id}
+        filter_dict: dict[str, str | list[str]] = (
+            {"ids": ["$transform_id"]} if _is_uuid(self.transform_id) else {"name__value": "$transform_id"}
         )
         query = Query(
             name=self.query_name,
+            variables={"transform_id": str | None},
             query={
                 "CoreTransformPython": {
-                    "@filters": filters,
+                    "@filters": filter_dict,
                     "edges": {
                         "node": {
                             "id": None,

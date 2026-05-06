@@ -85,7 +85,11 @@ async def process_transform(
         if not transform_attribute.transform:
             continue
         transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
-        transform_response = await client.execute_graphql(query=transform_query.render_query(), branch_name=branch_name)
+        transform_response = await client.execute_graphql(
+            query=transform_query.render_query(),
+            variables=transform_query.get_variables(),
+            branch_name=branch_name,
+        )
         transform = transform_query.parse_response(response=transform_response)
 
         if not transform:

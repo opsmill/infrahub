@@ -32,8 +32,8 @@ from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot, core_models, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.utils import delete_all_nodes
-from infrahub.display_labels.models import DisplayLabelNodeIDQuery
-from infrahub.git.models import GitRepositoryNodeQuery
+from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.hfid.models import HFIDNodeIDQuery
 from tests.helpers.graphql import graphql_query
 

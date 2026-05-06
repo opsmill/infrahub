@@ -1,4 +1,4 @@
-from infrahub.computed_attribute.queries import ComputedAttributeTransformQuery, TransformNode
+from infrahub.computed_attribute.graphql_queries import ComputedAttributeTransformQuery, TransformNode
 
 
 class TestComputedAttributeTransformQuery:
@@ -16,6 +16,27 @@ class TestComputedAttributeTransformQuery:
         assert "ComputedAttributeFetchTransform" in rendered
         assert "edges" in rendered
         assert "node" in rendered
+
+    def test_render_query_uses_variable_reference_not_literal_for_uuid(self) -> None:
+        transform_id = "12345678-1234-5678-1234-567812345678"
+        q = ComputedAttributeTransformQuery(transform_id=transform_id)
+        rendered = q.render_query()
+        assert transform_id not in rendered
+        assert "$transform_id" in rendered
+        assert "ids" in rendered
+
+    def test_render_query_uses_variable_reference_not_literal_for_name(self) -> None:
+        transform_id = "my-transform-name"
+        q = ComputedAttributeTransformQuery(transform_id=transform_id)
+        rendered = q.render_query()
+        assert transform_id not in rendered
+        assert "$transform_id" in rendered
+        assert "name__value" in rendered
+
+    def test_get_variables_returns_transform_id(self) -> None:
+        transform_id = "12345678-1234-5678-1234-567812345678"
+        q = ComputedAttributeTransformQuery(transform_id=transform_id)
+        assert q.get_variables() == {"transform_id": transform_id}
 
     def test_parse_response_returns_transform_node(self) -> None:
         q = ComputedAttributeTransformQuery(transform_id="txfm-001")

@@ -15,9 +15,9 @@ from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.generators.constants import GeneratorDefinitionRunSource
+from infrahub.generators.graphql_queries import GeneratorInstanceQuery
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
-    GeneratorInstanceQuery,
     ProposedChangeGeneratorDefinition,
     RequestGeneratorDefinitionRun,
     RequestGeneratorRun,

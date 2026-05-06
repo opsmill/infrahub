@@ -1,4 +1,5 @@
-from infrahub.generators.models import GeneratorInstanceNode, GeneratorInstanceQuery
+from infrahub.generators.graphql_queries import GeneratorInstanceQuery
+from infrahub.generators.models import GeneratorInstanceNode
 
 
 class TestGeneratorInstanceQuery:

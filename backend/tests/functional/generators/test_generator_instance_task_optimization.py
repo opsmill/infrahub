@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.generators.models import GeneratorInstanceQuery
+from infrahub.generators.graphql_queries import GeneratorInstanceQuery
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:

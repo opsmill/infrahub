@@ -6,7 +6,7 @@ import pytest
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
-from infrahub.git.models import GitRepositoryNodeQuery
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:

@@ -25,6 +25,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
@@ -52,7 +53,6 @@ from .models import (
     GitRepositoryAddReadOnly,
     GitRepositoryImportObjects,
     GitRepositoryMerge,
-    GitRepositoryNodeQuery,
     GitRepositoryPullReadOnly,
     RequestArtifactDefinitionGenerate,
     RequestArtifactGenerate,
