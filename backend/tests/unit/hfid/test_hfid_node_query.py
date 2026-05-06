@@ -1,4 +1,4 @@
-from infrahub.core.query.node_query import NodeID
+from infrahub.core.graphql_query.node_query import NodeID
 from infrahub.hfid.models import HFIDNodeIDQuery
 
 

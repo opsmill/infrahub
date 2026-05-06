@@ -7,7 +7,7 @@ from infrahub_sdk.graphql import Query
 from pydantic import BaseModel, Field
 
 from infrahub.core.constants import RelationshipCardinality
-from infrahub.core.query.node_query import NodeIDQuery
+from infrahub.core.graphql_query.node_query import NodeIDQuery
 from infrahub.core.registry import registry
 from infrahub.core.schema import NodeSchema  # noqa: TC001
 from infrahub.events import NodeUpdatedEvent

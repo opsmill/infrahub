@@ -1,7 +1,7 @@
 from typing import Any
 
-from infrahub.core.query.node_query import NodeID
-from infrahub.display_labels.models import DisplayLabelNodeIDQuery
+from infrahub.core.graphql_query.node_query import NodeID
+from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 
 
 class TestDisplayLabelNodeIDQuery:

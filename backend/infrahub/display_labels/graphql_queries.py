@@ -1,0 +1,7 @@
+from typing import ClassVar
+
+from infrahub.core.graphql_query.node_query import NodeIDQuery
+
+
+class DisplayLabelNodeIDQuery(NodeIDQuery):
+    query_name: ClassVar[str] = "DisplayLabelFetchNodeIDs"

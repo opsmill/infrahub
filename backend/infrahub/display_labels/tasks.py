@@ -7,6 +7,7 @@ from prefect.logging import get_run_logger
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.registry import registry
+from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 from infrahub.events import BranchDeletedEvent
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
@@ -18,7 +19,6 @@ from .gather import gather_trigger_display_labels_jinja2
 from .models import (
     DisplayLabelJinja2GraphQL,
     DisplayLabelJinja2GraphQLResponse,
-    DisplayLabelNodeIDQuery,
     DisplayLabelTriggerDefinition,
 )
 
