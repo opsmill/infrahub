@@ -125,7 +125,7 @@ Learn > Academy > Tutorials also gains:
 | `schema/hierarchy.mdx` | From `topics/schema.mdx`: entire "Hierarchical mode" section. Add intro paragraph. |
 | `schema/extensions.mdx` | Full content of `topics/schema-extensions.mdx`. Add intro paragraph if needed. |
 | `schema/create-and-load.mdx` | Purely operational: merge `guides/import-schema.mdx` (primary) with the "Load a schema into Infrahub" section from `topics/schema.mdx` (infrahubctl + Git integration). No hands-on authoring content — that lives in the Academy tutorial. |
-| `schema/migration.mdx` | From `topics/schema.mdx`: "Schema update and data migrations" + "Schema strict mode" sections. Cross-ref to `reference/schema/validator-migration`. |
+| `schema/migration.mdx` | From `topics/schema.mdx`: "Schema update and data migrations" section only. Cross-ref to `reference/schema/validator-migration`. "Schema strict mode" moved to `reference/schema-validation.mdx`. |
 | `schema/number-pool.mdx` | Full content of `topics/schema-attr-kind-number-pool.mdx`. |
 | `schema/file-object.mdx` | Full content of `topics/file-object.mdx`. |
 | `schema/field-visibility.mdx` | Full content of `topics/schema-display.mdx`. |

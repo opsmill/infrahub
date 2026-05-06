@@ -38,7 +38,7 @@ Each file pulls one or more sections out of the source. An intro paragraph was a
 | `schema/generics-and-inheritance.mdx` (252 lines) | "Nodes vs. Generics", "Generics", "Inheritance between generics and nodes", "Inherited properties" | **Added**: intro paragraph; moved "Reserved namespaces" admonition here (it was in the schema.mdx opening section); replaced inline computed-attribute link with `../computed-attributes/`; added "Related concepts" footer |
 | `schema/relationships.mdx` (375 lines) | "Relationship kinds", Car/Person/Wheel example, "Direction and Identifier", "Common parent relationships" | **Added**: intro paragraph; "Related concepts" footer. Nothing dropped. |
 | `schema/nodes-and-attributes.mdx` (277 lines) | "Node example", "Node attribute kinds", "Uniqueness constraints", "Display Label", "Human friendly identifier" | **Added**: intro paragraph; new "Menu placement" section (condensed from the Menu section in schema.mdx, with link to `../menu/`); cross-refs to Profiles and Templates. **Replaced**: full order_weight sub-section with a one-liner + link to `schema/order-weight` (no duplication). |
-| `schema/migration.mdx` (144 lines) | "Schema update and data migrations", "Schema strict mode" | **Added**: intro sentence; "Related concepts" footer. Strict-mode closing paragraph slightly condensed. |
+| `schema/migration.mdx` (144 lines) | "Schema update and data migrations", "Schema strict mode" | **Added**: intro sentence; "Related concepts" footer. Strict-mode closing paragraph slightly condensed. **Removed post-migration**: "Schema strict mode" section moved to `reference/schema-validation.mdx`; link added to Related concepts pointing there. |
 
 ---
 
