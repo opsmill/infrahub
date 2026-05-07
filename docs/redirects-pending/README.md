@@ -83,3 +83,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `deploy-manage-installation.yml` | D&M — Installation (hub + Community + Enterprise spokes) | TBD |
 | `deploy-manage-production-deployment.yml` | D&M — Production Deployment (hub + HA spoke) | TBD |
 | `deploy-manage-configure-infrahub.yml` | D&M — Configure Infrahub | TBD |
+| `deploy-manage-run-observe.yml` | D&M — Run & observe (Tasks, Telemetry, Activity Log) | TBD |
