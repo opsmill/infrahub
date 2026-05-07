@@ -36,6 +36,8 @@ type LinkProps =
 | `any` | `unknown` + type guards |
 | `!` (non-null assertion) | Null check first |
 | `as` (type assertion) | Type guard validation |
+| `optional?.field!` (optional chain + non-null) | Narrow with a conditional render or early return |
+| `useParams() as { foo: string }` | `useRequiredParams("foo")` for route-guaranteed params |
 
 ```tsx
 // Type guard pattern
@@ -43,6 +45,44 @@ if (isUserData(response)) {
   const data = response; // TS knows type
 }
 ```
+
+### `optional?.x!` is always wrong
+
+`?.` says "this might be undefined" and `!` says "this is definitely defined" — they contradict on the same expression. The `!` silences the compiler but leaves the runtime trap. Fix by narrowing first:
+
+```tsx
+// ❌ Bad — type lie
+<Link to={getObjectDetailsUrl(metadata?.created_by?.__typename!, metadata?.created_by?.id)} />
+
+// ✅ Good — narrow with a conditional
+{metadata?.created_by ? (
+  <Link to={getObjectDetailsUrl(metadata.created_by.__typename, metadata.created_by.id)} />
+) : null}
+
+// ✅ Good — early return guard at the parent
+if (!proposedChangeData.source_branch?.value) {
+  return <NoDataFound message="Proposed change is missing a source branch." />;
+}
+const sourceBranchValue = proposedChangeData.source_branch.value; // narrowed
+```
+
+### Reading route params
+
+Use `useRequiredParams` from `@/shared/hooks/use-required-params.ts` for params the route guarantees. The hook throws with a clear message if the param is missing — no silent `undefined` propagating into URL builders or queries.
+
+```tsx
+// ✅ Route guarantees branchName — runtime-checked
+const { branchName } = useRequiredParams("branchName");
+
+// ✅ Param is genuinely optional (button used inside and outside the route)
+const { relationshipName } = useParams(); // string | undefined
+```
+
+See [route-architecture.md](route-architecture.md) for the full route + outlet-context pattern.
+
+### Boy-scout rule on rewrites
+
+When you rewrite a file (replacing the whole component, not just a small edit), audit it for type lies (`!`, `as`, implicit `any`) in the touched expressions and fix them. Inheriting an antipattern verbatim during a rewrite is its own decision — don't make it by default. The PR that rewrites the file is the cheapest place to fix the lie.
 
 ## Inference
 

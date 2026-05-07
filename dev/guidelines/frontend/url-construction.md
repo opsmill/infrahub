@@ -47,3 +47,20 @@ const url = constructPath(`/objects/${kind}/${id}`, [{ name: "tab", value: "memb
 ```
 
 `getObjectDetailsUrl(kind, id, overrideParams, tabSegment)` accepts an optional fourth argument that appends `/<tabSegment>` to the path.
+
+## One URL helper per detail-page family
+
+Each detail-page family owns a dedicated URL helper. Inline `/feature/${id}/${tab}` templates duplicated across the tab bar, summary widgets, and deep-link callsites are an antipattern — a single rename of the route segment must not require an N-file find-and-replace.
+
+| Family | Helper | Location |
+|---|---|---|
+| Generic objects (incl. IPAM, proposed changes, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/utils.ts` |
+| Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `frontend/app/src/entities/branches/utils.ts` |
+
+When you add a new detail-page family with tabs:
+
+1. Add `getXxxDetailsUrl(id, tab?, overrideParams?)` in the entity's `utils.ts`.
+2. Use it from the tab bar AND from every external callsite (search bars, table cells, summary widgets, redirects).
+3. Define a small union type for the tab segment (e.g. `BranchDetailsTab = "data" | "files" | "artifacts" | "schema"`) so callers can't pass an unknown tab.
+
+See [route-architecture.md](route-architecture.md) for the surrounding tab-bar / outlet-context pattern.

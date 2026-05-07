@@ -302,6 +302,7 @@ Before submitting your component tests:
 - [ ] Test file is colocated with component (`.test.tsx` next to `.tsx`)
 - [ ] Test names clearly describe what is being tested
 - [ ] Tests don't test third-party library behavior
+- [ ] Test file type-checks cleanly — no implicit `any` in render-helper signatures, mock callbacks, or wrapper components. The project has pre-existing `tsc` errors unrelated to your work, but new test files must not add to the count. Verify with `pnpm exec tsc --noEmit -p tsconfig.json` before committing.
 
 ## Related Resources
 
