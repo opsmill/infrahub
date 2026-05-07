@@ -3,18 +3,12 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from infrahub_sdk.graphql import Query
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from infrahub_sdk.client import InfrahubClient
-
-
-class NodeID(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    id: str
 
 
 class NodeIDQuery(BaseModel):
