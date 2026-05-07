@@ -14,3 +14,16 @@ export {
   type CardHeaderProps,
   type CardProps,
 } from "./components/card/card";
+export {
+  Modal,
+  ModalOverlay,
+  type ModalOverlayProps,
+  type ModalProps,
+} from "./components/modal/modal";
+export { Meter, type MeterProps } from "./components/meter/meter";
+export { ScrollArea, type ScrollAreaProps } from "./components/scroll-area/scroll-area";
+export {
+  ResizablePanelGroup,
+  ResizablePanel,
+  ResizableHandle,
+} from "./components/resizable/resizable";

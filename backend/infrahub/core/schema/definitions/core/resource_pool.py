@@ -53,6 +53,16 @@ core_weighted_pool_resource = GenericSchema(
     ],
 )
 
+core_ip_pool = GenericSchema(
+    name="IPPool",
+    namespace="Core",
+    label="IP Pool",
+    description="A pool of IP resources (prefixes or addresses).",
+    include_in_menu=False,
+    branch=BranchSupportType.AGNOSTIC,
+    generate_profile=False,
+)
+
 core_ip_prefix_pool = NodeSchema(
     name="IPPrefixPool",
     namespace="Core",
@@ -61,7 +71,7 @@ core_ip_prefix_pool = NodeSchema(
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
-    inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE, InfrahubKind.IPPOOL],
     human_friendly_id=["name__value"],
     attributes=[
         Attr(
@@ -93,7 +103,7 @@ core_ip_prefix_pool = NodeSchema(
             name="resources",
             peer=InfrahubKind.IPPREFIX,
             kind=RelKind.ATTRIBUTE,
-            identifier="prefixpool__resource",
+            identifier="ippool__resource",
             cardinality=Cardinality.MANY,
             branch=BranchSupportType.AGNOSTIC,
             optional=False,
@@ -120,7 +130,7 @@ core_ip_address_pool = NodeSchema(
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
-    inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE],
+    inherit_from=[InfrahubKind.RESOURCEPOOL, InfrahubKind.LINEAGESOURCE, InfrahubKind.IPPOOL],
     human_friendly_id=["name__value"],
     attributes=[
         Attr(
@@ -143,7 +153,7 @@ core_ip_address_pool = NodeSchema(
             name="resources",
             peer=InfrahubKind.IPPREFIX,
             kind=RelKind.ATTRIBUTE,
-            identifier="ipaddresspool__resource",
+            identifier="ippool__resource",
             cardinality=Cardinality.MANY,
             branch=BranchSupportType.AGNOSTIC,
             optional=False,

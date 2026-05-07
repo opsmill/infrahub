@@ -1,4 +1,4 @@
-import { Button } from "@infrahub/ui";
+import { Button, ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@infrahub/ui";
 import { useAtom, useAtomValue } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import { SidebarIcon } from "lucide-react";
@@ -9,11 +9,6 @@ import { Separator } from "@/shared/components/aria/separator";
 import { Row } from "@/shared/components/container";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/shared/components/ui/resizable";
 import { classNames } from "@/shared/utils/common";
 
 import { IPAM_TREE_KEY } from "@/entities/ipam/constants";

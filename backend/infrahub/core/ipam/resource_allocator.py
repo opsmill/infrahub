@@ -17,7 +17,7 @@ from infrahub.core.query.ipam import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.ipam.constants import IPAddressType, IPNetworkType
-    from infrahub.core.node import Node
+    from infrahub.core.protocols_base import CoreNode
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -34,7 +34,7 @@ class IPAMResourceAllocator:
     def __init__(
         self,
         db: InfrahubDatabase,
-        namespace: Node | str | None = None,
+        namespace: CoreNode | str | None = None,
         branch: Branch | None = None,
         branch_agnostic: bool = False,
     ) -> None:

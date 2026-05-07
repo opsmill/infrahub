@@ -1,6 +1,6 @@
+import { ModalOverlay } from "@infrahub/ui";
 import { Dialog, type DialogProps, Modal } from "react-aria-components";
 
-import { ModalOverlay } from "@/shared/components/aria/modal";
 import { classNames } from "@/shared/utils/common";
 
 import { useSearchAnywhereContext } from "@/entities/navigation/ui/search-anywhere/search-anywhere-context";

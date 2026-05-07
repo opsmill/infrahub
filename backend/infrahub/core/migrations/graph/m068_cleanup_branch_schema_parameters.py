@@ -130,8 +130,7 @@ class Migration068(ArbitraryMigration):
 
         console.log("[bold]Cleaning up spurious branch schema attribute parameters from Migration056[/bold]")
 
-        branches = await Branch.get_list(db=db)
-        branches = [b for b in branches if not b.is_default and not b.is_global and not b.is_terminal]
+        branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True, exclude_terminal=True)
 
         if not branches:
             console.log("No open user branches found, nothing to clean up")

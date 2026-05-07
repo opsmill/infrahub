@@ -8,7 +8,6 @@ from prefect.cache_policies import NONE
 from prefect.logging import get_run_logger
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreGenericRepository, CoreGraphQLQuery
 from infrahub.core.protocols import CoreTransformPython as CoreTransformPythonNode
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase  # noqa: TC001  needed for prefect flow
@@ -69,8 +68,8 @@ async def gather_python_transform_attributes(
 
     computed_attributes: list[PythonTransformComputedAttribute] = []
     for transform in transforms:
-        repository = await transform.repository.get_peer(db=db, peer_type=CoreGenericRepository, raise_on_error=True)
-        query = await transform.query.get_peer(db=db, peer_type=CoreGraphQLQuery, raise_on_error=True)
+        repository = await transform.repository.get_peer(db=db, raise_on_error=True)
+        query = await transform.query.get_peer(db=db, raise_on_error=True)
         query_analyzer = InfrahubGraphQLQueryAnalyzer(
             query=query.query.value,
             branch=branch,
