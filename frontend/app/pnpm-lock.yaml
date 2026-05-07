@@ -4,6 +4,10 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  playwright: 1.56.1
+  playwright-core: 1.56.1
+
 importers:
 
   .:
@@ -2858,7 +2862,7 @@ packages:
   '@vitest/browser-playwright@4.1.5':
     resolution: {integrity: sha512-CWy0lBQJq97nionyJJdnaU4961IXTl43a7UCu5nHy51IoKxAt6PVIJLo+76rVl7KOOgcWHNkG4kbJu/pW7knvA==}
     peerDependencies:
-      playwright: '*'
+      playwright: 1.56.1
       vitest: 4.1.5
 
   '@vitest/browser@4.1.5':
