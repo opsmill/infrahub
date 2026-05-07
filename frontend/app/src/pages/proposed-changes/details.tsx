@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { Link, Outlet } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
-import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
@@ -14,6 +13,7 @@ import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
+import { getBranchDetailsUrl } from "@/entities/branches/utils";
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -76,16 +76,17 @@ export function Component() {
 
   const { proposedChangeData: pc, metadata } = data;
 
-  if (!pc.source_branch?.value) {
+  if (!pc.source_branch?.value || !pc.destination_branch?.value) {
     return (
       <Content.Card>
         <Content.CardTitle title={getNodeLabel(pc)} />
-        <NoDataFound message="Proposed change is missing a source branch." />
+        <NoDataFound message="Proposed change is missing a source or destination branch." />
       </Content.Card>
     );
   }
 
   const sourceBranchValue = pc.source_branch.value;
+  const destinationBranchValue = pc.destination_branch.value;
 
   return (
     <Content.Card>
@@ -102,19 +103,17 @@ export function Component() {
               </Link>
             ) : null}
             wants to merge
-            <Link to={constructPath(`/branches/${sourceBranchValue}`)}>
+            <Link to={getBranchDetailsUrl(sourceBranchValue)}>
               <Badge variant="blue">
                 <Icon icon="mdi:layers-triple" className="mr-1" />
                 {sourceBranchValue}
               </Badge>
             </Link>
             into
-            {/* destination_branch is conventionally always present; the optional
-                chain reflects GraphQL nullability rather than a real data case. */}
-            <Link to={constructPath(`/branches/${pc.destination_branch?.value}`)}>
+            <Link to={getBranchDetailsUrl(destinationBranchValue)}>
               <Badge variant="green" className="items-center">
                 <Icon icon="mdi:layers-triple" className="mr-1" />
-                {pc.destination_branch?.value}
+                {destinationBranchValue}
               </Badge>
             </Link>
           </div>
@@ -142,6 +141,7 @@ export function Component() {
             proposedChangeData: pc,
             metadata,
             sourceBranch: sourceBranchValue,
+            destinationBranch: destinationBranchValue,
           } satisfies ProposedChangeOutletContext
         }
       />
