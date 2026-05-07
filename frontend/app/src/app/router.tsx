@@ -80,6 +80,8 @@ export const router = createBrowserRouter([
                         lazy: () => import("@/pages/branches/branch-details/schema-tab"),
                       },
                       {
+                        // Redirect /branches/:branchName/<unknown> back to the branch's index tab.
+                        // `.` resolves to the parent matched route, i.e. /branches/:branchName.
                         path: "*",
                         element: <Navigate to="." replace />,
                       },

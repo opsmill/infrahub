@@ -7,6 +7,7 @@ import { Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
 import { useTitle } from "@/shared/hooks/useTitle";
 
+import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import { branchesState } from "@/entities/branches/stores";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
@@ -16,7 +17,6 @@ import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/n
 function BranchDetailsLayout() {
   const { branchName } = useParams() as { branchName: string };
   const branches = useAtomValue(branchesState);
-  useTitle(`${branchName} details`);
 
   if (!branchName) {
     return <Navigate to={constructPath("/branches")} />;
@@ -35,6 +35,12 @@ function BranchDetailsLayout() {
   if (!branch) {
     return <Navigate to={constructPath("/branches")} />;
   }
+
+  return <BranchDetailsContent branch={branch} />;
+}
+
+function BranchDetailsContent({ branch }: { branch: BranchListItem }) {
+  useTitle(`${branch.name} details`);
 
   return (
     <Content.Card>
