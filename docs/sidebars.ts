@@ -144,6 +144,16 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
+          label: 'IPAM',
+          link: { type: 'doc', id: 'ipam/index' },
+          items: [
+            'ipam/ip-namespaces',
+            'ipam/building-your-schema',
+            'ipam/automate-with-resource-manager',
+          ],
+        },
+        {
+          type: 'category',
           label: 'Resource Manager',
           link: { type: 'doc', id: 'resource-manager/index' }, // hub
           items: [
@@ -151,16 +161,6 @@ const sidebars: SidebarsConfig = {
             'resource-manager/allocate-ip-prefix',
             'resource-manager/allocate-number',
             'resource-manager/weighted-allocation',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'IPAM',
-          link: { type: 'doc', id: 'ipam/index' },
-          items: [
-            'ipam/ip-namespaces',
-            'ipam/building-your-schema',
-            'ipam/automate-with-resource-manager',
           ],
         },
         {
