@@ -28,7 +28,7 @@ export function RepositoryObjectsTab({ objectKind, objectId }: RepositoryObjects
       Objects
       {isPending && <Spinner />}
       {!isPending && (
-        <Badge className="rounded-full font-medium text-gray-80">{objectsCount ?? 0}</Badge>
+        <Badge className="rounded-full font-medium text-gray-80">{objectsCount}</Badge>
       )}
     </LinkTab>
   );
