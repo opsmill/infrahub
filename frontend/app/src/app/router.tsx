@@ -56,8 +56,34 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/branches"),
                   },
                   {
-                    path: "*",
+                    path: ":branchName",
                     lazy: () => import("@/pages/branches/details"),
+                    children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/branches/branch-details/details-tab"),
+                      },
+                      {
+                        path: "data",
+                        lazy: () => import("@/pages/branches/branch-details/data-tab"),
+                      },
+                      {
+                        path: "files",
+                        lazy: () => import("@/pages/branches/branch-details/files-tab"),
+                      },
+                      {
+                        path: "artifacts",
+                        lazy: () => import("@/pages/branches/branch-details/artifacts-tab"),
+                      },
+                      {
+                        path: "schema",
+                        lazy: () => import("@/pages/branches/branch-details/schema-tab"),
+                      },
+                      {
+                        path: "*",
+                        element: <Navigate to="." replace />,
+                      },
+                    ],
                   },
                 ],
               },
