@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
+import { useEffect } from "react";
 import { Link, Outlet, useParams } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -27,15 +28,20 @@ export function Component() {
   const [, setProposedChange] = useAtom(proposedChangedState);
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
+  const { proposedChangeData, metadata } = data ?? {};
   useTitle(
-    `${data?.proposedChangeData ? `${getNodeLabel(data.proposedChangeData)} - ` : ""}Proposed change - Infrahub`
+    `${proposedChangeData ? `${getNodeLabel(proposedChangeData)} - ` : ""}Proposed change - Infrahub`
   );
+
+  useEffect(() => {
+    if (proposedChangeData) {
+      setProposedChange(proposedChangeData as ProposedChangeDetail);
+    }
+  }, [proposedChangeData, setProposedChange]);
 
   if (isPending) {
     return <LoadingIndicator className="h-full" />;
   }
-
-  const { proposedChangeData, metadata } = data ?? {};
 
   if (error || !proposedChangeData) {
     return (
@@ -65,8 +71,6 @@ export function Component() {
       </Content.Card>
     );
   }
-
-  setProposedChange(proposedChangeData as ProposedChangeDetail);
 
   return (
     <Content.Card>
