@@ -349,9 +349,9 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
               ],
             },
-            // Configure Infrahub added in PR 4
-            { type: 'doc', id: 'guides/configuration-changes', label: 'Configure Infrahub' },
-            // Configuration reference cross-link updated in PR 4
+            // Configure Infrahub (PR 4)
+            { type: 'doc', id: 'deploy-manage/install-configure/configure-infrahub', label: 'Configure Infrahub' },
+            // Configuration reference — stays in reference/, cross-linked here (PR 4)
             { type: 'doc', id: 'reference/configuration', label: 'Configuration reference' },
           ],
         },
