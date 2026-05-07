@@ -78,7 +78,7 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 `LinkTab` derives active state from the URL via `useMatch({ path: href, end: true })`; styling, focus ring, and the optional `scrollIntoViewOnActive` flag live inside the component. Wrap the row of `LinkTab`s in `<nav aria-label="Tabs">` for accessibility and E2E selector stability.
 
-When you wrap `LinkTab` for a feature (e.g. `ProposedChangeTab`), keep the prop name `href` — don't rename it to `to`. Mirroring the primitive's prop name keeps `rg "href={"` greppable across the codebase.
+When you wrap `LinkTab` for a feature (e.g. `ProposedChangeTab`), keep the prop name `to` — matching react-router's `NavLink`/`Link`. Don't rename to `href` (that's the rendered DOM attribute, not a prop).
 
 ### Detail-page outlet context hooks
 

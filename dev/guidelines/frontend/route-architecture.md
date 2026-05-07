@@ -229,17 +229,20 @@ Children consequently can rely on `data` being defined and skip defensive `if (!
 
 ## Wrapper component prop names mirror the underlying primitive
 
-When you wrap a primitive (`LinkTab`, `Link`, `Button`) in a feature-specific component, **use the same prop names as the primitive**:
+When you wrap a primitive (`LinkTab`, `Link`, `Button`) in a feature-specific component, **use the same prop name as the primitive**. In this codebase the navigation primitives wrap react-router's `NavLink` / `Link`, so the navigation prop is **`to`** — never `href`, `path`, or `link`:
 
 ```tsx
-// LinkTab takes `href`, so wrappers do too — not `to`, `path`, or `link`
+// LinkTab and every wrapper above it use `to`, matching react-router's NavLink/Link
 interface ProposedChangeTabProps {
-  href: string; // ✅ matches LinkTab
+  to: string; // ✅ matches LinkTab → NavLink
   label: string;
 }
+
+<LinkTab to={getBranchDetailsUrl(branchName, "data")}>Data</LinkTab>
+<ProposedChangeTab to={getProposedChangeDetailsUrl(id, "data")} label="Data" />
 ```
 
-Diverging prop names (e.g. wrapper takes `to` and forwards to a primitive that takes `href`) forces every caller to remember which name applies and produces inconsistent searches across the codebase.
+Reserve `href` for the rendered DOM attribute on `<a>` (which react-router sets automatically). Diverging prop names — e.g. a wrapper that takes `href` and forwards to a primitive that takes `to` — force every caller to remember which name applies and break greppability (`rg "to={"` would miss the wrapper).
 
 ## Tab badge counts during loading
 
@@ -288,7 +291,7 @@ Comments justifying asymmetry ("destination_branch is conventionally always pres
 | Outlet context `extends FetchResponse` | Explicitly enumerate fields the parent actually passes |
 | Producer `<Outlet context={...}>` without `satisfies` | Always `satisfies <ContextType>` |
 | Different param names for the same entity across routes (`:task` vs `:taskId`) | Pick one canonical name and use it in every route |
-| Wrapper component renames a primitive's prop (`to` → forwards to `href`) | Mirror the primitive's prop name in the wrapper |
+| Wrapper component renames a primitive's prop (`href` → forwards to NavLink's `to`) | Mirror the primitive's prop name (`to`) in every wrapper |
 | Tab count `<Badge>{count ?? 0}</Badge>` while siblings use `<Badge>{count}</Badge>` | Consistent loading/error policy across all tabs in the family |
 | Asymmetric null guards on twin fields (e.g. source vs destination branch) | Same guard treatment for structurally identical fields |
 | Boy-scout: leaving `!` non-null assertions in a file you rewrote in the same PR | Audit and fix on rewrite — see [typescript.md](typescript.md) |
