@@ -136,10 +136,12 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Templates', // [Object Blueprints — rename pending]
-          link: { type: 'doc', id: 'topics/object-template' }, // hub
+          label: 'Objects',
+          link: { type: 'doc', id: 'objects/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/object-template', label: 'Use Templates' },
+            { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
+            { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
+            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
           ],
         },
         {
@@ -161,16 +163,6 @@ const sidebars: SidebarsConfig = {
             'resource-manager/allocate-ip-prefix',
             'resource-manager/allocate-number',
             'resource-manager/weighted-allocation',
-          ],
-        },
-        {
-          type: 'category',
-          label: 'Objects',
-          link: { type: 'generated-index' }, // About Objects hub page not yet authored
-          items: [
-            { type: 'doc', id: 'topics/object-conversion', label: 'Convert object kind' },
-            { type: 'doc', id: 'topics/metadata', label: 'Metadata & lineage' },
-            { type: 'doc', id: 'guides/object-load', label: 'Load data from YAML file' },
           ],
         },
         {
@@ -197,6 +189,16 @@ const sidebars: SidebarsConfig = {
             'profiles/override-values',
             'profiles/update',
             'profiles/use-multiple',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Object Templates',
+          link: { type: 'doc', id: 'object-templates/index' }, // hub
+          items: [
+            { type: 'doc', id: 'object-templates/use', label: 'Use object templates' },
+            { type: 'doc', id: 'object-templates/with-profiles', label: 'Assign Profiles to a template' },
+            { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],
         },
       ],
