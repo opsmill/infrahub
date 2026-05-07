@@ -80,3 +80,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `schema.yml` | Schema & Data | TBD |
 | `testing-framework-move.yml` | Testing Framework move | TBD |
 | `deploy-manage-hardware-requirements.yml` | D&M — Hardware Requirements (sidebar scaffold) | TBD |
+| `deploy-manage-installation.yml` | D&M — Installation (hub + Community + Enterprise spokes) | TBD |
