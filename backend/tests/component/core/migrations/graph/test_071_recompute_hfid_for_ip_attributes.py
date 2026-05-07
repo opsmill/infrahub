@@ -13,8 +13,6 @@ from infrahub.core.migrations.graph.m071_recompute_hfid_for_ip_attributes import
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
-from infrahub.graphql.initialization import prepare_graphql_params
-from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -121,43 +119,12 @@ async def _seed_raw_state_on_default(
     return node
 
 
-def _node_query(kind: str) -> str:
-    return f"""
-query NodeById($ids: [ID]) {{
-    {kind}(ids: $ids) {{
-        count
-        edges {{
-            node {{
-                id
-                hfid
-                display_label
-            }}
-        }}
-    }}
-}}
-"""
-
-
 class TestMigration071(TestInfrahubApp):
     @pytest.fixture(scope="class", autouse=True)
     async def normalized_kind_schema(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_schema: SchemaBranch
     ) -> SchemaBranch:
         return registry.schema.register_schema(schema=SCHEMA_ROOT, branch=default_branch.name)
-
-    async def _query_node(self, db: InfrahubDatabase, branch: Branch, kind: str, node_id: str) -> dict[str, Any]:
-        gql_params = await prepare_graphql_params(db=db, branch=branch)
-        result = await graphql(
-            schema=gql_params.schema,
-            source=_node_query(kind),
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={"ids": [node_id]},
-        )
-        assert result.errors is None, result.errors
-        assert result.data is not None
-        assert result.data[kind]["count"] == 1
-        return result.data[kind]["edges"][0]["node"]
 
     async def test_migration_071(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         default_device_dl = f"{DEVICE_NAME} <{DEFAULT_RAW_IP}>"
@@ -227,14 +194,15 @@ class TestMigration071(TestInfrahubApp):
             branch_name=user_branch.name,
         )
 
-        # Sanity: GraphQL view reflects raw HFID/display_label before migration runs
-        default_branch.update_schema_hash()
-        device_edge = await self._query_node(db=db, branch=default_branch, kind="TestingIpDevice", node_id=device.id)
-        assert device_edge["hfid"] == [DEFAULT_RAW_IP]
-        assert device_edge["display_label"] == default_device_dl
-        network_edge = await self._query_node(db=db, branch=default_branch, kind="TestingNetwork", node_id=network.id)
-        assert network_edge["hfid"] == [DEFAULT_RAW_NETWORK]
-        assert network_edge["display_label"] == default_network_dl
+        # Sanity: stored HFID/display_label are raw before migration runs
+        assert await _read_attribute_value(db=db, node_uuid=device.id, attr_name="human_friendly_id") == ujson.dumps(
+            [DEFAULT_RAW_IP]
+        )
+        assert await _read_attribute_value(db=db, node_uuid=device.id, attr_name="display_label") == default_device_dl
+        assert await _read_attribute_value(db=db, node_uuid=network.id, attr_name="human_friendly_id") == ujson.dumps(
+            [DEFAULT_RAW_NETWORK]
+        )
+        assert await _read_attribute_value(db=db, node_uuid=network.id, attr_name="display_label") == default_network_dl
 
         # Run migration on default
         async with db.start_session() as dbs:
