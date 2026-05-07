@@ -465,7 +465,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
-        { type: 'doc', id: 'topics/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
         { type: 'doc', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
         {
           type: 'category',
@@ -473,9 +473,18 @@ const sidebars: SidebarsConfig = {
           collapsible: true,
           collapsed: true,
           items: [
-            { type: 'doc', id: 'topics/graphql', label: 'GraphQL' },
-            { type: 'doc', id: 'guides/graphql-fragment', label: 'GraphQL fragments' },
-            { type: 'ref', id: 'reference/api-server', label: 'REST API' },
+            {
+              type: 'category',
+              label: 'GraphQL',
+              link: { type: 'doc', id: 'development-resources/graphql/index' },
+              items: [
+                { type: 'doc', id: 'development-resources/graphql/queries-and-mutations', label: 'Queries & mutations' },
+                { type: 'doc', id: 'development-resources/graphql/stored-queries', label: 'Stored queries' },
+                { type: 'doc', id: 'development-resources/graphql/single-target-queries', label: 'Single-target queries' },
+                { type: 'doc', id: 'development-resources/graphql/groups', label: 'Working with groups' },
+              ],
+            },
+            { type: 'doc', id: 'development-resources/graphql-fragments', label: 'GraphQL fragments' },
             { type: 'link', label: 'Python SDK ↗', href: 'https://TODO-FILL-IN-python-sdk.example.com' },
             { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://TODO-FILL-IN-infrahubctl.example.com' },
             { type: 'link', label: 'MCP Server ↗', href: 'https://TODO-FILL-IN-mcp-server.example.com' },
