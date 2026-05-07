@@ -25,6 +25,7 @@ core_transform = GenericSchema(
     branch=BranchSupportType.AWARE,
     documentation="/topics/proposed-change",
     uniqueness_constraints=[["name__value"]],
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="label", kind="Text", optional=True),
