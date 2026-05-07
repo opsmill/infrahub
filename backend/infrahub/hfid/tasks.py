@@ -14,7 +14,8 @@ from infrahub.workflows.catalogue import HFID_PROCESS, TRIGGER_UPDATE_HFID
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_hfid
-from .models import HFIDGraphQL, HFIDGraphQLResponse, HFIDNodeIDQuery, HFIDTriggerDefinition
+from .graphql_queries import HFIDNodeIDQuery
+from .models import HFIDGraphQL, HFIDGraphQLResponse, HFIDTriggerDefinition
 
 UPDATE_HFID = """
 mutation UpdateHFID(
@@ -195,17 +196,17 @@ async def trigger_update_hfid(
     client = get_client()
 
     node_query = HFIDNodeIDQuery(kind=kind)
-    nodes = await node_query.fetch_all(client=client, branch_name=branch_name)
-
-    for node in nodes:
-        await get_workflow().submit_workflow(
-            workflow=HFID_PROCESS,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "node_kind": kind,
-                "target_kind": kind,
-                "object_id": node.id,
-                "context": context,
-            },
-        )
+    workflow = get_workflow()
+    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
+        for node in node_batch:
+            await workflow.submit_workflow(
+                workflow=HFID_PROCESS,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "node_kind": kind,
+                    "target_kind": kind,
+                    "object_id": node.id,
+                    "context": context,
+                },
+            )
