@@ -86,3 +86,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `deploy-manage-log-forwarding.yml` | D&M — Log Forwarding (hub + Configure spoke) | TBD |
 | `deploy-manage-database-backup.yml` | D&M — Database Backup (hub + 2 spokes) | TBD |
 | `deploy-manage-upgrade.yml` | D&M — Upgrade (hub + 3 spokes) | TBD |
+| `deploy-manage-authentication.yml` | D&M — Authentication (move) | TBD |
