@@ -280,6 +280,7 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
 
 
 class CoreAccountGroup(LineageOwner, LineageSource, CoreGroup):
+    group_type: Enum
     roles: RelationshipManager
 
 
@@ -385,7 +386,7 @@ class CoreGeneratorAction(CoreAction):
 
 
 class CoreGeneratorAwareGroup(CoreGroup):
-    pass
+    group_type: Enum
 
 
 class CoreGeneratorCheck(CoreCheck):
@@ -407,7 +408,7 @@ class CoreGeneratorDefinition(CoreTaskTarget):
 
 
 class CoreGeneratorGroup(CoreGroup):
-    pass
+    group_type: Enum
 
 
 class CoreGeneratorInstance(CoreTaskTarget):
@@ -441,6 +442,7 @@ class CoreGraphQLQuery(CoreNode):
 
 class CoreGraphQLQueryGroup(CoreGroup):
     parameters: JSONAttributeOptional
+    group_type: Enum
     query: RelationshipManager
 
 
@@ -544,6 +546,7 @@ class CoreRepository(LineageOwner, LineageSource, CoreGenericRepository, CoreTas
 
 class CoreRepositoryGroup(CoreGroup):
     content: Dropdown
+    group_type: Enum
     repository: RelationshipManager
 
 
