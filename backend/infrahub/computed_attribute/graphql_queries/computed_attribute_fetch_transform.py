@@ -1,101 +1,73 @@
 from __future__ import annotations
 
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 
 class ComputedAttributeFetchTransform(BaseModel):
-    core_transform_python: "ComputedAttributeFetchTransformCoreTransformPython" = Field(
-        alias="CoreTransformPython"
-    )
+    core_transform_python: ComputedAttributeFetchTransformCoreTransformPython = Field(alias="CoreTransformPython")
 
 
 class ComputedAttributeFetchTransformCoreTransformPython(BaseModel):
-    edges: list["ComputedAttributeFetchTransformCoreTransformPythonEdges"]
+    edges: list[ComputedAttributeFetchTransformCoreTransformPythonEdges]
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdges(BaseModel):
-    node: Optional["ComputedAttributeFetchTransformCoreTransformPythonEdgesNode"]
+    node: ComputedAttributeFetchTransformCoreTransformPythonEdgesNode | None
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNode(BaseModel):
     id: str
-    file_path: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeFilePath"
-    ]
-    class_name: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeClassName"
-    ]
-    timeout: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeTimeout"
-    ]
-    convert_query_response: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeConvertQueryResponse"
-    ]
-    repository: "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepository"
-    query: "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQuery"
+    file_path: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeFilePath | None
+    class_name: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeClassName | None
+    timeout: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeTimeout | None
+    convert_query_response: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeConvertQueryResponse | None
+    repository: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepository
+    query: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQuery
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeFilePath(BaseModel):
-    value: Optional[str]
+    value: str | None
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeClassName(BaseModel):
-    value: Optional[str]
+    value: str | None
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeTimeout(BaseModel):
-    value: Optional[Any]
+    value: Any | None
 
 
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeConvertQueryResponse(
-    BaseModel
-):
-    value: Optional[bool]
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeConvertQueryResponse(BaseModel):
+    value: bool | None
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepository(BaseModel):
-    node: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode"
-    ]
+    node: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode | None
 
 
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode(
-    BaseModel
-):
-    typename__: Literal[
-        "CoreGenericRepository", "CoreReadOnlyRepository", "CoreRepository"
-    ] = Field(alias="__typename")
-    id: Optional[str]
-    name: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeName"
-    ]
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode(BaseModel):
+    typename__: Literal["CoreGenericRepository", "CoreReadOnlyRepository", "CoreRepository"] = Field(alias="__typename")
+    id: str | None
+    name: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeName | None
 
 
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeName(
-    BaseModel
-):
-    value: Optional[str]
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeName(BaseModel):
+    value: str | None
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQuery(BaseModel):
-    node: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNode"
-    ]
+    node: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNode | None
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNode(BaseModel):
     id: str
-    name: Optional[
-        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNodeName"
-    ]
+    name: ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNodeName | None
 
 
-class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNodeName(
-    BaseModel
-):
-    value: Optional[str]
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNodeName(BaseModel):
+    value: str | None
 
 
 ComputedAttributeFetchTransform.model_rebuild()

@@ -215,6 +215,8 @@ def _generate_custom_graphql_types(context: Context) -> None:
             context=context,
             command=f"uv run infrahubctl graphql generate-return-types {gql_file} --schema schema/schema.graphql",
         )
+        execute_command(context=context, command=f"ruff format {Path(gql_file).parent}")
+        execute_command(context=context, command=f"ruff check --fix {Path(gql_file).parent}")
 
 
 @task
