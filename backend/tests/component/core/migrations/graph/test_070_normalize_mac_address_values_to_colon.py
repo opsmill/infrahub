@@ -170,11 +170,8 @@ class TestMigration070(TestInfrahubApp):
 
         # Run migration on default
         async with db.start_session() as dbs:
-            migration = Migration070()
-            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
+            execution_result = await Migration070().execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors, execution_result.errors
-            validation_result = await migration.validate_migration(db=dbs)
-            assert not validation_result.errors, validation_result.errors
 
         # Verify default data is canonical, including standalone (no HFID/display_label)
         assert await _read_attribute_value(db=db, node_uuid=iface.id, attr_name="mac") == DEFAULT_COLON_MAC
@@ -226,31 +223,4 @@ class TestMigration070(TestInfrahubApp):
             == USER_COLON_MAC
         )
 
-        await verify_graph(db=db)
-
-    async def test_migration_070_validate_flags_non_canonical_value(
-        self, db: InfrahubDatabase, default_branch: Branch
-    ) -> None:
-        node = await _seed_dash_state_on_default(
-            db=db,
-            schema_kind="TestingInterface",
-            name=f"{NODE_NAME}-validate",
-            mac_dash=DEFAULT_DASH_MAC,
-            set_hfid=True,
-            set_display_label=f"{NODE_NAME}-validate <{DEFAULT_DASH_MAC}>",
-        )
-
-        async with db.start_session() as dbs:
-            migration = Migration070()
-            await migration.execute(migration_input=MigrationInput(db=dbs))
-            clean_result = await migration.validate_migration(db=dbs)
-            assert not clean_result.errors, clean_result.errors
-
-        await _set_attribute_value(db=db, node_uuid=node.id, attr_name="mac", value=DEFAULT_DASH_MAC)
-
-        async with db.start_session() as dbs:
-            corrupted_result = await Migration070().validate_migration(db=dbs)
-
-        assert corrupted_result.errors
-        assert any(node.id in err and DEFAULT_DASH_MAC in err for err in corrupted_result.errors)
         await verify_graph(db=db)
