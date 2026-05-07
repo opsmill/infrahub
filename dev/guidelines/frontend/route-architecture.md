@@ -81,16 +81,35 @@ export function useFeatureOutlet(): FeatureOutletContext {
 <Outlet context={{ data, ... } satisfies FeatureOutletContext} />
 ```
 
-The `satisfies` clause keeps producer and consumer in lockstep without widening the inferred type.
+The `satisfies` clause keeps producer and consumer in lockstep without widening the inferred type. **Always include `satisfies <Context>` on the producer side** — without it, a typo or missing field on the producer compiles silently and breaks consumers at runtime.
 
 The runtime `throw` prevents silent corruption when the hook is mistakenly used outside the parent route.
+
+### Don't extend the fetch response type
+
+Define the outlet context interface explicitly with the exact fields the parent passes. Do **not** `extends FetchResponse` — coupling the route context to the network response shape silently leaks every new query field to every child consumer:
+
+```tsx
+// ❌ Bad — every new field added to the query becomes route-context state
+export interface FeatureOutletContext extends GetFeatureResponse {
+  extraThing: string;
+}
+
+// ✅ Good — explicitly enumerate, optionally pull individual field types
+export interface FeatureOutletContext {
+  data: GetFeatureResponse["data"];
+  metadata: GetFeatureResponse["metadata"];
+  extraThing: string;
+}
+```
 
 References:
 
 - `frontend/app/src/entities/nodes/object/ui/object-details/use-object-details-outlet.ts`
 - `frontend/app/src/entities/proposed-changes/ui/use-proposed-change-outlet.ts`
+- `frontend/app/src/entities/branches/ui/use-branch-details-outlet.ts`
 
-When the children only need URL params (no parent fetch), skip the outlet context and let each child read params directly via `useRequiredParams`.
+When the children only need URL params (no parent fetch), skip the outlet context and let each child read params directly via `useRequiredParams`. **However**, if a sibling tab already exists with an outlet hook, prefer extending that hook rather than mixing patterns within the same detail-page family — symmetric children are easier to navigate.
 
 ## Reading route params
 
@@ -103,12 +122,36 @@ const { branchName } = useRequiredParams("branchName");
 
 Not `useParams() as { branchName: string }` — that's a compile-time lie that crashes downstream when the param is missing.
 
-When a param is genuinely optional (e.g., a button rendered both inside and outside a relationship route), use plain `useParams()` and treat the result as `string | undefined`:
+When a param is genuinely optional (e.g., a button rendered both inside and outside a relationship route), use the `useParams<T>()` typed generic — never `as` casts:
 
 ```tsx
-const { relationshipName } = useParams();
-// relationshipName is string | undefined — handle both branches
+// ✅ Optional params via the typed generic
+const { objectKind, objectId } = useParams<{ objectKind: string; objectId: string }>();
+// objectKind / objectId are inferred as string | undefined — narrow before use
+
+// ❌ The type lie pattern
+const { objectKind, objectId } = useParams() as { objectKind?: string; objectId?: string };
 ```
+
+If a child component reads a param to do work, prefer **passing the value as a prop from a parent that already has it** instead of re-reading params in the child. The parent has more context (it can decide whether the param is guaranteed) and the child becomes routing-agnostic and easier to test.
+
+## Route param naming consistency
+
+When two different routes capture the same logical entity, use the **same param name** in both routes. Example:
+
+```tsx
+// ✅ Both routes name the captured id "taskId"
+{ path: "/tasks/:taskId", lazy: () => import("@/pages/tasks/task-details") },
+{ path: "/proposed-changes/:proposedChangeId/tasks/:taskId", … },
+{ path: "/objects/:objectKind/:objectId/tasks/:taskId", … },
+
+// ❌ One route uses :task, others use :taskId
+//    Forces components like TaskItemDetails to read both params and fall back:
+//      const { task, taskId } = useParams();
+//      const id = task ?? taskId;
+```
+
+Every shared component that consumes the param then reads a single name. Inconsistent param names produce dual-read fallbacks that drift over time and silently break when one route is renamed.
 
 ## URL helpers per detail family
 
@@ -118,10 +161,12 @@ Every detail page family owns a helper that centralizes its URL construction:
 |---|---|---|
 | Generic objects | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/utils.ts` |
 | Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `frontend/app/src/entities/branches/utils.ts` |
-| Proposed changes | (use `getObjectDetailsUrl` with `PROPOSED_CHANGE_OBJECT` kind) | — |
+| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `frontend/app/src/entities/proposed-changes/utils.ts` |
 | Resource manager | (use `getObjectDetailsUrl`) | — |
 
 When you add a new detail family with tabs, add a `getXxxDetailsUrl(id, tab?)` helper in the entity's `utils.ts` and use it from the tab bar **and** from any callsite that links into a tab (search bars, summary widgets, deep links). Inline `/feature/${id}/${tab}` strings are antipatterns — see [URL Construction](url-construction.md).
+
+The `tab` argument **must** be a string-literal union (e.g. `BranchDetailsTab = "data" | "files" | "artifacts" | "schema"`), never plain `string`. Plain `string` collides with dynamic path segments like `:relationshipName` and silently routes a typo to a 404-redirect.
 
 ## Child route shims
 
@@ -182,6 +227,51 @@ function ParentLayout() {
 
 Children consequently can rely on `data` being defined and skip defensive `if (!data) return null` checks. The outlet hook's runtime guard catches genuine misuse (component mounted outside the parent).
 
+## Wrapper component prop names mirror the underlying primitive
+
+When you wrap a primitive (`LinkTab`, `Link`, `Button`) in a feature-specific component, **use the same prop names as the primitive**:
+
+```tsx
+// LinkTab takes `href`, so wrappers do too — not `to`, `path`, or `link`
+interface ProposedChangeTabProps {
+  href: string; // ✅ matches LinkTab
+  label: string;
+}
+```
+
+Diverging prop names (e.g. wrapper takes `to` and forwards to a primitive that takes `href`) forces every caller to remember which name applies and produces inconsistent searches across the codebase.
+
+## Tab badge counts during loading
+
+A tab that displays a count from a query has three visual states: loading, loaded-with-count, error/no-data. Pick **one** rendering policy and apply it across the family:
+
+```tsx
+// ✅ Either render nothing when undefined (the recommended default)
+{!isPending && <Badge>{count}</Badge>}
+
+// ❌ Don't mix `?? 0` (renders 0 on error) with siblings that render nothing
+{!isPending && <Badge>{count ?? 0}</Badge>}
+```
+
+The `?? 0` form silently masks query failures as "zero" and makes it look like a successful empty result. If the design genuinely needs a "0 when error" rendering, document why and apply it to *all* sibling tabs.
+
+## Symmetric handling of structurally identical fields
+
+When two fields on the same parent object share the same backend nullability (e.g. `source_branch` and `destination_branch` on `ProposedChange`), handle them symmetrically. Either both gate the entire layout, or neither does:
+
+```tsx
+// ✅ Symmetric — one guard, one error UI for both fields
+if (!pc.source_branch?.value || !pc.destination_branch?.value) {
+  return <NoDataFound message="Proposed change is missing a source or destination branch." />;
+}
+
+// ❌ Asymmetric — guards source, then renders broken `/branches/undefined` link for destination
+if (!pc.source_branch?.value) return <NoDataFound … />;
+<Link to={`/branches/${pc.destination_branch?.value}`}>…</Link>
+```
+
+Comments justifying asymmetry ("destination_branch is conventionally always present") rot — the actual nullability is what runs.
+
 ## Anti-patterns observed in past PRs
 
 | Anti-pattern | Replacement |
@@ -190,9 +280,18 @@ Children consequently can rely on `data` being defined and skip defensive `if (!
 | Tab bar without `<nav aria-label="Tabs">` | Always wrap; E2E selectors and screen readers depend on it |
 | Children re-calling the same parent query | `<Outlet context>` + typed hook with runtime guard |
 | `useParams() as { foo: string }` for guaranteed params | `useRequiredParams("foo")` |
+| `useParams() as { foo?: string }` for genuinely optional params | `useParams<{ foo: string }>()` typed generic |
 | Inline `/branches/${branchName}/${tab}` template duplicated across files | Dedicated `getBranchDetailsUrl(branch, tab?)` helper |
+| Tab helper taking `tabSegment: string` instead of a literal union | `tab?: "data" \| "files" \| ...` so callers can't typo |
 | Detail page subtree without `path: "*"` fallback | Always redirect unknown sub-paths to the index |
 | `default` export from a child route shim | `Component` named export — react-router `lazy()` requires it |
+| Outlet context `extends FetchResponse` | Explicitly enumerate fields the parent actually passes |
+| Producer `<Outlet context={...}>` without `satisfies` | Always `satisfies <ContextType>` |
+| Different param names for the same entity across routes (`:task` vs `:taskId`) | Pick one canonical name and use it in every route |
+| Wrapper component renames a primitive's prop (`to` → forwards to `href`) | Mirror the primitive's prop name in the wrapper |
+| Tab count `<Badge>{count ?? 0}</Badge>` while siblings use `<Badge>{count}</Badge>` | Consistent loading/error policy across all tabs in the family |
+| Asymmetric null guards on twin fields (e.g. source vs destination branch) | Same guard treatment for structurally identical fields |
+| Boy-scout: leaving `!` non-null assertions in a file you rewrote in the same PR | Audit and fix on rewrite — see [typescript.md](typescript.md) |
 
 ## See also
 

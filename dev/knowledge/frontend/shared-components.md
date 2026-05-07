@@ -78,6 +78,30 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 `LinkTab` derives active state from the URL via `useMatch({ path: href, end: true })`; styling, focus ring, and the optional `scrollIntoViewOnActive` flag live inside the component. Wrap the row of `LinkTab`s in `<nav aria-label="Tabs">` for accessibility and E2E selector stability.
 
+When you wrap `LinkTab` for a feature (e.g. `ProposedChangeTab`), keep the prop name `href` — don't rename it to `to`. Mirroring the primitive's prop name keeps `rg "href={"` greppable across the codebase.
+
+### Detail-page outlet context hooks
+
+Every detail page that has tabs exposes its parent-loaded data via a typed `useOutletContext` wrapper. Children read the wrapper, never `useOutletContext` directly:
+
+| Family | Hook | Location |
+|---|---|---|
+| Generic objects | `useObjectDetailsOutlet()` | `entities/nodes/object/ui/object-details/use-object-details-outlet.ts` |
+| Branches | `useBranchDetailsOutlet()` | `entities/branches/ui/use-branch-details-outlet.ts` |
+| Proposed changes | `useProposedChangeOutlet()` | `entities/proposed-changes/ui/use-proposed-change-outlet.ts` |
+
+Each hook throws if used outside its parent route's `<Outlet>`, so misuse fails loudly during dev. The producer side uses `<Outlet context={... satisfies <Context>} />` to keep producer/consumer in lockstep.
+
+### URL helpers
+
+| Family | Helper | Location |
+|---|---|---|
+| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `entities/nodes/utils.ts` |
+| Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `entities/branches/utils.ts` |
+| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `entities/proposed-changes/utils.ts` |
+
+The `tab` argument on each helper is a string-literal union (e.g. `BranchDetailsTab = "data" | "files" | …`) so callers can't pass an unknown tab.
+
 ### Layout
 
 | Need | Use | Location |

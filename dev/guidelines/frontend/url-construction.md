@@ -54,13 +54,25 @@ Each detail-page family owns a dedicated URL helper. Inline `/feature/${id}/${ta
 
 | Family | Helper | Location |
 |---|---|---|
-| Generic objects (incl. IPAM, proposed changes, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/utils.ts` |
+| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `frontend/app/src/entities/nodes/utils.ts` |
 | Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `frontend/app/src/entities/branches/utils.ts` |
+| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `frontend/app/src/entities/proposed-changes/utils.ts` |
 
 When you add a new detail-page family with tabs:
 
 1. Add `getXxxDetailsUrl(id, tab?, overrideParams?)` in the entity's `utils.ts`.
 2. Use it from the tab bar AND from every external callsite (search bars, table cells, summary widgets, redirects).
-3. Define a small union type for the tab segment (e.g. `BranchDetailsTab = "data" | "files" | "artifacts" | "schema"`) so callers can't pass an unknown tab.
+3. Define a small string-literal union for the tab argument and require it on the helper signature:
+
+```ts
+// ✅ Typed tab union prevents typos and unknown tabs
+export type BranchDetailsTab = "data" | "files" | "artifacts" | "schema";
+export function getBranchDetailsUrl(branchName: string, tab?: BranchDetailsTab, …): string
+
+// ❌ Plain string accepts anything and collides with dynamic segments like :relationshipName
+export function getObjectDetailsUrl(…, tabSegment?: string): string
+```
+
+If the underlying helper takes a generic `string` for legacy reasons (e.g. `getObjectDetailsUrl`'s `tabSegment` argument), pass it through a typed wrapper for each detail-page family rather than letting raw strings flow through.
 
 See [route-architecture.md](route-architecture.md) for the surrounding tab-bar / outlet-context pattern.

@@ -74,15 +74,31 @@ Use `useRequiredParams` from `@/shared/hooks/use-required-params.ts` for params 
 // ✅ Route guarantees branchName — runtime-checked
 const { branchName } = useRequiredParams("branchName");
 
-// ✅ Param is genuinely optional (button used inside and outside the route)
-const { relationshipName } = useParams(); // string | undefined
+// ✅ Param is genuinely optional (button used inside and outside the route) — typed generic, no cast
+const { objectKind, objectId } = useParams<{ objectKind: string; objectId: string }>();
+//   ^ inferred as string | undefined — narrow before use
+
+// ❌ The type lie pattern
+const { objectKind, objectId } = useParams() as { objectKind?: string; objectId?: string };
 ```
+
+If a child component reads a param to do work but a parent already has the value, prefer **passing the value as a prop** instead of re-reading. The child becomes routing-agnostic and the type narrowing happens once at the parent.
 
 See [route-architecture.md](route-architecture.md) for the full route + outlet-context pattern.
 
 ### Boy-scout rule on rewrites
 
 When you rewrite a file (replacing the whole component, not just a small edit), audit it for type lies (`!`, `as`, implicit `any`) in the touched expressions and fix them. Inheriting an antipattern verbatim during a rewrite is its own decision — don't make it by default. The PR that rewrites the file is the cheapest place to fix the lie.
+
+The audit applies to **every file the rewrite commit lands in**, not just the marquee files. A commit like "drop unsafe non-null assertions" that fixes 3 files but leaves `!` survivors in 2 sibling files touched by the same PR is a half-fix — reviewers won't catch it because the commit message claims the work is done.
+
+Concretely, before declaring a `!`-cleanup commit done, run:
+
+```bash
+git diff <base>...HEAD --name-only -- '*.ts' '*.tsx' | xargs rg -n '\!\s*[\.,)\]]' --
+```
+
+and resolve each remaining hit (or explicitly note it as out-of-scope in the PR description).
 
 ## Inference
 
