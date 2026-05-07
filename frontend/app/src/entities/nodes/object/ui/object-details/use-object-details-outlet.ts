@@ -10,4 +10,12 @@ export interface ObjectDetailsOutletContext {
   permission: Permission;
 }
 
-export const useObjectDetailsOutlet = () => useOutletContext<ObjectDetailsOutletContext>();
+export function useObjectDetailsOutlet(): ObjectDetailsOutletContext {
+  const context = useOutletContext<ObjectDetailsOutletContext | null>();
+  if (!context) {
+    throw new Error(
+      "useObjectDetailsOutlet must be used inside the object details parent route's <Outlet>"
+    );
+  }
+  return context;
+}
