@@ -34,12 +34,12 @@ class TestComputedAttributeTransformQuery:
     def test_get_variables_for_uuid_uses_ids_list(self) -> None:
         transform_id = "12345678-1234-5678-1234-567812345678"
         q = ComputedAttributeTransformQuery(transform_id=transform_id)
-        assert q.get_variables() == {"transform_ids": [transform_id], "transform_name": None}
+        assert q.get_variables() == {"transform_ids": [transform_id]}
 
     def test_get_variables_for_name_uses_transform_name(self) -> None:
         transform_id = "my-transform-name"
         q = ComputedAttributeTransformQuery(transform_id=transform_id)
-        assert q.get_variables() == {"transform_ids": None, "transform_name": transform_id}
+        assert q.get_variables() == {"transform_name": transform_id}
 
     def test_parse_response_returns_transform_node(self) -> None:
         q = ComputedAttributeTransformQuery(transform_id="txfm-001")
@@ -60,7 +60,7 @@ class TestComputedAttributeTransformQuery:
                                     "name": {"value": "my-repo"},
                                 }
                             },
-                            "query": {"node": {"id": "query-001"}},
+                            "query": {"node": {"id": "query-001", "name": {"value": "tshirt-pitch"}}},
                         }
                     }
                 ]
@@ -76,7 +76,7 @@ class TestComputedAttributeTransformQuery:
             repository_id="repo-001",
             repository_typename="CoreRepository",
             repository_name="my-repo",
-            query_id="query-001",
+            query_name="tshirt-pitch",
         )
 
     def test_parse_response_returns_none_for_empty_edges(self) -> None:

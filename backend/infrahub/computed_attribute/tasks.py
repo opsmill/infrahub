@@ -122,7 +122,7 @@ async def process_transform(
         )
 
         data = await client.query_gql_query(
-            name=transform.query_id,
+            name=transform.query_name,
             branch_name=branch_name,
             variables={"id": object_id},
             update_group=True,

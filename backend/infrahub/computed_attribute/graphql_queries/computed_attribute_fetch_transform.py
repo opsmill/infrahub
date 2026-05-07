@@ -87,6 +87,15 @@ class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQuery(BaseModel
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNode(BaseModel):
     id: str
+    name: Optional[
+        "ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNodeName"
+    ]
+
+
+class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNodeName(
+    BaseModel
+):
+    value: Optional[str]
 
 
 ComputedAttributeFetchTransform.model_rebuild()
@@ -96,3 +105,4 @@ ComputedAttributeFetchTransformCoreTransformPythonEdgesNode.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepository.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNode.model_rebuild()
 ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQuery.model_rebuild()
+ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeQueryNode.model_rebuild()

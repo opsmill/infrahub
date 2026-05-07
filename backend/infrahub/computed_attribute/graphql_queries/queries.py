@@ -11,7 +11,48 @@ from infrahub.computed_attribute.graphql_queries.computed_attribute_fetch_transf
 )
 from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
-TRANSFORM_QUERY = (Path(__file__).parent / "transform_fetch.gql").read_text()
+TRANSFORM_QUERY_BY_NAME = (Path(__file__).parent / "transform_fetch.gql").read_text()
+
+TRANSFORM_QUERY_BY_IDS = """
+query ComputedAttributeFetchTransform($transform_ids: [ID]) {
+    CoreTransformPython(ids: $transform_ids) {
+        edges {
+            node {
+                id
+                file_path {
+                    value
+                }
+                class_name {
+                    value
+                }
+                timeout {
+                    value
+                }
+                convert_query_response {
+                    value
+                }
+                repository {
+                    node {
+                        id
+                        __typename
+                        name {
+                            value
+                        }
+                    }
+                }
+                query {
+                    node {
+                        id
+                        name {
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
 
 
 def _is_uuid(value: str) -> bool:
@@ -32,12 +73,12 @@ class TransformNode(BaseModel):
     id: str
     file_path: str
     class_name: str
-    timeout: int
+    timeout: int | None
     convert_query_response: bool
     repository_id: str
     repository_typename: str
     repository_name: str
-    query_id: str
+    query_name: str
 
 
 class ComputedAttributeTransformQuery(BaseModel):
@@ -46,11 +87,13 @@ class ComputedAttributeTransformQuery(BaseModel):
 
     def get_variables(self) -> dict[str, Any]:
         if _is_uuid(self.transform_id):
-            return {"transform_ids": [self.transform_id], "transform_name": None}
-        return {"transform_ids": None, "transform_name": self.transform_id}
+            return {"transform_ids": [self.transform_id]}
+        return {"transform_name": self.transform_id}
 
     def render_query(self) -> str:
-        return TRANSFORM_QUERY
+        if _is_uuid(self.transform_id):
+            return TRANSFORM_QUERY_BY_IDS
+        return TRANSFORM_QUERY_BY_NAME
 
     def parse_response(self, response: dict[str, Any]) -> TransformNode | None:
         try:
@@ -71,27 +114,26 @@ class ComputedAttributeTransformQuery(BaseModel):
             and node.file_path.value is not None
             and node.class_name
             and node.class_name.value is not None
-            and node.timeout
-            and node.timeout.value is not None
-            and node.convert_query_response
-            and node.convert_query_response.value is not None
             and repo
             and repo.id
             and repo.typename__
             and repo.name
             and repo.name.value is not None
             and query_node
-            and query_node.id
+            and query_node.name
+            and query_node.name.value is not None
         ):
             return TransformNode(
                 id=node.id,
                 file_path=node.file_path.value,
                 class_name=node.class_name.value,
-                timeout=node.timeout.value,
-                convert_query_response=node.convert_query_response.value,
+                timeout=node.timeout.value if node.timeout else None,
+                convert_query_response=bool(node.convert_query_response.value)
+                if node.convert_query_response
+                else False,
                 repository_id=repo.id,
                 repository_typename=repo.typename__,
                 repository_name=repo.name.value,
-                query_id=query_node.id,
+                query_name=query_node.name.value,
             )
         return None

@@ -1,5 +1,5 @@
-query ComputedAttributeFetchTransform($transform_ids: [ID], $transform_name: String) {
-    CoreTransformPython(ids: $transform_ids, name__value: $transform_name) {
+query ComputedAttributeFetchTransform($transform_name: String) {
+    CoreTransformPython(name__value: $transform_name) {
         edges {
             node {
                 id
@@ -27,6 +27,9 @@ query ComputedAttributeFetchTransform($transform_ids: [ID], $transform_name: Str
                 query {
                     node {
                         id
+                        name {
+                            value
+                        }
                     }
                 }
             }
