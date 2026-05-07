@@ -28,6 +28,7 @@ from .constants import NODE_METADATA_TYPE, RELATIONSHIP_METADATA_TYPE
 from .directives import DIRECTIVES
 from .enums import generate_graphql_enum, get_enum_attribute_type_name
 from .metrics import SCHEMA_GENERATE_GRAPHQL_METRICS
+from .mutations.account import InfrahubAccountMutation
 from .mutations.action import InfrahubTriggerRuleMatchMutation, InfrahubTriggerRuleMutation
 from .mutations.artifact_definition import InfrahubArtifactDefinitionMutation
 from .mutations.ipam import (
@@ -523,6 +524,7 @@ class GraphQLSchemaManager:
                 continue
 
             mutation_map: dict[str, type[InfrahubMutation]] = {
+                InfrahubKind.ACCOUNT: InfrahubAccountMutation,
                 InfrahubKind.ARTIFACTDEFINITION: InfrahubArtifactDefinitionMutation,
                 InfrahubKind.REPOSITORY: InfrahubRepositoryMutation,
                 InfrahubKind.READONLYREPOSITORY: InfrahubRepositoryMutation,
