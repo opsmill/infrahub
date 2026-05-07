@@ -1,19 +1,19 @@
 ---
-title: Object storage
+title: About storage
 ---
 
 import ReferenceLink from "../../src/components/Card";
 
-# Object storage
+# About storage
 
-Infrahub uses an object storage layer to persist binary and text content outside of the graph database. This layer stores the raw bytes of [file objects](./file-object.mdx) and rendered [artifacts](./artifact.mdx). Separating file content from graph data allows Infrahub to keep the graph database focused on relationships, metadata, and version control while delegating bulk storage to a system optimized for that purpose.
+Infrahub uses an object storage layer to persist binary and text content outside of the graph database. This layer stores the raw bytes of [file objects](../schema/file-object) and rendered [artifacts](../topics/artifact.mdx). Separating file content from graph data allows Infrahub to keep the graph database focused on relationships, metadata, and version control while delegating bulk storage to a system optimized for that purpose.
 
 ## What uses object storage
 
 Object storage serves two use cases in Infrahub:
 
-- **File objects**: User-uploaded files attached to nodes in the graph. These are managed through the file object system and access is controlled by Infrahub's [permission system](./permissions-roles.mdx). See [file objects](./file-object.mdx) for details.
-- **Artifacts**: System-generated outputs from Transformations. These are created automatically by artifact definitions and stored in the same storage layer. See [artifacts](./artifact.mdx) for details.
+- **File objects**: User-uploaded files attached to nodes in the graph. These are managed through the file object system and access is controlled by Infrahub's [permission system](../topics/permissions-roles.mdx). See [file objects](../schema/file-object) for details.
+- **Artifacts**: System-generated outputs from Transformations. These are created automatically by artifact definitions and stored in the same storage layer. See [artifacts](../topics/artifact.mdx) for details.
 
 Both file objects and artifacts store a `storage_id` in the graph database that references the content in object storage. The difference is in how the content is created — user uploads for file objects, automated Transformations for artifacts — and how access is governed.
 
@@ -129,12 +129,12 @@ Switching storage backends (for example, from `local` to `s3`) does not migrate 
 
 ## Connection to other concepts
 
-- **[File objects](./file-object.mdx)**: The primary way users interact with stored files. File objects are graph nodes that combine metadata with a reference to content in object storage.
-- **[Artifacts](./artifact.mdx)**: System-generated content stored in the same storage layer, produced by Transformation pipelines.
-- **[Permissions and roles](./permissions-roles.mdx)**: Access to file content is enforced at the API level based on permissions on the corresponding graph node.
+- **[File objects](../schema/file-object)**: The primary way users interact with stored files. File objects are graph nodes that combine metadata with a reference to content in object storage.
+- **[Artifacts](../topics/artifact.mdx)**: System-generated content stored in the same storage layer, produced by Transformation pipelines.
+- **[Permissions and roles](../topics/permissions-roles.mdx)**: Access to file content is enforced at the API level based on permissions on the corresponding graph node.
 
 ## Further reading
 
-- [Object storage guide](../guides/object-storage.mdx): Practical steps for uploading and retrieving content
-- [File objects](./file-object.mdx): Attaching files to nodes with full version control
+- [Configure storage](./configure): Practical steps for uploading and retrieving content
+- [File objects](../schema/file-object): Attaching files to nodes with full version control
 - [Configuration reference](../reference/configuration.mdx): All storage-related environment variables and settings

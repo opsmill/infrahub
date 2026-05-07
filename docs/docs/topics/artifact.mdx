@@ -29,7 +29,7 @@ The following MIME types or formats are supported and will be rendered properly 
 
 While it's always possible to generate [Transformations](./transformation.mdx) on demand via the API, having an artifact provide some additional benefits:
 
-- **Caching**: Generated artifacts are stored in the internal [object storage](./object-storage.mdx). For resource intensive transformations, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
+- **Caching**: Generated artifacts are stored in the internal [object storage](../artifact-file-storage/). For resource intensive transformations, it will significantly reduce the load of the system if an artifact can be serve from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
 - **Peer Review**: artifacts are automatically part of the [Proposed Change](./proposed-change.mdx) review process.
 - **Database**: artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it possible to perform certain artifact related queries.
@@ -53,7 +53,7 @@ An **artifact definition** centralizes all the information required to generate 
 
 Groups provide flexible targeting that decouples artifact generation from specific object lists. You can add or remove objects from groups without modifying artifact definitions. See [organizing objects with groups](../guides/groups.mdx) for details on creating target groups.
 
-From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the Transformation is stored in the [object storage](./object-storage.mdx). The generation of the artifacts is performed by the Task worker(s).
+From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the Transformation is stored in the [object storage](../artifact-file-storage/). The generation of the artifacts is performed by the Task worker(s).
 
 ![Artifact architecture diagram](../media/topics/artifact/architecture.excalidraw.svg)
 

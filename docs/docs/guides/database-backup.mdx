@@ -129,7 +129,7 @@ python -m utilities.db_backup neo4j backup \
 
 ### Step 3: Backup the object storage
 
-The [object storage](../topics/object-storage.mdx) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
+The [object storage](../artifact-file-storage/) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
 
 <Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
