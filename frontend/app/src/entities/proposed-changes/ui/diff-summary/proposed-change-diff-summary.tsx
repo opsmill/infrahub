@@ -41,7 +41,7 @@ export function ProposedChangeDiffSummary({
     return null;
   }
 
-  const proposedChangeDetailsPath = `/proposed-changes/${proposedChangeId}`;
+  const proposedChangeDetailsPath = `/proposed-changes/${proposedChangeId}/data`;
 
   return (
     <DiffSummaryTagGroup className={className}>
@@ -49,7 +49,6 @@ export function ProposedChangeDiffSummary({
         variant="added"
         count={data.num_added}
         href={constructPath(proposedChangeDetailsPath, [
-          { name: QSP.PROPOSED_CHANGES_TAB, value: "data" },
           { name: QSP.STATUS, value: DIFF_STATUS.ADDED },
         ])}
       />
@@ -57,7 +56,6 @@ export function ProposedChangeDiffSummary({
         variant="removed"
         count={data.num_removed}
         href={constructPath(proposedChangeDetailsPath, [
-          { name: QSP.PROPOSED_CHANGES_TAB, value: "data" },
           { name: QSP.STATUS, value: DIFF_STATUS.REMOVED },
         ])}
       />
@@ -65,7 +63,6 @@ export function ProposedChangeDiffSummary({
         variant="updated"
         count={data.num_updated}
         href={constructPath(proposedChangeDetailsPath, [
-          { name: QSP.PROPOSED_CHANGES_TAB, value: "data" },
           { name: QSP.STATUS, value: DIFF_STATUS.UPDATED },
         ])}
       />
@@ -73,7 +70,6 @@ export function ProposedChangeDiffSummary({
         variant="conflicts"
         count={data.num_conflicts}
         href={constructPath(proposedChangeDetailsPath, [
-          { name: QSP.PROPOSED_CHANGES_TAB, value: "data" },
           { name: QSP.STATUS, value: DIFF_STATUS.CONFLICT },
         ])}
       />

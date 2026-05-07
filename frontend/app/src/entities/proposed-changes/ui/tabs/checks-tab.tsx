@@ -1,5 +1,3 @@
-import { DIFF_TABS } from "@/shared/config/constants";
-
 import { useGetValidatorsQuery } from "@/entities/diff/ui/queries/get-validators.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
 
@@ -14,7 +12,7 @@ export function ChecksTab({ proposedChangeId }: ChecksTabProps) {
 
   return (
     <ProposedChangeTab
-      tabId={DIFF_TABS.CHECKS}
+      to={`/proposed-changes/${proposedChangeId}/checks`}
       label="Checks"
       count={count}
       isCountLoading={isPending}

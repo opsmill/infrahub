@@ -4,7 +4,6 @@ import { Link } from "react-router";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
-import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { BadgeConflict } from "@/entities/diff/ui/diff-badge";
@@ -33,7 +32,7 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
     return null;
   }
 
-  const url = `/proposed-changes/${proposedChangesDetails.id}?${QSP.PROPOSED_CHANGES_TAB}=data#${id}`;
+  const url = `/proposed-changes/${proposedChangesDetails.id}/data#${id}`;
 
   const mainChange = changes.find((change) => {
     return change.branch === "main";

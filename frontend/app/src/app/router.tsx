@@ -175,6 +175,59 @@ export const router = createBrowserRouter([
                   {
                     path: ":proposedChangeId",
                     lazy: () => import("@/pages/proposed-changes/details"),
+                    children: [
+                      {
+                        index: true,
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/overview"),
+                      },
+                      {
+                        path: "data",
+                        lazy: () => import("@/pages/proposed-changes/proposed-change-details/data"),
+                      },
+                      {
+                        path: "files",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/files"),
+                      },
+                      {
+                        path: "artifacts",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/artifacts"),
+                      },
+                      {
+                        path: "schema",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/schema"),
+                      },
+                      {
+                        path: "checks",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/checks"),
+                      },
+                      {
+                        path: "tasks",
+                        children: [
+                          {
+                            index: true,
+                            lazy: () =>
+                              import("@/pages/proposed-changes/proposed-change-details/tasks"),
+                          },
+                          {
+                            path: ":taskId",
+                            lazy: () =>
+                              import(
+                                "@/pages/proposed-changes/proposed-change-details/task-details"
+                              ),
+                          },
+                        ],
+                      },
+                      {
+                        // Redirect unknown sub-paths back to the proposed-change overview.
+                        path: "*",
+                        element: <Navigate to="." replace />,
+                      },
+                    ],
                   },
                 ],
               },

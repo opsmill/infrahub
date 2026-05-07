@@ -3,7 +3,6 @@ import { LinkButton } from "@infrahub/ui";
 
 import { Badge } from "@/shared/components/ui/badge";
 import { NODE_PATH_EXCLUDELIST } from "@/shared/config/constants";
-import { QSP } from "@/shared/config/qsp";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
@@ -51,12 +50,14 @@ export const getThreadTitle = (thread?: any, label?: string) => {
       return null;
     }
 
+    const proposedChangePath = pathname.match(/^(\/proposed-changes\/[^/]+)/)?.[1] ?? pathname;
+
     return (
       <div className="flex items-center gap-2 text-sm">
         <Badge variant={"gray-outline"}>Object</Badge>
 
         <LinkButton
-          href={`${pathname}?${QSP.PROPOSED_CHANGES_TAB}=data#${nodeId}`}
+          href={`${proposedChangePath}/data#${nodeId}`}
           className="flex items-center gap-2 px-1"
           variant={"ghost"}
         >
