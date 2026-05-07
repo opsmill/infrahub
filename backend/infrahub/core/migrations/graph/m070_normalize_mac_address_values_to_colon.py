@@ -1,27 +1,20 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import netaddr
-import ujson
-from infrahub_sdk.template.exceptions import JinjaTemplateError
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.helpers.display_label import (
-    extract_jinja2_variables,
-    is_jinja2_template,
-    render_display_label,
+from infrahub.core.migrations.helpers.display_label import extract_jinja2_variables, is_jinja2_template
+from infrahub.core.migrations.helpers.recompute import (
+    format_hfid_row,
+    make_display_label_formatter,
+    paginate_recompute,
 )
-from infrahub.core.migrations.query.path_details import (
-    SCHEMA_KINDS_TO_SKIP,
-    GetPathDetailsBranchQuery,
-    GetPathDetailsDefaultBranch,
-)
-from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
+from infrahub.core.migrations.query.path_details import SCHEMA_KINDS_TO_SKIP
 from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
@@ -42,11 +35,9 @@ if TYPE_CHECKING:
 console = get_migration_console()
 
 _MAC_KIND = "MacAddress"
-_RowFormatter = Callable[[str, list[str | None]], Awaitable[str | None]]
 
 
 def _to_colon_form(value: str) -> str:
-    """Convert any valid MAC representation to colon-uppercase (AA:BB:CC:DD:EE:FF)."""
     return netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()
 
 
@@ -68,22 +59,6 @@ def _extract_display_label_paths(
     ]
 
 
-def _hfid_paths_if_mac(
-    schema: NodeSchema | ProfileSchema | TemplateSchema, schema_branch: SchemaBranch
-) -> list[SchemaAttributePath] | None:
-    if not schema.human_friendly_id:
-        return None
-    paths = [schema.parse_schema_path(path=str(p), schema=schema_branch) for p in schema.human_friendly_id]
-    return paths if any(_path_uses_mac(p) for p in paths) else None
-
-
-def _display_label_paths_if_mac(
-    schema: NodeSchema | ProfileSchema | TemplateSchema, schema_branch: SchemaBranch
-) -> list[SchemaAttributePath] | None:
-    paths = _extract_display_label_paths(schema, schema_branch)
-    return paths if paths and any(_path_uses_mac(p) for p in paths) else None
-
-
 @dataclass
 class _MacPlan:
     schema: NodeSchema | ProfileSchema | TemplateSchema
@@ -103,50 +78,32 @@ def _collect_plans(schema_branch: SchemaBranch, branch_filter: tuple[BranchSuppo
         mac_attrs = [a for a in schema.attributes if a.kind == _MAC_KIND]
         if not mac_attrs:
             continue
+
+        hfid_paths: list[SchemaAttributePath] | None = None
+        if schema.human_friendly_id:
+            paths = [schema.parse_schema_path(path=str(p), schema=schema_branch) for p in schema.human_friendly_id]
+            if any(_path_uses_mac(p) for p in paths):
+                hfid_paths = paths
+
+        display_label_paths: list[SchemaAttributePath] | None = None
+        dl_paths = _extract_display_label_paths(schema, schema_branch)
+        if dl_paths and any(_path_uses_mac(p) for p in dl_paths):
+            display_label_paths = dl_paths
+
         plans.append(
             _MacPlan(
                 schema=schema,
                 mac_attributes=mac_attrs,
-                hfid_paths=_hfid_paths_if_mac(schema, schema_branch),
-                display_label_paths=_display_label_paths_if_mac(schema, schema_branch),
+                hfid_paths=hfid_paths,
+                display_label_paths=display_label_paths,
             )
         )
     return plans
 
 
-async def _format_hfid(_node_uuid: str, values: list[str | None]) -> str | None:
-    if not values or any(v is None for v in values):
-        return None
-    return ujson.dumps(values)
-
-
-def _make_display_label_formatter(template: str, variable_names: list[str]) -> _RowFormatter:
-    async def _format(node_uuid: str, values: list[str | None]) -> str | None:
-        if not values:
-            return None
-        try:
-            return await render_display_label(display_label=template, variable_names=variable_names, values=values)
-        except JinjaTemplateError as exc:
-            console.log(f"[yellow]Warning: failed to render display_label for node {node_uuid}: {exc}[/yellow]")
-            return None
-
-    return _format
-
-
 class Migration070(MigrationRequiringRebase):
-    """
-    Normalize stored `MacAddress` attribute values to colon-separated EUI-48
-    form (`AA:BB:CC:DD:EE:FF`) per issue #9015.
-
-    Pre-existing values may be in any form accepted by ``netaddr.EUI`` — on
-    `stable`, ``serialize_value`` produces dash-uppercase form, but
-    ``_to_colon_form()`` accepts any valid MAC representation and re-emits
-    colon form, so input variation is handled. This migration:
-
-    1. Rewrites every stored `MacAddress` attribute value to colon form.
-    2. Rebuilds `human_friendly_id` and `display_label` for every schema that
-       references a MAC attribute, so derived attributes follow the new value.
-    """
+    """Rewrite stored MacAddress attribute values to colon-uppercase form and recompute hfid/display_label
+    for any schema that depends on a MacAddress attribute."""
 
     name: str = "070_normalize_mac_address_values_to_colon"
     minimum_version: int = 69
@@ -154,75 +111,6 @@ class Migration070(MigrationRequiringRebase):
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
-
-    async def _read_path_values(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        schema_kind: str,
-        schema_paths: list[SchemaAttributePath],
-        offset: int,
-    ) -> dict[str, list[str | None]]:
-        query: GetPathDetailsDefaultBranch | GetPathDetailsBranchQuery
-        if branch.is_default:
-            query = await GetPathDetailsDefaultBranch.init(
-                db=db,
-                schema_kind=schema_kind,
-                schema_paths=schema_paths,
-                offset=offset,
-                limit=self.update_batch_size,
-            )
-        else:
-            query = await GetPathDetailsBranchQuery.init(
-                db=db,
-                branch=branch,
-                schema_kind=schema_kind,
-                schema_paths=schema_paths,
-                updates_only=False,
-                offset=offset,
-                limit=self.update_batch_size,
-            )
-        await query.execute(db=db)
-        return query.get_result_map(schema_paths)
-
-    async def _paginate(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        schema_kind: str,
-        schema_paths: list[SchemaAttributePath],
-        attribute_schema: AttributeSchema,
-        format_row: _RowFormatter,
-        at: Timestamp,
-    ) -> None:
-        offset = 0
-        while True:
-            values_map = await self._read_path_values(
-                db=db, branch=branch, schema_kind=schema_kind, schema_paths=schema_paths, offset=offset
-            )
-            num_results = len(values_map)
-            if num_results == 0:
-                break
-
-            updates: dict[str, str] = {}
-            for node_uuid, values in values_map.items():
-                formatted = await format_row(node_uuid, values)
-                if formatted is not None:
-                    updates[node_uuid] = formatted
-
-            if updates:
-                update_query = await UpdateAttributeValuesQuery.init(
-                    db=db,
-                    branch=branch,
-                    attribute_schema=attribute_schema,
-                    values_by_id_map=updates,
-                    at=at,
-                )
-                await update_query.execute(db=db)
-
-            if num_results < self.update_batch_size:
-                break
-            offset += self.update_batch_size
 
     async def _convert_mac_attribute(
         self,
@@ -249,7 +137,7 @@ class Migration070(MigrationRequiringRebase):
                 return None
             return new if new != old else None
 
-        await self._paginate(
+        await paginate_recompute(
             db=db,
             branch=branch,
             schema_kind=schema.kind,
@@ -257,6 +145,7 @@ class Migration070(MigrationRequiringRebase):
             attribute_schema=attribute_schema,
             format_row=format_row,
             at=at,
+            batch_size=self.update_batch_size,
         )
 
     async def _execute_plan(
@@ -276,65 +165,38 @@ class Migration070(MigrationRequiringRebase):
             )
 
         if plan.hfid_paths:
-            await self._paginate(
+            await paginate_recompute(
                 db=db,
                 branch=branch,
                 schema_kind=plan.schema.kind,
                 schema_paths=plan.hfid_paths,
                 attribute_schema=hfid_attribute_schema,
-                format_row=_format_hfid,
+                format_row=format_hfid_row,
                 at=at,
+                batch_size=self.update_batch_size,
             )
         if plan.display_label_paths and plan.schema.display_label:
             variable_names = [s.attribute_path_as_str for s in plan.display_label_paths]
-            await self._paginate(
+            await paginate_recompute(
                 db=db,
                 branch=branch,
                 schema_kind=plan.schema.kind,
                 schema_paths=plan.display_label_paths,
                 attribute_schema=display_label_attribute_schema,
-                format_row=_make_display_label_formatter(plan.schema.display_label, variable_names),
+                format_row=make_display_label_formatter(plan.schema.display_label, variable_names),
                 at=at,
+                batch_size=self.update_batch_size,
             )
 
-    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
-        db = migration_input.db
-        at = migration_input.at
-
-        root_node = await get_root_node(db=db, initialize=False)
-        default_branch = await Branch.get_by_name(db=db, name=root_node.default_branch)
-        schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
-
-        plans = _collect_plans(schema_branch, branch_filter=(BranchSupportType.AWARE,))
-        if not plans:
-            return MigrationResult()
-
-        base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
-        hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
-        display_label_attribute_schema = base_node_schema.get_attribute("display_label")
-
-        try:
-            for plan in plans:
-                await self._execute_plan(
-                    db=db,
-                    branch=default_branch,
-                    plan=plan,
-                    schema_branch=schema_branch,
-                    hfid_attribute_schema=hfid_attribute_schema,
-                    display_label_attribute_schema=display_label_attribute_schema,
-                    at=at,
-                )
-        except Exception as exc:
-            return MigrationResult(errors=[str(exc) or f"{type(exc).__name__}: {repr(exc)}"])
-
-        return MigrationResult()
-
-    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
-        db = migration_input.db
-        at = migration_input.at
+    async def _run(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: Timestamp,
+        branch_filter: tuple[BranchSupportType, ...],
+    ) -> MigrationResult:
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
-
-        plans = _collect_plans(schema_branch, branch_filter=(BranchSupportType.AWARE, BranchSupportType.LOCAL))
+        plans = _collect_plans(schema_branch, branch_filter=branch_filter)
         if not plans:
             return MigrationResult()
 
@@ -357,3 +219,21 @@ class Migration070(MigrationRequiringRebase):
             return MigrationResult(errors=[str(exc) or f"{type(exc).__name__}: {repr(exc)}"])
 
         return MigrationResult()
+
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        root_node = await get_root_node(db=migration_input.db, initialize=False)
+        default_branch = await Branch.get_by_name(db=migration_input.db, name=root_node.default_branch)
+        return await self._run(
+            db=migration_input.db,
+            branch=default_branch,
+            at=migration_input.at,
+            branch_filter=(BranchSupportType.AWARE,),
+        )
+
+    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
+        return await self._run(
+            db=migration_input.db,
+            branch=branch,
+            at=migration_input.at,
+            branch_filter=(BranchSupportType.AWARE, BranchSupportType.LOCAL),
+        )

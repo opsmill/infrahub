@@ -22,92 +22,68 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-# Pre-migration state on `stable`: ``serialize_value`` stores MAC as EUI-48 dash form,
-# and HFIDs / display_labels referencing MAC end up in dash form too.
 LEGACY_DASH_MAC = "AA-BB-CC-DD-EE-FF"
 COLON_MAC = "AA:BB:CC:DD:EE:FF"
 NODE_NAME = "eth0"
 
 
-def _schema_root() -> SchemaRoot:
-    return SchemaRoot(
-        nodes=[
-            NodeSchema(
-                name="Interface",
-                namespace="Testing",
-                branch=BranchSupportType.AWARE,
-                human_friendly_id=["mac__value"],
-                display_label="{{ name__value }} <{{ mac__value }}>",
-                attributes=[
-                    AttributeSchema(name="name", kind="Text", unique=True),
-                    AttributeSchema(name="mac", kind="MacAddress", optional=False),
-                ],
-            ),
-            NodeSchema(
-                name="Standalone",
-                namespace="Testing",
-                branch=BranchSupportType.AWARE,
-                attributes=[
-                    AttributeSchema(name="name", kind="Text", unique=True),
-                    AttributeSchema(name="mac", kind="MacAddress", optional=True),
-                ],
-            ),
-        ],
-    )
+SCHEMA_ROOT = SchemaRoot(
+    nodes=[
+        NodeSchema(
+            name="Interface",
+            namespace="Testing",
+            branch=BranchSupportType.AWARE,
+            human_friendly_id=["mac__value"],
+            display_label="{{ name__value }} <{{ mac__value }}>",
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="mac", kind="MacAddress", optional=False),
+            ],
+        ),
+        NodeSchema(
+            name="Standalone",
+            namespace="Testing",
+            branch=BranchSupportType.AWARE,
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="mac", kind="MacAddress", optional=True),
+            ],
+        ),
+    ],
+)
 
 
-async def _set_attribute_value(db: InfrahubDatabase, node_uuid: str, attr_name: str, value: str) -> None:
-    """Manually rewrite an attribute value in the DB, bypassing input-time normalization."""
-    query = """
-    MATCH (n:Node {uuid: $node_uuid})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attr_name})
-    MATCH (a)-[hv:HAS_VALUE]->(av:AttributeValue)
-    WHERE hv.status = "active" AND hv.to IS NULL
-    SET av.value = $value
-    """
-    await db.execute_query(query=query, params={"node_uuid": node_uuid, "attr_name": attr_name, "value": value})
-
-
-async def _set_attribute_value_on_branch(
-    db: InfrahubDatabase, node_uuid: str, attr_name: str, value: str, branch_name: str
+async def _set_attribute_value(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, value: str, branch_name: str | None = None
 ) -> None:
-    """Manually rewrite the branch-specific value of an attribute, bypassing input-time normalization."""
-    query = """
-    MATCH (n:Node {uuid: $node_uuid})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attr_name})
+    """Rewrite a stored attribute value directly, bypassing input-time normalization."""
+    branch_clause = "AND hv.branch = $branch_name" if branch_name is not None else ""
+    query = f"""
+    MATCH (n:Node {{uuid: $node_uuid}})-[:HAS_ATTRIBUTE]->(a:Attribute {{name: $attr_name}})
     MATCH (a)-[hv:HAS_VALUE]->(av:AttributeValue)
-    WHERE hv.status = "active" AND hv.to IS NULL AND hv.branch = $branch_name
+    WHERE hv.status = "active" AND hv.to IS NULL {branch_clause}
     SET av.value = $value
     """
-    await db.execute_query(
-        query=query,
-        params={"node_uuid": node_uuid, "attr_name": attr_name, "value": value, "branch_name": branch_name},
-    )
+    params: dict[str, Any] = {"node_uuid": node_uuid, "attr_name": attr_name, "value": value}
+    if branch_name is not None:
+        params["branch_name"] = branch_name
+    await db.execute_query(query=query, params=params)
 
 
-async def _read_attribute_value(db: InfrahubDatabase, node_uuid: str, attr_name: str) -> str | None:
-    query = """
-    MATCH (n:Node {uuid: $node_uuid})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attr_name})
-    MATCH (a)-[hv:HAS_VALUE]->(av:AttributeValue)
-    WHERE hv.status = "active" AND hv.to IS NULL
-    RETURN av.value AS value
-    """
-    results = await db.execute_query(query=query, params={"node_uuid": node_uuid, "attr_name": attr_name})
-    if not results:
-        return None
-    return results[0]["value"]
-
-
-async def _read_attribute_value_on_branch(
-    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch_name: str
+async def _read_attribute_value(
+    db: InfrahubDatabase, node_uuid: str, attr_name: str, branch_name: str | None = None
 ) -> str | None:
-    query = """
-    MATCH (n:Node {uuid: $node_uuid})-[:HAS_ATTRIBUTE]->(a:Attribute {name: $attr_name})
+    branch_clause = "AND hv.branch = $branch_name" if branch_name is not None else ""
+    query = f"""
+    MATCH (n:Node {{uuid: $node_uuid}})-[:HAS_ATTRIBUTE]->(a:Attribute {{name: $attr_name}})
     MATCH (a)-[hv:HAS_VALUE]->(av:AttributeValue)
-    WHERE hv.status = "active" AND hv.to IS NULL AND hv.branch = $branch_name
+    WHERE hv.status = "active" AND hv.to IS NULL {branch_clause}
     RETURN av.value AS value
     """
-    results = await db.execute_query(
-        query=query, params={"node_uuid": node_uuid, "attr_name": attr_name, "branch_name": branch_name}
-    )
+    params: dict[str, Any] = {"node_uuid": node_uuid, "attr_name": attr_name}
+    if branch_name is not None:
+        params["branch_name"] = branch_name
+    results = await db.execute_query(query=query, params=params)
     if not results:
         return None
     return results[0]["value"]
@@ -138,11 +114,8 @@ async def _seed_legacy_dash_state(
     set_hfid: bool = True,
     set_display_label: str | None = None,
 ) -> Node:
-    """Create a node, then rewrite MAC + (optional) HFID + display_label so the DB matches the
-    legacy on-stable storage form: MacAddress stored as EUI-48 dash form."""
     node = await Node.init(db=db, schema=schema_kind)
-    new_kwargs: dict[str, Any] = {"name": name, "mac": LEGACY_DASH_MAC}
-    await node.new(db=db, **new_kwargs)
+    await node.new(db=db, name=name, mac=LEGACY_DASH_MAC)
     await node.save(db=db)
 
     await _set_attribute_value(db=db, node_uuid=node.id, attr_name="mac", value=LEGACY_DASH_MAC)
@@ -160,24 +133,19 @@ class TestMigration070(TestInfrahubApp):
     async def interface_schema(
         self, db: InfrahubDatabase, default_branch: Branch, register_core_schema: SchemaBranch
     ) -> SchemaBranch:
-        return registry.schema.register_schema(schema=_schema_root(), branch=default_branch.name)
+        return registry.schema.register_schema(schema=SCHEMA_ROOT, branch=default_branch.name)
 
     async def test_migration_070_rewrites_mac_value_and_dependent_fields(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        interface_schema: SchemaBranch,
+        self, db: InfrahubDatabase, default_branch: Branch
     ) -> None:
-        # Pre-migration starting point on stable: dash-form MAC, dash-form HFID + display_label.
         legacy_display_label = f"{NODE_NAME} <{LEGACY_DASH_MAC}>"
         canonical_display_label = f"{NODE_NAME} <{COLON_MAC}>"
         node = await _seed_legacy_dash_state(
             db=db, schema_kind="TestingInterface", name=NODE_NAME, set_display_label=legacy_display_label
         )
 
-        # Pre-migration sanity checks: stored values are still dash form on disk. The MAC
-        # `value` field re-normalizes on read (BaseAttribute.__init__), so the API will already
-        # show colon for `mac.value` — the user-visible drift is in HFID + display_label
+        # `mac.value` re-normalizes on read via BaseAttribute.__init__, so the API already shows
+        # colon form pre-migration; the user-visible drift is in HFID and display_label.
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="mac") == LEGACY_DASH_MAC
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="human_friendly_id") == ujson.dumps(
             [LEGACY_DASH_MAC]
@@ -200,12 +168,8 @@ class TestMigration070(TestInfrahubApp):
         assert pre_edge["display_label"] == legacy_display_label
 
         async with db.start_session() as dbs:
-            migration = Migration070()
-            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
+            execution_result = await Migration070().execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors, execution_result.errors
-
-            validation_result = await migration.validate_migration(db=dbs)
-            assert not validation_result.errors
 
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="mac") == COLON_MAC
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="human_friendly_id") == ujson.dumps(
@@ -231,12 +195,8 @@ class TestMigration070(TestInfrahubApp):
         assert edge["display_label"] == canonical_display_label
 
     async def test_migration_070_converts_mac_when_not_in_hfid_or_display_label(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        interface_schema: SchemaBranch,
+        self, db: InfrahubDatabase, default_branch: Branch
     ) -> None:
-        # Schemas without MAC in HFID/display_label should still get the value flipped to colon form.
         node = await _seed_legacy_dash_state(
             db=db, schema_kind="TestingStandalone", name="standalone-1", set_hfid=False
         )
@@ -247,12 +207,7 @@ class TestMigration070(TestInfrahubApp):
 
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="mac") == COLON_MAC
 
-    async def test_migration_070_idempotent(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        interface_schema: SchemaBranch,
-    ) -> None:
+    async def test_migration_070_idempotent(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         node = await _seed_legacy_dash_state(
             db=db,
             schema_kind="TestingInterface",
@@ -276,12 +231,7 @@ class TestMigration070(TestInfrahubApp):
         assert first_mac == second_mac == COLON_MAC
         assert first_hfid == second_hfid == ujson.dumps([COLON_MAC])
 
-    async def test_migration_070_execute_against_branch(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        interface_schema: SchemaBranch,
-    ) -> None:
+    async def test_migration_070_execute_against_branch(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         test_branch = await create_branch(db=db, branch_name="test-branch-m070")
 
         node_name = f"{NODE_NAME}-branch"
@@ -292,18 +242,17 @@ class TestMigration070(TestInfrahubApp):
         await node.new(db=db, name=node_name, mac=LEGACY_DASH_MAC)
         await node.save(db=db)
 
-        # Mimic legacy on-stable state on the branch: dash-form MAC stored on disk plus dash-form HFID + display_label.
-        await _set_attribute_value_on_branch(
+        await _set_attribute_value(
             db=db, node_uuid=node.id, attr_name="mac", value=LEGACY_DASH_MAC, branch_name=test_branch.name
         )
-        await _set_attribute_value_on_branch(
+        await _set_attribute_value(
             db=db,
             node_uuid=node.id,
             attr_name="human_friendly_id",
             value=ujson.dumps([LEGACY_DASH_MAC]),
             branch_name=test_branch.name,
         )
-        await _set_attribute_value_on_branch(
+        await _set_attribute_value(
             db=db,
             node_uuid=node.id,
             attr_name="display_label",
@@ -311,7 +260,7 @@ class TestMigration070(TestInfrahubApp):
             branch_name=test_branch.name,
         )
 
-        # Execute against default branch first (required before execute_against_branch)
+        # execute_against_branch requires the migration to have run on the default branch first.
         async with db.start_session() as dbs:
             await Migration070().execute(migration_input=MigrationInput(db=dbs))
 
@@ -324,16 +273,14 @@ class TestMigration070(TestInfrahubApp):
             assert not result.errors, result.errors
 
         assert (
-            await _read_attribute_value_on_branch(
-                db=db, node_uuid=node.id, attr_name="mac", branch_name=test_branch.name
-            )
+            await _read_attribute_value(db=db, node_uuid=node.id, attr_name="mac", branch_name=test_branch.name)
             == COLON_MAC
         )
-        assert await _read_attribute_value_on_branch(
+        assert await _read_attribute_value(
             db=db, node_uuid=node.id, attr_name="human_friendly_id", branch_name=test_branch.name
         ) == ujson.dumps([COLON_MAC])
         assert (
-            await _read_attribute_value_on_branch(
+            await _read_attribute_value(
                 db=db, node_uuid=node.id, attr_name="display_label", branch_name=test_branch.name
             )
             == canonical_display_label
