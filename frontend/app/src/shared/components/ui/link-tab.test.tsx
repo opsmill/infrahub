@@ -50,8 +50,9 @@ describe("LinkTab", () => {
   });
 
   test("scrolls into view when active and scrollIntoViewOnActive is true", async () => {
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
     await renderAt(
       "/parent/data",
       <LinkTab href="/parent/data" scrollIntoViewOnActive>
@@ -59,11 +60,13 @@ describe("LinkTab", () => {
       </LinkTab>
     );
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ behavior: "smooth" }));
+    scrollIntoView.mockRestore();
   });
 
   test("does not scroll when inactive", async () => {
-    const scrollIntoView = vi.fn();
-    Element.prototype.scrollIntoView = scrollIntoView;
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
     await renderAt(
       "/parent/files",
       <LinkTab href="/parent/data" scrollIntoViewOnActive>
@@ -71,5 +74,15 @@ describe("LinkTab", () => {
       </LinkTab>
     );
     expect(scrollIntoView).not.toHaveBeenCalled();
+    scrollIntoView.mockRestore();
+  });
+
+  test("does not scroll when active but scrollIntoViewOnActive is absent", async () => {
+    const scrollIntoView = vi
+      .spyOn(Element.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
+    await renderAt("/parent/data", <LinkTab href="/parent/data">Data</LinkTab>);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    scrollIntoView.mockRestore();
   });
 });
