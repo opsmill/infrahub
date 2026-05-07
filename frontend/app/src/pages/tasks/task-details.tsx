@@ -1,5 +1,4 @@
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router";
 
 import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -8,6 +7,7 @@ import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Link } from "@/shared/components/ui/link";
 import { TASK_OBJECT } from "@/shared/config/constants";
+import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { GET_TASK_DETAILS_TITLE } from "@/entities/tasks/api/getTasksItemDetailsTitle";
@@ -15,10 +15,10 @@ import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 
 const TaskDetailsPage = () => {
   useTitle("Task Details");
-  const { task: taskId } = useParams();
+  const { taskId } = useRequiredParams("taskId");
 
   const { loading, error, data, refetch } = useQuery(GET_TASK_DETAILS_TITLE, {
-    variables: { ids: [taskId!] },
+    variables: { ids: [taskId] },
   });
 
   if (error) {

@@ -7,7 +7,6 @@ export const QSP = {
   PAGINATION: "pagination",
   PROPOSED_CHANGES_STATE: "pr_state",
   QUERY: "query",
-  TASK_ID: "task_id",
   SEARCH: "search",
   STATUS: "status",
   HIGHLIGHT: "highlight",

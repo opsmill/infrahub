@@ -266,7 +266,7 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/tasks"),
                   },
                   {
-                    path: ":task",
+                    path: ":taskId",
                     lazy: () => import("@/pages/tasks/task-details"),
                   },
                 ],

@@ -6,7 +6,6 @@ import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { QSP } from "@/shared/config/qsp";
 
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
@@ -25,18 +24,17 @@ export function GeneratorRunButton({
   ...props
 }: GeneratorRunButtonProps) {
   const { isPending, mutate } = useRunGeneratorMutation();
-  const { objectKind, objectId } = useParams() as { objectKind?: string; objectId?: string };
+  const { objectKind, objectId } = useParams<{ objectKind: string; objectId: string }>();
 
   const handleRunGenerator = () => {
     mutate(
       { generatorId, targetNodeIds },
       {
         onSuccess: ({ taskId }) => {
-          const baseUrl =
+          const url =
             objectKind && objectId
-              ? getObjectDetailsUrl(objectKind, objectId, undefined, "tasks")
-              : constructPath("/tasks");
-          const url = constructPath(baseUrl, [{ name: QSP.TASK_ID, value: taskId }]);
+              ? getObjectDetailsUrl(objectKind, objectId, undefined, `tasks/${taskId}`)
+              : constructPath(`/tasks/${taskId}`);
 
           toast(
             <Alert
