@@ -286,7 +286,11 @@ jobs:
             --exclude backend/infrahub/computed_attribute/graphql_queries/computed_attribute_fetch_transform.py \
             --exclude backend/infrahub/generators/graphql_queries/generator_instance_fetch.py
       - name: "Linting: ruff format"
-        run: "uv run ruff format --check --diff --exclude python_sdk ."
+        run: |
+          uv run ruff format --check --diff . \
+            --exclude python_sdk \
+            --exclude backend/infrahub/computed_attribute/graphql_queries/computed_attribute_fetch_transform.py \
+            --exclude backend/infrahub/generators/graphql_queries/generator_instance_fetch.py
       - name: "Linting: ty check"
         run: "uv run ty check ."
 
