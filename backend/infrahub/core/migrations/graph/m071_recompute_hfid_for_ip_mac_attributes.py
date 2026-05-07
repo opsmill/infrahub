@@ -1,26 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
-
-import ujson
-from infrahub_sdk.template.exceptions import JinjaTemplateError
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.helpers.display_label import (
-    extract_jinja2_variables,
-    is_jinja2_template,
-    render_display_label,
+from infrahub.core.migrations.helpers.attribute_recompute import (
+    format_hfid_row,
+    make_display_label_formatter,
+    paginate_recompute,
 )
-from infrahub.core.migrations.query.path_details import (
-    SCHEMA_KINDS_TO_SKIP,
-    GetPathDetailsBranchQuery,
-    GetPathDetailsDefaultBranch,
-)
-from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
+from infrahub.core.migrations.helpers.display_label import extract_jinja2_variables, is_jinja2_template
+from infrahub.core.migrations.query.path_details import SCHEMA_KINDS_TO_SKIP
 from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
@@ -42,8 +34,6 @@ console = get_migration_console()
 
 NORMALIZED_KINDS = {"IPHost", "IPNetwork"}
 
-_RowFormatter = Callable[[str, list[str | None]], Awaitable[str | None]]
-
 
 def _path_uses_ip(schema_path: SchemaAttributePath) -> bool:
     return bool(schema_path.attribute_schema and schema_path.attribute_schema.kind in NORMALIZED_KINDS)
@@ -61,25 +51,6 @@ def _extract_display_label_schema_paths(
         schema.parse_schema_path(path=variable, schema=schema_branch)
         for variable in extract_jinja2_variables(schema.display_label)
     ]
-
-
-async def _format_hfid(_node_uuid: str, values: list[str | None]) -> str | None:
-    if not values or any(v is None for v in values):
-        return None
-    return ujson.dumps(values)
-
-
-def _make_display_label_formatter(template: str, variable_names: list[str]) -> _RowFormatter:
-    async def _format(node_uuid: str, values: list[str | None]) -> str | None:
-        if not values:
-            return None
-        try:
-            return await render_display_label(display_label=template, variable_names=variable_names, values=values)
-        except JinjaTemplateError as exc:
-            console.log(f"[yellow]Warning: failed to render display_label for node {node_uuid}: {exc}[/yellow]")
-            return None
-
-    return _format
 
 
 @dataclass
@@ -145,75 +116,6 @@ class Migration071(MigrationRequiringRebase):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-    async def _read_path_values(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        schema_kind: str,
-        schema_paths: list[SchemaAttributePath],
-        offset: int,
-    ) -> dict[str, list[str | None]]:
-        query: GetPathDetailsDefaultBranch | GetPathDetailsBranchQuery
-        if branch.is_default:
-            query = await GetPathDetailsDefaultBranch.init(
-                db=db,
-                schema_kind=schema_kind,
-                schema_paths=schema_paths,
-                offset=offset,
-                limit=self.update_batch_size,
-            )
-        else:
-            query = await GetPathDetailsBranchQuery.init(
-                db=db,
-                branch=branch,
-                schema_kind=schema_kind,
-                schema_paths=schema_paths,
-                updates_only=False,
-                offset=offset,
-                limit=self.update_batch_size,
-            )
-        await query.execute(db=db)
-        return query.get_result_map(schema_paths)
-
-    async def _paginate_recompute(
-        self,
-        db: InfrahubDatabase,
-        branch: Branch,
-        schema_kind: str,
-        schema_paths: list[SchemaAttributePath],
-        attribute_schema: AttributeSchema,
-        format_row: _RowFormatter,
-        at: Timestamp,
-    ) -> None:
-        offset = 0
-        while True:
-            schema_path_values_map = await self._read_path_values(
-                db=db, branch=branch, schema_kind=schema_kind, schema_paths=schema_paths, offset=offset
-            )
-            num_results = len(schema_path_values_map)
-            if num_results == 0:
-                break
-
-            values_by_id_map: dict[str, str] = {}
-            for node_uuid, values in schema_path_values_map.items():
-                formatted = await format_row(node_uuid, values)
-                if formatted is not None:
-                    values_by_id_map[node_uuid] = formatted
-
-            if values_by_id_map:
-                update_query = await UpdateAttributeValuesQuery.init(
-                    db=db,
-                    branch=branch,
-                    attribute_schema=attribute_schema,
-                    values_by_id_map=values_by_id_map,
-                    at=at,
-                )
-                await update_query.execute(db=db)
-
-            if num_results < self.update_batch_size:
-                break
-            offset += self.update_batch_size
-
     async def _execute_plan(
         self,
         db: InfrahubDatabase,
@@ -224,25 +126,27 @@ class Migration071(MigrationRequiringRebase):
         at: Timestamp,
     ) -> None:
         if plan.hfid_paths:
-            await self._paginate_recompute(
+            await paginate_recompute(
                 db=db,
                 branch=branch,
                 schema_kind=plan.schema.kind,
                 schema_paths=plan.hfid_paths,
                 attribute_schema=hfid_attribute_schema,
-                format_row=_format_hfid,
+                format_row=format_hfid_row,
                 at=at,
+                batch_size=self.update_batch_size,
             )
         if plan.display_label_paths and plan.schema.display_label:
             variable_names = [s.attribute_path_as_str for s in plan.display_label_paths]
-            await self._paginate_recompute(
+            await paginate_recompute(
                 db=db,
                 branch=branch,
                 schema_kind=plan.schema.kind,
                 schema_paths=plan.display_label_paths,
                 attribute_schema=display_label_attribute_schema,
-                format_row=_make_display_label_formatter(plan.schema.display_label, variable_names),
+                format_row=make_display_label_formatter(plan.schema.display_label, variable_names),
                 at=at,
+                batch_size=self.update_batch_size,
             )
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
