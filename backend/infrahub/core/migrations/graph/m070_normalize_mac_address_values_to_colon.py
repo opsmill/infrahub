@@ -162,7 +162,7 @@ class Migration070(MigrationRequiringRebase):
         path = schema.parse_schema_path(path=f"{attribute_schema.name}__value", schema=schema_branch)
 
         async def format_row(node_uuid: str, values: list[str | None]) -> str | None:
-            if values is not None:
+            if not values:
                 return None
             old = values[0]
             if old is None:
