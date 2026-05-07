@@ -85,3 +85,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `deploy-manage-run-observe.yml` | D&M — Run & observe (Tasks, Telemetry, Activity Log) | TBD |
 | `deploy-manage-log-forwarding.yml` | D&M — Log Forwarding (hub + Configure spoke) | TBD |
 | `deploy-manage-database-backup.yml` | D&M — Database Backup (hub + 2 spokes) | TBD |
+| `deploy-manage-upgrade.yml` | D&M — Upgrade (hub + 3 spokes) | TBD |
