@@ -203,17 +203,17 @@ async def trigger_update_display_labels(
     client = get_client()
 
     node_query = DisplayLabelNodeIDQuery(kind=kind)
-    nodes = await node_query.fetch_all(client=client, branch_name=branch_name)
-
-    for node in nodes:
-        await get_workflow().submit_workflow(
-            workflow=DISPLAY_LABELS_PROCESS_JINJA2,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "node_kind": kind,
-                "target_kind": kind,
-                "object_id": node.id,
-                "context": context,
-            },
-        )
+    workflow = get_workflow()
+    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
+        for node in node_batch:
+            await workflow.submit_workflow(
+                workflow=DISPLAY_LABELS_PROCESS_JINJA2,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "node_kind": kind,
+                    "target_kind": kind,
+                    "object_id": node.id,
+                    "context": context,
+                },
+            )

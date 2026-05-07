@@ -1,5 +1,5 @@
-from infrahub.core.graphql_query.node_query import NodeID
-from infrahub.hfid.models import HFIDNodeIDQuery
+from infrahub.core.graphql_query.node_id_query import NodeID
+from infrahub.hfid.graphql_queries import HFIDNodeIDQuery
 
 
 class TestHFIDNodeIDQuery:

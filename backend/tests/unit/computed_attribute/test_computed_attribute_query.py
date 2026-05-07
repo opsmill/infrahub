@@ -1,5 +1,5 @@
 from infrahub.computed_attribute.graphql_queries.queries import ComputedAttributeNodeIDQuery
-from infrahub.core.graphql_query.node_query import NodeID
+from infrahub.core.graphql_query.node_id_query import NodeID
 
 
 class TestComputedAttributeNodeIDQuery:

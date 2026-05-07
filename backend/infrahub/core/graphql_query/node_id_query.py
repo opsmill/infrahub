@@ -6,9 +6,11 @@ from infrahub_sdk.graphql import Query
 from pydantic import BaseModel, ConfigDict
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from infrahub_sdk.client import InfrahubClient
 
-_PAGE_SIZE = 50
+PAGE_SIZE = 50
 
 
 class NodeID(BaseModel):
@@ -45,20 +47,19 @@ class NodeIDQuery(BaseModel):
                         result.append(NodeID(id=node_id))
         return result
 
-    async def fetch_all(self, client: InfrahubClient, branch_name: str) -> list[NodeID]:
-        """Fetch all node IDs for this kind, paginating automatically."""
+    async def fetch_all_paginated(
+        self, client: InfrahubClient, branch_name: str, page_size: int = PAGE_SIZE
+    ) -> AsyncGenerator[list[NodeID], None]:
         rendered_query = self.render_query()
         offset = 0
-        nodes: list[NodeID] = []
         while True:
             response = await client.execute_graphql(
                 query=rendered_query,
-                variables={"offset": offset, "limit": _PAGE_SIZE},
+                variables={"offset": offset, "limit": page_size},
                 branch_name=branch_name,
             )
             page = self.parse_response(response=response)
-            nodes.extend(page)
-            if len(page) < _PAGE_SIZE:
+            yield page
+            if len(page) < page_size:
                 break
-            offset += _PAGE_SIZE
-        return nodes
+            offset += page_size

@@ -324,21 +324,21 @@ async def trigger_update_jinja2_computed_attributes(
     client = get_client()
 
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
-    nodes = await node_query.fetch_all(client=client, branch_name=branch_name)
-
-    for node in nodes:
-        await get_workflow().submit_workflow(
-            workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "computed_attribute_name": computed_attribute_name,
-                "computed_attribute_kind": computed_attribute_kind,
-                "node_kind": computed_attribute_kind,
-                "object_id": node.id,
-                "context": context,
-            },
-        )
+    workflow = get_workflow()
+    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
+        for node in node_batch:
+            await workflow.submit_workflow(
+                workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "computed_attribute_name": computed_attribute_name,
+                    "computed_attribute_kind": computed_attribute_kind,
+                    "node_kind": computed_attribute_kind,
+                    "object_id": node.id,
+                    "context": context,
+                },
+            )
 
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")

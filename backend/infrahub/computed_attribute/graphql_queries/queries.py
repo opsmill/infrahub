@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from infrahub.computed_attribute.graphql_queries.computed_attribute_fetch_transform import (
     ComputedAttributeFetchTransform,
 )
-from infrahub.core.graphql_query.node_query import NodeIDQuery
+from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
 TRANSFORM_QUERY = (Path(__file__).parent / "transform_fetch.gql").read_text()
 
