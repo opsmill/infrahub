@@ -61,19 +61,29 @@ class _RecomputePlan:
 
 
 def _hfid_paths_if_affected(
-    schema: NodeSchema | ProfileSchema | TemplateSchema, schema_branch: SchemaBranch
+    schema: NodeSchema | ProfileSchema | TemplateSchema,
+    schema_branch: SchemaBranch,
+    branch_filter: tuple[BranchSupportType, ...],
 ) -> list[SchemaAttributePath] | None:
     if not schema.human_friendly_id:
         return None
     paths = [schema.parse_schema_path(path=str(p), schema=schema_branch) for p in schema.human_friendly_id]
-    return paths if any(_path_uses_ip(p) for p in paths) else None
+    has_relevant_ip_attr = any(
+        _path_uses_ip(p) and p.attribute_schema and p.attribute_schema.get_branch() in branch_filter for p in paths
+    )
+    return paths if has_relevant_ip_attr else None
 
 
 def _display_label_paths_if_affected(
-    schema: NodeSchema | ProfileSchema | TemplateSchema, schema_branch: SchemaBranch
+    schema: NodeSchema | ProfileSchema | TemplateSchema,
+    schema_branch: SchemaBranch,
+    branch_filter: tuple[BranchSupportType, ...],
 ) -> list[SchemaAttributePath] | None:
     paths = _extract_display_label_schema_paths(schema, schema_branch)
-    return paths if paths and any(_path_uses_ip(p) for p in paths) else None
+    has_relevant_ip_attr = any(
+        _path_uses_ip(p) and p.attribute_schema and p.attribute_schema.get_branch() in branch_filter for p in paths
+    )
+    return paths if has_relevant_ip_attr else None
 
 
 def _collect_plans(
@@ -84,10 +94,8 @@ def _collect_plans(
         if node_schema_name in SCHEMA_KINDS_TO_SKIP:
             continue
         schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
-        if schema.branch not in branch_filter:
-            continue
-        hfid_paths = _hfid_paths_if_affected(schema, schema_branch)
-        display_label_paths = _display_label_paths_if_affected(schema, schema_branch)
+        hfid_paths = _hfid_paths_if_affected(schema, schema_branch, branch_filter)
+        display_label_paths = _display_label_paths_if_affected(schema, schema_branch, branch_filter)
         if hfid_paths or display_label_paths:
             plans[node_schema_name] = _RecomputePlan(
                 schema=schema, hfid_paths=hfid_paths, display_label_paths=display_label_paths
