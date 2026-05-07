@@ -74,9 +74,7 @@ def _collect_plans(schema_branch: SchemaBranch, branch_filter: tuple[BranchSuppo
         if node_schema_name in SCHEMA_KINDS_TO_SKIP:
             continue
         schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
-        if schema.branch not in branch_filter:
-            continue
-        mac_attrs = [a for a in schema.attributes if a.kind == _MAC_KIND]
+        mac_attrs = [a for a in schema.attributes if a.kind == _MAC_KIND and a.get_branch() in branch_filter]
         if not mac_attrs:
             continue
 
