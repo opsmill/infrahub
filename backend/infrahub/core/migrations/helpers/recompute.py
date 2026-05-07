@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import TYPE_CHECKING
 
 import ujson
@@ -54,17 +54,14 @@ def make_display_label_formatter(template: str, variable_names: list[str]) -> Ro
     return _format
 
 
-async def paginate_recompute(
+async def paginate_read(
     db: InfrahubDatabase,
     branch: Branch,
     schema_kind: str,
     schema_paths: list[SchemaAttributePath],
-    attribute_schema: AttributeSchema,
-    format_row: RowFormatter,
-    at: Timestamp,
     batch_size: int,
-) -> None:
-    """Read every node of `schema_kind` page-by-page, format with `format_row`, and write the non-None results."""
+) -> AsyncIterator[dict[str, list[str | None]]]:
+    """Yield each page of node values for `schema_kind` on `branch`."""
     offset = 0
     while True:
         if branch.is_default:
@@ -89,11 +86,28 @@ async def paginate_recompute(
             )
         await read_query.execute(db=db)
         values_map = read_query.get_result_map(schema_paths)
-
-        num_results = len(values_map)
-        if num_results == 0:
+        if not values_map:
             return
+        yield values_map
+        if len(values_map) < batch_size:
+            return
+        offset += batch_size
 
+
+async def paginate_recompute(
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema_kind: str,
+    schema_paths: list[SchemaAttributePath],
+    attribute_schema: AttributeSchema,
+    format_row: RowFormatter,
+    at: Timestamp,
+    batch_size: int,
+) -> None:
+    """Read every node of `schema_kind` page-by-page, format with `format_row`, and write the non-None results."""
+    async for values_map in paginate_read(
+        db=db, branch=branch, schema_kind=schema_kind, schema_paths=schema_paths, batch_size=batch_size
+    ):
         updates: dict[str, str] = {}
         for node_uuid, values in values_map.items():
             formatted = await format_row(node_uuid, values)
@@ -109,7 +123,3 @@ async def paginate_recompute(
                 at=at,
             )
             await update_query.execute(db=db)
-
-        if num_results < batch_size:
-            return
-        offset += batch_size

@@ -168,8 +168,11 @@ class TestMigration070(TestInfrahubApp):
         assert pre_edge["display_label"] == legacy_display_label
 
         async with db.start_session() as dbs:
-            execution_result = await Migration070().execute(migration_input=MigrationInput(db=dbs))
+            migration = Migration070()
+            execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
             assert not execution_result.errors, execution_result.errors
+            validation_result = await migration.validate_migration(db=dbs)
+            assert not validation_result.errors, validation_result.errors
 
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="mac") == COLON_MAC
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="human_friendly_id") == ujson.dumps(
@@ -230,6 +233,30 @@ class TestMigration070(TestInfrahubApp):
 
         assert first_mac == second_mac == COLON_MAC
         assert first_hfid == second_hfid == ujson.dumps([COLON_MAC])
+
+    async def test_migration_070_validate_flags_non_canonical_value(
+        self, db: InfrahubDatabase, default_branch: Branch
+    ) -> None:
+        node = await _seed_legacy_dash_state(
+            db=db,
+            schema_kind="TestingInterface",
+            name=f"{NODE_NAME}-validate",
+            set_display_label=f"{NODE_NAME}-validate <{LEGACY_DASH_MAC}>",
+        )
+
+        async with db.start_session() as dbs:
+            migration = Migration070()
+            await migration.execute(migration_input=MigrationInput(db=dbs))
+            clean_result = await migration.validate_migration(db=dbs)
+            assert not clean_result.errors, clean_result.errors
+
+        await _set_attribute_value(db=db, node_uuid=node.id, attr_name="mac", value=LEGACY_DASH_MAC)
+
+        async with db.start_session() as dbs:
+            corrupted_result = await Migration070().validate_migration(db=dbs)
+
+        assert corrupted_result.errors
+        assert any(node.id in err and LEGACY_DASH_MAC in err for err in corrupted_result.errors)
 
     async def test_migration_070_execute_against_branch(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         test_branch = await create_branch(db=db, branch_name="test-branch-m070")

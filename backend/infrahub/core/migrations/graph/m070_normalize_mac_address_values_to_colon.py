@@ -12,6 +12,7 @@ from infrahub.core.migrations.helpers.display_label import extract_jinja2_variab
 from infrahub.core.migrations.helpers.recompute import (
     format_hfid_row,
     make_display_label_formatter,
+    paginate_read,
     paginate_recompute,
 )
 from infrahub.core.migrations.query.path_details import SCHEMA_KINDS_TO_SKIP
@@ -109,8 +110,41 @@ class Migration070(MigrationRequiringRebase):
     minimum_version: int = 69
     update_batch_size: int = 1000
 
-    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        return MigrationResult()
+    async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
+        """Verify every stored MacAddress value on the default branch is in canonical colon form.
+
+        Values that fail to parse as a MAC are skipped during execute, so they are not flagged here either.
+        """
+        result = MigrationResult()
+        root_node = await get_root_node(db=db, initialize=False)
+        default_branch = await Branch.get_by_name(db=db, name=root_node.default_branch)
+        schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
+
+        plans = _collect_plans(schema_branch, branch_filter=(BranchSupportType.AWARE,))
+        for plan in plans:
+            for attr in plan.mac_attributes:
+                path = plan.schema.parse_schema_path(path=f"{attr.name}__value", schema=schema_branch)
+                async for values_map in paginate_read(
+                    db=db,
+                    branch=default_branch,
+                    schema_kind=plan.schema.kind,
+                    schema_paths=[path],
+                    batch_size=self.update_batch_size,
+                ):
+                    for node_uuid, values in values_map.items():
+                        stored = values[0] if values else None
+                        if stored is None:
+                            continue
+                        try:
+                            canonical = _to_colon_form(stored)
+                        except (netaddr.AddrFormatError, ValueError):
+                            continue
+                        if stored != canonical:
+                            result.errors.append(
+                                f"{plan.schema.kind}.{attr.name} on node {node_uuid}: "
+                                f"stored value {stored!r} is not in canonical colon form (expected {canonical!r})"
+                            )
+        return result
 
     async def _convert_mac_attribute(
         self,
