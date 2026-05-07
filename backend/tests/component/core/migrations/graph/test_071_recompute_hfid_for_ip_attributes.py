@@ -150,7 +150,7 @@ class TestMigration071(TestInfrahubApp):
         )
 
         # User branch: same nodes, different IP values (exercises branch-isolated values).
-        # The IP attribute is canonicalized at input time (#8896), so we save the canonical form;
+        # The IP attribute is canonicalized at input time, so we save the canonical form;
         # only HFID/display_label are overwritten to the pre-fix raw form.
         user_branch = await create_branch(db=db, branch_name="user-branch-m071")
         branched_device = await NodeManager.get_one(id=device.id, db=db, branch=user_branch)
