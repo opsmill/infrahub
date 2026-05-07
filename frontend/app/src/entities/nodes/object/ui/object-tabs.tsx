@@ -27,7 +27,7 @@ export function RelationshipTab({
 
   return (
     <LinkTab
-      href={getObjectDetailsUrl(objectKind, objectId, undefined, relationshipSchema.name)}
+      to={getObjectDetailsUrl(objectKind, objectId, undefined, relationshipSchema.name)}
       scrollIntoViewOnActive
     >
       {relationshipSchema.label}
@@ -49,7 +49,7 @@ export function ObjectTaskTab({ objectKind, objectId }: TabWithCountProps) {
 
   return (
     <LinkTab
-      href={getObjectDetailsUrl(objectKind, objectId, undefined, "tasks")}
+      to={getObjectDetailsUrl(objectKind, objectId, undefined, "tasks")}
       scrollIntoViewOnActive
     >
       Tasks

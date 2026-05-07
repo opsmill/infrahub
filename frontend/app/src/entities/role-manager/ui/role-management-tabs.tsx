@@ -89,7 +89,7 @@ function RoleManagementTab({ to, icon, label, kind }: RoleManagementTabProps) {
   const { isPending, data: count } = useObjectsCount({ objectKind: kind });
 
   return (
-    <LinkTab href={to}>
+    <LinkTab to={to}>
       <Icon icon={icon} />
       {label}
       {isPending && <Spinner />}

@@ -26,14 +26,14 @@ export const Link = (props: LinkProps) => {
 };
 
 interface LinkTabProps extends Omit<NavLinkProps, "to" | "className"> {
-  href: string;
+  to: string;
   className?: string;
   scrollIntoViewOnActive?: boolean;
 }
 
-export function LinkTab({ href, className, scrollIntoViewOnActive, ...props }: LinkTabProps) {
+export function LinkTab({ to, className, scrollIntoViewOnActive, ...props }: LinkTabProps) {
   const ref = useRef<HTMLAnchorElement>(null);
-  const isActive = !!useMatch({ path: href, end: true });
+  const isActive = !!useMatch({ path: to, end: true });
 
   useEffect(() => {
     if (isActive && scrollIntoViewOnActive) {
@@ -44,7 +44,7 @@ export function LinkTab({ href, className, scrollIntoViewOnActive, ...props }: L
   return (
     <NavLink
       ref={ref}
-      to={href}
+      to={to}
       end
       className={({ isActive }) =>
         classNames(

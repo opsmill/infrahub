@@ -13,14 +13,14 @@ export interface ObjectDetailsTabProps {
   parentKind: string;
   parentId: string;
   relationship: RelationshipSchema;
-  href?: string;
+  to?: string;
 }
 
 export function ObjectDetailsTab({
   parentKind,
   parentId,
   relationship,
-  href,
+  to,
 }: ObjectDetailsTabProps) {
   const { data } = useGetRelationshipCount({
     objectKind: parentKind,
@@ -29,10 +29,10 @@ export function ObjectDetailsTab({
   });
   const { schema } = useSchema(relationship.peer);
 
-  const url = href ?? constructPathForIpam(relationship.name);
+  const url = to ?? constructPathForIpam(relationship.name);
 
   return (
-    <LinkTab href={url}>
+    <LinkTab to={url}>
       <Icon icon={getSchemaIcon(schema)} />
       {relationship.label}
       <Badge variant="blue" className="rounded-full font-normal">

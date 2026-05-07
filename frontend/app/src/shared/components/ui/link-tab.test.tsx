@@ -21,8 +21,8 @@ function renderAt(path: string, ui: React.ReactElement) {
 }
 
 describe("LinkTab", () => {
-  test("renders children and href", async () => {
-    const component = await renderAt("/parent", <LinkTab href="/parent/data">Data</LinkTab>);
+  test("renders children and renders the target URL as the anchor href", async () => {
+    const component = await renderAt("/parent", <LinkTab to="/parent/data">Data</LinkTab>);
     const link = component.container.querySelector("a");
     expect(link).not.toBeNull();
     expect(link?.textContent).toBe("Data");
@@ -30,22 +30,19 @@ describe("LinkTab", () => {
   });
 
   test("applies active border when URL matches", async () => {
-    const component = await renderAt("/parent/data", <LinkTab href="/parent/data">Data</LinkTab>);
+    const component = await renderAt("/parent/data", <LinkTab to="/parent/data">Data</LinkTab>);
     const link = component.container.querySelector("a");
     expect(link?.className).toMatch(/border-custom-blue-600/);
   });
 
   test("does not apply active border when URL does not match", async () => {
-    const component = await renderAt("/parent/files", <LinkTab href="/parent/data">Data</LinkTab>);
+    const component = await renderAt("/parent/files", <LinkTab to="/parent/data">Data</LinkTab>);
     const link = component.container.querySelector("a");
     expect(link?.className).not.toMatch(/border-custom-blue-600/);
   });
 
   test("end matching is exact — child paths do not activate the parent tab", async () => {
-    const component = await renderAt(
-      "/parent/data/123",
-      <LinkTab href="/parent/data">Data</LinkTab>
-    );
+    const component = await renderAt("/parent/data/123", <LinkTab to="/parent/data">Data</LinkTab>);
     const link = component.container.querySelector("a");
     expect(link?.className).not.toMatch(/border-custom-blue-600/);
   });
@@ -56,7 +53,7 @@ describe("LinkTab", () => {
       .mockImplementation(() => {});
     await renderAt(
       "/parent/data",
-      <LinkTab href="/parent/data" scrollIntoViewOnActive>
+      <LinkTab to="/parent/data" scrollIntoViewOnActive>
         Data
       </LinkTab>
     );
@@ -70,7 +67,7 @@ describe("LinkTab", () => {
       .mockImplementation(() => {});
     await renderAt(
       "/parent/files",
-      <LinkTab href="/parent/data" scrollIntoViewOnActive>
+      <LinkTab to="/parent/data" scrollIntoViewOnActive>
         Data
       </LinkTab>
     );
@@ -82,7 +79,7 @@ describe("LinkTab", () => {
     const scrollIntoView = vi
       .spyOn(Element.prototype, "scrollIntoView")
       .mockImplementation(() => {});
-    await renderAt("/parent/data", <LinkTab href="/parent/data">Data</LinkTab>);
+    await renderAt("/parent/data", <LinkTab to="/parent/data">Data</LinkTab>);
     expect(scrollIntoView).not.toHaveBeenCalled();
     scrollIntoView.mockRestore();
   });

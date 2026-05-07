@@ -28,7 +28,7 @@ export function ObjectDetailsTabs({ objectSchema, objectData }: ObjectDetailsTab
     <ScrollArea scrollX scrollY={false} scrollBarClassName="hidden" className="shrink-0">
       <nav aria-label="Tabs">
         <Row className="items-end gap-4 px-4" data-testid="object-details-tabs">
-          <LinkTab href={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
+          <LinkTab to={getObjectDetailsUrl(objectKind, objectId)} scrollIntoViewOnActive>
             Details
           </LinkTab>
           {relationshipsTabs.map((tab) => (

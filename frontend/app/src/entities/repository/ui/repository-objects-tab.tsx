@@ -22,7 +22,7 @@ export function RepositoryObjectsTab({ objectKind, objectId }: RepositoryObjects
 
   return (
     <LinkTab
-      href={getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_OBJECTS_TAB)}
+      to={getObjectDetailsUrl(objectKind, objectId, undefined, REPOSITORY_OBJECTS_TAB)}
       scrollIntoViewOnActive
     >
       Objects
