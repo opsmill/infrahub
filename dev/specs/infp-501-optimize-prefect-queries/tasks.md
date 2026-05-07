@@ -35,7 +35,7 @@
 
 **⚠️ CRITICAL**: No migration work can begin until this phase is complete.
 
-- [ ] T004 Create shared `NodeID` frozen dataclass in `backend/infrahub/core/query/node_id.py` with a single field `id: str`; add re-export from `backend/infrahub/core/query/__init__.py` if it exists, otherwise create the module directly
+- [x] T004 Create shared `NodeID` frozen dataclass in `backend/infrahub/core/query/node_id.py` with a single field `id: str`; add re-export from `backend/infrahub/core/query/__init__.py` if it exists, otherwise create the module directly
 
 **Checkpoint**: Shared `NodeID` type available — migration phases can now begin in parallel.
 
@@ -49,11 +49,11 @@
 
 ### Implementation for User Story 1
 
-- [ ] T005 [P] [US1] Write unit test for `DisplayLabelNodeQuery.render_query()` (validates GraphQL string output) and `parse_response()` (validates typed `list[NodeID]` result from fixture dict) in `backend/tests/unit/display_labels/test_display_label_query.py`
-- [ ] T006 [P] [US1] Write functional output-equivalence test for the `display_labels` task: run the task against a test database, snapshot the output as a fixture in `backend/tests/functional/display_labels/test_display_label_task_optimization.py`
-- [ ] T007 [US1] Implement `DisplayLabelNodeQuery` in `backend/infrahub/display_labels/models.py`: `render_query(kind: str) -> str` builds a GraphQL query selecting only `id`; `parse_response(response: dict) -> list[NodeID]` returns typed results (depends on T004, T005)
-- [ ] T008 [US1] Replace `client.all(kind, branch, exclude=...)` call in `backend/infrahub/display_labels/tasks.py` with `client.execute_graphql(query=DisplayLabelNodeQuery().render_query(kind), branch_name=branch_name)` + `DisplayLabelNodeQuery().parse_response(response)` (depends on T007)
-- [ ] T009 [US1] Verify T006 functional test passes with the updated task code — confirm output equivalence and measure execution time vs T002 baseline (depends on T008)
+- [x] T005 [P] [US1] Write unit test for `DisplayLabelNodeQuery.render_query()` (validates GraphQL string output) and `parse_response()` (validates typed `list[NodeID]` result from fixture dict) in `backend/tests/unit/display_labels/test_display_label_query.py`
+- [x] T006 [P] [US1] Write functional output-equivalence test for the `display_labels` task: run the task against a test database, snapshot the output as a fixture in `backend/tests/functional/display_labels/test_display_label_task_optimization.py`
+- [x] T007 [US1] Implement `DisplayLabelNodeQuery` in `backend/infrahub/display_labels/models.py`: `render_query(kind: str) -> str` builds a GraphQL query selecting only `id`; `parse_response(response: dict) -> list[NodeID]` returns typed results (depends on T004, T005)
+- [x] T008 [US1] Replace `client.all(kind, branch, exclude=...)` call in `backend/infrahub/display_labels/tasks.py` with `client.execute_graphql(query=DisplayLabelNodeQuery().render_query(kind), branch_name=branch_name)` + `DisplayLabelNodeQuery().parse_response(response)` (depends on T007)
+- [x] T009 [US1] Verify T006 functional test passes with the updated task code — confirm output equivalence and measure execution time vs T002 baseline (depends on T008)
 
 **Checkpoint**: US1 MVP — `display_labels` task is faster and passes output-equivalence test. Can be deployed independently.
 
@@ -67,15 +67,15 @@
 
 ### Implementation for User Story 2
 
-- [ ] T010 [P] [US2] Write unit test for `HFIDNodeQuery.render_query()` and `parse_response()` in `backend/tests/unit/hfid/test_hfid_node_query.py` (audit `backend/infrahub/hfid/models.py` first — add a new query model if the existing `HFIDGraphQL` does not cover the `client.all()` read path)
-- [ ] T011 [P] [US2] Write functional output-equivalence test for the `hfid` task in `backend/tests/functional/hfid/test_hfid_task_optimization.py`
-- [ ] T012 [P] [US2] Write unit test for `ComputedAttributeNodeQuery.render_query()` and `parse_response()` in `backend/tests/unit/computed_attribute/test_computed_attribute_query.py`
-- [ ] T013 [P] [US2] Write functional output-equivalence test for the `computed_attribute` task in `backend/tests/functional/computed_attribute/test_computed_attribute_task_optimization.py`
-- [ ] T014 [US2] Implement `HFIDNodeQuery` in `backend/infrahub/hfid/models.py` — if `HFIDGraphQL` already covers the read path, extend it; otherwise add `HFIDNodeQuery` (depends on T004, T010)
-- [ ] T015 [US2] Replace overfetching `client.all()` / `client.filters()` call(s) in `backend/infrahub/hfid/tasks.py` with `client.execute_graphql()` + `HFIDNodeQuery` (depends on T014)
-- [ ] T016 [US2] Implement `ComputedAttributeNodeQuery` in `backend/infrahub/computed_attribute/queries.py` — create file if absent (depends on T004, T012)
-- [ ] T017 [US2] Replace overfetching `client.all()` call in `backend/infrahub/computed_attribute/tasks.py` with `client.execute_graphql()` + `ComputedAttributeNodeQuery` (depends on T016)
-- [ ] T018 [US2] Verify T011 and T013 functional tests pass — confirm output equivalence and measure data volume vs T003 baselines (depends on T015, T017)
+- [x] T010 [P] [US2] Write unit test for `HFIDNodeQuery.render_query()` and `parse_response()` in `backend/tests/unit/hfid/test_hfid_node_query.py` (audit `backend/infrahub/hfid/models.py` first — add a new query model if the existing `HFIDGraphQL` does not cover the `client.all()` read path)
+- [x] T011 [P] [US2] Write functional output-equivalence test for the `hfid` task in `backend/tests/functional/hfid/test_hfid_task_optimization.py`
+- [x] T012 [P] [US2] Write unit test for `ComputedAttributeNodeQuery.render_query()` and `parse_response()` in `backend/tests/unit/computed_attribute/test_computed_attribute_query.py`
+- [x] T013 [P] [US2] Write functional output-equivalence test for the `computed_attribute` task in `backend/tests/functional/computed_attributes/test_computed_attribute_task_optimization.py`
+- [x] T014 [US2] Implement `HFIDNodeQuery` in `backend/infrahub/hfid/models.py` — if `HFIDGraphQL` already covers the read path, extend it; otherwise add `HFIDNodeQuery` (depends on T004, T010)
+- [x] T015 [US2] Replace overfetching `client.all()` / `client.filters()` call(s) in `backend/infrahub/hfid/tasks.py` with `client.execute_graphql()` + `HFIDNodeQuery` (depends on T014)
+- [x] T016 [US2] Implement `ComputedAttributeNodeQuery` in `backend/infrahub/computed_attribute/queries.py` — create file if absent (depends on T004, T012)
+- [x] T017 [US2] Replace overfetching `client.all()` call in `backend/infrahub/computed_attribute/tasks.py` with `client.execute_graphql()` + `ComputedAttributeNodeQuery` (depends on T016)
+- [x] T018 [US2] Verify T011 and T013 functional tests pass — confirm output equivalence and measure data volume vs T003 baselines (depends on T015, T017)
 
 **Checkpoint**: US2 — `hfid` and `computed_attribute` tasks migrated. Data volume measurably reduced. US1 and US2 both pass independently.
 
