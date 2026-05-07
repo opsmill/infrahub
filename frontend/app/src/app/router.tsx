@@ -114,6 +114,20 @@ export const router = createBrowserRouter([
               {
                 path: "/profile",
                 lazy: () => import("@/pages/profile"),
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/profile/profile-tab"),
+                  },
+                  {
+                    path: "tokens",
+                    lazy: () => import("@/pages/profile/tokens-tab"),
+                  },
+                  {
+                    path: "password",
+                    lazy: () => import("@/pages/profile/password-tab"),
+                  },
+                ],
               },
               {
                 path: "/proposed-changes",
