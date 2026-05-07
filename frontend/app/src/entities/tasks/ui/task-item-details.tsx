@@ -40,7 +40,8 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
   const [idFromQsp] = useQueryState(QSP.TASK_ID);
   const [search, setSearch] = React.useState("");
 
-  const { task: idFromParams } = useParams();
+  const { task, taskId } = useParams();
+  const idFromParams = task ?? taskId;
 
   const ids = idFromParams || idFromQsp ? [idFromParams || idFromQsp] : undefined;
 

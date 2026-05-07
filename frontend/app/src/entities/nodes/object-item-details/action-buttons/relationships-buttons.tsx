@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
-import { useQueryState } from "nuqs";
 import { useState } from "react";
+import { useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -13,7 +13,6 @@ import ObjectForm from "@/shared/components/form/object-form";
 import { FormContext } from "@/shared/components/form/utils/form-context";
 import type { SelectOption } from "@/shared/components/inputs/select-old";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { QSP } from "@/shared/config/qsp";
 
 import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 import { useAddRelationships } from "@/entities/nodes/relationships/ui/queries/add-relationships.mutation";
@@ -40,12 +39,12 @@ export function RelationshipsButtons({
   const { mutateAsync: addRelationship } = useAddRelationships();
   const generics = useAtomValue(genericSchemasAtom);
   const schemaList = useAtomValue(nodeSchemasAtom);
-  const [relationshipTab] = useQueryState(QSP.TAB);
+  const { relationshipName } = useParams() as { relationshipName?: string };
 
   const parentGeneric = generics.find((s) => s.kind === objectKind);
-  const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipTab);
+  const relationshipSchema = parentSchema?.relationships?.find((r) => r?.name === relationshipName);
   const relationshipGeneric = parentGeneric?.relationships?.find((r) => {
-    return r?.name === relationshipTab;
+    return r?.name === relationshipName;
   });
   const relationshipSchemaData = relationshipSchema || relationshipGeneric;
   const generic = generics.find((g) => g.kind === relationshipSchemaData?.kind);

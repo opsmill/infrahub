@@ -1,40 +1,14 @@
 import { Spinner } from "@infrahub/ui";
-import { useQueryState } from "nuqs";
-import { Link, type LinkProps, useLocation } from "react-router";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Badge } from "@/shared/components/ui/badge";
-import { QSP } from "@/shared/config/qsp";
-import { classNames } from "@/shared/utils/common";
+import { LinkTab } from "@/shared/components/ui/link";
 
 import { useGetRelationshipCount } from "@/entities/nodes/relationships/ui/queries/get-relationship-count.query";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import type { RelationshipSchema } from "@/entities/schema/types";
+import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 
-export interface ObjectDetailsTabProps extends LinkProps {
-  isActive?: boolean;
-}
-
-export function ObjectDetailsTab({ isActive, className, ...props }: ObjectDetailsTabProps) {
-  return (
-    <Link
-      ref={(node) => {
-        if (isActive) {
-          node?.scrollIntoView({ behavior: "smooth" });
-        }
-      }}
-      className={classNames(
-        "flex cursor-pointer scroll-m-10 items-center gap-2 whitespace-nowrap border-gray-200 border-b-2 px-1 py-4 font-medium text-sm",
-        isActive
-          ? "border-custom-blue-500 text-custom-blue-600"
-          : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700",
-        className
-      )}
-      {...props}
-    />
-  );
-}
-
-export interface RelationshipTabProps extends Omit<LinkProps, "to"> {
+export interface RelationshipTabProps {
   objectKind: string;
   objectId: string;
   relationshipSchema: RelationshipSchema;
@@ -44,31 +18,46 @@ export function RelationshipTab({
   objectKind,
   objectId,
   relationshipSchema,
-  ...props
 }: RelationshipTabProps) {
   const { isPending, data: relationshipCount } = useGetRelationshipCount({
     objectKind,
     objectId,
     relationshipName: relationshipSchema.name,
   });
-  const { pathname } = useLocation();
-  const [qspTab] = useQueryState(QSP.TAB);
 
   return (
-    <ObjectDetailsTab
-      isActive={qspTab === relationshipSchema.name}
-      to={constructPath(pathname, [{ name: QSP.TAB, value: relationshipSchema.name }])}
-      {...props}
+    <LinkTab
+      href={getObjectDetailsUrl(objectKind, objectId, undefined, relationshipSchema.name)}
+      scrollIntoViewOnActive
     >
       {relationshipSchema.label}
       {isPending && <Spinner />}
       {!isPending && (
         <Badge className="rounded-full font-medium text-gray-80">{relationshipCount}</Badge>
       )}
-    </ObjectDetailsTab>
+    </LinkTab>
   );
 }
 
-export interface TaskTabProps extends Omit<LinkProps, "to"> {
+export interface TabWithCountProps {
+  objectKind: string;
   objectId: string;
+}
+
+export function ObjectTaskTab({ objectKind, objectId }: TabWithCountProps) {
+  const { isPending, data: taskCount } = useGetTaskCount({ relatedNodeIds: [objectId] });
+
+  return (
+    <LinkTab
+      href={getObjectDetailsUrl(objectKind, objectId, undefined, "tasks")}
+      scrollIntoViewOnActive
+    >
+      Tasks
+      {isPending ? (
+        <Spinner />
+      ) : (
+        <Badge className="rounded-full font-medium text-gray-80">{taskCount}</Badge>
+      )}
+    </LinkTab>
+  );
 }

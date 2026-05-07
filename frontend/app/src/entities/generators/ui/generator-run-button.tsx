@@ -1,7 +1,7 @@
 import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
 import type React from "react";
-import { Link } from "react-router";
+import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -9,6 +9,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { QSP } from "@/shared/config/qsp";
 
 import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-generator.mutation";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export interface GeneratorRunButtonProps extends ButtonProps {
   generatorId: string;
@@ -24,16 +25,18 @@ export function GeneratorRunButton({
   ...props
 }: GeneratorRunButtonProps) {
   const { isPending, mutate } = useRunGeneratorMutation();
+  const { objectKind, objectId } = useParams() as { objectKind?: string; objectId?: string };
 
   const handleRunGenerator = () => {
     mutate(
       { generatorId, targetNodeIds },
       {
         onSuccess: ({ taskId }) => {
-          const url = constructPath(window.location.pathname, [
-            { name: QSP.TAB, value: "tasks" },
-            { name: QSP.TASK_ID, value: taskId },
-          ]);
+          const baseUrl =
+            objectKind && objectId
+              ? getObjectDetailsUrl(objectKind, objectId, undefined, "tasks")
+              : constructPath("/tasks");
+          const url = constructPath(baseUrl, [{ name: QSP.TASK_ID, value: taskId }]);
 
           toast(
             <Alert

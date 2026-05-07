@@ -124,16 +124,43 @@ export const router = createBrowserRouter([
                       },
                       {
                         path: ":objectId",
+                        lazy: () => import("@/pages/objects/object-details-page"),
                         children: [
                           {
                             index: true,
-                            lazy: () => import("@/pages/objects/object-details-page"),
+                            lazy: () => import("@/pages/objects/object-details/details"),
                           },
                           {
-                            path: "convert",
-                            lazy: () => import("@/pages/objects/object-convert"),
+                            path: "tasks",
+                            children: [
+                              {
+                                index: true,
+                                lazy: () => import("@/pages/objects/object-details/tasks"),
+                              },
+                              {
+                                path: ":taskId",
+                                lazy: () => import("@/pages/objects/object-details/task-details"),
+                              },
+                            ],
+                          },
+                          {
+                            path: "repository_objects",
+                            lazy: () => import("@/pages/objects/object-details/repository-objects"),
+                          },
+                          {
+                            path: ":relationshipName",
+                            lazy: () => import("@/pages/objects/object-details/relationship"),
+                          },
+                          {
+                            // Redirect /objects/:kind/:id/<unknown> back to the index.
+                            path: "*",
+                            element: <Navigate to="." replace />,
                           },
                         ],
+                      },
+                      {
+                        path: ":objectId/convert",
+                        lazy: () => import("@/pages/objects/object-convert"),
                       },
                     ],
                   },
@@ -307,6 +334,39 @@ export const router = createBrowserRouter([
                           {
                             path: ":objectId",
                             lazy: () => import("@/pages/objects/object-details-page"),
+                            children: [
+                              {
+                                index: true,
+                                lazy: () => import("@/pages/objects/object-details/details"),
+                              },
+                              {
+                                path: "tasks",
+                                children: [
+                                  {
+                                    index: true,
+                                    lazy: () => import("@/pages/objects/object-details/tasks"),
+                                  },
+                                  {
+                                    path: ":taskId",
+                                    lazy: () =>
+                                      import("@/pages/objects/object-details/task-details"),
+                                  },
+                                ],
+                              },
+                              {
+                                path: "repository_objects",
+                                lazy: () =>
+                                  import("@/pages/objects/object-details/repository-objects"),
+                              },
+                              {
+                                path: ":relationshipName",
+                                lazy: () => import("@/pages/objects/object-details/relationship"),
+                              },
+                              {
+                                path: "*",
+                                element: <Navigate to="." replace />,
+                              },
+                            ],
                           },
                         ],
                       },
