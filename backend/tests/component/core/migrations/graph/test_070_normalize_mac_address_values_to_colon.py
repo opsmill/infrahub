@@ -217,10 +217,26 @@ class TestMigration070(TestInfrahubApp):
 
         # Verify data is still canonical after the idempotent run
         assert await _read_attribute_value(db=db, node_uuid=iface.id, attr_name="mac") == DEFAULT_COLON_MAC
+        assert await _read_attribute_value(db=db, node_uuid=iface.id, attr_name="human_friendly_id") == ujson.dumps(
+            [DEFAULT_COLON_MAC]
+        )
+        assert (
+            await _read_attribute_value(db=db, node_uuid=iface.id, attr_name="display_label")
+            == default_iface_dl_canonical
+        )
         assert await _read_attribute_value(db=db, node_uuid=standalone.id, attr_name="mac") == DEFAULT_COLON_MAC
         assert (
             await _read_attribute_value(db=db, node_uuid=iface.id, attr_name="mac", branch_name=user_branch.name)
             == USER_COLON_MAC
+        )
+        assert await _read_attribute_value(
+            db=db, node_uuid=iface.id, attr_name="human_friendly_id", branch_name=user_branch.name
+        ) == ujson.dumps([USER_COLON_MAC])
+        assert (
+            await _read_attribute_value(
+                db=db, node_uuid=iface.id, attr_name="display_label", branch_name=user_branch.name
+            )
+            == user_iface_dl_canonical
         )
 
         await verify_graph(db=db)
