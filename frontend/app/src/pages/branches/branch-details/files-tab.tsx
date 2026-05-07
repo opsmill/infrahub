@@ -1,8 +1,7 @@
-import { useRequiredParams } from "@/shared/hooks/use-required-params";
-
+import { useBranchDetailsOutlet } from "@/entities/branches/ui/use-branch-details-outlet";
 import { FilesDiff } from "@/entities/diff/ui/file-diff/files-diff";
 
 export function Component() {
-  const { branchName } = useRequiredParams("branchName");
-  return <FilesDiff branchName={branchName} />;
+  const { branch } = useBranchDetailsOutlet();
+  return <FilesDiff branchName={branch.name} />;
 }

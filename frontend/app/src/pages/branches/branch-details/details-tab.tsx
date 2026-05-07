@@ -1,8 +1,7 @@
-import { useRequiredParams } from "@/shared/hooks/use-required-params";
-
 import { BranchDetails } from "@/entities/branches/ui/branch-details";
+import { useBranchDetailsOutlet } from "@/entities/branches/ui/use-branch-details-outlet";
 
 export function Component() {
-  const { branchName } = useRequiredParams("branchName");
-  return <BranchDetails branchName={branchName} />;
+  const { branch } = useBranchDetailsOutlet();
+  return <BranchDetails branchName={branch.name} />;
 }

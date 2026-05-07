@@ -6,6 +6,7 @@ import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 
 import { ObjectDetailsTabs } from "@/entities/nodes/object/ui/object-details/object-details-tabs";
+import type { ObjectDetailsOutletContext } from "@/entities/nodes/object/ui/object-details/use-object-details-outlet";
 import { useGetObject } from "@/entities/nodes/object/ui/queries/get-object.query";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
@@ -31,7 +32,9 @@ export function ObjectDetailsBody({ objectSchema, objectId, permission }: Object
     <Col className="gap-0 overflow-auto p-1">
       <ObjectDetailsTabs objectSchema={objectSchema} objectData={objectData} />
       <Card className="overflow-auto to-neutral-50">
-        <Outlet context={{ objectSchema, objectData, permission }} />
+        <Outlet
+          context={{ objectSchema, objectData, permission } satisfies ObjectDetailsOutletContext}
+        />
       </Card>
     </Col>
   );
