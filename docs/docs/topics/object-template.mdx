@@ -51,20 +51,20 @@ For step-by-step instructions, see [Allocating resources from pools via template
 
 Templates expose two distinct group fields, mirroring the [resource-pool sister-field pattern](#integration-with-resource-pools):
 
-- `member_of_groups` / `subscriber_of_groups` — the regular group relationships. Peers added here put the **template itself** in the group, just like on any other node.
-- `member_of_groups_for_instances` / `subscriber_of_groups_for_instances` — template-only fields whose peers are propagated to **each object created from the template** at creation time. The template node itself is not added to these groups.
+- `member_of_groups` / `subscriber_of_groups`: the regular group relationships. Peers added here put the **template itself** in the group, just like on any other object.
+- `member_of_groups_for_instances` / `subscriber_of_groups_for_instances`: template-only fields whose peers are propagated to **each object created from the template** at creation time. The template object itself is not added to these groups.
 
 ### How group propagation works
 
 When you create an object from a template, Infrahub reads the template's `member_of_groups_for_instances` and `subscriber_of_groups_for_instances` peers and writes them onto the new object's `member_of_groups` and `subscriber_of_groups`. Groups supplied directly on the create call take precedence over the template's `_for_instances` peers.
 
-The template's own `member_of_groups` (and `subscriber_of_groups`) are never propagated to instances — those describe the template's own membership, not its instances'.
+The template's own `member_of_groups` (and `subscriber_of_groups`) are never propagated to instances. They describe the template's own membership, not its instances'.
 
 ### When to use it
 
-Use `member_of_groups_for_instances` when you want to express "every device created from `staged-spine` should belong to the `staged_devices` group" without writing a separate `CoreNodeTriggerRule` plus `CoreGroupAction`. Workflows driven by `CoreGroupTriggerRule` fire naturally as each instance is added to the configured groups.
+Use `member_of_groups_for_instances` when you want to express "every device created from `staged-spine` should belong to the `staged_devices` group". Workflows driven by `CoreGroupTriggerRule` fire naturally as each instance is added to the configured groups.
 
-Use the regular `member_of_groups` only when the template node itself should appear in a group (for example, an internal group of templates).
+Use the regular `member_of_groups` only when the template object itself should appear in a group (for example, an internal group of templates).
 
 For step-by-step instructions, see [Assigning groups via templates](../guides/object-template.mdx#assigning-groups-via-templates). For background on Infrahub's group model, see the [Groups topic](./groups.mdx).
 

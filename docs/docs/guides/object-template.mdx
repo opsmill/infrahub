@@ -591,11 +591,11 @@ For more information about resource pools, see:
 
 ## Assigning groups via templates
 
-Object templates expose a dedicated `member_of_groups_for_instances` relationship (and a `subscriber_of_groups_for_instances` counterpart). Groups assigned through this field are propagated to every object created from the template, while the template node itself is **not** added to those groups. This is useful when every instance produced from a given template should belong to the same operational group — for example, "all devices created from `staged-spine` go into the `staged_devices` group" — without having to wire up a `CoreNodeTriggerRule` and `CoreGroupAction`.
+Object templates expose a dedicated `member_of_groups_for_instances` relationship (and a `subscriber_of_groups_for_instances` counterpart). Groups assigned through this field are propagated to every object created from the template, while the template object itself is **not** added to those groups. This is useful when every instance produced from a given template should belong to the same operational group, for example "all devices created from `staged-spine` go into the `staged_devices` group".
 
 :::info
 
-If you want the template node itself to belong to a group (for example, to track templates as a set), use the regular `member_of_groups` field on the template instead — it behaves like on any other node and is independent from the `_for_instances` field.
+If you want the template object itself to belong to a group (for example, to track templates as a set), use the regular `member_of_groups` field on the template instead. It behaves like on any other object and is independent from the `_for_instances` field.
 
 :::
 
@@ -662,7 +662,7 @@ Add `staged_devices` to the device template's `member_of_groups_for_instances` r
 
 ### Create objects — instances inherit the configured groups
 
-Creating a device from the template works exactly as described in [Create object instances](#create-object-instances-using-the-predefined-template) above. No additional steps are required — when the device is saved, Infrahub copies the peers from the template's `member_of_groups_for_instances` onto the new device's `member_of_groups`. The same applies to `subscriber_of_groups_for_instances` → `subscriber_of_groups`.
+Creating a device from the template works exactly as described in [Create object instances](#create-object-instances-using-the-predefined-template) above. No additional steps are required. When the device is saved, Infrahub copies the peers from the template's `member_of_groups_for_instances` onto the new device's `member_of_groups`. The same applies to `subscriber_of_groups_for_instances` and `subscriber_of_groups`.
 
 :::info
 
