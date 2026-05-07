@@ -318,7 +318,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Integrations',
-          link: { type: 'doc', id: 'integrations/index' }, // landing page
+          link: { type: 'generated-index', slug: 'integrations' },
           items: [
             { type: 'link', label: 'Ansible Integration ↗', href: 'https://docs.infrahub.app/ansible' },
             { type: 'link', label: 'Nornir Integration ↗', href: 'https://docs.infrahub.app/nornir' },
