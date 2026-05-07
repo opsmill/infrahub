@@ -8,13 +8,13 @@ import netaddr
 from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.helpers.display_label import extract_jinja2_variables, is_jinja2_template
 from infrahub.core.migrations.helpers.attribute_recompute import (
     format_hfid_row,
     make_display_label_formatter,
     paginate_read,
     paginate_recompute,
 )
+from infrahub.core.migrations.helpers.display_label import extract_jinja2_variables, is_jinja2_template
 from infrahub.core.migrations.query.path_details import SCHEMA_KINDS_TO_SKIP
 from infrahub.core.migrations.shared import (
     MigrationInput,
@@ -162,7 +162,7 @@ class Migration070(MigrationRequiringRebase):
         path = schema.parse_schema_path(path=f"{attribute_schema.name}__value", schema=schema_branch)
 
         async def format_row(node_uuid: str, values: list[str | None]) -> str | None:
-            if not values is None:
+            if values is not None:
                 return None
             old = values[0]
             if old is None:
