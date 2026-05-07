@@ -1,5 +1,6 @@
 import React from "react";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import {
   Combobox,
   ComboboxContent,
@@ -8,7 +9,6 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 
-import { BRANCH_STATUS, type BranchStatus } from "@/entities/branches/constants";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
 export interface BranchStatusEnumProps {
@@ -25,7 +25,7 @@ export const BranchStatusEnum = ({
   defaultOpen = false,
 }: BranchStatusEnumProps) => {
   const [open, setOpen] = React.useState(defaultOpen);
-  const items = Object.values(BRANCH_STATUS);
+  const items = Object.values(BranchStatus);
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>

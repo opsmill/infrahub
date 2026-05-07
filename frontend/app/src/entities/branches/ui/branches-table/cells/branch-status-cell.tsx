@@ -1,6 +1,6 @@
+import type { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { TableCell } from "@/shared/components/table/table-cell";
 
-import type { BranchStatus } from "@/entities/branches/constants";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
 interface BranchStatusCellProps {

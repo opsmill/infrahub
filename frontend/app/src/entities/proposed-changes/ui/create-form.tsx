@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
@@ -25,7 +26,6 @@ import { Input } from "@/shared/components/ui/input";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
@@ -40,7 +40,7 @@ export const ProposedChangeCreateForm = () => {
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter(
-    (branch) => !branch.is_default && branch.status !== BRANCH_STATUS.MERGED
+    (branch) => !branch.is_default && branch.status !== BranchStatus.MERGED
   );
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
