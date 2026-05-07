@@ -194,6 +194,7 @@ AND r2.to IS NULL
 WITH n, attr_val IS NOT NULL AS has_attr_update
 OPTIONAL MATCH (n)-[r1:IS_RELATED]-(rel:Relationship)-[r2:IS_RELATED]-(peer:Node)-[r3:HAS_ATTRIBUTE]-(attr:Attribute)-[r4:HAS_VALUE]->(attr_val)
 WHERE rel.name IN $bidirectional_rel_ids + $outbound_rel_ids + $inbound_rel_ids
+AND n.uuid <> peer.uuid
 AND (
     attr.name IN $outbound_rel_attr_map[rel.name]
     OR attr.name IN $inbound_rel_attr_map[rel.name]
@@ -241,6 +242,7 @@ WITH DISTINCT n, attr_vals_list, rel
 CALL (n, rel) {
     OPTIONAL MATCH (n)-[r1:IS_RELATED]-(rel)-[r2:IS_RELATED]-(peer:Node)
     WHERE all(r in [r1, r2] WHERE %(branch_filter)s)
+    AND n.uuid <> peer.uuid
     AND (
         (startNode(r1) = n AND startNode(r2) = rel AND rel.name IN $outbound_rel_ids)
         OR (startNode(r1) = rel AND startNode(r2) = peer AND rel.name IN $inbound_rel_ids)
@@ -365,6 +367,7 @@ WITH n, collect([attr.name, attr_val.value]) AS attr_vals_list
 // ------------
 OPTIONAL MATCH (n)-[e1:IS_RELATED]-(rel:Relationship)-[e2:IS_RELATED]-(peer:Node)
 WHERE rel.name IN $bidirectional_rel_ids + $outbound_rel_ids + $inbound_rel_ids
+AND n.uuid <> peer.uuid
 AND e1.branch IN $branch_names
 AND e1.to IS NULL
 AND e1.status = "active"
