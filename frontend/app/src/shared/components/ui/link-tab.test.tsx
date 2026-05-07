@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { describe, expect, test, vi } from "vitest";
 
@@ -9,7 +10,7 @@ function renderAt(path: string, ui: React.ReactElement) {
   // Override the default BrowserRouter wrapper with a MemoryRouter so we can
   // control the active URL per test without conflicting with the browser URL.
   return render(ui, {
-    wrapper: ({ children }) => (
+    wrapper: ({ children }: { children: ReactNode }) => (
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/parent/*" element={<>{children}</>} />

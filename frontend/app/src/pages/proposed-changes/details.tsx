@@ -72,26 +72,41 @@ export function Component() {
     );
   }
 
+  if (!proposedChangeData.source_branch?.value) {
+    return (
+      <Content.Card>
+        <Content.CardTitle title={getNodeLabel(proposedChangeData)} />
+        <NoDataFound message="Proposed change is missing a source branch." />
+      </Content.Card>
+    );
+  }
+
+  const sourceBranchValue = proposedChangeData.source_branch.value;
+
   return (
     <Content.Card>
       <Content.CardTitle
         title={getNodeLabel(proposedChangeData)}
         description={
           <div className="inline-flex items-center gap-1 text-xs">
-            <Link
-              to={getObjectDetailsUrl(metadata?.created_by?.__typename!, metadata?.created_by?.id)}
-              className="font-semibold text-custom-blue-green"
-            >
-              {metadata?.created_by ? getNodeLabel(metadata.created_by) : ""}
-            </Link>
+            {metadata?.created_by ? (
+              <Link
+                to={getObjectDetailsUrl(metadata.created_by.__typename, metadata.created_by.id)}
+                className="font-semibold text-custom-blue-green"
+              >
+                {getNodeLabel(metadata.created_by)}
+              </Link>
+            ) : null}
             wants to merge
-            <Link to={constructPath(`/branches/${proposedChangeData.source_branch?.value}`)}>
+            <Link to={constructPath(`/branches/${sourceBranchValue}`)}>
               <Badge variant="blue">
                 <Icon icon="mdi:layers-triple" className="mr-1" />
-                {proposedChangeData.source_branch?.value}
+                {sourceBranchValue}
               </Badge>
             </Link>
             into
+            {/* destination_branch is conventionally always present; the optional
+                chain reflects GraphQL nullability rather than a real data case. */}
             <Link to={constructPath(`/branches/${proposedChangeData.destination_branch?.value}`)}>
               <Badge variant="green" className="items-center">
                 <Icon icon="mdi:layers-triple" className="mr-1" />
@@ -115,10 +130,7 @@ export function Component() {
         }
       />
 
-      <ProposedChangeTabs
-        sourceBranch={proposedChangeData.source_branch?.value!}
-        proposedChangeId={proposedChangeId}
-      />
+      <ProposedChangeTabs sourceBranch={sourceBranchValue} proposedChangeId={proposedChangeId} />
 
       <Outlet />
     </Content.Card>
