@@ -420,8 +420,16 @@ const sidebars: SidebarsConfig = {
           items: [
             // Authentication (PR 11)
             { type: 'doc', id: 'deploy-manage/user-management/authentication', label: 'Authentication' },
-            // SSO hub + spokes added in PR 12
-            { type: 'doc', id: 'guides/sso', label: 'SSO' },
+            // SSO hub + spokes (PR 12)
+            {
+              type: 'category',
+              label: 'Single sign-on (SSO)',
+              link: { type: 'doc', id: 'deploy-manage/user-management/sso/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/user-management/sso/configure-sso', label: 'Configure SSO' },
+                { type: 'doc', id: 'deploy-manage/user-management/sso/advanced-sso', label: 'Advanced SSO configuration' },
+              ],
+            },
             // Permissions & Roles hub + spoke added in PR 13
             { type: 'doc', id: 'topics/permissions-roles', label: 'Permissions & Roles' },
             // Managing API Tokens moved in PR 14
