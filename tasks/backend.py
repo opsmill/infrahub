@@ -209,14 +209,18 @@ GRAPHQL_QUERY_FILES = [
 ]
 
 
-@task
-def generate_graphql_types(context: Context) -> None:
-    """Generate Pydantic models from .gql query files using infrahubctl."""
+def _generate_custom_graphql_types(context: Context) -> None:
     for gql_file in GRAPHQL_QUERY_FILES:
         execute_command(
             context=context,
             command=f"uv run infrahubctl graphql generate-return-types {gql_file} --schema schema/schema.graphql",
         )
+
+
+@task
+def generate_custom_graphql_types(context: Context) -> None:
+    """Generate Pydantic models from .gql query files using infrahubctl."""
+    _generate_custom_graphql_types(context=context)
 
 
 @task
@@ -233,8 +237,8 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
-    generate_graphql_types(context=context)
-    exec_cmd = "git diff --exit-code backend/infrahub/generators/queries/ backend/infrahub/computed_attribute/queries/"
+    _generate_custom_graphql_types(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/generators/graphql_queries/ backend/infrahub/computed_attribute/graphql_queries/"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
