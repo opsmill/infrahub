@@ -55,8 +55,6 @@ def _extract_display_label_schema_paths(
 
 @dataclass
 class _RecomputePlan:
-    """Per-kind cache of parsed schema paths so detection and recompute share work."""
-
     schema: NodeSchema | ProfileSchema | TemplateSchema
     hfid_paths: list[SchemaAttributePath] | None = None
     display_label_paths: list[SchemaAttributePath] | None = None
@@ -98,20 +96,8 @@ def _collect_plans(
 
 
 class Migration071(MigrationRequiringRebase):
-    """
-    Recompute `human_friendly_id` and `display_label` for nodes whose schema
-    references an IPHost or IPNetwork attribute.
-
-    These kinds are normalized at input time as of #8896. HFIDs and display
-    labels created before that fix were rendered from raw user input (e.g.
-    "192.0.2.1") while the underlying attribute values were stored in their
-    normalized form ("192.0.2.1/32"), so API responses surface inconsistent
-    forms. This migration reads the (already-canonical) DB values and rewrites
-    both attributes to match.
-
-    MacAddress is intentionally not handled here — m070 has already rewritten
-    every MAC value plus its dependent HFID / display_label to colon form.
-    """
+    """Recompute hfid/display_label for any schema that depends on an IPHost or IPNetwork attribute,
+    so derived values match the canonical form stored on the attribute (closes #8896)."""
 
     name: str = "071_recompute_hfid_for_ip_mac_attributes"
     minimum_version: int = 70
