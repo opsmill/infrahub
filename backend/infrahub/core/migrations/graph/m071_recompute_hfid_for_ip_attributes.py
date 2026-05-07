@@ -99,7 +99,7 @@ class Migration071(MigrationRequiringRebase):
     """Recompute hfid/display_label for any schema that depends on an IPHost or IPNetwork attribute,
     so derived values match the canonical form stored on the attribute (closes #8896)."""
 
-    name: str = "071_recompute_hfid_for_ip_mac_attributes"
+    name: str = "071_recompute_hfid_for_ip_attributes"
     minimum_version: int = 70
     update_batch_size: int = 1000
 

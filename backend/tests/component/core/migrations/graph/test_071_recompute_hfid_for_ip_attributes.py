@@ -9,7 +9,7 @@ import ujson
 from infrahub.core import registry
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import create_branch
-from infrahub.core.migrations.graph.m071_recompute_hfid_for_ip_mac_attributes import Migration071
+from infrahub.core.migrations.graph.m071_recompute_hfid_for_ip_attributes import Migration071
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
