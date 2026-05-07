@@ -2135,18 +2135,23 @@ class SchemaBranch:
 
             # On auto-generated templates, also expose template-side fields whose peers drive instance group membership at template application time
             if isinstance(schema, TemplateSchema):
-                schema, changed = self._add_template_group_for_instances_relationships(schema=schema, changed=changed)
+                schema, changed = self._add_template_group_for_instances_relationships(
+                    schema=schema, schema_duplicated=changed
+                )
 
             if changed:
                 self.set(name=node_name, schema=schema)
 
     def _add_template_group_for_instances_relationships(
-        self, schema: MainSchemaTypes, changed: bool
+        self, schema: MainSchemaTypes, schema_duplicated: bool
     ) -> tuple[MainSchemaTypes, bool]:
         """Append `member_of_groups_for_instances` / `subscriber_of_groups_for_instances` on a template.
 
-        These are generic relationships using distinct identifiers so adding peers does not put the template node into
-        a group.
+        These are generic relationships using distinct identifiers so adding peers does not put the template object
+        into a group.
+
+        `schema_duplicated` reflects whether the caller has already duplicated `schema`. The helper duplicates on
+        first mutation if needed and returns the updated state so the caller knows whether anything was changed.
         """
         for rel_name, identifier in (
             ("member_of_groups_for_instances", "template_group_member_for_instances"),
@@ -2154,9 +2159,9 @@ class SchemaBranch:
         ):
             if rel_name in schema.relationship_names:
                 continue
-            if not changed:
+            if not schema_duplicated:
                 schema = schema.duplicate()
-                changed = True
+                schema_duplicated = True
             schema.relationships.append(
                 RelationshipSchema(
                     name=rel_name,
@@ -2168,7 +2173,7 @@ class SchemaBranch:
                     branch=BranchSupportType.AWARE,
                 )
             )
-        return schema, changed
+        return schema, schema_duplicated
 
     def _get_hierarchy_child_rel(self, peer: str, hierarchical: str | None, read_only: bool) -> RelationshipSchema:
         return RelationshipSchema(
