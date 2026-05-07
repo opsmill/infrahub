@@ -1,9 +1,9 @@
-import { useParams } from "react-router";
+import { useRequiredParams } from "@/shared/hooks/use-required-params";
 
 import { NodeDiff } from "@/entities/diff/ui/node-diff";
 
 export function Component() {
-  const { branchName } = useParams() as { branchName: string };
+  const { branchName } = useRequiredParams("branchName");
   return (
     <NodeDiff
       branch={branchName}

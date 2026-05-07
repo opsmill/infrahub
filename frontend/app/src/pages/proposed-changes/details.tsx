@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 import { useAtom } from "jotai";
 import { useEffect } from "react";
-import { Link, Outlet, useParams } from "react-router";
+import { Link, Outlet } from "react-router";
 
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -11,6 +11,7 @@ import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
+import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
@@ -24,7 +25,7 @@ import type { ProposedChangeOutletContext } from "@/entities/proposed-changes/ui
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function Component() {
-  const { proposedChangeId } = useParams() as { proposedChangeId: string };
+  const { proposedChangeId } = useRequiredParams("proposedChangeId");
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { throwIfNotFound: true });
   const [, setProposedChange] = useAtom(proposedChangedState);
 

@@ -1,10 +1,11 @@
 import { Spinner } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
-import { Navigate, Outlet, useParams } from "react-router";
+import { Navigate, Outlet } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import Content from "@/shared/components/layout/content";
+import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
@@ -15,12 +16,8 @@ import { BranchTabs } from "@/entities/branches/ui/branch-tabs";
 import { NodeMetadataPopover } from "@/entities/nodes/object/ui/object-details/node-metadata-popover";
 
 function BranchDetailsLayout() {
-  const { branchName } = useParams() as { branchName: string };
+  const { branchName } = useRequiredParams("branchName");
   const branches = useAtomValue(branchesState);
-
-  if (!branchName) {
-    return <Navigate to={constructPath("/branches")} />;
-  }
 
   if (branches.length === 0) {
     return (

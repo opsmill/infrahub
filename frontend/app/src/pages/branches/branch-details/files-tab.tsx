@@ -1,8 +1,8 @@
-import { useParams } from "react-router";
+import { useRequiredParams } from "@/shared/hooks/use-required-params";
 
 import { FilesDiff } from "@/entities/diff/ui/file-diff/files-diff";
 
 export function Component() {
-  const { branchName } = useParams() as { branchName: string };
+  const { branchName } = useRequiredParams("branchName");
   return <FilesDiff branchName={branchName} />;
 }

@@ -61,17 +61,19 @@ export function RoleManagementTabs() {
       scrollBarClassName="hidden"
       className="shrink-0 border-gray-200 border-b"
     >
-      <Row className="items-end gap-4 px-4">
-        {tabs.map((tab) => (
-          <RoleManagementTab
-            key={tab.path}
-            to={tab.to}
-            icon={tab.icon}
-            label={tab.label}
-            kind={tab.kind}
-          />
-        ))}
-      </Row>
+      <nav aria-label="Tabs">
+        <Row className="items-end gap-4 px-4">
+          {tabs.map((tab) => (
+            <RoleManagementTab
+              key={tab.path}
+              to={tab.to}
+              icon={tab.icon}
+              label={tab.label}
+              kind={tab.kind}
+            />
+          ))}
+        </Row>
+      </nav>
     </ScrollArea>
   );
 }

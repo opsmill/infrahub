@@ -9,6 +9,7 @@ import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
+import { getBranchDetailsUrl } from "@/entities/branches/utils";
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
 
 export function BreadcrumbBranches() {
@@ -44,10 +45,7 @@ export function BreadcrumbBranchSelector({ currentBranchName }: BreadcrumbBranch
                   onAction={close}
                 >
                   {(branch) => (
-                    <ListBoxItem
-                      textValue={branch.name}
-                      href={constructPath(`/branches/${branch.name}`)}
-                    >
+                    <ListBoxItem textValue={branch.name} href={getBranchDetailsUrl(branch.name)}>
                       <Icon icon="mdi:source-branch" /> {branch.name}
                     </ListBoxItem>
                   )}

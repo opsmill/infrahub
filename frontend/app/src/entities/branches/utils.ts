@@ -1,4 +1,17 @@
+import { constructPath, type overrideQueryParams } from "@/shared/api/rest/fetch";
+
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
+
+export type BranchDetailsTab = "data" | "files" | "artifacts" | "schema";
+
+export function getBranchDetailsUrl(
+  branchName: string,
+  tab?: BranchDetailsTab,
+  overrideParams?: overrideQueryParams[]
+): string {
+  const path = tab ? `/branches/${branchName}/${tab}` : `/branches/${branchName}`;
+  return constructPath(path, overrideParams);
+}
 
 export const findSelectedBranch = (
   branches: BranchListItem[],
