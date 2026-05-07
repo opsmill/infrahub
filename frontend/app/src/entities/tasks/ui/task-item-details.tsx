@@ -98,12 +98,12 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
           render={(item) => {
             if (typeof item === "string") return null;
 
-            if (!item.id) return null;
+            if (!item.id || !item.kind) return null;
 
             return (
               <Link
                 key={item.id}
-                to={getObjectDetailsUrl(item.kind!, item.id, [
+                to={getObjectDetailsUrl(item.kind, item.id, [
                   { name: QSP.BRANCH, value: object.branch },
                 ])}
               >
