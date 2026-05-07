@@ -16,17 +16,14 @@ from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
-from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
-from infrahub.message_bus.types import KVTTL
 from infrahub.permissions import AssignedPermissions, PermissionBackend
 from infrahub.proposed_change.constants import ProposedChangeState
 from infrahub.proposed_change.models import RequestProposedChangePipeline
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.services.component import InfrahubComponent
-from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import build_client
 from infrahub.workflows.catalogue import REQUEST_PROPOSED_CHANGE_PIPELINE
 from infrahub.workflows.initialization import setup_deployments, setup_worker_pools
@@ -616,18 +613,7 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
                 await setup_deployments(prefect_client)
 
             branch_name = "merge-proposed-change-perm"
-            branch = await create_branch(branch_name=branch_name, db=db)
-            await service.cache.set(
-                key=f"workers:schema_hash:branch:{str(branch.get_uuid)}:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-                value=branch.active_schema_hash.main,
-                expires=KVTTL.TWO_HOURS,
-            )
-            await service.cache.set(
-                key=f"workers:active:{service.component_type.value}:worker:{WORKER_IDENTITY}",
-                value=Timestamp().to_string(),
-                expires=KVTTL.FIFTEEN,
-            )
-            await service.component.refresh_heartbeat()
+            await create_branch(branch_name=branch_name, db=db)
 
             proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
             await proposed_change.new(
@@ -655,6 +641,66 @@ class TestMergeProposedChangePermissionFailure(TestInfrahubApp):
             )
 
             assert not update_status.errors
+
+
+class TestMergeProposedChangeUnexpectedFailure(TestInfrahubApp):
+    async def test_merge_proposed_change_unexpected_failure_resets_state(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        register_core_models_schema: None,
+        session_admin: AccountSession,
+        client: InfrahubClient,
+        dependency_provider: Provider,
+    ) -> None:
+        with dependency_provider.scope(build_client, lambda: client):
+            cache = MemoryCache()
+            message_bus = BusRecorder()
+            service = await InfrahubServices.new(
+                database=db,
+                message_bus=message_bus,
+                workflow=WorkflowLocalExecution(),
+                cache=cache,
+                client=client,
+                component=InfrahubComponent(
+                    cache=cache, db=db, message_bus=message_bus, component_type=ComponentType.NONE
+                ),
+            )
+
+            async with get_client(sync_client=False) as prefect_client:
+                await setup_worker_pools(client=prefect_client)
+                await setup_deployments(prefect_client)
+
+            branch_name = "merge-proposed-change-fail"
+            await create_branch(branch_name=branch_name, db=db)
+
+            proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE)
+            await proposed_change.new(
+                db=db, name="pc-merge-fail-1234", destination_branch="main", source_branch=branch_name, state="open"
+            )
+            await proposed_change.save(db=db)
+
+            with patch(
+                "infrahub.proposed_change.tasks.merge_branch",
+                side_effect=RuntimeError("simulated post-merge failure"),
+            ):
+                update_status = await graphql_mutation(
+                    query=UPDATE_PROPOSED_CHANGE,
+                    db=db,
+                    variables={"proposed_change": proposed_change.id, "state": "merged"},
+                    account_session=session_admin,
+                    service=service,
+                )
+
+            assert update_status.errors
+            assert update_status.errors[0].message == (
+                f"Merge failure when trying to merge {branch_name}: simulated post-merge failure"
+            )
+
+            refreshed_pc = await NodeManager.get_one(db=db, id=proposed_change.id, raise_on_error=True)
+            assert refreshed_pc.get_attribute("state").value.value == ProposedChangeState.OPEN.value
+            branch = await Branch.get_by_name(db=db, name=branch_name)
+            assert branch.status == BranchStatus.OPEN
 
 
 async def test_create_thread(
