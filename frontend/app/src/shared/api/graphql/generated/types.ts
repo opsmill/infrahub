@@ -208,7 +208,6 @@ export type AnyAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -255,7 +254,6 @@ export type ArtifactEvent = EventNodeInterface & {
 
 export type AttributeInterface = {
   is_default: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   updated_at: Maybe<Scalars['DateTime']['output']>;
 };
@@ -1401,7 +1399,6 @@ export type CheckboxAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -16308,7 +16305,6 @@ export type Dropdown = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   label: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -17140,7 +17136,6 @@ export type IpHost = AttributeInterface & {
   ip: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -17164,7 +17159,6 @@ export type IpNetwork = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
   num_addresses: Maybe<Scalars['Int']['output']>;
@@ -18410,7 +18404,6 @@ export type JsonAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -18460,7 +18453,6 @@ export type ListAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -18500,7 +18492,6 @@ export type MacAddress = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   oui: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -22544,7 +22535,6 @@ export type NumberAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -37040,7 +37030,6 @@ export type TextAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
