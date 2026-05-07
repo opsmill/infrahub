@@ -32,3 +32,18 @@ const url = constructPath(`/proposed-changes/${id}`);
 - Static pages: `/about`, `/help`
 
 **Location:** `frontend/app/src/entities/nodes/utils.ts`
+
+## Tab Navigation Uses Path Segments
+
+Tabs on detail pages are nested child routes, not query string parameters. Build tab URLs as path segments:
+
+```typescript
+// ✅ Good - path-based tab navigation
+const url = getObjectDetailsUrl(objectKind, objectId, undefined, "members");
+// → /objects/CoreTag/abc123/members
+
+// ❌ Bad - QSP-based (legacy pattern, no longer supported)
+const url = constructPath(`/objects/${kind}/${id}`, [{ name: "tab", value: "members" }]);
+```
+
+`getObjectDetailsUrl(kind, id, overrideParams, tabSegment)` accepts an optional fourth argument that appends `/<tabSegment>` to the path.
