@@ -280,10 +280,10 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Artifacts',
-          link: { type: 'doc', id: 'topics/artifact' }, // hub
+          link: { type: 'doc', id: 'artifacts/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/artifact', label: 'Use artifacts' },
-            { type: 'doc', id: 'guides/artifact-content-composition', label: 'Artifact content composition' },
+            { type: 'doc', id: 'artifacts/use', label: 'Use artifacts' },
+            { type: 'doc', id: 'artifacts/content-composition', label: 'Artifact content composition' },
           ],
         },
         {
