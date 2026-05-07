@@ -61,7 +61,6 @@ class PermissionType(ObjectType):
 
 class AttributeInterface(InfrahubInterface):
     is_default = Field(Boolean)
-    is_inherited = Field(Boolean)
     is_protected = Field(Boolean)
     updated_at = Field(DateTime)
     # Since source and owner are using a Type that is generated dynamically
