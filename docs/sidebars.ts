@@ -419,8 +419,8 @@ const sidebars: SidebarsConfig = {
           collapsed: false,
           link: { type: 'generated-index' },
           items: [
-            // Authentication moved in PR 11
-            { type: 'doc', id: 'topics/authentication', label: 'Authentication' },
+            // Authentication (PR 11)
+            { type: 'doc', id: 'deploy-manage/user-management/authentication', label: 'Authentication' },
             // SSO hub + spokes added in PR 12
             { type: 'doc', id: 'guides/sso', label: 'SSO' },
             // Permissions & Roles hub + spoke added in PR 13
