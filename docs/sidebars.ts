@@ -363,12 +363,12 @@ const sidebars: SidebarsConfig = {
           collapsed: false,
           link: { type: 'generated-index' },
           items: [
-            // Tasks moved in PR 5
-            { type: 'doc', id: 'topics/tasks', label: 'Tasks' },
-            // Telemetry moved in PR 6
-            { type: 'doc', id: 'guides/telemetry', label: 'Telemetry' },
-            // Activity Log moved in PR 7
-            { type: 'doc', id: 'topics/activity-log', label: 'Activity log' },
+            // Tasks (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/tasks', label: 'Tasks' },
+            // Telemetry (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
+            // Activity Log (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/activity-log', label: 'Activity log' },
             // Log Forwarding hub + spoke added in PR 8
             { type: 'doc', id: 'topics/log-forwarding', label: 'Log forwarding' },
           ],
