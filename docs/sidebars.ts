@@ -462,7 +462,6 @@ const sidebars: SidebarsConfig = {
           items: [
             { type: 'doc', id: 'development-resources/graphql', label: 'GraphQL' },
             { type: 'doc', id: 'development-resources/graphql-fragments', label: 'GraphQL fragments' },
-            { type: 'ref', id: 'reference/api-server', label: 'REST API' },
             { type: 'link', label: 'Python SDK ↗', href: 'https://TODO-FILL-IN-python-sdk.example.com' },
             { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://TODO-FILL-IN-infrahubctl.example.com' },
             { type: 'link', label: 'MCP Server ↗', href: 'https://TODO-FILL-IN-mcp-server.example.com' },
