@@ -2,7 +2,7 @@
 title: Objects
 ---
 
-An object is a record stored in Infrahub that conforms to a schema node definition. If schema nodes are the blueprints, objects are the actual data — a specific router, an interface, a BGP session, a rack.
+An object is a record stored in Infrahub that conforms to a schema node definition. If schema nodes are the blueprints, objects are the actual instances of data — a specific router, an interface, a BGP session, a rack.
 
 ## What is an object?
 
@@ -24,7 +24,7 @@ How an object behaves across branches depends on its schema definition. By defau
 
 **Metadata and data lineage**
 
-Every attribute value on an object carries metadata that records where the value came from and when it was last changed. This lets you trace the origin of any piece of data — whether it was set manually, inherited from a Profile, or allocated from a resource pool.
+Objects, their attribute values, and their relationships all carry metadata. At the object level, this includes ownership and source tracking. At the attribute level, each value records where it came from and when it was last changed — whether set manually, inherited from a Profile, or allocated from a resource pool. Relationship metadata tracks the same lineage for each link between objects. This lets you trace the origin of any piece of data across the entire record.
 
 ## Objects and related concepts
 
