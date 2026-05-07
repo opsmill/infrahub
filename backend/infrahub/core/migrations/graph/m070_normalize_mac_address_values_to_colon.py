@@ -9,7 +9,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import BranchSupportType
 from infrahub.core.initialization import get_root_node
 from infrahub.core.migrations.helpers.display_label import extract_jinja2_variables, is_jinja2_template
-from infrahub.core.migrations.helpers.recompute import (
+from infrahub.core.migrations.helpers.attribute_recompute import (
     format_hfid_row,
     make_display_label_formatter,
     paginate_read,
