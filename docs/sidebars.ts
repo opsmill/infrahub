@@ -387,8 +387,16 @@ const sidebars: SidebarsConfig = {
           collapsed: false,
           link: { type: 'generated-index' },
           items: [
-            // Database Backup hub + spokes added in PR 9
-            { type: 'doc', id: 'topics/database-backup', label: 'Database backup' },
+            // Database Backup hub + spokes (PR 9)
+            {
+              type: 'category',
+              label: 'Database backup',
+              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/backup-and-restore', label: 'Backup and restore' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore', label: 'Cluster backup and restore' },
+              ],
+            },
             // Upgrade hub + spokes added in PR 10
             { type: 'doc', id: 'guides/upgrade', label: 'Upgrade' },
           ],
