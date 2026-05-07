@@ -78,6 +78,7 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `branches-and-change-control.yml` | Branches & Change Control | TBD |
 | `menu.yml` | Menu Customization | TBD |
 | `schema.yml` | Schema & Data | TBD |
+| `transformations.yml` | Transformations | TBD |
 | `artifacts.yml` | Artifacts | TBD |
 | `webhooks.yml` | Webhooks | TBD |
 | `testing-framework-move.yml` | Testing Framework move | TBD |

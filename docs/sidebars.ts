@@ -75,6 +75,8 @@ const sidebars: SidebarsConfig = {
             'academy/tutorials/build-your-first-schema',
             'academy/tutorials/groups',
             'academy/tutorials/build-a-check',
+            'academy/tutorials/transformations/build-a-jinja2-transformation',
+            'academy/tutorials/transformations/build-a-python-transformation',
           ],
         },
       ],
@@ -271,10 +273,10 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Transformations',
-          link: { type: 'doc', id: 'topics/transformation' }, // hub
+          link: { type: 'doc', id: 'transformations/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/jinja2-transform', label: 'Write a Jinja2 transformation' },
-            { type: 'doc', id: 'guides/python-transform', label: 'Write a Python transformation' },
+            { type: 'doc', id: 'transformations/jinja2', label: 'Jinja2' },
+            { type: 'doc', id: 'transformations/python', label: 'Python' },
           ],
         },
         {
