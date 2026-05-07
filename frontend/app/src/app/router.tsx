@@ -127,6 +127,10 @@ export const router = createBrowserRouter([
                     path: "password",
                     lazy: () => import("@/pages/profile/password-tab"),
                   },
+                  {
+                    path: "*",
+                    element: <Navigate to="/profile" replace />,
+                  },
                 ],
               },
               {
