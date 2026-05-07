@@ -169,6 +169,16 @@ core_account_group = NodeSchema(
     generate_profile=False,
     inherit_from=[InfrahubKind.LINEAGEOWNER, InfrahubKind.LINEAGESOURCE, InfrahubKind.GENERICGROUP],
     branch=BranchSupportType.AGNOSTIC,
+    attributes=[
+        Attr(
+            name="group_type",
+            kind="Text",
+            description="Type of group (default or internal)",
+            enum=["default", "internal"],
+            default_value="internal",
+            optional=False,
+        ),
+    ],
     relationships=[
         Rel(
             name="roles",
