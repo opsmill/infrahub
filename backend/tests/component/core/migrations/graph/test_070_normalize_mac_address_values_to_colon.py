@@ -12,6 +12,7 @@ from infrahub.core.migrations.graph.m070_normalize_mac_address_values_to_colon i
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -147,6 +148,7 @@ class TestMigration070(TestInfrahubApp):
         assert (
             await _read_attribute_value(db=db, node_uuid=node.id, attr_name="display_label") == canonical_display_label
         )
+        await verify_graph(db=db)
 
     async def test_migration_070_converts_mac_when_not_in_hfid_or_display_label(
         self, db: InfrahubDatabase, default_branch: Branch
@@ -160,6 +162,7 @@ class TestMigration070(TestInfrahubApp):
             assert not result.errors
 
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="mac") == COLON_MAC
+        await verify_graph(db=db)
 
     async def test_migration_070_idempotent(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         node = await _seed_legacy_dash_state(
@@ -184,6 +187,7 @@ class TestMigration070(TestInfrahubApp):
 
         assert first_mac == second_mac == COLON_MAC
         assert first_hfid == second_hfid == ujson.dumps([COLON_MAC])
+        await verify_graph(db=db)
 
     async def test_migration_070_validate_flags_non_canonical_value(
         self, db: InfrahubDatabase, default_branch: Branch
@@ -208,6 +212,7 @@ class TestMigration070(TestInfrahubApp):
 
         assert corrupted_result.errors
         assert any(node.id in err and LEGACY_DASH_MAC in err for err in corrupted_result.errors)
+        await verify_graph(db=db)
 
     async def test_migration_070_execute_against_branch(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         test_branch = await create_branch(db=db, branch_name="test-branch-m070")
@@ -263,3 +268,4 @@ class TestMigration070(TestInfrahubApp):
             )
             == canonical_display_label
         )
+        await verify_graph(db=db)
