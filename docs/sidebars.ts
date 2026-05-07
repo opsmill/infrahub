@@ -431,8 +431,15 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'deploy-manage/user-management/sso/advanced-sso', label: 'Advanced SSO configuration' },
               ],
             },
-            // Permissions & Roles hub + spoke added in PR 13
-            { type: 'doc', id: 'topics/permissions-roles', label: 'Permissions & Roles' },
+            // Permissions & Roles hub + spoke (PR 13)
+            {
+              type: 'category',
+              label: 'Permissions & roles',
+              link: { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions', label: 'Manage accounts and permissions' },
+              ],
+            },
             // Managing API Tokens moved in PR 14
             { type: 'doc', id: 'guides/managing-api-tokens', label: 'Managing API Tokens' },
           ],

@@ -89,3 +89,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `deploy-manage-upgrade.yml` | D&M — Upgrade (hub + 3 spokes) | TBD |
 | `deploy-manage-authentication.yml` | D&M — Authentication (move) | TBD |
 | `deploy-manage-sso.yml` | D&M — SSO (hub + 2 spokes) | TBD |
+| `deploy-manage-permissions-roles.yml` | D&M — Permissions & Roles (hub + 1 spoke) | TBD |
