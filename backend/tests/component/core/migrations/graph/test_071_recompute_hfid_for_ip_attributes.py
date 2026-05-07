@@ -13,6 +13,7 @@ from infrahub.core.migrations.graph.m071_recompute_hfid_for_ip_attributes import
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -294,3 +295,5 @@ class TestMigration071(TestInfrahubApp):
             )
             == user_network_dl_canonical
         )
+
+        await verify_graph(db=db)
