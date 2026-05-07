@@ -1,5 +1,6 @@
 import { useGetValidatorsQuery } from "@/entities/diff/ui/queries/get-validators.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface ChecksTabProps {
   proposedChangeId: string;
@@ -12,7 +13,7 @@ export function ChecksTab({ proposedChangeId }: ChecksTabProps) {
 
   return (
     <ProposedChangeTab
-      to={`/proposed-changes/${proposedChangeId}/checks`}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "checks")}
       label="Checks"
       count={count}
       isCountLoading={isPending}

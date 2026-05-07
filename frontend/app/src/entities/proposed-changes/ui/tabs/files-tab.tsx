@@ -1,5 +1,6 @@
 import { useGetFilesDiff } from "@/entities/diff/ui/queries/get-files-diff.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface FilesTabProps {
   sourceBranch: string;
@@ -14,7 +15,7 @@ export function FilesTab({ sourceBranch, proposedChangeId }: FilesTabProps) {
 
   return (
     <ProposedChangeTab
-      to={`/proposed-changes/${proposedChangeId}/files`}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "files")}
       label="Files"
       count={count}
       isCountLoading={isPending}

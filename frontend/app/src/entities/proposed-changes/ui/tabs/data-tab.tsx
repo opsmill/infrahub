@@ -1,5 +1,6 @@
 import { useGetDiffSummary } from "@/entities/diff/ui/queries/get-diff-summary.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface DataTabProps {
   sourceBranch: string;
@@ -20,7 +21,7 @@ export function DataTab({ sourceBranch, proposedChangeId }: DataTabProps) {
 
   return (
     <ProposedChangeTab
-      to={`/proposed-changes/${proposedChangeId}/data`}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "data")}
       label="Data"
       count={count}
       isCountLoading={isPending}

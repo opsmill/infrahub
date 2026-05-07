@@ -1,9 +1,8 @@
 import { Icon } from "@iconify-icon/react";
 import { Link } from "react-router";
 
-import { constructPath } from "@/shared/api/rest/fetch";
-
 import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/use-proposed-change-outlet";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 
 export function Component() {
@@ -13,7 +12,7 @@ export function Component() {
     <div>
       <div className="flex bg-white text-sm">
         <Link
-          to={constructPath(`/proposed-changes/${proposedChangeData.id}/tasks`)}
+          to={getProposedChangeDetailsUrl(proposedChangeData.id, "tasks")}
           className="flex items-center p-2"
         >
           <Icon icon="mdi:chevron-left" />

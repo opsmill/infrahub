@@ -1,4 +1,5 @@
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 import { useGetTaskCount } from "@/entities/tasks/ui/queries/get-task-count.query";
 
 export interface TasksTabProps {
@@ -10,7 +11,7 @@ export function TasksTab({ proposedChangeId }: TasksTabProps) {
 
   return (
     <ProposedChangeTab
-      to={`/proposed-changes/${proposedChangeId}/tasks`}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "tasks")}
       label="Tasks"
       count={count}
       isCountLoading={isPending}

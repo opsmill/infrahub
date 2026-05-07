@@ -11,7 +11,7 @@ export interface ProposedChangeTabProps {
 
 export function ProposedChangeTab({ to, label, count, isCountLoading }: ProposedChangeTabProps) {
   return (
-    <LinkTab href={to}>
+    <LinkTab to={to}>
       {label}
       {isCountLoading && <Spinner className="mx-1" />}
       {!isCountLoading && count !== undefined && (
