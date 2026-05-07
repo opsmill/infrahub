@@ -339,8 +339,15 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
               ],
             },
-            // Production Deployment hub + HA spoke added in PR 3
-            { type: 'doc', id: 'guides/production-deployment', label: 'Production deployment' },
+            // Production Deployment hub + HA spoke (PR 3)
+            {
+              type: 'category',
+              label: 'Production deployment',
+              link: { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
+              ],
+            },
             // Configure Infrahub added in PR 4
             { type: 'doc', id: 'guides/configuration-changes', label: 'Configure Infrahub' },
             // Configuration reference cross-link updated in PR 4
