@@ -208,7 +208,6 @@ export type AnyAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -255,7 +254,6 @@ export type ArtifactEvent = EventNodeInterface & {
 
 export type AttributeInterface = {
   is_default: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   updated_at: Maybe<Scalars['DateTime']['output']>;
 };
@@ -852,7 +850,7 @@ export type BuiltinIpPrefix = {
   /** The IP prefix in CIDR notation */
   prefix: Maybe<IpNetwork>;
   profiles: NestedPaginatedCoreProfile;
-  resource_pool: NestedPaginatedCoreIpAddressPool;
+  resource_pool: NestedPaginatedCoreIpPool;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Percentage of the prefix that is allocated */
   utilization: Maybe<NumberAttribute>;
@@ -1132,33 +1130,10 @@ export type BuiltinIpPrefixProfilesArgs = {
 
 /** IPv4 or IPv6 prefix also referred as network */
 export type BuiltinIpPrefixResource_PoolArgs = {
-  default_address_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_address_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__value?: InputMaybe<Scalars['String']['input']>;
-  default_address_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  default_prefix_length__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_prefix_length__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__value?: InputMaybe<Scalars['BigInt']['input']>;
-  default_prefix_length__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  description__source__id?: InputMaybe<Scalars['ID']['input']>;
-  description__value?: InputMaybe<Scalars['String']['input']>;
-  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  display_label__value?: InputMaybe<Scalars['String']['input']>;
-  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  name__source__id?: InputMaybe<Scalars['ID']['input']>;
-  name__value?: InputMaybe<Scalars['String']['input']>;
-  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
@@ -1401,7 +1376,6 @@ export type CheckboxAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -8501,7 +8475,7 @@ export type CoreGroupUpdateInput = {
 };
 
 /** A pool of IP address resources */
-export type CoreIpAddressPool = CoreNode & CoreResourcePool & LineageSource & {
+export type CoreIpAddressPool = CoreIpPool & CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreIPAddressPool';
   /** The object type to create when reserving a resource in the pool (required) */
   default_address_type: Maybe<TextAttribute>;
@@ -8720,8 +8694,99 @@ export type CoreIpAddressPoolUpsertInput = {
   subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
 };
 
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPool = {
+  display_label: Maybe<Scalars['String']['output']>;
+  /** Human friendly identifier */
+  hfid: Maybe<Array<Scalars['String']['output']>>;
+  /** Unique identifier */
+  id: Maybe<Scalars['String']['output']>;
+  member_of_groups: NestedPaginatedCoreGroup;
+  subscriber_of_groups: NestedPaginatedCoreGroup;
+};
+
+
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPoolMember_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPoolSubscriber_Of_GroupsArgs = {
+  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  description__source__id?: InputMaybe<Scalars['ID']['input']>;
+  description__value?: InputMaybe<Scalars['String']['input']>;
+  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  display_label__value?: InputMaybe<Scalars['String']['input']>;
+  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  group_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  group_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__source__id?: InputMaybe<Scalars['ID']['input']>;
+  group_type__value?: InputMaybe<Scalars['String']['input']>;
+  group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  label__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  label__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  label__source__id?: InputMaybe<Scalars['ID']['input']>;
+  label__value?: InputMaybe<Scalars['String']['input']>;
+  label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  name__source__id?: InputMaybe<Scalars['ID']['input']>;
+  name__value?: InputMaybe<Scalars['String']['input']>;
+  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+};
+
+/** A pool of IP resources (prefixes or addresses). */
+export type CoreIpPoolUpdate = {
+  __typename: 'CoreIPPoolUpdate';
+  object: Maybe<CoreIpPool>;
+  ok: Maybe<Scalars['Boolean']['output']>;
+};
+
+export type CoreIpPoolUpdateInput = {
+  hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  id?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+  subscriber_of_groups?: InputMaybe<Array<InputMaybe<RelatedNodeInput>>>;
+};
+
 /** A pool of IP prefix resources */
-export type CoreIpPrefixPool = CoreNode & CoreResourcePool & LineageSource & {
+export type CoreIpPrefixPool = CoreIpPool & CoreNode & CoreResourcePool & LineageSource & {
   __typename: 'CoreIPPrefixPool';
   /** Default member type for allocated prefixes */
   default_member_type: Maybe<TextAttribute>;
@@ -16308,7 +16373,6 @@ export type Dropdown = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   label: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -16633,6 +16697,13 @@ export type EdgedCoreGroupTriggerRule = {
 export type EdgedCoreIpAddressPool = {
   __typename: 'EdgedCoreIPAddressPool';
   node: Maybe<CoreIpAddressPool>;
+  node_metadata: Maybe<InfrahubNodeMetadata>;
+};
+
+/** A pool of IP resources (prefixes or addresses). */
+export type EdgedCoreIpPool = {
+  __typename: 'EdgedCoreIPPool';
+  node: Maybe<CoreIpPool>;
   node_metadata: Maybe<InfrahubNodeMetadata>;
 };
 
@@ -17140,7 +17211,6 @@ export type IpHost = AttributeInterface & {
   ip: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -17164,7 +17234,6 @@ export type IpNetwork = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   netmask: Maybe<Scalars['String']['output']>;
   num_addresses: Maybe<Scalars['Int']['output']>;
@@ -17613,7 +17682,7 @@ export type InternalIpPrefixAvailable = BuiltinIpPrefix & CoreNode & {
   /** The IP prefix in CIDR notation */
   prefix: Maybe<IpNetwork>;
   profiles: NestedPaginatedCoreProfile;
-  resource_pool: NestedPaginatedCoreIpAddressPool;
+  resource_pool: NestedPaginatedCoreIpPool;
   subscriber_of_groups: NestedPaginatedCoreGroup;
   /** Percentage of the prefix that is allocated */
   utilization: Maybe<NumberAttribute>;
@@ -17893,33 +17962,10 @@ export type InternalIpPrefixAvailableProfilesArgs = {
 
 /** IPv4 or IPv6 prefix also referred as network which has not been allocated yet */
 export type InternalIpPrefixAvailableResource_PoolArgs = {
-  default_address_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_address_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_address_type__value?: InputMaybe<Scalars['String']['input']>;
-  default_address_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  default_prefix_length__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  default_prefix_length__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__source__id?: InputMaybe<Scalars['ID']['input']>;
-  default_prefix_length__value?: InputMaybe<Scalars['BigInt']['input']>;
-  default_prefix_length__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  description__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  description__source__id?: InputMaybe<Scalars['ID']['input']>;
-  description__value?: InputMaybe<Scalars['String']['input']>;
-  description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  display_label__value?: InputMaybe<Scalars['String']['input']>;
-  display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   include_descendants?: InputMaybe<Scalars['Boolean']['input']>;
   isnull?: InputMaybe<Scalars['Boolean']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
-  name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  name__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  name__source__id?: InputMaybe<Scalars['ID']['input']>;
-  name__value?: InputMaybe<Scalars['String']['input']>;
-  name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
 };
@@ -18410,7 +18456,6 @@ export type JsonAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -18460,7 +18505,6 @@ export type ListAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -18500,7 +18544,6 @@ export type MacAddress = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   oui: Maybe<Scalars['String']['output']>;
   owner: Maybe<LineageOwner>;
@@ -18801,6 +18844,8 @@ export type Mutation = {
   CoreIPAddressPoolUpdate: Maybe<CoreIpAddressPoolUpdate>;
   /** A pool of IP address resources */
   CoreIPAddressPoolUpsert: Maybe<CoreIpAddressPoolUpsert>;
+  /** A pool of IP resources (prefixes or addresses). */
+  CoreIPPoolUpdate: Maybe<CoreIpPoolUpdate>;
   /** A pool of IP prefix resources */
   CoreIPPrefixPoolCreate: Maybe<CoreIpPrefixPoolCreate>;
   /** A pool of IP prefix resources */
@@ -19964,6 +20009,12 @@ export type MutationCoreIpAddressPoolUpdateArgs = {
 export type MutationCoreIpAddressPoolUpsertArgs = {
   context?: InputMaybe<ContextInput>;
   data: CoreIpAddressPoolUpsertInput;
+};
+
+
+export type MutationCoreIpPoolUpdateArgs = {
+  context?: InputMaybe<ContextInput>;
+  data: CoreIpPoolUpdateInput;
 };
 
 
@@ -21288,6 +21339,15 @@ export type NestedEdgedCoreIpAddressPool = {
   relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
 };
 
+/** A pool of IP resources (prefixes or addresses). */
+export type NestedEdgedCoreIpPool = {
+  __typename: 'NestedEdgedCoreIPPool';
+  node: Maybe<CoreIpPool>;
+  node_metadata: InfrahubNodeMetadata;
+  properties: Maybe<RelationshipProperty>;
+  relationship_metadata: Maybe<InfrahubRelationshipMetadata>;
+};
+
 /** A pool of IP prefix resources */
 export type NestedEdgedCoreIpPrefixPool = {
   __typename: 'NestedEdgedCoreIPPrefixPool';
@@ -22086,6 +22146,13 @@ export type NestedPaginatedCoreIpAddressPool = {
   permissions: PaginatedObjectPermission;
 };
 
+/** A pool of IP resources (prefixes or addresses). */
+export type NestedPaginatedCoreIpPool = {
+  __typename: 'NestedPaginatedCoreIPPool';
+  count: Scalars['Int']['output'];
+  edges: Maybe<Array<NestedEdgedCoreIpPool>>;
+};
+
 /** A pool of IP prefix resources */
 export type NestedPaginatedCoreIpPrefixPool = {
   __typename: 'NestedPaginatedCoreIPPrefixPool';
@@ -22544,7 +22611,6 @@ export type NumberAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
@@ -22953,6 +23019,14 @@ export type PaginatedCoreIpAddressPool = {
   __typename: 'PaginatedCoreIPAddressPool';
   count: Scalars['Int']['output'];
   edges: Array<EdgedCoreIpAddressPool>;
+  permissions: PaginatedObjectPermission;
+};
+
+/** A pool of IP resources (prefixes or addresses). */
+export type PaginatedCoreIpPool = {
+  __typename: 'PaginatedCoreIPPool';
+  count: Scalars['Int']['output'];
+  edges: Array<EdgedCoreIpPool>;
   permissions: PaginatedObjectPermission;
 };
 
@@ -24565,6 +24639,7 @@ export type Query = {
   CoreGroupAction: PaginatedCoreGroupAction;
   CoreGroupTriggerRule: PaginatedCoreGroupTriggerRule;
   CoreIPAddressPool: PaginatedCoreIpAddressPool;
+  CoreIPPool: PaginatedCoreIpPool;
   CoreIPPrefixPool: PaginatedCoreIpPrefixPool;
   CoreKeyValue: PaginatedCoreKeyValue;
   CoreMenu: PaginatedCoreMenu;
@@ -25195,31 +25270,8 @@ export type QueryBuiltinIpPrefixArgs = {
   profiles__profile_priority__source__id?: InputMaybe<Scalars['ID']['input']>;
   profiles__profile_priority__value?: InputMaybe<Scalars['BigInt']['input']>;
   profiles__profile_priority__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  resource_pool__default_address_type__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__default_address_type__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_address_type__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_address_type__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__default_address_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  resource_pool__default_prefix_length__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__default_prefix_length__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_prefix_length__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__default_prefix_length__value?: InputMaybe<Scalars['BigInt']['input']>;
-  resource_pool__default_prefix_length__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
-  resource_pool__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__description__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__description__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
-  resource_pool__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__display_label__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   resource_pool__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   resource_pool__isnull?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__name__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
-  resource_pool__name__owner__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__name__source__id?: InputMaybe<Scalars['ID']['input']>;
-  resource_pool__name__value?: InputMaybe<Scalars['String']['input']>;
-  resource_pool__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -30560,6 +30612,56 @@ export type QueryCoreIpAddressPoolArgs = {
   resources__utilization__source__id?: InputMaybe<Scalars['ID']['input']>;
   resources__utilization__value?: InputMaybe<Scalars['BigInt']['input']>;
   resources__utilization__values?: InputMaybe<Array<InputMaybe<Scalars['BigInt']['input']>>>;
+  subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  subscriber_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  subscriber_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  subscriber_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  subscriber_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+
+export type QueryCoreIpPoolArgs = {
+  any__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  any__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  any__source__id?: InputMaybe<Scalars['ID']['input']>;
+  any__value?: InputMaybe<Scalars['String']['input']>;
+  any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  member_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__display_label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__display_label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__group_type__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__group_type__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  member_of_groups__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  member_of_groups__label__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__label__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  member_of_groups__name__value?: InputMaybe<Scalars['String']['input']>;
+  member_of_groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  node_metadata__created_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__created_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__created_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  node_metadata__updated_at?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
+  node_metadata__updated_by__id?: InputMaybe<Scalars['ID']['input']>;
+  node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
+  offset?: InputMaybe<Scalars['Int']['input']>;
+  order?: InputMaybe<OrderInput>;
+  partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   subscriber_of_groups__description__value?: InputMaybe<Scalars['String']['input']>;
   subscriber_of_groups__description__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   subscriber_of_groups__display_label__isnull?: InputMaybe<Scalars['Boolean']['input']>;
@@ -37040,7 +37142,6 @@ export type TextAttribute = AttributeInterface & {
   id: Maybe<Scalars['String']['output']>;
   is_default: Maybe<Scalars['Boolean']['output']>;
   is_from_profile: Maybe<Scalars['Boolean']['output']>;
-  is_inherited: Maybe<Scalars['Boolean']['output']>;
   is_protected: Maybe<Scalars['Boolean']['output']>;
   owner: Maybe<LineageOwner>;
   permissions: Maybe<PermissionType>;
