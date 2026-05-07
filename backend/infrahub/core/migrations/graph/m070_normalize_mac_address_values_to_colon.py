@@ -137,7 +137,11 @@ class Migration070(MigrationRequiringRebase):
                             continue
                         try:
                             canonical = _to_colon_form(stored)
-                        except (netaddr.AddrFormatError, ValueError):
+                        except (netaddr.AddrFormatError, ValueError) as exc:
+                            console.log(
+                                f"[yellow]Skipping {plan.schema.kind}.{attr.name} on node {node_uuid} "
+                                f"during validation: stored value {stored!r} is not a valid MAC ({exc})[/yellow]"
+                            )
                             continue
                         if stored != canonical:
                             result.errors.append(
@@ -158,9 +162,11 @@ class Migration070(MigrationRequiringRebase):
         path = schema.parse_schema_path(path=f"{attribute_schema.name}__value", schema=schema_branch)
 
         async def format_row(node_uuid: str, values: list[str | None]) -> str | None:
-            if not values or values[0] is None:
+            if not values is None:
                 return None
             old = values[0]
+            if old is None:
+                return None
             try:
                 new = _to_colon_form(old)
             except (netaddr.AddrFormatError, ValueError) as exc:
