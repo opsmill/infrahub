@@ -1,0 +1,108 @@
+---
+feature: Development Resources (page moves + APIs & interfaces flat structure)
+pr: TBD
+description: |
+  Moves three pages into a new development-resources/ directory:
+    - topics/developer-guide.mdx → development-resources/developer-guide.mdx
+    - topics/graphql.mdx → development-resources/graphql.mdx
+    - guides/graphql-fragment.mdx → development-resources/graphql-fragments.mdx
+  Removes Local Demo Environment from the sidebar (deprecated; legacy file stays on disk).
+  Removes Testing Framework from sidebar (already moved to Branches & Change Control in PR #9157).
+  APIs & interfaces sub-section ships flat — GraphQL spoke split is a follow-up PR.
+  Original source files remain on disk.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/developer-guide
+    to: /docs/development-resources/developer-guide
+  - from: /docs/topics/graphql
+    to: /docs/development-resources/graphql
+  - from: /docs/guides/graphql-fragment
+    to: /docs/development-resources/graphql-fragments
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/development-resources/developer-guide
+    title: Developer Guide
+  - path: /docs/development-resources/graphql
+    title: GraphQL
+  - path: /docs/development-resources/graphql-fragments
+    title: Using GraphQL fragments
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/guides/repository.mdx
+    line: 33
+    current: ../topics/developer-guide.mdx#initializing-an-infrahub-repository
+    should_be: ../development-resources/developer-guide.mdx#initializing-an-infrahub-repository
+  - file: docs/docs/git-integration/connect-repository.mdx
+    line: 33
+    current: ../topics/developer-guide.mdx#initializing-an-infrahub-repository
+    should_be: ../../development-resources/developer-guide.mdx#initializing-an-infrahub-repository
+  - file: docs/docs/guides/python-transform.mdx
+    line: 13
+    current: ../topics/graphql.mdx
+    should_be: ../development-resources/graphql.mdx
+  - file: docs/docs/guides/python-transform.mdx
+    line: 112
+    current: ../topics/graphql.mdx#single-target-query-pattern
+    should_be: ../development-resources/graphql.mdx#single-target-query-pattern
+  - file: docs/docs/guides/jinja2-transform.mdx
+    line: 11
+    current: ../topics/graphql.mdx
+    should_be: ../development-resources/graphql.mdx
+  - file: docs/docs/guides/jinja2-transform.mdx
+    line: 174
+    current: ../topics/graphql.mdx#single-target-query-pattern
+    should_be: ../development-resources/graphql.mdx#single-target-query-pattern
+  - file: docs/docs/guides/create-schema.mdx
+    line: 553
+    current: ../topics/graphql.mdx
+    should_be: ../development-resources/graphql.mdx
+  - file: docs/docs/guides/profiles.mdx
+    line: 885
+    current: ../topics/graphql.mdx
+    should_be: ../development-resources/graphql.mdx
+  - file: docs/docs/topics/profiles.mdx
+    line: 303
+    current: ../topics/graphql.mdx
+    should_be: ../development-resources/graphql.mdx
+  - file: docs/docs/topics/infrahub-yml.mdx
+    line: 38
+    current: ../topics/graphql.mdx#graphql-fragments
+    should_be: ../development-resources/graphql.mdx#graphql-fragments
+  - file: docs/docs/git-integration/infrahub-yml.mdx
+    line: 38
+    current: ../topics/graphql.mdx#graphql-fragments
+    should_be: ../../development-resources/graphql.mdx#graphql-fragments
+  - file: docs/docs/resource-manager/index.mdx
+    line: 312
+    current: ../topics/graphql.mdx
+    should_be: ../development-resources/graphql.mdx
+  - file: docs/docs/tutorials/getting-started/git-integration.mdx
+    line: 57
+    current: ../../topics/graphql.mdx
+    should_be: ../../development-resources/graphql.mdx
+  # local-demo-environment is deprecated — these links will need to be removed or
+  # re-targeted at cleanup (no redirect target since the page is being removed)
+  - file: docs/docs/guides/installation.mdx
+    line: 203
+    current: ../topics/local-demo-environment
+    should_be: "REMOVE — local-demo-environment deprecated"
+  - file: docs/docs/guides/installation.mdx
+    line: 923
+    current: ../topics/local-demo-environment.mdx
+    should_be: "REMOVE — local-demo-environment deprecated"
+  - file: docs/docs/deploy-manage/install-configure/install/index.mdx
+    line: 40
+    current: ../../../topics/local-demo-environment.mdx
+    should_be: "REMOVE — local-demo-environment deprecated"
+  - file: docs/docs/deploy-manage/install-configure/install/community.mdx
+    line: 171
+    current: /topics/local-demo-environment
+    should_be: "REMOVE — local-demo-environment deprecated"
+  - file: docs/docs/tutorials/getting-started/readme.mdx
+    line: 85
+    current: ../../topics/local-demo-environment.mdx
+    should_be: "REMOVE — local-demo-environment deprecated"

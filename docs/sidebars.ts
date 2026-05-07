@@ -453,17 +453,15 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
-        { type: 'doc', id: 'topics/developer-guide', label: 'Developer Guide' },
-        { type: 'doc', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
-        { type: 'doc', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
+        { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
         {
           type: 'category',
           label: 'APIs & interfaces',
           collapsible: true,
           collapsed: true,
           items: [
-            { type: 'doc', id: 'topics/graphql', label: 'GraphQL' },
-            { type: 'doc', id: 'guides/graphql-fragment', label: 'GraphQL fragments' },
+            { type: 'doc', id: 'development-resources/graphql', label: 'GraphQL' },
+            { type: 'doc', id: 'development-resources/graphql-fragments', label: 'GraphQL fragments' },
             { type: 'ref', id: 'reference/api-server', label: 'REST API' },
             { type: 'link', label: 'Python SDK ↗', href: 'https://TODO-FILL-IN-python-sdk.example.com' },
             { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://TODO-FILL-IN-infrahubctl.example.com' },
@@ -592,8 +590,6 @@ const sidebars: SidebarsConfig = {
                 'development/frontend/testing-guidelines',
               ],
             },
-            // Cross-link to Development Resources
-            { type: 'ref', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
             'development/docs',
             'development/style-guide',
           ],
