@@ -111,12 +111,8 @@ async def _seed_raw_state_on_default(
     await node.new(db=db, **new_kwargs)
     await node.save(db=db)
     # human_friendly_id is a List-kind attribute, stored as ujson.dumps(...) — see ListAttribute.serialize_value.
-    await _set_attribute_value(
-        db=db, node_uuid=node.id, attr_name="human_friendly_id", value=ujson.dumps([raw_value])
-    )
-    await _set_attribute_value(
-        db=db, node_uuid=node.id, attr_name="display_label", value=f"{name} <{raw_value}>"
-    )
+    await _set_attribute_value(db=db, node_uuid=node.id, attr_name="human_friendly_id", value=ujson.dumps([raw_value]))
+    await _set_attribute_value(db=db, node_uuid=node.id, attr_name="display_label", value=f"{name} <{raw_value}>")
     return node
 
 
