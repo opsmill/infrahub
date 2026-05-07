@@ -79,3 +79,20 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `menu.yml` | Menu Customization | TBD |
 | `schema.yml` | Schema & Data | TBD |
 | `artifact-file-storage.yml` | Artifact & File Storage | TBD |
+| `transformations.yml` | Transformations | TBD |
+| `artifacts.yml` | Artifacts | TBD |
+| `webhooks.yml` | Webhooks | TBD |
+| `testing-framework-move.yml` | Testing Framework move | TBD |
+| `deploy-manage-hardware-requirements.yml` | D&M — Hardware Requirements (sidebar scaffold) | TBD |
+| `deploy-manage-installation.yml` | D&M — Installation (hub + Community + Enterprise spokes) | TBD |
+| `deploy-manage-production-deployment.yml` | D&M — Production Deployment (hub + HA spoke) | TBD |
+| `deploy-manage-configure-infrahub.yml` | D&M — Configure Infrahub | TBD |
+| `deploy-manage-run-observe.yml` | D&M — Run & observe (Tasks, Telemetry, Activity Log) | TBD |
+| `deploy-manage-log-forwarding.yml` | D&M — Log Forwarding (hub + Configure spoke) | TBD |
+| `deploy-manage-database-backup.yml` | D&M — Database Backup (hub + 2 spokes) | TBD |
+| `deploy-manage-upgrade.yml` | D&M — Upgrade (hub + 3 spokes) | TBD |
+| `deploy-manage-authentication.yml` | D&M — Authentication (move) | TBD |
+| `deploy-manage-sso.yml` | D&M — SSO (hub + 2 spokes) | TBD |
+| `deploy-manage-permissions-roles.yml` | D&M — Permissions & Roles (hub + 1 spoke) | TBD |
+| `deploy-manage-api-tokens.yml` | D&M — Managing API Tokens (page move) | TBD |
+| `development-resources.yml` | Development Resources — GraphQL hub + spokes | TBD |
