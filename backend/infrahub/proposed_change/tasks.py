@@ -224,22 +224,27 @@ async def merge_proposed_change(
                         )
 
         log.info("Proposed change is eligible to be merged")
+
+        merge_succeeded = False
         try:
             await merge_branch(branch=source_branch.name, context=context, proposed_change_id=proposed_change_id)
+            merge_succeeded = True
+        except MergeFailedError as exc:
+            return Failed(message=exc.message)
+        except Exception as exc:
+            log.exception("Unexpected failure during proposed change merge")
+            return Failed(message=f"Merge failure when trying to merge {source_branch.name}: {exc}")
         except BaseException as exc:
-            await _proposed_change_transition_state(
-                proposed_change=proposed_change,
-                state=ProposedChangeState.OPEN,
-                database=db,
-                user_id=context.account.account_id,
-            )
-            if isinstance(exc, MergeFailedError):
-                return Failed(message=f"Merge failure when trying to merge {exc.message}")
-            if isinstance(exc, Exception):
-                log.exception("Unexpected failure during proposed change merge")
-                return Failed(message=f"Merge failure when trying to merge {source_branch.name}: {exc}")
-            # propagate a BaseException
-            raise
+            log.exception("Unexpected failure during proposed change merge")
+            raise exc
+        finally:
+            if not merge_succeeded:
+                await _proposed_change_transition_state(
+                    proposed_change=proposed_change,
+                    state=ProposedChangeState.OPEN,
+                    database=db,
+                    user_id=context.account.account_id,
+                )
 
         log.info(f"Branch {source_branch.name} has been merged successfully")
 
