@@ -20,6 +20,7 @@ import type { ProposedChangeDetail } from "@/entities/proposed-changes/domain/pr
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";
 import { ProposedChangeTabs } from "@/entities/proposed-changes/ui/tabs/proposed-change-tabs";
+import type { ProposedChangeOutletContext } from "@/entities/proposed-changes/ui/use-proposed-change-outlet";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 export function Component() {
@@ -28,7 +29,7 @@ export function Component() {
   const [, setProposedChange] = useAtom(proposedChangedState);
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
-  const { proposedChangeData, metadata } = data ?? {};
+  const proposedChangeData = data?.proposedChangeData;
   useTitle(
     `${proposedChangeData ? `${getNodeLabel(proposedChangeData)} - ` : ""}Proposed change - Infrahub`
   );
@@ -43,7 +44,7 @@ export function Component() {
     return <LoadingIndicator className="h-full" />;
   }
 
-  if (error || !proposedChangeData) {
+  if (error || !data) {
     return (
       <Content.Card>
         <Content.CardTitle
@@ -72,21 +73,23 @@ export function Component() {
     );
   }
 
-  if (!proposedChangeData.source_branch?.value) {
+  const { proposedChangeData: pc, metadata } = data;
+
+  if (!pc.source_branch?.value) {
     return (
       <Content.Card>
-        <Content.CardTitle title={getNodeLabel(proposedChangeData)} />
+        <Content.CardTitle title={getNodeLabel(pc)} />
         <NoDataFound message="Proposed change is missing a source branch." />
       </Content.Card>
     );
   }
 
-  const sourceBranchValue = proposedChangeData.source_branch.value;
+  const sourceBranchValue = pc.source_branch.value;
 
   return (
     <Content.Card>
       <Content.CardTitle
-        title={getNodeLabel(proposedChangeData)}
+        title={getNodeLabel(pc)}
         description={
           <div className="inline-flex items-center gap-1 text-xs">
             {metadata?.created_by ? (
@@ -107,10 +110,10 @@ export function Component() {
             into
             {/* destination_branch is conventionally always present; the optional
                 chain reflects GraphQL nullability rather than a real data case. */}
-            <Link to={constructPath(`/branches/${proposedChangeData.destination_branch?.value}`)}>
+            <Link to={constructPath(`/branches/${pc.destination_branch?.value}`)}>
               <Badge variant="green" className="items-center">
                 <Icon icon="mdi:layers-triple" className="mr-1" />
-                {proposedChangeData.destination_branch?.value}
+                {pc.destination_branch?.value}
               </Badge>
             </Link>
           </div>
@@ -132,7 +135,15 @@ export function Component() {
 
       <ProposedChangeTabs sourceBranch={sourceBranchValue} proposedChangeId={proposedChangeId} />
 
-      <Outlet />
+      <Outlet
+        context={
+          {
+            proposedChangeData: pc,
+            metadata,
+            sourceBranch: sourceBranchValue,
+          } satisfies ProposedChangeOutletContext
+        }
+      />
     </Content.Card>
   );
 }

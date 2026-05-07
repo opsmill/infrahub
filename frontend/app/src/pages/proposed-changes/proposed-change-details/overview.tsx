@@ -1,11 +1,7 @@
-import { useParams } from "react-router";
-
 import { ProposedChangeDetails } from "@/entities/proposed-changes/ui/proposed-change-details";
-import { useGetProposedChangeDetails } from "@/entities/proposed-changes/ui/queries/get-proposed-change-details.query";
+import { useProposedChangeOutlet } from "@/entities/proposed-changes/ui/use-proposed-change-outlet";
 
 export function Component() {
-  const { proposedChangeId } = useParams() as { proposedChangeId: string };
-  const { data } = useGetProposedChangeDetails({ proposedChangeId });
-  if (!data) return null;
+  const data = useProposedChangeOutlet();
   return <ProposedChangeDetails {...data} />;
 }
