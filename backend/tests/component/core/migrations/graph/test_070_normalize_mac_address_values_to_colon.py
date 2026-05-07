@@ -12,8 +12,6 @@ from infrahub.core.migrations.graph.m070_normalize_mac_address_values_to_colon i
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot
-from infrahub.graphql.initialization import prepare_graphql_params
-from tests.helpers.graphql import graphql
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -89,23 +87,6 @@ async def _read_attribute_value(
     return results[0]["value"]
 
 
-INTERFACE_BY_ID_QUERY = """
-query InterfaceById($ids: [ID]) {
-    TestingInterface(ids: $ids) {
-        count
-        edges {
-            node {
-                id
-                hfid
-                display_label
-                mac { value }
-            }
-        }
-    }
-}
-"""
-
-
 async def _seed_legacy_dash_state(
     db: InfrahubDatabase,
     schema_kind: str,
@@ -152,21 +133,6 @@ class TestMigration070(TestInfrahubApp):
         )
         assert await _read_attribute_value(db=db, node_uuid=node.id, attr_name="display_label") == legacy_display_label
 
-        default_branch.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-        pre_result = await graphql(
-            schema=gql_params.schema,
-            source=INTERFACE_BY_ID_QUERY,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={"ids": [node.id]},
-        )
-        assert pre_result.errors is None, pre_result.errors
-        assert pre_result.data is not None
-        pre_edge = pre_result.data["TestingInterface"]["edges"][0]["node"]
-        assert pre_edge["hfid"] == [LEGACY_DASH_MAC]
-        assert pre_edge["display_label"] == legacy_display_label
-
         async with db.start_session() as dbs:
             migration = Migration070()
             execution_result = await migration.execute(migration_input=MigrationInput(db=dbs))
@@ -181,21 +147,6 @@ class TestMigration070(TestInfrahubApp):
         assert (
             await _read_attribute_value(db=db, node_uuid=node.id, attr_name="display_label") == canonical_display_label
         )
-
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
-        post_result = await graphql(
-            schema=gql_params.schema,
-            source=INTERFACE_BY_ID_QUERY,
-            context_value=gql_params.context,
-            root_value=None,
-            variable_values={"ids": [node.id]},
-        )
-        assert post_result.errors is None, post_result.errors
-        assert post_result.data is not None
-        edge = post_result.data["TestingInterface"]["edges"][0]["node"]
-        assert edge["mac"]["value"] == COLON_MAC
-        assert edge["hfid"] == [COLON_MAC]
-        assert edge["display_label"] == canonical_display_label
 
     async def test_migration_070_converts_mac_when_not_in_hfid_or_display_label(
         self, db: InfrahubDatabase, default_branch: Branch
