@@ -19,6 +19,16 @@ Resource Manager supports three primary types of pools:
 - **IP Prefix Pools** (`CoreIPPrefixPool`) - Allocate smaller subnets from larger IP prefixes
 - **Number Pools** (`CoreNumberPool`) - Allocate sequential numbers for attributes like VLAN IDs, ASNs, or circuit IDs
 
+:::note IP address and prefix pools require IPAM
+
+**CoreIPAddressPool** and **CoreIPPrefixPool** require IP prefix objects as their pool sources. This means your schema must include nodes inheriting from `BuiltinIPPrefix` and `BuiltinIPAddress`, and those prefix objects must exist in your instance before a pool can allocate from them.
+
+**CoreNumberPool** has no dependency on IPAM and can be used independently.
+
+If you haven't set up your IPAM yet, start with [Building your IPAM schema](../ipam/building-your-schema.mdx).
+
+:::
+
 :::warning
 When an attribute is assigned by a Resource Manager, the attribute cannot be used as part of the Human Friendly Identifier (HFID).
 
@@ -310,4 +320,4 @@ Resource Manager exposes full functionality through GraphQL APIs:
 
 - [Generator Documentation](../topics/generator.mdx) - Automate configurations with allocated resources
 - [GraphQL Documentation](../topics/graphql.mdx) - Learn about Infrahub's GraphQL interface
-- [IPAM topic](../topics/ipam.mdx) - Additional information about IP address management
+- [IPAM](../ipam/index.mdx) - IP address management data model and schema

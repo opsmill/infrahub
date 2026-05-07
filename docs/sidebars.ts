@@ -138,10 +138,22 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Templates', // [Object Blueprints — rename pending]
-          link: { type: 'doc', id: 'topics/object-template' }, // hub
+          label: 'Objects',
+          link: { type: 'doc', id: 'objects/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/object-template', label: 'Use Templates' },
+            { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
+            { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
+            { type: 'doc', id: 'objects/load-from-yaml', label: 'Load data in bulk using YAML file' },
+          ],
+        },
+        {
+          type: 'category',
+          label: 'IPAM',
+          link: { type: 'doc', id: 'ipam/index' },
+          items: [
+            'ipam/ip-namespaces',
+            'ipam/building-your-schema',
+            'ipam/automate-with-resource-manager',
           ],
         },
         {
@@ -153,17 +165,6 @@ const sidebars: SidebarsConfig = {
             'resource-manager/allocate-ip-prefix',
             'resource-manager/allocate-number',
             'resource-manager/weighted-allocation',
-          ],
-        },
-        { type: 'doc', id: 'topics/ipam', label: 'IPAM' },
-        {
-          type: 'category',
-          label: 'Objects',
-          link: { type: 'generated-index' }, // About Objects hub page not yet authored
-          items: [
-            { type: 'doc', id: 'topics/object-conversion', label: 'Convert object kind' },
-            { type: 'doc', id: 'topics/metadata', label: 'Metadata & lineage' },
-            { type: 'doc', id: 'guides/object-load', label: 'Load data from YAML file' },
           ],
         },
         {
@@ -190,6 +191,16 @@ const sidebars: SidebarsConfig = {
             'profiles/override-values',
             'profiles/update',
             'profiles/use-multiple',
+          ],
+        },
+        {
+          type: 'category',
+          label: 'Object Templates',
+          link: { type: 'doc', id: 'object-templates/index' }, // hub
+          items: [
+            { type: 'doc', id: 'object-templates/use', label: 'Use object templates' },
+            { type: 'doc', id: 'object-templates/with-profiles', label: 'Assign Profiles to a template' },
+            { type: 'doc', id: 'object-templates/allocate-resources-from-pools', label: 'Allocate resources from pools' },
           ],
         },
       ],
@@ -226,6 +237,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         { type: 'doc', id: 'checks/index', label: 'Checks & Validation' },
+        { type: 'doc', id: 'testing-framework/index', label: 'Testing Framework' },
         { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
         {
           type: 'category',
@@ -270,10 +282,10 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Artifacts',
-          link: { type: 'doc', id: 'topics/artifact' }, // hub
+          link: { type: 'doc', id: 'artifacts/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/artifact', label: 'Use artifacts' },
-            { type: 'doc', id: 'guides/artifact-content-composition', label: 'Artifact content composition' },
+            { type: 'doc', id: 'artifacts/use', label: 'Use artifacts' },
+            { type: 'doc', id: 'artifacts/content-composition', label: 'Artifact content composition' },
           ],
         },
         {
@@ -297,9 +309,10 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Webhooks',
-          link: { type: 'doc', id: 'topics/webhooks' }, // hub
+          link: { type: 'doc', id: 'webhooks/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/webhooks', label: 'Use Webhooks' },
+            { type: 'doc', id: 'webhooks/create', label: 'Create a webhook' },
+            { type: 'doc', id: 'webhooks/custom-transformation', label: 'Webhook with custom Transformation' },
           ],
         },
         {
@@ -321,32 +334,128 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       link: { type: 'generated-index', slug: 'deployment-and-management' },
-      // Internal sub-grouping (Plan & install / Configure / Run / Observe /
-      // Maintain & upgrade) deferred — Fatih hasn't picked an option yet.
-      // Flat layout for now; sub-groupings added in follow-up PRs once chosen.
       items: [
-        { type: 'doc', id: 'topics/hardware-requirements', label: 'Hardware requirements' },
-        { type: 'doc', id: 'guides/installation', label: 'Installation' },
-        { type: 'doc', id: 'guides/production-deployment', label: 'Production deployment' },
-        { type: 'doc', id: 'reference/configuration', label: 'Configuration' },
-        { type: 'doc', id: 'guides/configuration-changes', label: 'Configuration changes' },
-        { type: 'doc', id: 'topics/tasks', label: 'Tasks' },
-        { type: 'doc', id: 'reference/task-worker', label: 'Task worker' },
-        { type: 'doc', id: 'guides/telemetry', label: 'Telemetry' },
-        { type: 'doc', id: 'topics/activity-log', label: 'Activity log' },
-        { type: 'doc', id: 'topics/log-forwarding', label: 'Log forwarding' },
-        { type: 'doc', id: 'topics/database-backup', label: 'Database backup' },
-        { type: 'doc', id: 'guides/upgrade', label: 'Upgrade' },
-        { type: 'link', label: 'Infrahub Backup Tool ↗', href: 'https://TODO-FILL-IN-infrahub-backup.example.com' },
+        // ── Install & configure ──────────────────────────────────────────────
+        {
+          type: 'category',
+          label: 'Install & configure',
+          collapsible: true,
+          collapsed: false,
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'doc', id: 'deploy-manage/install-configure/hardware-requirements', label: 'Hardware requirements' },
+            // Installation hub + spokes (PR 2)
+            {
+              type: 'category',
+              label: 'Installation',
+              link: { type: 'doc', id: 'deploy-manage/install-configure/install/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
+                { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
+              ],
+            },
+            // Production Deployment hub + HA spoke (PR 3)
+            {
+              type: 'category',
+              label: 'Production deployment',
+              link: { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
+              ],
+            },
+            // Configure Infrahub (PR 4)
+            { type: 'doc', id: 'deploy-manage/install-configure/configure-infrahub', label: 'Configure Infrahub' },
+            // Configuration reference — stays in reference/, cross-linked here (PR 4)
+            { type: 'doc', id: 'reference/configuration', label: 'Configuration reference' },
+          ],
+        },
+        // ── Run & observe ────────────────────────────────────────────────────
+        {
+          type: 'category',
+          label: 'Run & observe',
+          collapsible: true,
+          collapsed: false,
+          link: { type: 'generated-index' },
+          items: [
+            // Tasks (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/tasks', label: 'Tasks' },
+            // Telemetry (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
+            // Activity Log (PRs 5/6/7)
+            { type: 'doc', id: 'deploy-manage/run-observe/activity-log', label: 'Activity log' },
+            // Log Forwarding hub + spoke (PR 8)
+            {
+              type: 'category',
+              label: 'Log forwarding',
+              link: { type: 'doc', id: 'deploy-manage/run-observe/log-forwarding/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/run-observe/log-forwarding/configure-log-forwarding', label: 'Configure log forwarding' },
+              ],
+            },
+          ],
+        },
+        // ── Maintain & upgrade ───────────────────────────────────────────────
+        {
+          type: 'category',
+          label: 'Maintain & upgrade',
+          collapsible: true,
+          collapsed: false,
+          link: { type: 'generated-index' },
+          items: [
+            // Database Backup hub + spokes (PR 9)
+            {
+              type: 'category',
+              label: 'Database backup',
+              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/backup-and-restore', label: 'Backup and restore' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore', label: 'Cluster backup and restore' },
+              ],
+            },
+            // Upgrade hub + spokes (PR 10)
+            {
+              type: 'category',
+              label: 'Upgrade',
+              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/community', label: 'Community' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/observability-stack', label: 'Observability stack' },
+              ],
+            },
+          ],
+        },
+        // ── User Management & Security ───────────────────────────────────────
         {
           type: 'category',
           label: 'User Management & Security',
+          collapsible: true,
+          collapsed: false,
           link: { type: 'generated-index' },
           items: [
-            { type: 'doc', id: 'topics/authentication', label: 'Authentication' },
-            { type: 'doc', id: 'guides/sso', label: 'SSO' },
-            { type: 'doc', id: 'topics/permissions-roles', label: 'Permissions & Roles' },
-            { type: 'doc', id: 'guides/managing-api-tokens', label: 'Managing API Tokens' },
+            // Authentication (PR 11)
+            { type: 'doc', id: 'deploy-manage/user-management/authentication', label: 'Authentication' },
+            // SSO hub + spokes (PR 12)
+            {
+              type: 'category',
+              label: 'Single sign-on (SSO)',
+              link: { type: 'doc', id: 'deploy-manage/user-management/sso/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/user-management/sso/configure-sso', label: 'Configure SSO' },
+                { type: 'doc', id: 'deploy-manage/user-management/sso/advanced-sso', label: 'Advanced SSO configuration' },
+              ],
+            },
+            // Permissions & Roles hub + spoke (PR 13)
+            {
+              type: 'category',
+              label: 'Permissions & roles',
+              link: { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions', label: 'Manage accounts and permissions' },
+              ],
+            },
+            // Managing API Tokens (PR 14)
+            { type: 'doc', id: 'deploy-manage/user-management/managing-api-tokens', label: 'Managing API tokens' },
           ],
         },
       ],
@@ -359,18 +468,26 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
-        { type: 'doc', id: 'topics/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
         { type: 'doc', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
-        { type: 'doc', id: 'topics/resources-testing-framework', label: 'Testing Framework' },
         {
           type: 'category',
           label: 'APIs & interfaces',
           collapsible: true,
           collapsed: true,
           items: [
-            { type: 'doc', id: 'topics/graphql', label: 'GraphQL' },
-            { type: 'doc', id: 'guides/graphql-fragment', label: 'GraphQL fragments' },
-            { type: 'ref', id: 'reference/api-server', label: 'REST API' },
+            {
+              type: 'category',
+              label: 'GraphQL',
+              link: { type: 'doc', id: 'development-resources/graphql/index' },
+              items: [
+                { type: 'doc', id: 'development-resources/graphql/queries-and-mutations', label: 'Queries & mutations' },
+                { type: 'doc', id: 'development-resources/graphql/stored-queries', label: 'Stored queries' },
+                { type: 'doc', id: 'development-resources/graphql/single-target-queries', label: 'Single-target queries' },
+                { type: 'doc', id: 'development-resources/graphql/groups', label: 'Working with groups' },
+              ],
+            },
+            { type: 'doc', id: 'development-resources/graphql-fragments', label: 'GraphQL fragments' },
             { type: 'link', label: 'Python SDK ↗', href: 'https://TODO-FILL-IN-python-sdk.example.com' },
             { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://TODO-FILL-IN-infrahubctl.example.com' },
             { type: 'link', label: 'MCP Server ↗', href: 'https://TODO-FILL-IN-mcp-server.example.com' },
@@ -395,9 +512,9 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             'reference/api-server',
-            'reference/message-bus-events',
           ],
         },
+        { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         {
           type: 'category',
           label: 'CLI',
