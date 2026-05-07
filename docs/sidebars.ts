@@ -440,8 +440,8 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions', label: 'Manage accounts and permissions' },
               ],
             },
-            // Managing API Tokens moved in PR 14
-            { type: 'doc', id: 'guides/managing-api-tokens', label: 'Managing API Tokens' },
+            // Managing API Tokens (PR 14)
+            { type: 'doc', id: 'deploy-manage/user-management/managing-api-tokens', label: 'Managing API tokens' },
           ],
         },
       ],
