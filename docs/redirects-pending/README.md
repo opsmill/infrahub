@@ -91,3 +91,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `deploy-manage-sso.yml` | D&M — SSO (hub + 2 spokes) | TBD |
 | `deploy-manage-permissions-roles.yml` | D&M — Permissions & Roles (hub + 1 spoke) | TBD |
 | `deploy-manage-api-tokens.yml` | D&M — Managing API Tokens (page move) | TBD |
+| `development-resources.yml` | Development Resources — GraphQL hub + spokes | TBD |
