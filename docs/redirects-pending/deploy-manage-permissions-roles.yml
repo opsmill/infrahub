@@ -1,0 +1,84 @@
+---
+feature: Deployment & Management — Permissions & Roles (hub + 1 spoke)
+pr: TBD
+description: |
+  Moves topics/permissions-roles.mdx and guides/accounts-permissions.mdx into a
+  hub + spoke under deploy-manage/user-management/permissions-roles/:
+    - index.mdx                          Hub (permissions and roles overview; verbatim from topic)
+    - manage-accounts-and-permissions.mdx  Spoke (account/group/role/permission creation; from guide)
+  Original source files remain on disk. Spoke title changed from
+  "Creating accounts, groups, roles, and permissions" to "Manage accounts and permissions".
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/permissions-roles
+    to: /docs/deploy-manage/user-management/permissions-roles/
+  - from: /docs/guides/accounts-permissions
+    to: /docs/deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/user-management/permissions-roles/
+    title: Permissions and roles (hub)
+  - path: /docs/deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions
+    title: Manage accounts and permissions
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/schema/file-object.mdx
+    line: 98
+    current: ../topics/permissions-roles
+    should_be: ../../../deploy-manage/user-management/permissions-roles/
+  - file: docs/docs/schema/file-object.mdx
+    line: 124
+    current: ../topics/permissions-roles
+    should_be: ../../../deploy-manage/user-management/permissions-roles/
+  - file: docs/docs/change-approval/change-approval-workflow.mdx
+    line: 41
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/change-approval/change-approval-workflow.mdx
+    line: 287
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/guides/sso.mdx
+    line: 451
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/schema/field-visibility.mdx
+    line: 78
+    current: ../topics/permissions-roles
+    should_be: ../../../deploy-manage/user-management/permissions-roles/
+  - file: docs/docs/schema/field-visibility.mdx
+    line: 90
+    current: ../topics/permissions-roles
+    should_be: ../../../deploy-manage/user-management/permissions-roles/
+  - file: docs/docs/guides/groups.mdx
+    line: 299
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/guides/change-approval-workflow.mdx
+    line: 41
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/guides/change-approval-workflow.mdx
+    line: 287
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/reference/permissions.mdx
+    line: 11
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/release-notes/infrahub/release-1_0_0.mdx
+    line: 117
+    current: ../../guides/accounts-permissions.mdx
+    should_be: ../../deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions.mdx
+  - file: docs/docs/release-notes/infrahub/release-1_0_0.mdx
+    line: 118
+    current: ../../topics/permissions-roles.mdx
+    should_be: ../../deploy-manage/user-management/permissions-roles/index.mdx
+  - file: docs/docs/proposed-changes/index.mdx
+    line: 131
+    current: ../topics/permissions-roles.mdx
+    should_be: ../deploy-manage/user-management/permissions-roles/index.mdx
