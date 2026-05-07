@@ -153,7 +153,16 @@ const sidebars: SidebarsConfig = {
             'resource-manager/weighted-allocation',
           ],
         },
-        { type: 'doc', id: 'topics/ipam', label: 'IPAM' },
+        {
+          type: 'category',
+          label: 'IPAM',
+          link: { type: 'doc', id: 'ipam/index' },
+          items: [
+            'ipam/ip-namespaces',
+            'ipam/building-your-schema',
+            'ipam/automate-with-resource-manager',
+          ],
+        },
         {
           type: 'category',
           label: 'Objects',
