@@ -198,7 +198,7 @@ async def trigger_update_hfid(
     node_query = HFIDNodeIDQuery(kind=kind)
     workflow = get_workflow()
     async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
-        for node in node_batch:
+        for node_id in node_batch:
             await workflow.submit_workflow(
                 workflow=HFID_PROCESS,
                 context=context,
@@ -206,7 +206,7 @@ async def trigger_update_hfid(
                     "branch_name": branch_name,
                     "node_kind": kind,
                     "target_kind": kind,
-                    "object_id": node.id,
+                    "object_id": node_id,
                     "context": context,
                 },
             )
