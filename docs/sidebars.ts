@@ -319,31 +319,73 @@ const sidebars: SidebarsConfig = {
       collapsible: false,
       collapsed: false,
       link: { type: 'generated-index', slug: 'deployment-and-management' },
-      // Internal sub-grouping (Plan & install / Configure / Run / Observe /
-      // Maintain & upgrade) deferred — Fatih hasn't picked an option yet.
-      // Flat layout for now; sub-groupings added in follow-up PRs once chosen.
       items: [
-        { type: 'doc', id: 'topics/hardware-requirements', label: 'Hardware requirements' },
-        { type: 'doc', id: 'guides/installation', label: 'Installation' },
-        { type: 'doc', id: 'guides/production-deployment', label: 'Production deployment' },
-        { type: 'doc', id: 'reference/configuration', label: 'Configuration' },
-        { type: 'doc', id: 'guides/configuration-changes', label: 'Configuration changes' },
-        { type: 'doc', id: 'topics/tasks', label: 'Tasks' },
-        { type: 'doc', id: 'reference/task-worker', label: 'Task worker' },
-        { type: 'doc', id: 'guides/telemetry', label: 'Telemetry' },
-        { type: 'doc', id: 'topics/activity-log', label: 'Activity log' },
-        { type: 'doc', id: 'topics/log-forwarding', label: 'Log forwarding' },
-        { type: 'doc', id: 'topics/database-backup', label: 'Database backup' },
-        { type: 'doc', id: 'guides/upgrade', label: 'Upgrade' },
-        { type: 'link', label: 'Infrahub Backup Tool ↗', href: 'https://TODO-FILL-IN-infrahub-backup.example.com' },
+        // ── Install & configure ──────────────────────────────────────────────
+        {
+          type: 'category',
+          label: 'Install & configure',
+          collapsible: true,
+          collapsed: false,
+          link: { type: 'generated-index' },
+          items: [
+            { type: 'doc', id: 'deploy-manage/install-configure/hardware-requirements', label: 'Hardware requirements' },
+            // Installation hub + spokes added in PR 2
+            { type: 'doc', id: 'guides/installation', label: 'Installation' },
+            // Production Deployment hub + HA spoke added in PR 3
+            { type: 'doc', id: 'guides/production-deployment', label: 'Production deployment' },
+            // Configure Infrahub added in PR 4
+            { type: 'doc', id: 'guides/configuration-changes', label: 'Configure Infrahub' },
+            // Configuration reference cross-link updated in PR 4
+            { type: 'doc', id: 'reference/configuration', label: 'Configuration reference' },
+          ],
+        },
+        // ── Run & observe ────────────────────────────────────────────────────
+        {
+          type: 'category',
+          label: 'Run & observe',
+          collapsible: true,
+          collapsed: false,
+          link: { type: 'generated-index' },
+          items: [
+            // Tasks moved in PR 5
+            { type: 'doc', id: 'topics/tasks', label: 'Tasks' },
+            // Telemetry moved in PR 6
+            { type: 'doc', id: 'guides/telemetry', label: 'Telemetry' },
+            // Activity Log moved in PR 7
+            { type: 'doc', id: 'topics/activity-log', label: 'Activity log' },
+            // Log Forwarding hub + spoke added in PR 8
+            { type: 'doc', id: 'topics/log-forwarding', label: 'Log forwarding' },
+          ],
+        },
+        // ── Maintain & upgrade ───────────────────────────────────────────────
+        {
+          type: 'category',
+          label: 'Maintain & upgrade',
+          collapsible: true,
+          collapsed: false,
+          link: { type: 'generated-index' },
+          items: [
+            // Database Backup hub + spokes added in PR 9
+            { type: 'doc', id: 'topics/database-backup', label: 'Database backup' },
+            // Upgrade hub + spokes added in PR 10
+            { type: 'doc', id: 'guides/upgrade', label: 'Upgrade' },
+          ],
+        },
+        // ── User Management & Security ───────────────────────────────────────
         {
           type: 'category',
           label: 'User Management & Security',
+          collapsible: true,
+          collapsed: false,
           link: { type: 'generated-index' },
           items: [
+            // Authentication moved in PR 11
             { type: 'doc', id: 'topics/authentication', label: 'Authentication' },
+            // SSO hub + spokes added in PR 12
             { type: 'doc', id: 'guides/sso', label: 'SSO' },
+            // Permissions & Roles hub + spoke added in PR 13
             { type: 'doc', id: 'topics/permissions-roles', label: 'Permissions & Roles' },
+            // Managing API Tokens moved in PR 14
             { type: 'doc', id: 'guides/managing-api-tokens', label: 'Managing API Tokens' },
           ],
         },
