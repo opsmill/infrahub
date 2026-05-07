@@ -7,7 +7,6 @@ The newly restricted generics are:
 - `CoreCredential`
 - `CoreGenericAccount`
 - `CoreResourcePool`
-- `CoreWeightedPoolResource`
 - `CoreIPPool`
 - `CoreTransformation`
 - `CoreBasePermission`

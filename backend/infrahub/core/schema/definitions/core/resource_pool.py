@@ -42,7 +42,6 @@ core_weighted_pool_resource = GenericSchema(
     include_in_menu=False,
     branch=BranchSupportType.AWARE,
     generate_profile=False,
-    restricted_namespaces=["Core"],
     attributes=[
         Attr(
             name="allocation_weight",
