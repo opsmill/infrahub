@@ -15,7 +15,7 @@ from infrahub import lock
 from infrahub.context import InfrahubContext  # noqa: TC001 needed for prefect flow
 from infrahub.core.constants import GeneratorInstanceStatus, InfrahubKind
 from infrahub.generators.constants import GeneratorDefinitionRunSource
-from infrahub.generators.graphql_queries import GeneratorInstanceQuery
+from infrahub.generators.graphql_queries.queries import GeneratorInstanceQuery
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
     ProposedChangeGeneratorDefinition,
@@ -114,7 +114,11 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
                 definition_id=model.generator_definition.definition_id,
                 object_id=model.target_id,
             )
-            response = await client.execute_graphql(query=gen_query.render_query(), branch_name=model.branch_name)
+            response = await client.execute_graphql(
+                query=gen_query.render_query(),
+                variables=gen_query.get_variables(),
+                branch_name=model.branch_name,
+            )
             instance_nodes = gen_query.parse_response(response=response)
             if instance_nodes:
                 instance = await client.get(

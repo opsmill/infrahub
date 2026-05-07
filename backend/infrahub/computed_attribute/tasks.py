@@ -25,7 +25,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
-from .graphql_queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
+from .graphql_queries.queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
 from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,

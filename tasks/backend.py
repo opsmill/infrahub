@@ -203,6 +203,22 @@ def generate(context: Context) -> None:
     _generate_protocols(context=context)
 
 
+GRAPHQL_QUERY_FILES = [
+    "backend/infrahub/generators/graphql_queries/generator_instance_fetch.gql",
+    "backend/infrahub/computed_attribute/graphql_queries/transform_fetch.gql",
+]
+
+
+@task
+def generate_graphql_types(context: Context) -> None:
+    """Generate Pydantic models from .gql query files using infrahubctl."""
+    for gql_file in GRAPHQL_QUERY_FILES:
+        execute_command(
+            context=context,
+            command=f"uv run infrahubctl graphql generate-return-types {gql_file} --schema schema/schema.graphql",
+        )
+
+
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
     """Validate that generated schemas and protocols are committed to Git."""
@@ -214,6 +230,11 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
 
     _generate_protocols(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py backend/tests/protocols.py"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+    generate_graphql_types(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/generators/queries/ backend/infrahub/computed_attribute/queries/"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
 
