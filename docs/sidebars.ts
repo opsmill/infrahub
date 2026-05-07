@@ -329,8 +329,16 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'deploy-manage/install-configure/hardware-requirements', label: 'Hardware requirements' },
-            // Installation hub + spokes added in PR 2
-            { type: 'doc', id: 'guides/installation', label: 'Installation' },
+            // Installation hub + spokes (PR 2)
+            {
+              type: 'category',
+              label: 'Installation',
+              link: { type: 'doc', id: 'deploy-manage/install-configure/install/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
+                { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
+              ],
+            },
             // Production Deployment hub + HA spoke added in PR 3
             { type: 'doc', id: 'guides/production-deployment', label: 'Production deployment' },
             // Configure Infrahub added in PR 4

@@ -79,3 +79,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `menu.yml` | Menu Customization | TBD |
 | `schema.yml` | Schema & Data | TBD |
 | `deploy-manage-hardware-requirements.yml` | D&M — Hardware Requirements (sidebar scaffold) | TBD |
+| `deploy-manage-installation.yml` | D&M — Installation (hub + Community + Enterprise spokes) | TBD |
