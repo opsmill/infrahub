@@ -78,12 +78,16 @@ def _display_label_paths_if_affected(
     return paths if paths and any(_path_uses_ip(p) for p in paths) else None
 
 
-def _collect_plans(schema_branch: SchemaBranch) -> dict[str, _RecomputePlan]:
+def _collect_plans(
+    schema_branch: SchemaBranch, branch_filter: tuple[BranchSupportType, ...]
+) -> dict[str, _RecomputePlan]:
     plans: dict[str, _RecomputePlan] = {}
     for node_schema_name in schema_branch.node_names:
         if node_schema_name in SCHEMA_KINDS_TO_SKIP:
             continue
         schema = schema_branch.get_node(name=node_schema_name, duplicate=False)
+        if schema.branch not in branch_filter:
+            continue
         hfid_paths = _hfid_paths_if_affected(schema, schema_branch)
         display_label_paths = _display_label_paths_if_affected(schema, schema_branch)
         if hfid_paths or display_label_paths:
@@ -149,58 +153,25 @@ class Migration071(MigrationRequiringRebase):
                 batch_size=self.update_batch_size,
             )
 
-    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
-        db = migration_input.db
-        at = migration_input.at
+    async def _run(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        at: Timestamp,
+        branch_filter: tuple[BranchSupportType, ...],
+    ) -> MigrationResult:
+        schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
+        plans = _collect_plans(schema_branch, branch_filter=branch_filter)
+        if not plans:
+            return MigrationResult()
 
-        root_node = await get_root_node(db=db, initialize=False)
-        default_branch = await Branch.get_by_name(db=db, name=root_node.default_branch)
-
-        schema_branch = await get_or_load_schema_branch(db=db, branch=default_branch)
         base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
         hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
         display_label_attribute_schema = base_node_schema.get_attribute("display_label")
-
-        plans = {
-            kind: plan
-            for kind, plan in _collect_plans(schema_branch).items()
-            if plan.schema.branch is BranchSupportType.AWARE
-        }
-        if not plans:
-            return MigrationResult()
 
         try:
             for kind, plan in plans.items():
                 console.log(f"Recomputing HFID/display_label for {kind}")
-                await self._execute_plan(
-                    db=db,
-                    branch=default_branch,
-                    plan=plan,
-                    hfid_attribute_schema=hfid_attribute_schema,
-                    display_label_attribute_schema=display_label_attribute_schema,
-                    at=at,
-                )
-        except Exception as exc:
-            return MigrationResult(errors=[str(exc) or f"{type(exc).__name__}: {repr(exc)}"])
-
-        return MigrationResult()
-
-    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
-        db = migration_input.db
-        at = migration_input.at
-
-        schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
-        base_node_schema = schema_branch.get("SchemaNode", duplicate=False)
-        hfid_attribute_schema = base_node_schema.get_attribute("human_friendly_id")
-        display_label_attribute_schema = base_node_schema.get_attribute("display_label")
-
-        try:
-            plans = {
-                kind: plan
-                for kind, plan in _collect_plans(schema_branch).items()
-                if plan.schema.branch in (BranchSupportType.AWARE, BranchSupportType.LOCAL)
-            }
-            for plan in plans.values():
                 await self._execute_plan(
                     db=db,
                     branch=branch,
@@ -213,3 +184,21 @@ class Migration071(MigrationRequiringRebase):
             return MigrationResult(errors=[str(exc) or f"{type(exc).__name__}: {repr(exc)}"])
 
         return MigrationResult()
+
+    async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        root_node = await get_root_node(db=migration_input.db, initialize=False)
+        default_branch = await Branch.get_by_name(db=migration_input.db, name=root_node.default_branch)
+        return await self._run(
+            db=migration_input.db,
+            branch=default_branch,
+            at=migration_input.at,
+            branch_filter=(BranchSupportType.AWARE,),
+        )
+
+    async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
+        return await self._run(
+            db=migration_input.db,
+            branch=branch,
+            at=migration_input.at,
+            branch_filter=(BranchSupportType.AWARE, BranchSupportType.LOCAL),
+        )
