@@ -10,8 +10,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import pytest
-
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
@@ -41,7 +39,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-@pytest.mark.xfail(reason="to be fixed in upcoming merge refactor")
 async def test_source_branch_migration(
     db: InfrahubDatabase,
     default_branch: Branch,

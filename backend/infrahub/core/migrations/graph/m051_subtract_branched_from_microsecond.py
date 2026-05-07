@@ -21,12 +21,9 @@ class Migration051(ArbitraryMigration):
         db = migration_input.db
         result = MigrationResult()
 
-        branches = await Branch.get_list(db=db)
+        branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True)
 
         for branch in branches:
-            if branch.is_default or branch.is_global:
-                continue
-
             if not branch.branched_from:
                 continue
 

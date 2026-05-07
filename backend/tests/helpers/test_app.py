@@ -30,7 +30,14 @@ from infrahub.graphql.registry import registry as graphql_registry
 from infrahub.server import app, lifespan
 from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
-from infrahub.workers.dependencies import build_cache, build_client, build_database, build_message_bus, build_workflow
+from infrahub.workers.dependencies import (
+    build_cache,
+    build_client,
+    build_database,
+    build_message_bus,
+    build_workflow,
+    clear_singletons,
+)
 from infrahub.workflows.initialization import setup_task_manager
 from tests.adapters.cache import MemoryCache
 from tests.adapters.message_bus import BusSimulator
@@ -139,6 +146,12 @@ class TestInfrahubAppBase(TestInfrahub):
         # lifespan events (see https://fastapi.tiangolo.com/advanced/async-tests/#in-detail).
         async def _db(singleton: bool = True) -> InfrahubDatabase:
             return db_class
+
+        # Each class gets its own db_class with its own driver, and lifespan shutdown
+        # closes that driver. Cached singletons (notably the InfrahubComponent) hold
+        # references to the prior class's driver; drop them so the next lifespan()
+        # rebuilds them against the current db_class.
+        clear_singletons()
 
         with dependency_provider.scope(build_database, _db):
             try:

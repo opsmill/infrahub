@@ -447,20 +447,25 @@ export type BranchRebasedEvent = EventNodeInterface & {
 };
 
 /** This enum is only used to communicate a permission decision relative to a branch. */
-export type BranchRelativePermissionDecision =
-  | 'ALLOW'
-  | 'ALLOW_DEFAULT'
-  | 'ALLOW_OTHER'
-  | 'DENY';
+export const BranchRelativePermissionDecision = {
+  ALLOW: 'ALLOW',
+  ALLOW_DEFAULT: 'ALLOW_DEFAULT',
+  ALLOW_OTHER: 'ALLOW_OTHER',
+  DENY: 'DENY'
+} as const;
 
+export type BranchRelativePermissionDecision = typeof BranchRelativePermissionDecision[keyof typeof BranchRelativePermissionDecision];
 /** An enumeration. */
-export type BranchStatus =
-  | 'DELETING'
-  | 'MERGED'
-  | 'NEED_REBASE'
-  | 'NEED_UPGRADE_REBASE'
-  | 'OPEN';
+export const BranchStatus = {
+  DELETING: 'DELETING',
+  MERGED: 'MERGED',
+  MERGING: 'MERGING',
+  NEED_REBASE: 'NEED_REBASE',
+  NEED_UPGRADE_REBASE: 'NEED_UPGRADE_REBASE',
+  OPEN: 'OPEN'
+} as const;
 
+export type BranchStatus = typeof BranchStatus[keyof typeof BranchStatus];
 export type BranchUpdate = {
   __typename: 'BranchUpdate';
   ok: Maybe<Scalars['Boolean']['output']>;
@@ -1378,16 +1383,18 @@ export type BuiltinTagUpsertInput = {
 };
 
 /** An enumeration. */
-export type CheckType =
-  | 'ALL'
-  | 'ARTIFACT'
-  | 'DATA'
-  | 'GENERATOR'
-  | 'REPOSITORY'
-  | 'SCHEMA'
-  | 'TEST'
-  | 'USER';
+export const CheckType = {
+  ALL: 'ALL',
+  ARTIFACT: 'ARTIFACT',
+  DATA: 'DATA',
+  GENERATOR: 'GENERATOR',
+  REPOSITORY: 'REPOSITORY',
+  SCHEMA: 'SCHEMA',
+  TEST: 'TEST',
+  USER: 'USER'
+} as const;
 
+export type CheckType = typeof CheckType[keyof typeof CheckType];
 /** Attribute of type Checkbox */
 export type CheckboxAttribute = AttributeInterface & {
   __typename: 'CheckboxAttribute';
@@ -1435,10 +1442,12 @@ export type ConflictDetails = {
   uuid: Scalars['String']['output'];
 };
 
-export type ConflictSelection =
-  | 'BASE_BRANCH'
-  | 'DIFF_BRANCH';
+export const ConflictSelection = {
+  BASE_BRANCH: 'BASE_BRANCH',
+  DIFF_BRANCH: 'DIFF_BRANCH'
+} as const;
 
+export type ConflictSelection = typeof ConflictSelection[keyof typeof ConflictSelection];
 export type ContextAccountInput = {
   /** The Infrahub ID of the account */
   id: Scalars['String']['input'];
@@ -16144,12 +16153,14 @@ export type DeleteInput = {
 };
 
 /** An enumeration. */
-export type DiffAction =
-  | 'ADDED'
-  | 'REMOVED'
-  | 'UNCHANGED'
-  | 'UPDATED';
+export const DiffAction = {
+  ADDED: 'ADDED',
+  REMOVED: 'REMOVED',
+  UNCHANGED: 'UNCHANGED',
+  UPDATED: 'UPDATED'
+} as const;
 
+export type DiffAction = typeof DiffAction[keyof typeof DiffAction];
 export type DiffAttribute = {
   __typename: 'DiffAttribute';
   conflict: Maybe<ConflictDetails>;
@@ -17011,10 +17022,12 @@ export type EventNodes = {
 };
 
 /** An enumeration. */
-export type EventSortOrder =
-  | 'ASC'
-  | 'DESC';
+export const EventSortOrder = {
+  ASC: 'ASC',
+  DESC: 'DESC'
+} as const;
 
+export type EventSortOrder = typeof EventSortOrder[keyof typeof EventSortOrder];
 export type EventTypeFilter = {
   /** Filters specific to infrahub.branch.merged events */
   branch_merged?: InputMaybe<BranchEventTypeFilter>;
@@ -17050,6 +17063,12 @@ export type GenericPoolInput = {
   data?: InputMaybe<Scalars['GenericScalar']['input']>;
   id: Scalars['String']['input'];
   identifier?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type GraphQlQueryReport = {
+  __typename: 'GraphQLQueryReport';
+  /** True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
+  targets_unique_nodes: Scalars['Boolean']['output'];
 };
 
 export type GroupEvent = EventNodeInterface & {
@@ -22573,10 +22592,12 @@ export type ObjectPermissionNode = {
 };
 
 /** An enumeration. */
-export type OrderDirection =
-  | 'ASC'
-  | 'DESC';
+export const OrderDirection = {
+  ASC: 'ASC',
+  DESC: 'DESC'
+} as const;
 
+export type OrderDirection = typeof OrderDirection[keyof typeof OrderDirection];
 export type OrderInput = {
   disable?: InputMaybe<Scalars['Boolean']['input']>;
   /** Order settings for branch metadata */
@@ -24276,12 +24297,14 @@ export type ProfilesRefreshInput = {
 };
 
 /** An enumeration. */
-export type ProposedChangeApprovalDecision =
-  | 'APPROVE'
-  | 'CANCEL_APPROVE'
-  | 'CANCEL_REJECT'
-  | 'REJECT';
+export const ProposedChangeApprovalDecision = {
+  APPROVE: 'APPROVE',
+  CANCEL_APPROVE: 'CANCEL_APPROVE',
+  CANCEL_REJECT: 'CANCEL_REJECT',
+  REJECT: 'REJECT'
+} as const;
 
+export type ProposedChangeApprovalDecision = typeof ProposedChangeApprovalDecision[keyof typeof ProposedChangeApprovalDecision];
 export type ProposedChangeApprovalsRevokedEvent = EventNodeInterface & {
   __typename: 'ProposedChangeApprovalsRevokedEvent';
   /** The account ID that triggered the event. */
@@ -24590,6 +24613,8 @@ export type Query = {
   /** Retrieve paginated information about active branches. */
   InfrahubBranch: InfrahubBranchType;
   InfrahubEvent: Events;
+  /** Analyze a GraphQL query string and return a report describing how Infrahub will interpret it. */
+  InfrahubGraphQLQueryReport: GraphQlQueryReport;
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
   InfrahubIPPrefixGetNextAvailable: IpPrefixGetNextAvailable;
   InfrahubInfo: Info;
@@ -35905,6 +35930,11 @@ export type QueryInfrahubEventArgs = {
 };
 
 
+export type QueryInfrahubGraphQlQueryReportArgs = {
+  query: Scalars['String']['input'];
+};
+
+
 export type QueryInfrahubIpAddressGetNextAvailableArgs = {
   prefix_id: Scalars['String']['input'];
   prefix_length?: InputMaybe<Scalars['Int']['input']>;
@@ -36750,10 +36780,12 @@ export type RelationshipAdd = {
 };
 
 /** An enumeration. */
-export type RelationshipCardinality =
-  | 'MANY'
-  | 'ONE';
+export const RelationshipCardinality = {
+  MANY: 'MANY',
+  ONE: 'ONE'
+} as const;
 
+export type RelationshipCardinality = typeof RelationshipCardinality[keyof typeof RelationshipCardinality];
 export type RelationshipNode = {
   __typename: 'RelationshipNode';
   node: Relationship;
@@ -36879,17 +36911,19 @@ export type StandardEvent = EventNodeInterface & {
 };
 
 /** Enumeration of state types. */
-export type StateType =
-  | 'CANCELLED'
-  | 'CANCELLING'
-  | 'COMPLETED'
-  | 'CRASHED'
-  | 'FAILED'
-  | 'PAUSED'
-  | 'PENDING'
-  | 'RUNNING'
-  | 'SCHEDULED';
+export const StateType = {
+  CANCELLED: 'CANCELLED',
+  CANCELLING: 'CANCELLING',
+  COMPLETED: 'COMPLETED',
+  CRASHED: 'CRASHED',
+  FAILED: 'FAILED',
+  PAUSED: 'PAUSED',
+  PENDING: 'PENDING',
+  RUNNING: 'RUNNING',
+  SCHEDULED: 'SCHEDULED'
+} as const;
 
+export type StateType = typeof StateType[keyof typeof StateType];
 export type Status = {
   __typename: 'Status';
   summary: StatusSummary;

@@ -1,6 +1,5 @@
 from typing import Any
 
-from infrahub.core.graphql_query.node_id_query import NodeID
 from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 
 
@@ -34,7 +33,7 @@ class TestDisplayLabelNodeIDQuery:
             }
         }
         result = q.parse_response(response=response)
-        assert result == [NodeID(id="abc-123"), NodeID(id="def-456")]
+        assert result == ["abc-123", "def-456"]
 
     def test_parse_response_empty_edges(self) -> None:
         q = DisplayLabelNodeIDQuery(kind="CoreTag")
@@ -56,4 +55,4 @@ class TestDisplayLabelNodeIDQuery:
             }
         }
         result = q.parse_response(response=response)
-        assert result == [NodeID(id="abc-123")]
+        assert result == ["abc-123"]

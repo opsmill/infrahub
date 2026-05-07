@@ -326,7 +326,7 @@ async def trigger_update_jinja2_computed_attributes(
     node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
     workflow = get_workflow()
     async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
-        for node in node_batch:
+        for node_id in node_batch:
             await workflow.submit_workflow(
                 workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
                 context=context,
@@ -335,7 +335,7 @@ async def trigger_update_jinja2_computed_attributes(
                     "computed_attribute_name": computed_attribute_name,
                     "computed_attribute_kind": computed_attribute_kind,
                     "node_kind": computed_attribute_kind,
-                    "object_id": node.id,
+                    "object_id": node_id,
                     "context": context,
                 },
             )

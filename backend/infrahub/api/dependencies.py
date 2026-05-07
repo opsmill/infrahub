@@ -124,10 +124,9 @@ async def get_permission_manager(
     account_session: AccountSession = Depends(get_current_user),
 ) -> PermissionManager:
     """Return a `PermissionManager` for an account session based on a branch."""
-    permission_manager = PermissionManager(account_session=account_session)
-    await permission_manager.load_permissions(db=db, branch=branch_params.branch)
-
-    return permission_manager
+    return await PermissionManager.load_for_account(
+        db=db, branch=branch_params.branch, default_branch_name=registry.default_branch, account_session=account_session
+    )
 
 
 async def get_context(

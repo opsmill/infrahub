@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./card": "./src/components/card/card.tsx",
+    "./modal": "./src/components/modal/modal.tsx",
     "./styles.css": "./src/index.css"
   },
   "scripts": {
@@ -22,27 +23,30 @@
     "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
+    "@radix-ui/react-scroll-area": "^1.2.10",
     "@tailwindcss/vite": "^4.2.4",
-    "lucide-react": "^1.11.0",
+    "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-aria-components": "^1.17.0",
     "react-dom": "^19.2.5",
+    "react-resizable-panels": "^4.10.0",
     "tailwind-merge": "^3.5.0",
     "tailwind-variants": "^3.2.2",
-    "tailwindcss": "^4.2.4"
+    "tailwindcss": "^4.2.4",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
-    "@storybook/react-vite": "^10.3.5",
+    "@storybook/react-vite": "^10.3.6",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "chromatic": "^16.6.0",
+    "chromatic": "^16.6.3",
     "globals": "^17.5.0",
     "oxfmt": "^0.47.0",
     "oxlint": "^1.62.0",
-    "storybook": "^10.3.5",
+    "storybook": "^10.3.6",
     "typescript": "~6.0.3",
     "vite": "^8.0.10"
   },

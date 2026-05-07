@@ -1,3 +1,4 @@
+import { Meter } from "@infrahub/ui";
 import { CheckIcon, XIcon } from "lucide-react";
 
 import type {
@@ -19,7 +20,6 @@ import { PasswordDisplay } from "@/shared/components/display/password-display";
 import { TextDisplay } from "@/shared/components/display/text-display";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
-import ProgressBarChart from "@/shared/components/stats/progress-bar-chart";
 import { Badge } from "@/shared/components/ui/badge";
 import { Link } from "@/shared/components/ui/link";
 import { MAX_VALUE_LENGTH_DISPLAY } from "@/shared/config/constants";
@@ -186,7 +186,12 @@ export const ObjectAttributeValue = ({
   }
 
   if (attributeSchema.name === "utilization" && typeof attributeData.value === "number") {
-    return <ProgressBarChart value={attributeData.value} />;
+    return (
+      <Meter
+        value={attributeData.value}
+        aria-label={attributeSchema.label ?? attributeSchema.name}
+      />
+    );
   }
 
   switch (attributeSchema.kind as AttributeKind) {

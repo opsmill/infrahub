@@ -1,3 +1,4 @@
+import { ScrollArea } from "@infrahub/ui";
 import { EyeOffIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -7,7 +8,6 @@ import { Svg } from "@/shared/components/display/svg";
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
 import { CsvTable } from "@/shared/components/editor/csv-table";
 import { MarkdownViewer } from "@/shared/components/editor/markdown/markdown-viewer";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 import { classNames } from "@/shared/utils/common";
 
 export interface DataViewerProps {

@@ -1,10 +1,9 @@
-import { Button } from "@infrahub/ui";
+import { Button, Modal } from "@infrahub/ui";
 import { XIcon } from "lucide-react";
 
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 
 import { CopyToClipboardButton } from "@/shared/components/aria/copy-to-clipboard-button";
-import { Modal } from "@/shared/components/aria/modal";
 import { Separator } from "@/shared/components/aria/separator";
 import { Col, Row } from "@/shared/components/container";
 import { Skeleton } from "@/shared/components/loading/skeleton";

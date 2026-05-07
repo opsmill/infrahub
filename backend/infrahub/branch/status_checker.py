@@ -10,6 +10,11 @@ class BranchStatusChecker:
                 identifier=branch.name,
                 message=f"Branch '{branch.name}' has been merged and is read-only. No modifications are allowed.",
             )
+        if branch.status == BranchStatus.MERGING:
+            raise BranchAlreadyMergedError(
+                identifier=branch.name,
+                message=f"Branch '{branch.name}' is currently being merged and is read-only. No modifications are allowed.",
+            )
 
     def check_needs_rebase_status(self, branch: Branch) -> None:
         if branch.status == BranchStatus.NEED_REBASE:

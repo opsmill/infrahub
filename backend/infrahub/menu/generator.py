@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
-from infrahub.core.protocols import CoreMenuItem
 from infrahub.log import get_logger
 
 from .constants import FULL_DEFAULT_MENU
@@ -12,13 +11,14 @@ from .models import MenuDict, MenuItemDict
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
+    from infrahub.core.protocols import CoreMenu, CoreMenuItem
     from infrahub.database import InfrahubDatabase
     from infrahub.permissions import PermissionManager
 
 log = get_logger()
 
 
-def get_full_name(obj: CoreMenuItem) -> str:
+def get_full_name(obj: CoreMenu) -> str:
     return f"{obj.namespace.value}{obj.name.value}"
 
 
@@ -49,7 +49,7 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
     # Process the parent first
     for item in menu_items:
         full_name = get_full_name(item)
-        parent1 = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
+        parent1 = await item.parent.get_peer(db=db)
         if parent1:
             continue
         structure.data[full_name] = MenuItemDict.from_node(obj=item)
@@ -62,7 +62,7 @@ async def generate_menu(db: InfrahubDatabase, branch: Branch, menu_items: list[C
         if full_name in already_processed:
             continue
 
-        parent2 = await item.parent.get_peer(db=db, peer_type=CoreMenuItem)
+        parent2 = await item.parent.get_peer(db=db)
         if not parent2:
             havent_been_processed.append(full_name)
             continue

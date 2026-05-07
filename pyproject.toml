@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.0"
+version = "1.9.3"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -93,7 +93,7 @@ dev = [
     "types-pyyaml",
     "types-cachetools==6.2.0.20250827",
     "ruff==0.15.0",
-    "invoke==2.2.0",
+    "invoke==2.2.1",
     "pytest-benchmark>=4.0.0,<5",
     "pytest-codspeed>=4.2.0,<5",
     "polyfactory==2.16.2",
@@ -162,7 +162,6 @@ INFRAHUB_PRODUCTION = false
 pretty = true
 ignore_missing_imports = true
 disallow_untyped_defs = true
-disable_error_code = ["type-abstract"]
 exclude = [
     "^backend/tests/fixtures/repos/*", # To avoid 'Duplicate module named "transforms"'
     "^backend/tests/scale",

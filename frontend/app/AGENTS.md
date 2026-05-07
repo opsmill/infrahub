@@ -23,7 +23,9 @@ cd frontend/app && pnpm codegen    # Generate GraphQL types
 
 ### Guidelines (How to write code)
 
-- `dev/guidelines/frontend/naming-conventions.md` - File naming patterns
+- `dev/guidelines/frontend/component-patterns.md` - Reuse-first checklist, early returns, layout extraction
+- `dev/guidelines/frontend/page-architecture.md` - State ownership, URL sync, size budgets, backend-authoritative rule
+- `dev/guidelines/frontend/naming-conventions.md` - File naming patterns and query-key shape
 - `dev/guidelines/frontend/typescript.md` - TypeScript and React patterns
 - `dev/guidelines/frontend/styling.md` - Tailwind CSS and CVA
 - `dev/guidelines/frontend/object-forms.md` - react-hook-form patterns and focus management
@@ -33,7 +35,9 @@ cd frontend/app && pnpm codegen    # Generate GraphQL types
 
 - `dev/knowledge/frontend/react.md` - React 19 and React Compiler patterns
 - `dev/knowledge/frontend/architecture.md` - Project organization
-- `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui)
+- `dev/knowledge/frontend/entities-structure.md` - Entity layer pattern (api/domain/ui), GraphQL fetching, backend authority
+- `dev/knowledge/frontend/shared-components.md` - **Reuse-first inventory** — look here before building anything generic
+- `dev/knowledge/frontend/design-system.md` - `@infrahub/ui` package (Button, Card, Modal, Spinner)
 - `dev/knowledge/frontend/file-components.md` - DataViewer and file handling components
 
 ### Guides (How to do X)

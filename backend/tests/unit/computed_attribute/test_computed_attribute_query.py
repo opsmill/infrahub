@@ -1,5 +1,4 @@
 from infrahub.computed_attribute.graphql_queries.queries import ComputedAttributeNodeIDQuery
-from infrahub.core.graphql_query.node_id_query import NodeID
 
 
 class TestComputedAttributeNodeIDQuery:
@@ -32,7 +31,7 @@ class TestComputedAttributeNodeIDQuery:
             }
         }
         result = q.parse_response(response=response)
-        assert result == [NodeID(id="abc-123"), NodeID(id="def-456")]
+        assert result == ["abc-123", "def-456"]
 
     def test_parse_response_empty_edges(self) -> None:
         q = ComputedAttributeNodeIDQuery(kind="CoreTag")
@@ -53,4 +52,4 @@ class TestComputedAttributeNodeIDQuery:
             }
         }
         result = q.parse_response(response=response)
-        assert result == [NodeID(id="abc-123")]
+        assert result == ["abc-123"]

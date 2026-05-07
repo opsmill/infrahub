@@ -408,6 +408,7 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
         GlobalPermissions.MANAGE_ACCOUNTS,
         GlobalPermissions.MANAGE_PERMISSIONS,
         GlobalPermissions.MERGE_BRANCH,
+        GlobalPermissions.REBASE_BRANCH,
     ):
         await get_or_create_global_permission(db=db, permission=permission_action)
 

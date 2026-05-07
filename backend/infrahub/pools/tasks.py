@@ -22,22 +22,24 @@ async def validate_schema_number_pools(
     service: InfrahubServices,
 ) -> set[str]:
     log = get_run_logger()
-    synchronizer = SchemaNumberPoolSynchronizer(
-        db=service.database,
-        schema_manager=registry.schema,
-        upserter=SchemaNumberPoolUpserter(db=service.database, schema_manager=registry.schema),
-        log=log,
-    )
-    updated_branches = await synchronizer.run(user_id=context.account.account_id)
 
-    if updated_branches:
-        for updated_branch_name in updated_branches:
-            branch = await Branch.get_by_name(db=service.database, name=updated_branch_name)
-            branch.update_schema_hash()
-            await branch.save(db=service.database, user_id=context.account.account_id)
-            log.info(f"Updated schema hash for branch {updated_branch_name} after number pool synchronization")
+    async with service.database.start_session() as db:
+        synchronizer = SchemaNumberPoolSynchronizer(
+            db=db,
+            schema_manager=registry.schema,
+            upserter=SchemaNumberPoolUpserter(db=db, schema_manager=registry.schema),
+            log=log,
+        )
+        updated_branches = await synchronizer.run(user_id=context.account.account_id)
 
-        await service.component.refresh_schema_hash(branches=list(updated_branches))
-        await service.message_bus.send(RefreshRegistryBranches())
+        if updated_branches:
+            for updated_branch_name in updated_branches:
+                branch = await Branch.get_by_name(db=db, name=updated_branch_name)
+                branch.update_schema_hash()
+                await branch.save(db=db, user_id=context.account.account_id)
+                log.info(f"Updated schema hash for branch {updated_branch_name} after number pool synchronization")
+
+            await service.component.refresh_schema_hash(branches=list(updated_branches))
+            await service.message_bus.send(RefreshRegistryBranches())
 
     return updated_branches

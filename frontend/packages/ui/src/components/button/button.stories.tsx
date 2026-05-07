@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { PencilIcon, PlusIcon } from "lucide-react";
 import type React from "react";
+
+import { PencilIcon, PlusIcon } from "lucide-react";
 
 import { Button, type ButtonProps, buttonVariants } from "./button";
 
@@ -48,7 +49,7 @@ export const AllVariants: Story = {
     const renderRow = (
       label: string,
       variant: ButtonProps["variant"],
-      rowProps: Partial<ButtonProps> = {}
+      rowProps: Partial<ButtonProps> = {},
     ) => (
       <div key={label} className="contents">
         <div className="font-medium text-neutral-700 text-sm">{label}</div>
