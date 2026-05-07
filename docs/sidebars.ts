@@ -398,8 +398,17 @@ const sidebars: SidebarsConfig = {
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore', label: 'Cluster backup and restore' },
               ],
             },
-            // Upgrade hub + spokes added in PR 10
-            { type: 'doc', id: 'guides/upgrade', label: 'Upgrade' },
+            // Upgrade hub + spokes (PR 10)
+            {
+              type: 'category',
+              label: 'Upgrade',
+              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/community', label: 'Community' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/enterprise', label: 'Enterprise' },
+                { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/observability-stack', label: 'Observability stack' },
+              ],
+            },
           ],
         },
         // ── User Management & Security ───────────────────────────────────────
