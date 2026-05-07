@@ -368,8 +368,15 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'deploy-manage/run-observe/telemetry', label: 'Telemetry' },
             // Activity Log (PRs 5/6/7)
             { type: 'doc', id: 'deploy-manage/run-observe/activity-log', label: 'Activity log' },
-            // Log Forwarding hub + spoke added in PR 8
-            { type: 'doc', id: 'topics/log-forwarding', label: 'Log forwarding' },
+            // Log Forwarding hub + spoke (PR 8)
+            {
+              type: 'category',
+              label: 'Log forwarding',
+              link: { type: 'doc', id: 'deploy-manage/run-observe/log-forwarding/index' },
+              items: [
+                { type: 'doc', id: 'deploy-manage/run-observe/log-forwarding/configure-log-forwarding', label: 'Configure log forwarding' },
+              ],
+            },
           ],
         },
         // ── Maintain & upgrade ───────────────────────────────────────────────
