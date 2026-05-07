@@ -81,3 +81,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `deploy-manage-hardware-requirements.yml` | D&M — Hardware Requirements (sidebar scaffold) | TBD |
 | `deploy-manage-installation.yml` | D&M — Installation (hub + Community + Enterprise spokes) | TBD |
 | `deploy-manage-production-deployment.yml` | D&M — Production Deployment (hub + HA spoke) | TBD |
+| `deploy-manage-configure-infrahub.yml` | D&M — Configure Infrahub | TBD |
