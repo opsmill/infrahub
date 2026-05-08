@@ -52,6 +52,19 @@ async def car_template1_main(db: InfrahubDatabase, default_branch: Branch, car_p
 
 
 @pytest.fixture
+async def car_person_schema_unique_seats(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
+) -> SchemaBranch:
+    registry.schema.register_schema(schema=SchemaRoot(generics=[core_object_template]), branch=default_branch.name)
+    for node in car_person_schema_unregistered.nodes:
+        node.generate_template = True
+    car_node = next(n for n in car_person_schema_unregistered.nodes if n.name == "Car")
+    nbr_seats_attr = next(a for a in car_node.attributes if a.name == "nbr_seats")
+    nbr_seats_attr.unique = True
+    return registry.schema.register_schema(schema=car_person_schema_unregistered, branch=default_branch.name)
+
+
+@pytest.fixture
 async def car_person_schema_read_only_seats(
     db: InfrahubDatabase, default_branch: Branch, car_person_schema_unregistered: SchemaRoot
 ) -> SchemaBranch:
@@ -425,3 +438,219 @@ async def test_migration_disable_support_sub_template(
         branch_name=default_branch.name,
         expected_status="deleted",
     )
+
+
+async def test_migration_unique_enable_support(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema_unique_seats: SchemaBranch,
+) -> None:
+    """Test that unique: True → False adds the attribute to profile and template nodes."""
+    profile = await Node.init(db=db, schema="ProfileTestCar", branch=default_branch)
+    await profile.new(db=db, profile_name="car-profile1", is_electric=False)
+    await profile.save(db=db)
+
+    template_person = await Node.init(db=db, schema="TemplateTestPerson", branch=default_branch)
+    await template_person.new(db=db, template_name="Template Person 1")
+    await template_person.save(db=db)
+
+    template = await Node.init(db=db, schema="TemplateTestCar", branch=default_branch)
+    await template.new(db=db, template_name="Template Car 1", is_electric=False, owner=template_person)
+    await template.save(db=db)
+
+    with pytest.raises(ValueError):
+        profile.get_attribute(name="nbr_seats")
+    with pytest.raises(ValueError):
+        template.get_attribute(name="nbr_seats")
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    prev_car_schema = schema.get(name="TestCar")
+    prev_attr = prev_car_schema.get_attribute(name="nbr_seats")
+    prev_attr.id = str(uuid.uuid4())
+
+    candidate_schema = schema.duplicate()
+    new_car_schema = candidate_schema.get(name="TestCar")
+    new_attr = new_car_schema.get_attribute(name="nbr_seats")
+    new_attr.id = prev_attr.id
+    new_attr.unique = False
+    # When a user removes unique=True from their schema definition, the uniqueness_constraints
+    # are rebuilt from scratch (not inherited). Replicate that by removing the stale entry.
+    # Constraint paths use the "attr__value" format (e.g. "nbr_seats__value"), so we must
+    # check startswith rather than an exact string match.
+    if new_car_schema.uniqueness_constraints:
+        new_car_schema.uniqueness_constraints = [
+            paths
+            for paths in new_car_schema.uniqueness_constraints
+            if not any(p == "nbr_seats" or p.startswith("nbr_seats__") for p in paths)
+        ] or None
+    candidate_schema.set(name="TestCar", schema=new_car_schema)
+
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=prev_car_schema,
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
+    )
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    await assert_attribute_path_status(
+        db=db,
+        node_label="ProfileTestCar",
+        attr_name="nbr_seats",
+        branch_name=default_branch.name,
+        expected_status="active",
+    )
+    await assert_attribute_path_status(
+        db=db,
+        node_label="TemplateTestCar",
+        attr_name="nbr_seats",
+        branch_name=default_branch.name,
+        expected_status="active",
+    )
+
+
+@pytest.fixture
+async def device_part_schema_unique_serial(
+    db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
+) -> SchemaBranch:
+    """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
+    serial_number starts unique=True so it is NOT on template instances."""
+    part = _PART.model_copy(deep=True)
+    part.get_attribute("serial_number").unique = True
+    registry.schema.register_schema(
+        schema=SchemaRoot(generics=[core_object_template, core_object_component_template]),
+        branch=default_branch.name,
+    )
+    return registry.schema.register_schema(schema=SchemaRoot(nodes=[_DEVICE, part]), branch=default_branch.name)
+
+
+async def test_migration_unique_enable_support_sub_template(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    device_part_schema_unique_serial: SchemaBranch,
+) -> None:
+    """Test that unique: True → False on a sub-template schema adds the attribute to existing TemplateTestPart instances."""
+    template_part = await Node.init(db=db, schema="TemplateTestPart", branch=default_branch)
+    await template_part.new(db=db, template_name="Template Part 1")
+    await template_part.save(db=db)
+
+    with pytest.raises(ValueError):
+        template_part.get_attribute(name="serial_number")
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    prev_part_schema = schema.get(name="TestPart")
+    prev_attr = prev_part_schema.get_attribute(name="serial_number")
+    prev_attr.id = str(uuid.uuid4())
+
+    candidate_schema = schema.duplicate()
+    new_part_schema = candidate_schema.get(name="TestPart")
+    new_attr = new_part_schema.get_attribute(name="serial_number")
+    new_attr.id = prev_attr.id
+    new_attr.unique = False
+    candidate_schema.set(name="TestPart", schema=new_part_schema)
+
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=prev_part_schema,
+        new_node_schema=new_part_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPart", field_name="serial_number"),
+    )
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    await assert_attribute_path_status(
+        db=db,
+        node_label="TemplateTestPart",
+        attr_name="serial_number",
+        branch_name=default_branch.name,
+        expected_status="active",
+    )
+
+
+async def test_migration_unique_disable_support(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    car_profile1_main: Node,
+    car_template1_main: Node,
+) -> None:
+    """Test that unique: False → True removes the attribute from profile and template nodes."""
+    await assert_attribute_path_status(
+        db=db,
+        node_label="ProfileTestCar",
+        attr_name="nbr_seats",
+        branch_name=default_branch.name,
+        expected_status="active",
+    )
+    await assert_attribute_path_status(
+        db=db,
+        node_label="TemplateTestCar",
+        attr_name="nbr_seats",
+        branch_name=default_branch.name,
+        expected_status="active",
+    )
+
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    prev_car_schema = schema.get(name="TestCar")
+    prev_attr = prev_car_schema.get_attribute(name="nbr_seats")
+    prev_attr.id = str(uuid.uuid4())
+
+    candidate_schema = schema.duplicate()
+    new_car_schema = candidate_schema.get(name="TestCar")
+    new_attr = new_car_schema.get_attribute(name="nbr_seats")
+    new_attr.id = prev_attr.id
+    new_attr.unique = True
+
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=prev_car_schema,
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
+    )
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    await assert_attribute_path_status(
+        db=db,
+        node_label="ProfileTestCar",
+        attr_name="nbr_seats",
+        branch_name=default_branch.name,
+        expected_status="deleted",
+    )
+    await assert_attribute_path_status(
+        db=db,
+        node_label="TemplateTestCar",
+        attr_name="nbr_seats",
+        branch_name=default_branch.name,
+        expected_status="deleted",
+    )
+
+
+async def test_migration_no_change_when_unique_unchanged(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    car_profile1_main: Node,
+    car_template1_main: Node,
+) -> None:
+    """Test that migration does nothing when unique does not change."""
+    schema = registry.schema.get_schema_branch(name=default_branch.name)
+    prev_car_schema = schema.get(name="TestCar")
+    prev_attr = prev_car_schema.get_attribute(name="nbr_seats")
+    prev_attr.id = str(uuid.uuid4())
+
+    candidate_schema = schema.duplicate()
+    new_car_schema = candidate_schema.get(name="TestCar")
+    new_attr = new_car_schema.get_attribute(name="nbr_seats")
+    new_attr.id = prev_attr.id
+
+    migration = AttributeSupportsGeneratedSchemaMigration(
+        previous_node_schema=prev_car_schema,
+        new_node_schema=new_car_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestCar", field_name="nbr_seats"),
+    )
+
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+    assert execution_result.nbr_migrations_executed == 0
