@@ -18,7 +18,13 @@ The three main feature sections map directly to the three core jobs Infrahub is 
 - **Branches & Change Control** — Infrahub's Git-like versioning layer: branching, proposed changes, checks, validation, and Git repository integration.
 - **Automation & Outputs** — Infrahub as the design surface for your automation stack: generators, transformations, artifacts, events, webhooks, and integrations with tools like Ansible and Nornir.
 
-Get started, Learn, Deployment & Management, Development Resources, and Reference round out the sidebar as supporting sections.
+The remaining sections support those three jobs:
+
+- **Get started** — installation, hardware requirements, and the onboarding path for new users.
+- **Learn** — hands-on tutorials for building real skills with Infrahub, from schema design to generators.
+- **Deployment & Management** — everything needed to run Infrahub in production: configuration, observability, upgrades, backups, authentication, and access control.
+- **Development Resources** — interfaces and tools for building on top of Infrahub: GraphQL, Python SDK, MCP Server, and the infrahubctl CLI.
+- **Reference** — specification-level material: schema spec, CLI reference, configuration files, events catalog, and permissions.
 
 All previous URLs continue to resolve. Legacy paths redirect automatically.
 
@@ -26,7 +32,7 @@ All previous URLs continue to resolve. Legacy paths redirect automatically.
 
 **Object Storage → Artifact & File Storage**
 
-The "Object Storage" section has been renamed to **Artifact & File Storage**. The previous name was ambiguous — "object storage" is a common term for cloud blob storage services like S3 or GCS, which is not what this feature is. The new name reflects what the section actually covers: storage for artifacts produced by Infrahub's generators and transformations, and for files attached to schema nodes via the File Object kind. The rename makes the connection to those two features explicit and removes the confusion with external storage services.
+The "Object Storage" section has been renamed to **Artifact & File Storage**. "Object storage" is a widely-used term for cloud blob storage services like S3 or GCS — not what this feature is. The new name describes what it actually stores: artifacts produced by generators and transformations, and files attached to schema nodes via the File Object kind.
 
 ---
 
