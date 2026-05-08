@@ -1,0 +1,388 @@
+{
+    "$defs": {
+        "InfrahubCheckDefinitionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "The name of the Check Definition",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "file_path": {
+                    "description": "The file within the repository with the check code.",
+                    "format": "path",
+                    "title": "File Path",
+                    "type": "string"
+                },
+                "parameters": {
+                    "additionalProperties": true,
+                    "description": "The input parameters required to run this check",
+                    "title": "Parameters",
+                    "type": "object"
+                },
+                "targets": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "The group to target when running this check, leave blank for global checks",
+                    "title": "Targets"
+                },
+                "class_name": {
+                    "default": "Check",
+                    "description": "The name of the check class to run.",
+                    "title": "Class Name",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "file_path"
+            ],
+            "title": "InfrahubCheckDefinitionConfig",
+            "type": "object"
+        },
+        "InfrahubGeneratorDefinitionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "The name of the Generator Definition",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "file_path": {
+                    "description": "The file within the repository with the generator code.",
+                    "format": "path",
+                    "title": "File Path",
+                    "type": "string"
+                },
+                "query": {
+                    "description": "The GraphQL query to use as input.",
+                    "title": "Query",
+                    "type": "string"
+                },
+                "parameters": {
+                    "additionalProperties": true,
+                    "description": "Maps GraphQL query variable names to target object attribute paths using double-underscore notation.",
+                    "title": "Parameters",
+                    "type": "object"
+                },
+                "targets": {
+                    "description": "Name of the CoreStandardGroup whose members become individual Generator targets. One run is created per group member.",
+                    "title": "Targets",
+                    "type": "string"
+                },
+                "class_name": {
+                    "default": "Generator",
+                    "description": "The name of the Python class within file_path that extends InfrahubGenerator.",
+                    "title": "Class Name",
+                    "type": "string"
+                },
+                "convert_query_response": {
+                    "default": false,
+                    "description": "When true, converts the raw GraphQL dict into SDK InfrahubNode objects accessible via self.nodes and self.store.",
+                    "title": "Convert Query Response",
+                    "type": "boolean"
+                },
+                "execute_in_proposed_change": {
+                    "default": true,
+                    "description": "When true (default), the Generator runs as a CI check during proposed changes.",
+                    "title": "Execute In Proposed Change",
+                    "type": "boolean"
+                },
+                "execute_after_merge": {
+                    "default": true,
+                    "description": "When true (default), the Generator runs after a branch merge. Set to false for Generators that only run via event triggers.",
+                    "title": "Execute After Merge",
+                    "type": "boolean"
+                }
+            },
+            "required": [
+                "name",
+                "file_path",
+                "query",
+                "targets"
+            ],
+            "title": "InfrahubGeneratorDefinitionConfig",
+            "type": "object"
+        },
+        "InfrahubJinja2TransformConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "The name of the transform",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "query": {
+                    "description": "The name of the GraphQL Query",
+                    "title": "Query",
+                    "type": "string"
+                },
+                "template_path": {
+                    "description": "The path within the repository of the template file",
+                    "format": "path",
+                    "title": "Template Path",
+                    "type": "string"
+                },
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Description for this transform",
+                    "title": "Description"
+                }
+            },
+            "required": [
+                "name",
+                "query",
+                "template_path"
+            ],
+            "title": "InfrahubJinja2TransformConfig",
+            "type": "object"
+        },
+        "InfrahubPythonTransformConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "The name of the Transform",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "file_path": {
+                    "description": "The file within the repository with the transform code.",
+                    "format": "path",
+                    "title": "File Path",
+                    "type": "string"
+                },
+                "class_name": {
+                    "default": "Transform",
+                    "description": "The name of the transform class to run.",
+                    "title": "Class Name",
+                    "type": "string"
+                },
+                "convert_query_response": {
+                    "default": false,
+                    "description": "Decide if the transform should convert the result of the GraphQL query to SDK InfrahubNode objects.",
+                    "title": "Convert Query Response",
+                    "type": "boolean"
+                },
+                "description": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Description for this transform",
+                    "title": "Description"
+                }
+            },
+            "required": [
+                "name",
+                "file_path"
+            ],
+            "title": "InfrahubPythonTransformConfig",
+            "type": "object"
+        },
+        "InfrahubRepositoryArtifactDefinitionConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "The name of the artifact definition",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "artifact_name": {
+                    "anyOf": [
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ],
+                    "default": null,
+                    "description": "Name of the artifact created from this definition",
+                    "title": "Artifact Name"
+                },
+                "parameters": {
+                    "additionalProperties": true,
+                    "description": "The input parameters required to render this artifact",
+                    "title": "Parameters",
+                    "type": "object"
+                },
+                "content_type": {
+                    "description": "The content type of the rendered artifact",
+                    "title": "Content Type",
+                    "type": "string"
+                },
+                "targets": {
+                    "description": "The group to target when creating artifacts",
+                    "title": "Targets",
+                    "type": "string"
+                },
+                "transformation": {
+                    "description": "The transformation to use.",
+                    "title": "Transformation",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "parameters",
+                "content_type",
+                "targets",
+                "transformation"
+            ],
+            "title": "InfrahubRepositoryArtifactDefinitionConfig",
+            "type": "object"
+        },
+        "InfrahubRepositoryFragmentConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "Logical name for this fragment file or directory",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "file_path": {
+                    "description": "Path to a .gql fragment file or a directory of .gql files, relative to repo root",
+                    "format": "path",
+                    "title": "File Path",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "file_path"
+            ],
+            "title": "InfrahubRepositoryFragmentConfig",
+            "type": "object"
+        },
+        "InfrahubRepositoryGraphQLConfig": {
+            "additionalProperties": false,
+            "properties": {
+                "name": {
+                    "description": "The name of the GraphQL Query",
+                    "title": "Name",
+                    "type": "string"
+                },
+                "file_path": {
+                    "description": "The file within the repository with the query code.",
+                    "format": "path",
+                    "title": "File Path",
+                    "type": "string"
+                }
+            },
+            "required": [
+                "name",
+                "file_path"
+            ],
+            "title": "InfrahubRepositoryGraphQLConfig",
+            "type": "object"
+        }
+    },
+    "additionalProperties": false,
+    "properties": {
+        "check_definitions": {
+            "description": "User defined checks",
+            "items": {
+                "$ref": "#/$defs/InfrahubCheckDefinitionConfig"
+            },
+            "title": "Check Definitions",
+            "type": "array"
+        },
+        "schemas": {
+            "description": "Schema files",
+            "items": {
+                "format": "path",
+                "type": "string"
+            },
+            "title": "Schemas",
+            "type": "array"
+        },
+        "jinja2_transforms": {
+            "description": "Jinja2 data transformations",
+            "items": {
+                "$ref": "#/$defs/InfrahubJinja2TransformConfig"
+            },
+            "title": "Jinja2 Transforms",
+            "type": "array"
+        },
+        "artifact_definitions": {
+            "description": "Artifact definitions",
+            "items": {
+                "$ref": "#/$defs/InfrahubRepositoryArtifactDefinitionConfig"
+            },
+            "title": "Artifact Definitions",
+            "type": "array"
+        },
+        "python_transforms": {
+            "description": "Python data transformations",
+            "items": {
+                "$ref": "#/$defs/InfrahubPythonTransformConfig"
+            },
+            "title": "Python Transforms",
+            "type": "array"
+        },
+        "generator_definitions": {
+            "description": "Generator definitions",
+            "items": {
+                "$ref": "#/$defs/InfrahubGeneratorDefinitionConfig"
+            },
+            "title": "Generator Definitions",
+            "type": "array"
+        },
+        "queries": {
+            "description": "GraphQL Queries",
+            "items": {
+                "$ref": "#/$defs/InfrahubRepositoryGraphQLConfig"
+            },
+            "title": "Queries",
+            "type": "array"
+        },
+        "graphql_fragments": {
+            "description": "GraphQL fragment files declared for this repository",
+            "items": {
+                "$ref": "#/$defs/InfrahubRepositoryFragmentConfig"
+            },
+            "title": "Graphql Fragments",
+            "type": "array"
+        },
+        "objects": {
+            "description": "Objects",
+            "items": {
+                "format": "path",
+                "type": "string"
+            },
+            "title": "Objects",
+            "type": "array"
+        },
+        "menus": {
+            "description": "Menus",
+            "items": {
+                "format": "path",
+                "type": "string"
+            },
+            "title": "Menus",
+            "type": "array"
+        }
+    },
+    "title": "InfrahubRepositoryConfig",
+    "type": "object"
+}
