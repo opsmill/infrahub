@@ -35,8 +35,11 @@ async def test_returns_direct_peer_path_on_default_branch(
     assert len(paths) >= 1
     shortest = paths[0]
     assert shortest.depth == 1
-    assert shortest.nodes[0].uuid == person.id
-    assert shortest.nodes[-1].uuid == tag.id
+    assert len(shortest.hops) == 2
+    assert shortest.hops[0].node.uuid == person.id
+    assert shortest.hops[0].relationship_identifier is None
+    assert shortest.hops[-1].node.uuid == tag.id
+    assert shortest.hops[-1].relationship_identifier
 
 
 async def test_returns_direct_peer_path_on_non_default_branch(
@@ -57,5 +60,7 @@ async def test_returns_direct_peer_path_on_non_default_branch(
 
     assert len(paths) >= 1
     assert paths[0].depth == 1
-    assert paths[0].nodes[0].uuid == person.id
-    assert paths[0].nodes[-1].uuid == tag.id
+    assert paths[0].hops[0].node.uuid == person.id
+    assert paths[0].hops[0].relationship_identifier is None
+    assert paths[0].hops[-1].node.uuid == tag.id
+    assert paths[0].hops[-1].relationship_identifier

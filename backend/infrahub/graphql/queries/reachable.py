@@ -7,32 +7,35 @@ from graphql import GraphQLError
 
 from infrahub.core.manager import NodeManager
 from infrahub.core.query.reachable import ReachableNodesQuery
-from infrahub.graphql.queries.path import PathNodeType, PathResultType, _path_data_to_result
+from infrahub.graphql.queries.path import (
+    PathNodeType,
+    PathResultType,
+    _get_node_labels,
+    _node_payload,
+    _path_data_to_result,
+)
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.node import Node
     from infrahub.graphql.initialization import GraphqlContext
 
 
 class ReachableNodeType(ObjectType):
-    id = Field(String, required=True, description="Node UUID")
-    kind = Field(String, required=True, description="Schema kind")
-    display_label = Field(String, required=True, description="Human-readable display label")
+    node = Field(PathNodeType, required=True, description="Reachable node")
     depth = Field(Int, required=True, description="Hops from source node")
-    relationship_name = Field(String, required=True, description="Relationship connecting this node")
     path = Field(PathResultType, required=True, description="Full path from source to this node")
 
 
 class ReachableNodesResultType(ObjectType):
     source = Field(PathNodeType, required=True, description="The source node")
-    reachable_nodes = Field(
+    dependencies = Field(
         List(of_type=NonNull(ReachableNodeType)),
         required=True,
-        description="Nodes of the requested kinds reachable from the source",
+        description="Reachable nodes of the requested kinds, one entry per (node, path) pair",
     )
-    paths = Field(List(of_type=NonNull(PathResultType)), required=True, description="All paths to reachable nodes")
-    total_found = Field(Int, required=True, description="Total reachable nodes found")
+    count = Field(Int, required=True, description="Number of dependency entries returned")
 
 
 class ReachableNodesInput(InputObjectType):
@@ -54,7 +57,7 @@ async def reachable_nodes_resolver(
     max_depth = data.max_depth or 5
     max_results = data.max_results or 50
 
-    source_node = await NodeManager.get_one(
+    source_node: Node | None = await NodeManager.get_one(
         db=graphql_context.db,
         branch=graphql_context.branch,
         at=graphql_context.at,
@@ -79,49 +82,29 @@ async def reachable_nodes_resolver(
 
     reachable_data = query.get_reachable_nodes()
 
-    all_ids: set[str] = set()
+    all_ids: set[str] = {source_id}
     for n in reachable_data:
-        all_ids.add(n.uuid)
-        all_ids.update(pn.uuid for pn in n.path.nodes)
+        all_ids.add(n.node.uuid)
+        all_ids.update(hop.node.uuid for hop in n.path.hops)
 
-    display_labels: dict[str, str] = {}
-    if all_ids:
-        loaded_nodes = await NodeManager.get_many(
-            db=graphql_context.db,
-            branch=graphql_context.branch,
-            at=graphql_context.at,
-            ids=list(all_ids),
-        )
-        for node_id, node in loaded_nodes.items():
-            display_labels[node_id] = await node.get_display_label(db=graphql_context.db)
+    labels_map = await _get_node_labels(graphql_context=graphql_context, node_ids=all_ids)
 
-    source_info = {
-        "id": source_node.id,
-        "kind": source_node.get_kind(),
-        "display_label": display_labels.get(source_id, await source_node.get_display_label(db=graphql_context.db)),
-    }
+    source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
 
-    reachable_nodes = []
-    paths = []
+    dependencies = []
     for n in reachable_data:
-        path_result = _path_data_to_result(n.path, display_labels)
-        reachable_nodes.append(
+        dependencies.append(
             {
-                "id": n.uuid,
-                "kind": n.kind,
-                "display_label": display_labels.get(n.uuid, n.kind),
+                "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),
                 "depth": n.depth,
-                "relationship_name": n.relationship_name,
-                "path": path_result,
+                "path": _path_data_to_result(n.path, labels_map, graphql_context),
             }
         )
-        paths.append(path_result)
 
     return {
         "source": source_info,
-        "reachable_nodes": reachable_nodes,
-        "paths": paths,
-        "total_found": len(reachable_nodes),
+        "dependencies": dependencies,
+        "count": len(dependencies),
     }
 
 

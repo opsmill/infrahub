@@ -1,47 +1,53 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
-from graphene import Enum, Field, InputObjectType, Int, List, NonNull, ObjectType, String
+from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.path import PathTraversalQuery
+from infrahub.core.query.path import PathData, PathTraversalQuery
+from infrahub.exceptions import SchemaNotFoundError
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
+    from infrahub.core.node import Node
+    from infrahub.core.schema import MainSchemaTypes
     from infrahub.graphql.initialization import GraphqlContext
-
-
-class PathDirectionEnum(Enum):
-    OUTBOUND = "outbound"
-    INBOUND = "inbound"
-    BIDIR = "bidirectional"
 
 
 class PathNodeType(ObjectType):
     id = Field(String, required=True, description="Node UUID")
     kind = Field(String, required=True, description="Schema kind")
+    label = Field(String, required=True, description="Schema label for the node's kind")
     display_label = Field(String, required=True, description="Human-readable display label")
+    hfid = Field(List(of_type=NonNull(String)), required=True, description="Human friendly identifier")
 
 
 class PathRelationshipType(ObjectType):
-    id = Field(String, required=True, description="Relationship UUID")
-    name = Field(String, required=True, description="Relationship name")
-    direction = Field(PathDirectionEnum, required=True, description="Direction relative to traversal")
+    from_rel = Field(String, required=True, description="Relationship name on the source side of the hop")
+    from_label = Field(String, required=True, description="Relationship label on the source side of the hop")
+    to_rel = Field(String, required=True, description="Relationship name on the destination side of the hop")
+    to_label = Field(String, required=True, description="Relationship label on the destination side of the hop")
+    kind = Field(String, required=True, description="Relationship kind (e.g. Component, Generic)")
+
+
+class PathHopType(ObjectType):
+    node = Field(PathNodeType, required=True, description="Node visited at this hop")
+    relationship = Field(
+        PathRelationshipType,
+        required=False,
+        description="Relationship traversed to reach this node from the previous hop. Null on the first hop.",
+    )
 
 
 class PathResultType(ObjectType):
-    nodes = Field(
-        List(of_type=NonNull(PathNodeType)), required=True, description="Ordered nodes from source to destination"
+    hops = Field(
+        List(of_type=NonNull(PathHopType)), required=True, description="Ordered hops from source to destination"
     )
-    relationships = Field(
-        List(of_type=NonNull(PathRelationshipType)),
-        required=True,
-        description="Ordered relationships connecting the nodes",
-    )
-    depth = Field(Int, required=True, description="Number of node hops in this path")
+    depth = Field(Int, required=True, description="Number of edges in this path")
 
 
 class PathTraversalResultType(ObjectType):
@@ -50,7 +56,7 @@ class PathTraversalResultType(ObjectType):
     )
     source = Field(PathNodeType, required=True, description="The start node")
     destination = Field(PathNodeType, required=True, description="The end node")
-    total_paths_found = Field(Int, required=True, description="Total number of paths discovered")
+    count = Field(Int, required=True, description="Total number of paths discovered")
 
 
 class PathTraversalInput(InputObjectType):
@@ -78,12 +84,121 @@ class PathTraversalInput(InputObjectType):
     )
 
 
-def _path_data_to_result(path_data: Any, display_labels: dict[str, str]) -> dict[str, Any]:
-    nodes = [
-        {"id": n.uuid, "kind": n.kind, "display_label": display_labels.get(n.uuid, n.kind)} for n in path_data.nodes
-    ]
-    relationships = [{"id": r.uuid, "name": r.name, "direction": r.direction.value} for r in path_data.relationships]
-    return {"nodes": nodes, "relationships": relationships, "depth": path_data.depth}
+async def _get_node_labels(graphql_context: GraphqlContext, node_ids: set[str]) -> dict[str, dict[str, Any]]:
+    """Load nodes by id and return per-uuid {label, display_label, hfid}.
+
+    `label` is the schema-level label for the node's kind; `display_label` is
+    the per-node rendering; `hfid` is the stored human-friendly id list.
+    """
+    labels_map: dict[str, dict[str, Any]] = {}
+    if not node_ids:
+        return labels_map
+
+    loaded_nodes = await NodeManager.get_many(
+        db=graphql_context.db,
+        branch=graphql_context.branch,
+        at=graphql_context.at,
+        ids=list(node_ids),
+    )
+
+    schema_label_cache: dict[str, str] = {}
+    for node_id, node in loaded_nodes.items():
+        kind = node.get_kind()
+        if kind not in schema_label_cache:
+            schema_label_cache[kind] = _schema_label_for_kind(graphql_context=graphql_context, kind=kind)
+        labels_map[node_id] = {
+            "label": schema_label_cache[kind],
+            "display_label": await node.get_display_label(db=graphql_context.db),
+            "hfid": (await node.get_hfid(db=graphql_context.db)) or [],
+        }
+    return labels_map
+
+
+def _schema_label_for_kind(graphql_context: GraphqlContext, kind: str) -> str:
+    try:
+        node_schema: MainSchemaTypes = graphql_context.db.schema.get(
+            name=kind, branch=graphql_context.branch, duplicate=False
+        )
+    except SchemaNotFoundError:
+        return kind
+    return node_schema.label or kind
+
+
+def _node_payload(node_id: str, kind: str, labels_map: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    meta = labels_map.get(node_id, {})
+    return {
+        "id": node_id,
+        "kind": kind,
+        "label": meta.get("label", kind),
+        "display_label": meta.get("display_label", kind),
+        "hfid": meta.get("hfid", []),
+    }
+
+
+def _resolve_relationship(
+    graphql_context: GraphqlContext, identifier: str, from_kind: str, to_kind: str
+) -> dict[str, str]:
+    """Project a hop's relationship identifier into bidirectional API fields.
+
+    Look up the schema for both endpoints and find the RelationshipSchema with
+    the given identifier on each side. Falls back to the identifier when schema
+    lookup fails (e.g. legacy data or unknown kinds).
+    """
+    from_rel_name = identifier
+    from_label = identifier
+    to_rel_name = identifier
+    to_label = identifier
+    kind = ""
+
+    with contextlib.suppress(SchemaNotFoundError):
+        from_schema: MainSchemaTypes = graphql_context.db.schema.get(
+            name=from_kind, branch=graphql_context.branch, duplicate=False
+        )
+        from_rel = from_schema.get_relationship_by_identifier(id=identifier, raise_on_error=False)
+        if from_rel is not None:
+            from_rel_name = from_rel.name
+            from_label = from_rel.label or from_rel.name
+            kind = from_rel.kind.value if hasattr(from_rel.kind, "value") else str(from_rel.kind)
+
+    with contextlib.suppress(SchemaNotFoundError):
+        to_schema: MainSchemaTypes = graphql_context.db.schema.get(
+            name=to_kind, branch=graphql_context.branch, duplicate=False
+        )
+        to_rel = to_schema.get_relationship_by_identifier(id=identifier, raise_on_error=False)
+        if to_rel is not None:
+            to_rel_name = to_rel.name
+            to_label = to_rel.label or to_rel.name
+            if not kind:
+                kind = to_rel.kind.value if hasattr(to_rel.kind, "value") else str(to_rel.kind)
+
+    return {
+        "from_rel": from_rel_name,
+        "from_label": from_label,
+        "to_rel": to_rel_name,
+        "to_label": to_label,
+        "kind": kind,
+    }
+
+
+def _path_data_to_result(
+    path_data: PathData, labels_map: dict[str, dict[str, Any]], graphql_context: GraphqlContext
+) -> dict[str, Any]:
+    hops: list[dict[str, Any]] = []
+    previous_kind: str | None = None
+    for hop in path_data.hops:
+        node_payload = _node_payload(node_id=hop.node.uuid, kind=hop.node.kind, labels_map=labels_map)
+        relationship_payload: dict[str, str] | None = None
+        if hop.relationship_identifier is not None and previous_kind is not None:
+            relationship_payload = _resolve_relationship(
+                graphql_context=graphql_context,
+                identifier=hop.relationship_identifier,
+                from_kind=previous_kind,
+                to_kind=hop.node.kind,
+            )
+        hops.append({"node": node_payload, "relationship": relationship_payload})
+        previous_kind = hop.node.kind
+
+    return {"hops": hops, "depth": path_data.depth}
 
 
 async def path_traversal_resolver(
@@ -105,7 +220,7 @@ async def path_traversal_resolver(
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
 
-    source_node = await NodeManager.get_one(
+    source_node: Node | None = await NodeManager.get_one(
         db=graphql_context.db,
         branch=graphql_context.branch,
         at=graphql_context.at,
@@ -114,7 +229,7 @@ async def path_traversal_resolver(
     if not source_node:
         raise GraphQLError(f"Source node not found: {source_id}")
 
-    destination_node = await NodeManager.get_one(
+    destination_node: Node | None = await NodeManager.get_one(
         db=graphql_context.db,
         branch=graphql_context.branch,
         at=graphql_context.at,
@@ -143,39 +258,24 @@ async def path_traversal_resolver(
 
     path_data_list = query.get_paths()
 
-    all_node_ids: set[str] = set()
+    all_node_ids: set[str] = {source_id, destination_id}
     for path_data in path_data_list:
-        all_node_ids.update(n.uuid for n in path_data.nodes)
+        all_node_ids.update(hop.node.uuid for hop in path_data.hops)
 
-    display_labels: dict[str, str] = {}
-    if all_node_ids:
-        loaded_nodes = await NodeManager.get_many(
-            db=graphql_context.db,
-            branch=graphql_context.branch,
-            at=graphql_context.at,
-            ids=list(all_node_ids),
-        )
-        for node_id, node in loaded_nodes.items():
-            display_labels[node_id] = await node.get_display_label(db=graphql_context.db)
+    labels_map = await _get_node_labels(graphql_context=graphql_context, node_ids=all_node_ids)
 
-    source_info = {
-        "id": source_node.id,
-        "kind": source_node.get_kind(),
-        "display_label": display_labels.get(source_id, source_node.get_kind()),
-    }
-    destination_info = {
-        "id": destination_node.id,
-        "kind": destination_node.get_kind(),
-        "display_label": display_labels.get(destination_id, destination_node.get_kind()),
-    }
+    source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
+    destination_info = _node_payload(
+        node_id=destination_node.id, kind=destination_node.get_kind(), labels_map=labels_map
+    )
 
-    paths = [_path_data_to_result(p, display_labels) for p in path_data_list]
+    paths = [_path_data_to_result(p, labels_map, graphql_context) for p in path_data_list]
 
     return {
         "paths": paths,
         "source": source_info,
         "destination": destination_info,
-        "total_paths_found": len(path_data_list),
+        "count": len(path_data_list),
     }
 
 

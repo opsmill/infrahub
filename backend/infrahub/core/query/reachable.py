@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.path import DEFAULT_EXCLUDED_NAMESPACES, PathData, extract_path_data
+from infrahub.core.query.path import (
+    DEFAULT_EXCLUDED_NAMESPACES,
+    PathData,
+    PathNodeData,
+    extract_path_data,
+)
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -12,11 +17,8 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True)
 class ReachableNodeData:
-    uuid: str
-    kind: str
-    display_label: str
+    node: PathNodeData
     depth: int
-    relationship_name: str
     path: PathData
 
 
@@ -95,8 +97,7 @@ class ReachableNodesQuery(Query):
                target.kind AS target_kind,
                coalesce(target.display_label, target.kind) AS target_display_label,
                path,
-               depth,
-               coalesce(nodes(path)[-2].name, "") AS relationship_name
+               depth
         LIMIT %(max_results)s
         """
             % query_params
@@ -109,22 +110,30 @@ class ReachableNodesQuery(Query):
             "target_display_label",
             "path",
             "depth",
-            "relationship_name",
         ]
 
     def get_reachable_nodes(self) -> list[ReachableNodeData]:
         results: list[ReachableNodeData] = []
         for result in self.get_results():
             path_obj = result.get_path(label="path")
-            path_data = extract_path_data(path_obj) if path_obj else PathData(nodes=[], relationships=[], depth=0)
+            path_data = extract_path_data(path_obj) if path_obj else PathData(hops=[], depth=0)
+
+            target_uuid = result.get_as_str(label="target_uuid") or ""
+            target_kind = result.get_as_str(label="target_kind") or ""
+            target_display_label = result.get_as_str(label="target_display_label") or ""
+
+            node = PathNodeData(
+                uuid=target_uuid,
+                kind=target_kind,
+                label="",
+                display_label=target_display_label,
+                hfid=[],
+            )
 
             results.append(
                 ReachableNodeData(
-                    uuid=result.get_as_str(label="target_uuid") or "",
-                    kind=result.get_as_str(label="target_kind") or "",
-                    display_label=result.get_as_str(label="target_display_label") or "",
+                    node=node,
                     depth=result.get_as_optional_type(label="depth", return_type=int) or 0,
-                    relationship_name=result.get_as_str(label="relationship_name") or "",
                     path=path_data,
                 )
             )

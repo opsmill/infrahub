@@ -3,10 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.constants import RelationshipDirection
 from infrahub.core.query import Query, QueryType
 
 if TYPE_CHECKING:
+    from neo4j.graph import Path as Neo4jPath
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -14,20 +15,22 @@ if TYPE_CHECKING:
 class PathNodeData:
     uuid: str
     kind: str
+    label: str
     display_label: str
+    hfid: list[str]
 
 
 @dataclass(frozen=True)
-class PathRelationshipData:
-    uuid: str
-    name: str
-    direction: RelationshipDirection
+class PathHopData:
+    node: PathNodeData
+    # Schema relationship identifier (e.g. "device_interfaces") of the edge
+    # traversed to reach this node from the previous hop. None on the first hop.
+    relationship_identifier: str | None
 
 
 @dataclass(frozen=True)
 class PathData:
-    nodes: list[PathNodeData]
-    relationships: list[PathRelationshipData]
+    hops: list[PathHopData]
     depth: int
 
 
@@ -41,50 +44,36 @@ DEFAULT_EXCLUDED_NAMESPACES = (
 )
 
 
-def extract_path_data(path_obj: Any) -> PathData:
+def extract_path_data(path_obj: Neo4jPath) -> PathData:
     """Convert a Neo4j Path object into PathData.
 
     Paths alternate Node vertex, Relationship vertex, Node vertex, ... where
-    each hop between user-visible nodes is two edges.
+    each hop between user-visible nodes is two edges. Emits a list of hops where
+    the first hop has `relationship=None` and each subsequent hop carries the
+    Relationship vertex that connects it to the previous node.
     """
     raw_nodes = list(path_obj.nodes)
-    raw_rels = list(path_obj.relationships)
 
-    path_nodes: list[PathNodeData] = []
-    path_relationships: list[PathRelationshipData] = []
+    hops: list[PathHopData] = []
+    pending_identifier: str | None = None
 
     for i, vertex in enumerate(raw_nodes):
         if i % 2 == 0:
-            path_nodes.append(
-                PathNodeData(
-                    uuid=vertex.get("uuid", ""),
-                    kind=vertex.get("kind", ""),
-                    display_label=vertex.get("display_label", vertex.get("kind", "")),
-                )
+            node = PathNodeData(
+                uuid=vertex.get("uuid", ""),
+                kind=vertex.get("kind", ""),
+                label="",
+                display_label=vertex.get("display_label", vertex.get("kind", "")),
+                hfid=[],
             )
+            hops.append(PathHopData(node=node, relationship_identifier=pending_identifier))
+            pending_identifier = None
             continue
 
-        direction = RelationshipDirection.OUTBOUND
-        if i > 0 and (i - 1) < len(raw_rels):
-            incoming_edge = raw_rels[i - 1]
-            prior_node = raw_nodes[i - 1]
-            if (
-                incoming_edge is not None
-                and hasattr(incoming_edge, "start_node")
-                and incoming_edge.start_node != prior_node.element_id
-            ):
-                direction = RelationshipDirection.INBOUND
+        pending_identifier = vertex.get("name", "")
 
-        path_relationships.append(
-            PathRelationshipData(
-                uuid=vertex.get("uuid", ""),
-                name=vertex.get("name", ""),
-                direction=direction,
-            )
-        )
-
-    depth = len(path_nodes) - 1 if len(path_nodes) > 1 else 0
-    return PathData(nodes=path_nodes, relationships=path_relationships, depth=depth)
+    depth = len(hops) - 1 if len(hops) > 1 else 0
+    return PathData(hops=hops, depth=depth)
 
 
 class PathTraversalQuery(Query):
