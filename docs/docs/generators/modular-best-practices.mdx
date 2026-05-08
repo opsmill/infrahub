@@ -48,7 +48,7 @@ If you use `await spine.save()` without the flag, the first run works. The secon
 
 ### What makes upsert matching work
 
-Upsert matching relies on the node's [`human_friendly_id`](../topics/schema#human-friendly-identifier-hfid) (HFID). When the server processes an upsert mutation, it checks whether a node with the same HFID already exists. If it finds a match, it updates the existing node. If no match is found, it creates a new node.
+Upsert matching relies on the node's [`human_friendly_id`](../schema/nodes-and-attributes#human-friendly-identifier-hfid) (HFID). When the server processes an upsert mutation, it checks whether a node with the same HFID already exists. If it finds a match, it updates the existing node. If no match is found, it creates a new node.
 
 This means two things must be in place:
 
@@ -206,7 +206,7 @@ Do this at schema design time, not as an afterthought. Adding a generic to an ex
 
 ### Define `human_friendly_id` on generated node types
 
-Generators rely on `allow_upsert=True`, which matches objects by their [`human_friendly_id`](../topics/schema#human-friendly-identifier-hfid). Every node type that a Generator creates must have a `human_friendly_id` defined in the schema:
+Generators rely on `allow_upsert=True`, which matches objects by their [`human_friendly_id`](../schema/nodes-and-attributes#human-friendly-identifier-hfid). Every node type that a Generator creates must have a `human_friendly_id` defined in the schema:
 
 ```yaml
 nodes:

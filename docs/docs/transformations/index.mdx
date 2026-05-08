@@ -62,7 +62,7 @@ See [Write a Jinja2 Transformation](./jinja2) for the recipe-form how-to, or [Bu
 A Jinja2 Transformation can be rendered with 3 different methods:
 
 - On demand via the REST API
-- As part of an [artifact](../topics/artifact.mdx)
+- As part of an [artifact](../artifacts/)
 - In CLI for development and troubleshooting [infrahubctl render]($(base_url)infrahubctl/infrahubctl-render)
 
 ### TransformPython (Python plugin)
@@ -91,12 +91,12 @@ This can be accomplished by using the `self.root_directory` that points to the r
 A TransformPython can be rendered with 2 different methods:
 
 - On demand via the REST API
-- As part of an [artifact](../topics/artifact.mdx)
+- As part of an [artifact](../artifacts/)
 - Via the CLI for development and troubleshooting: [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform)
 
 ## Using Transformations with groups
 
-Transformations themselves are generic pieces of logic that process data and produce output. They become targeted to specific objects through [artifact definitions](../topics/artifact.mdx) and [Generators](../topics/generator.mdx), which combine a Transformation with a [group](../groups/) of targets.
+Transformations themselves are generic pieces of logic that process data and produce output. They become targeted to specific objects through [artifact definitions](../artifacts/) and [Generators](../generators/), which combine a Transformation with a [group](../groups/) of targets.
 
 This design enables powerful patterns:
 

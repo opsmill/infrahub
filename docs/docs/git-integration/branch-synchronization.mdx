@@ -49,9 +49,9 @@ Set the `INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES` environment variable (or the equ
 INFRAHUB_GIT_IMPORT_SYNC_BRANCH_NAMES=["^infra/.*$","^feature/infrahub-.*$"]
 ```
 
-A configuration change requires a restart of the Infrahub server. For detailed instructions on applying configuration changes to your deployment, see [How to configure Infrahub](../guides/configuration-changes.mdx).
+A configuration change requires a restart of the Infrahub server. For detailed instructions on applying configuration changes to your deployment, see [How to configure Infrahub](../deploy-manage/install-configure/configure-infrahub).
 
-<ReferenceLink title="How to configure Infrahub" url="../guides/configuration-changes" openInNewTab />
+<ReferenceLink title="How to configure Infrahub" url="../deploy-manage/install-configure/configure-infrahub" openInNewTab />
 
 :::success Validation
 After setting those variables and restarting, branch synchronization will follow the defined rules.
@@ -196,7 +196,7 @@ Your workflow includes Infrahub-related feature branches that reference issue nu
 
 ## Verifying the configuration
 
-To verify that the selective synchronization rules are working correctly, you need a Git repository connected to Infrahub. If you haven't connected a repository yet, see [How to connect external Git repositories](../guides/repository.mdx).
+To verify that the selective synchronization rules are working correctly, you need a Git repository connected to Infrahub. If you haven't connected a repository yet, see [How to connect external Git repositories](connect-repository).
 
 ### Test with branches that should NOT be imported
 
@@ -316,7 +316,7 @@ Selective branch synchronization applies to standard read-write repositories tha
 
 ## Further reading
 
-- [Understanding Git repositories in Infrahub](../topics/repository.mdx) - Repository integration concepts and architecture
-- [How to connect external Git repositories](../guides/repository.mdx) - Step-by-step repository setup guide
+- [Understanding Git repositories in Infrahub](./) - Repository integration concepts and architecture
+- [How to connect external Git repositories](connect-repository) - Step-by-step repository setup guide
 - [Understanding branching in Infrahub](../branches/index.mdx) - Branch isolation, hierarchy, and workflows
 - [Configuration reference](../reference/configuration.mdx) - Complete configuration options including Git settings

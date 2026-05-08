@@ -95,7 +95,7 @@ Merge conflicts for file objects are resolved at the attribute level, not the ob
 
 ### Permission enforcement
 
-File objects integrate with Infrahub's [permission system](../topics/permissions-roles). Downloading a file requires VIEW permission on the file object node. Creating or updating a file object requires the corresponding CREATE or UPDATE permissions. This means that access to files is governed by the same role-based access control that protects the rest of your infrastructure data.
+File objects integrate with Infrahub's [permission system](../deploy-manage/user-management/permissions-roles/). Downloading a file requires VIEW permission on the file object node. Creating or updating a file object requires the corresponding CREATE or UPDATE permissions. This means that access to files is governed by the same role-based access control that protects the rest of your infrastructure data.
 
 ## Use cases
 
@@ -118,11 +118,11 @@ Site photos, rack elevation pictures, or equipment labels can be stored as file 
 File objects build on several existing Infrahub features:
 
 - **[About schema](./)**: File object types are defined in the schema, following the same inheritance model as other node kinds.
-- **[Branching](../topics/branching)**: File changes are isolated on branches and merged through the standard workflow.
-- **[Proposed changes](../topics/proposed-change)**: File updates go through the same review process as data changes.
+- **[Branching](../branches/)**: File changes are isolated on branches and merged through the standard workflow.
+- **[Proposed changes](../proposed-changes/)**: File updates go through the same review process as data changes.
 - **[Object storage](../artifact-file-storage/)**: File content is persisted in Infrahub's storage layer, which supports local and S3 backends.
-- **[Permissions and roles](../topics/permissions-roles)**: File access is controlled by the same role-based permissions as other data.
-- **[Artifact](../topics/artifact)**: While artifacts are system-generated outputs from transformations, file objects are user-uploaded documents. Both use the object storage layer, but they serve different purposes.
+- **[Permissions and roles](../deploy-manage/user-management/permissions-roles/)**: File access is controlled by the same role-based permissions as other data.
+- **[Artifact](../artifacts/)**: While artifacts are system-generated outputs from transformations, file objects are user-uploaded documents. Both use the object storage layer, but they serve different purposes.
 
 ## Operational considerations
 
@@ -136,7 +136,7 @@ INFRAHUB_STORAGE_MAX_FILE_SIZE=200   # in MB, default is 50
 
 For production deployments behind a reverse proxy, the proxy must also allow large request bodies.
 
-<ReferenceLink title="How to configure Infrahub" url="../guides/configuration-changes" />
+<ReferenceLink title="How to configure Infrahub" url="../deploy-manage/install-configure/configure-infrahub" />
 
 ### Backups
 
@@ -146,10 +146,10 @@ The file content for file objects is stored in the [object storage](../artifact-
 Unlike artifacts, which can be regenerated from their definitions, user-uploaded files may only exist in object storage. Losing object storage without a backup means those files are unrecoverable. Both the graph database and object storage must be backed up together to maintain consistency.
 :::
 
-<ReferenceLink title="How to backup object storage" url="../guides/database-backup#step-3-backup-the-object-storage" />
+<ReferenceLink title="How to backup object storage" url="../deploy-manage/maintain-upgrade/database-backup/backup-and-restore#step-3-backup-the-object-storage" />
 
 ## Further reading
 
 - [Object storage](../artifact-file-storage/) — Storage backend configuration and architecture
-- [Version control](../topics/version-control) — How Infrahub tracks changes over time
-- [Branching](../topics/branching) — Working with branches for isolated changes
+- [Version control](../immutable-history/) — How Infrahub tracks changes over time
+- [Branching](../branches/) — Working with branches for isolated changes

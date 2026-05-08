@@ -33,7 +33,7 @@ A proposed change in Infrahub offers a more sophisticated approach by integratin
 - **Data differences**: See precisely what objects were added, modified, or deleted, along with the specific attribute changes.
 - **Schema differences**: Identify changes to the underlying data models that define your infrastructure.
 - **File differences**: Track modifications to implementation files like Transformations, Generators, and templates.
-- **Artifact differences**: Compare the [artifacts](../topics/artifact.mdx) generated to understand output changes.
+- **Artifact differences**: Compare the [artifacts](../artifacts/) generated to understand output changes.
 
 ![Data tab showing differences between branches](../media/topics/proposed_change/pc_tab_data.png)
 
@@ -68,13 +68,13 @@ Learn more about [Checks & Validation](../checks/index.mdx) and how to implement
 
 Infrahub will automatically run Transformations and generate artifacts as part of the proposed change workflow.
 
-Learn more about [Transformations](../topics/transformation.mdx) and [Artifacts](../topics/artifact.mdx).
+Learn more about [Transformations](../transformations/) and [Artifacts](../artifacts/).
 
 ### Generator integration
 
 Infrahub will automatically run Generators as part of the proposed change workflow.
 
-Learn more about [Generators](../topics/generator.mdx).
+Learn more about [Generators](../generators/).
 
 ## Conflict management
 
@@ -122,11 +122,11 @@ The audit capabilities are particularly valuable for infrastructure changes that
 The proposed change functionality interconnects with several other key concepts in Infrahub:
 
 - [Branches](../branches/index.mdx) — the underlying mechanism for change isolation
-- [Immutable history](../topics/version-control.mdx) — the foundation of proposed changes
-- [Schema](../topics/schema.mdx) — the data models reviewed in proposed changes
-- [Artifacts](../topics/artifact.mdx) — outputs that are regenerated as part of proposed changes
+- [Immutable history](../immutable-history/index.mdx) — the foundation of proposed changes
+- [Schema](../schema/) — the data models reviewed in proposed changes
+- [Artifacts](../artifacts/) — outputs that are regenerated as part of proposed changes
 - [Checks & Validation](../checks/index.mdx) — validation checks that gate merges
-- [Transformations](../topics/transformation.mdx) — how Transformations are reviewed in proposed changes
-- [Generators](../topics/generator.mdx) — Generators that may run in the proposed change pipeline
-- [Permissions and roles](../topics/permissions-roles.mdx) — access controls for proposing, reviewing, and merging
+- [Transformations](../transformations/) — how Transformations are reviewed in proposed changes
+- [Generators](../generators/) — Generators that may run in the proposed change pipeline
+- [Permissions and roles](../deploy-manage/user-management/permissions-roles/) — access controls for proposing, reviewing, and merging
 - [Change Management Workflow Blog Post](https://opsmill.com/blog/infrastructure-change-management-workflow/)

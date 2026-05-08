@@ -38,8 +38,8 @@ By the end of this guide, you'll have a complete governance system for infrastru
 Before starting this guide, make sure you have:
 
 - An Infrahub instance with administrator access
-- Basic understanding of Infrahub's [roles and permissions system](../topics/permissions-roles.mdx)
-- Familiarity with [branching](../topics/version-control.mdx) and [proposed changes](../topics/proposed-change.mdx) concepts
+- Basic understanding of Infrahub's [roles and permissions system](../deploy-manage/user-management/permissions-roles/)
+- Familiarity with [branching](../immutable-history/index.mdx) and [proposed changes](../proposed-changes/) concepts
 - Administrative access to the Git repository used by Infrahub
 - User management permissions in your Infrahub instance
 
@@ -140,7 +140,7 @@ Now we'll configure Infrahub's change policy to enforce our approval workflow in
 
 The configuration process will require a restart of the Infrahub server and depends on your deployment method.
 
-For detailed instructions on how to apply configuration changes to your Infrahub instance, see [How to configure Infrahub](../guides/configuration-changes.mdx).
+For detailed instructions on how to apply configuration changes to your Infrahub instance, see [How to configure Infrahub](../deploy-manage/install-configure/configure-infrahub).
 
 Essentially you will need to set the following variables to the desired values:
 
@@ -158,7 +158,7 @@ INFRAHUB_POLICY_REVOKE_PROPOSED_CHANGE_APPROVALS=true
 
 :::
 
-<ReferenceLink title="How to configure Infrahub" url="../guides/configuration-changes" openInNewTab />
+<ReferenceLink title="How to configure Infrahub" url="../deploy-manage/install-configure/configure-infrahub" openInNewTab />
 
 :::success Validation
 After setting up those environment variables, proposed changes should now follow the defined approval logic.
@@ -283,8 +283,8 @@ Users with `Super Administrator` permission can:
 
 ## Related resources
 
-- [Understanding proposed changes](../topics/proposed-change.mdx)
-- [Managing users and permissions](../topics/permissions-roles.mdx)
-- [Working with branches](../topics/version-control.mdx)
-- [Configuring Git repositories](../guides/repository.mdx)
+- [Understanding proposed changes](../proposed-changes/)
+- [Managing users and permissions](../deploy-manage/user-management/permissions-roles/)
+- [Working with branches](../immutable-history/index.mdx)
+- [Configuring Git repositories](../git-integration/connect-repository)
 - [Change Management Workflow Blog Post](https://opsmill.com/blog/infrastructure-change-management-workflow/)

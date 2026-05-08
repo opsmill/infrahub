@@ -32,8 +32,8 @@ const sidebars: SidebarsConfig = {
           items: [
             { type: 'doc', id: 'overview/overview', label: 'What is Infrahub?' },
             { type: 'doc', id: 'overview/concepts', label: 'Key Concepts' },
-            { type: 'doc', id: 'topics/architecture', label: 'Architecture' },
-            { type: 'doc', id: 'topics/community-vs-enterprise', label: 'Community vs Enterprise' },
+            { type: 'doc', id: 'overview/architecture', label: 'Architecture' },
+            { type: 'doc', id: 'overview/community-vs-enterprise', label: 'Community vs Enterprise' },
           ],
         },
         {
@@ -215,7 +215,7 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'branches-and-change-control' },
       items: [
-        { type: 'doc', id: 'topics/version-control', label: 'Immutable History' },
+        { type: 'doc', id: 'immutable-history/index', label: 'Immutable History' },
         {
           type: 'category',
           label: 'Branches',
@@ -551,7 +551,7 @@ const sidebars: SidebarsConfig = {
             'reference/schema/node',
             'reference/schema/node-extension',
             'reference/schema/attribute',
-            { type: 'doc', id: 'topics/schema-attr-kind-number-pool', label: 'Attribute - NumberPool' },
+            // { type: 'doc', id: 'topics/schema-attr-kind-number-pool', label: 'Attribute - NumberPool' },
             'reference/schema/relationship',
             'reference/schema/generic',
             'reference/schema/groups',

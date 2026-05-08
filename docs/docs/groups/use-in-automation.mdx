@@ -24,13 +24,13 @@ artifact_definitions:
     transformation: "switch-config-template"
 ```
 
-When the group's membership changes, the next artifact generation run picks up the new members automatically. See [artifacts](../topics/artifact.mdx) for the full specification.
+When the group's membership changes, the next artifact generation run picks up the new members automatically. See [artifacts](../artifacts/) for the full specification.
 
 ## Target a group from a Transformation
 
 Transformations that produce per-object output are wired up through an artifact definition pointing at a group (same pattern as above). The Transformation runs once per group member with that member passed as an input parameter.
 
-See [Transformations](../topics/transformation.mdx) for Jinja2 and Python Transformation details.
+See [Transformations](../transformations/) for Jinja2 and Python Transformation details.
 
 ## Scope a Check to a group
 
@@ -47,7 +47,7 @@ check_definitions:
       device: "name__value"
 ```
 
-See [Checks](../topics/check.mdx) for check authoring.
+See [Checks](../checks/) for check authoring.
 
 ## Use with Generators
 
@@ -62,7 +62,7 @@ As the Generator runs, Infrahub automatically tracks the objects it produces in 
 
 Downstream automation (artifact definitions, Checks) can target either group, depending on whether you want to operate on the inputs or the produced objects.
 
-See [Generator overview](../topics/generator.mdx) for full details, including the difference between Standard and Generator groups.
+See [Generator overview](../generators/) for full details, including the difference between Standard and Generator groups.
 
 ## Pattern: chain groups through the pipeline
 
@@ -80,4 +80,4 @@ Groups are the glue between each stage — replace any stage without rewiring th
 ## Next
 
 - [Query group membership](./query-members.mdx) to inspect what each group contains at each stage.
-- [Artifacts](../topics/artifact.mdx), [Transformations](../topics/transformation.mdx), [Checks](../topics/check.mdx), [Generators](../topics/generator.mdx) for feature-specific details.
+- [Artifacts](../artifacts/), [Transformations](../transformations/), [Checks](../checks/), [Generators](../generators/) for feature-specific details.

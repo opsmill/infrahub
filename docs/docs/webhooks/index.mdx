@@ -8,7 +8,7 @@ import FastapiWebhookReciever from '!!raw-loader!../media/fastapi_webhook_receiv
 
 # What are webhooks?
 
-Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](../topics/events.mdx) occurs within Infrahub. They allow you to:
+Webhooks are HTTP callbacks that deliver data to external systems in real-time when an [event](../events/event-system) occurs within Infrahub. They allow you to:
 
 - Notify external systems about changes in your infrastructure (for example new configuration generated)
 - Trigger automated workflows in CI/CD pipelines
@@ -16,7 +16,7 @@ Webhooks are HTTP callbacks that deliver data to external systems in real-time w
 - Build custom integrations with your existing toolchain
 
 :::info
-The **Webhook System** also powers the [Activity Log](../topics/activity-log.mdx).
+The **Webhook System** also powers the [Activity Log](../deploy-manage/run-observe/activity-log).
 :::
 
 ## Configuring webhooks
@@ -24,7 +24,7 @@ The **Webhook System** also powers the [Activity Log](../topics/activity-log.mdx
 Infrahub supports two different types of webhooks:
 
 - `Standard Webhook` sends event information to an external endpoint. See [Create a webhook](./create) for setup.
-- `Custom Webhook` allows the ability to tie events to a [Transformation](../topics/transformation.mdx) to configure the payload being sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation) for the full walkthrough.
+- `Custom Webhook` allows the ability to tie events to a [Transformation](../transformations/) to configure the payload being sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation) for the full walkthrough.
 
 :::note
 

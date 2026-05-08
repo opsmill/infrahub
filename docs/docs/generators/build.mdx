@@ -9,11 +9,11 @@ A Generator queries data and creates new nodes and relationships from the result
 For conceptual background, see [About Generators](./).
 For a step-by-step walkthrough with a running example, see [Build your first generator](../academy/tutorials/generators/build-your-first-generator) in the Academy tutorials.
 
-> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../guides/installation) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
 
 ## Define the target schema node
 
-Create a schema node for the object kind the Generator operates on. Each instance of this kind becomes a potential Generator target. See [Understanding Schemas](../topics/schema) for syntax.
+Create a schema node for the object kind the Generator operates on. Each instance of this kind becomes a potential Generator target. See [Understanding Schemas](../schema/) for syntax.
 
 ## Create the target group
 
@@ -36,7 +36,7 @@ query MyQuery($name: String!) {
 }
 ```
 
-For reusable query fragments shared across Generators or Transformations, see [GraphQL fragments](../guides/graphql-fragment).
+For reusable query fragments shared across Generators or Transformations, see [GraphQL fragments](../development-resources/graphql-fragments).
 
 ## Implement the Generator class
 
@@ -111,7 +111,7 @@ Generators can run in several ways:
 
 - **Manual trigger** — UI: Actions → Generator Definitions → Run
 - **Proposed Changes pipeline** — runs automatically when a proposed change affects target group members
-- **Events and Actions** — configurable rules that trigger on data changes (see [Rules & Actions](../guides/events-rules-actions))
+- **Events and Actions** — configurable rules that trigger on data changes (see [Rules & Actions](../events/))
 
 For per-target tracking, status, and selective re-runs, see [About Generators → Generator instances](./#generator-instances).
 
