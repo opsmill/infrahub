@@ -341,7 +341,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Install & configure',
           collapsible: true,
-          collapsed: false,
+          collapsed: true,
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'deploy-manage/install-configure/hardware-requirements', label: 'Hardware requirements' },
@@ -375,7 +375,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Run & observe',
           collapsible: true,
-          collapsed: false,
+          collapsed: true,
           link: { type: 'generated-index' },
           items: [
             // Tasks (PRs 5/6/7)
@@ -400,7 +400,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'Maintain & upgrade',
           collapsible: true,
-          collapsed: false,
+          collapsed: true,
           link: { type: 'generated-index' },
           items: [
             // Database Backup hub + spokes (PR 9)
@@ -431,7 +431,7 @@ const sidebars: SidebarsConfig = {
           type: 'category',
           label: 'User Management & Security',
           collapsible: true,
-          collapsed: false,
+          collapsed: true,
           link: { type: 'generated-index' },
           items: [
             // Authentication (PR 11)
