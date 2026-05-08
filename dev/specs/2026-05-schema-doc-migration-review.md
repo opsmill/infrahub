@@ -69,7 +69,7 @@ Two sections from the 1,293-line source were intentionally left out:
 
 ## Sidebar changes (`docs/sidebars.ts`)
 
-- **Schema & Data** — the flat `Schema` hub (pointing at `topics/schema`) replaced with 4 nested sub-categories: About Schema, Schema operations, Extended schema kinds, Display & presentation.
-- **Computed Attributes** and **Menu Customization** — previously standalone entries at the top level of Schema & Data; now nested inside Extended schema kinds and Display & presentation respectively. No file changes.
-- **Objects** — `topics/file-object` removed (it now lives as `schema/file-object` under Extended schema kinds).
+- **Schema & Data** — the flat `Schema` hub (pointing at `topics/schema`) replaced with 4 nested sub-categories: About Schema, Schema operations, Advanced schema features, Display & presentation.
+- **Computed Attributes** and **Menu Customization** — previously standalone entries at the top level of Schema & Data; now nested inside Advanced schema features and Display & presentation respectively. No file changes.
+- **Objects** — `topics/file-object` removed (it now lives as `schema/file-object` under Advanced schema features).
 - **Learn > Tutorials** — `academy/tutorials/build-your-first-schema` added as the first tutorial entry.

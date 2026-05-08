@@ -78,10 +78,10 @@ The current flat `Schema` hub (pointing at `topics/schema`) is replaced with 4 n
         'schema/migration',
       ],
     },
-    // ── Extended schema kinds ─────────────────────────────
+    // ── Advanced schema features ─────────────────────────────
     {
       type: 'category',
-      label: 'Extended schema kinds',
+      label: 'Advanced schema features',
       link: { type: 'generated-index' },
       items: [
         { type: 'doc', id: 'computed-attributes/index', label: 'Computed attributes' },

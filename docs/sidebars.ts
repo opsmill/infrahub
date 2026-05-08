@@ -115,10 +115,10 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
           ],
         },
-        // ── Extended schema kinds ─────────────────────────────
+        // ── Advanced schema features ──────────────────────────
         {
           type: 'category',
-          label: 'Extended schema kinds',
+          label: 'Advanced schema features',
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'computed-attributes/index', label: 'Computed attributes' },
