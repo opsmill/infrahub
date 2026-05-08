@@ -14,15 +14,15 @@ Objects are the primary unit of data in Infrahub. Everything you store, query, a
 
 ## How objects work
 
-**Attributes and relationships**
+### Attributes and relationships
 
 Each object holds values for the attributes defined on its schema node and can be linked to other objects through relationships. Relationships are typed and carry semantics (parent/child, attribute, generic) that govern how objects interact.
 
-**Branch awareness**
+### Branch awareness
 
 How an object behaves across branches depends on its schema definition. By default, objects are branch-aware: creating, editing, or deleting a record is tracked on the active branch and the change remains isolated until merged. When a schema node is marked as branch-agnostic however, objects of that kind exist globally — a change on any branch is immediately visible everywhere, with no merge required.
 
-**Metadata and data lineage**
+### Metadata and data lineage
 
 Objects, their attribute values, and their relationships all carry metadata. At the object level, this includes ownership and source tracking. At the attribute level, each value records where it came from and when it was last changed — whether set manually, inherited from a Profile, or allocated from a resource pool. Relationship metadata tracks the same lineage for each link between objects. This lets you trace the origin of any piece of data across the entire record.
 
