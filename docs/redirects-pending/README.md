@@ -98,3 +98,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `development-resources.yml` | Development Resources — GraphQL hub + spokes | TBD |
 | `integrations.yml` | Integrations | TBD |
 | `events.yml` | Events | TBD |
+| `generators.yml` | Generators | TBD |

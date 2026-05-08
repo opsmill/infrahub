@@ -77,6 +77,8 @@ const sidebars: SidebarsConfig = {
             'academy/tutorials/build-a-check',
             'academy/tutorials/transformations/build-a-jinja2-transformation',
             'academy/tutorials/transformations/build-a-python-transformation',
+            'academy/tutorials/generators/build-your-first-generator',
+            'academy/tutorials/generators/build-chained-generators',
           ],
         },
       ],
@@ -262,12 +264,11 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Generators',
-          link: { type: 'doc', id: 'topics/generator' }, // hub
+          link: { type: 'doc', id: 'generators/index' }, // hub
           items: [
-            { type: 'doc', id: 'guides/generator', label: 'Build a generator' },
-            { type: 'doc', id: 'guides/chaining-generators', label: 'Chaining generators' },
-            { type: 'doc', id: 'topics/modular-generators', label: 'Modular generators' },
-            { type: 'doc', id: 'guides/modular-generator-best-practices', label: 'Modular generator best practices' },
+            { type: 'doc', id: 'generators/build', label: 'Build a generator' },
+            { type: 'doc', id: 'generators/modular', label: 'Modular generators' },
+            { type: 'doc', id: 'generators/modular-best-practices', label: 'Modular generator best practices' },
           ],
         },
         {
