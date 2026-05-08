@@ -12,7 +12,7 @@ from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeToProcess
 from infrahub.core.registry import registry
 from infrahub.core.relationship import Relationship
-from infrahub.core.schema import NodeSchema
+from infrahub.core.schema import NodeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
@@ -278,6 +278,32 @@ async def test_get_by_hfid_with_invalid_hfid(db: InfrahubDatabase, branch: Branc
 
     with pytest.raises(NodeNotFoundError, match=r"HFID does not contain the same number of elements"):
         await NodeManager.get_one_by_hfid(db=db, branch=branch, kind=TestKind.DEVICE, hfid=device_hfid + ["foo"])
+
+
+async def test_macaddress_attribute_value_is_normalized_after_save(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """A MacAddress attribute exposes its normalized value after a save/reload cycle."""
+    schema_root = SchemaRoot(
+        nodes=[
+            {
+                "name": "Interface",
+                "namespace": "Test",
+                "attributes": [{"name": "mac", "kind": "MacAddress"}],
+            }
+        ]
+    )
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    node = await Node.init(db=db, schema="TestInterface", branch=default_branch)
+    await node.new(db=db, mac="aa:bb:cc:dd:ee:ff")
+    await node.save(db=db)
+
+    assert node.mac.value == "AA:BB:CC:DD:EE:FF"
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert reloaded.mac.value == "AA:BB:CC:DD:EE:FF"
 
 
 async def test_get_many(
