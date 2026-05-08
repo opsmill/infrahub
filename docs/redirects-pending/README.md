@@ -97,4 +97,5 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `deploy-manage-api-tokens.yml` | D&M — Managing API Tokens (page move) | TBD |
 | `development-resources.yml` | Development Resources — GraphQL hub + spokes | TBD |
 | `integrations.yml` | Integrations | TBD |
+| `events.yml` | Events | TBD |
 | `generators.yml` | Generators | TBD |
