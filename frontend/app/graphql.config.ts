@@ -13,7 +13,10 @@ const config: CodegenConfig = {
           field: true, // Use `null` for nullable fields instead of optionals
           inputValue: false, // Allow nullable input fields to remain unspecified
         },
-        enumsAsTypes: true,
+        enumsAsConst: true,
+        namingConvention: {
+          enumValues: "keep",
+        },
         nonOptionalTypename: true,
         skipTypeNameForRoot: true,
       },

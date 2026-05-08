@@ -189,11 +189,12 @@ async def _reconcile_all() -> None:
     log = get_run_logger()
 
     database = await get_database()
-    trigger_setup_report = await setup_triggers_specific(
-        gatherer=gather_trigger_webhook,  # type: ignore[arg-type]
-        db=database,
-        trigger_type=TriggerType.WEBHOOK,
-    )
+    async with database.start_session(read_only=True) as db:
+        trigger_setup_report = await setup_triggers_specific(
+            gatherer=gather_trigger_webhook,  # type: ignore[arg-type]
+            db=db,
+            trigger_type=TriggerType.WEBHOOK,
+        )
 
     webhook_ids_to_invalidate = await get_webhooks_to_invalidate(trigger_setup_report)
 

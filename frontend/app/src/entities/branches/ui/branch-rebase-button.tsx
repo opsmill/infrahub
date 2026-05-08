@@ -2,13 +2,13 @@ import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { toast } from "react-toastify";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Button } from "@/shared/components/ui/button";
 import { TASK_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
@@ -36,7 +36,7 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
     !isAuthenticated ||
     loading ||
     !!branch.is_default ||
-    branch.status === BRANCH_STATUS.MERGED ||
+    branch.status === BranchStatus.MERGED ||
     hasOngoingTask;
 
   const handleRebase = () => {

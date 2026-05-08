@@ -1,4 +1,5 @@
-import { BRANCH_STATUS, type BranchStatus } from "@/entities/branches/constants";
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
+
 import { PERMISSION_ALLOW_ALL } from "@/entities/permission/constants";
 import type {
   Permission,
@@ -29,7 +30,7 @@ function getPermissionWithBranchStatus(
   permission: Permission,
   options?: GetPermissionOptions
 ): Permission {
-  if (options?.branch?.status === BRANCH_STATUS.MERGED) {
+  if (options?.branch?.status === BranchStatus.MERGED) {
     const mergedDenial: PermissionDecision = {
       isAllowed: false,
       message: "Cannot edit objects on a merged branch",

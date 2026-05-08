@@ -24,6 +24,7 @@ class BranchRelativePermissionDecision(StrEnum):
 GLOBAL_PERMISSION_DENIAL_MESSAGE = {
     GlobalPermissions.EDIT_DEFAULT_BRANCH.value: "You are not allowed to change data in the default branch",
     GlobalPermissions.MERGE_BRANCH.value: "You are not allowed to merge a branch",
+    GlobalPermissions.REBASE_BRANCH.value: "You are not allowed to rebase a branch",
     GlobalPermissions.DELETE_BRANCH.value: "You are not allowed to delete a branch you did not create",
     GlobalPermissions.MERGE_PROPOSED_CHANGE.value: "You are not allowed to merge proposed changes",
     GlobalPermissions.REVIEW_PROPOSED_CHANGE.value: "You are not allowed to review proposed changes",
@@ -38,6 +39,7 @@ GLOBAL_PERMISSION_DENIAL_MESSAGE = {
 GLOBAL_PERMISSION_DESCRIPTION = {
     GlobalPermissions.EDIT_DEFAULT_BRANCH: "Allow a user to change data in the default branch",
     GlobalPermissions.MERGE_BRANCH: "Allow a user to merge branches",
+    GlobalPermissions.REBASE_BRANCH: "Allow a user to rebase branches",
     GlobalPermissions.DELETE_BRANCH: "Allow a user to delete branches",
     GlobalPermissions.MERGE_PROPOSED_CHANGE: "Allow a user to merge proposed changes",
     GlobalPermissions.REVIEW_PROPOSED_CHANGE: "Allow a user to approve or reject proposed changes",

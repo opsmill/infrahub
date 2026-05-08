@@ -104,6 +104,7 @@ class GlobalPermissions(InfrahubStringEnum):
     EDIT_DEFAULT_BRANCH = "edit_default_branch"
     SUPER_ADMIN = "super_admin"
     MERGE_BRANCH = "merge_branch"
+    REBASE_BRANCH = "rebase_branch"
     DELETE_BRANCH = "delete_branch"
     MERGE_PROPOSED_CHANGE = "merge_proposed_change"
     REVIEW_PROPOSED_CHANGE = "review_proposed_change"
