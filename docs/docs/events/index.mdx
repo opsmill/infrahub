@@ -8,7 +8,7 @@ Infrahub emits events on every significant mutation in the system — node creat
 
 Build automations using events, rules, and actions:
 
-- **[Events](./event-system)** — the underlying framework. Infrahub generates a structured event for every key operation (`infrahub.node.created`, `infrahub.group.member_added`, etc.). Events feed multiple consumers: the [activity log](../topics/activity-log), the rule/action automation below, [webhooks](../topics/webhooks), and [log forwarding](../topics/log-forwarding).
+- **[Events](./event-system)** — the underlying framework. Infrahub generates a structured event for every key operation (`infrahub.node.created`, `infrahub.group.member_added`, etc.). Events feed multiple consumers: the [activity log](../topics/activity-log), the rule/action automation below, [webhooks](../webhooks), and [log forwarding](../topics/log-forwarding).
 - **[Event rules](./event-rules)** — the conditions you match against events. You create a rule that names which events it cares about (a node kind, a group, a particular attribute change) and ties one or more actions to fire when the conditions match.
 - **[Event actions](./event-actions)** — the outcomes that fire when a rule matches. You create an action of one of two kinds today: a group action (add or remove members from a group) or a Generator action (run a Generator definition against the impacted object).
 
@@ -24,7 +24,7 @@ Infrahub evaluates your rules (Event rules)
 Matching rules fire actions   (Event actions)
 ```
 
-[Webhooks](../topics/webhooks) consume events too, but live outside this rule/action loop because their setup is more involved. Use webhooks when you need to send a payload to an external HTTP endpoint; use event rules + actions when the outcome stays inside Infrahub.
+[Webhooks](../webhooks) consume events too, but live outside this rule/action loop because their setup is more involved. Use webhooks when you need to send a payload to an external HTTP endpoint; use event rules + actions when the outcome stays inside Infrahub.
 
 ## Example workflows
 

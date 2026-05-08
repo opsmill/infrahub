@@ -29,7 +29,7 @@ The following MIME types or formats are supported and will be rendered properly 
 
 While it's always possible to generate [Transformations](../topics/transformation.mdx) on demand via the API, having an artifact provides additional benefits:
 
-- **Caching**: Generated artifacts are stored in the internal [object storage](../topics/object-storage.mdx). For resource-intensive Transformations, it will significantly reduce the load of the system if an artifact can be served from the cache instead of regenerating each time.
+- **Caching**: Generated artifacts are stored in the internal [object storage](../artifact-file-storage/index.mdx). For resource-intensive Transformations, it will significantly reduce the load of the system if an artifact can be served from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
 - **Peer Review**: artifacts are automatically part of the [Proposed Change](../proposed-changes/) review process.
 - **Database**: artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it possible to perform certain artifact related queries.
@@ -53,7 +53,7 @@ An **artifact definition** centralizes all the information required to generate 
 
 Groups provide flexible targeting that decouples artifact generation from specific object lists. You can add or remove objects from groups without modifying artifact definitions. See [Groups](../groups/) for details on creating target groups.
 
-From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the Transformation is stored in the [object storage](../topics/object-storage.mdx). The generation of the artifacts is performed by the Task worker(s).
+From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the Transformation is stored in the [object storage](../artifact-file-storage/index.mdx). The generation of the artifacts is performed by the Task worker(s).
 
 ![Artifact architecture diagram](../media/topics/artifact/architecture.excalidraw.svg)
 
@@ -86,5 +86,5 @@ For step-by-step instructions, see [Composing artifact content](./content-compos
 
 - **[Transformations](../topics/transformation.mdx)** define the logic that produces an artifact's content; an artifact is the cached output of a Transformation for a specific target.
 - **Generators** create or update graph data; some Generators consume artifacts as part of their input pipeline.
-- **[Object storage](../topics/object-storage.mdx)** is where artifact content lives on disk. See the storage topic for backend configuration and sizing.
+- **[Object storage](../artifact-file-storage/index.mdx)** is where artifact content lives on disk. See the storage topic for backend configuration and sizing.
 - **[Proposed Changes](../proposed-changes/)** automatically include artifact diffs in their review surface, so changes to generated artifacts are visible alongside data changes.
