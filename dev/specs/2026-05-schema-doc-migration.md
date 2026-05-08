@@ -85,8 +85,8 @@ The current flat `Schema` hub (pointing at `topics/schema`) is replaced with 4 n
       link: { type: 'generated-index' },
       items: [
         { type: 'doc', id: 'computed-attributes/index', label: 'Computed attributes' },
-        { type: 'doc', id: 'schema/number-pool', label: 'Number pool attribute' },
-        { type: 'doc', id: 'schema/file-object', label: 'File object node' },
+        { type: 'doc', id: 'schema/number-pool', label: 'Number pools' },
+        { type: 'doc', id: 'schema/file-object', label: 'File objects' },
       ],
     },
     // ── Display & presentation ────────────────────────────
@@ -187,9 +187,9 @@ new_pages:
   - path: /docs/schema/migration
     title: Schema migration
   - path: /docs/schema/number-pool
-    title: Number pool attribute
+    title: Number pools
   - path: /docs/schema/file-object
-    title: File object node
+    title: File objects
   - path: /docs/schema/field-visibility
     title: Controlling field visibility in the UI
   - path: /docs/schema/display_label

@@ -122,8 +122,8 @@ const sidebars: SidebarsConfig = {
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'computed-attributes/index', label: 'Computed attributes' },
-            { type: 'doc', id: 'schema/number-pool', label: 'Number pool attribute' },
-            { type: 'doc', id: 'schema/file-object', label: 'File object node' },
+            { type: 'doc', id: 'schema/number-pool', label: 'Number pools' },
+            { type: 'doc', id: 'schema/file-object', label: 'File objects' },
           ],
         },
         // ── Display & presentation ────────────────────────────
