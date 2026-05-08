@@ -115,15 +115,15 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
           ],
         },
-        // ── Extended schema kinds ─────────────────────────────
+        // ── Advanced schema features ──────────────────────────
         {
           type: 'category',
-          label: 'Extended schema kinds',
+          label: 'Advanced schema features',
           link: { type: 'generated-index' },
           items: [
             { type: 'doc', id: 'computed-attributes/index', label: 'Computed attributes' },
-            { type: 'doc', id: 'schema/number-pool', label: 'Number pool attribute' },
-            { type: 'doc', id: 'schema/file-object', label: 'File object node' },
+            { type: 'doc', id: 'schema/number-pool', label: 'Number pools' },
+            { type: 'doc', id: 'schema/file-object', label: 'File objects' },
           ],
         },
         // ── Display & presentation ────────────────────────────
