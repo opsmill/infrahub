@@ -161,7 +161,8 @@ body {
 /* L2 — capability categories (Schema & Data Modeling, Data Management, etc.)
    and items inside L1 sections. Same styling as the original L2 sub-categories
    (Installation & Setup, etc.): default size, weight 500. */
-.theme-doc-sidebar-item-category-level-2>.menu__list-item-collapsible>.menu__link {
+.theme-doc-sidebar-item-category-level-2>.menu__list-item-collapsible>.menu__link,
+.theme-doc-sidebar-item-link-level-2>.menu__link {
   font-weight: 500;
 }
 
@@ -183,7 +184,7 @@ body {
 
 .theme-doc-sidebar-item-category-level-1,
 .theme-doc-sidebar-item-link-level-1 {
-  margin-bottom: 1rem;
+  margin-bottom: 1.5rem;
 }
 
 /* Spoke items (L3 links and deeper) — tighter vertical padding so they read
