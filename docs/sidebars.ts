@@ -367,7 +367,7 @@ const sidebars: SidebarsConfig = {
             // Configure Infrahub (PR 4)
             { type: 'doc', id: 'deploy-manage/install-configure/configure-infrahub', label: 'Configure Infrahub' },
             // Configuration reference — stays in reference/, cross-linked here (PR 4)
-            { type: 'doc', id: 'reference/configuration', label: 'Configuration reference' },
+            { type: 'ref', id: 'reference/configuration', label: 'Configuration reference' },
           ],
         },
         // ── Run & observe ────────────────────────────────────────────────────
@@ -470,7 +470,6 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
-        { type: 'doc', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
         {
           type: 'category',
           label: 'APIs & interfaces',
@@ -489,9 +488,9 @@ const sidebars: SidebarsConfig = {
               ],
             },
             { type: 'doc', id: 'development-resources/graphql-fragments', label: 'GraphQL fragments' },
-            { type: 'link', label: 'Python SDK ↗', href: 'https://TODO-FILL-IN-python-sdk.example.com' },
-            { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://TODO-FILL-IN-infrahubctl.example.com' },
-            { type: 'link', label: 'MCP Server ↗', href: 'https://TODO-FILL-IN-mcp-server.example.com' },
+            { type: 'link', label: 'Python SDK ↗', href: 'https://docs.infrahub.app/python-sdk' },
+            { type: 'link', label: 'Infrahubctl CLI ↗', href: 'https://docs.infrahub.app/infrahubctl' },
+            { type: 'link', label: 'MCP Server ↗', href: 'https://docs.infrahub.app/mcp' },
           ],
         },
       ],
@@ -616,8 +615,7 @@ const sidebars: SidebarsConfig = {
                 'development/frontend/testing-guidelines',
               ],
             },
-            // Cross-link to Development Resources
-            { type: 'ref', id: 'topics/local-demo-environment', label: 'Local Demo Environment' },
+            { type: 'doc', id: 'development-resources/local-demo-environment', label: 'Local Demo Environment' },
             'development/docs',
             'development/style-guide',
           ],
