@@ -14,7 +14,7 @@ Within Infrahub a [Transformation](../../../transformations/) is defined in an [
 
 The tutorial follows these steps:
 
-1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../topics/graphql.mdx), that can take an input parameter to filter the data
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../development-resources/graphql/), that can take an input parameter to filter the data
 2. Write a Python script that uses the GraphQL query to read information from the system and transform the data into a new format
 3. Create an entry for the Transformation within an `.infrahub.yml` file
 4. Create a Git repository
@@ -113,7 +113,7 @@ query BuiltinTag($description: String!) {
 }
 ```
 
-To learn more about single-target queries and why they are important, see the [GraphQL topic](../../../topics/graphql.mdx#single-target-query-pattern).
+To learn more about single-target queries and why they are important, see the [GraphQL topic](../../../development-resources/graphql/single-target-queries).
 :::
 
 :::info Convert query to Infrahub SDK objects
@@ -534,5 +534,5 @@ You now have a working Python Transformation:
 ## Next steps
 
 - [Write a Jinja2 transformation](../../../transformations/jinja2) — for template-based plain-text output
-- [Use artifacts](../../../guides/artifact) — cache Transformation output and tie it to a specific target object
-- [GraphQL fragments](../../../guides/graphql-fragment) — share query fragments across Transformations
+- [Use artifacts](../../../artifacts/use) — cache Transformation output and tie it to a specific target object
+- [GraphQL fragments](../../../development-resources/graphql-fragments) — share query fragments across Transformations

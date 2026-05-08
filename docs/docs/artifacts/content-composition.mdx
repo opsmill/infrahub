@@ -4,7 +4,7 @@ title: Composing artifact content
 
 # Composing artifact content
 
-This guide shows you how to build a composite [artifact](./) whose [Transformation](../topics/transformation.mdx) pulls in content from other artifacts or [file objects](../schema/file-object). This enables modular configuration pipelines where each artifact generates one section of a configuration, and a composite artifact assembles the final result.
+This guide shows you how to build a composite [artifact](./) whose [Transformation](../transformations/) pulls in content from other artifacts or [file objects](../schema/file-object). This enables modular configuration pipelines where each artifact generates one section of a configuration, and a composite artifact assembles the final result.
 
 For example, you can split a network device's startup configuration into separate NTP, syslog, and interface artifacts — each maintained independently with its own Transformation and query logic — then compose them into a single full configuration artifact.
 
@@ -15,7 +15,7 @@ Before starting this guide, ensure you have:
 - A running Infrahub instance with task workers
 - At least one source artifact already generating content
 - An [external repository](../git-integration/connect-repository) connected to Infrahub
-- Familiarity with [creating a Jinja2 Transformation](../guides/jinja2-transform.mdx) or [creating a Python Transformation](../guides/python-transform.mdx)
+- Familiarity with [creating a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) or [creating a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation)
 - Familiarity with [generating artifacts](./use)
 
 ## 1. Understand the composition model
@@ -265,8 +265,8 @@ The composition filters raise errors in the following situations:
 
 ## Next steps
 
-- [Write a Jinja2 Transformation](../guides/jinja2-transform.mdx)
-- [Write a Python Transformation](../guides/python-transform.mdx)
+- [Write a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation)
+- [Write a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation)
 - [Use artifacts](./use)
 - [Object storage](../artifact-file-storage/index.mdx)
 - [File objects](../schema/file-object)

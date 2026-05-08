@@ -9,7 +9,7 @@ A Jinja2 Transformation renders Infrahub data through a Jinja template, producin
 For conceptual background, see [Transformations](./).
 For a step-by-step walkthrough with a running example, see [Build a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) in the Academy tutorials.
 
-> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../guides/installation) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
 
 ## Write the GraphQL query
 
@@ -28,7 +28,7 @@ query MyQuery($device_name: String!) {
 }
 ```
 
-For reusable query fragments shared across Transformations or Generators, see [GraphQL fragments](../guides/graphql-fragment).
+For reusable query fragments shared across Transformations or Generators, see [GraphQL fragments](../development-resources/graphql-fragments).
 
 ## Write the Jinja template
 
@@ -86,12 +86,12 @@ The endpoint is branch-aware. Pass query variables as URL parameters.
 
 ## Generate as an artifact
 
-To cache rendered output and tie it to a specific target object, define an artifact that uses this Transformation. See [Use artifacts](../guides/artifact).
+To cache rendered output and tie it to a specific target object, define an artifact that uses this Transformation. See [Use artifacts](../artifacts/use).
 
 ## Related
 
 - [Transformations](./) — concept and architecture
 - [Write a Python transformation](./python) — for non-template logic
-- [GraphQL fragments](../guides/graphql-fragment) — share query fragments across Transformations
-- [Use artifacts](../guides/artifact) — cache Transformation output
+- [GraphQL fragments](../development-resources/graphql-fragments) — share query fragments across Transformations
+- [Use artifacts](../artifacts/use) — cache Transformation output
 - [infrahub.yml configuration](../git-integration/infrahub-yml)

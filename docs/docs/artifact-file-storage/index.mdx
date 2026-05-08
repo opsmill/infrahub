@@ -6,14 +6,14 @@ import ReferenceLink from "../../src/components/Card";
 
 # About storage
 
-Infrahub uses an object storage layer to persist binary and text content outside of the graph database. This layer stores the raw bytes of [file objects](../schema/file-object) and rendered [artifacts](../topics/artifact.mdx). Separating file content from graph data allows Infrahub to keep the graph database focused on relationships, metadata, and version control while delegating bulk storage to a system optimized for that purpose.
+Infrahub uses an object storage layer to persist binary and text content outside of the graph database. This layer stores the raw bytes of [file objects](../schema/file-object) and rendered [artifacts](../artifacts/). Separating file content from graph data allows Infrahub to keep the graph database focused on relationships, metadata, and version control while delegating bulk storage to a system optimized for that purpose.
 
 ## What uses object storage
 
 Object storage serves two use cases in Infrahub:
 
-- **File objects**: User-uploaded files attached to nodes in the graph. These are managed through the file object system and access is controlled by Infrahub's [permission system](../topics/permissions-roles.mdx). See [file objects](../schema/file-object) for details.
-- **Artifacts**: System-generated outputs from Transformations. These are created automatically by artifact definitions and stored in the same storage layer. See [artifacts](../topics/artifact.mdx) for details.
+- **File objects**: User-uploaded files attached to nodes in the graph. These are managed through the file object system and access is controlled by Infrahub's [permission system](../deploy-manage/user-management/permissions-roles/). See [file objects](../schema/file-object) for details.
+- **Artifacts**: System-generated outputs from Transformations. These are created automatically by artifact definitions and stored in the same storage layer. See [artifacts](../artifacts/) for details.
 
 Both file objects and artifacts store a `storage_id` in the graph database that references the content in object storage. The difference is in how the content is created — user uploads for file objects, automated Transformations for artifacts — and how access is governed.
 
@@ -99,7 +99,7 @@ When you query a file object on a specific branch or at a specific point in time
 
 The maximum upload size defaults to 50 MB and can be adjusted through the `INFRAHUB_STORAGE_MAX_FILE_SIZE` environment variable (value in MB). For deployments behind a reverse proxy, the proxy must also be configured to allow matching request body sizes (for example, `client_max_body_size` in NGINX or request size middleware in Traefik).
 
-<ReferenceLink title="How to configure Infrahub" url="../guides/configuration-changes" />
+<ReferenceLink title="How to configure Infrahub" url="../deploy-manage/install-configure/configure-infrahub" />
 
 ### Storage growth
 
@@ -109,7 +109,7 @@ Because object storage is immutable, content accumulates over time. Every file u
 
 When using local filesystem storage across multiple API servers or task workers, all nodes must have access to the same storage directory. This typically requires a shared network filesystem (NFS or similar). S3-compatible storage avoids this constraint entirely since all nodes access the same bucket over the network.
 
-<ReferenceLink title="Production deployment guide" url="../guides/production-deployment" />
+<ReferenceLink title="Production deployment guide" url="../deploy-manage/install-configure/production-deployment/" />
 
 ### Backups
 
@@ -119,7 +119,7 @@ Object storage should be included in your backup strategy alongside the graph da
 Unlike artifacts, which can be regenerated from their definitions, user-uploaded file objects may only exist in object storage. If storage is lost without a backup, those files are unrecoverable.
 :::
 
-<ReferenceLink title="How to backup object storage" url="../guides/database-backup#step-3-backup-the-object-storage" />
+<ReferenceLink title="How to backup object storage" url="../deploy-manage/maintain-upgrade/database-backup/backup-and-restore#step-3-backup-the-object-storage" />
 
 ### Backend migration
 
@@ -130,8 +130,8 @@ Switching storage backends (for example, from `local` to `s3`) does not migrate 
 ## Connection to other concepts
 
 - **[File objects](../schema/file-object)**: The primary way users interact with stored files. File objects are graph nodes that combine metadata with a reference to content in object storage.
-- **[Artifacts](../topics/artifact.mdx)**: System-generated content stored in the same storage layer, produced by Transformation pipelines.
-- **[Permissions and roles](../topics/permissions-roles.mdx)**: Access to file content is enforced at the API level based on permissions on the corresponding graph node.
+- **[Artifacts](../artifacts/)**: System-generated content stored in the same storage layer, produced by Transformation pipelines.
+- **[Permissions and roles](../deploy-manage/user-management/permissions-roles/)**: Access to file content is enforced at the API level based on permissions on the corresponding graph node.
 
 ## Further reading
 

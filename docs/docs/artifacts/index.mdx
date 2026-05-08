@@ -6,7 +6,7 @@ import VideoPlayer from '../../src/components/VideoPlayer';
 
 # Artifacts
 
-An artifact is the result of a [Transformation](../topics/transformation.mdx) for a specific context and/or object.
+An artifact is the result of a [Transformation](../transformations/) for a specific context and/or object.
 
 The following MIME types or formats are supported and will be rendered properly in Infrahub's web interface:
 
@@ -27,7 +27,7 @@ The following MIME types or formats are supported and will be rendered properly 
 
 :::
 
-While it's always possible to generate [Transformations](../topics/transformation.mdx) on demand via the API, having an artifact provides additional benefits:
+While it's always possible to generate [Transformations](../transformations/) on demand via the API, having an artifact provides additional benefits:
 
 - **Caching**: Generated artifacts are stored in the internal [object storage](../artifact-file-storage/index.mdx). For resource-intensive Transformations, it will significantly reduce the load of the system if an artifact can be served from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
@@ -42,7 +42,7 @@ While the content of an artifact can change, its identifier will remain the same
 
 ## High level design
 
-Artifacts are defined by grouping a [Transformation](../topics/transformation.mdx) with a [group](../groups/) of targets in an *artifact definition*.
+Artifacts are defined by grouping a [Transformation](../transformations/) with a [group](../groups/) of targets in an *artifact definition*.
 
 An **artifact definition** centralizes all the information required to generate an artifact.
 
@@ -84,7 +84,7 @@ For step-by-step instructions, see [Composing artifact content](./content-compos
 
 ## How artifacts relate to other features
 
-- **[Transformations](../topics/transformation.mdx)** define the logic that produces an artifact's content; an artifact is the cached output of a Transformation for a specific target.
+- **[Transformations](../transformations/)** define the logic that produces an artifact's content; an artifact is the cached output of a Transformation for a specific target.
 - **Generators** create or update graph data; some Generators consume artifacts as part of their input pipeline.
 - **[Object storage](../artifact-file-storage/index.mdx)** is where artifact content lives on disk. See the storage topic for backend configuration and sizing.
 - **[Proposed Changes](../proposed-changes/)** automatically include artifact diffs in their review surface, so changes to generated artifacts are visible alongside data changes.

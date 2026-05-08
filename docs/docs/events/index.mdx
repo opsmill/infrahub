@@ -8,7 +8,7 @@ Infrahub emits events on every significant mutation in the system — node creat
 
 Build automations using events, rules, and actions:
 
-- **[Events](./event-system)** — the underlying framework. Infrahub generates a structured event for every key operation (`infrahub.node.created`, `infrahub.group.member_added`, etc.). Events feed multiple consumers: the [activity log](../topics/activity-log), the rule/action automation below, [webhooks](../webhooks), and [log forwarding](../topics/log-forwarding).
+- **[Events](./event-system)** — the underlying framework. Infrahub generates a structured event for every key operation (`infrahub.node.created`, `infrahub.group.member_added`, etc.). Events feed multiple consumers: the [activity log](../deploy-manage/run-observe/activity-log), the rule/action automation below, [webhooks](../webhooks), and [log forwarding](../deploy-manage/run-observe/log-forwarding/).
 - **[Event rules](./event-rules)** — the conditions you match against events. You create a rule that names which events it cares about (a node kind, a group, a particular attribute change) and ties one or more actions to fire when the conditions match.
 - **[Event actions](./event-actions)** — the outcomes that fire when a rule matches. You create an action of one of two kinds today: a group action (add or remove members from a group) or a Generator action (run a Generator definition against the impacted object).
 
@@ -42,7 +42,7 @@ When a new Arista device is created, the event fires, the rule matches the platf
 
 ### Auto-create circuit endpoints when a circuit enters provisioning
 
-**Goal**: when a circuit joins the `provisioning_circuits` group, run a [Generator](../topics/generator) that creates its endpoints.
+**Goal**: when a circuit joins the `provisioning_circuits` group, run a [Generator](../generators/) that creates its endpoints.
 
 - **Action** — Create a Generator action that runs the `create_circuit_endpoints` Generator.
 - **Rule** — Create a group trigger rule on `provisioning_circuits` that fires on member-added events. Tie it to the Generator action above.

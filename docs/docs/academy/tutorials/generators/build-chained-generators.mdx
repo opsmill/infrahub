@@ -4,13 +4,13 @@ title: Build chained generators
 
 # Build chained generators
 
-By the end of this tutorial you will have wired two layers of [modular Generators](../../../generators/modular) together — fabric → pod → rack — using a checksum attribute and Infrahub's [event framework](../../../topics/event-actions). You will have added a `GeneratorTarget` generic with a `checksum` attribute to your downstream node kinds, implemented a `GeneratorMixin` that writes the checksum to downstream targets as the last step of `generate()`, built downstream Generators that validate upstream completeness before doing any work, and created `CoreGeneratorAction` and `CoreNodeTriggerRule` objects so the chain runs automatically when an upstream layer finishes. You will leave with a concrete model of how a checksum makes Generator chaining idempotent — re-runs that produce the same output do not re-trigger the next layer.
+By the end of this tutorial you will have wired two layers of [modular Generators](../../../generators/modular) together — fabric → pod → rack — using a checksum attribute and Infrahub's [event framework](../../../events/). You will have added a `GeneratorTarget` generic with a `checksum` attribute to your downstream node kinds, implemented a `GeneratorMixin` that writes the checksum to downstream targets as the last step of `generate()`, built downstream Generators that validate upstream completeness before doing any work, and created `CoreGeneratorAction` and `CoreNodeTriggerRule` objects so the chain runs automatically when an upstream layer finishes. You will leave with a concrete model of how a checksum makes Generator chaining idempotent — re-runs that produce the same output do not re-trigger the next layer.
 
 **Prerequisites:**
 
 - Familiarity with [Generators](../../../generators/) and [Build your first generator](./build-your-first-generator)
 - Understanding of the [modular Generators concept](../../../generators/modular)
-- Basic understanding of [event rules and actions](../../../topics/event-actions)
+- Basic understanding of [event rules and actions](../../../events/)
 
 ## How the pattern works
 
@@ -333,7 +333,7 @@ For each pair of (upstream Generator, downstream Generator), define one `CoreGen
 
 ### Using the UI (alternative)
 
-If you prefer to create trigger rules via the Infrahub UI, follow the [creating event trigger rules and actions](../../../guides/events-rules-actions) guide. The configuration is the same:
+If you prefer to create trigger rules via the Infrahub UI, follow the [creating event trigger rules and actions](../../../events/) guide. The configuration is the same:
 
 1. Create a **Generator Action** (Actions > Create > Generator Action) pointing to the downstream Generator
 2. Create a **Node Trigger Rule** (Trigger Rules > Create > Node Trigger) for the downstream target kind, with mutation action `updated`

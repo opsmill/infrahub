@@ -18,13 +18,13 @@ A few common ones:
 - `infrahub.branch.created`
 - `infrahub.branch.deleted`
 
-For the exhaustive list, see [Infrahub events](../reference/infrahub-events).
+For the exhaustive list, see [Infrahub events](../reference/infrahub-events/).
 
 ## What events feed
 
 Each event is processed by several consumers:
 
 - **Automation** — events drive [event rules](./event-rules) and [event actions](./event-actions) that you configure to react to specific conditions.
-- **[Activity log](../topics/activity-log)** — every event lands in the chronological timeline of system changes.
+- **[Activity log](../deploy-manage/run-observe/activity-log)** — every event lands in the chronological timeline of system changes.
 - **[Webhooks](../webhooks)** — events can fire HTTP callbacks to external systems.
-- **[Log forwarding](../topics/log-forwarding)** — Enterprise deployments can stream events to external SIEM systems.
+- **[Log forwarding](../deploy-manage/run-observe/log-forwarding/)** — Enterprise deployments can stream events to external SIEM systems.

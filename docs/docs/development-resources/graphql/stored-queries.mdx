@@ -4,7 +4,7 @@ title: Stored queries
 
 # Stored queries
 
-Infrahub can store GraphQL queries in the database to simplify execution and associate them with other internal objects such as [Transformations](../../topics/transformation.mdx).
+Infrahub can store GraphQL queries in the database to simplify execution and associate them with other internal objects such as [Transformations](../../transformations/).
 
 ## Stored GraphQL queries in the database
 
@@ -29,7 +29,7 @@ Every time a `GraphQLQuery` is created or updated, the content of the query will
 
 GraphQL queries could be defined in file(s) with a `.gql` extension in a remote repository. Then queries must also be explicitly identified in the `.infrahub.yml` file under `queries`.
 
-More details on the `.infrahub.yml` file format can be found in [.infrahub.yml topic](../../topics/infrahub-yml.mdx).
+More details on the `.infrahub.yml` file format can be found in [.infrahub.yml topic](../../git-integration/infrahub-yml).
 
 ### Executing stored GraphQL queries
 
