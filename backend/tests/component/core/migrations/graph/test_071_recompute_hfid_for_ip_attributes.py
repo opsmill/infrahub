@@ -32,6 +32,8 @@ USER_RAW_NETWORK = "192.168.0.0/255.255.0.0"
 USER_CANONICAL_NETWORK = "192.168.0.0/16"
 DEVICE_NAME = "router-01"
 NETWORK_NAME = "lan-a"
+AGNOSTIC_DEVICE_NAME = "router-agnostic"
+LOCAL_DEVICE_NAME = "router-local"
 
 
 SCHEMA_ROOT = SchemaRoot(
@@ -56,6 +58,38 @@ SCHEMA_ROOT = SchemaRoot(
             attributes=[
                 AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="cidr", kind="IPNetwork", optional=False),
+            ],
+        ),
+        NodeSchema(
+            name="IpDeviceAgnostic",
+            namespace="Testing",
+            branch=BranchSupportType.AWARE,
+            human_friendly_id=["primary_address__value"],
+            display_label="{{ name__value }} <{{ primary_address__value }}>",
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(
+                    name="primary_address",
+                    kind="IPHost",
+                    optional=False,
+                    branch=BranchSupportType.AGNOSTIC,
+                ),
+            ],
+        ),
+        NodeSchema(
+            name="IpDeviceLocal",
+            namespace="Testing",
+            branch=BranchSupportType.AWARE,
+            human_friendly_id=["primary_address__value"],
+            display_label="{{ name__value }} <{{ primary_address__value }}>",
+            attributes=[
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(
+                    name="primary_address",
+                    kind="IPHost",
+                    optional=False,
+                    branch=BranchSupportType.LOCAL,
+                ),
             ],
         ),
     ],
@@ -132,6 +166,10 @@ class TestMigration071(TestInfrahubApp):
         user_device_dl_canonical = f"{DEVICE_NAME} <{USER_CANONICAL_IP}>"
         user_network_dl = f"{NETWORK_NAME} <{USER_RAW_NETWORK}>"
         user_network_dl_canonical = f"{NETWORK_NAME} <{USER_CANONICAL_NETWORK}>"
+        agnostic_device_dl = f"{AGNOSTIC_DEVICE_NAME} <{DEFAULT_RAW_IP}>"
+        agnostic_device_dl_canonical = f"{AGNOSTIC_DEVICE_NAME} <{DEFAULT_CANONICAL_IP}>"
+        local_device_dl = f"{LOCAL_DEVICE_NAME} <{DEFAULT_RAW_IP}>"
+        local_device_dl_canonical = f"{LOCAL_DEVICE_NAME} <{DEFAULT_CANONICAL_IP}>"
 
         # Default branch: TestingIpDevice (IPHost) and TestingNetwork (IPNetwork)
         device = await _seed_raw_state_on_default(
@@ -147,6 +185,20 @@ class TestMigration071(TestInfrahubApp):
             attr_name="cidr",
             name=NETWORK_NAME,
             raw_value=DEFAULT_RAW_NETWORK,
+        )
+        device_agnostic = await _seed_raw_state_on_default(
+            db=db,
+            schema_kind="TestingIpDeviceAgnostic",
+            attr_name="primary_address",
+            name=AGNOSTIC_DEVICE_NAME,
+            raw_value=DEFAULT_RAW_IP,
+        )
+        device_local = await _seed_raw_state_on_default(
+            db=db,
+            schema_kind="TestingIpDeviceLocal",
+            attr_name="primary_address",
+            name=LOCAL_DEVICE_NAME,
+            raw_value=DEFAULT_RAW_IP,
         )
 
         # User branch: same nodes, different IP values (exercises branch-isolated values).
@@ -200,6 +252,19 @@ class TestMigration071(TestInfrahubApp):
             [DEFAULT_RAW_NETWORK]
         )
         assert await _read_attribute_value(db=db, node_uuid=network.id, attr_name="display_label") == default_network_dl
+        assert await _read_attribute_value(
+            db=db, node_uuid=device_agnostic.id, attr_name="human_friendly_id"
+        ) == ujson.dumps([DEFAULT_RAW_IP])
+        assert (
+            await _read_attribute_value(db=db, node_uuid=device_agnostic.id, attr_name="display_label")
+            == agnostic_device_dl
+        )
+        assert await _read_attribute_value(
+            db=db, node_uuid=device_local.id, attr_name="human_friendly_id"
+        ) == ujson.dumps([DEFAULT_RAW_IP])
+        assert (
+            await _read_attribute_value(db=db, node_uuid=device_local.id, attr_name="display_label") == local_device_dl
+        )
 
         # Run migration on default
         async with db.start_session() as dbs:
@@ -220,6 +285,20 @@ class TestMigration071(TestInfrahubApp):
         assert (
             await _read_attribute_value(db=db, node_uuid=network.id, attr_name="display_label")
             == default_network_dl_canonical
+        )
+        assert await _read_attribute_value(
+            db=db, node_uuid=device_agnostic.id, attr_name="human_friendly_id"
+        ) == ujson.dumps([DEFAULT_CANONICAL_IP])
+        assert (
+            await _read_attribute_value(db=db, node_uuid=device_agnostic.id, attr_name="display_label")
+            == agnostic_device_dl_canonical
+        )
+        assert await _read_attribute_value(
+            db=db, node_uuid=device_local.id, attr_name="human_friendly_id"
+        ) == ujson.dumps([DEFAULT_CANONICAL_IP])
+        assert (
+            await _read_attribute_value(db=db, node_uuid=device_local.id, attr_name="display_label")
+            == local_device_dl_canonical
         )
 
         # Rebase user branch and run migration there
@@ -272,6 +351,20 @@ class TestMigration071(TestInfrahubApp):
         assert (
             await _read_attribute_value(db=db, node_uuid=network.id, attr_name="display_label")
             == default_network_dl_canonical
+        )
+        assert await _read_attribute_value(
+            db=db, node_uuid=device_agnostic.id, attr_name="human_friendly_id"
+        ) == ujson.dumps([DEFAULT_CANONICAL_IP])
+        assert (
+            await _read_attribute_value(db=db, node_uuid=device_agnostic.id, attr_name="display_label")
+            == agnostic_device_dl_canonical
+        )
+        assert await _read_attribute_value(
+            db=db, node_uuid=device_local.id, attr_name="human_friendly_id"
+        ) == ujson.dumps([DEFAULT_CANONICAL_IP])
+        assert (
+            await _read_attribute_value(db=db, node_uuid=device_local.id, attr_name="display_label")
+            == local_device_dl_canonical
         )
         assert await _read_attribute_value(
             db=db, node_uuid=device.id, attr_name="human_friendly_id", branch_name=user_branch.name

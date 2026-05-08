@@ -186,7 +186,7 @@ class Migration071(MigrationRequiringRebase):
             db=migration_input.db,
             branch=default_branch,
             at=migration_input.at,
-            branch_filter=(BranchSupportType.AWARE,),
+            branch_filter=(BranchSupportType.AWARE, BranchSupportType.AGNOSTIC, BranchSupportType.LOCAL),
         )
 
     async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
