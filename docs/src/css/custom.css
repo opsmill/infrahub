@@ -185,3 +185,11 @@ body {
 .theme-doc-sidebar-item-link-level-1 {
   margin-bottom: 1rem;
 }
+
+/* Spoke items (L3 links and deeper) — tighter vertical padding so they read
+   as a compact list under their parent category rather than equal-weight peers */
+.theme-doc-sidebar-item-link-level-3 > .menu__link,
+.theme-doc-sidebar-item-link-level-4 > .menu__link {
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
+}
