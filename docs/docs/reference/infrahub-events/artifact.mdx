@@ -1,0 +1,71 @@
+---
+title: Artifact events
+---
+
+<!-- vale off -->
+## Artifact Created Event
+<!-- vale on -->
+
+**Type**: infrahub.artifact.created
+**Description**: Event generated when an artifact has been created
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the artifact |
+| **artifact_definition_id** | The ID of the artifact definition |
+| **artifact_definition_name** | The name of the artifact definition |
+| **target_id** | The ID of the target of the artifact |
+| **target_kind** | The kind of the target of the artifact |
+| **checksum** | The current checksum of the artifact |
+| **checksum_previous** | The previous checksum of the artifact |
+| **storage_id** | The current storage id of the artifact |
+| **storage_id_previous** | The previous storage id of the artifact |
+<!-- vale on -->
+
+<!-- vale off -->
+## Artifact Updated Event
+<!-- vale on -->
+
+**Type**: infrahub.artifact.updated
+**Description**: Event generated when an artifact has been updated
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the artifact |
+| **artifact_definition_id** | The ID of the artifact definition |
+| **artifact_definition_name** | The name of the artifact definition |
+| **target_id** | The ID of the target of the artifact |
+| **target_kind** | The kind of the target of the artifact |
+| **checksum** | The current checksum of the artifact |
+| **checksum_previous** | The previous checksum of the artifact |
+| **storage_id** | The current storage id of the artifact |
+| **storage_id_previous** | The previous storage id of the artifact |
+<!-- vale on -->

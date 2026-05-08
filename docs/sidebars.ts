@@ -508,13 +508,23 @@ const sidebars: SidebarsConfig = {
       items: [
         {
           type: 'category',
-          label: 'API',
-          link: { type: 'generated-index' },
+          label: 'Schema Specification',
+          link: {
+            type: 'generated-index',
+            slug: 'reference/schema',
+          },
           items: [
-            'reference/api-server',
+            'reference/schema/node',
+            'reference/schema/node-extension',
+            'reference/schema/attribute',
+            // { type: 'doc', id: 'topics/schema-attr-kind-number-pool', label: 'Attribute - NumberPool' },
+            'reference/schema/relationship',
+            'reference/schema/generic',
+            'reference/schema/groups',
+            'reference/schema/validator-migration',
+            'reference/schema-validation',
           ],
         },
-        { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
         {
           type: 'category',
           label: 'CLI',
@@ -542,29 +552,18 @@ const sidebars: SidebarsConfig = {
         },
         {
           type: 'category',
-          label: 'Schema Specification',
-          link: {
-            type: 'generated-index',
-            slug: 'reference/schema',
-          },
-          items: [
-            'reference/schema/node',
-            'reference/schema/node-extension',
-            'reference/schema/attribute',
-            // { type: 'doc', id: 'topics/schema-attr-kind-number-pool', label: 'Attribute - NumberPool' },
-            'reference/schema/relationship',
-            'reference/schema/generic',
-            'reference/schema/groups',
-            'reference/schema/validator-migration',
-            'reference/schema-validation',
-          ],
-        },
-        {
-          type: 'category',
           label: 'Events',
           link: { type: 'generated-index' },
           items: [
-            'reference/infrahub-events',
+            { type: 'doc', id: 'reference/infrahub-events/account', label: 'Account events' },
+            { type: 'doc', id: 'reference/infrahub-events/artifact', label: 'Artifact events' },
+            { type: 'doc', id: 'reference/infrahub-events/branch', label: 'Branch events' },
+            { type: 'doc', id: 'reference/infrahub-events/commit', label: 'Commit events' },
+            { type: 'doc', id: 'reference/infrahub-events/group', label: 'Group events' },
+            { type: 'doc', id: 'reference/infrahub-events/node', label: 'Node events' },
+            { type: 'doc', id: 'reference/infrahub-events/proposed-change', label: 'Proposed change events' },
+            { type: 'doc', id: 'reference/infrahub-events/schema', label: 'Schema events' },
+            { type: 'doc', id: 'reference/infrahub-events/validator', label: 'Validator events' },
           ],
         },
         {
@@ -583,6 +582,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'reference/sso', label: 'SSO Reference' },
           ],
         },
+        { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
       ],
     },
 
