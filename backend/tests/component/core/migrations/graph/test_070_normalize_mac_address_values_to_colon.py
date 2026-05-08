@@ -6,7 +6,7 @@ import pytest
 import ujson
 
 from infrahub.core import registry
-from infrahub.core.constants import BranchSupportType
+from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.graph.m070_normalize_mac_address_values_to_colon import Migration070
@@ -49,6 +49,10 @@ SCHEMA_ROOT = SchemaRoot(
             attributes=[
                 AttributeSchema(name="name", kind="Text", unique=True),
                 AttributeSchema(name="mac", kind="MacAddress", optional=True),
+                AttributeSchema(
+                    name="mac_agnostic", kind="MacAddress", optional=True, branch=BranchSupportType.AGNOSTIC
+                ),
+                AttributeSchema(name="mac_local", kind="MacAddress", optional=True, branch=BranchSupportType.LOCAL),
             ],
         ),
     ],
@@ -136,13 +140,20 @@ class TestMigration070(TestInfrahubApp):
             set_hfid=True,
             set_display_label=default_iface_dl,
         )
-        standalone = await _seed_dash_state_on_default(
-            db=db,
-            schema_kind="TestingStandalone",
-            name="standalone-1",
-            mac_dash=DEFAULT_DASH_MAC,
-            set_hfid=False,
+        standalone = await Node.init(db=db, schema="TestingStandalone")
+        await standalone.new(
+            db=db, name="standalone-1", mac=DEFAULT_DASH_MAC, mac_agnostic=DEFAULT_DASH_MAC, mac_local=DEFAULT_DASH_MAC
         )
+        await standalone.save(db=db)
+        await _set_attribute_value(db=db, node_uuid=standalone.id, attr_name="mac", value=DEFAULT_DASH_MAC)
+        await _set_attribute_value(
+            db=db,
+            node_uuid=standalone.id,
+            attr_name="mac_agnostic",
+            value=DEFAULT_DASH_MAC,
+            branch_name=GLOBAL_BRANCH_NAME,
+        )
+        await _set_attribute_value(db=db, node_uuid=standalone.id, attr_name="mac_local", value=DEFAULT_DASH_MAC)
 
         # User branch: same iface node, different MAC value (exercises branch-isolated values)
         user_branch = await create_branch(db=db, branch_name="user-branch-m070")
@@ -183,6 +194,13 @@ class TestMigration070(TestInfrahubApp):
             == default_iface_dl_canonical
         )
         assert await _read_attribute_value(db=db, node_uuid=standalone.id, attr_name="mac") == DEFAULT_COLON_MAC
+        assert (
+            await _read_attribute_value(
+                db=db, node_uuid=standalone.id, attr_name="mac_agnostic", branch_name=GLOBAL_BRANCH_NAME
+            )
+            == DEFAULT_COLON_MAC
+        )
+        assert await _read_attribute_value(db=db, node_uuid=standalone.id, attr_name="mac_local") == DEFAULT_COLON_MAC
 
         # Rebase user branch and run migration there
         await user_branch.rebase(db=db)
@@ -225,6 +243,13 @@ class TestMigration070(TestInfrahubApp):
             == default_iface_dl_canonical
         )
         assert await _read_attribute_value(db=db, node_uuid=standalone.id, attr_name="mac") == DEFAULT_COLON_MAC
+        assert (
+            await _read_attribute_value(
+                db=db, node_uuid=standalone.id, attr_name="mac_agnostic", branch_name=GLOBAL_BRANCH_NAME
+            )
+            == DEFAULT_COLON_MAC
+        )
+        assert await _read_attribute_value(db=db, node_uuid=standalone.id, attr_name="mac_local") == DEFAULT_COLON_MAC
         assert (
             await _read_attribute_value(db=db, node_uuid=iface.id, attr_name="mac", branch_name=user_branch.name)
             == USER_COLON_MAC
