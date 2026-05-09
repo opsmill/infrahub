@@ -96,15 +96,13 @@ class CarWithDiffInSecondBranchGenerator(CarGenerator):
         return cars
 
     async def load_data(self, nb_elements: int) -> None:
-        """
-        Load cars in main branch, rebase diff branch on main branch, then load changes
+        """Load cars in main branch, rebase diff branch on main branch, then load changes
         within diff branch according to a given ratio.
         Differences are:
         - Updates some cars attributes as well as 1:1, 1:N, N:N relationships.
         - Add new cars.
         Note that we do not delete cars within diff branch as it seems to take too long.
         """
-
         assert self.persons is not None, "'init' method should be called before 'load_data'"
 
         if nb_elements == 0:
@@ -159,11 +157,9 @@ class PersonGenerator(DataGenerator):
         nb_persons: int,
         cars: dict[str, Node] | None = None,
     ) -> dict[str, Node]:
-        """
-        Load persons and return a mapping person_name -> person_node.
+        """Load persons and return a mapping person_name -> person_node.
         If 'cars' is specified, each person created is linked to a few random cars.
         """
-
         default_branch = await registry.get_branch(db=self.db)
         person_schema = registry.schema.get_node_schema(name="TestPerson", branch=default_branch)
 
@@ -204,11 +200,9 @@ class CarGeneratorWithOwnerHavingUniqueCar(CarGenerator):
         self.persons = list(persons.items())
 
     async def load_data(self, nb_elements: int) -> None:
-        """
-        Generate cars with an owner, in a way that an owner can't have multiple cars.
+        """Generate cars with an owner, in a way that an owner can't have multiple cars.
         Also generate distinct nb_seats per car.
         """
-
         default_branch = await registry.get_branch(db=self.db)
         car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
 

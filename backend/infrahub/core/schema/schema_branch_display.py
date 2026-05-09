@@ -69,7 +69,6 @@ class DisplayLabels:
 
     def register_template_schema_path(self, kind: str, schema_path: SchemaAttributePath, template: str) -> None:
         """Register Jinja2 template based display labels using the schema path of each impacted variable in the node."""
-
         if kind not in self._template_based_display_labels:
             self._template_based_display_labels[kind] = TemplateLabel(template=template)
 

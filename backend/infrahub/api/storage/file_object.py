@@ -66,6 +66,7 @@ def build_content_disposition(filename: str, preview: bool = False) -> str:
     Args:
         filename: The filename to include in the header.
         preview: If True, use 'inline' disposition (display in browser). If False, use 'attachment' (force download).
+
     """
     ascii_filename, encoded_filename = sanitize_filename(filename)
     disposition = "inline" if preview else "attachment"

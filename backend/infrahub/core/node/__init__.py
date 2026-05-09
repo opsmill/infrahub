@@ -272,7 +272,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind
-        and the list of Generic this object is inheriting from."""
+        and the list of Generic this object is inheriting from.
+        """
         labels: list[str] = []
         if isinstance(self._schema, NodeSchema):
             labels = [self.get_kind()] + self._schema.inherit_from
@@ -295,6 +296,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         Returns:
             Branch:
+
         """
         if self._schema.branch == BranchSupportType.AGNOSTIC:
             return registry.get_global_branch()
@@ -1067,7 +1069,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
     ) -> NodeChangelog:
         """Update the node in the database if needed."""
-
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
@@ -1148,7 +1149,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
-
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(
@@ -1208,8 +1208,8 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
         Returns:
             (dict): Return GraphQL Payload
-        """
 
+        """
         response: dict[str, Any] = {"id": self.id, KIND_GRAPHQL_FIELD_NAME: self.get_kind()}
 
         if related_node_ids is not None:
@@ -1307,7 +1307,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""
-
         changed = False
 
         for key, value in data.items():

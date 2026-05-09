@@ -144,8 +144,7 @@ class TransformPythonInformation(BaseModel):
 
 
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
-    """
-    This class provides interfaces to read and process information from .infrahub.yml files and can perform
+    """This class provides interfaces to read and process information from .infrahub.yml files and can perform
     actions for objects defined within those files.
 
     This class will later be broken out from the "InfrahubRepository" based classes and instead be a separate
@@ -457,6 +456,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         Raises:
             RepositoryConfigurationError: If the configuration file is missing,
                 cannot be parsed as YAML, or has an invalid format.
+
         """
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
@@ -898,7 +898,6 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         file_type: type[InfrahubFile],
     ) -> None:
         """Load one or multiple objects files into Infrahub."""
-
         log = get_run_logger()
         files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
 
@@ -1136,7 +1135,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         cls, check: CheckDefinitionInformation, existing_check: CoreCheckDefinition
     ) -> bool:
         """Compare an existing Python Check Object with a Check Class
-        and identify if we need to update the object in the database."""
+        and identify if we need to update the object in the database.
+        """
         if (
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path

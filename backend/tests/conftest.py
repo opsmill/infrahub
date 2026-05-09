@@ -316,7 +316,6 @@ async def do_register_core_models_schema(branch: Branch) -> SchemaBranch:
 
 def do_register_simplified_proposed_change_schema(branch: Branch) -> SchemaBranch:
     """Register a minimal CoreProposedChange schema with only the attributes needed for queries."""
-
     minimal_pc = NodeSchema(
         name=core_proposed_change.name,
         namespace=core_proposed_change.namespace,
@@ -726,10 +725,7 @@ async def car_person_schema_unregistered(
 
 @pytest.fixture
 async def person_schema_default_filter(db: InfrahubDatabase, node_group_schema: None, data_schema: None) -> SchemaRoot:
-    """
-    Person schema with no unicity constraint set except default filter.
-    """
-
+    """Person schema with no unicity constraint set except default filter."""
     schema: dict[str, Any] = {
         "nodes": [
             {
@@ -1226,7 +1222,6 @@ class TestHelper:
     @staticmethod
     def import_module_in_fixtures(module: str) -> Any:
         """Import a python module from the fixtures directory."""
-
         sys.path.append(str(TestHelper.get_fixtures_dir()))
         module_name = module.replace("/", ".")
         return importlib.import_module(module_name)

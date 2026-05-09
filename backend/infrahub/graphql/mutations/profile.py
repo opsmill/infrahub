@@ -58,6 +58,7 @@ class InfrahubProfileMutation(InfrahubMutationMixin, Mutation):
 
         Raises:
             ValidationError: If any relationship data contains from_pool.
+
         """
         schema: ProfileSchema = cls._meta.active_schema  # type: ignore[assignment]
         for rel_schema in schema.relationships:

@@ -44,9 +44,7 @@ signal.signal(signal.SIGINT, signal_handler)
 
 @app.callback()
 def callback() -> None:
-    """
-    Control the Git Agent.
-    """
+    """Control the Git Agent."""
 
 
 async def initialize_git_agent(service: InfrahubServices) -> None:

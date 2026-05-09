@@ -244,7 +244,6 @@ class Branch(StandardNode):
 
     def get_branches_and_times_to_query(self, at: Optional[Timestamp] = None) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
-
         at = Timestamp(at)
 
         if self.is_default:
@@ -267,7 +266,6 @@ class Branch(StandardNode):
         is_isolated: bool = True,
     ) -> dict[frozenset, str]:
         """Return all the names of the branches that are constituting this branch with the associated times."""
-
         at = Timestamp(at)
 
         if self.is_default:
@@ -288,7 +286,6 @@ class Branch(StandardNode):
         self, start_time: Timestamp, end_time: Timestamp
     ) -> tuple[dict[str, str], dict[str, str]]:
         """Return the names of the branches that are constituing this branch with the start and end times."""
-
         start = {}
         end = {}
 
@@ -335,10 +332,7 @@ class Branch(StandardNode):
     def get_query_filter_relationships(
         self, rel_labels: list, at: Optional[Timestamp] = None, include_outside_parentheses: bool = False
     ) -> tuple[list, dict]:
-        """
-        Generate a CYPHER Query filter based on a list of relationships to query a part of the graph at a specific time and on a specific branch.
-        """
-
+        """Generate a CYPHER Query filter from a list of relationships to query a part of the graph at a specific time and on a specific branch."""
         filters = []
         params: dict[str, Any] = {}
 
@@ -377,8 +371,7 @@ class Branch(StandardNode):
         variable_name: str = "r",
         params_prefix: str = "",
     ) -> tuple[str, dict]:
-        """
-        Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
+        """Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time and on a specific branch.
 
         Examples:
             >>> rels_filter, rels_params = self.branch.get_query_filter_path(at=self.at)
@@ -386,6 +379,7 @@ class Branch(StandardNode):
             >>> query += "\n WHERE all(r IN relationships(p) WHERE %s)" % rels_filter
 
             There is a currently an assumption that the relationship in the path will be named 'r'
+
         """
         pp = params_prefix
         params: dict[str, Any] = {}
@@ -424,7 +418,6 @@ class Branch(StandardNode):
         self, db: InfrahubDatabase, at: str | Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> None:
         """Rebase the current Branch with its origin branch"""
-
         at = Timestamp(at)
 
         await self.rebase_graph(db=db, at=at)

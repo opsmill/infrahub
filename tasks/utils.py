@@ -48,7 +48,6 @@ ESCAPED_REPO_PATH = escape_path(REPO_BASE)
 
 def project_ver() -> str:
     """Find version from pyproject.toml to use for docker image tagging."""
-
     with (REPO_BASE / "pyproject.toml").open("rb") as file:
         return tomllib.load(file)["project"].get("version", "latest")
 
@@ -74,7 +73,6 @@ def get_group_id(context: Context) -> int:
 
 def str_to_bool(value: str) -> bool:
     """Convert a String to a Boolean"""
-
     if isinstance(value, bool):
         return value
 
@@ -106,7 +104,6 @@ def str_to_bool(value: str) -> bool:
 
 def get_version_from_pyproject() -> str:
     """Retrieve the current version from the pyproject.toml file."""
-
     with (REPO_BASE / "pyproject.toml").open("rb") as file:
         return tomllib.load(file)["project"]["version"]
 

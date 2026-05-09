@@ -1,5 +1,6 @@
 """Integration tests verifying NodeUniquenessConstraintsUpdateMigration is triggered
-and runs correctly during an end-to-end schema load when uniqueness constraints change."""
+and runs correctly during an end-to-end schema load when uniqueness constraints change.
+"""
 
 from __future__ import annotations
 
@@ -30,7 +31,8 @@ PROFILE_CAR_KIND = "ProfileTestingCar"
 
 class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
     """Verify that adding an attribute to a uniqueness constraint triggers the migration
-    that removes that attribute from existing profile nodes."""
+    that removes that attribute from existing profile nodes.
+    """
 
     @pytest.fixture(scope="class")
     def schema_car_nbr_seats_no_constraint(self) -> dict[str, Any]:
@@ -116,7 +118,8 @@ class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
         schema_step_02: dict[str, Any],
     ) -> None:
         """Loading a schema that adds nbr_seats to a uniqueness constraint triggers the migration
-        that deletes nbr_seats from existing profile nodes."""
+        that deletes nbr_seats from existing profile nodes.
+        """
         response = await client.schema.load(schemas=[schema_step_02])
         assert not response.errors
 
@@ -142,12 +145,14 @@ class TestUniquenessConstraintMigrationAddToConstraint(TestSchemaLifecycleBase):
 
 class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleBase):
     """Verify that removing an attribute from a uniqueness constraint triggers the migration
-    that adds that attribute back to existing profile nodes."""
+    that adds that attribute back to existing profile nodes.
+    """
 
     @pytest.fixture(scope="class")
     def schema_car_compound_constraint_only(self) -> dict[str, Any]:
         """Car schema — only a compound uniqueness constraint on (name, nbr_seats).
-        name has no individual unique flag, so nbr_seats is excluded from profiles."""
+        name has no individual unique flag, so nbr_seats is excluded from profiles.
+        """
         return {
             "name": "Car",
             "namespace": "Testing",
@@ -164,7 +169,8 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
     @pytest.fixture(scope="class")
     def schema_car_name_unique_no_compound(self, schema_car_compound_constraint_only: dict[str, Any]) -> dict[str, Any]:
         """Car schema — name is individually unique, no compound constraint.
-        nbr_seats is free to be included in profiles."""
+        nbr_seats is free to be included in profiles.
+        """
         schema = copy.deepcopy(schema_car_compound_constraint_only)
         schema["uniqueness_constraints"] = []
         schema["attributes"][0]["unique"] = True
@@ -233,7 +239,8 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
         schema_step_02: dict[str, Any],
     ) -> None:
         """Loading a schema that removes nbr_seats from a uniqueness constraint triggers the migration
-        that adds nbr_seats to existing profile nodes."""
+        that adds nbr_seats to existing profile nodes.
+        """
         response = await client.schema.load(schemas=[schema_step_02])
         assert not response.errors
 

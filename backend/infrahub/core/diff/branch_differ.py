@@ -53,8 +53,8 @@ class BranchDiffer:
 
         Raises:
             ValueError: if diff_from and diff_to are not correct
-        """
 
+        """
         self.branch = branch
         self.branch_only = branch_only
         self.origin_branch = origin_branch
@@ -145,7 +145,6 @@ class BranchDiffer:
         commit_to: str,
     ) -> list[FileDiffElement]:
         """Return all the files that have added, changed or removed for a given repository between 2 commits."""
-
         files = []
 
         model = GitDiffNamesOnly(
