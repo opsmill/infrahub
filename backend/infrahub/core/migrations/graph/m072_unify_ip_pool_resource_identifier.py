@@ -40,7 +40,7 @@ POOL_NODE_NAMES = ["IPPrefixPool", "IPAddressPool"]
 
 
 class RenameRelationshipVerticesQuery(Query):
-    name = "m071_rename_relationship_vertices"
+    name = "m072_rename_relationship_vertices"
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
 
@@ -61,7 +61,7 @@ SET r.name = $new_name
 
 
 class AddCoreIPPoolLabelQuery(Query):
-    name = "m071_add_core_ip_pool_label"
+    name = "m072_add_core_ip_pool_label"
     type: QueryType = QueryType.WRITE
     insert_return: bool = False
 
@@ -85,7 +85,7 @@ class GetSchemaAnchorTimestampQuery(Query):
     for the rewritten HAS_VALUE edges in Steps 4 and 5.
     """
 
-    name = "m071_get_schema_anchor"
+    name = "m072_get_schema_anchor"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -117,7 +117,7 @@ LIMIT 1
 
 
 class CountCoreIPPoolGenericQuery(Query):
-    name = "m071_count_core_ip_pool_generic"
+    name = "m072_count_core_ip_pool_generic"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -149,7 +149,7 @@ class InheritFromRow:
 class ReadInheritFromValuesQuery(Query):
     """Read the current ``inherit_from`` value for the two pool SchemaNodes."""
 
-    name = "m071_read_inherit_from_values"
+    name = "m072_read_inherit_from_values"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -211,7 +211,7 @@ class CountLeftoverPoolRelationshipsQuery(Query):
     same identifier strings on unrelated relationships don't trip the validation.
     """
 
-    name = "m071_count_leftover_pool_relationships"
+    name = "m072_count_leftover_pool_relationships"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -238,7 +238,7 @@ RETURN count(r) AS leftover
 
 
 class CountUnlabeledPoolsQuery(Query):
-    name = "m071_count_unlabeled_pools"
+    name = "m072_count_unlabeled_pools"
     type: QueryType = QueryType.READ
     insert_return: bool = False
     insert_limit: bool = False
@@ -267,7 +267,7 @@ RETURN count(n) AS unlabeled
 # ---------------------------------------------------------------------------
 
 
-class Migration071(ArbitraryMigration):
+class Migration072(ArbitraryMigration):
     """Unify the IP pool resource relationship under a new ``CoreIPPool`` generic.
 
     Pre-existing ``CoreIPPrefixPool`` and ``CoreIPAddressPool`` data must be reachable
@@ -287,8 +287,8 @@ class Migration071(ArbitraryMigration):
       copy-and-hard-delete pattern.
     """
 
-    name: str = "071_unify_ip_pool_resource_identifier"
-    minimum_version: int = 70
+    name: str = "072_unify_ip_pool_resource_identifier"
+    minimum_version: int = 71
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
