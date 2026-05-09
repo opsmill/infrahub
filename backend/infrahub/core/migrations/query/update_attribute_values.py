@@ -12,8 +12,7 @@ if TYPE_CHECKING:
 
 
 class UpdateAttributeValuesQuery(Query):
-    """
-    Update the values of the given attribute schema for the input node-id-to-value map.
+    """Update the values of the given attribute schema for the input node-id-to-value map.
 
     This version only expires existing values when they're different from the new value,
     making it safe to run idempotently without clearing correct existing values.

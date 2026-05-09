@@ -22,12 +22,10 @@ log = get_logger()
 
 
 async def validate_nulls_in_uniqueness_constraints(db: InfrahubDatabase) -> MigrationResult:
-    """
-    Validate any schema that include optional attributes in the uniqueness constraints
+    """Validate any schema that include optional attributes in the uniqueness constraints
 
     An update to uniqueness constraint validation now handles NULL values as unique instead of ignoring them
     """
-
     default_branch = registry.get_branch_from_registry()
     build_component_registry()
     component_registry = get_component_registry()

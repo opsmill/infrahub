@@ -76,8 +76,8 @@ def branch99() -> BranchData:
 @pytest.fixture
 def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
     """Git Repository with 4 branches main, branch01, branch02, and clean-branch.
-    There is conflict between branch01 and branch02."""
-
+    There is conflict between branch01 and branch02.
+    """
     name = "infrahub-test-fixture-01"
     here = Path(__file__).parent.resolve()
     fixtures_dir = here.parent.parent / "fixtures"
@@ -124,7 +124,6 @@ async def git_repo_01(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_01 as remote"""
-
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
@@ -140,7 +139,6 @@ async def git_repo_01_read_only(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubReadOnlyRepository:
     """Git Repository with git_upstream_repo_01 as remote"""
-
     repo = await InfrahubReadOnlyRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
@@ -156,7 +154,6 @@ async def git_repo_01_read_only(
 @pytest.fixture
 async def git_repo_01_w_client(git_repo_01: InfrahubRepository, client: InfrahubClient) -> InfrahubRepository:
     """Same as fixture git_repo_01 but with a Infrahub client initialized."""
-
     git_repo_01.client = client
     return git_repo_01
 
@@ -179,7 +176,6 @@ async def git_repo_03(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_03 as remote"""
-
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
@@ -193,7 +189,6 @@ async def git_repo_03(
 @pytest.fixture
 async def git_repo_03_w_client(git_repo_03: InfrahubRepository, client: InfrahubClient) -> InfrahubRepository:
     """Same as fixture git_repo_03 but with a Infrahub client initialized."""
-
     git_repo_03.client = client
     return git_repo_03
 
@@ -207,7 +202,6 @@ async def git_repo_04(
     The content of the branch branch01 has been  updated after the repo has been initialized
     to generate a diff between the local and the remote branch branch01.
     """
-
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
@@ -244,7 +238,6 @@ async def git_repo_05(
     The content of the main branch has been  updated after the repo has been initialized
     to generate a diff between the local and the remote branch main.
     """
-
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
@@ -275,7 +268,6 @@ async def git_repo_06(
     The content of the branch branch01 has been  updated both locally and in the remote after the repo has been initialized
     to generate a conflict between the local and the remote branch branch01.
     """
-
     repo = await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
@@ -324,7 +316,6 @@ async def git_repo_jinja(
 
     TODO At some point if would be good to include all these changes in the base repository
     """
-
     upstream = Repo(git_upstream_repo_02["path"])
 
     files_to_add = [
@@ -397,7 +388,6 @@ async def git_repo_checks(
     The main branch contains 2 checks: check01 and check02.
     Check01 always return False and check02 is not valid.
     """
-
     checks_fixture_dir = get_fixtures_dir() / "checks"
     upstream = Repo(git_upstream_repo_02["path"])
 
@@ -427,7 +417,6 @@ async def git_repo_transforms(
     The main branch contains 2 transforms: transform01 and transform02.
     Transform01 will change to uppercase the keys in the data dict always and Transform02 is not valid.
     """
-
     checks_fixture_dir = get_fixtures_dir() / "transforms"
     upstream = Repo(git_upstream_repo_02["path"])
 

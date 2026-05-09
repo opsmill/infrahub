@@ -48,8 +48,7 @@ CALL (attr) {
 
 
 class Migration046(ArbitraryMigration):
-    """
-    Delete any branch-aware human_friendly_id and display_label attributes added to branch-agnostic nodes
+    """Delete any branch-aware human_friendly_id and display_label attributes added to branch-agnostic nodes
     Add human_friendly_id and display_label attributes to branch-agnostic nodes
     Set human_friendly_id and display_label attributes for branch-agnostic nodes on global branch
 

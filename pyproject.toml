@@ -496,12 +496,12 @@ task-tags = ["FIXME", "TODO", "XXX"]
 select = ["ALL"]
 
 ignore = [
-    "D",        # pydocstyle
-    "DOC",      # pydoclint
     "CPY",      # flake8-copyright
     "T201",     # use of `print`
     "ISC",      # flake8-implicit-str-concat
     "COM812",   # missing-trailing-comma
+    "D203",     # incorrect-blank-line-before-class (incompatible with D211)
+    "D213",     # multi-line-summary-second-line (incompatible with D212)
 
     ##################################################################################################
     # Rules below needs to be Investigated                                                           #
@@ -512,6 +512,39 @@ ignore = [
     "G",        # flake8-logging-format
     "RSE",      # flake8-raise
     "BLE",      # flake8-blind-except (BLE)
+
+    ##################################################################################################
+    # Documentation rules - resolve in smaller batches after deciding which of these we want to have #
+    ##################################################################################################
+    # pydocstyle (D)
+    "D100",     # undocumented-public-module
+    "D101",     # undocumented-public-class
+    "D102",     # undocumented-public-method
+    "D103",     # undocumented-public-function
+    "D104",     # undocumented-public-package
+    "D105",     # undocumented-magic-method
+    "D106",     # undocumented-public-nested-class
+    "D107",     # undocumented-public-init
+    "D200",     # unnecessary-multiline-docstring
+    "D202",     # blank-line-after-function
+    "D205",     # missing-blank-line-after-summary
+    "D209",     # new-line-after-last-paragraph
+    "D212",     # multi-line-summary-first-line
+    "D301",     # escape-sequence-in-docstring
+    "D400",     # missing-trailing-period
+    "D401",     # non-imperative-mood
+    "D403",     # first-word-uncapitalized
+    "D404",     # docstring-starts-with-this
+    "D413",     # missing-blank-line-after-last-section
+    "D415",     # missing-terminal-punctuation
+    "D417",     # undocumented-param
+    # pydoclint (DOC)
+    "DOC102",   # docstring-extraneous-parameter
+    "DOC201",   # docstring-missing-returns
+    "DOC202",   # docstring-extraneous-returns
+    "DOC402",   # docstring-missing-yields
+    "DOC501",   # docstring-missing-exception
+    "DOC502",   # docstring-extraneous-exception
 ]
 
 [tool.ruff.lint.flake8-bugbear]

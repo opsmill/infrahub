@@ -39,7 +39,6 @@ class ConvertObjectType(Mutation):
         data: ConvertObjectTypeInput,
     ) -> Self:
         """Convert an input node to a given compatible kind."""
-
         graphql_context: GraphqlContext = info.context
 
         node_to_convert = await NodeManager.get_one(

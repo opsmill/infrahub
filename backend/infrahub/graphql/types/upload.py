@@ -35,6 +35,7 @@ class Upload(Scalar):
 
         Returns:
             A Starlette's `UploadFile` object, or `None` if no file was provided.
+
         """
         return value
 

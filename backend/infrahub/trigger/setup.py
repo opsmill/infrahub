@@ -24,7 +24,6 @@ def compare_automations(
     """Compare an AutomationCore with an existing Automation object to identify if they are identical,
     if it's a branch specific automation and the branch filter may be different, or if they are different.
     """
-
     if force_update:
         return TriggerComparison.UPDATE
 

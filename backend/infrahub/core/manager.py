@@ -150,8 +150,8 @@ class NodeManager:
 
         Returns:
             list[Node]: List of Node object
-        """
 
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -221,8 +221,8 @@ class NodeManager:
 
         Returns:
             int: The number of responses found
-        """
 
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -1104,7 +1104,6 @@ class NodeManager:
         branch_agnostic: bool = False,
     ) -> dict[str, Node]:
         """Return a list of nodes based on their IDs."""
-
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 

@@ -94,6 +94,7 @@ def has_any_key(data: dict[str, Any], keys: list[str]) -> bool:
 
     Returns:
         True if any of the keys are found at any level of the dictionary, False otherwise
+
     """
     for key, value in data.items():
         if key in keys:

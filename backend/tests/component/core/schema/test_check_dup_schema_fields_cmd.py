@@ -13,9 +13,7 @@ from infrahub.database import InfrahubDatabase
 async def merge_nodes(
     db: InfrahubDatabase, node_uuids: list[str], source_branch_name: str, target_branch_name: str, at: Timestamp
 ) -> None:
-    """
-    Do a simplified graph merge of any active edges for particular Nodes on a source branch into a target branch.
-    """
+    """Do a simplified graph merge of any active edges for particular Nodes on a source branch into a target branch."""
     query = """
 MATCH (n:Node)
 WHERE n.uuid IN $node_uuids

@@ -45,7 +45,6 @@ class TestProposedChangeReview(TestInfrahubApp):
         prefect_client: PrefectClient,
     ) -> None:
         """Test the complete proposed change review flow including relationship updates."""
-
         # Create a branch for the proposed change
         source_branch = await create_branch(branch_name="branch-proposed-change", db=db)
 
@@ -119,7 +118,6 @@ class TestProposedChangeReview(TestInfrahubApp):
         prefect_client: PrefectClient,
     ) -> None:
         """Test the complete proposed change review flow including relationship updates."""
-
         # Create a branch for the proposed change
         source_branch = await create_branch(branch_name="branch-pc-2", db=db)
 
@@ -181,7 +179,6 @@ class TestProposedChangeReview(TestInfrahubApp):
         prefect_client: PrefectClient,
     ) -> None:
         """Test the complete proposed change review flow including relationship updates."""
-
         # Create a branch for the proposed change
         source_branch = await create_branch(branch_name="branch-pc-3", db=db)
 

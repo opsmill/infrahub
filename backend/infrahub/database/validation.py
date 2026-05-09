@@ -2,8 +2,7 @@ from infrahub.database import InfrahubDatabase
 
 
 async def verify_no_duplicate_relationships(db: InfrahubDatabase) -> None:
-    """
-    Verify that no duplicate active relationships exist at the database level
+    """Verify that no duplicate active relationships exist at the database level
     A duplicate is defined as
     - connecting the same two nodes
     - having the same identifier
@@ -39,9 +38,7 @@ RETURN a.uuid AS node_id1, b.uuid AS node_id2, rel_name, branch, direction, num_
 
 
 async def verify_no_edges_added_after_node_delete(db: InfrahubDatabase) -> None:
-    """
-    Verify that no edges are added to a Node after it is deleted on a given branch
-    """
+    """Verify that no edges are added to a Node after it is deleted on a given branch"""
     query = """
 // ------------
 // find deleted nodes

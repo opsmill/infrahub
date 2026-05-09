@@ -303,6 +303,7 @@ def init_yaml_obj(line_length: int | None = None) -> YAML:
 
     Returns:
         YAML: Instantiated ruamel.yaml.YAML object.
+
     """
     from ruamel.yaml import YAML
 

@@ -87,6 +87,7 @@ def neo4j_factory() -> _GraphHydrator:
     Example:
         fields = [123, {"Person"}, {"name": "Alice", "age": 33}, "123"]
         alice = neo4j_factory.hydrate_node(*fields)
+
     """
     hydration_scope = HydrationHandler().new_hydration_scope()
     return hydration_scope._graph_hydrator
@@ -262,7 +263,6 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
     - 2 Persons in Main
 
     """
-
     time0 = Timestamp()
     params = {
         "main_branch": "main",
@@ -465,7 +465,6 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
     - 2 Persons in Main
 
     """
-
     time0 = Timestamp()
     params = {
         "main_branch": "main",
@@ -671,7 +670,6 @@ async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_t
         - branch3 was created at time_m70
         - branch4 was created at time_m40
     """
-
     # ---- Create all timestamps and save them in Params -----------------
     time0 = Timestamp()
     params = {
@@ -2202,8 +2200,7 @@ async def hierarchical_groups_data(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> dict[str, Node]:
     def batched(iterable: Any, n: int):
-        """
-        Local implementation of the new batched function that was added to itertools in 3.12
+        """Local implementation of the new batched function that was added to itertools in 3.12
         https://docs.python.org/3/library/itertools.html
         """
         # batched('ABCDEFG', 3) --> ABC DEF G

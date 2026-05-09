@@ -16,8 +16,7 @@ SCHEMA_KINDS_TO_SKIP: list[str] = ["SchemaNode", "SchemaAttribute", "SchemaRelat
 
 
 class DefaultBranchNodeCount(Query):
-    """
-    Get the number of Node vertices on the given branches that are not in the kinds_to_skip list
+    """Get the number of Node vertices on the given branches that are not in the kinds_to_skip list
     Only works for default and global branches. Non-default branches would only return a count of nodes
     created on the given branches
     """
@@ -60,9 +59,7 @@ WITH count(*) AS num_nodes
 
 class GetResultMapQuery(Query):
     def get_result_map(self, schema_paths: list[SchemaAttributePath]) -> dict[str, list[str | None]]:
-        """
-        Get the values for the given schema paths for all the Nodes captured by this query
-        """
+        """Get the values for the given schema paths for all the Nodes captured by this query"""
         # the query results for attribute and schema paths are unordered
         # so we make this list of keys for ordering the results from the query
         schema_path_keys: list[tuple[str, RelationshipDirection, str] | str] = []
@@ -289,8 +286,7 @@ WITH n, attr_vals_list, collect([rel_name, direction, peer_attr_name, peer_attr_
 
 
 class GetPathDetailsDefaultBranch(GetResultMapQuery):
-    """
-    Get the values of the given schema paths for the given kind of node on the default and global branches
+    """Get the values of the given schema paths for the given kind of node on the default and global branches
     Supports limit and offset for pagination
     """
 

@@ -12,8 +12,7 @@ if TYPE_CHECKING:
 
 
 class LinkOpenProposedChangesToDiffRootsQuery(Query):
-    """
-    Link open proposed changes to their DiffRoots.
+    """Link open proposed changes to their DiffRoots.
 
     For open PCs, find DiffRoots where:
     - diff_branch matches the PC's source_branch
@@ -72,8 +71,7 @@ class LinkOpenProposedChangesToDiffRootsQuery(Query):
 
 
 class LinkMergedProposedChangesToDiffRootsQuery(Query):
-    """
-    Link merged proposed changes to their DiffRoots.
+    """Link merged proposed changes to their DiffRoots.
 
     For merged PCs, find DiffRoots where:
     - diff_branch matches the PC's source_branch
