@@ -98,7 +98,7 @@ def _needs_normalization(record: Record) -> NormalizeUpdate | None:
     return NormalizeUpdate(element_id=record.get("element_id"), new_value=new_value)
 
 
-class Migration070(ArbitraryMigration):
+class Migration071(ArbitraryMigration):
     """Index HFID attribute values and normalize them to list[str].
 
     Existing HFID values may contain non-string JSON elements (e.g., ints)
@@ -107,8 +107,8 @@ class Migration070(ArbitraryMigration):
     the Neo4j index size limit.
     """
 
-    name: str = "070_index_hfid_values"
-    minimum_version: int = 69
+    name: str = "071_index_hfid_values"
+    minimum_version: int = 70
     update_batch_size: int = 1000
 
     async def _normalize_hfid_values(self, db: InfrahubDatabase) -> None:
