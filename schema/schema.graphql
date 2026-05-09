@@ -11756,37 +11756,46 @@ type PaginatedProfileIpamNamespace {
   permissions: PaginatedObjectPermission!
 }
 
-enum PathDirectionEnum {
-  BIDIR
-  INBOUND
-  OUTBOUND
+type PathHopType {
+  """Node visited at this hop"""
+  node: PathNodeType!
+  """
+  Relationship traversed to reach this node from the previous hop. Null on the first hop.
+  """
+  relationship: PathRelationshipType
 }
 
 type PathNodeType {
   """Human-readable display label"""
   display_label: String!
+  """Human friendly identifier"""
+  hfid: [String!]!
   """Node UUID"""
   id: String!
   """Schema kind"""
   kind: String!
+  """Schema label for the node's kind"""
+  label: String!
 }
 
 type PathRelationshipType {
-  """Direction relative to traversal"""
-  direction: PathDirectionEnum!
-  """Relationship UUID"""
-  id: String!
-  """Relationship name"""
-  name: String!
+  """Relationship label on the source side of the hop"""
+  from_label: String!
+  """Relationship name on the source side of the hop"""
+  from_rel: String!
+  """Relationship kind (e.g. Component, Generic)"""
+  kind: String!
+  """Relationship label on the destination side of the hop"""
+  to_label: String!
+  """Relationship name on the destination side of the hop"""
+  to_rel: String!
 }
 
 type PathResultType {
-  """Number of node hops in this path"""
+  """Number of edges in this path"""
   depth: Int!
-  """Ordered nodes from source to destination"""
-  nodes: [PathNodeType!]!
-  """Ordered relationships connecting the nodes"""
-  relationships: [PathRelationshipType!]!
+  """Ordered hops from source to destination"""
+  hops: [PathHopType!]!
 }
 
 input PathTraversalInput {
@@ -11809,14 +11818,14 @@ input PathTraversalInput {
 }
 
 type PathTraversalResultType {
+  """Total number of paths discovered"""
+  count: Int!
   """The end node"""
   destination: PathNodeType!
   """Paths found, ordered shortest first"""
   paths: [PathResultType!]!
   """The start node"""
   source: PathNodeType!
-  """Total number of paths discovered"""
-  total_paths_found: Int!
 }
 
 type PermissionType {
@@ -25231,16 +25240,10 @@ type Query {
 type ReachableNodeType {
   """Hops from source node"""
   depth: Int!
-  """Human-readable display label"""
-  display_label: String!
-  """Node UUID"""
-  id: String!
-  """Schema kind"""
-  kind: String!
+  """Reachable node"""
+  node: PathNodeType!
   """Full path from source to this node"""
   path: PathResultType!
-  """Relationship connecting this node"""
-  relationship_name: String!
 }
 
 input ReachableNodesInput {
@@ -25255,14 +25258,14 @@ input ReachableNodesInput {
 }
 
 type ReachableNodesResultType {
-  """All paths to reachable nodes"""
-  paths: [PathResultType!]!
-  """Nodes of the requested kinds reachable from the source"""
-  reachable_nodes: [ReachableNodeType!]!
+  """Number of dependency entries returned"""
+  count: Int!
+  """
+  Reachable nodes of the requested kinds, one entry per (node, path) pair
+  """
+  dependencies: [ReachableNodeType!]!
   """The source node"""
   source: PathNodeType!
-  """Total reachable nodes found"""
-  total_found: Int!
 }
 
 type ReadOnlyRepositoryImportLastCommit {
