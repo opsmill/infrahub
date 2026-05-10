@@ -71,7 +71,6 @@ async def get_paths_between_nodes(
     print_query: bool = False,
 ) -> list[Record]:
     """Return all paths between 2 nodes."""
-
     length_limit = f"..{max_length}" if max_length else ""
 
     relationships_str = ""
@@ -97,7 +96,6 @@ async def get_paths_between_nodes(
 
 async def count_relationships(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of relationships in the database."""
-
     label_str = f":{label}" if label else ""
 
     query = f"""
@@ -123,7 +121,6 @@ async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
 
 async def count_nodes(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of nodes of a given label in the database."""
-
     label_str = f":{label}" if label else ""
 
     query = f"""

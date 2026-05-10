@@ -857,7 +857,6 @@ def _should_render_artifact(
     Will return false if:
         * The artifact_id exists and is not in the impacted list
     """
-
     if not artifact_id or managed_branch:
         return True
 
@@ -1596,7 +1595,6 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
     The edge should be of type CoreArtifactDefinition from the query
     * GATHER_ARTIFACT_DEFINITIONS
     """
-
     parsed = []
     for definition in definitions:
         artifact_definition = ProposedChangeArtifactDefinition(

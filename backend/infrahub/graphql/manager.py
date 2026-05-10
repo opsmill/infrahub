@@ -333,7 +333,6 @@ class GraphQLSchemaManager:
 
     def generate_object_types(self) -> None:
         """Generate all GraphQL objects for the schema and store them in the internal registry."""
-
         full_schema = self.schema.get_all(duplicate=False)
 
         # Pass 1: Generate all GraphQL Interface objects first (without edged/paginated)
@@ -572,7 +571,6 @@ class GraphQLSchemaManager:
 
     def generate_graphql_object(self, schema: MainSchemaTypes, populate_cache: bool = False) -> InfrahubObjectReference:
         """Generate a GraphQL object Type from a Infrahub NodeSchema."""
-
         interfaces: set[type[InfrahubObject]] = set()
         md5hash = hashlib.md5(usedforsecurity=False)
         md5hash.update(f"{schema.kind}{schema.get_hash()}".encode())
@@ -1004,8 +1002,8 @@ class GraphQLSchemaManager:
 
         Returns:
             dict: A Dictionary containing all the filters with their name as the key and their Type as value
-        """
 
+        """
         filters: dict[str, Any] = {"offset": graphene.Int(), "limit": graphene.Int(), "order": OrderInput()}
         default_filters: list[str] = list(filters.keys())
 
@@ -1077,6 +1075,7 @@ class GraphQLSchemaManager:
 
         Returns:
             dict: Filter definitions with names as keys and graphene types as values
+
         """
         return {
             # Account-based filters (created_by)
@@ -1117,7 +1116,6 @@ class GraphQLSchemaManager:
         populate_cache: bool = False,
     ) -> InfrahubEdgedReference:
         """Generate a edged GraphQL object Type from a Infrahub NodeSchema for pagination."""
-
         object_name = f"Edged{schema.kind}"
         if relation_property:
             object_name = f"NestedEdged{schema.kind}"
@@ -1160,7 +1158,6 @@ class GraphQLSchemaManager:
         self, schema: MainSchemaTypes, edge: InfrahubEdgedReference, nested: bool = False, populate_cache: bool = False
     ) -> type[InfrahubObject]:
         """Generate a paginated GraphQL object Type from a Infrahub NodeSchema."""
-
         object_name = f"Paginated{schema.kind}"
         if nested:
             object_name = f"NestedPaginated{schema.kind}"

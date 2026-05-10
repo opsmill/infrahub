@@ -137,9 +137,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         trigger_node: ComputedAttributeTriggerNode,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
-        """
-        This function is used to create a trigger definition for a computed attribute of type Jinja2.
-        """
+        """This function is used to create a trigger definition for a computed attribute of type Jinja2."""
         event_trigger = EventTrigger()
         event_trigger.events.add(NodeUpdatedEvent.event_name)
         if computed_attribute.attribute.optional:

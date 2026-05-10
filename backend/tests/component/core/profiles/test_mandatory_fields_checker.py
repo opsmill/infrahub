@@ -70,7 +70,6 @@ class TestExtractProfileIdentifiersFromInput:
 
     def test_objects_with_id_attribute(self) -> None:
         """Profiles can be Node objects with an 'id' attribute."""
-
         node1 = MagicMock(spec=Node, id="uuid1")
         node2 = MagicMock(spec=Node, id="uuid2")
 

@@ -222,7 +222,6 @@ async def _get_targets(
     client: InfrahubClient,
 ) -> dict[str, dict[str, InfrahubNode]]:
     """Get the targets per kind in order to extract the variables."""
-
     targets_per_kind: dict[str, dict[str, InfrahubNode]] = defaultdict(dict)
 
     for target in targets:
@@ -260,6 +259,7 @@ async def _run_generators(
     Raises:
         ValueError: If the generator definition is not found or none of the requested
             targets are members of the target group.
+
     """
     response = await client.execute_graphql(
         query=get_generator_run_query(definition_id=generator_definition_id, target_ids=node_ids).render(),

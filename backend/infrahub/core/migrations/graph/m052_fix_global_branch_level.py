@@ -32,8 +32,7 @@ class FixGlobalBranchLevelQuery(Query):
 
 
 class Migration052(GraphMigration):
-    """
-    Fix edges on the global branch that have incorrect branch_level.
+    """Fix edges on the global branch that have incorrect branch_level.
 
     Edges on the global branch ("-global-") should always have branch_level = 1.
     This migration corrects any edges that were incorrectly created with a different

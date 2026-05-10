@@ -294,7 +294,8 @@ async def create_branch(
 ) -> Branch:
     """Create a new Branch, currently all the branches are based on Main
 
-    Because all branches are based on main, the hierarchy_level of hardcoded to 2."""
+    Because all branches are based on main, the hierarchy_level of hardcoded to 2.
+    """
     description = description or f"Branch {branch_name}"
     branch = Branch(
         name=branch_name,

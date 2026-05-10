@@ -238,7 +238,6 @@ async def test_loader_params_hash_excludes_fields(
     The hash should be consistent across different field selections so that
     loaders with the same branch/timestamp can be reused.
     """
-
     timestamp = Timestamp()
 
     params1 = AccountLoaderParams(branch=default_branch, at=timestamp, fields={"id": {}})

@@ -19,8 +19,7 @@ class Error(Exception):
 
 
 class PropagatedFromWorkerError(Error):
-    """
-    Used to re-raise server side an error that happened worker side.
+    """Used to re-raise server side an error that happened worker side.
     Note we might want to improve this so we raise the exact same error that happened worker side.
     """
 
