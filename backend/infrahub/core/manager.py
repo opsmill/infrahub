@@ -1043,7 +1043,13 @@ class NodeManager:
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
-        """Return one node based on its ID."""
+        """Return one node based on its ID.
+
+        Raises:
+            NodeNotFoundError: When the node cannot be found and `raise_on_error` is True,
+                or when the found node does not match the requested kind.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         result = await cls.get_many(
@@ -1103,7 +1109,12 @@ class NodeManager:
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
     ) -> dict[str, Node]:
-        """Return a list of nodes based on their IDs."""
+        """Return a list of nodes based on their IDs.
+
+        Raises:
+            SchemaNotFoundError: When the schema associated with one of the nodes cannot be found.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 

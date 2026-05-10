@@ -234,6 +234,10 @@ async def reset_deployment_id(db: InfrahubDatabase, new_uuid: str | None = None)
 
     The normal StandardNode update path matches on uuid and cannot change it, so
     this helper issues a direct write keyed on the :Root label.
+
+    Raises:
+        ValueError: When the new deployment_id is identical to the current one.
+
     """
     root = await get_root_node(db=db)
     old_uuid = str(root.get_uuid())

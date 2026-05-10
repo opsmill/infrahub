@@ -150,7 +150,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._schema.kind
 
     def get_id(self) -> str:
-        """Return the ID of the node"""
+        """Return the ID of the node.
+
+        Raises:
+            InitializationError: When the node has not been saved yet and doesn't have an id.
+
+        """
         if self.id:
             return self.id
 
@@ -380,6 +385,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         Supports two cases:
         1. Schema-defined NumberPool attributes (kind="NumberPool" with number_pool_id in parameters)
         2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
+
+        Raises:
+            ValidationError: When `from_pool` is used on a template, when no pool ID is provided,
+                when the pool cannot be used for the attribute, or when the pool is exhausted.
+            NodeNotFoundError: When the requested number pool cannot be located by id or name.
+
         """
         number_pool_id: str | None = None
         # Templates must use _from_resource_pool relationships, not from_pool
@@ -1367,7 +1378,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             relm.validate()
 
     async def get_parent_relationship_peer(self, db: InfrahubDatabase, name: str) -> Node | None:
-        """When a node has a parent relationship of a given name, this method returns the peer of that relationship."""
+        """When a node has a parent relationship of a given name, this method returns the peer of that relationship.
+
+        Raises:
+            ValueError: When the relationship is not of kind 'parent'.
+
+        """
         relationship = self.get_schema().get_relationship(name=name)
         if relationship.kind != RelationshipKind.PARENT:
             raise ValueError(f"Relationship '{name}' is not of kind 'parent'")

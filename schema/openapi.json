@@ -430,7 +430,7 @@
         "/api/file/{repository_id}/{file_path}": {
             "get": {
                 "summary": "Get File",
-                "description": "Retrieve a file from a git repository.",
+                "description": "Retrieve a file from a git repository.\n\nRaises:\n    CommitNotFoundError: When no commit is provided and the repository has no commits.\n    PropagatedFromWorkerError: When the worker returns an error response while reading the file.",
                 "operationId": "get_file_api_file__repository_id___file_path__get",
                 "security": [
                     {
@@ -1539,7 +1539,7 @@
         "/api/storage/files/by-hfid/{kind}": {
             "get": {
                 "summary": "Download File Object By Hfid",
-                "description": "Download a file by the FileObject node's Human-Friendly ID (HFID).\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.",
+                "description": "Download a file by the FileObject node's Human-Friendly ID (HFID).\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.\n\nRaises:\n    HTTPException: When the requested kind does not inherit from the FileObject schema.",
                 "operationId": "download_file_object_by_hfid_api_storage_files_by_hfid__kind__get",
                 "security": [
                     {
@@ -1650,7 +1650,7 @@
         "/api/storage/files/by-storage-id/{storage_id}": {
             "get": {
                 "summary": "Download File Object By Storage Id",
-                "description": "Download a file from storage by its storage_id.\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.",
+                "description": "Download a file from storage by its storage_id.\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.\n\nRaises:\n    NodeNotFoundError: When no FileObject node matches the provided storage_id.",
                 "operationId": "download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get",
                 "security": [
                     {

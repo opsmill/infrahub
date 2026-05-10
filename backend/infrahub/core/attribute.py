@@ -59,6 +59,10 @@ def validate_string_length(value: str | None) -> None:
     see https://neo4j.com/developer/kb/index-limitations-and-workaround/.
     Note `value` parameter is optional as this function could be called from an attribute class
     with optional value such as StringOptional.
+
+    Raises:
+        ValidationError: When the string length exceeds the maximum allowed value.
+
     """
     if value is None:
         return
@@ -750,6 +754,10 @@ class Integer(BaseAttribute):
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
         """Make sure boolean objects are not accepted as value. Need to override `validate_format`
         as `isinstance(True, int)` is True.
+
+        Raises:
+            ValidationError: When the value type does not match the expected type.
+
         """
         value_to_check = value
         if schema.enum and isinstance(value, Enum):
@@ -834,7 +842,12 @@ class Dropdown(BaseAttribute):
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        """Validate the content of the dropdown."""
+        """Validate the content of the dropdown.
+
+        Raises:
+            ValidationError: When the value is not one of the allowed dropdown choices.
+
+        """
         super().validate_content(value=value, name=name, schema=schema)
         values = [choice.name for choice in schema.choices]
         if value not in values:
@@ -882,7 +895,12 @@ class IPNetwork(BaseAttribute):
 
     @property
     def obj(self) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
-        """Return an ipaddress interface object."""
+        """Return an ipaddress interface object.
+
+        Raises:
+            ValueError: When the IP network value has not been defined.
+
+        """
         if not self.value:
             raise ValueError("value for IPNetwork must be defined")
         return ipaddress.ip_network(str(self.value))
@@ -1024,7 +1042,12 @@ class IPHost(BaseAttribute):
 
     @property
     def obj(self) -> ipaddress.IPv4Interface | ipaddress.IPv6Interface:
-        """Return the ip adress without a prefix or subnet mask."""
+        """Return the ip adress without a prefix or subnet mask.
+
+        Raises:
+            ValueError: When the IP host value has not been defined.
+
+        """
         if not self.value:
             raise ValueError("value for IPHost must be defined")
         return ipaddress.ip_interface(str(self.value))
@@ -1144,7 +1167,12 @@ class MacAddress(BaseAttribute):
 
     @property
     def obj(self) -> netaddr.EUI:
-        """Return the MAC adress."""
+        """Return the MAC adress.
+
+        Raises:
+            ValueError: When the MAC address value has not been defined.
+
+        """
         if not self.value:
             raise ValueError("value for MAC address must be defined")
         return netaddr.EUI(addr=self.value)

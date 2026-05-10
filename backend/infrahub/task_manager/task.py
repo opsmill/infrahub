@@ -118,6 +118,10 @@ class PrefectTask:
     ) -> FlowLogs:
         """Return the logs for a flow run, based on log_limit and log_offset.
         At most, NB_LOGS_LIMIT logs will be returned per flow.
+
+        Raises:
+            ValueError: When the requested ``log_limit`` exceeds ``NB_LOGS_LIMIT``.
+
         """
         logs_flow = FlowLogs()
 

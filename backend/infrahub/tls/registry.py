@@ -21,7 +21,12 @@ class TlsContextRegistry:
         return self._cache[key]
 
     def validate(self, insecure: bool = False, ca_bundle: str | None = None) -> None:
-        """Build and cache the SSL context for the given config, raising ValueError on failure."""
+        """Build and cache the SSL context for the given config, raising ValueError on failure.
+
+        Raises:
+            ValueError: When the configured CA bundle cannot be loaded.
+
+        """
         try:
             self.get(insecure=insecure, ca_bundle=ca_bundle)
         except ssl.SSLError as exc:
