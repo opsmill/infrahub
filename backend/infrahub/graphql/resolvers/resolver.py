@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from graphql import GraphQLError
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
@@ -234,6 +235,11 @@ async def default_paginated_list_resolver(
             for edge in permissions["edges"]:
                 if edge["node"]["kind"] == schema.kind:
                     permission_set = edge["node"]
+
+        if limit is not None and limit < 0:
+            raise GraphQLError("limit must be a non-negative integer")
+        if offset is not None and offset < 0:
+            raise GraphQLError("offset must be a non-negative integer")
 
         objs = []
         if edges or "hfid" in filters:
