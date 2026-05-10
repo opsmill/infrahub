@@ -1474,7 +1474,6 @@ WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(upda
 
     async def get_nodes(self, db: InfrahubDatabase, duplicate: bool = False) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
-
         for result in self.get_results():
             raw_labels: list[str] = result.get_as_type(label="node_labels", return_type=list)
             labels = [str(lbl) for lbl in raw_labels]
@@ -2084,6 +2083,7 @@ WITH %(tracked_vars)s,
 
         Returns:
             Tuple of (field_name, operator) like ("created_at", "before"), or None if not a metadata filter.
+
         """
         if not filter_key.startswith(NODE_METADATA_PREFIX):
             return None

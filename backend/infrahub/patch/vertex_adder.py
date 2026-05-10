@@ -42,8 +42,7 @@ RETURN vertex_to_add.identifier AS abstract_id, %(id_func_name)s(v) AS db_id
         return abstract_to_concrete_id_map
 
     async def execute(self, vertices_to_add: list[VertexToAdd]) -> AsyncGenerator[dict[str, str], None]:
-        """
-        Create vertices_to_add on the database.
+        """Create vertices_to_add on the database.
         Returns a generator that yields dictionaries mapping VertexToAdd.identifier to the database-level ID of the newly created vertex.
         """
         vertices_map_queue: dict[frozenset[str], list[VertexToAdd]] = defaultdict(list)

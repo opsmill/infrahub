@@ -385,7 +385,8 @@ def test_log_forwarding_destination_names_rejects_matching_names_from_toml_desti
 def test_log_forwarding_destination_names_survives_revalidation() -> None:
     """Validating the same destinations multiple times succeeds
 
-    This can happen when starting Infrahub"""
+    This can happen when starting Infrahub
+    """
     env = {
         "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "my_syslog",
         "INFRAHUB_LOG_FORWARDING_DESTINATION_MY_SYSLOG_HOST": "syslog.example.com",

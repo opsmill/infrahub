@@ -19,7 +19,6 @@ MAIN_DIRECTORY_PATH = REPO_BASE / MAIN_DIRECTORY
 
 def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
-
     print(f" - [{NAMESPACE}] Format code with ruff")
     exec_cmd = f"ruff format {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY / 'pyproject.toml'} && "
     exec_cmd += f"ruff check --fix {MAIN_DIRECTORY}/ --config {MAIN_DIRECTORY / 'pyproject.toml'}"
@@ -30,7 +29,6 @@ def _format_ruff(context: Context) -> None:
 @task(name="format")
 def format_all(context: Context) -> None:
     """Format all Python SDK files with ruff."""
-
     _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
@@ -42,7 +40,6 @@ def format_all(context: Context) -> None:
 @task
 def ruff(context: Context) -> None:
     """Run ruff linter against Python SDK files."""
-
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_directory = MAIN_DIRECTORY_PATH
     exec_cmd = f"ruff check --diff {exec_directory} --config {exec_directory / 'pyproject.toml'}"
@@ -54,7 +51,6 @@ def ruff(context: Context) -> None:
 @task
 def mypy(context: Context) -> None:
     """Run mypy type checking against the Python SDK."""
-
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = "mypy --show-error-codes infrahub_sdk/"
     exec_directory = MAIN_DIRECTORY_PATH

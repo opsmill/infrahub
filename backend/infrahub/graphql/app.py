@@ -1,6 +1,4 @@
-"""
-This code has been forked from https://github.com/ciscorn/starlette-graphene3 in order to support branch and dynamic schema.
-"""
+"""This code has been forked from https://github.com/ciscorn/starlette-graphene3 in order to support branch and dynamic schema."""
 
 from __future__ import annotations
 

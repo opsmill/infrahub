@@ -55,13 +55,11 @@ async def test_allocate_from_number_pool(
 async def test_resource_utilization(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
-    """
-    Allocates:
+    """Allocates:
     - 1 ticket in first number pool
     - 2 tickets in second number pool
     and verifies resource pool utilization.
     """
-
     await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
     await initialize_registry(db=db)
 

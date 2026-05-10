@@ -24,7 +24,8 @@ class HttpxAdapter(InfrahubHTTP):
     providers. The main purpose is to have a single location to manage
     configuration and error handling with regards to HTTP traffic and
     allow users to define configurations such as timeout, TLS options
-    and eventually proxy settings in one location."""
+    and eventually proxy settings in one location.
+    """
 
     def __init__(self, tls_registry: TlsContextRegistry) -> None:
         self._tls_registry = tls_registry
@@ -49,6 +50,7 @@ class HttpxAdapter(InfrahubHTTP):
 
         Returns:
             False to disable verification, or an SSLContext for verification.
+
         """
         if verify is False:
             return False

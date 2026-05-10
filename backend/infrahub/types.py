@@ -377,7 +377,8 @@ LARGE_ATTRIBUTE_TYPES = [TextArea, JSON, List]
 
 def get_attribute_type(kind: str = "Default") -> type[InfrahubDataType]:
     """Return an InfrahubDataType object for a given kind
-    If no kind is provided, return the default one."""
+    If no kind is provided, return the default one.
+    """
     return ATTRIBUTE_TYPES.get(kind, Default)
 
 

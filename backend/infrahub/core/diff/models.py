@@ -2,8 +2,7 @@ from pydantic import BaseModel, Field
 
 
 class RequestDiffUpdate(BaseModel):
-    """
-    Request diff to be updated.
+    """Request diff to be updated.
 
     If the message only include a branch_name, it is assumed to be for updating the diff that tracks
     the lifetime changes of a branch

@@ -59,6 +59,7 @@ def _validate_template_fields(
         expected_relationships: List of expected relationship peers
         user_fields: Original user fields (should be preserved as-is)
         excluded_fields: List of field names that should NOT be in the output
+
     """
     user_fields = user_fields or {}
     expected_attrs = expected_attrs or []

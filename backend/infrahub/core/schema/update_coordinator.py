@@ -66,6 +66,7 @@ class SchemaUpdateCoordinator:
             context: Infrahub context (required for WORKFLOW executor)
             migration_executor: How to execute migrations (DIRECT or WORKFLOW)
             logger: Logger to use (defaults to module logger)
+
         """
         self.db = db
         self.branch = branch
@@ -166,8 +167,8 @@ class SchemaUpdateCoordinator:
         Raises:
             MigrationError: If migrations fail and rollback completes
             Exception: Original exception if migrations fail via exception
-        """
 
+        """
         # Step 1: Update schema in DB and/or registry
         updated_hash: str | None = None
         if update_db or update_registry:
@@ -227,8 +228,10 @@ class SchemaUpdateCoordinator:
             limit: Limit to specific schema items
             update_db: If True, update DB via update_schema_branch.
             update_registry: If True, update registry via set_schema_branch.
+
         Returns:
             The updated schema hash
+
         """
         if update_db:
             await self.schema_manager.update_schema_branch(
@@ -301,7 +304,6 @@ class SchemaUpdateCoordinator:
         apply_migration_data: SchemaApplyMigrationData,
     ) -> tuple[list[str], Exception | None]:
         """Execute migrations directly (for branch tasks)."""
-
         error_msgs: list[str] = []
         exception: Exception | None = None
 

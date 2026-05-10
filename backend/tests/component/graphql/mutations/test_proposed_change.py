@@ -306,7 +306,8 @@ async def test_duplicate_open_proposed_change_validation(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
 ) -> None:
     """Validate that we cannot create a second open proposed change for the same source branch,
-    but can create one after the existing one is closed."""
+    but can create one after the existing one is closed.
+    """
     branch_name = str(uuid4().hex)
     source_branch = Branch(name=branch_name)
     await source_branch.save(db=db)

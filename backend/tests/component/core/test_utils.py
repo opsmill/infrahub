@@ -19,8 +19,7 @@ def test_convert_ip_to_binary_str(input: ipaddress.IPv4Network | ipaddress.IPv4I
 
 
 async def verify_all_linked_edges_deleted(db: InfrahubDatabase, node_uuid: str, branch_name: str) -> None:
-    """
-    Verify that a node is completely deleted at the database level
+    """Verify that a node is completely deleted at the database level
 
     check that all edges linked to a given node on a given branch are deleted or inactive
     """

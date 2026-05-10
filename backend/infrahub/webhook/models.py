@@ -190,7 +190,6 @@ class EventContext(BaseModel):
     @classmethod
     def from_event(cls, event_id: str, event_type: str, event_occured_at: str, event_payload: dict[str, Any]) -> Self:
         """Extract the context from the raw event we are getting from Prefect."""
-
         infrahub_context: dict[str, Any] = event_payload.get("context", {})
         account_info: dict[str, Any] = infrahub_context.get("account", {})
         branch_info: dict[str, Any] = infrahub_context.get("branch", {})

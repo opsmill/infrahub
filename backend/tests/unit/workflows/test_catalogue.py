@@ -34,10 +34,7 @@ def test_workflow_definition_flow_names() -> None:
 
 
 def test_workflows_sorted() -> None:
-    """
-    Only test that workflows are defined in an alphabetical way for developer comfort.
-    """
-
+    """Only test that workflows are defined in an alphabetical way for developer comfort."""
     if get_installation_type() != INSTALLATION_TYPE:
         return
 

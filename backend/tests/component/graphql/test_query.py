@@ -30,7 +30,6 @@ async def execute_query(
     at: Timestamp | str | None = None,
 ) -> ExecutionResult:
     """Helper function to Execute a GraphQL Query."""
-
     if not isinstance(branch, Branch):
         branch = await registry.get_branch(db=db, branch=branch)
     at = Timestamp(at)

@@ -836,7 +836,6 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         interface_profile: Node,
     ) -> Node:
         """Test creating component templates (interfaces) with profiles."""
-
         # Create device template with component interface templates
         device_template_schema = registry.schema.get_template_schema(
             name="TemplateTestingDeviceWithInterfaces", branch=default_branch, duplicate=False
@@ -912,7 +911,6 @@ class TestTemplateProfileWithComponents(TestInfrahubApp):
         device_component_profile: Node,
     ) -> dict[str, str]:
         """Test creating a device template that references component templates."""
-
         # Create device template with component interface templates
         device_template_schema = registry.schema.get_template_schema(
             name="TemplateTestingDeviceWithInterfaces", branch=default_branch, duplicate=False

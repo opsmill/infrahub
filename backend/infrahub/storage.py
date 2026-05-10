@@ -76,6 +76,7 @@ class InfrahubObjectStorage:
 
         Note:
             Silently ignores if the file does not exist.
+
         """
         if isinstance(self._storage, fastapi_storages.FileSystemStorage):
             (self._storage._path / identifier).unlink(missing_ok=True)

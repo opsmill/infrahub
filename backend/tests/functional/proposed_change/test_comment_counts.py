@@ -22,11 +22,9 @@ class TestProposedChangeTotalComments(TestInfrahubApp):
         car_person_schema: SchemaBranch,
         unprivileged_client: InfrahubClient,
     ) -> None:
-        """
-        Creates both change comments and thread-attached comments and make sur `total_comments` property
+        """Creates both change comments and thread-attached comments and make sur `total_comments` property
         is computed correctly.
         """
-
         # Create a branch for the proposed change
         source_branch = await create_branch(branch_name="branch-proposed-change", db=db)
 
@@ -86,11 +84,9 @@ class TestProposedChangeTotalComments(TestInfrahubApp):
         car_person_schema: SchemaBranch,
         unprivileged_client: InfrahubClient,
     ) -> None:
-        """
-        Creates both change comments and thread-attached comments and make sur `total_comments` property
+        """Creates both change comments and thread-attached comments and make sur `total_comments` property
         is computed correctly.
         """
-
         # Create a branch for the proposed change
         source_branch = await create_branch(branch_name="branch-proposed-change-2", db=db)
 

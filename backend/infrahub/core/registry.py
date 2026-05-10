@@ -146,8 +146,8 @@ class Registry:
 
         Returns:
             Branch: A Branch Object
-        """
 
+        """
         if branch and not isinstance(branch, str):
             return branch
 
@@ -184,8 +184,8 @@ class Registry:
 
         Returns:
             Branch: A Branch Object
-        """
 
+        """
         if branch and not isinstance(branch, str):
             return branch
 
