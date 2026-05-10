@@ -9,8 +9,7 @@ from infrahub.database import InfrahubDatabase
 
 
 class ValidateNodeRelationshipQuery(Query):
-    """
-    This query will return error message if for any couple (input_node, relationship):
+    """This query will return error message if for any couple (input_node, relationship):
     - If relationship type is agnostic, all edges branches should be -global-
     - Else, there should not be any edge on global branch
     - Considering edges on the input branch:
@@ -94,10 +93,7 @@ class ValidateNodeRelationshipQuery(Query):
 
 
 async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDatabase) -> None:
-    """
-    Raises an error if validation conditions of the query are not met.
-    """
-
+    """Raises an error if validation conditions of the query are not met."""
     query = await ValidateNodeRelationshipQuery.init(db=db, branch=branch, node_id=node.id)
     await query.execute(db=db)
     for result in query.results:
@@ -289,9 +285,7 @@ RETURN rel.name AS rel_name, rel.uuid AS rel_uuid, branch, active_count
 
 
 async def validate_no_duplicate_attributes(db: InfrahubDatabase, branch: Branch) -> list[str]:
-    """
-    Validate that no Nodes have duplicated attribute or relationship names
-    """
+    """Validate that no Nodes have duplicated attribute or relationship names"""
     branch_filter, branch_params = branch.get_query_filter_path()
 
     query = """

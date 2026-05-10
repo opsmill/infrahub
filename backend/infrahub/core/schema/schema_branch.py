@@ -268,7 +268,6 @@ class SchemaBranch:
 
     def update(self, schema: SchemaBranch) -> None:
         """Update another SchemaBranch into this one."""
-
         local_kinds = self.all_names
         other_kinds = schema.all_names
 
@@ -354,7 +353,6 @@ class SchemaBranch:
 
         If duplicate is set to false, the real object will be returned.
         """
-
         key = None
         if name in self.nodes:
             key = self.nodes[name]
@@ -473,7 +471,6 @@ class SchemaBranch:
 
     def get_all(self, include_internal: bool = False, duplicate: bool = True) -> dict[str, MainSchemaTypes]:
         """Retrieve everything in a single dictionary."""
-
         return {
             name: self.get(name=name, duplicate=duplicate)
             for name in self.all_names
@@ -577,6 +574,7 @@ class SchemaBranch:
         Args:
             schema: If provided, reconcile incoming schema data before merging.
                    If None, reconcile already-loaded schemas (e.g., from database).
+
         """
         if schema:
             # Incoming schema: modify in place
@@ -970,9 +968,7 @@ class SchemaBranch:
     def _is_attr_combination_unique(
         self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None, unique_attribute_names: list[str]
     ) -> bool:
-        """
-        Return whether at least one combination of any length of `attrs_paths` is unique
-        """
+        """Return whether at least one combination of any length of `attrs_paths` is unique"""
         if unique_attribute_names:
             for attr_path in attrs_paths:
                 for unique_attr_name in unique_attribute_names:
@@ -1140,7 +1136,8 @@ class SchemaBranch:
 
     def validate_restricted_namespaces_from_generic(self) -> None:
         """Ensure that every node which inherit from a generic node containing restricted namespaces are following on
-        the rules"""
+        the rules
+        """
         for name in self.nodes:
             node = self.get_node(name=name, duplicate=False)
 
@@ -1549,8 +1546,7 @@ class SchemaBranch:
                 self.set(name=schema_to_update.kind, schema=schema_to_update)
 
     def process_human_friendly_id(self, kinds: list[str] | None = None, raise_parsing_errors: bool = True) -> None:
-        """
-        For each schema node, if there is no HFID defined, set it with:
+        """For each schema node, if there is no HFID defined, set it with:
         - The first unique attribute if existing
         - Otherwise the first uniqueness constraint with a single attribute
 
@@ -1636,7 +1632,6 @@ class SchemaBranch:
 
         Register the HFIDs after all processing and validation has been done.
         """
-
         self.hfids = HFIDs()
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
@@ -1716,7 +1711,6 @@ class SchemaBranch:
         """Extend all the nodes with the attributes and relationships
         from the Interface objects defined in inherited_from.
         """
-
         generics_used_by = defaultdict(list)
         node_inheritance_handler = NodeInheritanceHandler()
 
@@ -1780,7 +1774,6 @@ class SchemaBranch:
 
         if either node on a relationship support branch, the relationship must be branch aware.
         """
-
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
@@ -1847,7 +1840,6 @@ class SchemaBranch:
 
     def process_cardinality_counts(self) -> None:
         """Ensure that all relationships with a cardinality of ONE have a min_count and max_count of 1."""
-
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
@@ -2496,6 +2488,7 @@ class SchemaBranch:
 
         Returns:
             A RelationshipSchema for the resource pool relationship, or None if not applicable
+
         """
         if attr.kind != "Number" or not attr.support_templates:
             return None
@@ -2530,6 +2523,7 @@ class SchemaBranch:
 
         Returns:
             A RelationshipSchema for the resource pool relationship, or None if not applicable
+
         """
         peer_schema = self.get(name=relationship.peer, duplicate=False)
         if not isinstance(peer_schema, NodeSchema | GenericSchema):

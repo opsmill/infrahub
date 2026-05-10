@@ -131,8 +131,8 @@ class NodePropertyMixin:
         """Set the value of the node_property.
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
-        if the value is None, we just initialize the 2 variables."""
-
+        if the value is None, we just initialize the 2 variables.
+        """
         if isinstance(value, str | UUID):
             setattr(self, f"{name}_id", value)
             setattr(self, f"_{name}", None)
@@ -150,7 +150,6 @@ class NodePropertyMixin:
 
     async def _retrieve_node_property(self, db: InfrahubDatabase, name: str) -> None:
         """Query the node associated with this node_property from the database."""
-
         node = await registry.manager.get_one(db=db, id=getattr(self, f"{name}_id"), branch=self.branch, at=self.at)
         setattr(self, f"_{name}", node)
         if node:

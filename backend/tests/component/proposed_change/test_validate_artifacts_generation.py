@@ -495,7 +495,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: dev1 and dev3 change 'name' (queried), dev2 changes 'description' (not queried).
-        Only art1 and art3 should be regenerated."""
+        Only art1 and art3 should be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -531,7 +532,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: all devices change 'description' (not queried).
-        No artifacts should be regenerated."""
+        No artifacts should be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -567,7 +569,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: all 4 devices change 'name' (queried).
-        All 4 artifacts should be regenerated."""
+        All 4 artifacts should be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -610,7 +613,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
     ) -> None:
         """Unique query with artdef_partial: dev3 changes 'description' (not queried).
         dev1 and dev2 have existing artifacts that are not impacted.
-        dev3 and dev4 have no existing artifacts (artifact_id=None) → always regenerated."""
+        dev3 and dev4 have no existing artifacts (artifact_id=None) → always regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -645,7 +649,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
     ) -> None:
         """Non-unique query: only 'description' (not queried) changes.
         Even though the query can't target specific nodes, the queried fields
-        haven't changed so no regeneration is needed."""
+        haven't changed so no regeneration is needed.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -679,7 +684,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Non-unique query: dev2 changes 'name' (queried).
-        Because the query cannot identify specific targets, all 4 artifacts must be regenerated."""
+        Because the query cannot identify specific targets, all 4 artifacts must be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary = [
@@ -718,7 +724,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """When source branch is synced with git and the repository has file changes,
-        all artifacts must be regenerated regardless of which fields changed."""
+        all artifacts must be regenerated regardless of which fields changed.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         # Only description changed (not queried) — but managed_branch=True overrides this
@@ -762,7 +769,8 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """When source branch is synced with git but no file changes, field-level targeting
-        still applies. Only the artifact for dev1 (name changed) should be regenerated."""
+        still applies. Only the artifact for dev1 (name changed) should be regenerated.
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         # No files_changed → has_file_modifications=False → managed_branch=False

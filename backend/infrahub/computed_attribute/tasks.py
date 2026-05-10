@@ -234,6 +234,7 @@ async def process_jinja2(
 
     Returns:
         None
+
     """
     log = get_run_logger()
     client = get_client()

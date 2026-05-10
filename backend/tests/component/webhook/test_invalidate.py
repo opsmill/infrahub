@@ -150,7 +150,8 @@ class TestCacheInvalidationFlow:
         self, db: InfrahubDatabase, register_core_models_schema: None, default_branch: Branch
     ) -> None:
         """When one of two webhooks has its headers deleted, only the remaining one is found. Cache deletion should be
-        managed through the configure flow related to webhooks headers, not this one"""
+        managed through the configure flow related to webhooks headers, not this one
+        """
         default_branch.update_schema_hash()
         kv = await _create_keyvalue(db, default_branch, "x-shared-del", "X-Shared-Del", "shared")
         wh_kept = await _create_webhook(db, default_branch, "hook-kept", headers=[kv])

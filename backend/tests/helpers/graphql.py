@@ -36,10 +36,7 @@ async def graphql(
     execution_context_class: type[ExecutionContext] | None = None,
     is_awaitable: Callable[[Any], bool] | None = None,
 ) -> ExecutionResult:
-    """
-    Call `graphql` from graphql core package, and log potential errors to have full stack trace.
-    """
-
+    """Call `graphql` from graphql core package, and log potential errors to have full stack trace."""
     result = await graphql_core(
         schema=schema,
         source=source,

@@ -38,7 +38,6 @@ def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[Que
         We are adding more weight (500) to the record for which the last action was to set "from"
          versus a record with "from" and "to" set.
     """
-
     results_dict = {}
 
     for result in results:
@@ -276,7 +275,6 @@ class QueryResult:
 
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
-
         for item in self.data:
             if isinstance(item, Neo4jRelationship):
                 yield item
@@ -416,7 +414,8 @@ class Query:
 
     def get_context(self) -> dict[str, str]:
         """Provide additional context for this query, beyond the name.
-        Right now it's mainly used to add more labels to the metrics."""
+        Right now it's mainly used to add more labels to the metrics.
+        """
         return {}
 
     @staticmethod
@@ -428,8 +427,8 @@ class Query:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines
-        Trailing and leading spaces per line will be removed."""
-
+        Trailing and leading spaces per line will be removed.
+        """
         if isinstance(query, list):
             for item in query:
                 self.add_to_query(query=item)
@@ -525,7 +524,6 @@ class Query:
 
         The params string must be executed on its own window in Neo4j, before executing the query.
         """
-
         params = []
 
         for key, value in self.params.items():
@@ -599,7 +597,6 @@ class Query:
         """Count the number of results matching a READ query.
         OFFSET and LIMIT are automatically excluded when counting.
         """
-
         if self.type == QueryType.WRITE:
             raise TypeError("Unable to count the number of response on a Write query.")
         if self.type != QueryType.READ:
@@ -616,7 +613,6 @@ class Query:
 
     def get_result(self) -> QueryResult | None:
         """Return a single Result."""
-
         if not self.has_been_executed:
             return None
 
@@ -630,7 +626,6 @@ class Query:
 
     def get_results(self) -> Generator[QueryResult, None, None]:
         """Get all the results sorted by score."""
-
         score_idx = {}
         for idx, result in enumerate(self.results):
             score_idx[idx] = result.branch_score
@@ -643,8 +638,8 @@ class Query:
 
         Examples:
             get_results_group_by(("n", "uuid"), ("a", "name")):
-        """
 
+        """
         attrs_info = defaultdict(list)
 
         # Extract all attrname and relationships on all branches

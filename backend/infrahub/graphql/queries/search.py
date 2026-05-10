@@ -39,7 +39,6 @@ def _collapse_ipv6(s: str) -> str:
     Raises an error if input does not resemble an IPv6 address in extended format. It means this function also raises
     an error if input string is the start of an IPv6 address in collapsed format.
     """
-
     try:
         return str(ipaddress.IPv6Address(s))
     except ipaddress.AddressValueError:

@@ -129,6 +129,7 @@ class InfrahubMutationMixin:
 
         Returns:
             `True` if a file was stored, `False` otherwise.
+
         """
         if not file_processor:
             return False
@@ -267,10 +268,7 @@ class InfrahubMutationMixin:
         obj: Node,
         skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
-        """
-        Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
-        """
-
+        """Wrapper around mutate_update to potentially activate locking and call it within a database transaction."""
         # Prepare a clone to compute locks without triggering pool allocations
         preview_obj = await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -385,13 +383,11 @@ class InfrahubMutationMixin:
         database: InfrahubDatabase | None = None,
         file_processor: FileUploadProcessor | None = None,
     ) -> UpsertResult:
-        """
-        First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
+        """First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
         default_filter. If not, we will try to create the node, but this creation might fail if payload contains
         hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
         we would update the node without rerunning uniqueness constraint.
         """
-
         schema = cls._meta.active_schema
         schema_name = schema.kind
 

@@ -212,8 +212,7 @@ DELETE e1, e2
 
 
 class Migration039(ArbitraryMigration):
-    """
-    Identify all IP prefixes/addresses that have been updated on a branch and reconcile them on that branch
+    """Identify all IP prefixes/addresses that have been updated on a branch and reconcile them on that branch
     If any of the identified IP prefixes/addresses are their own parent/child, delete those illegal edges before reconciling.
     """
 

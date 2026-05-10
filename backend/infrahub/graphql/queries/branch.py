@@ -32,6 +32,7 @@ def standard_node_ordering_from_order_input(order: OrderInput | None = None) -> 
 
     Raises:
         ValidationError: If both created_at and updated_at are specified.
+
     """
     if order is None or not order.node_metadata:
         return StandardNodeOrdering()

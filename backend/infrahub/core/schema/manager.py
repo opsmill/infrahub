@@ -222,7 +222,6 @@ class SchemaManager(NodeManager):
 
     def register_schema(self, schema: SchemaRoot, branch: str | None = None) -> SchemaBranch:
         """Register all nodes, generics & groups from a SchemaRoot object into the registry."""
-
         branch = branch or registry.default_branch
         schema_branch = self.get_schema_branch(name=branch)
         schema_branch.load_schema(schema=schema)
@@ -239,7 +238,6 @@ class SchemaManager(NodeManager):
         branch: Branch | str | None = None,
     ) -> SchemaBranchDiff:
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
-
         branch = await registry.get_branch(branch=branch, db=db)
 
         added_nodes = []
@@ -772,8 +770,8 @@ class SchemaManager(NodeManager):
 
         Returns:
             SchemaBranch
-        """
 
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         schema = schema or SchemaBranch(cache=self._cache, name=branch.name)
 
@@ -882,7 +880,6 @@ class SchemaManager(NodeManager):
 
     def purge_inactive_branches(self, active_branches: list[str]) -> list[str]:
         """Return non active branches that were purged."""
-
         hashes_to_keep: set[str] = set()
         branch_processed: set[str] = set()
         for active_branch in active_branches:
