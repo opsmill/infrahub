@@ -1,0 +1,18 @@
+# Shared Jira configuration for the Infrahub preset.
+# Values here are committed to the repo; per-user overrides live in templates/overrides/.
+
+cloud: opsmill.atlassian.net            # resolved via getAccessibleAtlassianResources
+default_project_key: IFC
+default_issue_type: Task
+
+# Human-friendly name -> Jira custom field ID.
+# Retrieve real IDs with mcp__claude_ai_Atlassian__getJiraIssueTypeMetaWithFields
+# and replace the placeholders below before first run.
+custom_fields:
+  epic_link: customfield_XXXXX
+  team:      customfield_XXXXX
+  sprint:    customfield_XXXXX
+  story_points: customfield_XXXXX
+
+labels_default:
+  - spec-kit

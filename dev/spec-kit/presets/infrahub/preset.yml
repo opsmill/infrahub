@@ -4,8 +4,8 @@ schema_version: "1.0"
 preset:
   id: "infrahub"
   name: "Infrahub Workflow"
-  version: "1.0.0"
-  description: "Infrahub-specific SpecKit customizations: enforces Jira/JPD ticket reference on feature branch creation"
+  version: "1.1.0"
+  description: "Infrahub-specific SpecKit customizations"
   author: "opsmill"
   license: "MIT"
 
@@ -20,8 +20,15 @@ provides:
       description: "Validate Jira/JPD ticket reference and create a feature branch"
       replaces: "speckit.git.feature"
       strategy: "replace"
+    - type: "command"
+      name: "speckit.taskstoissues"
+      file: "commands/speckit.infrahub.taskstoissues.md"
+      description: "Convert tasks.md into Jira issues under a single Epic"
+      replaces: "speckit.taskstoissues"
+      strategy: "replace"
 
 tags:
   - "infrahub"
   - "jira"
   - "branching"
+  - "taskstoissues"
