@@ -2,11 +2,12 @@ import pytest
 from infrahub_sdk.client import InfrahubClient
 
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import HashableModelState
+from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.node import Node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.node_schema import NodeSchema
+from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.database import InfrahubDatabase
 from tests.helpers.schema import load_schema
 from tests.helpers.test_app import TestInfrahubApp
@@ -244,4 +245,169 @@ class TestTemplateAttributeLifecycle(TestInfrahubApp):
         with pytest.raises(AttributeError):
             _ = retrieved.hobby
 
+        await assert_no_virtual_schema_relationships_in_db(db)
+
+
+class TestTemplateUniqueAttributeLifecycle(TestInfrahubApp):
+    """Test that toggling unique on an attribute correctly adds/removes it from sub-template schema and instances.
+
+    Schema: LifecycleDevice (generate_template=True) has a COMPONENT relationship to LifecyclePart.
+    LifecyclePart.serial_number starts with unique=True so TemplateLifecyclePart does NOT have it.
+    """
+
+    @pytest.fixture(scope="class")
+    def part_schema_unique_serial(self) -> NodeSchema:
+        return NodeSchema(
+            name="Part",
+            namespace="Lifecycle",
+            label="Part",
+            attributes=[
+                # unique=True excludes name from TemplateLifecyclePart
+                AttributeSchema(name="name", kind="Text", unique=True),
+                AttributeSchema(name="serial_number", kind="Text", optional=True, unique=True),
+            ],
+        )
+
+    @pytest.fixture(scope="class")
+    def device_schema(self) -> NodeSchema:
+        return NodeSchema(
+            name="Device",
+            namespace="Lifecycle",
+            label="Device",
+            generate_template=True,
+            attributes=[AttributeSchema(name="hostname", kind="Text", unique=True)],
+            relationships=[
+                RelationshipSchema(
+                    name="parts",
+                    peer="LifecyclePart",
+                    kind=RelationshipKind.COMPONENT,
+                    cardinality=RelationshipCardinality.MANY,
+                    optional=True,
+                )
+            ],
+        )
+
+    @pytest.fixture(scope="class")
+    async def schema_step_01(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        part_schema_unique_serial: NodeSchema,
+        device_schema: NodeSchema,
+        client: InfrahubClient,
+    ) -> None:
+        schema_root = SchemaRoot(version="1.0", nodes=[device_schema, part_schema_unique_serial])
+        await load_schema(db=db, schema=schema_root, branch_name=default_branch.name, update_db=True)
+
+    @pytest.fixture(scope="class")
+    async def template_part_1(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        schema_step_01: None,
+    ) -> Node:
+        template_part = await Node.init(db=db, schema="TemplateLifecyclePart", branch=default_branch)
+        await template_part.new(db=db, template_name="part-template-1")
+        await template_part.save(db=db)
+        return template_part
+
+    async def test_step_01_serial_number_absent_from_template(
+        self,
+        default_branch: Branch,
+        schema_step_01: None,
+        template_part_1: Node,
+        client: InfrahubClient,
+    ) -> None:
+        """Initially, serial_number is unique=True so it is absent from the template schema and instance."""
+        template_schema = await client.schema.get(
+            kind="TemplateLifecyclePart", branch=default_branch.name, refresh=True
+        )
+        assert "serial_number" not in template_schema.attribute_names
+
+        retrieved = await client.get(kind="TemplateLifecyclePart", id=template_part_1.id)
+        with pytest.raises(AttributeError):
+            _ = retrieved.serial_number
+
+    @pytest.fixture(scope="class")
+    async def schema_step_02(
+        self,
+        default_branch: Branch,
+        part_schema_unique_serial: NodeSchema,
+        device_schema: NodeSchema,
+        schema_step_01: None,
+        client: InfrahubClient,
+    ) -> None:
+        """Update serial_number: unique=True → False. Migration should add it to existing template instances."""
+        updated_part = part_schema_unique_serial.model_copy(deep=True)
+        updated_part.get_attribute("serial_number").unique = False
+        updated_part.uniqueness_constraints = [["name__value"]]
+        schema_root = SchemaRoot(version="1.0", nodes=[device_schema, updated_part])
+        response = await client.schema.load(schemas=[schema_root.model_dump()], branch=default_branch.name)
+        assert not response.errors
+        assert response.schema_updated
+
+    async def test_step_02_serial_number_added_to_template(
+        self,
+        default_branch: Branch,
+        schema_step_02: None,
+        template_part_1: Node,
+        client: InfrahubClient,
+    ) -> None:
+        """After unique=True → False, serial_number appears in the template schema and existing instances."""
+        template_schema = await client.schema.get(
+            kind="TemplateLifecyclePart", branch=default_branch.name, refresh=True
+        )
+        assert "serial_number" in template_schema.attribute_names
+
+        retrieved = await client.get(kind="TemplateLifecyclePart", id=template_part_1.id)
+        assert retrieved.serial_number.value is None
+
+    async def test_step_02b_set_serial_value(
+        self,
+        default_branch: Branch,
+        schema_step_02: None,
+        template_part_1: Node,
+        client: InfrahubClient,
+    ) -> None:
+        """Verify the newly added attribute is writable on the template instance."""
+        retrieved = await client.get(kind="TemplateLifecyclePart", id=template_part_1.id)
+        retrieved.serial_number.value = "SN-99999"
+        await retrieved.save()
+
+        updated = await client.get(kind="TemplateLifecyclePart", id=template_part_1.id)
+        assert updated.serial_number.value == "SN-99999"
+
+    @pytest.fixture(scope="class")
+    async def schema_step_03(
+        self,
+        default_branch: Branch,
+        part_schema_unique_serial: NodeSchema,
+        device_schema: NodeSchema,
+        schema_step_02: None,
+        client: InfrahubClient,
+    ) -> None:
+        """Revert serial_number: unique=False → True. Migration should remove it from template instances."""
+        schema_root = SchemaRoot(version="1.0", nodes=[device_schema, part_schema_unique_serial])
+        response = await client.schema.load(schemas=[schema_root.model_dump()], branch=default_branch.name)
+        assert not response.errors
+        assert response.schema_updated
+
+    async def test_step_03_serial_number_removed_from_template(
+        self,
+        default_branch: Branch,
+        schema_step_03: None,
+        template_part_1: Node,
+        client: InfrahubClient,
+    ) -> None:
+        """After unique=False → True, serial_number is absent from the template schema and instance again."""
+        template_schema = await client.schema.get(
+            kind="TemplateLifecyclePart", branch=default_branch.name, refresh=True
+        )
+        assert "serial_number" not in template_schema.attribute_names
+
+        retrieved = await client.get(kind="TemplateLifecyclePart", id=template_part_1.id)
+        with pytest.raises(AttributeError):
+            _ = retrieved.serial_number
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await assert_no_virtual_schema_relationships_in_db(db)

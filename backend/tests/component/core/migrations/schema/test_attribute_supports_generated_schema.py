@@ -327,7 +327,7 @@ async def device_part_schema_read_only_serial(
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
     serial_number starts read_only=True so it is NOT on template instances."""
-    part = _PART.model_copy(deep=True)
+    part = _PART.duplicate()
     part.get_attribute("serial_number").read_only = True
     registry.schema.register_schema(
         schema=SchemaRoot(generics=[core_object_template, core_object_component_template]),
@@ -473,16 +473,8 @@ async def test_migration_unique_enable_support(
     new_attr = new_car_schema.get_attribute(name="nbr_seats")
     new_attr.id = prev_attr.id
     new_attr.unique = False
-    # When a user removes unique=True from their schema definition, the uniqueness_constraints
-    # are rebuilt from scratch (not inherited). Replicate that by removing the stale entry.
-    # Constraint paths use the "attr__value" format (e.g. "nbr_seats__value"), so we must
-    # check startswith rather than an exact string match.
     if new_car_schema.uniqueness_constraints:
-        new_car_schema.uniqueness_constraints = [
-            paths
-            for paths in new_car_schema.uniqueness_constraints
-            if not any(p == "nbr_seats" or p.startswith("nbr_seats__") for p in paths)
-        ] or None
+        new_car_schema.uniqueness_constraints = [["name__value"]]
     candidate_schema.set(name="TestCar", schema=new_car_schema)
 
     migration = AttributeSupportsGeneratedSchemaMigration(
@@ -516,7 +508,7 @@ async def device_part_schema_unique_serial(
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
     serial_number starts unique=True so it is NOT on template instances."""
-    part = _PART.model_copy(deep=True)
+    part = _PART.duplicate()
     part.get_attribute("serial_number").unique = True
     registry.schema.register_schema(
         schema=SchemaRoot(generics=[core_object_template, core_object_component_template]),
