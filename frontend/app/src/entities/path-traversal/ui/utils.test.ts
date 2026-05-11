@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { formatRelName, getKindColor, HIDDEN_NAMESPACES } from "./utils";
+import { getKindColor, HIDDEN_NAMESPACES } from "./utils";
 
 describe("getKindColor", () => {
   test("returns a string", () => {
@@ -30,28 +30,6 @@ describe("getKindColor", () => {
     const result = getKindColor("");
     expect(typeof result).toBe("string");
     expect(result).toMatch(/^#[0-9a-f]{6}$/);
-  });
-});
-
-describe("formatRelName", () => {
-  test("replaces __ with /", () => {
-    const result = formatRelName("device__interfaces");
-    expect(result).toBe("device / interfaces");
-  });
-
-  test("handles multiple __ separators", () => {
-    const result = formatRelName("a__b__c");
-    expect(result).toBe("a / b / c");
-  });
-
-  test("returns single segment unchanged", () => {
-    const result = formatRelName("interfaces");
-    expect(result).toBe("interfaces");
-  });
-
-  test("handles empty string", () => {
-    const result = formatRelName("");
-    expect(result).toBe("");
   });
 });
 

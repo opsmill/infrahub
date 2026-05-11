@@ -5,9 +5,6 @@ import {
   getBezierPath,
   getSmoothStepPath,
 } from "@xyflow/react";
-import { useMemo } from "react";
-
-import { formatRelName } from "./utils";
 
 export type EdgeStyle = "bezier" | "smoothstep";
 
@@ -40,20 +37,16 @@ export function PathEdge({
   const highlighted = edgeData?.highlighted ?? true;
   const edgeStyle = edgeData?.edgeStyle ?? "bezier";
 
-  const [edgePath, labelX, labelY] = useMemo(() => {
-    const args = { sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition };
-    return edgeStyle === "smoothstep" ? getSmoothStepPath(args) : getBezierPath(args);
-  }, [sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, edgeStyle]);
+  const pathArgs = { sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition };
+  const [edgePath, labelX, labelY] =
+    edgeStyle === "smoothstep" ? getSmoothStepPath(pathArgs) : getBezierPath(pathArgs);
 
-  const baseStyle = useMemo<React.CSSProperties>(
-    () => ({
-      stroke: highlighted ? "#3b82f6" : "#94a3b8",
-      strokeWidth: highlighted ? 2.5 : 1,
-      opacity: highlighted ? 1 : 0.6,
-      strokeDasharray: highlighted ? undefined : "6 4",
-    }),
-    [highlighted]
-  );
+  const baseStyle: React.CSSProperties = {
+    stroke: highlighted ? "#3b82f6" : "#94a3b8",
+    strokeWidth: highlighted ? 2.5 : 1,
+    opacity: highlighted ? 1 : 0.6,
+    strokeDasharray: highlighted ? undefined : "6 4",
+  };
 
   return (
     <>
@@ -69,7 +62,7 @@ export function PathEdge({
             }}
             className="rounded border border-blue-200 bg-white px-1.5 py-0.5 text-blue-700 text-xs shadow-sm"
           >
-            {formatRelName(edgeData.label)}
+            {edgeData.label}
           </div>
         </EdgeLabelRenderer>
       )}

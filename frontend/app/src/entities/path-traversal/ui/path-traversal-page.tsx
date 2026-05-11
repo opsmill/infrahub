@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { parseAsStringEnum, useQueryState } from "nuqs";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 
 import { DependenciesModeMain } from "./dependencies-mode/dependencies-mode-main";
 import { DependenciesModeSidebar } from "./dependencies-mode/dependencies-mode-sidebar";
@@ -35,7 +35,9 @@ export function PathTraversalPage() {
   );
   const [parametersOpen, setParametersOpen] = useState(true);
 
-  const toggleParameters = useCallback(() => setParametersOpen((open) => !open), []);
+  function toggleParameters() {
+    setParametersOpen((open) => !open);
+  }
 
   const meta = MODE_META[mode];
 

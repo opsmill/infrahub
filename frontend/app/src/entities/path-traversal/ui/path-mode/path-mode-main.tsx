@@ -23,11 +23,14 @@ export function PathModeMain({ parametersOpen, onParametersClick }: PathModeMain
     { enabled: !!params.source && !!params.destination }
   );
 
+  const data = query.data;
+  const destinationIds = new Set(data ? [data.destination.id] : []);
+
   const overlay = getQueryStateOverlay({
     error: query.error as Error | null,
     isLoading: query.isPending && query.fetchStatus === "fetching",
-    isEmpty: !query.data || query.data.paths.length === 0,
-    hasRun: !!query.data,
+    isEmpty: !data || data.paths.length === 0,
+    hasRun: !!data,
     loadingMessage: "Finding paths...",
     emptyMessage: "No paths found",
     idleMessage: 'Select two objects and click "Find Paths"',
@@ -35,7 +38,9 @@ export function PathModeMain({ parametersOpen, onParametersClick }: PathModeMain
 
   return (
     <PathFlowGraph
-      data={query.data ?? null}
+      paths={data?.paths ?? []}
+      sourceId={data?.source.id ?? ""}
+      destinationIds={destinationIds}
       selectedPathIndex={params.selectedPath}
       onPathSelect={(index) => setParams({ selectedPath: index })}
       onExcludeKind={(kind) =>
@@ -47,7 +52,7 @@ export function PathModeMain({ parametersOpen, onParametersClick }: PathModeMain
       }
       parametersOpen={parametersOpen}
       onParametersClick={onParametersClick}
-      onReload={query.data ? () => query.refetch() : undefined}
+      onReload={data ? () => query.refetch() : undefined}
       isReloading={query.isFetching}
       overlay={overlay}
     />

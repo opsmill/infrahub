@@ -4,22 +4,33 @@ import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 import type {
-  GetReachableObjectsParams,
-  ReachableObjectsResponse,
+  GetReachableNodesParams,
+  ReachableNodesResponse,
 } from "@/entities/path-traversal/domain/path-traversal.types";
 
+const nodeFields = {
+  id: true,
+  kind: true,
+  label: true,
+  display_label: true,
+  hfid: true,
+};
+
 const pathFields = {
-  objects: {
-    __aliasFor: "nodes",
-    id: true,
-    kind: true,
-    display_label: true,
+  hops: {
+    node: nodeFields,
+    relationship: {
+      from_rel: true,
+      from_label: true,
+      to_rel: true,
+      to_label: true,
+      kind: true,
+    },
   },
-  relationships: { id: true, name: true, direction: true },
   depth: true,
 };
 
-export async function getReachableObjectsFromApi(params: GetReachableObjectsParams) {
+export async function getReachableNodesFromApi(params: GetReachableNodesParams) {
   const { sourceId, targetKinds, maxDepth, maxResults, branchName, atDate } = params;
 
   const dataArgs: Record<string, unknown> = {
@@ -31,26 +42,21 @@ export async function getReachableObjectsFromApi(params: GetReachableObjectsPara
 
   const queryString = jsonToGraphQLQuery({
     query: {
-      __name: "GetReachableObjects",
+      __name: "GetReachableNodes",
       InfrahubReachableNodes: {
         __args: { data: dataArgs },
-        source: { id: true, kind: true, display_label: true },
-        reachable_objects: {
-          __aliasFor: "reachable_nodes",
-          id: true,
-          kind: true,
-          display_label: true,
+        source: nodeFields,
+        dependencies: {
+          node: nodeFields,
           depth: true,
-          relationship_name: true,
           path: pathFields,
         },
-        paths: pathFields,
-        total_found: true,
+        count: true,
       },
     },
   });
 
-  return graphqlClient.query<{ InfrahubReachableNodes: ReachableObjectsResponse }>({
+  return graphqlClient.query<{ InfrahubReachableNodes: ReachableNodesResponse }>({
     query: gql(queryString),
     context: { branch: branchName, date: atDate },
   });

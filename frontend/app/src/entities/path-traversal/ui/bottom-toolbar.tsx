@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Panel, useReactFlow } from "@xyflow/react";
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -40,7 +40,9 @@ export function BottomToolbar({
     setExportMenuOpen(false);
   };
 
-  const closeExportMenu = useCallback(() => setExportMenuOpen(false), []);
+  function closeExportMenu() {
+    setExportMenuOpen(false);
+  }
   useDismiss(exportMenuRef, closeExportMenu, exportMenuOpen);
 
   return (

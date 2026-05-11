@@ -1,17 +1,40 @@
 import { describe, expect, test } from "vitest";
 
-import type { PathResult, PathTraversalResponse } from "../domain/path-traversal.types";
+import type {
+  PathHop,
+  PathNode,
+  PathResult,
+  PathTraversalResponse,
+} from "../domain/path-traversal.types";
 import { copyAllPathsAsText, formatPathAsText, getKindCounts, pathPreview } from "./format-paths";
 
-const a = { id: "a", kind: "InfraDevice", display_label: "router-1" };
-const b = { id: "b", kind: "InfraInterface", display_label: "Ethernet1" };
-const c = { id: "c", kind: "InfraDevice", display_label: "router-2" };
+const node = (id: string, kind: string, label: string): PathNode => ({
+  id,
+  kind,
+  label: kind,
+  display_label: label,
+  hfid: [label],
+});
 
-const rel = (name: string) => ({ id: `r-${name}`, name, direction: "OUTBOUND" as const });
+const a = node("a", "InfraDevice", "router-1");
+const b = node("b", "InfraInterface", "Ethernet1");
+const c = node("c", "InfraDevice", "router-2");
+
+const rel = (from: string, to: string) => ({
+  from_rel: from,
+  from_label: from,
+  to_rel: to,
+  to_label: to,
+  kind: "Generic",
+});
+
+const hop = (n: PathNode, relationship: PathHop["relationship"] = null): PathHop => ({
+  node: n,
+  relationship,
+});
 
 const path: PathResult = {
-  objects: [a, b, c],
-  relationships: [rel("device__interfaces"), rel("interface__device")],
+  hops: [hop(a), hop(b, rel("interfaces", "device")), hop(c, rel("device", "interfaces"))],
   depth: 2,
 };
 
@@ -19,24 +42,22 @@ const response: PathTraversalResponse = {
   paths: [path],
   source: a,
   destination: c,
-  total_paths_found: 1,
+  count: 1,
 };
 
 describe("formatPathAsText", () => {
-  test("renders objects joined by relationship names", () => {
+  test("renders nodes joined by relationship labels", () => {
     expect(formatPathAsText(response, 0)).toBe(
-      "router-1 -[device / interfaces]-> Ethernet1 -[interface / device]-> router-2"
+      "router-1 -[interfaces]-> Ethernet1 -[device]-> router-2"
     );
   });
 
   test("falls back to a plain arrow when a relationship is missing", () => {
     const broken: PathTraversalResponse = {
       ...response,
-      paths: [{ ...path, relationships: [rel("device__interfaces")] }],
+      paths: [{ ...path, hops: [hop(a), hop(b, rel("interfaces", "device")), hop(c)] }],
     };
-    expect(formatPathAsText(broken, 0)).toBe(
-      "router-1 -[device / interfaces]-> Ethernet1  ->  router-2"
-    );
+    expect(formatPathAsText(broken, 0)).toBe("router-1 -[interfaces]-> Ethernet1 -> router-2");
   });
 
   test("returns empty string for an out-of-range path index", () => {
@@ -46,10 +67,14 @@ describe("formatPathAsText", () => {
 
 describe("copyAllPathsAsText", () => {
   test("renders one numbered line per path", () => {
+    const shortPath: PathResult = {
+      hops: [hop(a), hop(c, rel("device", "interfaces"))],
+      depth: 1,
+    };
     const data: PathTraversalResponse = {
       ...response,
-      paths: [path, { ...path, objects: [a, c], relationships: [rel("foo")], depth: 1 }],
-      total_paths_found: 2,
+      paths: [path, shortPath],
+      count: 2,
     };
     expect(copyAllPathsAsText(data)).toBe(
       "Path 1: router-1 → Ethernet1 → router-2\nPath 2: router-1 → router-2"
@@ -57,19 +82,24 @@ describe("copyAllPathsAsText", () => {
   });
 
   test("returns empty string for zero paths", () => {
-    expect(copyAllPathsAsText({ ...response, paths: [], total_paths_found: 0 })).toBe("");
+    expect(copyAllPathsAsText({ ...response, paths: [], count: 0 })).toBe("");
   });
 });
 
 describe("pathPreview", () => {
-  test("returns the full chain when objects fit under the limit", () => {
+  test("returns the full chain when nodes fit under the limit", () => {
     expect(pathPreview(path, 5)).toBe("router-1 -> Ethernet1 -> router-2");
   });
 
-  test("returns first -> ... -> last when objects exceed the limit", () => {
+  test("returns first -> ... -> last when nodes exceed the limit", () => {
     const longPath: PathResult = {
       ...path,
-      objects: [a, b, c, { ...a, id: "d", display_label: "router-3" }],
+      hops: [
+        hop(a),
+        hop(b, rel("interfaces", "device")),
+        hop(c, rel("device", "interfaces")),
+        hop(node("d", "InfraDevice", "router-3"), rel("link", "link")),
+      ],
     };
     expect(pathPreview(longPath, 3)).toBe("router-1 -> ... -> router-3");
   });
@@ -84,7 +114,7 @@ describe("getKindCounts", () => {
     expect(getKindCounts(path)).toBe("2x InfraDevice, 1x InfraInterface");
   });
 
-  test("returns an empty string for a path with no objects", () => {
-    expect(getKindCounts({ ...path, objects: [] })).toBe("");
+  test("returns an empty string for a path with no hops", () => {
+    expect(getKindCounts({ ...path, hops: [] })).toBe("");
   });
 });

@@ -1,5 +1,5 @@
 import { PathFlowGraph } from "../path-flow-graph";
-import { useGetReachableObjects } from "../queries/get-reachable-objects.query";
+import { useGetReachableNodes } from "../queries/get-reachable-nodes.query";
 import { getQueryStateOverlay } from "../query-state-overlay";
 import { useDependenciesModeParams } from "./use-dependencies-mode-params";
 
@@ -14,7 +14,7 @@ export function DependenciesModeMain({
 }: DependenciesModeMainProps) {
   const [params, setParams] = useDependenciesModeParams();
 
-  const query = useGetReachableObjects(
+  const query = useGetReachableNodes(
     {
       sourceId: params.source,
       targetKinds: params.targetKinds,
@@ -25,40 +25,24 @@ export function DependenciesModeMain({
 
   const data = query.data;
 
+  const paths = data ? data.dependencies.map((dep) => dep.path) : [];
+  const destinationIds = new Set(data ? data.dependencies.map((dep) => dep.node.id) : []);
+
   const overlay = getQueryStateOverlay({
     error: query.error as Error | null,
     isLoading: query.isPending && query.fetchStatus === "fetching",
-    isEmpty: !data || data.reachable_objects.length === 0,
+    isEmpty: !data || data.dependencies.length === 0,
     hasRun: !!data,
     loadingMessage: "Finding dependencies...",
     emptyMessage: "No dependencies found",
     idleMessage: 'Select a source object, target kinds, and click "Find Dependencies"',
   });
 
-  // PathFlowGraph requires a `destination`; reachable-objects queries don't have one,
-  // so we synthesize it from the first reachable object to satisfy the contract.
-  const firstObject = data?.reachable_objects[0];
-  const destination = firstObject
-    ? {
-        id: firstObject.id,
-        kind: firstObject.kind,
-        display_label: firstObject.display_label,
-      }
-    : data?.source;
-
-  const graphData =
-    data && destination
-      ? {
-          paths: data.paths,
-          source: data.source,
-          destination,
-          total_paths_found: data.paths.length,
-        }
-      : null;
-
   return (
     <PathFlowGraph
-      data={graphData}
+      paths={paths}
+      sourceId={data?.source.id ?? ""}
+      destinationIds={destinationIds}
       selectedPathIndex={params.selectedIndex}
       onPathSelect={(index) => setParams({ selectedIndex: index })}
       parametersOpen={parametersOpen}

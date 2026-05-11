@@ -8,17 +8,24 @@ import type {
   PathTraversalResponse,
 } from "@/entities/path-traversal/domain/path-traversal.types";
 
+const nodeFields = {
+  id: true,
+  kind: true,
+  label: true,
+  display_label: true,
+  hfid: true,
+};
+
 const pathFields = {
-  objects: {
-    __aliasFor: "nodes",
-    id: true,
-    kind: true,
-    display_label: true,
-  },
-  relationships: {
-    id: true,
-    name: true,
-    direction: true,
+  hops: {
+    node: nodeFields,
+    relationship: {
+      from_rel: true,
+      from_label: true,
+      to_rel: true,
+      to_label: true,
+      kind: true,
+    },
   },
   depth: true,
 };
@@ -52,9 +59,9 @@ export async function getPathTraversalFromApi(params: GetPathTraversalParams) {
       InfrahubPathTraversal: {
         __args: { data: dataArgs },
         paths: pathFields,
-        source: { id: true, kind: true, display_label: true },
-        destination: { id: true, kind: true, display_label: true },
-        total_paths_found: true,
+        source: nodeFields,
+        destination: nodeFields,
+        count: true,
       },
     },
   });

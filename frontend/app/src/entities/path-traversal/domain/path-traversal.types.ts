@@ -1,42 +1,46 @@
-export type PathObject = {
+export type PathNode = {
   id: string;
   kind: string;
+  label: string;
   display_label: string;
+  hfid: string[];
 };
 
 export type PathRelationship = {
-  id: string;
-  name: string;
-  direction: "OUTBOUND" | "INBOUND";
+  from_rel: string;
+  from_label: string;
+  to_rel: string;
+  to_label: string;
+  kind: string;
+};
+
+export type PathHop = {
+  node: PathNode;
+  relationship: PathRelationship | null;
 };
 
 export type PathResult = {
-  objects: PathObject[];
-  relationships: PathRelationship[];
+  hops: PathHop[];
   depth: number;
 };
 
 export type PathTraversalResponse = {
   paths: PathResult[];
-  source: PathObject;
-  destination: PathObject;
-  total_paths_found: number;
+  source: PathNode;
+  destination: PathNode;
+  count: number;
 };
 
-export type ReachableObject = {
-  id: string;
-  kind: string;
-  display_label: string;
+export type ReachableNode = {
+  node: PathNode;
   depth: number;
-  relationship_name: string;
   path: PathResult;
 };
 
-export type ReachableObjectsResponse = {
-  source: PathObject;
-  reachable_objects: ReachableObject[];
-  paths: PathResult[];
-  total_found: number;
+export type ReachableNodesResponse = {
+  source: PathNode;
+  dependencies: ReachableNode[];
+  count: number;
 };
 
 type ContextParams = {
@@ -54,7 +58,7 @@ export type GetPathTraversalParams = ContextParams & {
   excludedKinds?: string[];
 };
 
-export type GetReachableObjectsParams = ContextParams & {
+export type GetReachableNodesParams = ContextParams & {
   sourceId: string;
   targetKinds: string[];
   maxDepth?: number;
