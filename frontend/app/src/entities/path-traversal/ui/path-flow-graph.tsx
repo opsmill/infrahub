@@ -110,7 +110,12 @@ function NodeContextMenu({
 
   return (
     <>
-      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Close menu"
+        className="fixed inset-0 z-40 cursor-default"
+        onClick={onClose}
+      />
       <div
         className="fixed z-50 min-w-[180px] rounded-md border border-gray-200 bg-white py-1 shadow-lg"
         style={{ left: menu.x, top: menu.y }}
@@ -167,6 +172,10 @@ function NodeContextMenu({
   );
 }
 
+function hopPairs<T>(items: T[]): Array<readonly [T, T]> {
+  return items.slice(0, -1).map((item, i) => [item, items[i + 1] as T] as const);
+}
+
 function buildGraph(
   paths: PathResult[],
   sourceId: string,
@@ -179,14 +188,9 @@ function buildGraph(
 
   const selectedPath = paths[selectedPathIndex];
   const selectedNodeIds = new Set(selectedPath?.hops.map((hop) => hop.node.id) ?? []);
-  const selectedEdgeKeys = new Set<string>();
-  if (selectedPath) {
-    for (let i = 0; i < selectedPath.hops.length - 1; i++) {
-      const from = selectedPath.hops[i]?.node.id;
-      const to = selectedPath.hops[i + 1]?.node.id;
-      if (from && to) selectedEdgeKeys.add(`${from}-${to}`);
-    }
-  }
+  const selectedEdgeKeys = new Set(
+    hopPairs(selectedPath?.hops ?? []).map(([a, b]) => `${a.node.id}-${b.node.id}`)
+  );
 
   for (const path of paths) {
     for (const hop of path.hops) {
@@ -203,10 +207,7 @@ function buildGraph(
       }
     }
 
-    for (let i = 0; i < path.hops.length - 1; i++) {
-      const fromHop = path.hops[i];
-      const toHop = path.hops[i + 1];
-      if (!fromHop || !toHop) continue;
+    for (const [fromHop, toHop] of hopPairs(path.hops)) {
       const edgeKey = `${fromHop.node.id}-${toHop.node.id}`;
       if (edgeMap.has(edgeKey)) continue;
 
