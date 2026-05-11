@@ -1,3 +1,4 @@
+---
 # Shared Jira configuration for the Infrahub preset.
 # Values here are committed to the repo; per-user overrides live in templates/overrides/.
 
@@ -10,8 +11,8 @@ default_issue_type: Task
 # and replace the placeholders below before first run.
 custom_fields:
   epic_link: customfield_XXXXX
-  team:      customfield_XXXXX
-  sprint:    customfield_XXXXX
+  team: customfield_XXXXX
+  sprint: customfield_XXXXX
   story_points: customfield_XXXXX
 
 labels_default:
