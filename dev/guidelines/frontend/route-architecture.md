@@ -36,8 +36,8 @@ export function FeatureTabs() {
   return (
     <nav aria-label="Tabs">
       <Row className="border-gray-200 border-b">
-        <LinkTab href="/feature/index">Index</LinkTab>
-        <LinkTab href="/feature/data">Data</LinkTab>
+        <LinkTab to="/feature/index">Index</LinkTab>
+        <LinkTab to="/feature/data">Data</LinkTab>
       </Row>
     </nav>
   );
@@ -47,8 +47,8 @@ export function FeatureTabs() {
 Required:
 
 - **`<nav aria-label="Tabs">` wrapper.** Both for accessibility and because E2E tests use `page.getByRole("navigation", { name: "Tabs" })` / `page.getByLabel("Tabs")`. Missing the wrapper silently breaks tests on a future selector tightening.
-- **`LinkTab` from `@/shared/components/ui/link.tsx`.** Owns the active-state styling (uses `useMatch({ path: href, end: true })` internally), focus ring, and optional `scrollIntoViewOnActive` for dynamic tabs.
-- **Absolute hrefs** built via a dedicated URL helper (see [URL helpers per detail family](#url-helpers-per-detail-family)).
+- **`LinkTab` from `@/shared/components/ui/link.tsx`.** Owns the active-state styling (uses `useMatch({ path: to, end: true })` internally), focus ring, and optional `scrollIntoViewOnActive` for dynamic tabs.
+- **Absolute `to` values** built via a dedicated URL helper (see [URL helpers per detail family](#url-helpers-per-detail-family)).
 
 ## Sharing parent-loaded data with children
 
