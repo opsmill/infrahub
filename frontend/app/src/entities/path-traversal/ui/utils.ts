@@ -10,11 +10,11 @@ const KIND_COLORS = [
 ];
 
 export function getKindColor(kind: string): string {
-  let hash = 0;
+  let sum = 0;
   for (const char of kind) {
-    hash = hash * 31 + char.charCodeAt(0);
+    sum += char.charCodeAt(0);
   }
-  return KIND_COLORS[Math.abs(hash) % KIND_COLORS.length] as string;
+  return KIND_COLORS[sum % KIND_COLORS.length] as string;
 }
 
 // Mirrors backend/infrahub/core/query/path.py:35 (DEFAULT_EXCLUDED_NAMESPACES).
