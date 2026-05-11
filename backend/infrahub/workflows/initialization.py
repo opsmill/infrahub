@@ -1,3 +1,5 @@
+from urllib.parse import quote, urlencode
+
 from prefect import flow, task
 from prefect.blocks.redis import RedisStorageContainer
 from prefect.cache_policies import NONE
@@ -5,8 +7,10 @@ from prefect.client.orchestration import PrefectClient, get_client
 from prefect.client.schemas.actions import WorkPoolCreate
 from prefect.exceptions import ObjectAlreadyExists
 from prefect.logging import get_run_logger
+from pydantic import SecretStr
 
 from infrahub import config
+from infrahub.config import CacheSettings
 from infrahub.display_labels.gather import gather_trigger_display_labels_jinja2
 from infrahub.hfid.gather import gather_trigger_hfid
 from infrahub.trigger.catalogue import builtin_triggers
@@ -15,6 +19,38 @@ from infrahub.trigger.setup import setup_triggers
 
 from .catalogue import WORKER_POOLS, get_workflows
 from .models import TASK_RESULT_STORAGE_NAME
+
+
+def build_cache_connection_string(cache: CacheSettings) -> str:
+    """Build a redis:// or rediss:// URL from cache settings.
+
+    All TLS knobs propagate through redis.Redis.from_url: the scheme selects
+    SSLConnection, and ssl_cert_reqs / ssl_check_hostname / ssl_ca_certs query
+    params are passed through to the connection. This keeps the Prefect result
+    storage block in parity with lock.py and the cache adapter, which read the
+    same INFRAHUB_CACHE_TLS_* settings directly.
+    """
+    if cache.username and not cache.password:
+        raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
+
+    scheme = "rediss" if cache.tls_enabled else "redis"
+
+    userinfo = ""
+    if cache.username and cache.password:
+        userinfo = f"{quote(cache.username, safe='')}:{quote(cache.password, safe='')}@"
+    elif cache.password:
+        userinfo = f":{quote(cache.password, safe='')}@"
+
+    query: dict[str, str] = {}
+    if cache.tls_enabled:
+        if cache.tls_insecure:
+            query["ssl_cert_reqs"] = "none"
+            query["ssl_check_hostname"] = "False"
+        if cache.tls_ca_file:
+            query["ssl_ca_certs"] = cache.tls_ca_file
+
+    qs = f"?{urlencode(query)}" if query else ""
+    return f"{scheme}://{userinfo}{cache.address}:{cache.service_port}/{cache.database}{qs}"
 
 
 @task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)  # type: ignore[arg-type]
@@ -54,12 +90,8 @@ async def setup_blocks() -> None:
     except ObjectAlreadyExists:
         log.warning(f"Redis Storage {TASK_RESULT_STORAGE_NAME} already registered ")
 
-    redis_block = RedisStorageContainer.from_host(
-        host=config.SETTINGS.cache.address,
-        port=config.SETTINGS.cache.service_port,
-        db=config.SETTINGS.cache.database,
-        username=config.SETTINGS.cache.username or None,
-        password=config.SETTINGS.cache.password or None,
+    redis_block = RedisStorageContainer(
+        connection_string=SecretStr(build_cache_connection_string(config.SETTINGS.cache))
     )
     try:
         await redis_block.asave(name=TASK_RESULT_STORAGE_NAME, overwrite=True)
