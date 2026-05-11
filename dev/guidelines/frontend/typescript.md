@@ -97,10 +97,12 @@ The audit applies to **every file the rewrite commit lands in**, not just the ma
 Concretely, before declaring a `!`-cleanup commit done, run:
 
 ```bash
-git diff <base>...HEAD --name-only -- '*.ts' '*.tsx' | xargs rg -n '\!\s*[\.,)\]]' --
+git diff <base>...HEAD --name-only -- '*.ts' '*.tsx' | xargs rg -nP '(?<=[\w\])])!(?!=)' --
 ```
 
-and resolve each remaining hit (or explicitly note it as out-of-scope in the PR description).
+The lookbehind anchors on an identifier, `)`, or `]` so the prefix-`!` (logical NOT) doesn't match, and `(?!=)` excludes `!=` / `!==`. This catches postfix non-null assertions regardless of what follows (`.`, `,`, `;`, `)`, `]`, `}`, whitespace, end of line, `&&`, `||`, etc.).
+
+Resolve each remaining hit (or explicitly note it as out-of-scope in the PR description).
 
 ## Inference
 
