@@ -42,8 +42,8 @@ exports[`fix ts error`] = {
       [172, 63, 6, "tsc: Property \'length\' does not exist on type \'{}\'.", "1433765721"],
       [173, 34, 9, "tsc: Type \'{ value: unknown; }\' is not assignable to type \'Maybe<JsonAttribute>\'.\\n  Type \'{ value: unknown; }\' is missing 4 properties from type \'AttributeInterface\'", "1029368512"]
     ],
-    "src/entities/diff/ui/diff-utils.tsx:234739384": [
-      [31, 40, 4, "tsc: Argument of type \'string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "2088095368"]
+    "src/entities/diff/ui/diff-utils.tsx:2277927857": [
+      [30, 40, 4, "tsc: Argument of type \'string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "2088095368"]
     ],
     "src/entities/diff/ui/file-diff/file-content-diff.tsx:477325029": [
       [24, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
@@ -277,11 +277,11 @@ exports[`fix ts error`] = {
       [67, 45, 5, "tsc: Parameter \'index\' implicitly has an \'any\' type.", "178792571"],
       [102, 16, 4, "tsc: \'data\' is possibly \'undefined\'.", "2087377941"]
     ],
-    "src/entities/tasks/ui/task-item-details.tsx:550797006": [
-      [59, 25, 17, "tsc: Element implicitly has an \'any\' type because expression of type \'\\"InfrahubTask\\"\' can\'t be used to index type \'{}\'.\\n  Property \'InfrahubTask\' does not exist on type \'{}\'.", "1025837332"]
+    "src/entities/tasks/ui/task-item-details.tsx:2706751782": [
+      [56, 25, 17, "tsc: Element implicitly has an \'any\' type because expression of type \'\\"InfrahubTask\\"\' can\'t be used to index type \'{}\'.\\n  Property \'InfrahubTask\' does not exist on type \'{}\'.", "1025837332"]
     ],
-    "src/entities/tasks/ui/task-items.tsx:1246756644": [
-      [181, 35, 4, "tsc: Type \'null; }; state: { display: any; }; related_nodes: { display: Element; }; progress: { display: number | null; }; updated_at: { display: Element; }; }; }[] | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow[]\'.\\n  Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; }; } | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; } | null; }; workflow: { display: string | { title: { display: string; }; branch: { display: string\' is not assignable to type \'Record<string, number | string | tRowValue>\'.\\n        Property \'title\' is incompatible with index signature.\\n          Type \'{ display: string; }\' is not assignable to type \'string | number | tRowValue\'.\\n            Property \'value\' is missing in type \'{ display: string; }\' but required in type \'tRowValue\'.", "2088305148"]
+    "src/entities/tasks/ui/task-items.tsx:2642355725": [
+      [179, 35, 4, "tsc: Type \'null; }; state: { display: any; }; related_nodes: { display: Element; }; progress: { display: number | null; }; updated_at: { display: Element; }; }; }[] | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow[]\'.\\n  Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; }; } | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; } | null; }; workflow: { display: string | { title: { display: string; }; branch: { display: string\' is not assignable to type \'Record<string, number | string | tRowValue>\'.\\n        Property \'title\' is incompatible with index signature.\\n          Type \'{ display: string; }\' is not assignable to type \'string | number | tRowValue\'.\\n            Property \'value\' is missing in type \'{ display: string; }\' but required in type \'tRowValue\'.", "2088305148"]
     ],
     "src/entities/tasks/ui/tasks-filter-form.tsx:2418697749": [
       [53, 7, 13, "tsc: Property \'attribute\' is missing in type \'{ name: string; label: string; items: { value: string; label: string; }[]; }\' but required in type \'DropdownFieldProps\'.", "2023699356"],
@@ -353,9 +353,6 @@ exports[`fix ts error`] = {
     ],
     "src/shared/components/display/badge-circle.tsx:698452183": [
       [6, 12, 18, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "460855417"]
-    ],
-    "src/shared/components/display/pill.tsx:3424986267": [
-      [14, 12, 10, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "2879755880"]
     ],
     "src/shared/components/editor/json/json-editor.tsx:3111594132": [
       [49, 49, 20, "tsc: Argument of type \'Grammar | undefined\' is not assignable to parameter of type \'Grammar\'.\\n  Type \'undefined\' is not assignable to type \'Grammar\'.", "2776531305"]
