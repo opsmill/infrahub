@@ -63,7 +63,7 @@ Each packaging option comes with trade-offs. It's important to also consider you
 
 ### How can I install Infrahub?
 
-Check out the [Installing Infrahub](../deploy-manage/install-configure/install/) guide for detailed setup instructions.
+Check out the [Installing Infrahub](../deploy-manage/install-configure/install/overview) guide for detailed setup instructions.
 
 ### Where can I deploy Infrahub?
 
@@ -90,7 +90,7 @@ Infrahub is production-ready and has been deployed in a number of organizations 
 
 If you are planning to deploy Infrahub in a critical environment we recommend reaching out to our customer success team via [Discord](https://discord.gg/opsmill), [contact@opsmill.com](mailto:contact@opsmill.com) or [Online Meeting](https://cal.com/team/opsmill/meet).
 
-For teams preparing a production rollout, the [production deployment guide](../deploy-manage/install-configure/production-deployment/) collects the hardening recommendations we apply in customer environments.
+For teams preparing a production rollout, the [production deployment guide](../deploy-manage/install-configure/production-deployment/overview) collects the hardening recommendations we apply in customer environments.
 
 ### How much data can Infrahub handle right now?
 
@@ -121,7 +121,7 @@ No. A single Infrahub instance is designed as one clustered deployment in one re
 
 ### How do I back up and restore Infrahub?
 
-Database backup is a routine, automated operation, with native support for S3-compatible object storage. Compressed backups for large production deployments typically fall in the single-digit to tens of gigabytes range. See the [database backup and restore topic](../deploy-manage/maintain-upgrade/database-backup/) for step-by-step guidance and scheduling recommendations.
+Database backup is a routine, automated operation, with native support for S3-compatible object storage. Compressed backups for large production deployments typically fall in the single-digit to tens of gigabytes range. See the [database backup and restore topic](../deploy-manage/maintain-upgrade/database-backup/overview) for step-by-step guidance and scheduling recommendations.
 
 ### What are realistic recovery targets for Infrahub?
 
@@ -133,7 +133,7 @@ In deployment patterns where data-plane agents enforce their last-known desired 
 
 The `infrahub upgrade` command handles schema and database migrations. On Kubernetes, Helm runs the upgrade as a job during the release update and manages rolling pod updates. For VM-based deployments, documented procedures define the stop/upgrade/restart sequence with safety checks.
 
-We recommend a full database backup before every upgrade and validation in a staging environment that mirrors production topology. The [upgrade guide](../deploy-manage/maintain-upgrade/upgrade/) has the detailed steps.
+We recommend a full database backup before every upgrade and validation in a staging environment that mirrors production topology. The [upgrade guide](../deploy-manage/maintain-upgrade/upgrade/overview) has the detailed steps.
 
 ### What monitoring and observability does Infrahub provide?
 
@@ -143,7 +143,7 @@ In production, the most commonly monitored signals are API request latency, task
 
 ### How does Infrahub handle authentication and access control?
 
-Infrahub supports OAuth2 / OIDC single sign-on (see the [SSO guide](../deploy-manage/user-management/sso/)) and token-based API authentication (see [managing API tokens](../deploy-manage/user-management/managing-api-tokens)).
+Infrahub supports OAuth2 / OIDC single sign-on (see the [SSO guide](../deploy-manage/user-management/sso/overview) and token-based API authentication (see [managing API tokens](../deploy-manage/user-management/managing-api-tokens)).
 
 The RBAC model provides pre-configured roles (Admin, Standard User, Anonymous User), custom role creation, global permissions, and namespace-scoped object-level permissions with configurable decision types. Enterprise adds workflow-based approval processes with configurable approval thresholds and enforced approval gates. All changes are tracked immutably with actor attribution. Full details are in the [permissions reference](../reference/permissions.mdx) and the [change approval workflow guide](../change-approval/change-approval-workflow.mdx).
 

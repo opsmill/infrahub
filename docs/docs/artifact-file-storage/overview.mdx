@@ -6,14 +6,14 @@ import ReferenceLink from "../../src/components/Card";
 
 # About storage
 
-Infrahub uses an object storage layer to persist binary and text content outside of the graph database. This layer stores the raw bytes of [file objects](../schema/file-object) and rendered [artifacts](../artifacts/). Separating file content from graph data allows Infrahub to keep the graph database focused on relationships, metadata, and version control while delegating bulk storage to a system optimized for that purpose.
+Infrahub uses an object storage layer to persist binary and text content outside of the graph database. This layer stores the raw bytes of [file objects](../schema/file-object) and rendered [artifacts](../artifacts/overview). Separating file content from graph data allows Infrahub to keep the graph database focused on relationships, metadata, and version control while delegating bulk storage to a system optimized for that purpose.
 
 ## What uses object storage
 
 Object storage serves two use cases in Infrahub:
 
-- **File objects**: User-uploaded files attached to nodes in the graph. These are managed through the file object system and access is controlled by Infrahub's [permission system](../deploy-manage/user-management/permissions-roles/). See [file objects](../schema/file-object) for details.
-- **Artifacts**: System-generated outputs from Transformations. These are created automatically by artifact definitions and stored in the same storage layer. See [artifacts](../artifacts/) for details.
+- **File objects**: User-uploaded files attached to nodes in the graph. These are managed through the file object system and access is controlled by Infrahub's [permission system](../deploy-manage/user-management/permissions-roles/overview). See [file objects](../schema/file-object) for details.
+- **Artifacts**: System-generated outputs from Transformations. These are created automatically by artifact definitions and stored in the same storage layer. See [artifacts](../artifacts/overview) for details.
 
 Both file objects and artifacts store a `storage_id` in the graph database that references the content in object storage. The difference is in how the content is created — user uploads for file objects, automated Transformations for artifacts — and how access is governed.
 
@@ -109,7 +109,7 @@ Because object storage is immutable, content accumulates over time. Every file u
 
 When using local filesystem storage across multiple API servers or task workers, all nodes must have access to the same storage directory. This typically requires a shared network filesystem (NFS or similar). S3-compatible storage avoids this constraint entirely since all nodes access the same bucket over the network.
 
-<ReferenceLink title="Production deployment guide" url="../deploy-manage/install-configure/production-deployment/" />
+<ReferenceLink title="Production deployment guide" url="../deploy-manage/install-configure/production-deployment/overview" />
 
 ### Backups
 
@@ -130,11 +130,11 @@ Switching storage backends (for example, from `local` to `s3`) does not migrate 
 ## Connection to other concepts
 
 - **[File objects](../schema/file-object)**: The primary way users interact with stored files. File objects are graph nodes that combine metadata with a reference to content in object storage.
-- **[Artifacts](../artifacts/)**: System-generated content stored in the same storage layer, produced by Transformation pipelines.
-- **[Permissions and roles](../deploy-manage/user-management/permissions-roles/)**: Access to file content is enforced at the API level based on permissions on the corresponding graph node.
+- **[Artifacts](../artifacts/overview)**: System-generated content stored in the same storage layer, produced by Transformation pipelines.
+- **[Permissions and roles](../deploy-manage/user-management/permissions-roles/overview)**: Access to file content is enforced at the API level based on permissions on the corresponding graph node.
 
 ## Further reading
 
-- [Configure storage](./configure): Practical steps for uploading and retrieving content
+- [Configure storage](./configure.mdx): Practical steps for uploading and retrieving content
 - [File objects](../schema/file-object): Attaching files to nodes with full version control
 - [Configuration reference](../reference/configuration.mdx): All storage-related environment variables and settings

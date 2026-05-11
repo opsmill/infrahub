@@ -55,14 +55,14 @@ Infrahub can natively render any Jinja templates dynamically. Internally it's re
 
 #### Create a Jinja rendered Transformation
 
-See [Write a Jinja2 Transformation](./jinja2) for the recipe-form how-to, or [Build a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) for the step-by-step walkthrough with a running example.
+See [Write a Jinja2 Transformation](./jinja2.mdx) for the recipe-form how-to, or [Build a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) for the step-by-step walkthrough with a running example.
 
 #### Render a Jinja2 Transformation
 
 A Jinja2 Transformation can be rendered with 3 different methods:
 
 - On demand via the REST API
-- As part of an [artifact](../artifacts/)
+- As part of an [artifact](../artifacts/overview)
 - In CLI for development and troubleshooting [infrahubctl render]($(base_url)infrahubctl/infrahubctl-render)
 
 ### TransformPython (Python plugin)
@@ -73,7 +73,7 @@ A `TransformPython` is a Transformation plugin written in Python. It can generat
 
 A TransformPython must be written as a Python class that inherits from `InfrahubTransform` and it must implement one `transform` method. The transform method must accept a dict and return one.
 
-See [Write a Python Transformation](./python) for the recipe-form how-to, or [Build a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) for the step-by-step walkthrough with a running example.
+See [Write a Python Transformation](./python.mdx) for the recipe-form how-to, or [Build a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) for the step-by-step walkthrough with a running example.
 
 ##### Python Transformation accessing local files
 
@@ -91,12 +91,12 @@ This can be accomplished by using the `self.root_directory` that points to the r
 A TransformPython can be rendered with 2 different methods:
 
 - On demand via the REST API
-- As part of an [artifact](../artifacts/)
+- As part of an [artifact](../artifacts/overview)
 - Via the CLI for development and troubleshooting: [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform)
 
 ## Using Transformations with groups
 
-Transformations themselves are generic pieces of logic that process data and produce output. They become targeted to specific objects through [artifact definitions](../artifacts/) and [Generators](../generators/), which combine a Transformation with a [group](../groups/) of targets.
+Transformations themselves are generic pieces of logic that process data and produce output. They become targeted to specific objects through [artifact definitions](../artifacts/overview) and [Generators](../generators/overview), which combine a Transformation with a [group](../groups/overview) of targets.
 
 This design enables powerful patterns:
 
@@ -104,7 +104,7 @@ This design enables powerful patterns:
 - **Bulk processing**: artifact definitions automatically apply the Transformation to all members of the target group
 - **Dynamic targeting**: Adding or removing objects from groups automatically changes which objects the Transformation processes
 
-The Transformation logic remains group-agnostic, while artifact definitions and Generators provide the targeting mechanism. See [Groups](../groups/) for details on creating target groups.
+The Transformation logic remains group-agnostic, while artifact definitions and Generators provide the targeting mechanism. See [Groups](../groups/overview) for details on creating target groups.
 
 ## Unit testing for Transformations
 
@@ -112,7 +112,7 @@ Infrahub provides a framework to create unit tests for your Transformations with
 
 The tests can be executed locally for development purpose and they will also be executed as part of the CI Pipeline when the platform identifies a change that could potentially impact your Transformation.
 
-For more information, see the [Resource Testing Framework](../testing-framework/index.mdx) page.
+For more information, see the [Resource Testing Framework](../testing-framework/overview.mdx) page.
 
 ## Learn by doing
 

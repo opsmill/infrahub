@@ -6,10 +6,10 @@ title: Write a Jinja2 Transformation
 
 A Jinja2 Transformation renders Infrahub data through a Jinja template, producing plain text output (configurations, manifests, payloads). The steps below cover how to write one.
 
-For conceptual background, see [Transformations](./).
+For conceptual background, see [Transformations](./overview).
 For a step-by-step walkthrough with a running example, see [Build a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) in the Academy tutorials.
 
-> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/overview) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
 
 ## Write the GraphQL query
 
@@ -90,7 +90,7 @@ To cache rendered output and tie it to a specific target object, define an artif
 
 ## Related
 
-- [Transformations](./) — concept and architecture
+- [Transformations](./overview) — concept and architecture
 - [Write a Python transformation](./python) — for non-template logic
 - [GraphQL fragments](../development-resources/graphql-fragments) — share query fragments across Transformations
 - [Use artifacts](../artifacts/use) — cache Transformation output

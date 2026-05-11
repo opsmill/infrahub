@@ -95,7 +95,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'About Schema',
-          link: { type: 'doc', id: 'schema/index' }, // hub
+          link: { type: 'doc', id: 'schema/overview' }, // hub
           items: [
             { type: 'doc', id: 'schema/nodes-and-attributes', label: 'Nodes & attributes' },
             { type: 'doc', id: 'schema/relationships', label: 'Relationships' },
@@ -121,7 +121,7 @@ const sidebars: SidebarsConfig = {
           label: 'Advanced schema features',
           link: { type: 'generated-index' },
           items: [
-            { type: 'doc', id: 'computed-attributes/index', label: 'Computed attributes' },
+            { type: 'doc', id: 'computed-attributes/overview', label: 'Computed attributes' },
             { type: 'doc', id: 'schema/number-pool', label: 'Number pools' },
             { type: 'doc', id: 'schema/file-object', label: 'File objects' },
           ],
@@ -135,13 +135,13 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'schema/field-visibility', label: 'Field visibility' },
             { type: 'doc', id: 'schema/display_label', label: 'Display labels' },
             { type: 'doc', id: 'schema/order-weight', label: 'Order weight' },
-            { type: 'doc', id: 'menu/index', label: 'Menu customization' },
+            { type: 'doc', id: 'menu/overview', label: 'Menu customization' },
           ],
         },
         {
           type: 'category',
           label: 'Objects',
-          link: { type: 'doc', id: 'objects/index' }, // hub
+          link: { type: 'doc', id: 'objects/overview' }, // hub
           items: [
             { type: 'doc', id: 'objects/convert-object-kind', label: 'Convert object kind' },
             { type: 'doc', id: 'objects/metadata', label: 'Metadata & lineage' },
@@ -151,7 +151,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'IPAM',
-          link: { type: 'doc', id: 'ipam/index' },
+          link: { type: 'doc', id: 'ipam/overview' },
           items: [
             'ipam/ip-namespaces',
             'ipam/building-your-schema',
@@ -161,7 +161,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Resource Manager',
-          link: { type: 'doc', id: 'resource-manager/index' }, // hub
+          link: { type: 'doc', id: 'resource-manager/overview' }, // hub
           items: [
             'resource-manager/allocate-ip-address',
             'resource-manager/allocate-ip-prefix',
@@ -172,7 +172,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Groups',
-          link: { type: 'doc', id: 'groups/index' }, // hub
+          link: { type: 'doc', id: 'groups/overview' }, // hub
           items: [
             'groups/create',
             'groups/add-members',
@@ -185,7 +185,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Profiles',
-          link: { type: 'doc', id: 'profiles/index' }, // hub
+          link: { type: 'doc', id: 'profiles/overview' }, // hub
           items: [
             'profiles/priority-and-inheritance',
             'profiles/create',
@@ -198,7 +198,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Object Templates',
-          link: { type: 'doc', id: 'object-templates/index' }, // hub
+          link: { type: 'doc', id: 'object-templates/overview' }, // hub
           items: [
             { type: 'doc', id: 'object-templates/use', label: 'Use object templates' },
             { type: 'doc', id: 'object-templates/with-profiles', label: 'Assign Profiles to a template' },
@@ -215,11 +215,11 @@ const sidebars: SidebarsConfig = {
       collapsed: false,
       link: { type: 'generated-index', slug: 'branches-and-change-control' },
       items: [
-        { type: 'doc', id: 'immutable-history/index', label: 'Immutable History' },
+        { type: 'doc', id: 'immutable-history/overview', label: 'Immutable History' },
         {
           type: 'category',
           label: 'Branches',
-          link: { type: 'doc', id: 'branches/index' }, // hub
+          link: { type: 'doc', id: 'branches/overview' }, // hub
           items: [
             'branches/create',
             'branches/merge',
@@ -231,20 +231,20 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Proposed Changes',
-          link: { type: 'doc', id: 'proposed-changes/index' }, // hub
+          link: { type: 'doc', id: 'proposed-changes/overview' }, // hub
           items: [
             'proposed-changes/lifecycle',
             'proposed-changes/review-and-stamp',
             'proposed-changes/resolve-conflict',
           ],
         },
-        { type: 'doc', id: 'checks/index', label: 'Checks & Validation' },
-        { type: 'doc', id: 'testing-framework/index', label: 'Testing Framework' },
+        { type: 'doc', id: 'checks/overview', label: 'Checks & Validation' },
+        { type: 'doc', id: 'testing-framework/overview', label: 'Testing Framework' },
         { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
         {
           type: 'category',
           label: 'Git Integration',
-          link: { type: 'doc', id: 'git-integration/index' }, // hub
+          link: { type: 'doc', id: 'git-integration/overview' }, // hub
           items: [
             { type: 'doc', id: 'git-integration/connect-repository', label: 'Connect a repository' },
             { type: 'doc', id: 'git-integration/infrahub-yml', label: 'infrahub.yml configuration' },
@@ -264,7 +264,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Generators',
-          link: { type: 'doc', id: 'generators/index' }, // hub
+          link: { type: 'doc', id: 'generators/overview' }, // hub
           items: [
             { type: 'doc', id: 'generators/build', label: 'Build a generator' },
             { type: 'doc', id: 'generators/modular', label: 'Modular generators' },
@@ -274,7 +274,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Transformations',
-          link: { type: 'doc', id: 'transformations/index' }, // hub
+          link: { type: 'doc', id: 'transformations/overview' }, // hub
           items: [
             { type: 'doc', id: 'transformations/jinja2', label: 'Jinja2' },
             { type: 'doc', id: 'transformations/python', label: 'Python' },
@@ -283,7 +283,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Artifacts',
-          link: { type: 'doc', id: 'artifacts/index' }, // hub
+          link: { type: 'doc', id: 'artifacts/overview' }, // hub
           items: [
             { type: 'doc', id: 'artifacts/use', label: 'Use artifacts' },
             { type: 'doc', id: 'artifacts/content-composition', label: 'Artifact content composition' },
@@ -292,7 +292,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Artifact & File Storage',
-          link: { type: 'doc', id: 'artifact-file-storage/index' }, // hub (renamed from "Object Storage")
+          link: { type: 'doc', id: 'artifact-file-storage/overview' }, // hub (renamed from "Object Storage")
           items: [
             { type: 'doc', id: 'artifact-file-storage/configure', label: 'Configure storage' },
           ],
@@ -300,7 +300,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Events',
-          link: { type: 'doc', id: 'events/index' }, // hub
+          link: { type: 'doc', id: 'events/overview' }, // hub
           items: [
             { type: 'doc', id: 'events/event-system', label: 'Event system' },
             { type: 'doc', id: 'events/event-rules', label: 'Event rules' },
@@ -310,7 +310,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Webhooks',
-          link: { type: 'doc', id: 'webhooks/index' }, // hub
+          link: { type: 'doc', id: 'webhooks/overview' }, // hub
           items: [
             { type: 'doc', id: 'webhooks/create', label: 'Create a webhook' },
             { type: 'doc', id: 'webhooks/custom-transformation', label: 'Webhook with custom Transformation' },
@@ -319,7 +319,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Integrations',
-          link: { type: 'generated-index', slug: 'integrations' },
+          link: { type: 'generated-index', slug: 'integrations-overview' },
           items: [
             { type: 'link', label: 'Ansible Integration ↗', href: 'https://docs.infrahub.app/ansible' },
             { type: 'link', label: 'Nornir Integration ↗', href: 'https://docs.infrahub.app/nornir' },
@@ -349,7 +349,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'Installation',
-              link: { type: 'doc', id: 'deploy-manage/install-configure/install/index' },
+              link: { type: 'doc', id: 'deploy-manage/install-configure/install/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/install/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/install-configure/install/enterprise', label: 'Enterprise' },
@@ -359,7 +359,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'Production deployment',
-              link: { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/index' },
+              link: { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/install-configure/production-deployment/high-availability', label: 'High availability' },
               ],
@@ -388,7 +388,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'Log forwarding',
-              link: { type: 'doc', id: 'deploy-manage/run-observe/log-forwarding/index' },
+              link: { type: 'doc', id: 'deploy-manage/run-observe/log-forwarding/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/run-observe/log-forwarding/configure-log-forwarding', label: 'Configure log forwarding' },
               ],
@@ -407,7 +407,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'Database backup',
-              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/index' },
+              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/backup-and-restore', label: 'Backup and restore' },
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore', label: 'Cluster backup and restore' },
@@ -417,7 +417,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'Upgrade',
-              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/index' },
+              link: { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/community', label: 'Community' },
                 { type: 'doc', id: 'deploy-manage/maintain-upgrade/upgrade/enterprise', label: 'Enterprise' },
@@ -440,7 +440,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'Single sign-on (SSO)',
-              link: { type: 'doc', id: 'deploy-manage/user-management/sso/index' },
+              link: { type: 'doc', id: 'deploy-manage/user-management/sso/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/user-management/sso/configure-sso', label: 'Configure SSO' },
                 { type: 'doc', id: 'deploy-manage/user-management/sso/advanced-sso', label: 'Advanced SSO configuration' },
@@ -450,7 +450,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'Permissions & roles',
-              link: { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/index' },
+              link: { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/overview' },
               items: [
                 { type: 'doc', id: 'deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions', label: 'Manage accounts and permissions' },
               ],
@@ -479,7 +479,7 @@ const sidebars: SidebarsConfig = {
             {
               type: 'category',
               label: 'GraphQL',
-              link: { type: 'doc', id: 'development-resources/graphql/index' },
+              link: { type: 'doc', id: 'development-resources/graphql/overview' },
               items: [
                 { type: 'doc', id: 'development-resources/graphql/queries-and-mutations', label: 'Queries & mutations' },
                 { type: 'doc', id: 'development-resources/graphql/stored-queries', label: 'Stored queries' },

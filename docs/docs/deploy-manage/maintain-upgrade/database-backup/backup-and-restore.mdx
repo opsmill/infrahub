@@ -132,7 +132,7 @@ python -m utilities.db_backup neo4j backup \
 
 ### Step 3: Backup the object storage
 
-The [object storage](../../../artifact-file-storage/index.mdx) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
+The [object storage](../../../artifact-file-storage/overview.mdx) layer holds all file content (file objects and artifacts) outside of the graph database. The graph database references this content through `storage_id` values, so both must be backed up together to maintain consistency.
 
 <Tabs groupId="storage-type" queryString>
 <TabItem value="s3" label="S3 Storage" default>
@@ -386,6 +386,6 @@ docker run --rm \
 
 ## Related resources
 
-- [Database backup overview](./index.mdx) - Architecture and backup strategy concepts
+- [Database backup overview](./overview.mdx) - Architecture and backup strategy concepts
 - [Cluster backup and restore](./cluster-backup-and-restore.mdx) - Neo4j cluster-specific backup and restore
 - [infrahub-backup CLI reference](https://docs.infrahub.app/backup/) - Command-line reference for the infrahub-backup tool

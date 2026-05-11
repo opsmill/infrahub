@@ -16,7 +16,7 @@ In the schema the attribute `hierarchical: true` on a `Generic` activates the hi
 
 :::success Examples
 
-- [Groups](../groups/) can be organized in a hierarchy by default which makes it possible to query the members of all sub-groups at once.
+- [Groups](../groups/overview) can be organized in a hierarchy by default which makes it possible to query the members of all sub-groups at once.
 - Assuming we have defined a `Person` object connected to a `City` object, which itself is part of a hierarchy of `Location` (`Region` > `Country` > `City`), it will be possible to query all `Person` per `Country` or per `Region` natively without having a direct relationship between `Person` and `Country`.
 
 :::
@@ -75,7 +75,7 @@ In GraphQL queries, all nodes with hierarchical support will have 2 additional f
 
 For all relationships of cardinality many, it's possible to query all the objects associated with `descendants` nodes as well by providing the `include_descendants` flag.
 
-As an example, the GraphQL query below will query the members of all [groups](../groups/) that are defined as children of `Group1`.
+As an example, the GraphQL query below will query the members of all [groups](../groups/overview) that are defined as children of `Group1`.
 Assuming that `Group1` has 2 sub-groups defined `Group A` and `Group B` (AKA children), the query will return the members of `Group1`, `Group A` and `Group B` together.
 
 ```graphql showLineNumbers
@@ -103,4 +103,4 @@ query {
 ## Related concepts
 
 - [Generics & inheritance](./generics-and-inheritance) — How generics and `inherit_from` work
-- [Groups](../groups/) — Groups use hierarchy to enable nested member queries
+- [Groups](../groups/overview) — Groups use hierarchy to enable nested member queries

@@ -108,7 +108,7 @@ To get the most out of Infrahub's branching capabilities, consider these recomme
 
 - **Use descriptive branch names**: Name branches in a way that clearly identifies their purpose, such as `feature-network-redesign` or `fix-datacenter-connectivity`.
 - **Keep branches short-lived**: Complete work and merge branches promptly to minimize drift from the main branch and reduce conflict potential. Enable `delete_branch_after_merge` in the [configuration](../reference/configuration.mdx) to automate cleanup of merged branches.
-- **Rebase before creating a Proposed Change**: Update your branch with the latest changes from the default branch to identify and resolve conflicts early. See [Rebase a branch](./rebase).
+- **Rebase before creating a Proposed Change**: Update your branch with the latest changes from the default branch to identify and resolve conflicts early. See [Rebase a branch](./rebase.mdx).
 - **Use data-only branches for quick fixes**: When changes don't require infrastructure code updates, data-only branches provide a streamlined workflow.
 - **Leverage branch permissions**: Restrict who can create branches and merge to the default branch to maintain quality control in production environments.
 - **Document branch purpose**: Add clear descriptions to branches to help team members understand their purpose and scope.
@@ -119,11 +119,11 @@ Understanding the branch lifecycle helps teams manage the flow of changes throug
 
 ![Branch lifecycle diagram](../media/branch_merge.excalidraw.svg)
 
-1. **Branch creation**: Establishes an isolated workspace at a specific point in time, capturing the state of the parent branch as a starting point. See [Create a branch](./create).
+1. **Branch creation**: Establishes an isolated workspace at a specific point in time, capturing the state of the parent branch as a starting point. See [Create a branch](./create.mdx).
 2. **Development**: Changes accumulate in the branch without affecting the main branch, allowing for focused work and experimentation.
 3. **Validation**: Proposed Changes run automated checks and tests to verify the integrity and functionality of modifications before integration.
-4. **Conflict resolution**: Any conflicts with the main branch are identified and resolved, ensuring smooth integration of changes. See [Resolve conflicts](./resolve-conflicts).
-5. **Merge**: Approved changes integrate into the main branch through a controlled process that preserves the integrity of the production environment. See [Merge a branch](./merge). After the merge completes, the branch enters a **frozen state**: all further mutations (create, update, upsert, delete) are blocked on that branch, the UI disables editing controls with a visual indicator, and no new Proposed Change can be opened against it.
+4. **Conflict resolution**: Any conflicts with the main branch are identified and resolved, ensuring smooth integration of changes. See [Resolve conflicts](./resolve-conflicts.mdx).
+5. **Merge**: Approved changes integrate into the main branch through a controlled process that preserves the integrity of the production environment. See [Merge a branch](./merge.mdx). After the merge completes, the branch enters a **frozen state**: all further mutations (create, update, upsert, delete) are blocked on that branch, the UI disables editing controls with a visual indicator, and no new Proposed Change can be opened against it.
 6. **Cleanup**: After a successful merge, the branch can be deleted manually or automatically when `delete_branch_after_merge` is enabled in the [configuration](../reference/configuration.mdx). If the branch is synchronized with a Git repository, enabling `delete_git_branch_after_merge` also removes the corresponding remote branch.
 
 :::warning
@@ -149,7 +149,7 @@ This approach means creating a branch has minimal overhead, and storage grows on
 ## Related topics
 
 - [Branching Blog Post](https://opsmill.com/blog/infrastructure-change-management-workflow/)
-- [Git Integration](../git-integration/index.mdx)
-- [Proposed Changes](../proposed-changes/index.mdx)
-- [Immutable History](../immutable-history/index.mdx)
-- [Schema](../schema/)
+- [Git Integration](../git-integration/overview.mdx)
+- [Proposed Changes](../proposed-changes/overview.mdx)
+- [Immutable History](../immutable-history/overview.mdx)
+- [Schema](../schema/overview)

@@ -2,7 +2,7 @@
 title: Checks & Validation
 ---
 
-Checks are user-defined logic, stored in an [external repository linked to Infrahub](../git-integration/index.mdx), that run as part of a [proposed change](../proposed-changes/index.mdx). They let users perform any kind of data validation logic during a proposed change. If a check does not complete successfully, the proposed change cannot be merged.
+Checks are user-defined logic, stored in an [external repository linked to Infrahub](../git-integration/overview.mdx), that run as part of a [proposed change](../proposed-changes/overview.mdx). They let users perform any kind of data validation logic during a proposed change. If a check does not complete successfully, the proposed change cannot be merged.
 
 Some examples:
 
@@ -21,13 +21,13 @@ A check is composed of two main components:
 
 ## Targeted checks
 
-Targeted checks are exactly the same as a check; the main difference is that they target a specific [group](../groups/) of nodes in Infrahub. The check will then only be executed against the nodes in that group.
+Targeted checks are exactly the same as a check; the main difference is that they target a specific [group](../groups/overview) of nodes in Infrahub. The check will then only be executed against the nodes in that group.
 
 This approach leverages groups to enable scalable validation — instead of running checks against all objects of a type, you can focus validation on logically related objects. Groups provide flexible targeting that can be updated independently of the check definitions.
 
 An example: you want to validate that all devices for which we generate an OpenConfig artifact have the NETCONF service enabled. By targeting the group used for artifact generation, the check automatically stays synchronized with the artifact scope.
 
-See [Groups](../groups/index.mdx) for details on creating target groups for your checks.
+See [Groups](../groups/overview.mdx) for details on creating target groups for your checks.
 
 ## Learn by doing
 
@@ -35,6 +35,6 @@ Walk through [Build a check](../academy/tutorials/build-a-check.mdx) in Academy 
 
 ## Related
 
-- [Proposed Changes](../proposed-changes/index.mdx) — where checks run
-- [Repository Management](../git-integration/index.mdx) — where check code lives
-- [Groups](../groups/index.mdx) — used to target checks at specific subsets of objects
+- [Proposed Changes](../proposed-changes/overview.mdx) — where checks run
+- [Repository Management](../git-integration/overview.mdx) — where check code lives
+- [Groups](../groups/overview.mdx) — used to target checks at specific subsets of objects

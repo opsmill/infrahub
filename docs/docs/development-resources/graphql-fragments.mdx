@@ -6,7 +6,7 @@ title: Using GraphQL fragments
 
 GraphQL fragments are reusable field selections that can be shared across multiple stored queries. Instead of duplicating the same nested field selections in every query, you define them once as a fragment and reference them using the standard GraphQL spread syntax (`...fragmentName`).
 
-This is particularly useful when multiple [Transformations](../transformations/) or [Generators](../generators/) need to query the same fields from a model. Update the fragment once, and all queries that reference it pick up the change on their next execution.
+This is particularly useful when multiple [Transformations](../transformations/overview) or [Generators](../generators/overview) need to query the same fields from a model. Update the fragment once, and all queries that reference it pick up the change on their next execution.
 
 ## How fragments work in Infrahub
 
@@ -53,7 +53,7 @@ query DeviceInterfaces($device_name: String!) {
 
 - A running Infrahub instance
 - An [external Git repository](../git-integration/connect-repository) connected to Infrahub (or a local repository for testing with `infrahubctl`)
-- Familiarity with [GraphQL queries](./graphql/) in Infrahub
+- Familiarity with [GraphQL queries](./graphql/overview) in Infrahub
 
 ## 1. Define a fragment file
 
@@ -227,7 +227,7 @@ Infrahub validates fragments during repository sync and raises specific errors:
 
 ## Related resources
 
-- [GraphQL in Infrahub](./graphql/) — query format, stored queries, and endpoint reference
+- [GraphQL in Infrahub](./graphql/overview) — query format, stored queries, and endpoint reference
 - [`.infrahub.yml` configuration](../git-integration/infrahub-yml) — repository manifest structure and resource types
 - [Creating a Jinja Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) — using queries with Jinja2 templates
 - [Creating a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) — using queries with Python code

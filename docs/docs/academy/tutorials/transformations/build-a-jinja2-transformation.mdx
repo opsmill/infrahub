@@ -6,13 +6,13 @@ title: Build a Jinja2 Transformation
 
 By the end of this tutorial you will have built a working Jinja2 Transformation end-to-end: loaded a small network-device schema, created a few sample devices, written a GraphQL query that filters by device name, written a Jinja template that renders a configuration snippet from the result, registered it in `.infrahub.yml`, tested it locally with `infrahubctl render`, added the repository to Infrahub, and called the render API. You'll leave with a `device_config_transform` you can call against any device by name.
 
-For conceptual background, see [Transformations](../../../transformations/). For a recipe-form how-to without the running example, see [Write a Jinja2 transformation](../../../transformations/jinja2).
+For conceptual background, see [Transformations](../../../transformations/overview). For a recipe-form how-to without the running example, see [Write a Jinja2 transformation](../../../transformations/jinja2).
 
-Within Infrahub a [Transformation](../../../transformations/) is defined in an [external repository](../../../git-integration/connect-repository). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render]($(base_url)infrahubctl/infrahubctl-render).
+Within Infrahub a [Transformation](../../../transformations/overview) is defined in an [external repository](../../../git-integration/connect-repository). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render]($(base_url)infrahubctl/infrahubctl-render).
 
 The tutorial follows these steps:
 
-1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../development-resources/graphql/), that can take an input parameter to filter the data
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../development-resources/graphql/overview), that can take an input parameter to filter the data
 2. Write a Jinja2 file that uses the GraphQL query to read information from the system and render the data into a new format
 3. Create an entry for the Jinja2 Transformation within an `.infrahub.yml` file
 4. Create a Git repository

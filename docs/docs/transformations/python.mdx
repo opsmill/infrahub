@@ -6,10 +6,10 @@ title: Write a Python Transformation
 
 A Python Transformation processes Infrahub data through user-written Python code, producing JSON output (or any structured data you serialize). Use this when Jinja templating isn't enough — for example, conditional logic, external API calls, or complex aggregation. The steps below cover how to write one.
 
-For conceptual background, see [Transformations](./).
+For conceptual background, see [Transformations](./overview).
 For a step-by-step walkthrough with a running example, see [Build a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) in the Academy tutorials.
 
-> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/overview) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
 
 ## Write the GraphQL query
 
@@ -113,7 +113,7 @@ To cache transform output and tie it to a specific target object, define an arti
 
 ## Related
 
-- [Transformations](./) — concept and architecture
+- [Transformations](./overview) — concept and architecture
 - [Write a Jinja2 transformation](./jinja2) — for template-based output
 - [GraphQL fragments](../development-resources/graphql-fragments) — share query fragments across Transformations
 - [Use artifacts](../artifacts/use) — cache Transformation output
