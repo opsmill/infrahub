@@ -1,0 +1,92 @@
+# Quickstart — Auto-create Account Groups (INFP-556)
+
+This quickstart walks an admin through enabling the feature, observing it on a first login, and verifying the audit trail. It is the same scenario that backs User Story 1's Independent Test in `spec.md`.
+
+## Prerequisites
+
+- Infrahub 1.10 instance (with the `origin` schema migration applied).
+- At least one configured SSO/OIDC/OAuth2 provider, or native LDAP (INFP-105) for the LDAP path.
+- A test user in the external IdP carrying at least one group claim that you control.
+
+## 1 — Configure the filter
+
+Set the regex filter env var on the Infrahub backend. The presence of a non-empty filter is the sole activation surface for auto-creation (FR-001, no separate enable toggle).
+
+```bash
+export INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER='^LDAP/group/(?P<name>.+)$'
+# Optional: tighten the per-login soft cap (default 50)
+export INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_MAX_PER_LOGIN=20
+```
+
+Restart the backend. If the regex is invalid, startup fails loudly with the setting name and the parser error (FR-004); fix and restart.
+
+## 2 — Verify the feature is on without any side-effect yet
+
+Before any login, the local `CoreAccountGroup` list is unchanged. Confirm via API or UI that no new groups were auto-created merely by enabling the filter.
+
+## 3 — Trigger the first login
+
+Log in as your test user. Their external claim set must include at least one claim matching the filter — e.g., `LDAP/group/network-engineering`.
+
+Expected:
+
+- The login completes successfully.
+- A `CoreAccountGroup` named `network-engineering` (the captured name) now exists.
+- Its `origin` attribute is set to the value matching the auth path you used (e.g., `oidc_provider1` if you logged in via the OIDC `provider1` slot; `ldap` if via native LDAP).
+- The test user is a member of that group.
+- The group has zero attached roles and zero attached permissions (auto-created groups land empty by design — FR-009).
+
+## 4 — Verify provenance & idempotency
+
+Log a second different user in carrying the same external `LDAP/group/network-engineering` claim.
+
+Expected:
+
+- No new `CoreAccountGroup` is created; the existing one is reused (FR-018).
+- The second user is added as a member.
+- No new `GroupAutoCreatedEvent` is emitted for this second login (FR-015 acceptance scenario 2).
+
+## 5 — Inspect the audit trail
+
+Query the activity event log filtered to `GroupAutoCreatedEvent` for the first login. Expected payload fields:
+
+- `group_name = "network-engineering"`
+- `source_pattern = "^LDAP/group/(?P<name>.+)$"`
+- `idp` = the protocol+slot string (e.g., `oidc_provider1`, `ldap`)
+- `triggering_user_id` + `triggering_user_name` = the first test user
+- `origin_value` = the same value as the group's `origin` attribute
+
+## 6 — Verify filter scoping (negative path)
+
+Log in another test user whose claims include unrelated groups (e.g., `slack/general`, `github/contributors`). Confirm:
+
+- The login succeeds.
+- No `CoreAccountGroup` named `slack/general` or `github/contributors` was created.
+- If you configured `sso_user_default_group` (IFC-922) and the user has zero matching claims, they are added to the default group; if they had at least one matching claim, the default group is NOT stacked on top (FR-016).
+
+## 7 — Verify `origin` read-only enforcement
+
+Attempt to modify the `origin` attribute on the auto-created group via:
+
+- The UI form for that group → save should be rejected or `origin` should be non-editable.
+- A GraphQL mutation setting `origin` → expect a validation error, OR the field is silently ignored.
+- A REST PATCH/PUT → same.
+- A schema-load that includes a manual `origin` value → same.
+
+In every case, the existing `origin` value MUST be preserved (FR-021).
+
+## 8 — Verify the cap (only if you can simulate many claims)
+
+Configure a user carrying more matching claims than the per-login cap (default 50; or set the cap low for the test). On login:
+
+- Up to `cap` new groups are created.
+- The login succeeds.
+- One `GroupAutoCreateWarningEvent` with `subtype="cap_breach"` is emitted, listing the cap value, dropped count, and the dropped claim values (verbatim, length-truncated).
+
+## 9 — Turn the feature off
+
+```bash
+unset INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER
+```
+
+Restart. Auto-creation is now inactive. Existing auto-created groups remain (lifecycle/cleanup is INFP-536, explicitly out of scope here). The IFC-922 default-group fallback continues to apply unchanged.
