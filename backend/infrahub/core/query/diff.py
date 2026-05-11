@@ -274,13 +274,25 @@ class DiffNodePathsQuery(DiffCalculationQuery):
 // -------------------------------------
 // Identify nodes added/removed on branch
 // -------------------------------------
-MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
-WHERE (
-    ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
-    OR ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
-    OR ($new_node_ids_list IS NULL AND $current_node_ids_list IS NULL)
-)
-AND p.branch_support = $branch_aware
+CALL () {
+        MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
+        WHERE $new_node_ids_list IS NOT NULL
+        AND p.uuid IN $new_node_ids_list
+        RETURN q, diff_rel, p
+    UNION
+        MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
+        WHERE $current_node_ids_list IS NOT NULL
+        AND p.uuid IN $current_node_ids_list
+        RETURN q, diff_rel, p
+    UNION
+        MATCH (q)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p)
+        WHERE $current_node_ids_list IS NULL
+        AND $new_node_ids_list IS NULL
+        RETURN q, diff_rel, p
+}
+WITH q, diff_rel, p
+MATCH (q)<-[diff_rel]-(p)
+WHERE p.branch_support = $branch_aware
 AND (
     (
         ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
@@ -419,10 +431,19 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
 // -------------------------------------
 // Identify attributes/relationships added/removed on branch
 // -------------------------------------
-MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel {branch: $branch_name}]-(q)
+CALL () {
+        MATCH (p:Node)
+        WHERE p.uuid IN COALESCE($current_node_ids_list, []) + COALESCE($new_node_ids_list, [])
+        RETURN p
+    UNION
+        MATCH (p)-[:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
+        WHERE $current_node_ids_list IS NULL AND $new_node_ids_list IS NULL
+        RETURN DISTINCT p
+}
+WITH p
+MATCH (root:Root)<-[r_root:IS_PART_OF]-(p)-[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
 // simple filters to start
-WHERE type(diff_rel) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
-AND ("Attribute" IN labels(q) OR "Relationship" IN labels(q))
+WHERE ("Attribute" IN labels(q) OR "Relationship" IN labels(q))
 AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
 AND q.branch_support = $branch_aware
 AND r_root.status = "active"
@@ -613,7 +634,18 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
 // -------------------------------------
 // Identify properties added/removed on branch
 // -------------------------------------
-MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)
+CALL () {
+        MATCH (n:Node)
+        WHERE n.uuid IN COALESCE($current_node_ids_list, []) + COALESCE($new_node_ids_list, [])
+        RETURN n
+    UNION
+        MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
+            -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
+        WHERE $current_node_ids_list IS NULL AND $new_node_ids_list IS NULL
+        RETURN DISTINCT n
+}
+WITH n
+MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n)
     -[r_node:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
     -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->(q:Boolean|Node|AttributeValue)
 WHERE p.branch_support = $branch_aware
