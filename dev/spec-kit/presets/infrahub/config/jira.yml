@@ -10,10 +10,10 @@ default_issue_type: Task
 # Retrieve real IDs with mcp__claude_ai_Atlassian__getJiraIssueTypeMetaWithFields
 # and replace the placeholders below before first run.
 custom_fields:
-  epic_link: customfield_XXXXX
-  team: customfield_XXXXX
-  sprint: customfield_XXXXX
-  story_points: customfield_XXXXX
+  epic_link: customfield_10014
+  team: customfield_10001
+  sprint: customfield_10020
+  story_points: customfield_10016
 
 labels_default:
   - spec-kit
