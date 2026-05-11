@@ -529,9 +529,8 @@ class DiffCoordinator:
         diff_request: EnrichedDiffRequest,
         partial_enriched_diffs: list[EnrichedDiffsMetadata] | None,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
-        """
-        If return is an EnrichedDiffsMetadata, it acts as a pointer to a diff in the database that has all the
-            necessary data for this diff_request. Might have a different time range and/or tracking_id
+        """If return is an EnrichedDiffsMetadata, it acts as a pointer to a diff in the database that has all the
+        necessary data for this diff_request. Might have a different time range and/or tracking_id
         """
         aggregated_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata | None = None
         if not partial_enriched_diffs:
@@ -612,8 +611,7 @@ class DiffCoordinator:
         diff_or_request_list: Sequence[EnrichedDiffsMetadata | EnrichedDiffRequest | None],
         full_diff_request: EnrichedDiffRequest,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata | None, set[NodeIdentifier]]:
-        """
-        Returns None if diff_or_request_list is empty or all Nones
+        """Returns None if diff_or_request_list is empty or all Nones
             meaning there are no changes for the diff during this time period
         Returns EnrichedDiffsMetadata if diff_or_request_list includes one EnrichedDiffsMetadata and no EnrichedDiffRequests
             meaning no diffs needed to be hydrated and combined

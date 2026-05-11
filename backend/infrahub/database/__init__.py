@@ -187,11 +187,9 @@ class InfrahubDatabase:
         return False
 
     def get_context(self) -> dict[str, Any]:
-        """
-        This method is meant to be overridden by subclasses in order to fill in subclass attributes
+        """This method is meant to be overridden by subclasses in order to fill in subclass attributes
         to methods returning a copy of this object using self.__class__ constructor.
         """
-
         return {}
 
     def add_schema(self, schema: SchemaBranch, name: str | None = None) -> None:
@@ -461,8 +459,8 @@ async def validate_database(
         database_name (str): Name of the database in Neo4j
         retry (int, optional): Number of retry before raising an exception. Defaults to 0.
         retry_interval (int, optional): Time between retries in second. Defaults to 1.
-    """
 
+    """
     try:
         session = driver.session(database=database_name)
         await session.run("SHOW TRANSACTIONS")

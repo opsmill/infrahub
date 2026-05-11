@@ -44,10 +44,7 @@ class DisplayLabelTriggerDefinition(TriggerBranchDefinition):
         display_labels: DisplayLabels,
         branches_out_of_scope: list[str] | None = None,
     ) -> list[DisplayLabelTriggerDefinition]:
-        """
-        This function is used to create a trigger definition for a display labels of type Jinja2.
-        """
-
+        """This function is used to create a trigger definition for a display labels of type Jinja2."""
         definitions: list[DisplayLabelTriggerDefinition] = []
 
         for node_kind, template_label in display_labels.get_template_nodes().items():

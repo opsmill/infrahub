@@ -26,7 +26,6 @@ if TYPE_CHECKING:
 class CoreNumberPool(Node):
     def get_attribute_nb_excluded_values(self) -> int:
         """Returns the number of excluded values for the attribute of the number pool."""
-
         pool_node = registry.schema.get(name=self.node.value)  # type: ignore [attr-defined]
         attribute = next(attribute for attribute in pool_node.attributes if attribute.name == self.node_attribute.value)  # type: ignore [attr-defined]
         if not isinstance(attribute.parameters, NumberAttributeParameters):
@@ -46,7 +45,6 @@ class CoreNumberPool(Node):
         branch: Branch,
     ) -> list[int]:
         """Returns a list of used numbers in the pool."""
-
         query = await NumberPoolGetUsed.init(db=db, branch=branch, pool=self, branch_agnostic=True)
         await query.execute(db=db)
         used = [result.value for result in query.iter_results()]
@@ -65,8 +63,8 @@ class CoreNumberPool(Node):
 
         Returns:
             The next free number, or None if no free numbers are available.
-        """
 
+        """
         query = await NumberPoolGetFree.init(
             db=db, branch=branch, pool=self, branch_agnostic=True, min_value=min_value, max_value=max_value
         )
@@ -76,7 +74,6 @@ class CoreNumberPool(Node):
 
     async def reserve(self, db: InfrahubDatabase, number: int, identifier: str, at: Timestamp | None = None) -> None:
         """Reserve a number in the pool for a specific identifier."""
-
         query = await NumberPoolSetReserved.init(
             db=db, pool_id=self.get_id(), identifier=identifier, reserved=number, at=at
         )
@@ -122,6 +119,7 @@ class CoreNumberPool(Node):
 
         Raises:
             PoolExhaustedError: If no valid numbers are available in the pool.
+
         """
         parameters = attribute.parameters if isinstance(attribute.parameters, NumberAttributeParameters) else None
 

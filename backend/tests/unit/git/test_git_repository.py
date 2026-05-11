@@ -17,7 +17,8 @@ async def test_has_conflicting_changes_no_false_positive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """has_conflicting_changes() should not report false positives when
-    file content contains conflict marker characters like '======='."""
+    file content contains conflict marker characters like '======='.
+    """
     repos_dir = tmp_path / "repositories"
     repos_dir.mkdir()
     monkeypatch.setattr(registry, "_default_branch", "main")

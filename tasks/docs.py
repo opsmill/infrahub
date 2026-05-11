@@ -107,7 +107,6 @@ def validate(context: Context) -> None:
 @task
 def serve(context: Context) -> None:
     """Run documentation server in development mode."""
-
     exec_cmd = "npm run serve"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
@@ -172,7 +171,6 @@ def lint(context: Context) -> None:
 
 def _generate_infrahub_cli_documentation(context: Context) -> None:
     """Generate the documentation for infrahub cli using typer-cli."""
-
     CLI_COMMANDS = (
         ("infrahub.cli.db", "infrahub db", "infrahub-db"),
         ("infrahub.cli.server", "infrahub server", "infrahub-server"),
@@ -275,8 +273,7 @@ def _extract_nested_parameters(
     parent_default: dict | None = None,
     env_prefix: str | None = None,
 ) -> list["ConfigurationSectionParameter"]:
-    """
-    Recursively extract nested parameters for object-type config fields.
+    """Recursively extract nested parameters for object-type config fields.
 
     Args:
         prop_schema: The property schema dictionary.
@@ -288,6 +285,7 @@ def _extract_nested_parameters(
 
     Returns:
         List of ConfigurationSectionParameter objects for nested fields.
+
     """
     from infrahub import config
 
@@ -390,6 +388,7 @@ def _process_section_parameters(
 
     Returns:
         List of ConfigurationSectionParameter objects.
+
     """
     parameters = []
     for param_name, param_schema in section_schema["properties"].items():
@@ -637,8 +636,7 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
 
 def _generate_infrahub_bus_events_documentation() -> None:
-    """
-    Generate documentation for all classes in the event system into a single file
+    """Generate documentation for all classes in the event system into a single file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
     """
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
@@ -647,9 +645,7 @@ def _generate_infrahub_bus_events_documentation() -> None:
         classes: dict[str, type[InfrahubMessage | InfrahubResponse]],
         priority_map: dict[str, int] | None = None,
     ) -> dict[str, dict[str, list[dict[str, any]]]]:
-        """
-        Group classes into a nested dictionary by primary and secondary categories, including priority.
-        """
+        """Group classes into a nested dictionary by primary and secondary categories, including priority."""
         grouped = defaultdict(lambda: defaultdict(list))
         for event_name, cls in classes.items():
             parts = event_name.split(".")
@@ -747,6 +743,7 @@ class ConfigurationSection:
         name: The name of the configuration section.
         description: The section's description.
         parameters: The list of parameters in this section.
+
     """
 
     name: str
@@ -755,8 +752,7 @@ class ConfigurationSection:
 
 
 def _generate_infrahub_events_documentation() -> None:
-    """
-    Generate documentation for all Infrahub events into a single MDX file
+    """Generate documentation for all Infrahub events into a single MDX file
     using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.
 
     Note: Ensure all event classes (like GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
@@ -778,8 +774,7 @@ def _generate_infrahub_events_documentation() -> None:
             import_module(modname)
 
     def format_event_name(raw_name: str) -> str:
-        """
-        Insert spaces before capitals and remove a trailing "Event", if present.
+        """Insert spaces before capitals and remove a trailing "Event", if present.
         For example: "NodeCreatedEvent" becomes "Node Created Event".
         """
         formatted = re.sub(r"(?<!^)(?=[A-Z])", " ", raw_name)

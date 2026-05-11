@@ -18,7 +18,7 @@ class TestCascadeWithExplicitUpdates:
     """Tests for chained dependency resolution when updates is a concrete list of field names."""
 
     def _make_chain_registry(self, make_target: Callable[..., ComputedAttributeTarget]) -> ComputedAttributes:
-        """name -> label -> fqdn chain on a single kind."""
+        """Name -> label -> fqdn chain on a single kind."""
         label_target = make_target(kind=LOCAL_KIND, attr_name="label")
         fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")
         return ComputedAttributes(
@@ -38,7 +38,7 @@ class TestCascadeWithExplicitUpdates:
         assert [r.attribute.name for r in results] == ["label", "fqdn"]
 
     def test_respects_dependency_order(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """label must come before fqdn since fqdn depends on label."""
+        """Label must come before fqdn since fqdn depends on label."""
         ca = self._make_chain_registry(make_target)
         results = ca.get_local_jinja2_targets(kind=LOCAL_KIND, updates=["name"])
         names = [r.attribute.name for r in results]
@@ -58,7 +58,7 @@ class TestCascadeWithExplicitUpdates:
         assert [r.attribute.name for r in results] == ["label"]
 
     def test_cascade_cycle_terminates(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """alpha -> beta -> alpha cycle does not loop forever."""
+        """Alpha -> beta -> alpha cycle does not loop forever."""
         target_alpha = make_target(kind=LOCAL_KIND, attr_name="alpha")
         target_beta = make_target(kind=LOCAL_KIND, attr_name="beta")
         ca = ComputedAttributes(
@@ -127,7 +127,8 @@ class TestCascadeWithExplicitUpdates:
 
     def test_cascade_mixed_direct_and_transitive(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
         """When name triggers both label and fqdn, but fqdn also depends on label,
-        label must be recomputed before fqdn regardless of list order in local_fields."""
+        label must be recomputed before fqdn regardless of list order in local_fields.
+        """
         label_target = make_target(kind=LOCAL_KIND, attr_name="label")
         fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")
         # fqdn listed BEFORE label in the "name" entry to exercise wrong-order scenario
@@ -193,7 +194,7 @@ class TestCascadeWithExplicitUpdates:
         assert names.index("label") < names.index("fqdn")
 
     def test_long_chain_three_levels(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """name -> label -> fqdn -> hostname: 3-hop chain."""
+        """Name -> label -> fqdn -> hostname: 3-hop chain."""
         label_target = make_target(kind=LOCAL_KIND, attr_name="label")
         fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")
         hostname_target = make_target(kind=LOCAL_KIND, attr_name="hostname")
@@ -213,7 +214,7 @@ class TestCascadeWithExplicitUpdates:
         assert names == ["label", "fqdn", "hostname"]
 
     def test_three_node_cycle(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """alpha -> beta -> gamma -> alpha: 3-node cycle terminates."""
+        """Alpha -> beta -> gamma -> alpha: 3-node cycle terminates."""
         alpha = make_target(kind=LOCAL_KIND, attr_name="alpha")
         beta = make_target(kind=LOCAL_KIND, attr_name="beta")
         gamma = make_target(kind=LOCAL_KIND, attr_name="gamma")
@@ -264,7 +265,7 @@ class TestCascadeWithExplicitUpdates:
         assert results == []
 
     def test_independent_branches_from_single_update(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """name -> [label, desc], label -> summary, desc -> footer.
+        """Name -> [label, desc], label -> summary, desc -> footer.
 
         summary and footer are independent leaves on separate branches.
         """
@@ -290,7 +291,7 @@ class TestCascadeWithExplicitUpdates:
         assert names.index("desc") < names.index("footer")
 
     def test_asymmetric_diamond(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """name -> aaa -> bbb -> ddd and name -> ccc -> ddd: ddd after all deps despite path-length asymmetry."""
+        """Name -> aaa -> bbb -> ddd and name -> ccc -> ddd: ddd after all deps despite path-length asymmetry."""
         aaa = make_target(kind=LOCAL_KIND, attr_name="aaa")
         bbb = make_target(kind=LOCAL_KIND, attr_name="bbb")
         ccc = make_target(kind=LOCAL_KIND, attr_name="ccc")
@@ -315,7 +316,7 @@ class TestCascadeWithExplicitUpdates:
         assert names.index("ccc") < names.index("ddd")
 
     def test_three_way_intra_wave_chain(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """name -> [aaa, bbb, ccc] with aaa -> bbb -> ccc: all emitted in correct order."""
+        """Name -> [aaa, bbb, ccc] with aaa -> bbb -> ccc: all emitted in correct order."""
         aaa = make_target(kind=LOCAL_KIND, attr_name="aaa")
         bbb = make_target(kind=LOCAL_KIND, attr_name="bbb")
         ccc = make_target(kind=LOCAL_KIND, attr_name="ccc")

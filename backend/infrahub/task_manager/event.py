@@ -264,7 +264,6 @@ class PrefectEventData(PrefectEventModel):
 
     def _return_event_specifics(self) -> dict[str, Any]:
         """Return event specific data based on the type of event being processed"""
-
         event_specifics = {}
 
         match self.event:

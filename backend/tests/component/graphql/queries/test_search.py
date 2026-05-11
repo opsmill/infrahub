@@ -275,9 +275,7 @@ async def test_search_ipv4(
     ip_dataset_01: dict[str, Any],
     branch: Branch,
 ) -> None:
-    """
-    This only tests that ipv6 search specific behavior does not break ipv4 search.
-    """
+    """This only tests that ipv6 search specific behavior does not break ipv4 search."""
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
 

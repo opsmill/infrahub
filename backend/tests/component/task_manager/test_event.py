@@ -29,8 +29,7 @@ query {
 
 
 def filter_outofscope_events(events: dict, in_scope_ids: list[str]) -> dict[str, Any]:
-    """
-    Because we can't guarantee that Prefect is empty at the start of the test easily
+    """Because we can't guarantee that Prefect is empty at the start of the test easily
     we need to exclude all events not created by this test suite.
     """
     filtered_events = [event for event in events["edges"] if event["node"]["id"] in in_scope_ids]

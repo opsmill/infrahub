@@ -1227,6 +1227,7 @@ def load_and_exit(config_file_name: Path | str = "infrahub.toml", config_data: d
     Args:
         config_file_name (str, optional): [description]. Defaults to "pyproject.toml".
         config_data (dict, optional): [description]. Defaults to None.
+
     """
     try:
         SETTINGS.settings = load(config_file_name=config_file_name, config_data=config_data)

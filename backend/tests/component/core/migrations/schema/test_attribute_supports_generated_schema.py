@@ -341,7 +341,8 @@ async def device_part_schema(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
-    serial_number starts read_only=False so it IS on template instances."""
+    serial_number starts read_only=False so it IS on template instances.
+    """
     registry.schema.register_schema(
         schema=SchemaRoot(generics=[core_object_template, core_object_component_template]),
         branch=default_branch.name,

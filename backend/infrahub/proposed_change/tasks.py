@@ -112,6 +112,8 @@ from .branch_diff import get_diff_summary_cache, get_modified_kinds
 from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
+    import logging
+
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
@@ -720,9 +722,11 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         client=client, branch=model.source_branch, definition=artifact_definition
     )
 
-    artifacts_by_member = {}
-    for artifact in existing_artifacts:
-        artifacts_by_member[artifact.object.peer.id] = artifact.id
+    artifacts_by_member = _map_artifacts_by_member(
+        existing_artifacts=existing_artifacts,
+        definition_name=model.artifact_definition.definition_name,
+        log=log,
+    )
 
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
@@ -844,6 +848,26 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
     )
 
 
+def _map_artifacts_by_member(
+    existing_artifacts: list[InfrahubNode],
+    definition_name: str,
+    log: logging.Logger | logging.LoggerAdapter,
+) -> dict[str, str]:
+    """Map each member id to its existing artifact id, skipping artifacts whose
+    `object` peer cannot be resolved. Such orphan rows can appear when a target
+    node has been removed via a path that does not cascade-delete artifacts."""
+    artifacts_by_member: dict[str, str] = {}
+    for artifact in existing_artifacts:
+        object_id = artifact.object.id
+        if object_id is None:
+            log.warning(
+                f"Skipping orphan artifact {artifact.id} for definition {definition_name}: object peer unresolvable"
+            )
+            continue
+        artifacts_by_member[object_id] = artifact.id
+    return artifacts_by_member
+
+
 def _should_render_artifact(
     artifact_id: str | None,
     managed_branch: bool,
@@ -857,7 +881,6 @@ def _should_render_artifact(
     Will return false if:
         * The artifact_id exists and is not in the impacted list
     """
-
     if not artifact_id or managed_branch:
         return True
 
@@ -1596,7 +1619,6 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
     The edge should be of type CoreArtifactDefinition from the query
     * GATHER_ARTIFACT_DEFINITIONS
     """
-
     parsed = []
     for definition in definitions:
         artifact_definition = ProposedChangeArtifactDefinition(

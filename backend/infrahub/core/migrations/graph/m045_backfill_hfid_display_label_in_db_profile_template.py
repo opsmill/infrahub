@@ -21,9 +21,7 @@ console = get_migration_console()
 
 
 class Migration045(Migration044):
-    """
-    Backfill `human_friendly_id` and `display_label` attributes for profile and template nodes with schemas that define them.
-    """
+    """Backfill `human_friendly_id` and `display_label` attributes for profile and template nodes with schemas that define them."""
 
     name: str = "045_backfill_hfid_display_label_in_db_profile_template"
     minimum_version: int = 44

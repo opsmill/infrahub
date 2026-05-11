@@ -294,11 +294,9 @@ class ProposedChangeReview(Mutation):
         info: GraphQLResolveInfo,
         data: ProposedChangeReviewInput,
     ) -> dict[str, bool]:
-        """
-        This mutation is used to approve or reject a proposed change.
+        """This mutation is used to approve or reject a proposed change.
         It can also be used to undo an approval or rejection.
         """
-
         graphql_context: GraphqlContext = info.context
         graphql_context.active_permissions.raise_for_permission(
             permission=GlobalPermission(
@@ -354,7 +352,6 @@ class ProposedChangeReview(Mutation):
         context: GraphqlContext,
     ) -> InfrahubEvent | None:
         """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
-
         approved_by = await proposed_change.approved_by.get_peers(db=db)
         rejected_by = await proposed_change.rejected_by.get_peers(db=db)
         approved_by_ids = [node.id for _, node in approved_by.items()]

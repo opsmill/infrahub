@@ -13,12 +13,10 @@ class Timestamp(BaseTimestamp):
         return self.to_datetime()
 
     def get_query_filter_path(self, rel_name: str = "r") -> tuple[str, dict]:
-        """
-        Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time on all branches.
+        """Generate a CYPHER Query filter based on a path to query a part of the graph at a specific time on all branches.
 
         There is a currently an assumption that the relationship in the path will be named 'r'
         """
-
         params = {"at": self.to_string()}
 
         filters = [

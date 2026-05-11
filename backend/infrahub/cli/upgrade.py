@@ -61,7 +61,6 @@ async def upgrade_cmd(
     ),
 ) -> None:
     """Upgrade Infrahub to the latest version."""
-
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
