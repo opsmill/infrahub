@@ -100,8 +100,11 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                           type="number"
                           min={1}
                           max={20}
-                          value={(field.value as number) ?? 5}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          value={(field.value as number) ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.valueAsNumber;
+                            field.onChange(isNaN(value) ? null : value);
+                          }}
                         />
                       </FormInput>
                       <FormMessage />
@@ -125,8 +128,11 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                           type="number"
                           min={1}
                           max={100}
-                          value={(field.value as number) ?? 10}
-                          onChange={(e) => field.onChange(Number(e.target.value))}
+                          value={(field.value as number) ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.valueAsNumber;
+                            field.onChange(isNaN(value) ? null : value);
+                          }}
                         />
                       </FormInput>
                       <FormMessage />

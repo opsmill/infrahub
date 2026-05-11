@@ -81,8 +81,11 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                 type="number"
                 min={1}
                 max={20}
-                value={(field.value as number) ?? 5}
-                onChange={(e) => field.onChange(Number(e.target.value))}
+                value={(field.value as number) ?? ""}
+                onChange={(e) => {
+                  const value = e.target.valueAsNumber;
+                  field.onChange(isNaN(value) ? null : value);
+                }}
               />
             </FormInput>
             <FormMessage />
