@@ -175,7 +175,6 @@ async def run(
     prefix: str = DEFAULT_PREFIX,
 ) -> None:
     """Main entrypoint executed by **infrahubctl run**."""
-
     mode = str(mode).lower()
     prefix = str(prefix)
     n_users = int(n_users)

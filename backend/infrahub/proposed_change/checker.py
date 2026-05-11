@@ -13,10 +13,7 @@ class ProposedChangeChecker(ABC):
     async def verify_proposed_change_is_mergeable(
         self, proposed_change: Node, db: InfrahubDatabase, account_session: AccountSession
     ) -> None:
-        """
-        Raise an error if proposed change cannot be merged.
-        """
-
+        """Raise an error if proposed change cannot be merged."""
         raise NotImplementedError()
 
 

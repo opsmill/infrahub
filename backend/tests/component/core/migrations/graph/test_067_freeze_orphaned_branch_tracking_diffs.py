@@ -1,5 +1,4 @@
-"""
-Tests for Migration 067: Freeze orphaned branch-tracking diffs.
+"""Tests for Migration 067: Freeze orphaned branch-tracking diffs.
 
 The migration freezes DiffRoots (and their partners) whose tracking_id starts with "branch."
 when the associated Branch no longer exists, has been merged, or has a different branched_from

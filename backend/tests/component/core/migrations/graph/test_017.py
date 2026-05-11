@@ -11,10 +11,7 @@ async def test_migration_017(
     default_branch: Branch,
     register_internal_models_schema: SchemaBranch,
 ) -> None:
-    """
-    Test migration correctly adds CoreProfile schema node.
-    """
-
+    """Test migration correctly adds CoreProfile schema node."""
     item = registry.schema.get(name="CoreProfile")
     # Make sure to remove CoreProfile from database if it is there
     if item.id is not None:

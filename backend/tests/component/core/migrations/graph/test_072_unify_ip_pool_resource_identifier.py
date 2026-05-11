@@ -4,9 +4,9 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
-from infrahub.core.migrations.graph.m071_unify_ip_pool_resource_identifier import (
+from infrahub.core.migrations.graph.m072_unify_ip_pool_resource_identifier import (
     NEW_IDENTIFIER,
-    Migration071,
+    Migration072,
 )
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
@@ -85,7 +85,7 @@ async def pre_migration_schema_db(
     return updated_schema
 
 
-async def test_migration_071(
+async def test_migration_072(
     db: InfrahubDatabase,
     reset_registry: None,
     default_branch: Branch,
@@ -165,7 +165,7 @@ async def test_migration_071(
     # ---------------------------------------------------------------------
     # 3. Run the migration.
     # ---------------------------------------------------------------------
-    migration = Migration071.init()
+    migration = Migration072.init()
     execution_result = await migration.execute(migration_input=MigrationInput(db=db))
     assert not execution_result.errors, execution_result.errors
 
@@ -230,13 +230,13 @@ async def test_migration_071(
     await verify_graph(db=db)
 
 
-async def test_migration_071_is_idempotent(
+async def test_migration_072_is_idempotent(
     db: InfrahubDatabase,
     reset_registry: None,
     default_branch: Branch,
     register_core_schema_db: None,
 ) -> None:
-    migration = Migration071.init()
+    migration = Migration072.init()
 
     first = await migration.execute(migration_input=MigrationInput(db=db))
     assert not first.errors, first.errors

@@ -486,7 +486,8 @@ DEVICE_STATUSES = ["active", "provisioning", "drained"]
 class SiteDesign:
     def __init__(self, number_of_device: int) -> None:
         """Takes the number of devices that need to be created on a given site.
-        This method will decide how many device of each type to create and return all those objects as a list."""
+        This method will decide how many device of each type to create and return all those objects as a list.
+        """
         if number_of_device > 0:
             self.number_of_device = number_of_device
         else:
@@ -571,7 +572,6 @@ def site_generator(nbr_site: int = 2) -> list[Site]:
     site_names_generator(nbr_site=12)
         result >> ["atl1", "ord1", "jfk1", "den1", "dfw1", "iad1", "bkk1", "sfo1", "iah1", "mco1", "atl2", "ord2"]
     """
-
     sites: list[Site] = []
 
     # Calculate how many loop over the entire list we need to make
@@ -901,9 +901,7 @@ async def find_and_connect_interfaces(
 
 
 async def apply_interface_profiles_and_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
-    """
-    Apply profiles to upstream/backbone L3 interfaces and add them to their respective groups.
-    """
+    """Apply profiles to upstream/backbone L3 interfaces and add them to their respective groups."""
     log.info("Applying profiles to interfaces and update interface groups")
 
     # Fetch upstream and backbone interfaces.
@@ -979,8 +977,7 @@ async def apply_interface_profiles_and_groups(client: InfrahubClient, log: loggi
 
 
 async def apply_devices_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
-    """
-    Fetch devices from Infrahub, group them based on their role and manufacturer,
+    """Fetch devices from Infrahub, group them based on their role and manufacturer,
     and update the corresponding device groups.
     """
     log.info("Adding devices to groups")
@@ -1873,9 +1870,7 @@ async def generate_site(
 async def branch_scenario_add_upstream(
     client: InfrahubClient, log: logging.Logger, site_name: str, external_pool: CoreNode
 ) -> None:
-    """
-    Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site.
-    """
+    """Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site."""
     log.info("Create a new branch and Add a new upstream link with GTT on the edge1 device of the given site")
     device_name = f"{site_name}-edge1"
 
@@ -1983,9 +1978,7 @@ async def branch_scenario_add_upstream(
 async def branch_scenario_replace_ip_addresses(
     client: InfrahubClient, log: logging.Logger, site_name: str, interconnection_pool: CoreNode
 ) -> None:
-    """
-    Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site
-    """
+    """Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site"""
     device1_name = f"{site_name}-edge1"
     device2_name = f"{site_name}-edge2"
 
@@ -2044,9 +2037,7 @@ async def branch_scenario_replace_ip_addresses(
 
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
-    """
-    Create a new Branch and Delete Colt Upstream Circuit
-    """
+    """Create a new Branch and Delete Colt Upstream Circuit"""
     log.info("Create a new Branch and Delete Colt Upstream Circuit")
     new_branch_name = f"{site_name}-delete-upstream"
     await client.branch.create(
@@ -2109,9 +2100,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
-    """
-    Create a new Branch and introduce some conflicts
-    """
+    """Create a new Branch and introduce some conflicts"""
     log.info("Create a new Branch and introduce some conflicts")
     device1_name = f"{site_name}-edge1"
     f"{site_name}-edge2"
@@ -2152,9 +2141,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
 
 
 async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging.Logger) -> None:
-    """
-    Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE
-    """
+    """Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE"""
     log.info("Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE")
     new_branch_name = "platform-conflict"
     await client.branch.create(

@@ -52,12 +52,10 @@ class ErroringBranchMerger(BranchMerger):
 class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def car_dealership_copy(self) -> Generator[tuple[Path, str]]:
-        """
-        Copies car-dealership local repository to a temporary folder, with a new name.
+        """Copies car-dealership local repository to a temporary folder, with a new name.
         This is needed for this test as using car-dealership folder leads to issues most probably
         related to https://github.com/opsmill/infrahub/issues/4296 as some other tests use this same repository.
         """
-
         source_folder = Path(get_fixtures_dir(), "repos", "car-dealership")
         new_folder_name = "car-dealership-copy"
 

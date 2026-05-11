@@ -6,7 +6,7 @@ from infrahub_sdk import Config, InfrahubClientSync
 
 
 class LocustInfrahubClient(InfrahubClientSync):
-    "Locust protocol for Python Infrahub SDK client"
+    """Locust protocol for Python Infrahub SDK client"""
 
     def __init__(self, address: str, config: Config, request_event) -> None:
         super().__init__(address=address, config=config)

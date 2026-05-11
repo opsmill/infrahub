@@ -17,7 +17,8 @@ class NodeRemoveMigrationBaseQuery(MigrationQuery):
     def _branch_from_existing(self, existing: str) -> str:
         """Return a Cypher fragment that computes (new_branch, new_branch_level) for a new
         "deleted" edge based on an existing edge variable. Agnostic edges stay on the global
-        branch; all others go on the migration branch."""
+        branch; all others go on the migration branch.
+        """
         return (
             f"CASE WHEN {existing}.branch = $global_branch THEN $global_branch ELSE $branch END AS new_branch, "
             f"CASE WHEN {existing}.branch = $global_branch "

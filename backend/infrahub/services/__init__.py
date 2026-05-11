@@ -59,10 +59,7 @@ class InfrahubServices:
         component: InfrahubComponent | None = None,
         log_forwarding: LogForwardingService | None = None,
     ) -> None:
-        """
-        This method should not be called directly, use `new` instead for a proper initialization.
-        """
-
+        """This method should not be called directly, use `new` instead for a proper initialization."""
         self._cache = cache
         self._client = client
         self._database = database
@@ -91,11 +88,9 @@ class InfrahubServices:
         http: InfrahubHTTP | None = None,
         log_forwarding: LogForwardingService | None = None,
     ) -> InfrahubServices:
-        """
-        Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular
+        """Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular
         dependency with InfrahubServices.
         """
-
         component_type = component_type or ComponentType.NONE
 
         scheduler = InfrahubScheduler(component_type)
