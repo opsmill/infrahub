@@ -13,7 +13,7 @@ import { getBranchDetailsUrl } from "@/entities/branches/utils";
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
 
 export function BreadcrumbBranches() {
-  const { "*": branchName } = useParams();
+  const { branchName } = useParams();
 
   return (
     <Breadcrumbs data-testid="breadcrumb-branches">
