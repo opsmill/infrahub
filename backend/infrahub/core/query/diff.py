@@ -139,10 +139,13 @@ CALL (diff_path) {
     // -------------------------------------
     WITH n, attr_rel, r_node, r_prop
     // 'base_n' instead of 'n' here to get previous value for node with a migrated kind/inheritance
-    OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF {branch: $base_branch_name}]
-        -(base_n {uuid: n.uuid})-[base_r_node {branch: $base_branch_name}]
-        -(attr_rel)-[base_r_prop {branch: $base_branch_name}]->(base_prop)
-    WHERE type(base_r_node) = type(r_node)
+    OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF]
+        -(base_n {uuid: n.uuid})-[base_r_node]
+        -(attr_rel)-[base_r_prop]->(base_prop)
+    WHERE base_r_root.branch IN [$base_branch_name, $global_branch_name]
+    AND base_r_node.branch IN [$base_branch_name, $global_branch_name]
+    AND base_r_prop.branch IN [$base_branch_name, $global_branch_name]
+    AND type(base_r_node) = type(r_node)
     AND type(base_r_prop) = type(r_prop)
     AND [%(id_func)s(base_n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
     AND all(
@@ -722,7 +725,7 @@ AND (
 AND ALL(
     r_pair IN [[r_root, r_node], [r_node, diff_rel]]
     // filter out paths where a base branch edge follows a branch edge
-    WHERE ((r_pair[0]).branch = $base_branch_name OR (r_pair[1]).branch = $branch_name)
+    WHERE ((r_pair[0]).branch IN [$base_branch_name, $global_branch_name] OR (r_pair[1]).branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
     // filter out paths where an earlier from time follows a later from time
