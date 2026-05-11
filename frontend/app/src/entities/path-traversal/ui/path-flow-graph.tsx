@@ -9,12 +9,12 @@ import {
 } from "@xyflow/react";
 import dagre from "dagre";
 import { exportGraph } from "infrahub-schema-visualizer";
-import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { type ReactNode, useState } from "react";
 import "@xyflow/react/dist/style.css";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 
-import type { PathTraversalResponse } from "../domain/path-traversal.types";
+import type { PathResult } from "../domain/path-traversal.types";
 import { BottomToolbar, type LayoutDirection } from "./bottom-toolbar";
 import { InfraNode, type InfraNodeData } from "./infra-node";
 import { type EdgeStyle, PathEdge } from "./path-edge";
@@ -65,7 +65,9 @@ function getLayoutedElements(
 }
 
 type PathFlowGraphProps = {
-  data: PathTraversalResponse | null;
+  paths: PathResult[];
+  sourceId: string;
+  destinationIds: Set<string>;
   selectedPathIndex: number;
   onPathSelect?: (index: number) => void;
   onExcludeKind?: (kind: string) => void;
@@ -165,8 +167,89 @@ function NodeContextMenu({
   );
 }
 
+function buildGraph(
+  paths: PathResult[],
+  sourceId: string,
+  destinationIds: Set<string>,
+  selectedPathIndex: number,
+  direction: LayoutDirection
+) {
+  const nodeMap = new Map<string, InfraNodeData & { id: string }>();
+  const edgeMap = new Map<string, Edge>();
+
+  const selectedPath = paths[selectedPathIndex];
+  const selectedNodeIds = new Set(selectedPath?.hops.map((hop) => hop.node.id) ?? []);
+  const selectedEdgeKeys = new Set<string>();
+  if (selectedPath) {
+    for (let i = 0; i < selectedPath.hops.length - 1; i++) {
+      const from = selectedPath.hops[i]?.node.id;
+      const to = selectedPath.hops[i + 1]?.node.id;
+      if (from && to) selectedEdgeKeys.add(`${from}-${to}`);
+    }
+  }
+
+  for (const path of paths) {
+    for (const hop of path.hops) {
+      if (!nodeMap.has(hop.node.id)) {
+        nodeMap.set(hop.node.id, {
+          id: hop.node.id,
+          label: hop.node.display_label,
+          kind: hop.node.kind,
+          nodeId: hop.node.id,
+          isSource: hop.node.id === sourceId,
+          isDestination: destinationIds.has(hop.node.id),
+          highlighted: selectedNodeIds.has(hop.node.id),
+        });
+      }
+    }
+
+    for (let i = 0; i < path.hops.length - 1; i++) {
+      const fromHop = path.hops[i];
+      const toHop = path.hops[i + 1];
+      if (!fromHop || !toHop) continue;
+      const edgeKey = `${fromHop.node.id}-${toHop.node.id}`;
+      if (edgeMap.has(edgeKey)) continue;
+
+      const isHighlighted = selectedEdgeKeys.has(edgeKey);
+      edgeMap.set(edgeKey, {
+        id: edgeKey,
+        source: fromHop.node.id,
+        target: toHop.node.id,
+        type: "path",
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: isHighlighted ? "#3b82f6" : "#d1d5db",
+        },
+        data: {
+          label: toHop.relationship?.from_label ?? "",
+          highlighted: isHighlighted,
+        },
+      });
+    }
+  }
+
+  const nodes: Node[] = Array.from(nodeMap.values()).map((n) => ({
+    id: n.id,
+    type: "infra",
+    position: { x: 0, y: 0 },
+    data: {
+      label: n.label,
+      kind: n.kind,
+      nodeId: n.id,
+      isSource: n.isSource,
+      isDestination: n.isDestination,
+      highlighted: n.highlighted,
+      direction,
+    },
+  }));
+
+  return getLayoutedElements(nodes, Array.from(edgeMap.values()), direction);
+}
+
 export function PathFlowGraph({
-  data,
+  paths,
+  sourceId,
+  destinationIds,
   selectedPathIndex,
   onExcludeKind,
   parametersOpen,
@@ -179,97 +262,17 @@ export function PathFlowGraph({
   const [edgeStyle, setEdgeStyle] = useState<EdgeStyle>("bezier");
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
 
-  const { nodes: flowNodes, edges: layoutedEdges } = useMemo(() => {
-    if (!data?.paths.length) {
-      return { nodes: [] as Node[], edges: [] as Edge[] };
-    }
+  const { nodes: flowNodes, edges: layoutedEdges } =
+    paths.length === 0
+      ? { nodes: [] as Node[], edges: [] as Edge[] }
+      : buildGraph(paths, sourceId, destinationIds, selectedPathIndex, direction);
 
-    const nodeMap = new Map<string, InfraNodeData & { id: string }>();
-    const edgeSet = new Set<string>();
-    const edges: Edge[] = [];
+  const flowEdges: Edge[] = layoutedEdges.map((edge) => ({
+    ...edge,
+    data: { ...edge.data, edgeStyle },
+  }));
 
-    const selectedPath = data.paths[selectedPathIndex];
-    const selectedObjectIds = new Set(selectedPath?.objects.map((o) => o.id) ?? []);
-    const selectedEdgeKeys = new Set<string>();
-
-    if (selectedPath) {
-      for (let i = 0; i < selectedPath.objects.length - 1; i++) {
-        const currentObject = selectedPath.objects[i];
-        const nextObject = selectedPath.objects[i + 1];
-        if (currentObject && nextObject) {
-          selectedEdgeKeys.add(`${currentObject.id}-${nextObject.id}`);
-          selectedEdgeKeys.add(`${nextObject.id}-${currentObject.id}`);
-        }
-      }
-    }
-
-    for (const path of data.paths) {
-      for (const object of path.objects) {
-        if (!nodeMap.has(object.id)) {
-          nodeMap.set(object.id, {
-            id: object.id,
-            label: object.display_label,
-            kind: object.kind,
-            nodeId: object.id,
-            isSource: object.id === data.source.id,
-            isDestination: object.id === data.destination.id,
-            highlighted: selectedObjectIds.has(object.id),
-          });
-        }
-      }
-
-      for (let i = 0; i < path.objects.length - 1; i++) {
-        const sourceObject = path.objects[i];
-        const targetObject = path.objects[i + 1];
-        if (!sourceObject || !targetObject) continue;
-        const sourceId = sourceObject.id;
-        const targetId = targetObject.id;
-        const edgeKey = `${sourceId}-${targetId}`;
-
-        if (!edgeSet.has(edgeKey)) {
-          edgeSet.add(edgeKey);
-          const relName = path.relationships[i]?.name ?? "";
-          const isHighlighted = selectedEdgeKeys.has(edgeKey);
-
-          edges.push({
-            id: edgeKey,
-            source: sourceId,
-            target: targetId,
-            type: "path",
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              color: isHighlighted ? "#3b82f6" : "#d1d5db",
-            },
-            data: { label: relName, highlighted: isHighlighted },
-          });
-        }
-      }
-    }
-
-    const nodes: Node[] = Array.from(nodeMap.values()).map((n) => ({
-      id: n.id,
-      type: "infra",
-      position: { x: 0, y: 0 },
-      data: {
-        label: n.label,
-        kind: n.kind,
-        nodeId: n.id,
-        isSource: n.isSource,
-        isDestination: n.isDestination,
-        highlighted: n.highlighted,
-        direction,
-      },
-    }));
-
-    return getLayoutedElements(nodes, edges, direction);
-  }, [data, selectedPathIndex, direction]);
-
-  const flowEdges = useMemo<Edge[]>(
-    () => layoutedEdges.map((edge) => ({ ...edge, data: { ...edge.data, edgeStyle } })),
-    [layoutedEdges, edgeStyle]
-  );
-
-  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+  function onNodeContextMenu(event: React.MouseEvent, node: Node) {
     event.preventDefault();
     const nodeData = node.data as InfraNodeData;
     setContextMenu({
@@ -279,13 +282,15 @@ export function PathFlowGraph({
       nodeKind: nodeData.kind,
       nodeLabel: nodeData.label,
     });
-  }, []);
+  }
 
-  const closeContextMenu = useCallback(() => setContextMenu(null), []);
-  const handleExport = useCallback(
-    (format: Parameters<typeof exportGraph>[1]) => exportGraph(flowNodes, format),
-    [flowNodes]
-  );
+  function closeContextMenu() {
+    setContextMenu(null);
+  }
+
+  function handleExport(format: Parameters<typeof exportGraph>[1]) {
+    exportGraph(flowNodes, format);
+  }
 
   return (
     <div className="relative h-full w-full">

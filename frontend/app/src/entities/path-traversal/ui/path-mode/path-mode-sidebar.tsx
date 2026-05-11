@@ -54,7 +54,7 @@ export function PathModeSidebar() {
         <div className="border-gray-200 border-t p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-medium text-gray-700 text-sm">
-              {data.total_paths_found} path{data.total_paths_found !== 1 ? "s" : ""} found
+              {data.count} path{data.count !== 1 ? "s" : ""} found
             </h3>
             {data.paths.length > 0 && (
               <button

@@ -12,15 +12,10 @@ const KIND_COLORS = [
 export function getKindColor(kind: string): string {
   let hash = 0;
   for (let i = 0; i < kind.length; i++) {
-    // biome-ignore lint/suspicious/noBitwiseOperators: intentional hash computation
     hash = kind.charCodeAt(i) + ((hash << 5) - hash);
   }
   const index = Math.abs(hash) % KIND_COLORS.length;
   return KIND_COLORS[index] as string;
-}
-
-export function formatRelName(name: string): string {
-  return name.replace(/__/g, " / ");
 }
 
 // Mirrors backend/infrahub/core/query/path.py:35 (DEFAULT_EXCLUDED_NAMESPACES).

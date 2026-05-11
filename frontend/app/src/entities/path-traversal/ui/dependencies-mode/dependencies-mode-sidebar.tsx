@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 
-import { useGetReachableObjects } from "../queries/get-reachable-objects.query";
+import { useGetReachableNodes } from "../queries/get-reachable-nodes.query";
 import { getKindColor } from "../utils";
 import { DependenciesModeForm } from "./dependencies-mode-form";
 import {
@@ -19,7 +19,7 @@ export function DependenciesModeSidebar() {
     values: formValues,
   });
 
-  const query = useGetReachableObjects(
+  const query = useGetReachableNodes(
     {
       sourceId: params.source,
       targetKinds: params.targetKinds,
@@ -42,13 +42,13 @@ export function DependenciesModeSidebar() {
         <div className="border-gray-200 border-t p-4">
           <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 p-2">
             <div className="font-medium text-amber-800 text-xs">
-              {data.total_found} object{data.total_found !== 1 ? "s" : ""} found
+              {data.count} dependenc{data.count === 1 ? "y" : "ies"} found
             </div>
           </div>
           <div className="space-y-1">
-            {data.reachable_objects.map((object, index) => (
+            {data.dependencies.map((dep, index) => (
               <button
-                key={object.id}
+                key={`${dep.node.id}-${index}`}
                 type="button"
                 onClick={() => setParams({ selectedIndex: index })}
                 className={`flex w-full items-center gap-2 rounded-md border p-2 text-left text-xs transition-colors ${
@@ -59,12 +59,12 @@ export function DependenciesModeSidebar() {
               >
                 <div
                   className="size-2 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: getKindColor(object.kind) }}
+                  style={{ backgroundColor: getKindColor(dep.node.kind) }}
                 />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{object.display_label}</div>
+                  <div className="truncate font-medium">{dep.node.display_label}</div>
                   <div className="truncate text-[10px] text-gray-400">
-                    {object.kind} · {object.depth} hop{object.depth !== 1 ? "s" : ""}
+                    {dep.node.kind} · {dep.depth} hop{dep.depth !== 1 ? "s" : ""}
                   </div>
                 </div>
               </button>
