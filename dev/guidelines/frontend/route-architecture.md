@@ -275,6 +275,24 @@ if (!pc.source_branch?.value) return <NoDataFound … />;
 
 Comments justifying asymmetry ("destination_branch is conventionally always present") rot — the actual nullability is what runs.
 
+## Verifying cleanup after a deletion or rewrite
+
+When you delete a consumer (a tab cell, a switch statement, a whole legacy component), other exports may become orphaned. TypeScript happily compiles dead exports — only static analysis catches them. After any migration that deletes consumers, run:
+
+```bash
+cd frontend/app && pnpm knip
+```
+
+Knip surfaces:
+
+- Unused files (e.g. a primitive that only the deleted component imported)
+- Unused exports (e.g. QSP-value constants that only the deleted switch statements referenced)
+- Unused dependencies and types
+
+The path-based tab routing migration left `Pill`, `TASK_TAB`, and `DIFF_TABS` orphaned because Phase 5 deleted their only consumer (`shared/components/tabs.tsx` plus various QSP-driven switches). The per-phase verification ran `pnpm test`, `pnpm exec tsc`, and `pnpm biome:fix` — none of which catches dead exports. CI's knip step found them a release later.
+
+Add `pnpm knip` to your verification commands any time a PR deletes a component, switches a switch-on-QSP to nested routes, or otherwise removes the last importer of a helper. Fix in the same PR — orphaned exports compound and become harder to delete with confidence as time passes.
+
 ## Anti-patterns observed in past PRs
 
 | Anti-pattern | Replacement |
@@ -295,6 +313,7 @@ Comments justifying asymmetry ("destination_branch is conventionally always pres
 | Tab count `<Badge>{count ?? 0}</Badge>` while siblings use `<Badge>{count}</Badge>` | Consistent loading/error policy across all tabs in the family |
 | Asymmetric null guards on twin fields (e.g. source vs destination branch) | Same guard treatment for structurally identical fields |
 | Boy-scout: leaving `!` non-null assertions in a file you rewrote in the same PR | Audit and fix on rewrite — see [typescript.md](typescript.md) |
+| Deleting a component without running `pnpm knip` to catch orphaned exports | Run `pnpm knip` whenever a PR removes a consumer; fix dead exports in the same PR |
 
 ## See also
 

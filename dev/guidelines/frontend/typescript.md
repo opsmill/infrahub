@@ -90,6 +90,8 @@ See [route-architecture.md](route-architecture.md) for the full route + outlet-c
 
 When you rewrite a file (replacing the whole component, not just a small edit), audit it for type lies (`!`, `as`, implicit `any`) in the touched expressions and fix them. Inheriting an antipattern verbatim during a rewrite is its own decision — don't make it by default. The PR that rewrites the file is the cheapest place to fix the lie.
 
+When the rewrite also **deletes** a consumer, run `pnpm knip` before you finish — TypeScript doesn't flag dead exports, but knip will. See [route-architecture.md → Verifying cleanup](route-architecture.md#verifying-cleanup-after-a-deletion-or-rewrite).
+
 The audit applies to **every file the rewrite commit lands in**, not just the marquee files. A commit like "drop unsafe non-null assertions" that fixes 3 files but leaves `!` survivors in 2 sibling files touched by the same PR is a half-fix — reviewers won't catch it because the commit message claims the work is done.
 
 Concretely, before declaring a `!`-cleanup commit done, run:
