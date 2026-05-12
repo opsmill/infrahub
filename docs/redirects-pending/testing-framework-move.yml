@@ -1,0 +1,35 @@
+---
+feature: Testing Framework move
+pr: TBD
+description: |
+  Testing Framework page moved out of "Development Resources" into Branches &
+  Change Control as a 5th sub-category, parallel to Checks & Validation. Per
+  Pete Crocker's docs review on May 6: "this is a CI pipeline and branching
+  concept."
+
+  Frontmatter title shortened from "Resources testing framework" to "Testing
+  framework" to match the sidebar label and Pete's preferred name. Wim/Baptiste
+  invited to push back on the rename in PR review.
+
+  Bundled in the same PR: a sidebar-only flatten of Reference > API >
+  Message Bus Events (Message Bus Events promoted to a flat sibling of the
+  API sub-category). The api-server placeholder page stays put for now —
+  removal is in a follow-up PR.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/resources-testing-framework
+    to: /docs/testing-framework/
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/testing-framework/
+    title: Testing Framework
+
+# Internal cross-link references in OTHER files that point at legacy paths.
+# All three inbound links were updated in this PR (not deferred to cleanup) since
+# they're internal cross-section references this PR could address cleanly:
+# - docs/docs/topics/transformation.mdx
+# - docs/docs/topics/developer-guide.mdx
+# - docs/docs/reference/infrahub-tests.mdx
+cross_links_to_update: []

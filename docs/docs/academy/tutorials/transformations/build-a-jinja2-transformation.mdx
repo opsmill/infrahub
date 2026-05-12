@@ -1,0 +1,353 @@
+---
+title: Build a Jinja2 Transformation
+---
+
+# Build a Jinja2 Transformation
+
+By the end of this tutorial you will have built a working Jinja2 Transformation end-to-end: loaded a small network-device schema, created a few sample devices, written a GraphQL query that filters by device name, written a Jinja template that renders a configuration snippet from the result, registered it in `.infrahub.yml`, tested it locally with `infrahubctl render`, added the repository to Infrahub, and called the render API. You'll leave with a `device_config_transform` you can call against any device by name.
+
+For conceptual background, see [Transformations](../../../transformations/overview). For a recipe-form how-to without the running example, see [Write a Jinja2 transformation](../../../transformations/jinja2).
+
+Within Infrahub a [Transformation](../../../transformations/overview) is defined in an [external repository](../../../git-integration/connect-repository). However, during development and troubleshooting it is easiest to start from your local computer and run the render using [infrahubctl render]($(base_url)infrahubctl/infrahubctl-render).
+
+The tutorial follows these steps:
+
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../development-resources/graphql/overview), that can take an input parameter to filter the data
+2. Write a Jinja2 file that uses the GraphQL query to read information from the system and render the data into a new format
+3. Create an entry for the Jinja2 Transformation within an `.infrahub.yml` file
+4. Create a Git repository
+5. Test the Transformation rendering with `infrahubctl`
+6. Add the repository to Infrahub as an external repository
+7. Validate that the Transformation works using the render API endpoint
+
+## 1. Loading a schema
+
+This tutorial uses a very simplistic network device model. The rendered template won't be very useful on its own — the goal is to show how Jinja rendering works. Once you've mastered the basics you'll be ready to create more advanced templates.
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Device
+    namespace: Network
+    display_label: "{{ name__value }}"
+    attributes:
+      - name: name
+        kind: Text
+        label: Name
+        optional: false
+        unique: true
+      - name: description
+        kind: Text
+        label: Description
+        optional: true
+```
+
+Store the schema as a YAML file on your local disk, and load the schema into Infrahub using the following command
+
+```bash
+infrahubctl schema load /path/to/schema.yml
+```
+
+More information on loading schema files into Infrahub can be found in the [schema import guide](../../../schema/create-and-load#load-a-schema-file).
+
+## 2. Creating a query to collect the desired data
+
+As the first step we need some data in the database to actually query.
+
+Create three devices, called "switch1", "switch2", "switch3", either using the frontend or by submitting three GraphQL mutations as per below (swapping out the name each time).
+
+```graphql
+mutation CreateDevice {
+  NetworkDeviceCreate(
+    data: {name: {value: "switch1"}, description: {value: "This is device switch1"}}
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+The next step is to create a query that returns the data we created above. The rest of this tutorial assumes that the following query will return a response similar to the response below the query.
+
+```graphql
+query DeviceQuery {
+  NetworkDevice {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+Response to the query:
+
+```json
+{
+  "data": {
+    "NetworkDevice": {
+      "edges": [
+        {
+          "node": {
+            "name": {
+              "value": "switch1"
+            },
+            "description": {
+              "value": "This is device switch1"
+            }
+          }
+        },
+        {
+          "node": {
+            "name": {
+              "value": "switch2"
+            },
+            "description": {
+              "value": "This is device switch2"
+            }
+          }
+        },
+        {
+          "node": {
+            "name": {
+              "value": "switch3"
+            },
+            "description": {
+              "value": "This is device switch3"
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+While it's possible to create a Transformation that targets all of these devices — for example to create a report — the goal here is to focus on one device at a time. Modify the query above to take an input parameter so that we can filter the result.
+
+:::warning Single-target query requirement
+For proper artifact detection, your query must target a **unique node** using a unique attribute or ID. This ensures Infrahub only regenerates the necessary artifacts instead of regenerating all artifacts unnecessarily.
+
+**Requirements for a valid single-target query:**
+
+- Must filter on a unique identifier (ID or unique attribute like `name`)
+- Must use a required variable, for example, `$name: String!`
+- Must use exact match filters, for example, `name__value: $name`, not list filters, for example, `name__values: $name`
+
+**Valid example:**
+
+```graphql
+query BuiltinTag($name: String!) {
+  BuiltinTag(name__value: $name) {
+    edges { node { id } }
+  }
+}
+```
+
+**Invalid examples (will cause excessive artifact generation):**
+
+No filter at all:
+
+```graphql
+query BuiltinTag {
+  BuiltinTag {
+    edges { node { id } }
+  }
+}
+```
+
+Filtering on a non-unique attribute:
+
+```graphql
+query BuiltinTag($description: String!) {
+  BuiltinTag(description__value: $description) {
+    edges { node { id } }
+  }
+}
+```
+
+To learn more about single-target queries and why they are important, see the [GraphQL topic](../../../development-resources/graphql/single-target-queries).
+:::
+
+Create a local directory on your computer.
+
+```shell
+mkdir device_config_render
+```
+
+Then save the below query as a text file named `device_config.gql`.
+
+```graphql
+query DeviceQuery($name: String!) {
+  NetworkDevice(name__value: $name) {
+    edges {
+      node {
+        name {
+          value
+        }
+        description {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+The query requires an input parameter called `$name` that will refer to the name of each device. When we want to query for device switch1, the input variables to the query would look like this:
+
+```json
+{
+  "name": "switch1"
+}
+```
+
+## 3. Create the Jinja template
+
+The next step is to create the actual Jinja Template file. Create a file called `device_config.j2`.
+
+```jinja2
+{% if data.NetworkDevice.edges and data.NetworkDevice.edges is iterable %}
+{% for device in data["NetworkDevice"]["edges"] %}
+{% set device_name = device.node.name.value %}
+{% set device_description = device.node.description.value %}
+hostname {{ device_name }}
+   description "{{ device_description }}"
+end
+{% endfor %}
+{% endif %}
+```
+
+:::note
+
+In your template, you can utilize most of the **filters** provided by **Jinja2** and **Netutils**!
+
+For more information, see the [SDK Templating Reference]($(base_url)python-sdk/reference/templating).
+
+:::
+
+## 4. Create a .infrahub.yml file
+
+In the `.infrahub.yml` file you define what Transformations you have in your repository that you want to make available for Infrahub.
+
+Create a `.infrahub.yml` file in the root of the directory.
+
+```yaml
+---
+jinja2_transforms:
+  - name: device_config_transform             # Unique name for your Transformation
+    description: "device config Transformation"    # (optional)
+    query: "device_config_query"              # Name or ID of the GraphQLQuery
+    template_path: "device_config.j2"         # Path to the main Jinja2 template
+
+queries:
+  - name: device_config_query                 # Name of the GraphQLQuery
+    file_path: "device_config.gql"            # Path to the main Jinja2 template
+```
+
+> The main Jinja2 template can import other templates
+
+Three parts here are required: first the `name` of the Transformation which should be unique across Infrahub, `query` the GraphqlQuery linked to our Transformation, and also the `template_path` that should point to the Jinja2 file within the repository.
+
+## 5. Create a Git repository
+
+Within the `device_config_render` folder you should now have three files:
+
+- `device_config.gql`: Contains the GraphQL query
+- `device_config.j2`: Contains the Jinja2 Template
+- `.infrahub.yml`: Contains the definition for the Transformation
+
+Before we can test our Transformation we must add the files to a local Git repository.
+
+```shell
+git init --initial-branch=main
+git add .
+git commit -m "First commit"
+```
+
+## 6. Test the render using infrahubctl
+
+Using `infrahubctl` you can first verify that the `.infrahub.yml` file is formatted correctly by listing available Transformations.
+
+```shell
+
+ Usage: infrahubctl render [OPTIONS] TRANSFORM_NAME [VARIABLES]...
+
+ Render a local Jinja2 Transformation for debugging purpose.
+
+╭─ Arguments ─────────────────────────────────────────────────────────────────────────────────────╮
+│ *    transform_name      TEXT            [default: None] [required]                             │
+│      variables           [VARIABLES]...  Variables to pass along with the query. Format         │
+│                                          key=value key=value.                                   │
+│                                          [default: None]                                        │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ───────────────────────────────────────────────────────────────────────────────────────╮
+│ --branch                       TEXT  Branch on which to render the Transformation. [default: None]   │
+│ --debug          --no-debug          [default: no-debug]                                        │
+│ --config-file                  TEXT  [env var: INFRAHUBCTL_CONFIG] [default: infrahubctl.toml]  │
+│ --help                               Show this message and exit.                                │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
+
+Examples
+
+```shell
+infrahubctl render <transform name or ID> my-param=XXXXX my-other-param=YYYYY
+```
+
+:::note
+
+If `--branch` is not provided it will automatically use the name of the local branch.
+
+:::
+
+## 7. Adding the repository to Infrahub
+
+To avoid repeating the same instructions, see [Connect a repository](../../../git-integration/connect-repository) for syncing the repository you created and making it available within Infrahub.
+
+## 8. Accessing the Transformation from the API
+
+A Transformation can be rendered on demand via the REST API with the endpoint: `https://<host>/api/transform/jinja2/<transform name or ID>`
+
+This endpoint is branch-aware and it accepts the name of the branch and/or the time as URL parameters.
+
+- `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main`
+- `https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&at=<time of your choice>`
+
+:::info
+
+The name of the branch used in the query will be used to retrieve the right Jinja template and to execute the GraphQL query.
+
+:::
+
+If the GraphQL query accepts parameters, they can be passed directly as URL parameters:
+
+```txt
+https://<host>/api/transform/jinja2/<transform name or ID>?branch=main&my-param=XXX&my-other-param=YYY
+```
+
+## What you learned
+
+You now have a working Jinja2 Transformation:
+
+- A `NetworkDevice` schema loaded into Infrahub
+- Three sample devices (`switch1`, `switch2`, `switch3`) created via GraphQL mutations
+- A GraphQL query that selects a single device by name and reads its `description`
+- A Jinja template that renders a hostname-and-description configuration snippet from the result
+- A `.infrahub.yml` definition that wires the query and the template together
+- The Transformation rendering both via `infrahubctl render` locally and via the REST API endpoint
+
+## Next steps
+
+- [Write a Python transformation](../../../transformations/python) — when Jinja templating isn't enough
+- [Use artifacts](../../../artifacts/use) — cache rendered output and tie it to a specific target object
+- [GraphQL fragments](../../../development-resources/graphql-fragments) — share query fragments across Transformations

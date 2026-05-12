@@ -1,0 +1,349 @@
+---
+title: Install Infrahub Enterprise
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../../../src/components/Card";
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Install Infrahub Enterprise <EnterpriseBadge />
+
+Infrahub Enterprise is based on the Community version, with several enhancements for:
+
+- Enterprise features
+- High availability
+- Better performance
+- Security hardening (Docker image, etc.)
+
+Infrahub Enterprise can be deployed using the same methods as Infrahub Community.
+
+<Tabs groupId="install-method" queryString>
+<TabItem value="Docker compose via curl" default>
+
+## Using curl and Docker Compose
+
+To quickly spin up the latest Infrahub Enterprise locally, retrieve the Docker Compose file from [infrahub.opsmill.io/enterprise](https://infrahub.opsmill.io/enterprise).
+
+You can also specify a specific version in the URL:
+
+- [https://infrahub.opsmill.io/enterprise/1.3.5](https://infrahub.opsmill.io/enterprise/1.3.5)
+
+You can also specify a sizing preset in the URL. This will automatically configure replica count for each component according to your sizing plan:
+
+- [https://infrahub.opsmill.io/enterprise?size=small](https://infrahub.opsmill.io/enterprise?size=small) (requires 16 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise/1.3.5?size=medium](https://infrahub.opsmill.io/enterprise/1.3.5?size=medium) (requires 32 GB of RAM)
+- [https://infrahub.opsmill.io/enterprise/stable?size=large](https://infrahub.opsmill.io/enterprise/stable?size=large) (requires 64 GB of RAM)
+
+| Size        | Total required memory | API workers | Task workers | Task manager API workers | Task manager background workers | DB heap size | DB page cache size |
+|-------------|-----------------------|-------------|--------------|--------------------------|--------------------------------|--------------|--------------------|
+| small       | 16 GB                 | 4           | 2            | 1                        | 1                              | 8G           | 1G                 |
+| medium      | 32 GB                 | 4           | 4            | 2                        | 2                              | 24G          | 4G                 |
+| medium-data | 32 GB                 | 4           | 2            | 1                        | 1                              | 24G          | 4G                 |
+| large       | 64 GB                 | 4           | 8            | 4                        | 2                              | 31G          | 16G                |
+| large-data  | 64 GB                 | 4           | 2            | 1                        | 1                              | 31G          | 16G                |
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/engine/install/) (version 24.x minimum)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+### Start an Infrahub Enterprise environment
+
+<Tabs groupId="os" queryString>
+<TabItem value="macOS" default>
+
+```bash
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+sudo docker compose -p infrahub up -d
+```
+
+</TabItem>
+</Tabs>
+
+### Stop and remove an Infrahub Enterprise environment
+
+<Tabs groupId="os" queryString>
+<TabItem value="macOS" default>
+
+```bash
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+docker compose -p infrahub down -v
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl https://infrahub.opsmill.io/enterprise > docker-compose.yml
+sudo docker compose -p infrahub down -v
+```
+
+</TabItem>
+</Tabs>
+
+### Enable observability
+
+To deploy Infrahub with a built-in observability stack (Grafana, Prometheus, Loki, Alloy), add the `?observability=true` query parameter to the URL. This can be combined with existing parameters like `size`:
+
+<Tabs groupId="os" queryString>
+<TabItem value="macOS" default>
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+docker compose -p infrahub up -d
+```
+
+</TabItem>
+<TabItem value="Linux">
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?observability=true" > docker-compose.yml
+sudo docker compose -p infrahub up -d
+```
+
+</TabItem>
+</Tabs>
+
+Combined with a sizing preset:
+
+```bash
+curl "https://infrahub.opsmill.io/enterprise?size=small&observability=true" > docker-compose.yml
+```
+
+Once running, Grafana is accessible at [http://localhost:3500](http://localhost:3500) with default credentials `admin` / `admin`.
+
+For instructions on upgrading an existing observability stack, see the [Upgrade guide](../../maintain-upgrade/upgrade/observability-stack).
+
+:::tip Enable request tracing
+
+Infrahub can export OpenTelemetry traces so you can follow a single request as it moves across the API server, task workers, and the database. Traces are sent to the bundled Tempo instance and surfaced in Grafana under the Tempo data source.
+
+To enable it, add the following to a `.env` file alongside the compose file:
+
+```bash
+INFRAHUB_TRACE_ENABLE=true
+INFRAHUB_TRACE_EXPORTER_TYPE=otlp
+INFRAHUB_TRACE_EXPORTER_PROTOCOL=grpc
+INFRAHUB_TRACE_EXPORTER_ENDPOINT=http://infrahub-tempo:4317
+INFRAHUB_TRACE_INSECURE=true
+```
+
+:::
+
+</TabItem>
+<TabItem value="Kubernetes with Helm">
+
+## Using Helm and Kubernetes
+
+The Enterprise Helm chart is based on the original Infrahub chart and uses it as a Helm dependency.
+Most configuration related to Infrahub goes inside the `infrahub` top-level key.
+
+<ReferenceLink title="Infrahub Enterprise Helm Chart" url="https://github.com/opsmill/infrahub-helm/tree/stable/charts/infrahub-enterprise" openInNewTab />
+<ReferenceLink title="ArtifactHub" url="https://artifacthub.io/packages/helm/infrahub-enterprise/infrahub-enterprise" openInNewTab />
+
+### Production deployment requirements
+
+The following are required for production deployments using Helm:
+
+- Data persistence for the database must be enabled
+- Multiple replicas of the Infrahub API Server and Infrahub Task workers should be deployed: you can use the `affinity` variable to define the affinity policy for the pods
+- S3 storage should be configured for the Infrahub API Server, it is required if you have multiple replicas
+
+:::warning
+
+We do not recommend using the included dependencies (Neo4j, RabbitMQ, Redis) for production.
+They are present to ease deployment on non-production environments.
+
+:::
+
+### Prerequisites
+
+- A Kubernetes cluster
+- [Helm](https://helm.sh/docs/intro/install/) installed on your system
+
+:::warning Storage persistence for testing and lab environments
+
+By default, the Helm chart disables storage persistence on all components (Neo4j, RabbitMQ, Redis) to enable quicker deployments using `emptyDir` storage and reduce requirements for test installations.
+
+However, if pods get rescheduled on the Kubernetes cluster for any reason, all data will be lost. This can happen unexpectedly due to node maintenance, resource pressure, or cluster updates.
+
+For long-running tests or lab environments, you should either:
+
+- Enable storage persistence for the Neo4j database at minimum (but also on the other components if possible)
+- Use Docker Compose instead, which provides more predictable behavior for non-production environments
+
+:::
+
+### Step 1: Fill in the values file
+
+Create a `values.yml` file with the following configuration:
+
+```yaml
+infrahub:
+  infrahubServer:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-server
+            topologyKey: topology.kubernetes.io/zone
+    persistence:
+      enabled: false
+    ingress:
+      enabled: true
+    infrahubServer:
+      env:
+        INFRAHUB_ALLOW_ANONYMOUS_ACCESS: "true"
+        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_DB_TYPE: neo4j
+        INFRAHUB_LOG_LEVEL: INFO
+        INFRAHUB_PRODUCTION: "true"
+        INFRAHUB_INITIAL_ADMIN_TOKEN: 06438eb2-8019-4776-878c-0941b1f1d1ec
+        INFRAHUB_SECURITY_SECRET_KEY: 327f747f-efac-42be-9e73-999f08f86b92
+        INFRAHUB_STORAGE_DRIVER: s3
+        AWS_ACCESS_KEY_ID: xxxx
+        AWS_SECRET_ACCESS_KEY: xxxx
+        AWS_S3_BUCKET_NAME: infrahub-data
+        AWS_S3_ENDPOINT_URL: https://s3
+
+  infrahubTaskWorker:
+    replicas: 3
+    affinity:
+      podAntiAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: service
+                operator: In
+                values:
+                - infrahub-task-worker
+            topologyKey: topology.kubernetes.io/zone
+
+  neo4j:
+    services:
+      admin:
+        enabled: true
+    volumes:
+      data:
+        mode: dynamic
+        dynamic:
+          storageClassName: premium-rwo
+          requests:
+            storage: 100Gi
+```
+
+:::warning
+Be sure to replace the placeholder values with your actual values. See the [configuration reference](/reference/configuration) for details on all available environment variables.
+:::
+
+Starting with version 4.0.0 of the Helm chart, you can use flavored Helm charts that come pre-configured with sizing presets. These charts automatically configure replica counts and resource allocations for each component according to your sizing plan:
+
+| Flavor      | Chart version example | Required memory |
+|-------------|-----------------------|-----------------|
+| small       | 4.0.0-small           | 16 GB           |
+| medium      | 4.0.0-medium          | 32 GB           |
+| medium-data | 4.0.0-medium-data     | 32 GB           |
+| large       | 4.0.0-large           | 64 GB           |
+| large-data  | 4.0.0-large-data      | 64 GB           |
+
+You can review the configuration values for each sizing preset here:
+
+<ReferenceLink title="Small size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.small.yaml" openInNewTab />
+<ReferenceLink title="Medium size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium.yaml" openInNewTab />
+<ReferenceLink title="Medium (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.medium-data.yaml" openInNewTab />
+<ReferenceLink title="Large size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large.yaml" openInNewTab />
+<ReferenceLink title="Large (data) size config preset" url="https://github.com/opsmill/infrahub-helm/blob/stable/charts/infrahub-enterprise/values.large-data.yaml" openInNewTab />
+
+:::info Redis host configuration for flavored charts
+
+When using a flavored chart (sizing preset), you must also configure the Redis host for the Prefect background services. Add the following to your `values.yml`:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master"
+```
+
+The `host` value should match your Redis service name. If you deployed Redis using the bundled dependency, this defaults to `infrahub-cache-master`. This configuration is only required when using sizing presets — the base chart (for example, `4.0.0`) does not require it.
+
+:::
+
+#### Migrating from chart versions before 4.0.0
+
+If you are upgrading from a Helm chart version earlier than 4.0.0, update your `values.yml` file:
+
+1. **Remove old configuration preset values:** Delete any environment variables and settings that were previously copied from sizing presets (for example, `INFRAHUB_CACHE_ADDRESS`, `PREFECT_REDIS_MESSAGING_HOST`, replica counts, resource limits). The flavored charts now handle these automatically.
+
+2. **Add the Redis host configuration:** Add the following to your `values.yml` file:
+
+```yaml
+infrahub:
+  prefect-server:
+    backgroundServices:
+      messaging:
+        redis:
+          host: "infrahub-cache-master" # Use the value previously set in INFRAHUB_CACHE_ADDRESS or PREFECT_REDIS_MESSAGING_HOST
+```
+
+### Step 2: install the chart
+
+Install using a flavored chart from the OpsMill registry (recommended for production):
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0-medium
+```
+
+Or install the base chart and provide your own sizing configuration:
+
+```bash
+helm install infrahub -f values.yml oci://registry.opsmill.io/opsmill/chart/infrahub-enterprise --version 4.0.0
+```
+
+Install using a local chart:
+
+```bash
+helm install infrahub -f values.yml path/to/infrahub-enterprise/chart
+```
+
+:::success
+
+Verify the installation by checking that all pods are running:
+
+```bash
+kubectl get pods -l app=infrahub
+```
+
+:::
+
+</TabItem>
+<TabItem value="Bare metal">
+
+## Bare metal deployment
+
+Infrahub Enterprise supports bare metal installations for customers who require direct hardware deployment without containerization.
+
+To learn more about bare metal deployment options and requirements, reach out to the OpsMill team:
+
+- **Discord:** [discord.gg/opsmill](https://discord.gg/opsmill)
+- **Email:** [contact@opsmill.com](mailto:contact@opsmill.com)
+- **Schedule a meeting:** [cal.com/team/opsmill/meet](https://cal.com/team/opsmill/meet)
+
+</TabItem>
+</Tabs>

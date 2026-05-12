@@ -1,0 +1,95 @@
+---
+title: Local Telemetry Storage
+---
+
+# Local Telemetry Storage
+
+Infrahub stores a daily telemetry snapshot locally in the Neo4j database, regardless of whether remote telemetry reporting is enabled. This ensures all deployments - including air-gapped and opted-out environments - retain usage data for support, auditing, and license compliance.
+
+## How it works
+
+The daily telemetry workflow:
+
+1. Gathers anonymous usage data (schema counts, feature usage, database stats)
+2. Stores a `TelemetrySnapshot` in the local Neo4j database
+3. If remote telemetry is enabled, sends the data to the remote endpoint
+4. Records the remote send status (`sent`, `skipped`, or `failed`) on each snapshot
+
+Each snapshot includes a SHA-256 checksum for data integrity verification.
+
+## Viewing stored snapshots
+
+List stored telemetry snapshots:
+
+```bash
+infrahubctl telemetry list
+```
+
+Filter by date range:
+
+```bash
+infrahubctl telemetry list --start-date 2025-01-01 --end-date 2026-01-01
+```
+
+Limit the number of results:
+
+```bash
+infrahubctl telemetry list --limit 10
+```
+
+## Exporting telemetry data
+
+Export all snapshots to a JSON file:
+
+```bash
+infrahubctl telemetry export --output my-telemetry.json
+```
+
+Export snapshots from a specific date range:
+
+```bash
+infrahubctl telemetry export \
+  --start-date 2025-11-01 \
+  --end-date 2026-02-16 \
+  --output last-90-days.json
+```
+
+The export file contains a JSON array of snapshot objects with full telemetry payloads.
+
+## REST API
+
+Retrieve telemetry snapshots programmatically:
+
+```text
+GET /api/telemetry/snapshots
+```
+
+### Query parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `start_date` | string (ISO 8601) | None | Include snapshots created on or after this date |
+| `end_date` | string (ISO 8601) | None | Include snapshots created on or before this date |
+| `limit` | integer | 1000 | Maximum number of snapshots to return |
+| `offset` | integer | 0 | Number of snapshots to skip |
+
+### Example request
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" \
+  "https://infrahub.example.com/api/telemetry/snapshots?start_date=2025-01-01&limit=50"
+```
+
+## Permissions
+
+Access to telemetry data requires the `READ_TELEMETRY` global permission. Users with `SUPER_ADMIN` permission have access by default.
+
+To grant access to other users, assign the `READ_TELEMETRY` permission to their role via the Infrahub UI or API.
+
+## Backup inclusion
+
+Telemetry snapshots are stored as standard Neo4j nodes and are automatically included in database backups performed with `neo4j-admin database backup`. No additional configuration is required. Restoring a backup with `neo4j-admin database restore` restores all telemetry snapshots.
+
+## Storage estimates
+
+Each daily snapshot is approximately 3-5 KB. Five years of daily snapshots require less than 50 MB of storage including Neo4j overhead.

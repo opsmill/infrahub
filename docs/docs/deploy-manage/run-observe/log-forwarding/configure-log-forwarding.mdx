@@ -1,0 +1,251 @@
+---
+title: Configure log forwarding
+---
+
+import Tabs from "@theme/Tabs";
+import TabItem from "@theme/TabItem";
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Configure log forwarding <EnterpriseBadge />
+
+This guide walks through configuring Infrahub to forward audit events and application logs to external SIEM or syslog systems. For conceptual background on how log forwarding works, see the [log forwarding overview](./overview.mdx).
+
+:::info Enterprise Edition
+
+Log forwarding requires the Enterprise Edition of Infrahub. The Community Edition includes the configuration surface but does not transmit messages.
+
+:::
+
+## Prerequisites
+
+- Infrahub Enterprise Edition running
+- A syslog-compatible receiver (rsyslog, syslog-ng, Splunk, Datadog Agent, Logstash, or similar)
+- Network connectivity from Infrahub to the receiver on the chosen port
+- For TLS: a CA certificate or bundle trusted by the syslog server
+
+## Configuring a single destination
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="toml" label="Via the configuration file" default>
+
+Add a `[[log_forwarding.destinations]]` section to your Infrahub TOML configuration file:
+
+```toml
+[[log_forwarding.destinations]]
+name = "siem_primary"
+type = "syslog"
+host = "syslog.example.com"
+port = 514
+```
+
+This minimal configuration sends audit events over UDP using RFC 5424 format to port 514.
+
+The defaults are:
+
+| Setting | Default |
+|---------|---------|
+| Protocol | UDP |
+| Format | RFC 5424 |
+| Port | 514 (or 6514 when TLS is enabled) |
+
+</TabItem>
+<TabItem value="env" label="Via environment variables">
+
+Environment variables are useful for Docker Compose and Kubernetes deployments where configuration files may not be practical.
+
+Define destination names as a comma-separated list, then set per-destination fields using the pattern `INFRAHUB_LOG_FORWARDING_DESTINATION_{NAME}_{FIELD}`:
+
+```bash
+export INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES="siem_primary"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST="syslog.example.com"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_PORT="514"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_PROTOCOL="udp"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_FORMAT="rfc5424"
+```
+
+Alternatively, pass the full destination configuration as JSON:
+
+```bash
+export INFRAHUB_LOG_FORWARDING_DESTINATIONS='[{"name":"siem_primary","type":"syslog","host":"syslog.example.com","port":514}]'
+```
+
+:::note
+
+Destination names must match `[a-z0-9_]+` (lowercase letters, digits, and underscores only).
+
+:::
+
+:::warning
+
+`INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES` and `INFRAHUB_LOG_FORWARDING_DESTINATIONS` should not both be set unless they define the exact same destinations. Mixing the two approaches is not recommended — pick one method and use it consistently.
+
+:::
+
+</TabItem>
+</Tabs>
+
+:::note
+
+When `INFRAHUB_LOG_FORWARDING_HOSTNAME` is not set, Infrahub uses `socket.getfqdn()` to determine the hostname in syslog headers. In Docker environments, this resolves to the container ID rather than a meaningful hostname. Set `hostname` explicitly in your configuration or via the `INFRAHUB_LOG_FORWARDING_HOSTNAME` environment variable when running in containers.
+
+:::
+
+Restart Infrahub to apply the configuration.
+
+For the complete list of destination parameters, see the [configuration reference](../../../reference/configuration.mdx#log-forwarding).
+
+## Enabling TLS encryption
+
+TLS requires the TCP protocol. Configuring TLS with UDP raises a validation error.
+
+```toml
+[[log_forwarding.destinations]]
+name = "siem_secure"
+type = "syslog"
+host = "syslog.example.com"
+protocol = "tcp"
+tls_enabled = true
+tls_ca_bundle = "/etc/ssl/certs/ca-certificates.crt"
+```
+
+When TLS is enabled and no explicit port is set, the port defaults to 6514.
+
+The `tls_ca_bundle` field accepts either a file path or an inline PEM string.
+
+Environment variable equivalent:
+
+```bash
+export INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES="siem_secure"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_SECURE_HOST="syslog.example.com"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_SECURE_PROTOCOL="tcp"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_SECURE_TLS_ENABLED="true"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_SECURE_TLS_CA_BUNDLE="/etc/ssl/certs/ca-certificates.crt"
+```
+
+## Configuring multiple destinations
+
+Use multiple `[[log_forwarding.destinations]]` blocks to send events to more than one receiver. Each destination operates independently with its own queue and connection.
+
+```toml
+[log_forwarding]
+hostname = "infrahub-prod-01"
+
+[[log_forwarding.destinations]]
+name = "siem_primary"
+type = "syslog"
+host = "syslog-primary.example.com"
+protocol = "tcp"
+tls_enabled = true
+tls_ca_bundle = "/etc/ssl/certs/ca-certificates.crt"
+
+[[log_forwarding.destinations]]
+name = "siem_backup"
+type = "syslog"
+host = "syslog-backup.example.com"
+port = 514
+protocol = "udp"
+format = "rfc3164"
+```
+
+The optional `hostname` field at the top level overrides the syslog header hostname for all destinations. If not set, it defaults to the system FQDN.
+
+With environment variables, use comma-separated destination names:
+
+```bash
+export INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES="siem_primary,siem_backup"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST="syslog-primary.example.com"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_PROTOCOL="tcp"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_TLS_ENABLED="true"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_BACKUP_HOST="syslog-backup.example.com"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_BACKUP_PORT="514"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_BACKUP_PROTOCOL="udp"
+export INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_BACKUP_FORMAT="rfc3164"
+```
+
+:::note
+
+Destination names must be unique. Duplicate names are rejected during configuration validation.
+
+:::
+
+## Enabling application log forwarding
+
+By default, only audit events are forwarded. Enabling application log forwarding adds permission denied events (`infrahub.permission.denied`) to the forwarded stream. These are the only events currently sent through this channel. They require explicit opt-in per destination:
+
+```toml
+[[log_forwarding.destinations]]
+name = "siem_all_logs"
+type = "syslog"
+host = "syslog.example.com"
+protocol = "tcp"
+forward_application_logs = true
+```
+
+Permission denied events use syslog facility `LOG_LOCAL0` (16), while audit events use `LOG_AUTH` (4). This distinction helps receivers separate and route the two categories independently.
+
+:::warning
+
+Permission denied events are only forwarded when `forward_application_logs` is enabled. If you need these events for security monitoring, ensure this setting is active on the relevant destinations.
+
+:::
+
+## Verifying logs are arriving
+
+After configuring log forwarding and restarting Infrahub:
+
+1. **Check Infrahub startup logs** for messages confirming that log forwarding destinations have been initialized.
+
+2. **Trigger an event** by performing an action that generates an audit event, such as logging in, creating a node, or updating an object.
+
+3. **Check your syslog receiver** for incoming messages. An RFC 5424 audit event looks like:
+
+```text
+<38>1 2025-01-15T10:30:00.000000Z infrahub.example.com infrahub worker-01 - - {"event":"infrahub.node.created","meta":{"branch":"main","account_id":"01234567-abcd-0000-0000-000000000001"},"kind":"InfraDevice","node_id":"01234567-abcd-0000-0000-000000000002","action":"created"}
+```
+
+The same event in RFC 3164 format:
+
+```text
+<38>Jan 15 10:30:00 infrahub.example.com infrahub[worker-01]: {"event":"infrahub.node.created","meta":{"branch":"main","account_id":"01234567-abcd-0000-0000-000000000001"},"kind":"InfraDevice","node_id":"01234567-abcd-0000-0000-000000000002","action":"created"}
+```
+
+The PRI value `38` comes from `facility * 8 + severity`: LOG_AUTH (4) * 8 + INFORMATIONAL (6) = 38.
+
+## Tuning and troubleshooting
+
+### Queue sizing
+
+The `queue_size` parameter (default 10,000) controls how many messages can be buffered per destination. If the queue fills because the receiver is slow or unreachable, new messages are dropped. Increase this value for high-volume environments.
+
+### Reconnection behavior
+
+For TCP connections, `max_reconnect_interval` (default 60 seconds) caps the exponential backoff between reconnection attempts. Lower this value if faster recovery is needed.
+
+### Graceful shutdown
+
+`shutdown_drain_timeout` (default 10 seconds) controls how long Infrahub waits for queued messages to be transmitted during shutdown. Increase this value if you need to ensure all buffered messages are delivered before the process exits.
+
+### TCP framing
+
+The `tcp_framing` option controls how TCP messages are delimited:
+
+- `newline` (default): messages are separated by newline characters
+- `octet-counting`: messages are length-prefixed per RFC 6587; required by some rsyslog and syslog-ng configurations
+
+### Common issues
+
+| Symptom | Cause | Resolution |
+|---------|-------|------------|
+| Validation error on startup | TLS enabled with UDP protocol | Change protocol to `tcp` — TLS is only supported with TCP |
+| Validation error on startup | Duplicate destination names | Ensure each destination has a unique `name` |
+| No messages received | Firewall blocking syslog port | Verify network connectivity from Infrahub to the receiver on the configured port |
+| No messages received | Community Edition | Log forwarding requires Enterprise Edition |
+| Truncated messages | Receiver does not support octet-counting | Switch `tcp_framing` to `newline`, or configure the receiver for octet-counting |
+
+## Related resources
+
+- [Log forwarding overview](./overview.mdx)
+- [Configuration reference](../../../reference/configuration.mdx#log-forwarding)
+- [Infrahub events reference](../../../reference/infrahub-events.mdx)
+- [Activity log](../activity-log.mdx)
+- [Webhooks](../../../webhooks/overview)
