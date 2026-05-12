@@ -25,6 +25,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
+from .graphql_queries import ComputedAttributeNodeIDQuery
 from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,
@@ -310,22 +311,22 @@ async def trigger_update_jinja2_computed_attributes(
 
     client = get_client()
 
-    # NOTE we only need the id of the nodes, we need to ooptimize the query here
-    nodes = await client.all(kind=computed_attribute_kind, branch=branch_name)
-
-    for node in nodes:
-        await get_workflow().submit_workflow(
-            workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "computed_attribute_name": computed_attribute_name,
-                "computed_attribute_kind": computed_attribute_kind,
-                "node_kind": computed_attribute_kind,
-                "object_id": node.id,
-                "context": context,
-            },
-        )
+    node_query = ComputedAttributeNodeIDQuery(kind=computed_attribute_kind)
+    workflow = get_workflow()
+    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
+        for node_id in node_batch:
+            await workflow.submit_workflow(
+                workflow=COMPUTED_ATTRIBUTE_PROCESS_JINJA2,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "computed_attribute_name": computed_attribute_name,
+                    "computed_attribute_kind": computed_attribute_kind,
+                    "node_kind": computed_attribute_kind,
+                    "object_id": node_id,
+                    "context": context,
+                },
+            )
 
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")

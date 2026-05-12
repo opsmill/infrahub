@@ -7,6 +7,7 @@ from prefect.logging import get_run_logger
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.registry import registry
+from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 from infrahub.events import BranchDeletedEvent
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
@@ -15,7 +16,11 @@ from infrahub.workflows.catalogue import DISPLAY_LABELS_PROCESS_JINJA2, TRIGGER_
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_display_labels_jinja2
-from .models import DisplayLabelJinja2GraphQL, DisplayLabelJinja2GraphQLResponse, DisplayLabelTriggerDefinition
+from .models import (
+    DisplayLabelJinja2GraphQL,
+    DisplayLabelJinja2GraphQLResponse,
+    DisplayLabelTriggerDefinition,
+)
 
 UPDATE_DISPLAY_LABEL = """
 mutation UpdateDisplayLabel(
@@ -197,24 +202,18 @@ async def trigger_update_display_labels(
 
     client = get_client()
 
-    # NOTE we only need the id of the nodes, this query will still query for the HFID
-    node_schema = registry.schema.get_node_schema(name=kind, branch=branch_name)
-    nodes = await client.all(
-        kind=kind,
-        branch=branch_name,
-        exclude=node_schema.attribute_names + node_schema.relationship_names,
-        populate_store=False,
-    )
-
-    for node in nodes:
-        await get_workflow().submit_workflow(
-            workflow=DISPLAY_LABELS_PROCESS_JINJA2,
-            context=context,
-            parameters={
-                "branch_name": branch_name,
-                "node_kind": kind,
-                "target_kind": kind,
-                "object_id": node.id,
-                "context": context,
-            },
-        )
+    node_query = DisplayLabelNodeIDQuery(kind=kind)
+    workflow = get_workflow()
+    async for node_batch in node_query.fetch_all_paginated(client=client, branch_name=branch_name):
+        for node_id in node_batch:
+            await workflow.submit_workflow(
+                workflow=DISPLAY_LABELS_PROCESS_JINJA2,
+                context=context,
+                parameters={
+                    "branch_name": branch_name,
+                    "node_kind": kind,
+                    "target_kind": kind,
+                    "object_id": node_id,
+                    "context": context,
+                },
+            )
