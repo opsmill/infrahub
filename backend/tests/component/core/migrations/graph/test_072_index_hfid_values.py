@@ -1,12 +1,12 @@
 from infrahub.core.attribute import MAX_STRING_LENGTH
 from infrahub.core.branch import Branch
-from infrahub.core.migrations.graph.m071_index_hfid_values import Migration071
+from infrahub.core.migrations.graph.m072_index_hfid_values import Migration072
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.timestamp import current_timestamp
 from infrahub.database import InfrahubDatabase
 
 
-async def test_migration_071_normalizes_and_indexes(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_migration_072_normalizes_and_indexes(db: InfrahubDatabase, default_branch: Branch) -> None:
     """HFID values with non-string elements should be normalized to all-strings and indexed."""
     at = current_timestamp()
 
@@ -25,7 +25,7 @@ async def test_migration_071_normalizes_and_indexes(db: InfrahubDatabase, defaul
     """
     await db.execute_query(query=create_test_data_query, params={"branch": default_branch.name, "at": at})
 
-    migration = Migration071()
+    migration = Migration072()
     result = await migration.execute(MigrationInput(db=db))
     assert not result.errors
 
@@ -57,7 +57,7 @@ async def test_migration_071_normalizes_and_indexes(db: InfrahubDatabase, defaul
     assert results2[1].get("is_indexed") is True
 
 
-async def test_migration_071_skips_oversized_values(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_migration_072_skips_oversized_values(db: InfrahubDatabase, default_branch: Branch) -> None:
     """HFID values exceeding MAX_STRING_LENGTH should NOT get the indexed label."""
     at = current_timestamp()
     oversized_value = '["' + "x" * MAX_STRING_LENGTH + '"]'
@@ -74,7 +74,7 @@ async def test_migration_071_skips_oversized_values(db: InfrahubDatabase, defaul
         params={"branch": default_branch.name, "at": at, "oversized_value": oversized_value},
     )
 
-    migration = Migration071()
+    migration = Migration072()
     await migration.execute(MigrationInput(db=db))
 
     check_query = """
