@@ -4,7 +4,7 @@
     "infrahub": {
       "version": "1.1.0",
       "source": "local",
-      "manifest_hash": "sha256:08b242927bde64efa82f29a3083055f18b3e31c7ef074c47aeeb081d7c9d2387",
+      "manifest_hash": "sha256:bd3ffa3806a2d2919b47e430a98567514c188705c99801e7924923b751eefe01",
       "enabled": true,
       "priority": 10,
       "registered_commands": {
@@ -21,7 +21,7 @@
         "speckit-git-feature",
         "speckit-taskstoissues"
       ],
-      "installed_at": "2026-05-12T07:32:03.340556+00:00"
+      "installed_at": "2026-05-12T08:37:17.683021+00:00"
     }
   }
 }
