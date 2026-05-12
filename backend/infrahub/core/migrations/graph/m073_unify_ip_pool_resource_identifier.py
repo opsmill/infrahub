@@ -267,7 +267,7 @@ RETURN count(n) AS unlabeled
 # ---------------------------------------------------------------------------
 
 
-class Migration072(ArbitraryMigration):
+class Migration073(ArbitraryMigration):
     """Unify the IP pool resource relationship under a new ``CoreIPPool`` generic.
 
     Pre-existing ``CoreIPPrefixPool`` and ``CoreIPAddressPool`` data must be reachable
@@ -287,8 +287,8 @@ class Migration072(ArbitraryMigration):
       copy-and-hard-delete pattern.
     """
 
-    name: str = "072_unify_ip_pool_resource_identifier"
-    minimum_version: int = 71
+    name: str = "073_unify_ip_pool_resource_identifier"
+    minimum_version: int = 72
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:
         result = MigrationResult()
