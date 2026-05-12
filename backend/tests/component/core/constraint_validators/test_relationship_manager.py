@@ -33,7 +33,7 @@ async def test_node_validate_constraint_relationship_count_failure(
     with pytest.raises(ValidationError) as exc:
         await constraint.check(relm=person.cars, node_schema=person.get_schema(), node=person)
 
-    assert "has 2 peers for testcar__testperson, maximum of 1 allowed" in exc.value.message
+    assert f"Node {car_accord_main.id} has 2 peers for testcar__testperson, maximum of 1 allowed" in exc.value.message
 
 
 async def test_node_validate_constraint_relationship_count_success(
@@ -62,7 +62,7 @@ class TestCountGenericPeerCardinalityOne:
         with pytest.raises(ValidationError) as exc:
             await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
 
-        assert "has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
+        assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
     async def test_success_when_concrete_peer_has_no_owner(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         single = await _make_room(db, default_branch, "TestSingleRoom", "single")
@@ -103,7 +103,7 @@ class TestCountGenericPeerWithGenericRel:
         with pytest.raises(ValidationError) as exc:
             await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
 
-        assert "has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
+        assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
     async def test_success_when_under_limit(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         single = await _make_room(db, default_branch, "TestSingleRoom", "single")
@@ -135,7 +135,7 @@ class TestCountGenericPeerMixedSubtypes:
         with pytest.raises(ValidationError) as exc:
             await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
 
-        assert "has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
+        assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
     async def test_success_when_shared_subtype_over_limit(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         dorm = await _make_room(db, default_branch, "TestDorm", "dorm")
@@ -183,7 +183,7 @@ class TestCountGenericPeerMaxCount:
         with pytest.raises(ValidationError) as exc:
             await constraint.check(relm=extra.rooms, node_schema=extra.get_schema(), node=extra)
 
-        assert "maximum of 3 allowed" in exc.value.message
+        assert f"Node {dorm.id} has 4 peers for person__room, maximum of 3 allowed" in exc.value.message
 
     async def test_success_when_max_count_not_reached(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         dorm = await _make_room(db, default_branch, "TestDorm", "dorm")
@@ -220,7 +220,7 @@ class TestCountGenericPeerMinCount:
         with pytest.raises(ValidationError) as exc:
             await constraint.check(relm=alice.rooms, node_schema=alice.get_schema(), node=alice)
 
-        assert "no fewer than 1 allowed" in exc.value.message
+        assert f"Node {dorm.id} has 0 peers for person__room, no fewer than 1 allowed" in exc.value.message
 
     async def test_success_when_removing_stays_above_min(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         dorm = await _make_room(db, default_branch, "TestDorm", "dorm")
@@ -267,7 +267,7 @@ class TestCountGenericPeerDirection:
         with pytest.raises(ValidationError) as exc:
             await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
 
-        assert "maximum of 1 allowed" in exc.value.message
+        assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
     async def test_schema_rejects_same_direction_same_identifier(
         self, db: InfrahubDatabase, default_branch: Branch
