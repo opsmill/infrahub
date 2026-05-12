@@ -442,7 +442,7 @@ class TestIpamUtilization(TestIpam):
         assert {
             "node": {
                 "id": container.id,
-                "utilization": {"value": 12},
+                "utilization": {"value": 25},
                 "prefix": {"value": container.prefix.value},
             }
         } in prefix_details_list
@@ -521,7 +521,7 @@ class TestIpamUtilization(TestIpam):
         assert {
             "node": {
                 "id": prefix.id,
-                "utilization": {"value": 50},
+                "utilization": {"value": 100},
                 "prefix": {"value": prefix.prefix.value},
             }
         } in prefix_details_list
@@ -629,7 +629,7 @@ class TestIpamUtilization(TestIpam):
         assert {
             "node": {
                 "id": container.id,
-                "utilization": {"value": 6},
+                "utilization": {"value": 12},
                 "prefix": {"value": container.prefix.value},
             }
         } in prefix_details_list
@@ -709,7 +709,7 @@ class TestIpamUtilization(TestIpam):
         assert {
             "node": {
                 "id": prefix.id,
-                "utilization": {"value": int(6 / 14 * 100)},
+                "utilization": {"value": int(12 / 14 * 100)},
                 "prefix": {"value": prefix.prefix.value},
             }
         } in prefix_details_list
