@@ -77,35 +77,43 @@ You **MUST** consider the user input before proceeding (if not empty).
    > [!CAUTION]
    > If `lookupJiraAccountId` returns no match, abort with: `> Assignee email <email> not found in Atlassian. Fix templates/overrides/<slug>.yml or use a valid Atlassian-linked email before re-running.` Do not create any issues.
 
-6. **Parse `tasks.md`**: Iterate every unchecked `- [ ]` line. Each task line follows the format documented in `dev/skills/speckit-tasks/SKILL.md` and contains:
-   - A task id (TID), e.g. `T001`
-   - An optional parallel marker `[P]`
-   - An optional user-story tag `[US<N>]`
-   - A summary line
-   - One or more affected file paths trailing the summary or appearing in subsequent indented lines
+6. **Parse `tasks.md` by phase**: Walk the file top-to-bottom and split it into phases, where a phase starts at a `## Phase <N>: <title>` header and ends at the next `## Phase` header (or end of file). For each phase capture:
+   - `phase_number` (`<N>`) and `phase_title` (`<title>`) from the header line
+   - `goal_block`: the `**Goal**:` paragraph immediately under the header, if present
+   - `independent_test_block`: the `**Independent Test**:` paragraph, if present
+   - `tasks`: every unchecked `- [ ] T<NNN> …` line inside the phase, preserved verbatim including its `[P]` and `[US<N>]` tags and trailing file paths. Skip tasks already checked (`- [x]`).
+   - `story`: if the phase header matches `User Story <n>` **or** every child task carries the same `[US<n>]` tag, capture `<n>` as the phase's user-story number; otherwise leave unset.
+   - `files`: the union of affected file paths across the phase's task lines (trailing the summary or on subsequent indented lines), deduplicated and sorted.
+   - `exit_criteria`: any trailing `**Exit criteria**` / `**Checkpoint**` paragraph in the phase, if present.
 
-   Build an ordered list `tasks: [{tid, parallel, story, summary, files, description_body}]`. Skip tasks already checked (`- [x]`).
+   Skip phases that contain zero unchecked tasks. Build an ordered list `phases: [{phase_number, phase_title, story, goal_block, independent_test_block, tasks, files, exit_criteria}]`.
 
-7. **Create Jira issues**: For each parsed task, call `mcp__claude_ai_Atlassian__createJiraIssue` with:
+7. **Create one Jira issue per phase**: For each parsed phase, call `mcp__claude_ai_Atlassian__createJiraIssue` with:
    - `cloudId` from step 3.
    - `projectKey` from `default_project_key`.
    - `issueTypeName` from `default_issue_type`.
-   - `summary` = `"[<TID>] <task summary>"`.
-   - `description` = `<task description_body>` + a `## Files` section listing each affected path as a bullet + a final line `_Source:_ <relative path from repo root to tasks.md>`.
+   - `summary` = `"[<feature-id> P<phase_number>] <phase_title>"` where `<feature-id>` is the JPD/Jira reference parsed from the branch name (e.g. `INFP-556`, `IFC-2521`) — fall back to the Epic key from step 4 if no JPD reference is present. Example: `"[INFP-556 P3] US1 (P1 MVP) — Auto-create groups …"`.
+   - `description` composed in this order:
+     1. The `goal_block` (if any).
+     2. The `independent_test_block` (if any).
+     3. A `## Tasks` section containing the phase's task lines as a markdown checklist — each entry is the verbatim `- [ ] T<NNN> …` line.
+     4. A `## Files` section listing each affected path from `files` as a bullet.
+     5. A `## Exit criteria` section reproducing `exit_criteria` (if any).
+     6. A trailing line `_Source:_ <relative path from repo root to tasks.md>`.
    - `additional_fields`:
      - `assignee`: `{ accountId: <resolved accountId> }`
-     - `labels`: union of `labels_default` (shared config) + `labels` (per-user override) + the `US<N>` tag if present on the task line
+     - `labels`: union of `labels_default` (shared config) + `labels` (per-user override) + `US<story>` if the phase has a `story` value
      - `custom_fields`:
        - `<custom_fields.epic_link>`: `<Epic key from step 4>` (e.g. `customfield_10014: "IFC-2521"`)
        - `<custom_fields.team>`: per-user override `team.id` if set, otherwise `team.name`
 
-   Record `tid -> issueKey` in an in-memory map.
+   Record `phase_number -> issueKey` in an in-memory map.
 
    > [!CAUTION]
    > UNDER NO CIRCUMSTANCES CREATE ISSUES IN A PROJECT OTHER THAN `default_project_key` FROM `config/jira.yml`.
 
    > [!CAUTION]
-   > If any `createJiraIssue` call fails mid-run, **stop immediately**. Print the partial `tid -> issueKey` map and instruct: `> Partial run — delete the issues listed above manually in Jira before re-running. This skill is not idempotent in v1.` Do not retry, do not roll back automatically.
+   > If any `createJiraIssue` call fails mid-run, **stop immediately**. Print the partial `phase_number -> issueKey` map and instruct: `> Partial run — delete the issues listed above manually in Jira before re-running. This skill is not idempotent in v1.` Do not retry, do not roll back automatically.
 
 8. **Create dependency links**: After every issue exists, walk the task list a second time. For each task whose description body mentions another `TID` (e.g. `depends on T001`), call `mcp__claude_ai_Atlassian__createIssueLink` with:
    - `inwardIssue` = the mentioned task's Jira key
@@ -114,7 +122,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    Phase headers and `[P]` markers are sequencing hints only — they are **not** first-class dependencies and must not produce link edges.
 
-9. **Summary output**: Print a markdown table mapping `TID` → `IssueKey` → `Summary`. Do not edit `tasks.md` automatically; the user can paste the mapping back if they want.
+9. **Summary output**: Print a markdown table mapping `Phase` → `IssueKey` → `Summary`. Do not edit `tasks.md` automatically; the user can paste the mapping back if they want.
 
 ## Post-Execution Checks
 
