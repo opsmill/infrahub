@@ -2,6 +2,7 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.relationship.constraints.count import RelationshipCountConstraint
 from infrahub.database import InfrahubDatabase
@@ -75,6 +76,10 @@ class TestCountGenericPeerCardinalityOne:
         alice = await _make_person(db, default_branch, "alice", [single.id])
         await alice.save(db=db)
 
+        # Re-load alice so the RelationshipManager observes the post-save state,
+        # then re-assert the same peer. The constraint must treat this as a no-op.
+        alice = await NodeManager.get_one(db=db, id=alice.id, branch=default_branch)
+        await alice.rooms.get_relationships(db=db)
         await alice.rooms.update(db=db, data=[single.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
@@ -205,6 +210,9 @@ class TestCountGenericPeerMinCount:
         alice = await _make_person(db, default_branch, "alice", [single.id])
         await alice.save(db=db)
 
+        # Re-load alice so the RelationshipManager observes the post-save state.
+        alice = await NodeManager.get_one(db=db, id=alice.id, branch=default_branch)
+        await alice.rooms.get_relationships(db=db)
         await alice.rooms.update(db=db, data=[])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
@@ -220,6 +228,8 @@ class TestCountGenericPeerMinCount:
         bob = await _make_person(db, default_branch, "bob", [single.id])
         await bob.save(db=db)
 
+        alice = await NodeManager.get_one(db=db, id=alice.id, branch=default_branch)
+        await alice.rooms.get_relationships(db=db)
         await alice.rooms.update(db=db, data=[])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
