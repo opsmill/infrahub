@@ -235,16 +235,17 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         new_node_value = data.get("node") and data.get("node").value
         new_node_attr_value = data.get("node_attribute") and data.get("node_attribute").value
         if new_node_value or new_node_attr_value:
-            existing = await NodeManager.find_object(
-                db=graphql_context.db,
-                kind=protocols.CoreNumberPool,
-                id=data.get("id"),
-                hfid=data.get("hfid"),
-                branch=branch,
-            )
-            if new_node_value and new_node_value != existing.node.value:  # type: ignore[attr-defined]
+            if node is None:
+                node = await NodeManager.find_object(
+                    db=graphql_context.db,
+                    kind=protocols.CoreNumberPool,
+                    id=data.get("id"),
+                    hfid=data.get("hfid"),
+                    branch=branch,
+                )
+            if new_node_value and new_node_value != node.get_attribute("node").value:
                 raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
-            if new_node_attr_value and new_node_attr_value != existing.node_attribute.value:  # type: ignore[attr-defined]
+            if new_node_attr_value and new_node_attr_value != node.get_attribute("node_attribute").value:
                 raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
 
         async with graphql_context.db.start_transaction() as dbt:
