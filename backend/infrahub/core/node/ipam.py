@@ -44,7 +44,7 @@ class BuiltinIPPrefix(Node):
                     self.prefix = retrieved.prefix  # type: ignore[attr-defined,union-attr]
                 utilization_getter = PrefixUtilizationGetter(db=db, ip_prefixes=[self])
                 utilization = await utilization_getter.get_use_percentage(
-                    ip_prefixes=[self], branch_names=[self._branch.name]
+                    ip_prefixes=[self], branch_names=self._branch.get_branches_in_scope()
                 )
                 response["utilization"] = {"value": int(utilization)}
 
