@@ -13,8 +13,8 @@ Technical approach: a single hook in the existing SSO account-sign-in path (`bac
 ## Technical Context
 
 **Language/Version**: Python 3.12 (backend), TypeScript 5.9 (frontend — not touched)
-**Primary Dependencies**: FastAPI 0.121.1, Pydantic 2.10, Neo4j 5.28 driver, existing `InfrahubEventService` + `lock.registry` + `Node`/schema runtime
-**Storage**: Neo4j 5.28. `CoreAccountGroup` nodes (`Branch.AGNOSTIC`); attribute uniqueness on `name__value` already enforced.
+**Primary Dependencies**: FastAPI 0.131.0, Pydantic 2.12, neo4j 6.0.3 driver, existing `InfrahubEventService` + `lock.registry` + `Node`/schema runtime
+**Storage**: Neo4j 2025.10.1 (CalVer; community image per `docker-compose.yml`). `CoreAccountGroup` nodes (`Branch.AGNOSTIC`); attribute uniqueness on `name__value` already enforced.
 **Testing**: pytest 9.0 (unit + functional + integration_docker); concurrency test under TestContainers; schema migration test against fixture pre-feature data
 **Target Platform**: Linux container (production), local dev (uv + Docker)
 **Project Type**: Backend-only feature in a backend+frontend monorepo (backend principal area, no frontend work)
@@ -107,3 +107,7 @@ changelog/+INFP-556-auto-create-account-groups.added.md  # NEW (towncrier)
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | _(none)_  |            |                                     |
+
+### Revision: Implementation Sync 2026-05-12
+
+- Reason: Technical Context cited stale dependency versions (FastAPI 0.121.1, Pydantic 2.10, Neo4j 5.28). Reconciled against `pyproject.toml` / `uv.lock` (FastAPI 0.131.0, Pydantic 2.12.x, neo4j driver 6.0.3) and `docker-compose.yml` (Neo4j server `2025.10.1-community`).
