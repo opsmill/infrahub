@@ -129,7 +129,7 @@ This approach allows you to quickly iterate and validate your computed attribute
 
 ## Python computed attributes {#python-computed-attribute}
 
-Python computed attributes leverage Infrahub's [Python Transformation](../transformations/) feature. Users can define which Transformation to apply directly within the schema. The computation of the value is delegated to workers as asynchronous tasks, which may cause the value to take a few seconds to update.
+Python computed attributes leverage Infrahub's [Python Transformation](../transformations/overview) feature. Users can define which Transformation to apply directly within the schema. The computation of the value is delegated to workers as asynchronous tasks, which may cause the value to take a few seconds to update.
 
 Python scripts do not have the limitations of Jinja2 computed attributes and can include more complex logic, including relationships with cardinality `many` and nested relationships.
 

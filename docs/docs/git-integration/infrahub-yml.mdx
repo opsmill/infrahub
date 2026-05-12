@@ -86,7 +86,7 @@ This dependency management ensures that all resources have what they need when t
 
 ## Group targeting
 
-Many definitions in `.infrahub.yml` use [groups](../groups/) to specify their targets:
+Many definitions in `.infrahub.yml` use [groups](../groups/overview) to specify their targets:
 
 - **Artifact definitions** - The `targets` field references a group name to specify which objects should generate artifacts
 - **Generator definitions** - The `targets` field specifies the group for generated objects
@@ -108,7 +108,7 @@ check_definitions:
     class_name: "InterfaceCheck"
 ```
 
-See [organizing objects with groups](../groups/) for details on creating target groups.
+See [organizing objects with groups](../groups/overview) for details on creating target groups.
 
 ## Version control and branch behavior
 
@@ -152,10 +152,10 @@ The `.infrahub.yml` configuration file is a crucial bridge between Git repositor
 
 - [Repository configuration file reference](../reference/dotinfrahub.mdx) - Complete syntax and options reference
 - [How to connect external Git repositories](./connect-repository.mdx) - Step-by-step setup guide
-- [Understanding Git repositories in Infrahub](./index.mdx) - Repository integration concepts
-- [Understanding groups](../groups/) - Organizational concepts for targeting operations
-- [How to organize objects with groups](../groups/) - Creating and managing groups
-- [Schema development](../schema/) - Designing infrastructure data models
-- [Transformations](../transformations/) - Data processing and template concepts
-- [Generators](../generators/) - Infrastructure provisioning automation
-- [Artifacts](../artifacts/) - Output generation and delivery
+- [Understanding Git repositories in Infrahub](./overview.mdx) - Repository integration concepts
+- [Understanding groups](../groups/overview) - Organizational concepts for targeting operations
+- [How to organize objects with groups](../groups/overview) - Creating and managing groups
+- [Schema development](../schema/overview) - Designing infrastructure data models
+- [Transformations](../transformations/overview) - Data processing and template concepts
+- [Generators](../generators/overview) - Infrastructure provisioning automation
+- [Artifacts](../artifacts/overview) - Output generation and delivery

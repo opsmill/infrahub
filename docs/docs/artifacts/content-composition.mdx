@@ -4,7 +4,7 @@ title: Composing artifact content
 
 # Composing artifact content
 
-This guide shows you how to build a composite [artifact](./) whose [Transformation](../transformations/) pulls in content from other artifacts or [file objects](../schema/file-object). This enables modular configuration pipelines where each artifact generates one section of a configuration, and a composite artifact assembles the final result.
+This guide shows you how to build a composite [artifact](./overview) whose [Transformation](../transformations/overview) pulls in content from other artifacts or [file objects](../schema/file-object). This enables modular configuration pipelines where each artifact generates one section of a configuration, and a composite artifact assembles the final result.
 
 For example, you can split a network device's startup configuration into separate NTP, syslog, and interface artifacts — each maintained independently with its own Transformation and query logic — then compose them into a single full configuration artifact.
 
@@ -20,13 +20,13 @@ Before starting this guide, ensure you have:
 
 ## 1. Understand the composition model
 
-During artifact generation, your Jinja2 templates have access to Infrahub filters that can fetch content from the [object storage](../artifact-file-storage/index.mdx). To build a composite artifact, your Transformation's GraphQL query retrieves the `storage_id` of another artifact or file object, and your template uses a filter to fetch and include that content inline.
+During artifact generation, your Jinja2 templates have access to Infrahub filters that can fetch content from the [object storage](../artifact-file-storage/overview.mdx). To build a composite artifact, your Transformation's GraphQL query retrieves the `storage_id` of another artifact or file object, and your template uses a filter to fetch and include that content inline.
 
 The filters always return content as a raw string. If you need to work with structured data, you can chain the `from_json` or `from_yaml` parsing filters.
 
 :::note
 
-The `artifact_content`, `file_object_content`, `file_object_content_by_id`, and `file_object_content_by_hfid` filters are only available during artifact generation on the task worker. They are not available in [computed attributes](../computed-attributes/index.mdx) or when rendering locally with `infrahubctl render` without a connected server.
+The `artifact_content`, `file_object_content`, `file_object_content_by_id`, and `file_object_content_by_hfid` filters are only available during artifact generation on the task worker. They are not available in [computed attributes](../computed-attributes/overview.mdx) or when rendering locally with `infrahubctl render` without a connected server.
 
 The `from_json` and `from_yaml` filters are available in all contexts.
 
@@ -268,6 +268,6 @@ The composition filters raise errors in the following situations:
 - [Write a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation)
 - [Write a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation)
 - [Use artifacts](./use)
-- [Object storage](../artifact-file-storage/index.mdx)
+- [Object storage](../artifact-file-storage/overview.mdx)
 - [File objects](../schema/file-object)
 - [SDK Templating Reference]($(base_url)python-sdk/reference/templating)

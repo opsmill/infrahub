@@ -69,7 +69,7 @@ For details on how Profile values are resolved when an object is created or upda
 
 ## Profiles vs Object Templates
 
-Profiles and [Object Templates](../object-templates/) are complementary features that solve different parts of the configuration management problem.
+Profiles and [Object Templates](../object-templates/overview) are complementary features that solve different parts of the configuration management problem.
 
 |  | Profile | Object Template |
 |---|---|---|
@@ -80,7 +80,7 @@ Profiles and [Object Templates](../object-templates/) are complementary features
 
 **Use them together.** When both `generate_profile` and `generate_template` are set on a schema node, Templates define the structure and Profiles define the values. A Template can have Profiles assigned; objects created from the Template automatically inherit those Profiles. Template-set values take precedence over Profile values when both apply.
 
-For the integration mechanics, see [Object Templates — Integration with Profiles](../object-templates/#integration-with-profiles).
+For the integration mechanics, see [Object Templates — Integration with Profiles](../object-templates/overview#integration-with-profiles).
 
 ## Data lineage and metadata
 
@@ -265,10 +265,10 @@ The system's design anticipates future needs while providing immediate value thr
 
 ### Topics
 
-- [Object templates](../object-templates/) — How Profiles integrate with templates for powerful configuration management
-- [Schema](../schema/) — Deep dive into schema design and how Profiles are generated
+- [Object templates](../object-templates/overview) — How Profiles integrate with templates for powerful configuration management
+- [Schema](../schema/overview) — Deep dive into schema design and how Profiles are generated
 - [Metadata](../objects/metadata) — Learn about metadata tracking and data lineage
-- [Version control](../immutable-history/index.mdx) — How Profiles work with branches and version control
+- [Version control](../immutable-history/overview.mdx) — How Profiles work with branches and version control
 
 ### Reference
 

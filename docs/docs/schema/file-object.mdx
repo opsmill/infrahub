@@ -75,11 +75,11 @@ You can also define relationships from the other direction. A `NetworkCircuit` n
 
 ### Storage architecture
 
-File content is persisted in Infrahub's [object storage](../artifact-file-storage/) layer, which is completely separate from the graph database. The storage layer is an immutable key-value system where each file is identified by a UUID. Once a file is stored, it is never modified or deleted. This immutability is what enables version control and time travel for files.
+File content is persisted in Infrahub's [object storage](../artifact-file-storage/overview) layer, which is completely separate from the graph database. The storage layer is an immutable key-value system where each file is identified by a UUID. Once a file is stored, it is never modified or deleted. This immutability is what enables version control and time travel for files.
 
 The graph database handles all the branch-aware, time-aware logic. A file object node contains a `storage_id` attribute that points to the stored file. When you update a file, Infrahub stores the new version under a new UUID and updates the node's `storage_id` on the current branch. The original file remains untouched in storage, and any branch or point in time that referenced the old `storage_id` continues to resolve to the original file.
 
-<ReferenceLink title="Object storage" url="../artifact-file-storage/" />
+<ReferenceLink title="Object storage" url="../artifact-file-storage/overview" />
 
 ### Version control integration
 
@@ -95,7 +95,7 @@ Merge conflicts for file objects are resolved at the attribute level, not the ob
 
 ### Permission enforcement
 
-File objects integrate with Infrahub's [permission system](../deploy-manage/user-management/permissions-roles/). Downloading a file requires VIEW permission on the file object node. Creating or updating a file object requires the corresponding CREATE or UPDATE permissions. This means that access to files is governed by the same role-based access control that protects the rest of your infrastructure data.
+File objects integrate with Infrahub's [permission system](../deploy-manage/user-management/permissions-roles/overview). Downloading a file requires VIEW permission on the file object node. Creating or updating a file object requires the corresponding CREATE or UPDATE permissions. This means that access to files is governed by the same role-based access control that protects the rest of your infrastructure data.
 
 ## Use cases
 
@@ -117,12 +117,12 @@ Site photos, rack elevation pictures, or equipment labels can be stored as file 
 
 File objects build on several existing Infrahub features:
 
-- **[About schema](./)**: File object types are defined in the schema, following the same inheritance model as other node kinds.
-- **[Branching](../branches/)**: File changes are isolated on branches and merged through the standard workflow.
-- **[Proposed changes](../proposed-changes/)**: File updates go through the same review process as data changes.
-- **[Object storage](../artifact-file-storage/)**: File content is persisted in Infrahub's storage layer, which supports local and S3 backends.
-- **[Permissions and roles](../deploy-manage/user-management/permissions-roles/)**: File access is controlled by the same role-based permissions as other data.
-- **[Artifact](../artifacts/)**: While artifacts are system-generated outputs from transformations, file objects are user-uploaded documents. Both use the object storage layer, but they serve different purposes.
+- **[About schema](./overview)**: File object types are defined in the schema, following the same inheritance model as other node kinds.
+- **[Branching](../branches/overview)**: File changes are isolated on branches and merged through the standard workflow.
+- **[Proposed changes](../proposed-changes/overview)**: File updates go through the same review process as data changes.
+- **[Object storage](../artifact-file-storage/overview)**: File content is persisted in Infrahub's storage layer, which supports local and S3 backends.
+- **[Permissions and roles](../deploy-manage/user-management/permissions-roles/overview)**: File access is controlled by the same role-based permissions as other data.
+- **[Artifact](../artifacts/overview)**: While artifacts are system-generated outputs from transformations, file objects are user-uploaded documents. Both use the object storage layer, but they serve different purposes.
 
 ## Operational considerations
 
@@ -140,7 +140,7 @@ For production deployments behind a reverse proxy, the proxy must also allow lar
 
 ### Backups
 
-The file content for file objects is stored in the [object storage](../artifact-file-storage/) layer, which is separate from the graph database.
+The file content for file objects is stored in the [object storage](../artifact-file-storage/overview) layer, which is separate from the graph database.
 
 :::warning Data loss risk
 Unlike artifacts, which can be regenerated from their definitions, user-uploaded files may only exist in object storage. Losing object storage without a backup means those files are unrecoverable. Both the graph database and object storage must be backed up together to maintain consistency.
@@ -150,6 +150,6 @@ Unlike artifacts, which can be regenerated from their definitions, user-uploaded
 
 ## Further reading
 
-- [Object storage](../artifact-file-storage/) — Storage backend configuration and architecture
-- [Version control](../immutable-history/) — How Infrahub tracks changes over time
-- [Branching](../branches/) — Working with branches for isolated changes
+- [Object storage](../artifact-file-storage/overview) — Storage backend configuration and architecture
+- [Version control](../immutable-history/overview) — How Infrahub tracks changes over time
+- [Branching](../branches/overview) — Working with branches for isolated changes

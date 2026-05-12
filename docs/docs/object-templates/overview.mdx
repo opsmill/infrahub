@@ -18,7 +18,7 @@ When creating a new object instance, users can optionally select a template. If 
 
 ![Template Choice](../media/guides/object-template/template_or_from_scratch.png)
 
-<ReferenceLink title="Use object templates" url="./use" />
+<ReferenceLink title="Use object templates" url="/object-templates/use" />
 
 ## Component relationship
 
@@ -35,7 +35,7 @@ When both `generate_template` and `generate_profile` are configured on a schema 
 
 This combination allows you to use templates for structural definition (which ports exist) while Profiles handle configuration values (port settings), enabling updates to values in bulk by modifying the Profile rather than individual objects. Templates can still override specific Profile values when needed.
 
-<ReferenceLink title="Creating and assigning Profiles" url="../profiles/" />
+<ReferenceLink title="Creating and assigning Profiles" url="../profiles/overview" />
 
 ## Integration with Resource Pools
 
@@ -51,7 +51,7 @@ Allocation happens at object creation time, not at template creation time. Each 
 
 Without pool integration, templates can only set static values. Any attribute that must be unique per object (IP addresses, circuit IDs, interface numbers) would have to be filled in manually each time. Pool integration closes that gap: the template defines the structural intent and the pool ensures each instance gets a valid, non-conflicting value automatically.
 
-<ReferenceLink title="Allocate resources from pools" url="./allocate-resources-from-pools" />
+<ReferenceLink title="Allocate resources from pools" url="/object-templates/allocate-resources-from-pools" />
 
 ## Limitations
 

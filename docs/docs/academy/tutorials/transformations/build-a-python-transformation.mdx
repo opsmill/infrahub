@@ -8,13 +8,13 @@ import TabItem from '@theme/TabItem';
 
 By the end of this tutorial you will have built a working Python Transformation end-to-end: loaded a small network-device schema, created a few sample devices, written a GraphQL query that filters by device name, implemented a `DeviceConfigTransform` Python class that returns a JSON object derived from the response, registered it in `.infrahub.yml`, tested it locally with `infrahubctl transform`, and called the Transformation via the REST API. You'll leave with both the raw-dictionary and SDK-converted patterns side by side so you can pick the one that fits the next Transformation you write.
 
-For conceptual background, see [Transformations](../../../transformations/). For a recipe-form how-to without the running example, see [Write a Python transformation](../../../transformations/python).
+For conceptual background, see [Transformations](../../../transformations/overview). For a recipe-form how-to without the running example, see [Write a Python transformation](../../../transformations/python).
 
-Within Infrahub a [Transformation](../../../transformations/) is defined in an [external repository](../../../git-integration/connect-repository). However, during development and troubleshooting it is easiest to start from your local computer and run the Transformation using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
+Within Infrahub a [Transformation](../../../transformations/overview) is defined in an [external repository](../../../git-integration/connect-repository). However, during development and troubleshooting it is easiest to start from your local computer and run the Transformation using [infrahubctl transform]($(base_url)infrahubctl/infrahubctl-transform).
 
 The tutorial follows these steps:
 
-1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../development-resources/graphql/), that can take an input parameter to filter the data
+1. Identify the relevant data you want to extract from the database using a [GraphQL query](../../../development-resources/graphql/overview), that can take an input parameter to filter the data
 2. Write a Python script that uses the GraphQL query to read information from the system and transform the data into a new format
 3. Create an entry for the Transformation within an `.infrahub.yml` file
 4. Create a Git repository
@@ -375,7 +375,7 @@ async def transform(self, data):
   </TabItem>
 </Tabs>
 
-When running the Transformation, the `data` input variable will consist of the response to the query we created or the webhook payload if using the Transformation with a [Custom Webhook](../../../webhooks/index.mdx).
+When running the Transformation, the `data` input variable will consist of the response to the query we created or the webhook payload if using the Transformation with a [Custom Webhook](../../../webhooks/overview.mdx).
 
 In this case, the Transformation returns a JSON object consisting of two keys `device_hostname` and `device_description` where we have modified the data in some way. Here you would return data in the format you need.
 

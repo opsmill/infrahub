@@ -6,7 +6,7 @@ import VideoPlayer from '../../src/components/VideoPlayer';
 
 # Artifacts
 
-An artifact is the result of a [Transformation](../transformations/) for a specific context and/or object.
+An artifact is the result of a [Transformation](../transformations/overview) for a specific context and/or object.
 
 The following MIME types or formats are supported and will be rendered properly in Infrahub's web interface:
 
@@ -27,11 +27,11 @@ The following MIME types or formats are supported and will be rendered properly 
 
 :::
 
-While it's always possible to generate [Transformations](../transformations/) on demand via the API, having an artifact provides additional benefits:
+While it's always possible to generate [Transformations](../transformations/overview) on demand via the API, having an artifact provides additional benefits:
 
-- **Caching**: Generated artifacts are stored in the internal [object storage](../artifact-file-storage/index.mdx). For resource-intensive Transformations, it will significantly reduce the load of the system if an artifact can be served from the cache instead of regenerating each time.
+- **Caching**: Generated artifacts are stored in the internal [object storage](../artifact-file-storage/overview.mdx). For resource-intensive Transformations, it will significantly reduce the load of the system if an artifact can be served from the cache instead of regenerating each time.
 - **Traceability**: Past values of an artifact remain available. In a future release, it will be possible to compare the value of an artifact over time.
-- **Peer Review**: artifacts are automatically part of the [Proposed Change](../proposed-changes/) review process.
+- **Peer Review**: artifacts are automatically part of the [Proposed Change](../proposed-changes/overview) review process.
 - **Database**: artifact nodes are stored in the database and other nodes can optionally have a relationship with them, which makes it possible to perform certain artifact related queries.
 
 While the content of an artifact can change, its identifier will remain the same over time.
@@ -42,18 +42,18 @@ While the content of an artifact can change, its identifier will remain the same
 
 ## High level design
 
-Artifacts are defined by grouping a [Transformation](../transformations/) with a [group](../groups/) of targets in an *artifact definition*.
+Artifacts are defined by grouping a [Transformation](../transformations/overview) with a [group](../groups/overview) of targets in an *artifact definition*.
 
 An **artifact definition** centralizes all the information required to generate an artifact.
 
-- [Group](../groups/) of targets - Specifies which objects will generate artifacts
+- [Group](../groups/overview) of targets - Specifies which objects will generate artifacts
 - Transformation - Defines how to process the data
 - Format of the output - MIME type for the generated content
 - Information to extract from each target that must be passed to the Transformation
 
-Groups provide flexible targeting that decouples artifact generation from specific object lists. You can add or remove objects from groups without modifying artifact definitions. See [Groups](../groups/) for details on creating target groups.
+Groups provide flexible targeting that decouples artifact generation from specific object lists. You can add or remove objects from groups without modifying artifact definitions. See [Groups](../groups/overview) for details on creating target groups.
 
-From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the Transformation is stored in the [object storage](../artifact-file-storage/index.mdx). The generation of the artifacts is performed by the Task worker(s).
+From an **artifact definition** artifact nodes are created, for each target which is part of the group. The result of the Transformation is stored in the [object storage](../artifact-file-storage/overview.mdx). The generation of the artifacts is performed by the Task worker(s).
 
 ![Artifact architecture diagram](../media/topics/artifact/architecture.excalidraw.svg)
 
@@ -80,11 +80,11 @@ When a `CoreArtifactTarget` node is deleted, all artifacts associated with it ar
 
 A Transformation can reference and include the rendered content of other artifacts or file objects using built-in Jinja2 filters or the Python SDK object store API. This enables modular configuration pipelines where each artifact generates one section, and a composite artifact assembles the final result.
 
-For step-by-step instructions, see [Composing artifact content](./content-composition).
+For step-by-step instructions, see [Composing artifact content](./content-composition.mdx).
 
 ## How artifacts relate to other features
 
-- **[Transformations](../transformations/)** define the logic that produces an artifact's content; an artifact is the cached output of a Transformation for a specific target.
+- **[Transformations](../transformations/overview)** define the logic that produces an artifact's content; an artifact is the cached output of a Transformation for a specific target.
 - **Generators** create or update graph data; some Generators consume artifacts as part of their input pipeline.
-- **[Object storage](../artifact-file-storage/index.mdx)** is where artifact content lives on disk. See the storage topic for backend configuration and sizing.
-- **[Proposed Changes](../proposed-changes/)** automatically include artifact diffs in their review surface, so changes to generated artifacts are visible alongside data changes.
+- **[Object storage](../artifact-file-storage/overview.mdx)** is where artifact content lives on disk. See the storage topic for backend configuration and sizing.
+- **[Proposed Changes](../proposed-changes/overview)** automatically include artifact diffs in their review surface, so changes to generated artifacts are visible alongside data changes.

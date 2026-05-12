@@ -118,7 +118,7 @@ A cascade has no single log showing the full chain. Each Generator runs independ
 
 | Symptom                            | Where to look first                                                                                                              |
 |------------------------------------|----------------------------------------------------------------------------------------------------------------------------------|
-| Expected objects were not created  | Check whether the Generator for that layer ran at all ([Generator instances](./#generator-instances) in the UI) |
+| Expected objects were not created  | Check whether the Generator for that layer ran at all ([Generator instances](./overview#generator-instances) in the UI) |
 | Generator ran but created nothing  | Check the Generator's task log — likely an upstream validation failure                                                           |
 | Cascade stopped after layer N      | Check whether layer N wrote checksums to layer N+1 targets                                                                       |
 | Objects were created but are wrong | Check the query results — the query may be returning unexpected data                                                             |
@@ -126,7 +126,7 @@ A cascade has no single log showing the full chain. Each Generator runs independ
 
 ### Check Generator instances
 
-The Infrahub UI shows [Generator instances](./#generator-instances) per definition. Each instance corresponds to one target and shows its status:
+The Infrahub UI shows [Generator instances](./overview#generator-instances) per definition. Each instance corresponds to one target and shows its status:
 
 - `ready` — the Generator ran successfully for this target
 - `error` — the Generator failed for this target (check the task log for details)

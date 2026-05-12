@@ -23,8 +23,8 @@ The **Webhook System** also powers the [Activity Log](../deploy-manage/run-obser
 
 Infrahub supports two different types of webhooks:
 
-- `Standard Webhook` sends event information to an external endpoint. See [Create a webhook](./create) for setup.
-- `Custom Webhook` allows the ability to tie events to a [Transformation](../transformations/) to configure the payload being sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation) for the full walkthrough.
+- `Standard Webhook` sends event information to an external endpoint. See [Create a webhook](./create.mdx) for setup.
+- `Custom Webhook` allows the ability to tie events to a [Transformation](../transformations/overview) to configure the payload being sent to an external endpoint. See [Webhook with custom Transformation](./custom-transformation.mdx) for the full walkthrough.
 
 :::note
 
@@ -274,4 +274,4 @@ Authentication header values must include the full value including any type pref
 
 ## Custom webhook transformation
 
-The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation).
+The `data` object from the payloads above is passed to the `transform` method of your custom Transformation. For the full setup walkthrough, see [Webhook with custom Transformation](./custom-transformation.mdx).

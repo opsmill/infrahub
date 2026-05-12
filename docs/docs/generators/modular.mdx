@@ -2,14 +2,14 @@
 title: Modular Generators
 ---
 
-A [Generator](./) reads data from Infrahub and creates new objects based on the result. A single Generator works well when the scope is contained: one input kind, one set of outputs, no intermediate dependencies.
+A [Generator](./overview) reads data from Infrahub and creates new objects based on the result. A single Generator works well when the scope is contained: one input kind, one set of outputs, no intermediate dependencies.
 
 Real-world automation is rarely that contained. A data center fabric has layers: the fabric itself, then pods, then racks, then devices. An enterprise network has sites, buildings, floors, and closets. Each layer depends on objects created by the previous one. Trying to handle all of this in a single Generator leads to a monolithic Python class that is hard to test, impossible to run partially, and painful to maintain. It can also become slow for large datasets.
 
 **Modular Generators** solve this by splitting generation across multiple focused Generators, each responsible for one layer or domain. Later Generators depend on objects created by earlier ones, connected through an event-driven signaling mechanism.
 
 :::info
-For single-Generator fundamentals, see [Generators](./). For a step-by-step walkthrough, see [Build your first Generator](../academy/tutorials/generators/build-your-first-generator) in the Academy tutorials.
+For single-Generator fundamentals, see [Generators](./overview). For a step-by-step walkthrough, see [Build your first Generator](../academy/tutorials/generators/build-your-first-generator) in the Academy tutorials.
 :::
 
 ## Why split into multiple Generators
@@ -117,11 +117,11 @@ A fabric with 4 pods and 32 racks per pod runs 4 pod Generators concurrently, th
 
 ## Connection to other concepts
 
-- [Generators](./): single-Generator fundamentals, high-level design, and execution methods
+- [Generators](./overview): single-Generator fundamentals, high-level design, and execution methods
 - [Build a generator](./build): recipe-form how-to for creating a Generator
 - [Build your first generator](../academy/tutorials/generators/build-your-first-generator): step-by-step Academy tutorial
 - [Build chained generators](../academy/tutorials/generators/build-chained-generators): checksum-based trigger pattern walkthrough
 - [Modular Generator best practices](./modular-best-practices): idempotency, pool scoping, debugging, and operational guidance
-- [Groups](../groups/): Generators use groups to define their targets and track generated objects
-- [GraphQL queries](../development-resources/graphql/): each Generator definition includes a query that collects input data
+- [Groups](../groups/overview): Generators use groups to define their targets and track generated objects
+- [GraphQL queries](../development-resources/graphql/overview): each Generator definition includes a query that collects input data
 - [.infrahub.yml](../git-integration/infrahub-yml): configuration file where Generator definitions are declared

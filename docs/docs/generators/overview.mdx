@@ -8,7 +8,7 @@ A `Generator` is a generic plugin that queries data and creates new nodes and re
 
 :::success Examples
 
-- Within your [schema](../schema/) you could create an abstract service object that through a Generator creates other nodes.
+- Within your [schema](../schema/overview) you could create an abstract service object that through a Generator creates other nodes.
 - Want to read how Generators can be used to create a service catalog? See our blog post on [How to Turn Your Source of Truth into a Service Factory](https://www.opsmill.com/how-to-turn-your-source-of-truth-into-a-service-factory/).
 :::
 
@@ -16,7 +16,7 @@ A `Generator` is a generic plugin that queries data and creates new nodes and re
 
 Generators are defined as a **Generator definition** within an [.infrahub.yml](../git-integration/infrahub-yml) file. A Generator definition consists of a number of related objects.
 
-- [Group](../groups/) of targets - Objects that the Generator will act upon
+- [Group](../groups/overview) of targets - Objects that the Generator will act upon
 - Generator class - Python code that defines the generation logic
 - GraphQL Query - Data collection specification
 
@@ -24,11 +24,11 @@ Generators are defined as a **Generator definition** within an [.infrahub.yml](.
 
 Running a Generator definition will create new nodes as defined by the Generator, or remove old ones that are no longer required. The removal of obsolete objects is handled using the [SDK tracking feature]($(base_url)python-sdk/topics/tracking)
 
-The targets point to a [group](../groups/) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger Generator execution, while the actual tracking of generated objects is handled by individual Generator instances.
+The targets point to a [group](../groups/overview) that will consist of objects that are impacted by the Generator. The members of this group can be any type of object within your schema, service objects, devices, contracts or anything you want the Generator to act upon. Generator groups (`CoreGeneratorGroup`) serve as target collections that define which objects trigger Generator execution, while the actual tracking of generated objects is handled by individual Generator instances.
 
-The [GraphQL query](../development-resources/graphql/) defines the data that will be collected when running the Generator. Any object identified in this step is added as a member to a GraphQL query [group](../groups/) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which Generators need to be executed as part of a proposed change during the pipeline run.
+The [GraphQL query](../development-resources/graphql/overview) defines the data that will be collected when running the Generator. Any object identified in this step is added as a member to a GraphQL query [group](../groups/overview) (`CoreGraphQLQueryGroup`). The membership in these groups are then used to determine which Generators need to be executed as part of a proposed change during the pipeline run.
 
-The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [Transformations](../transformations/) and [checks](../checks/), the Generators are user defined.
+The Generator itself is a Python class that is based on the `InfrahubGenerator` class from the SDK. Just like [Transformations](../transformations/overview) and [checks](../checks/overview), the Generators are user defined.
 
 Generators can be executed in several ways, depending on your workflow and where you are in the lifecycle (local development vs. in Infrahub):
 
@@ -147,7 +147,7 @@ Because runs are concurrent:
 
 - Your Generator code should not depend on side effects from other runs of the same Generator.
 - Each run should be self-contained — it reads its scoped data, creates its objects, and finishes.
-- If you need ordering (layer A must complete before layer B starts), use separate Generator definitions with a trigger mechanism rather than relying on execution order within a single definition. See [modular Generators](./modular) for this pattern.
+- If you need ordering (layer A must complete before layer B starts), use separate Generator definitions with a trigger mechanism rather than relying on execution order within a single definition. See [modular Generators](./modular.mdx) for this pattern.
 
 ## Generator instances
 
@@ -177,7 +177,7 @@ More members in the target group means more parallel runs and better utilization
 
 ### Example: modular parallelism
 
-In a modular Generator setup (see [modular Generators](./modular)), parallelism increases at each layer:
+In a modular Generator setup (see [modular Generators](./modular.mdx)), parallelism increases at each layer:
 
 | Layer  | Target group | Members      | Parallel runs |
 |--------|--------------|--------------|---------------|
@@ -199,7 +199,7 @@ Objects become Generator targets by being members of the group specified in the 
 
 You add objects to a target group through the `member_of_groups` relationship, which can be set:
 
-- **In the UI**: when creating or editing an object (see [organizing objects with groups](../groups/))
+- **In the UI**: when creating or editing an object (see [organizing objects with groups](../groups/overview))
 - **In object files**: define group membership in your YAML object definitions
 - **Programmatically**: via the SDK or GraphQL mutations
 
