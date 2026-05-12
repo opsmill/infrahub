@@ -12,6 +12,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import get_root_node
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
 from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
@@ -23,7 +24,6 @@ from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema import GenericSchema, SchemaNotFoundError
 
 from .load_schema_branch import get_or_load_schema_branch
-from .m047_backfill_or_null_display_label import UpdateAttributeValuesQuery
 
 if TYPE_CHECKING:
     from rich.console import Console

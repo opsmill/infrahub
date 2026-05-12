@@ -9,11 +9,11 @@ from rich.progress import Progress, TaskID
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, BranchSupportType, SchemaPathType
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import (
+from infrahub.core.migrations.graph.m044_backfill_hfid_display_label_in_db import UpdateAttributeValuesQuery
+from infrahub.core.migrations.query.path_details import (
     DefaultBranchNodeCount,
     GetPathDetailsDefaultBranch,
     GetResultMapQuery,
-    UpdateAttributeValuesQuery,
 )
 from infrahub.core.migrations.schema.node_attribute_add import NodeAttributeAddMigration
 from infrahub.core.migrations.shared import ArbitraryMigration, MigrationInput, MigrationResult
