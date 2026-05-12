@@ -22,7 +22,7 @@ async def get_graph_migrations(current_graph_version: int) -> Sequence[BaseMigra
     return applicable_migrations
 
 
-def get_migration_by_number(migration_number: int | str) -> BaseMigration:
+def get_migration_by_number(migration_number: int | str) -> MigrationTypes:
     # Convert to string and pad with zeros if needed
     try:
         num = int(migration_number)
