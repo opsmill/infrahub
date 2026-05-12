@@ -21,7 +21,6 @@ ns.add_collection(release)
 @task
 def yamllint(context: Context) -> None:
     """Validate formatting of all YAML files with yamllint."""
-
     exec_cmd = "yamllint -s ."
     context.run(exec_cmd, pty=True)
 

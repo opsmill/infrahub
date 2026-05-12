@@ -94,6 +94,7 @@ def extract_repo_file_information(
 
     Returns:
         RepoFileInformation: Pydantic object to store all information about this file
+
     """
     abs_directory = full_filename.parent.resolve()
     filename = full_filename.name
@@ -140,8 +141,7 @@ class BranchInLocal(BaseModel):
 
 
 class InfrahubRepositoryBase(BaseModel, ABC):
-    """
-    Local version of a Git repository organized to work with Infrahub.
+    """Local version of a Git repository organized to work with Infrahub.
     The idea is that all commits that are being tracked in the graph will be checkout out
     individually as worktree under the <repo_name>/commits subdirectory
 
@@ -276,8 +276,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         Raises:
             git.exc.InvalidGitRepositoryError if the default directory is not a valid Git repository.
-        """
 
+        """
         if not self.cache_repo:
             self.cache_repo = Repo(self.directory_default)
 
@@ -331,7 +331,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         Returns True if everything is correct
         Raises a RepositoryError exception if something is not correct
         """
-
         directories_to_validate = [
             self.directory_root,
             self.directory_branches,
@@ -379,8 +378,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
         Returns
+        -------
             True if the directory has been created,
             False if the directory was already present.
+
         """
         initialize_repositories_directory()
 
@@ -423,7 +424,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def has_worktree(self, identifier: str) -> bool:
         """Return True if a worktree with a given identifier already exist."""
-
         worktrees = self.get_worktrees()
 
         for worktree in worktrees:
@@ -434,7 +434,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def get_worktree(self, identifier: str) -> Worktree:
         """Access a specific worktree by its identifier."""
-
         worktrees = self.get_worktrees()
         for worktree in worktrees:
             if worktree.identifier == identifier:
@@ -444,7 +443,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def get_commit_worktree(self, commit: str) -> Worktree:
         """Access a specific commit worktree."""
-
         worktrees = self.get_worktrees()
 
         for worktree in worktrees:
@@ -471,7 +469,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Return a dict with all the branches present in the graph.
         Query the list of branches first then query the repository for each branch.
         """
-
         response = {}
 
         branches = await self.sdk.branch.all()
@@ -492,7 +489,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def get_branches_from_remote(self) -> dict[str, BranchInRemote]:
         """Return a dict with all the branches present on the remote."""
-
         git_repo = self.get_git_repo_main()
 
         branches = {}
@@ -512,7 +508,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def get_branches_from_local(self, include_worktree: bool = True) -> dict[str, BranchInLocal]:
         """Return a dict with all the branches present locally."""
-
         git_repo = self.get_git_repo_main()
 
         if include_worktree:
@@ -615,8 +610,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         Returns:
             True if the commit has been updated
             False if they already had the same value
-        """
 
+        """
         infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
         log.debug(
             f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=infrahub_branch
@@ -633,7 +628,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         NOTE We need to validate that we are not gonna end up with a race condition
         since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
         """
-
         # TODO need to handle the exception properly
         branch = await self.sdk.branch.create(branch_name=branch_name)
 
@@ -642,7 +636,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
-
         repo = self.get_git_repo_main()
 
         # Check if the branch already exists locally, if it does do nothing
@@ -687,7 +680,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def create_commit_worktree(self, commit: str) -> bool | Worktree:
         """Create a new worktree for a given commit."""
-
         # Check of the worktree already exist
         if self.has_worktree(identifier=commit):
             return False
@@ -720,7 +712,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
         """Create a new worktree for a given branch."""
-
         # Check if the worktree already exist
         if self.has_worktree(identifier=branch_name):
             return False
@@ -742,7 +733,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
           - What has changed inside the files
           - Are there some conflicts between the files.
         """
-
         git_repo = self.get_git_repo_main()
 
         commit_to_compare = git_repo.commit(second_commit)
@@ -823,10 +813,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return filtered_branches
 
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
-        """
-        Returns:
-            List[str] New Branches in Remote
-            List[str] Branches with different commit in Remote
+        """Returns:
+        List[str] New Branches in Remote
+        List[str] Branches with different commit in Remote
+
         """
         if not self.has_origin:
             return [], []
@@ -907,7 +897,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         update_commit_value: bool = True,
     ) -> bool | str:
         """Pull the latest update from the remote repository on a given branch."""
-
         if not self.has_origin:
             return False
         identifier = branch_name

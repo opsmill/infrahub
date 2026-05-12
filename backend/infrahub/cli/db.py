@@ -112,9 +112,7 @@ def _get_migration_display_name(migration: BaseMigration) -> str:
 
 @app.callback()
 def callback() -> None:
-    """
-    Manage the graph in the database.
-    """
+    """Manage the graph in the database."""
 
 
 async def do_migrate(
@@ -132,6 +130,7 @@ async def do_migrate(
         check: If True, only check which migrations need to run without applying them.
         migration_number: If provided, run only this specific migration.
         verbose: If True, show internal migration output.
+
     """
     migrations = await detect_migration_to_run(
         current_graph_version=root_node.graph_version, migration_number=migration_number
@@ -585,6 +584,7 @@ async def migrate_database(
         initialize: Whether to initialize the registry before running migrations.
         update_graph_version: Whether to update the graph version after each migration.
         verbose: If True, show detailed internal output from each migration.
+
     """
     if not migrations:
         return True
@@ -999,8 +999,7 @@ async def load_export_cmd(
     query_limit: int = typer.Option(1000, help="Maximum batch size of import query"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """
-    Cannot be used for backup/restore functionality.
+    """Cannot be used for backup/restore functionality.
     Loads an anonymized export into Neo4j.
     Only used for analysis of output of the selected-export command.
     """
@@ -1157,6 +1156,7 @@ async def run_database_checks(db: InfrahubDatabase, output_dir: Path) -> None:
     Args:
         db: The database object.
         output_dir: Directory to save detailed check results.
+
     """
     get_migration_console().log("Running database health checks...")
 

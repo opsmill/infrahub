@@ -116,8 +116,7 @@ class DeleteDuplicateIsProtectedEdgesQuery(DeleteDuplicateBooleanEdgesQuery):
 
 
 class Migration020(GraphMigration):
-    """
-    1. Find duplicate edges. These can be duplicated if multiple AttributeValue nodes with the same value exist b/c of concurrent
+    """1. Find duplicate edges. These can be duplicated if multiple AttributeValue nodes with the same value exist b/c of concurrent
         database updates.
         a. (a:Attribute)-[e:HAS_VALUE]->(av:AttributeValue)
             grouped by (a, e.branch, e.from, e.to, e.status, av.value, av.is_default) to determine the number of duplicates.

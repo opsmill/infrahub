@@ -102,6 +102,7 @@ class IPAddressPoolGetIdentifiers(Query):
 
         Returns:
             List of PoolIdentifierResult containing allocation and identifier data.
+
         """
         return [PoolIdentifierResult.from_db(result) for result in self.get_results()]
 
@@ -240,6 +241,7 @@ class NumberPoolGetAllocated(Query):
 
         Returns:
             List of NumberPoolAllocatedResult containing allocated number info.
+
         """
         return [
             NumberPoolAllocatedResult(
@@ -301,6 +303,7 @@ class NumberPoolGetReserved(Query):
 
         Returns:
             The reserved integer value, or None if no reservation exists.
+
         """
         result = self.get_result()
         if result:
@@ -312,6 +315,7 @@ class NumberPoolGetReserved(Query):
 
         Returns:
             List of NumberPoolIdentifierData containing value and identifier.
+
         """
         return [
             NumberPoolIdentifierData(
@@ -326,6 +330,7 @@ class NumberPoolGetReserved(Query):
 
         Yields:
             NumberPoolIdentifierData for each reservation.
+
         """
         yield from self.get_data()
 
@@ -448,6 +453,7 @@ class NumberPoolGetUsed(Query):
 
         Yields:
             NumberPoolIdentifierData for each used value in the pool.
+
         """
         for result in self.get_results():
             yield NumberPoolIdentifierData(
@@ -536,6 +542,7 @@ class NumberPoolGetFree(Query):
 
         Returns:
             The free number if found, None if pool is exhausted in queried range.
+
         """
         result_data = self.get_free_data()
         if result_data is None:
@@ -626,6 +633,7 @@ class PrefixPoolGetIdentifiers(Query):
 
         Returns:
             List of PoolIdentifierResult containing allocation and identifier data.
+
         """
         return [PoolIdentifierResult.from_db(result) for result in self.get_results()]
 

@@ -28,7 +28,6 @@ async def test_scheduler_return_on_not_running(fake_log: FakeLogger) -> None:
 
 async def test_scheduler_exit_after_first(fake_log: FakeLogger) -> None:
     """The scheduler should return without writing entries to the log if it is not running."""
-
     service = await InfrahubServices.new(log=fake_log)
     schedule = Schedule(name="inactive", interval=1, start_delay=1, function=log_once_and_stop)
     service.scheduler.running = True

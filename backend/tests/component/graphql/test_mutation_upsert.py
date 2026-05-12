@@ -534,7 +534,6 @@ async def test_with_constructed_hfid(
     db: InfrahubDatabase, default_branch: Branch, animal_person_schema: SchemaRoot
 ) -> None:
     """Validate that we can construct an HFID out of the payload without specifying all parts."""
-
     person_schema = animal_person_schema.get(name="TestPerson")
 
     person1 = await Node.init(db=db, schema=person_schema, branch=default_branch)
@@ -621,7 +620,6 @@ async def test_with_constructed_hfid_with_numbers(
     db: InfrahubDatabase, default_branch: Branch, data_schema: None
 ) -> None:
     """Validate that we can construct an HFID out of the payload without specifying all parts."""
-
     registry.schema.register_schema(schema=SchemaRoot(nodes=[TICKET]), branch=default_branch.name)
 
     first_ticket = await Node.init(schema=TestKind.TICKET, db=db)

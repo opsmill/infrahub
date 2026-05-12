@@ -439,8 +439,7 @@ REMOVE av_no_index:AttributeValueNonIndexed
 
 
 class Migration037(ArbitraryMigration):
-    """
-    Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES
+    """Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES
 
     0. Drop the index on the AttributeValueIndexed vertex, there are no AttributeValueIndexed vertices at this point anyway
     1. For all attributes of all schema on all branches, determine if the attribute is a LARGE_ATTRIBUTE_TYPE and when

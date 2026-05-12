@@ -1161,7 +1161,8 @@ async def test_migrated_kind_on_main_then_relationship_update_on_branch(
     person_albert_main: Node,
 ) -> None:
     """Test that when a schema kind is migrated on the default branch, relationships to instances
-    of the migrated node can be updated on a branch before the diff is calculated."""
+    of the migrated node can be updated on a branch before the diff is calculated.
+    """
     # Migrate TestPerson kind on default branch
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     original_person_schema = schema_branch.get_node(name="TestPerson")
@@ -1312,7 +1313,8 @@ async def test_relationship_property_added_on_source_branch_kind_migration(
     person_alfred_main: Node,
 ) -> None:
     """Validate diff for relationship when peer kind is migrated on the branch after branch forks
-    and the source property is updated on the branch"""
+    and the source property is updated on the branch
+    """
     branch = await create_branch(db=db, branch_name="branch-src-migration-rel-prop")
     from_time = Timestamp(branch.created_at)
 
@@ -1377,7 +1379,8 @@ async def test_relationship_property_branch_change_with_target_branch_kind_migra
     person_alfred_main: Node,
 ) -> None:
     """Validate diff for relationship source when one of the peers is migrated to a new kind on the target branch
-    after branch forks"""
+    after branch forks
+    """
     branch = await create_branch(db=db, branch_name="branch-tgt-migration-rel-prop")
     from_time = Timestamp(branch.created_at)
 

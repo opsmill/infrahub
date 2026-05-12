@@ -17,7 +17,8 @@ async def test_new_user_creates_account_and_identity(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """A first-time login must bootstrap both the account and the identity node in a single
-    call so that subsequent logins resolve via the stable sub rather than the mutable display name."""
+    call so that subsequent logins resolve via the stable sub rather than the mutable display name.
+    """
     identity = ExternalIdentity(
         sub="sub-new-001",
         provider_name="provider1",
@@ -50,7 +51,8 @@ async def test_returning_user_resolves_via_identity_node(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """Once an identity node exists the account lookup must use it exclusively, ensuring
-    that renaming the display_name in the provider cannot redirect a login to a different account."""
+    that renaming the display_name in the provider cannot redirect a login to a different account.
+    """
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(db=db, name="Bob Smith", label="Bob Smith", account_type="User", password=str(uuid.uuid4()))
     await account.save(db=db)
@@ -86,7 +88,8 @@ async def test_label_is_updated_when_display_name_changes(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
     """The label is the human-readable name shown in the UI. When the provider changes
-    the display name the label must follow so that the UI stays consistent with the IdP."""
+    the display name the label must follow so that the UI stays consistent with the IdP.
+    """
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(db=db, name="Carol Jones", label="Carol Jones", account_type="User", password=str(uuid.uuid4()))
     await account.save(db=db)
@@ -119,7 +122,8 @@ async def test_transition_fallback_unclaimed_account_is_linked(
 ) -> None:
     """Accounts created before this feature was introduced have no identity node. The first
     post-upgrade login must claim the existing account rather than creating a duplicate,
-    preserving the user's history, permissions, and group memberships."""
+    preserving the user's history, permissions, and group memberships.
+    """
     account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account.new(db=db, name="Eve Turner", account_type="User", password=str(uuid.uuid4()))
     await account.save(db=db)
@@ -152,7 +156,8 @@ async def test_transition_fallback_claimed_account_uses_email_as_name(
 ) -> None:
     """If a name-matched account is already linked to a different provider identity it cannot
     be claimed. A new account must be created using the email as the unique name so that both
-    users can log in without either being locked out or silently redirected to the wrong account."""
+    users can log in without either being locked out or silently redirected to the wrong account.
+    """
     existing_account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await existing_account.new(db=db, name="Frank Hall", account_type="User", password=str(uuid.uuid4()))
     await existing_account.save(db=db)
@@ -193,7 +198,8 @@ async def test_name_and_email_collision_raises_processing_error(
 ) -> None:
     """When both the display name and the email are already taken by other accounts there is no
     safe automatic resolution. A hard error forces an admin to intervene rather than silently
-    dropping the login or overwriting someone else's account."""
+    dropping the login or overwriting someone else's account.
+    """
     account1 = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account1.new(db=db, name="Grace Lee", account_type="User", password=str(uuid.uuid4()))
     await account1.save(db=db)
@@ -223,7 +229,8 @@ async def test_account_is_added_to_matching_group(
 ) -> None:
     """Group membership is the mechanism for assigning permissions in Infrahub. SSO group claims
     must be reflected at login so that access rights stay in sync with the IdP without requiring
-    manual admin intervention after each user is provisioned."""
+    manual admin intervention after each user is provisioned.
+    """
     group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name="network-engineers-001")
     await group.save(db=db)
@@ -252,7 +259,8 @@ async def test_account_already_in_group_is_not_duplicated(
 ) -> None:
     """Group membership relationships must be idempotent. A second login with the same group
     claims must not create a duplicate edge, which would corrupt membership counts and
-    potentially cause permission evaluation to behave unpredictably."""
+    potentially cause permission evaluation to behave unpredictably.
+    """
     group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
     await group.new(db=db, name="network-engineers-002")
     await group.save(db=db)
@@ -278,7 +286,8 @@ async def test_unknown_group_is_silently_ignored(
 ) -> None:
     """The IdP may send group names that have not yet been created in Infrahub. Failing the
     login in that case would lock users out for a misconfiguration that is outside their
-    control, so unknown groups are skipped and the login proceeds."""
+    control, so unknown groups are skipped and the login proceeds.
+    """
     identity = ExternalIdentity(
         sub="sub-nogroup-001",
         provider_name="provider1",
@@ -300,7 +309,8 @@ async def test_two_different_identities_produce_two_accounts(
 ) -> None:
     """Each unique (sub, provider, protocol) triple must map to its own account. This guards
     against a regression where a shared attribute — such as a common display name — would
-    cause two distinct users to be merged into one account."""
+    cause two distinct users to be merged into one account.
+    """
     identity1 = ExternalIdentity(
         sub="sub-two-001",
         provider_name="provider1",

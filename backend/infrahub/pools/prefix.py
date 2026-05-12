@@ -21,6 +21,7 @@ def get_next_available_prefix(
 
     Raises:
         ValueError: If there are no available subnets in the pool
+
     """
     prefix_ver_map = {4: ipaddress.IPv4Network, 6: ipaddress.IPv6Network}
 

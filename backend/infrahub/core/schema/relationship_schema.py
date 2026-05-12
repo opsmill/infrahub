@@ -69,7 +69,6 @@ class RelationshipSchema(GeneratedRelationshipSchema):
 
     def get_query_arrows(self) -> QueryArrows:
         """Return (in 4 parts) the 2 arrows for the relationship R1 and R2 based on the direction of the relationship."""
-
         if self.direction == RelationshipDirection.OUTBOUND:
             return QueryArrows(left=QueryArrowOutband(), right=QueryArrowOutband())
         if self.direction == RelationshipDirection.INBOUND:
@@ -97,7 +96,6 @@ class RelationshipSchema(GeneratedRelationshipSchema):
         partial_match: bool = False,
     ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
         """Generate Query String Snippet to filter the right node."""
-
         query_filter: list[QueryElement] = []
         query_params: dict[str, Any] = {}
         query_where: list[str] = []

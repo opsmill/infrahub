@@ -4,7 +4,6 @@ from infrahub.exceptions import SchemaNotFoundError
 
 def get_branches_with_schema_number_pool(kind: str, attribute_name: str) -> list[str]:
     """Return branches where schema defined NumberPool exists"""
-
     registered_branches = []
     active_branches = registry.schema.get_branches()
 

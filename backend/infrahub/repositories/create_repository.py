@@ -40,11 +40,9 @@ class RepositoryFinalizer:
         db: InfrahubDatabase,
         delete_on_connectivity_failure: bool = True,
     ) -> None:
-        """
-        Method meant to be called after a repository has been created in the database.
+        """Method meant to be called after a repository has been created in the database.
         It mainly checks the connectivity to the remote repository and submit the workflow to create the repository in the local filesystem.
         """
-
         # If the connectivity is not good, we remove the repository to allow the user to add a new one
         if delete_on_connectivity_failure:
             message = messages.GitRepositoryConnectivity(

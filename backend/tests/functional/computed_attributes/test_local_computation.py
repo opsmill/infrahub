@@ -24,7 +24,8 @@ if TYPE_CHECKING:
 
 class TestJinja2ComputedAttributeWithRelationship(TestInfrahubApp):
     """Verify trigger structure and runtime recomputation for Jinja2 computed attributes
-    that reference relationship peers (using the TSHIRT/COLOR schema)."""
+    that reference relationship peers (using the TSHIRT/COLOR schema).
+    """
 
     @pytest.fixture(scope="class")
     async def schema_loaded(
@@ -43,7 +44,8 @@ class TestJinja2ComputedAttributeWithRelationship(TestInfrahubApp):
     ) -> None:
         """The TSHIRT schema has a Jinja2 computed 'description' that references both
         local attribute 'name' and peer attribute 'color__name'. The self-targeting trigger
-        (TestingTShirt) should use _trigger_placeholder fields."""
+        (TestingTShirt) should use _trigger_placeholder fields.
+        """
         triggers = await gather_trigger_computed_attribute_jinja2(db=db)
 
         self_triggers = [t for t in triggers if t.targets_self]
@@ -64,7 +66,8 @@ class TestJinja2ComputedAttributeWithRelationship(TestInfrahubApp):
     ) -> None:
         """The remote trigger (TestingColor) should preserve real field names ('name' and
         'description') since the Jinja2 template references color__name__value and
-        color__description__value. It should NOT use placeholder fields."""
+        color__description__value. It should NOT use placeholder fields.
+        """
         triggers = await gather_trigger_computed_attribute_jinja2(db=db)
 
         remote_triggers = [t for t in triggers if not t.targets_self]
@@ -87,7 +90,8 @@ class TestJinja2ComputedAttributeWithRelationship(TestInfrahubApp):
         default_branch: Branch,
     ) -> None:
         """Changing a TShirt's color relationship recomputes the description
-        to reflect the new peer's attributes."""
+        to reflect the new peer's attributes.
+        """
         color_red = await Node.init(db=db, schema="TestingColor", branch=default_branch)
         await color_red.new(db=db, name="Red", description="Bright red")
         await color_red.save(db=db)
@@ -222,7 +226,8 @@ class TestEventConsolidation(TestInfrahubApp):
         default_branch: Branch,
     ) -> None:
         """Updating a local attribute that triggers Jinja2 recomputation produces a single
-        NodeChangelog with both the original attribute and the computed attribute in updated_fields."""
+        NodeChangelog with both the original attribute and the computed attribute in updated_fields.
+        """
         tshirt = await Node.init(db=db, schema="TestingTShirt", branch=default_branch)
         await tshirt.new(db=db, name="Classic", color=color_node)
         await tshirt.save(db=db)
@@ -258,7 +263,8 @@ class TestEventConsolidation(TestInfrahubApp):
         default_branch: Branch,
     ) -> None:
         """If an update does not change the computed attribute value, it should NOT appear
-        in the changelog (no-op recomputation is filtered out)."""
+        in the changelog (no-op recomputation is filtered out).
+        """
         tshirt = await Node.init(db=db, schema="TestingTShirt", branch=default_branch)
         await tshirt.new(db=db, name="Basic", color=color_node)
         await tshirt.save(db=db)
