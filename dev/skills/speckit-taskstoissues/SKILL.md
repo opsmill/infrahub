@@ -1,6 +1,6 @@
 ---
 name: speckit-taskstoissues
-description: Convert tasks from tasks.md into GitHub issues.
+description: Convert tasks.md into Jira issues under a single Epic
 compatibility: Requires spec-kit project structure with .specify/ directory
 metadata:
   author: github-spec-kit
