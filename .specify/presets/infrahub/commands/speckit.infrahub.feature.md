@@ -1,9 +1,7 @@
 ---
-description: Validate Jira/JPD ticket reference and create a feature branch
+description: "Validate Jira/JPD ticket reference and create a feature branch"
 ---
 
-
-<!-- Source: infrahub -->
 # Create Infrahub Feature Branch
 
 Create and switch to a new git feature branch for the given specification, enforcing an Infrahub Jira or JPD ticket reference as the branch name suffix.

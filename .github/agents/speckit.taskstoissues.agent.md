@@ -1,16 +1,9 @@
 ---
-name: speckit-taskstoissues
-description: Convert tasks from tasks.md into GitHub issues.
-compatibility: Requires spec-kit project structure with .specify/ directory
-metadata:
-  author: github-spec-kit
-  source: preset:infrahub
-user-invocable: true
-disable-model-invocation: false
+description: Convert tasks.md into Jira issues under a single Epic
 ---
 
-# Speckit Taskstoissues Skill
 
+<!-- Source: infrahub -->
 ## User Input
 
 ```text

@@ -1,15 +1,7 @@
 ---
-name: speckit-taskstoissues
-description: Convert tasks from tasks.md into GitHub issues.
-compatibility: Requires spec-kit project structure with .specify/ directory
-metadata:
-  author: github-spec-kit
-  source: preset:infrahub
-user-invocable: true
-disable-model-invocation: false
+description: "Convert tasks.md into Jira issues under a single Epic"
 ---
 
-# Speckit Taskstoissues Skill
 
 ## User Input
 
@@ -67,7 +59,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Resolve the per-user override:
      - Run `git config user.email` and slugify the result: lowercase, replace every non-alphanumeric character with `-` (e.g. `pol@opsmill.com` → `pol-opsmill-com`).
      - Load `dev/spec-kit/presets/infrahub/templates/overrides/<slug>.yml` (or the installed-copy equivalent under `.specify/presets/infrahub/`).
-     - If the file is missing, prompt: `> No override found for <slug>. Copy .specify/templates/overrides/example.yml to .specify/templates/overrides/<slug>.yml and fill in assignee.email + team before retrying.` Stop. Do not silently default.
+     - If the file is missing, prompt: `> No override found for <slug>. Copy templates/overrides/example.yml to templates/overrides/<slug>.yml and fill in assignee.email + team before retrying.` Stop. Do not silently default.
 
 3. **Resolve Atlassian cloud id**: Call `mcp__claude_ai_Atlassian__getAccessibleAtlassianResources` once and match `cloud` from the shared config against the returned site URLs to obtain `cloudId`.
 
@@ -83,7 +75,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 5. **Resolve assignee account id**: From the per-user override read `assignee.email`. Call `mcp__claude_ai_Atlassian__lookupJiraAccountId` once with that email and `cloudId`. Cache the returned `accountId` for the duration of this run.
 
    > [!CAUTION]
-   > If `lookupJiraAccountId` returns no match, abort with: `> Assignee email <email> not found in Atlassian. Fix .specify/templates/overrides/<slug>.yml or use a valid Atlassian-linked email before re-running.` Do not create any issues.
+   > If `lookupJiraAccountId` returns no match, abort with: `> Assignee email <email> not found in Atlassian. Fix templates/overrides/<slug>.yml or use a valid Atlassian-linked email before re-running.` Do not create any issues.
 
 6. **Parse `tasks.md`**: Iterate every unchecked `- [ ]` line. Each task line follows the format documented in `dev/skills/speckit-tasks/SKILL.md` and contains:
    - A task id (TID), e.g. `T001`

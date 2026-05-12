@@ -1,0 +1,2 @@
+templates/overrides/*.yml
+!templates/overrides/example.yml

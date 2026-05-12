@@ -1,0 +1,13 @@
+---
+# Copy this file to <your-email-slug>.yml (e.g. pol-opsmill-com.yml) and edit.
+# The slug is git config user.email lowercased with non-alphanumeric chars replaced by '-'.
+
+assignee:
+  display_name: "First Last"
+  email: "first.last@opsmill.com"   # used by lookupJiraAccountId
+
+team:
+  name: "Core"
+  id: ""                            # optional; if set, overrides team name lookup
+
+labels: []                           # extra labels merged with labels_default
