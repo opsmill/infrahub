@@ -77,7 +77,22 @@ You **MUST** consider the user input before proceeding (if not empty).
    > [!CAUTION]
    > If `lookupJiraAccountId` returns no match, abort with: `> Assignee email <email> not found in Atlassian. Fix templates/overrides/<slug>.yml or use a valid Atlassian-linked email before re-running.` Do not create any issues.
 
-6. **Parse `tasks.md` by phase**: Walk the file top-to-bottom and split it into phases, where a phase starts at a `## Phase <N>: <title>` header and ends at the next `## Phase` header (or end of file). For each phase capture:
+6. **Resolve team UUID**: From the per-user override read `team.id` and `team.name`. Jira's Atlassian Teams picker (`customfield_10001`) only accepts a UUID — `team.name` is kept in the override file as a human label/comment, never sent to Jira.
+
+   - If `team.id` is set, use it as-is.
+   - If `team.id` is empty or missing, resolve it once via Atlassian:
+     1. Call `mcp__claude_ai_Atlassian__searchJiraIssuesUsingJql` with:
+        - `cloudId` from step 3
+        - `jql = 'project = <default_project_key> AND "Team[Team]" is not EMPTY ORDER BY created DESC'`
+        - `fields = ["customfield_10001"]`
+        - `maxResults = 20`
+     2. Scan the returned issues' `customfield_10001.name` for an exact case-insensitive match to the override's `team.name`. Extract the matching `customfield_10001.id` (the UUID).
+     3. If a match is found, persist the UUID back into the per-user override file at `team.id` so future runs skip this lookup, and use that UUID for issue creation.
+     4. If no match is found, abort with: `> Team '<team.name>' not found in Atlassian (searched recent issues in <default_project_key>). Set team.id explicitly in templates/overrides/<slug>.yml before re-running.` Do not create any issues.
+
+   Pass the resolved value to `createJiraIssue` as a **bare UUID string** (e.g. `"customfield_10001": "079e72e1-..."`). The object form `{"id": "<uuid>"}` and the name form (`"Backend Team"`) are both rejected by Jira's Teams picker — confirmed empirically: the bare-string form is the only one that works.
+
+7. **Parse `tasks.md` by phase**: Walk the file top-to-bottom and split it into phases, where a phase starts at a `## Phase <N>: <title>` header and ends at the next `## Phase` header (or end of file). For each phase capture:
    - `phase_number` (`<N>`) and `phase_title` (`<title>`) from the header line
    - `goal_block`: the `**Goal**:` paragraph immediately under the header, if present
    - `independent_test_block`: the `**Independent Test**:` paragraph, if present
@@ -88,7 +103,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    Skip phases that contain zero unchecked tasks. Build an ordered list `phases: [{phase_number, phase_title, story, goal_block, independent_test_block, tasks, files, exit_criteria}]`.
 
-7. **Create one Jira issue per phase**: For each parsed phase, call `mcp__claude_ai_Atlassian__createJiraIssue` with:
+8. **Create one Jira issue per phase**: For each parsed phase, call `mcp__claude_ai_Atlassian__createJiraIssue` with:
    - `cloudId` from step 3.
    - `projectKey` from `default_project_key`.
    - `issueTypeName` from `default_issue_type`.
@@ -105,7 +120,7 @@ You **MUST** consider the user input before proceeding (if not empty).
      - `labels`: union of `labels_default` (shared config) + `labels` (per-user override) + `US<story>` if the phase has a `story` value
      - `custom_fields`:
        - `<custom_fields.epic_link>`: `<Epic key from step 4>` (e.g. `customfield_10014: "IFC-2521"`)
-       - `<custom_fields.team>`: per-user override `team.id` if set, otherwise `team.name`
+       - `<custom_fields.team>`: the bare UUID string resolved in step 6 (e.g. `customfield_10001: "079e72e1-..."`). Never send the object form `{"id": "<uuid>"}` and never send `team.name`.
 
    Record `phase_number -> issueKey` in an in-memory map.
 
@@ -115,14 +130,14 @@ You **MUST** consider the user input before proceeding (if not empty).
    > [!CAUTION]
    > If any `createJiraIssue` call fails mid-run, **stop immediately**. Print the partial `phase_number -> issueKey` map and instruct: `> Partial run — delete the issues listed above manually in Jira before re-running. This skill is not idempotent in v1.` Do not retry, do not roll back automatically.
 
-8. **Create dependency links**: After every issue exists, walk the task list a second time. For each task whose description body mentions another `TID` (e.g. `depends on T001`), call `mcp__claude_ai_Atlassian__createIssueLink` with:
+9. **Create dependency links**: After every issue exists, walk the task list a second time. For each task whose description body mentions another `TID` (e.g. `depends on T001`), call `mcp__claude_ai_Atlassian__createIssueLink` with:
    - `inwardIssue` = the mentioned task's Jira key
    - `outwardIssue` = the current task's Jira key
    - `type` = `"Blocks"`
 
    Phase headers and `[P]` markers are sequencing hints only — they are **not** first-class dependencies and must not produce link edges.
 
-9. **Summary output**: Print a markdown table mapping `Phase` → `IssueKey` → `Summary`. Do not edit `tasks.md` automatically; the user can paste the mapping back if they want.
+10. **Summary output**: Print a markdown table mapping `Phase` → `IssueKey` → `Summary`. Do not edit `tasks.md` automatically; the user can paste the mapping back if they want.
 
 ## Post-Execution Checks
 
