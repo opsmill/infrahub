@@ -23445,6 +23445,81 @@ export type PaginatedProfileIpamNamespace = {
   permissions: PaginatedObjectPermission;
 };
 
+export type PathHopType = {
+  __typename: 'PathHopType';
+  /** Node visited at this hop */
+  node: PathNodeType;
+  /** Relationship traversed to reach this node from the previous hop. Null on the first hop. */
+  relationship: Maybe<PathRelationshipType>;
+};
+
+export type PathNodeType = {
+  __typename: 'PathNodeType';
+  /** Human-readable display label */
+  display_label: Scalars['String']['output'];
+  /** Human friendly identifier */
+  hfid: Array<Scalars['String']['output']>;
+  /** Node UUID */
+  id: Scalars['String']['output'];
+  /** Schema kind */
+  kind: Scalars['String']['output'];
+  /** Schema label for the node's kind */
+  label: Scalars['String']['output'];
+};
+
+export type PathRelationshipType = {
+  __typename: 'PathRelationshipType';
+  /** Relationship label on the source side of the hop */
+  from_label: Scalars['String']['output'];
+  /** Relationship name on the source side of the hop */
+  from_rel: Scalars['String']['output'];
+  /** Relationship kind (e.g. Component, Generic) */
+  kind: Scalars['String']['output'];
+  /** Relationship label on the destination side of the hop */
+  to_label: Scalars['String']['output'];
+  /** Relationship name on the destination side of the hop */
+  to_rel: Scalars['String']['output'];
+};
+
+export type PathResultType = {
+  __typename: 'PathResultType';
+  /** Number of edges in this path */
+  depth: Scalars['Int']['output'];
+  /** Ordered hops from source to destination */
+  hops: Array<PathHopType>;
+};
+
+export type PathTraversalInput = {
+  /** UUID of the end node */
+  destination_id: Scalars['String']['input'];
+  /** Specific node kinds to exclude from traversal paths. */
+  excluded_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Namespaces to exclude from traversal. Pass empty list to include all. */
+  excluded_namespaces?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Filter to only traverse through nodes of these kinds */
+  kind_filter?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Maximum number of node hops (default: 5, max: 20) */
+  max_depth?: InputMaybe<Scalars['Int']['input']>;
+  /** Maximum number of paths to return (default: 10, max: 100) */
+  max_paths?: InputMaybe<Scalars['Int']['input']>;
+  /** Filter to only follow relationships with these names */
+  relationship_filter?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** UUID of the start node */
+  source_id: Scalars['String']['input'];
+};
+
+export type PathTraversalResultType = {
+  __typename: 'PathTraversalResultType';
+  /** Total number of paths discovered */
+  count: Scalars['Int']['output'];
+  /** The end node */
+  destination: PathNodeType;
+  /** Paths found, ordered shortest first */
+  paths: Array<PathResultType>;
+  /** The start node */
+  source: PathNodeType;
+};
+
 export type PermissionType = {
   __typename: 'PermissionType';
   update_value: Maybe<BranchRelativePermissionDecision>;
@@ -24693,7 +24768,11 @@ export type Query = {
   InfrahubIPAddressGetNextAvailable: IpAddressGetNextAvailable;
   InfrahubIPPrefixGetNextAvailable: IpPrefixGetNextAvailable;
   InfrahubInfo: Info;
+  /** Find all shortest paths between two nodes in the graph */
+  InfrahubPathTraversal: PathTraversalResultType;
   InfrahubPermissions: AccountPermissionsEdges;
+  /** Find all nodes of specified kinds reachable from a source node */
+  InfrahubReachableNodes: ReachableNodesResultType;
   InfrahubResourcePoolAllocated: PoolAllocated;
   InfrahubResourcePoolUtilization: PoolUtilization;
   InfrahubSearchAnywhere: NodeEdges;
@@ -36049,6 +36128,16 @@ export type QueryInfrahubIpPrefixGetNextAvailableArgs = {
 };
 
 
+export type QueryInfrahubPathTraversalArgs = {
+  data: PathTraversalInput;
+};
+
+
+export type QueryInfrahubReachableNodesArgs = {
+  data: ReachableNodesInput;
+};
+
+
 export type QueryInfrahubResourcePoolAllocatedArgs = {
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
@@ -36816,6 +36905,37 @@ export type QueryRelationshipArgs = {
   ids: Array<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type ReachableNodeType = {
+  __typename: 'ReachableNodeType';
+  /** Hops from source node */
+  depth: Scalars['Int']['output'];
+  /** Reachable node */
+  node: PathNodeType;
+  /** Full path from source to this node */
+  path: PathResultType;
+};
+
+export type ReachableNodesInput = {
+  /** Maximum traversal depth (default: 5, max: 20) */
+  max_depth?: InputMaybe<Scalars['Int']['input']>;
+  /** Maximum results (default: 50, max: 200) */
+  max_results?: InputMaybe<Scalars['Int']['input']>;
+  /** UUID of the source node */
+  source_id: Scalars['String']['input'];
+  /** Node kinds to search for */
+  target_kinds: Array<Scalars['String']['input']>;
+};
+
+export type ReachableNodesResultType = {
+  __typename: 'ReachableNodesResultType';
+  /** Number of dependency entries returned */
+  count: Scalars['Int']['output'];
+  /** Reachable nodes of the requested kinds, one entry per (node, path) pair */
+  dependencies: Array<ReachableNodeType>;
+  /** The source node */
+  source: PathNodeType;
 };
 
 export type ReadOnlyRepositoryImportLastCommit = {
