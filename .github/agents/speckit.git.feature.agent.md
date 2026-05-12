@@ -1,16 +1,10 @@
 ---
-name: speckit-git-feature
 description: Create a feature branch with sequential or timestamp numbering
-compatibility: Requires spec-kit project structure with .specify/ directory
-metadata:
-  author: github-spec-kit
-  source: extension:git
-user-invocable: true
-disable-model-invocation: false
 ---
 
-# Git Feature Skill
 
+<!-- Extension: git -->
+<!-- Config: .specify/extensions/git/ -->
 # Create Feature Branch
 
 Create and switch to a new git feature branch for the given specification. This command handles **branch creation only** — the spec directory and files are created by the core `/speckit.specify` workflow.
