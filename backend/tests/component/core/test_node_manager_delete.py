@@ -372,7 +372,6 @@ async def test_delete_branch_aware_node_with_agnostic_relationship(
     - Verify the device is deleted on branch2
     - Verify the device and its relationship to the location still exist on branch3
     """
-
     # Create a schema with branch-aware nodes and an explicitly agnostic relationship
     SCHEMA = {
         "nodes": [

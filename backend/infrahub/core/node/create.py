@@ -284,7 +284,6 @@ async def create_node(
     user_id: str = SYSTEM_USER_ID,
 ) -> Node:
     """Create a node in the database if constraint checks succeed."""
-
     if isinstance(schema, GenericSchema):
         raise ValueError(f"Node of generic schema `{schema.name=}` can not be instantiated.")
 

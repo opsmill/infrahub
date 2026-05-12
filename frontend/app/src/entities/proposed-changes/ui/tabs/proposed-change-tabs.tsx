@@ -23,15 +23,17 @@ export function ProposedChangeTabs({ sourceBranch, proposedChangeId }: ProposedC
       scrollBarClassName="hidden"
       className="shrink-0 border-gray-200 border-b"
     >
-      <Row className="items-end gap-4 px-4" aria-label="Tabs">
-        <OverviewTab />
-        <DataTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
-        <FilesTab sourceBranch={sourceBranch} />
-        <ArtifactsTab sourceBranch={sourceBranch} />
-        <SchemaTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
-        <ChecksTab proposedChangeId={proposedChangeId} />
-        <TasksTab proposedChangeId={proposedChangeId} />
-      </Row>
+      <nav aria-label="Tabs">
+        <Row className="items-end gap-4 px-4">
+          <OverviewTab proposedChangeId={proposedChangeId} />
+          <DataTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <FilesTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <ArtifactsTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <SchemaTab sourceBranch={sourceBranch} proposedChangeId={proposedChangeId} />
+          <ChecksTab proposedChangeId={proposedChangeId} />
+          <TasksTab proposedChangeId={proposedChangeId} />
+        </Row>
+      </nav>
     </ScrollArea>
   );
 }

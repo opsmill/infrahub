@@ -61,8 +61,7 @@ class PrefectTask:
         flow_filter: FlowFilter | None = None,
         flow_run_filter: FlowRunFilter | None = None,
     ) -> int:
-        """
-        Method to count the number of flow runs based on a flow_run_filter.
+        """Method to count the number of flow runs based on a flow_run_filter.
         The format of the body is the same as the one generated in read_flow_runs
         """
         body = {
@@ -117,11 +116,9 @@ class PrefectTask:
     async def _get_logs(
         cls, client: PrefectClient, flow_ids: list[UUID], log_limit: int | None, log_offset: int | None
     ) -> FlowLogs:
-        """
-        Return the logs for a flow run, based on log_limit and log_offset.
+        """Return the logs for a flow run, based on log_limit and log_offset.
         At most, NB_LOGS_LIMIT logs will be returned per flow.
         """
-
         logs_flow = FlowLogs()
 
         log_limit = log_limit if log_limit is not None else NB_LOGS_LIMIT
@@ -349,7 +346,6 @@ class PrefectTask:
         batch_size: int = 100,
     ) -> None:
         """Delete flow runs in the specified states and older than specified days."""
-
         logger = get_logger()
 
         async with get_client(sync_client=False) as client:

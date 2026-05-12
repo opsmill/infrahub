@@ -44,10 +44,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
         hfids: HFIDs,
         branches_out_of_scope: list[str] | None = None,
     ) -> list[HFIDTriggerDefinition]:
-        """
-        This function is used to create a trigger definition for a display labels of type Jinja2.
-        """
-
+        """This function is used to create a trigger definition for a display labels of type Jinja2."""
         definitions: list[HFIDTriggerDefinition] = []
 
         for node_kind, hfid_definition in hfids.get_template_nodes().items():

@@ -1,11 +1,10 @@
-import { DIFF_TABS } from "@/shared/config/constants";
-
 import { useGetDiffSummary } from "@/entities/diff/ui/queries/get-diff-summary.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface DataTabProps {
   sourceBranch: string;
-  proposedChangeId?: string;
+  proposedChangeId: string;
 }
 
 export function DataTab({ sourceBranch, proposedChangeId }: DataTabProps) {
@@ -22,7 +21,7 @@ export function DataTab({ sourceBranch, proposedChangeId }: DataTabProps) {
 
   return (
     <ProposedChangeTab
-      tabId={DIFF_TABS.DATA}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "data")}
       label="Data"
       count={count}
       isCountLoading={isPending}

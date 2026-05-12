@@ -5,6 +5,7 @@ import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { TASK_OBJECT } from "@/shared/config/constants";
@@ -13,7 +14,6 @@ import { datetimeAtom } from "@/shared/stores/time.atom";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
 import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { useConfig } from "@/entities/config/ui/config-provider";
@@ -46,7 +46,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     !isAuthenticated ||
     loading ||
     !!branch.is_default ||
-    branch.status === BRANCH_STATUS.MERGED ||
+    branch.status === BranchStatus.MERGED ||
     isMergeRequested ||
     hasOngoingTask;
 

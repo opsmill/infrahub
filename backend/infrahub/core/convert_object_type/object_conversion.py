@@ -41,8 +41,8 @@ async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase, at: Timestamp
 
 async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, ConversionFieldInput], node: Node) -> dict:
     """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node,
-    or a raw value."""
-
+    or a raw value.
+    """
     data = {}
     for dest_field_name, conv_field_input in mapping.items():
         if conv_field_input.source_field is not None:
@@ -72,10 +72,7 @@ async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, Conversio
 async def get_unidirectional_rels_peers_ids(
     node: Node, branch: Branch, db: InfrahubDatabase, at: Timestamp
 ) -> list[str]:
-    """
-    Returns peers ids of nodes connected to input `node` through an incoming unidirectional relationship.
-    """
-
+    """Returns peers ids of nodes connected to input `node` through an incoming unidirectional relationship."""
     out_rels_identifier = [rel.identifier for rel in node.get_schema().relationships]
     branch_agnostic = node.get_schema().branch == BranchSupportType.AGNOSTIC
     query = await GetAllPeersIds.init(
@@ -146,8 +143,8 @@ async def convert_object_type(
     db: InfrahubDatabase,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
-    An extra check is performed on input node peers relationships to make sure they are still valid."""
-
+    An extra check is performed on input node peers relationships to make sure they are still valid.
+    """
     node_schema = node.get_schema()
     if not isinstance(node_schema, NodeSchema):
         raise ValueError(f"Only a node with a NodeSchema can be converted, got {type(node_schema)}")

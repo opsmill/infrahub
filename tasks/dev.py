@@ -51,6 +51,7 @@ def build(
         context (obj): Used to run specific commands
         python_ver (str): Define the Python version docker image to build from
         nocache (bool): Do not use cache when building the image
+
     """
     build_images(
         context=context, service=service, python_ver=python_ver, nocache=nocache, database=database, namespace=NAMESPACE
@@ -185,7 +186,6 @@ def status(
 @task(optional=["database"])
 def start(context: Context, database: str = INFRAHUB_DATABASE, wait: bool = False, reload: bool = False) -> None:
     """Start a local instance of Infrahub within docker compose."""
-
     if reload:
         # Need to use `uvicorn` instead of `gunicorn` for reload option because of this issue:
         # https://github.com/benoitc/gunicorn/issues/2339

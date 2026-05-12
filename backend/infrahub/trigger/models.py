@@ -72,6 +72,7 @@ class TriggerSetupReport(BaseModel):
 
         Returns:
             List of triggers of the specified type from all categories
+
         """
         created = self._created_triggers_with_type(trigger_type=trigger_type)
         updated = self._updated_triggers_with_type(trigger_type=trigger_type)
@@ -96,6 +97,7 @@ class TriggerSetupReport(BaseModel):
 
         Returns:
             List of triggers of the specified type from both created and updated lists
+
         """
         created = self._created_triggers_with_type(trigger_type=trigger_type)
         updated = self._updated_triggers_with_type(trigger_type=trigger_type)
@@ -198,6 +200,7 @@ class ChangeFlowRunStateAction(BaseModel):
 
         Returns:
             A Prefect ChangeFlowRunState action.
+
         """
         return ChangeFlowRunState(  # type: ignore[call-arg]
             state=self.state,

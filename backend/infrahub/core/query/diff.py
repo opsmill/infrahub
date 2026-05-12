@@ -28,7 +28,6 @@ class DiffQuery(Query):
         **kwargs,
     ) -> None:
         """A diff is always in the context of a branch"""
-
         if not diff_from and branch.is_default:
             raise ValueError("diff_from is mandatory when the diff is on the main branch.")
 

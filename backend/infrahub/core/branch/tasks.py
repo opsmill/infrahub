@@ -336,7 +336,6 @@ async def _rollback_merge(
     Returns True if all rollback succeeded and the branch changes are fully rolled back. If rollback
     succeeds, then Branch's status is set to OPEN. Returns False if any sub-step failed. Does not raise.
     """
-
     try:
         await merger.rollback()
     except Exception:

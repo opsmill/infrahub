@@ -65,7 +65,6 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
         - parent
         - info
     """
-
     parent = None
     info = None
     field_name = None
@@ -141,7 +140,6 @@ async def parent_field_name_resolver(parent: dict[str, dict], info: GraphQLResol
 
     An example of this is the permissions field at the top level within default_paginated_list_resolver()
     """
-
     return parent[info.field_name]
 
 

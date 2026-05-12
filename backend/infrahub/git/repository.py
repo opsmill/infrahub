@@ -24,8 +24,7 @@ log = get_logger()
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
-    """
-    Primary type of Git repository, with deep integration within Infrahub.
+    """Primary type of Git repository, with deep integration within Infrahub.
 
     Eventually we should rename this class InfrahubIntegratedRepository
     """
@@ -55,7 +54,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         self, branch_name: str, branch_id: str | None = None, push_origin: bool = True
     ) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
-
         response = await super().create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
         if push_origin:
             await self.push(branch_name)
@@ -67,7 +65,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
         """
-
         log.info("Starting the synchronization.", repository=self.name)
 
         await self.fetch()
@@ -143,7 +140,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
     async def push(self, branch_name: str) -> bool:
         """Push a given branch to the remote Origin repository"""
-
         if not self.has_origin:
             return False
 
@@ -201,16 +197,13 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
         """
-
         response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
 
         return response
 
 
 class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
-    """
-    Repository with only read-only access to the remote repo
-    """
+    """Repository with only read-only access to the remote repo"""
 
     is_read_only: bool = True
     ref: str | None = Field(None, description="Ref to track on the external repository")
@@ -252,6 +245,7 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
 
         Returns:
             True if synchronization was performed, False if local state was already current.
+
         """
         if not commit:
             commit = self.get_commit_value(branch_name=self.ref, remote=True)

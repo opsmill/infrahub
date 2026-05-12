@@ -57,7 +57,7 @@ class BuiltinIPPrefix(CoreNode):
     broadcast_address: StringOptional
     ip_namespace: RelationshipManager[BuiltinIPNamespace]
     ip_addresses: RelationshipManager[BuiltinIPAddress]
-    resource_pool: RelationshipManager[CoreIPAddressPool]
+    resource_pool: RelationshipManager[CoreIPPool]
     parent: RelationshipManager[BuiltinIPPrefix]
     children: RelationshipManager[BuiltinIPPrefix]
 
@@ -144,6 +144,10 @@ class CoreGroup(CoreNode):
     subscribers: RelationshipManager[CoreNode]
     parent: RelationshipManager[CoreGroup]
     children: RelationshipManager[CoreGroup]
+
+
+class CoreIPPool(CoreNode):
+    pass
 
 
 class CoreKeyValue(CoreNode):
@@ -438,14 +442,14 @@ class CoreGroupTriggerRule(CoreTriggerRule):
     group: RelationshipManager[CoreGroup]
 
 
-class CoreIPAddressPool(CoreResourcePool, LineageSource):
+class CoreIPAddressPool(CoreResourcePool, LineageSource, CoreIPPool):
     default_address_type: String
     default_prefix_length: IntegerOptional
     resources: RelationshipManager[BuiltinIPPrefix]
     ip_namespace: RelationshipManager[BuiltinIPNamespace]
 
 
-class CoreIPPrefixPool(CoreResourcePool, LineageSource):
+class CoreIPPrefixPool(CoreResourcePool, LineageSource, CoreIPPool):
     default_prefix_length: IntegerOptional
     default_member_type: Enum
     default_prefix_type: StringOptional

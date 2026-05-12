@@ -41,8 +41,7 @@ class FixBranchLevelZeroQuery(Query):
 
 
 class Migration053(GraphMigration):
-    """
-    Fix edges with branch_level=0 to have the correct branch_level.
+    """Fix edges with branch_level=0 to have the correct branch_level.
 
     Edges with branch_level=0 indicate a bug where the branch level was not
     properly set during creation. This migration fixes them:

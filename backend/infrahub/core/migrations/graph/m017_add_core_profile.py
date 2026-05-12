@@ -27,9 +27,7 @@ class Migration017(InternalSchemaMigration):
         return result
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
-        """
-        Load CoreProfile schema node in db.
-        """
+        """Load CoreProfile schema node in db."""
         db = migration_input.db
         at = migration_input.at
         user_id = migration_input.user_id

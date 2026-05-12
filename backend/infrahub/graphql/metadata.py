@@ -79,6 +79,7 @@ def build_metadata_query_options(
 
     Returns:
         MetadataQueryOptions with appropriate flags set for each level.
+
     """
     node_level = get_metadata_options_from_fields(node_metadata_fields or {})
     relationship_level = get_metadata_options_from_fields(relationship_metadata_fields or {})

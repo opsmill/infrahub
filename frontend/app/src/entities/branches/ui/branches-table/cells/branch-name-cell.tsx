@@ -1,7 +1,6 @@
 import { LinkButton } from "@infrahub/ui";
 import type { PressEvent } from "react-aria-components";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import { Checkbox } from "@/shared/components/aria/checkbox";
 import { Col, Row } from "@/shared/components/container";
 
@@ -10,6 +9,7 @@ import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchGitSyncBadge } from "@/entities/branches/ui/branch-list-item/branch-git-sync-badge";
 import { BranchSchemaChangesBadge } from "@/entities/branches/ui/branch-list-item/branch-schema-changes-badge";
+import { getBranchDetailsUrl } from "@/entities/branches/utils";
 import { StickyLeftCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
 interface BranchNameCellProps {
@@ -40,7 +40,7 @@ export function BranchNameCell({ branch, isSelected, onClickCheckbox }: BranchNa
           <LinkButton
             variant="ghost"
             size="sm"
-            href={constructPath(`/branches/${branch.name}`)}
+            href={getBranchDetailsUrl(branch.name)}
             className="truncate rounded-full px-2.5 text-custom-blue-700 data-hovered:bg-custom-blue-700/10 data-hovered:underline"
           >
             {branch.name}

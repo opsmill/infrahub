@@ -2,7 +2,7 @@ import { Button, type ButtonProps } from "@infrahub/ui";
 import { PlayIcon } from "lucide-react";
 import { useState } from "react";
 import { Text } from "react-aria-components";
-import { Link } from "react-router";
+import { Link, useParams } from "react-router";
 import { toast } from "react-toastify";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -11,7 +11,6 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Badge } from "@/shared/components/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { focusVisibleStyle } from "@/shared/components/ui/style";
-import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
@@ -19,6 +18,7 @@ import { useRunGeneratorMutation } from "@/entities/generators/ui/queries/run-ge
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import type { RelationshipNode } from "@/entities/nodes/relationships/domain/types";
 import { RelationshipComboboxList } from "@/entities/nodes/relationships/ui/relationship-combobox-list";
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 export interface RunGeneratorActionProps {
   generatorId: string;
@@ -37,6 +37,7 @@ export function GeneratorDefinitionRunButton({
   const [showTargetForm, setShowTargetForm] = useState(false);
   const { isPending, mutate } = useRunGeneratorMutation();
   const { isAuthenticated } = useAuth();
+  const { objectKind, objectId } = useParams<{ objectKind: string; objectId: string }>();
 
   const handlePopoverOpenChange = (open: boolean) => {
     setIsPopoverOpen(open);
@@ -48,10 +49,10 @@ export function GeneratorDefinitionRunButton({
       { generatorId, targetNodeIds },
       {
         onSuccess: ({ taskId }) => {
-          const url = constructPath(window.location.pathname, [
-            { name: QSP.TAB, value: "tasks" },
-            { name: QSP.TASK_ID, value: taskId },
-          ]);
+          const url =
+            objectKind && objectId
+              ? getObjectDetailsUrl(objectKind, objectId, undefined, `tasks/${taskId}`)
+              : constructPath(`/tasks/${taskId}`);
 
           toast(
             <Alert

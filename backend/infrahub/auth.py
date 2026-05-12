@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 import bcrypt
 import jwt
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 from infrahub import config, lock, models
 from infrahub.config import (
@@ -61,9 +61,27 @@ class AccountSession(BaseModel):
     session_id: str | None = None
     auth_type: AuthType
 
+    _original_account_id: str | None = PrivateAttr(default=None)
+
     @property
     def authenticated_by_jwt(self) -> bool:
         return self.auth_type == AuthType.JWT
+
+    @property
+    def authenticating_account_id(self) -> str:
+        """ID of the account that originally authenticated this session.
+
+        Falls back to `account_id` until `override_account` is called; once a context
+        swap occurs `account_id` reflects the impersonated account, so this is the only
+        stable reference back to the real caller.
+        """
+        return self._original_account_id if self._original_account_id is not None else self.account_id
+
+    def override_account(self, account_id: str) -> None:
+        """Switch the active account, preserving the original on first call."""
+        if self._original_account_id is None:
+            self._original_account_id = self.account_id
+        self.account_id = account_id
 
 
 class SSOStateCache(BaseModel):
@@ -449,6 +467,7 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
 
     Raises:
         GatewayError: When the response body cannot be parsed or is empty
+
     """
     # Try to parse as JSON first
     try:
@@ -485,6 +504,7 @@ def extract_auth_error_message(response_body: str | dict[str, Any], base_message
 
     Returns:
         Formatted error message with provider details if available
+
     """
     if not isinstance(response_body, dict):
         return base_message
@@ -510,6 +530,7 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
 
     Raises:
         GatewayError: When the response indicates an error or invalid state
+
     """
     # If the status code is successful, simply return
     if 200 <= response.status_code <= 299:

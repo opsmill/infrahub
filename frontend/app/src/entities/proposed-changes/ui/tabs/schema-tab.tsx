@@ -1,11 +1,10 @@
-import { DIFF_TABS } from "@/shared/config/constants";
-
 import { useGetDiffSummary } from "@/entities/diff/ui/queries/get-diff-summary.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface SchemaTabProps {
   sourceBranch: string;
-  proposedChangeId?: string;
+  proposedChangeId: string;
 }
 
 export function SchemaTab({ sourceBranch, proposedChangeId }: SchemaTabProps) {
@@ -22,7 +21,7 @@ export function SchemaTab({ sourceBranch, proposedChangeId }: SchemaTabProps) {
 
   return (
     <ProposedChangeTab
-      tabId={DIFF_TABS.SCHEMA}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "schema")}
       label="Schema"
       count={count}
       isCountLoading={isPending}
