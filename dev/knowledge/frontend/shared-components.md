@@ -69,6 +69,39 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 **Use `.field.tsx` only inside a `<Form>` from `shared/components/ui/form.tsx`.** Outside a form, use the underlying input from `shared/components/inputs/` or the primitive from `shared/components/ui/`.
 
+### Tab bars
+
+| Need | Use | Location |
+|------|-----|----------|
+| Tab item (active styling, optional scroll-on-active) | `LinkTab` | `shared/components/ui/link.tsx` |
+| Whole tab-bar pattern (parent layout + Outlet + LinkTab) | See [route-architecture.md](../../guidelines/frontend/route-architecture.md) | — |
+
+`LinkTab` derives active state from the URL via `useMatch({ path: href, end: true })`; styling, focus ring, and the optional `scrollIntoViewOnActive` flag live inside the component. Wrap the row of `LinkTab`s in `<nav aria-label="Tabs">` for accessibility and E2E selector stability.
+
+When you wrap `LinkTab` for a feature (e.g. `ProposedChangeTab`), keep the prop name `to` — matching react-router's `NavLink`/`Link`. Don't rename to `href` (that's the rendered DOM attribute, not a prop).
+
+### Detail-page outlet context hooks
+
+Every detail page that has tabs exposes its parent-loaded data via a typed `useOutletContext` wrapper. Children read the wrapper, never `useOutletContext` directly:
+
+| Family | Hook | Location |
+|---|---|---|
+| Generic objects | `useObjectDetailsOutlet()` | `entities/nodes/object/ui/object-details/use-object-details-outlet.ts` |
+| Branches | `useBranchDetailsOutlet()` | `entities/branches/ui/use-branch-details-outlet.ts` |
+| Proposed changes | `useProposedChangeOutlet()` | `entities/proposed-changes/ui/use-proposed-change-outlet.ts` |
+
+Each hook throws if used outside its parent route's `<Outlet>`, so misuse fails loudly during dev. The producer side uses `<Outlet context={... satisfies <Context>} />` to keep producer/consumer in lockstep.
+
+### URL helpers
+
+| Family | Helper | Location |
+|---|---|---|
+| Generic objects (incl. IPAM, resource manager) | `getObjectDetailsUrl(kind, id, overrideParams?, tabSegment?)` | `entities/nodes/utils.ts` |
+| Branches | `getBranchDetailsUrl(branchName, tab?, overrideParams?)` | `entities/branches/utils.ts` |
+| Proposed changes | `getProposedChangeDetailsUrl(id, tab?, overrideParams?)` | `entities/proposed-changes/utils.ts` |
+
+The `tab` argument on each helper is a string-literal union (e.g. `BranchDetailsTab = "data" | "files" | …`) so callers can't pass an unknown tab.
+
 ### Layout
 
 | Need | Use | Location |
@@ -93,6 +126,7 @@ All `.field.tsx` files in `shared/components/form/fields/` wrap a primitive in t
 
 | Need | Use | Location |
 |------|-----|----------|
+| Read route params the route guarantees | `useRequiredParams("foo", "bar")` | `shared/hooks/use-required-params.ts` |
 | URL query-param sync | `useFilters` (or `nuqs` directly for typed params) | `shared/hooks/useFilters.ts` |
 | Debounced value | `useDebounce` | `shared/hooks/useDebounce.ts` |
 | Pagination state | `usePagination` | `shared/hooks/usePagination.ts` |
@@ -136,3 +170,5 @@ Before adding a new component, run this:
 | `<div className="flex items-center gap-2">` | `<Row>` from `shared/components/container` |
 | Hardcoding system namespace lists on the client | Backend is authoritative; surface via schema if needed |
 | Duplicating `useState` between page and selector | Single source of truth — see `dev/guidelines/frontend/page-architecture.md` |
+| Hand-rolled tab bar with manual active-state CSS | `LinkTab` + `<nav aria-label="Tabs">` — see `dev/guidelines/frontend/route-architecture.md` |
+| `useParams() as { foo: string }` for guaranteed params | `useRequiredParams("foo")` — runtime-checked, no type lie |

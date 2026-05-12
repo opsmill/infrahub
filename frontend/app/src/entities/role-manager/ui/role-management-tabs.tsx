@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
 import { ScrollArea, Spinner } from "@infrahub/ui";
-import { useMatch } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Row } from "@/shared/components/container";
 import { Badge } from "@/shared/components/ui/badge";
+import { LinkTab } from "@/shared/components/ui/link";
 import {
   ACCOUNT_GENERIC_OBJECT,
   ACCOUNT_GROUP_OBJECT,
@@ -13,7 +13,6 @@ import {
   OBJECT_PERMISSION_OBJECT,
 } from "@/shared/config/constants";
 
-import { ObjectDetailsTab } from "@/entities/nodes/object/ui/object-tabs";
 import { useObjectsCount } from "@/entities/nodes/object/ui/queries/get-objects-count.query";
 
 const tabs = [
@@ -62,42 +61,41 @@ export function RoleManagementTabs() {
       scrollBarClassName="hidden"
       className="shrink-0 border-gray-200 border-b"
     >
-      <Row className="items-end gap-4 px-4">
-        {tabs.map((tab) => (
-          <RoleManagementTab
-            key={tab.path}
-            to={tab.to}
-            path={tab.path}
-            icon={tab.icon}
-            label={tab.label}
-            kind={tab.kind}
-          />
-        ))}
-      </Row>
+      <nav aria-label="Tabs">
+        <Row className="items-end gap-4 px-4">
+          {tabs.map((tab) => (
+            <RoleManagementTab
+              key={tab.path}
+              to={tab.to}
+              icon={tab.icon}
+              label={tab.label}
+              kind={tab.kind}
+            />
+          ))}
+        </Row>
+      </nav>
     </ScrollArea>
   );
 }
 
 interface RoleManagementTabProps {
   to: string;
-  path: string;
   icon: string;
   label: string;
   kind: string;
 }
 
-function RoleManagementTab({ to, path, icon, label, kind }: RoleManagementTabProps) {
-  const match = useMatch(path);
+function RoleManagementTab({ to, icon, label, kind }: RoleManagementTabProps) {
   const { isPending, data: count } = useObjectsCount({ objectKind: kind });
 
   return (
-    <ObjectDetailsTab isActive={!!match} to={to}>
+    <LinkTab to={to}>
       <Icon icon={icon} />
       {label}
       {isPending && <Spinner />}
       {!isPending && count !== undefined && (
         <Badge className="rounded-full font-medium text-gray-500">{count}</Badge>
       )}
-    </ObjectDetailsTab>
+    </LinkTab>
   );
 }

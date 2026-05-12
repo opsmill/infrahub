@@ -56,8 +56,36 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/branches"),
                   },
                   {
-                    path: "*",
+                    path: ":branchName",
                     lazy: () => import("@/pages/branches/details"),
+                    children: [
+                      {
+                        index: true,
+                        lazy: () => import("@/pages/branches/branch-details/details-tab"),
+                      },
+                      {
+                        path: "data",
+                        lazy: () => import("@/pages/branches/branch-details/data-tab"),
+                      },
+                      {
+                        path: "files",
+                        lazy: () => import("@/pages/branches/branch-details/files-tab"),
+                      },
+                      {
+                        path: "artifacts",
+                        lazy: () => import("@/pages/branches/branch-details/artifacts-tab"),
+                      },
+                      {
+                        path: "schema",
+                        lazy: () => import("@/pages/branches/branch-details/schema-tab"),
+                      },
+                      {
+                        // Redirect /branches/:branchName/<unknown> back to the branch's index tab.
+                        // `.` resolves to the parent matched route, i.e. /branches/:branchName.
+                        path: "*",
+                        element: <Navigate to="." replace />,
+                      },
+                    ],
                   },
                 ],
               },
@@ -96,16 +124,43 @@ export const router = createBrowserRouter([
                       },
                       {
                         path: ":objectId",
+                        lazy: () => import("@/pages/objects/object-details-page"),
                         children: [
                           {
                             index: true,
-                            lazy: () => import("@/pages/objects/object-details-page"),
+                            lazy: () => import("@/pages/objects/object-details/details"),
                           },
                           {
-                            path: "convert",
-                            lazy: () => import("@/pages/objects/object-convert"),
+                            path: "tasks",
+                            children: [
+                              {
+                                index: true,
+                                lazy: () => import("@/pages/objects/object-details/tasks"),
+                              },
+                              {
+                                path: ":taskId",
+                                lazy: () => import("@/pages/objects/object-details/task-details"),
+                              },
+                            ],
+                          },
+                          {
+                            path: "repository_objects",
+                            lazy: () => import("@/pages/objects/object-details/repository-objects"),
+                          },
+                          {
+                            path: ":relationshipName",
+                            lazy: () => import("@/pages/objects/object-details/relationship"),
+                          },
+                          {
+                            // Redirect /objects/:kind/:id/<unknown> back to the index.
+                            path: "*",
+                            element: <Navigate to="." replace />,
                           },
                         ],
+                      },
+                      {
+                        path: ":objectId/convert",
+                        lazy: () => import("@/pages/objects/object-convert"),
                       },
                     ],
                   },
@@ -114,6 +169,24 @@ export const router = createBrowserRouter([
               {
                 path: "/profile",
                 lazy: () => import("@/pages/profile"),
+                children: [
+                  {
+                    index: true,
+                    lazy: () => import("@/pages/profile/profile-tab"),
+                  },
+                  {
+                    path: "tokens",
+                    lazy: () => import("@/pages/profile/tokens-tab"),
+                  },
+                  {
+                    path: "password",
+                    lazy: () => import("@/pages/profile/password-tab"),
+                  },
+                  {
+                    path: "*",
+                    element: <Navigate to="/profile" replace />,
+                  },
+                ],
               },
               {
                 path: "/proposed-changes",
@@ -129,6 +202,59 @@ export const router = createBrowserRouter([
                   {
                     path: ":proposedChangeId",
                     lazy: () => import("@/pages/proposed-changes/details"),
+                    children: [
+                      {
+                        index: true,
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/overview"),
+                      },
+                      {
+                        path: "data",
+                        lazy: () => import("@/pages/proposed-changes/proposed-change-details/data"),
+                      },
+                      {
+                        path: "files",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/files"),
+                      },
+                      {
+                        path: "artifacts",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/artifacts"),
+                      },
+                      {
+                        path: "schema",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/schema"),
+                      },
+                      {
+                        path: "checks",
+                        lazy: () =>
+                          import("@/pages/proposed-changes/proposed-change-details/checks"),
+                      },
+                      {
+                        path: "tasks",
+                        children: [
+                          {
+                            index: true,
+                            lazy: () =>
+                              import("@/pages/proposed-changes/proposed-change-details/tasks"),
+                          },
+                          {
+                            path: ":taskId",
+                            lazy: () =>
+                              import(
+                                "@/pages/proposed-changes/proposed-change-details/task-details"
+                              ),
+                          },
+                        ],
+                      },
+                      {
+                        // Redirect unknown sub-paths back to the proposed-change overview.
+                        path: "*",
+                        element: <Navigate to="." replace />,
+                      },
+                    ],
                   },
                 ],
               },
@@ -140,7 +266,7 @@ export const router = createBrowserRouter([
                     lazy: () => import("@/pages/tasks"),
                   },
                   {
-                    path: ":task",
+                    path: ":taskId",
                     lazy: () => import("@/pages/tasks/task-details"),
                   },
                 ],
@@ -208,6 +334,39 @@ export const router = createBrowserRouter([
                           {
                             path: ":objectId",
                             lazy: () => import("@/pages/objects/object-details-page"),
+                            children: [
+                              {
+                                index: true,
+                                lazy: () => import("@/pages/objects/object-details/details"),
+                              },
+                              {
+                                path: "tasks",
+                                children: [
+                                  {
+                                    index: true,
+                                    lazy: () => import("@/pages/objects/object-details/tasks"),
+                                  },
+                                  {
+                                    path: ":taskId",
+                                    lazy: () =>
+                                      import("@/pages/objects/object-details/task-details"),
+                                  },
+                                ],
+                              },
+                              {
+                                path: "repository_objects",
+                                lazy: () =>
+                                  import("@/pages/objects/object-details/repository-objects"),
+                              },
+                              {
+                                path: ":relationshipName",
+                                lazy: () => import("@/pages/objects/object-details/relationship"),
+                              },
+                              {
+                                path: "*",
+                                element: <Navigate to="." replace />,
+                              },
+                            ],
                           },
                         ],
                       },

@@ -3,7 +3,6 @@ import { Button } from "@infrahub/ui";
 import { useState } from "react";
 import { Link } from "react-router";
 
-import { constructPath } from "@/shared/api/rest/fetch";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,6 +16,7 @@ import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
 import { DELETE_BRANCH_SCOPE, ModalDeleteBranch } from "@/entities/branches/ui/modal-delete-branch";
 import { useDeleteBranchMutation } from "@/entities/branches/ui/queries/delete-branch.mutation";
+import { getBranchDetailsUrl } from "@/entities/branches/utils";
 import { StickyRightCell } from "@/entities/nodes/object/ui/object-table/cells/style";
 
 export interface BranchActionsCellProps {
@@ -48,7 +48,7 @@ export function BranchActionsCell({ branch }: BranchActionsCellProps) {
 
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
-              <Link to={constructPath(`/branches/${branch.name}`)}>
+              <Link to={getBranchDetailsUrl(branch.name)}>
                 <Icon icon="mdi:arrow-expand" className="text-base" />
                 View details
               </Link>

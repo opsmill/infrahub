@@ -1,4 +1,3 @@
-import { useQueryState } from "nuqs";
 import React from "react";
 import { useParams } from "react-router";
 
@@ -37,12 +36,10 @@ interface TaskItemDetailsProps {
 }
 
 export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
-  const [idFromQsp] = useQueryState(QSP.TASK_ID);
   const [search, setSearch] = React.useState("");
 
-  const { task: idFromParams } = useParams();
-
-  const ids = idFromParams || idFromQsp ? [idFromParams || idFromQsp] : undefined;
+  const { taskId } = useParams();
+  const ids = taskId ? [taskId] : undefined;
 
   const { loading, error, data = {}, refetch } = useQuery(TASK_DETAILS, { variables: { ids } });
 
@@ -101,12 +98,12 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
           render={(item) => {
             if (typeof item === "string") return null;
 
-            if (!item.id) return null;
+            if (!item.id || !item.kind) return null;
 
             return (
               <Link
                 key={item.id}
-                to={getObjectDetailsUrl(item.kind!, item.id, [
+                to={getObjectDetailsUrl(item.kind, item.id, [
                   { name: QSP.BRANCH, value: object.branch },
                 ])}
               >

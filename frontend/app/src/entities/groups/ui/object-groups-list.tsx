@@ -8,7 +8,6 @@ import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import { ModalDelete } from "@/shared/components/modals/modal-delete";
 import { Badge } from "@/shared/components/ui/badge";
-import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 import { pluralize } from "@/shared/utils/string";
 
@@ -59,9 +58,7 @@ function ObjectGroupItem({ objectId, group }: ObjectGroupItemProps) {
 
         <Row>
           <Link
-            to={getObjectDetailsUrl(group.__typename, group.id, [
-              { name: QSP.TAB, value: "members" },
-            ])}
+            to={getObjectDetailsUrl(group.__typename, group.id, undefined, "members")}
             className="font-light text-sm hover:underline"
           >
             {pluralize(group.members.count, "member")}
