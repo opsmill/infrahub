@@ -130,12 +130,18 @@ You **MUST** consider the user input before proceeding (if not empty).
    > [!CAUTION]
    > If any `createJiraIssue` call fails mid-run, **stop immediately**. Print the partial `phase_number -> issueKey` map and instruct: `> Partial run — delete the issues listed above manually in Jira before re-running. This skill is not idempotent in v1.` Do not retry, do not roll back automatically.
 
-9. **Create dependency links**: After every issue exists, walk the task list a second time. For each task whose description body mentions another `TID` (e.g. `depends on T001`), call `mcp__claude_ai_Atlassian__createIssueLink` with:
-   - `inwardIssue` = the mentioned task's Jira key
-   - `outwardIssue` = the current task's Jira key
-   - `type` = `"Blocks"`
+9. **Create phase-level dependency links**: After every phase issue exists, derive the phase dependency graph from `T<NNN>` mentions inside each phase's task bodies:
+   1. Build a `tid -> phase_number` index from the parse in step 7 — every `T<NNN>` owned by a phase maps to that phase's `phase_number`.
+   2. For each phase `P`, scan its task bodies for `T<NNN>` mentions whose owning phase is **not** `P` itself. For each such mention, emit a directed edge `(phase_of_mentioned_tid) -> P` (the phase that owns the cited task blocks `P`).
+   3. Deduplicate edges, then apply a transitive reduction so only direct edges remain. If the graph has `A -> B`, `B -> C`, and `A -> C`, drop `A -> C`.
+   4. For each surviving edge `(blocker_phase) -> (blocked_phase)`, call `mcp__claude_ai_Atlassian__createIssueLink` with:
+      - `type` = `"Blocks"`
+      - `inwardIssue` = the blocker phase's Jira key (from the `phase_number -> issueKey` map)
+      - `outwardIssue` = the blocked phase's Jira key
 
-   Phase headers and `[P]` markers are sequencing hints only — they are **not** first-class dependencies and must not produce link edges.
+   Example shape (from the INFP-556 run): 10 direct edges across 8 phases — `P1 -> P2`; `P2 -> P3, P6`; `P3 -> P4, P5, P7`; `P4 -> P7`; `P5, P6, P7 -> P8`.
+
+   Phase headers and `[P]` markers remain sequencing hints only — they are **not** first-class dependencies and must not produce link edges. The link source is exclusively `T<NNN>` mentions, now resolved at phase granularity.
 
 10. **Summary output**: Print a markdown table mapping `Phase` → `IssueKey` → `Summary`. Do not edit `tasks.md` automatically; the user can paste the mapping back if they want.
 
