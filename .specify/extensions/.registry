@@ -18,6 +18,23 @@
       },
       "registered_skills": [],
       "installed_at": "2026-04-10T12:40:51.752899+00:00"
+    },
+    "reconcile": {
+      "version": "1.0.0",
+      "source": "local",
+      "manifest_hash": "sha256:e1674fb7e16923c0e9e32eee78ef5a04626d05f092c56cc7c59e26fab07c210b",
+      "enabled": true,
+      "priority": 10,
+      "registered_commands": {
+        "claude": [
+          "speckit.reconcile.run"
+        ],
+        "copilot": [
+          "speckit.reconcile.run"
+        ]
+      },
+      "registered_skills": [],
+      "installed_at": "2026-05-12T09:23:15.955528+00:00"
     }
   }
 }

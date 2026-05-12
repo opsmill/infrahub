@@ -1,0 +1,23 @@
+schema_version: "1.0"
+extension:
+  id: "reconcile"
+  name: "Spec-Kit Reconcile"
+  version: "1.0.0"
+  description: "Reconcile implementation drift by surgically updating the feature's own spec, plan, and tasks."
+  author: "Stanislav Deviatov"
+  repository: "https://github.com/stn1slv/spec-kit-reconcile"
+  license: "MIT"
+requires:
+  speckit_version: ">=0.1.0"
+  scripts:
+    - "check-prerequisites.sh"
+provides:
+  commands:
+    - name: "speckit.reconcile.run"
+      file: "commands/reconcile.md"
+      description: "Reconcile implementation drift from a gap report"
+tags:
+  - "reconcile"
+  - "drift"
+  - "tasks"
+  - "remediation"
