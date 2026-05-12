@@ -31,7 +31,7 @@ async def test_node_validate_constraint_relationship_count_failure(
     await person.new(db=db, name="Alfred", height=160, cars=[car_accord_main.id])
 
     with pytest.raises(ValidationError) as exc:
-        await constraint.check(relm=person.cars, node_schema=person.get_schema(), node=person)
+        await constraint.check(relm=person.get_relationship("cars"), node_schema=person.get_schema(), node=person)
 
     assert f"Node {car_accord_main.id} has 2 peers for testcar__testperson, maximum of 1 allowed" in exc.value.message
 
@@ -41,7 +41,9 @@ async def test_node_validate_constraint_relationship_count_success(
 ) -> None:
     constraint = RelationshipCountConstraint(db=db, branch=default_branch)
 
-    await constraint.check(relm=person_john_main.cars, node_schema=person_john_main.get_schema(), node=person_john_main)
+    await constraint.check(
+        relm=person_john_main.get_relationship("cars"), node_schema=person_john_main.get_schema(), node=person_john_main
+    )
 
 
 class TestCountGenericPeerCardinalityOne:
@@ -60,7 +62,7 @@ class TestCountGenericPeerCardinalityOne:
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
+            await constraint.check(relm=bob.get_relationship("rooms"), node_schema=bob.get_schema(), node=bob)
 
         assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
@@ -69,7 +71,7 @@ class TestCountGenericPeerCardinalityOne:
         alice = await _make_person(db, default_branch, "alice", [single.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
-        await constraint.check(relm=alice.rooms, node_schema=alice.get_schema(), node=alice)
+        await constraint.check(relm=alice.get_relationship("rooms"), node_schema=alice.get_schema(), node=alice)
 
     async def test_success_when_resaving_same_peer(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         single = await _make_room(db, default_branch, "TestSingleRoom", "single")
@@ -79,11 +81,11 @@ class TestCountGenericPeerCardinalityOne:
         # Re-load alice so the RelationshipManager observes the post-save state,
         # then re-assert the same peer. The constraint must treat this as a no-op.
         alice = await NodeManager.get_one(db=db, id=alice.id, branch=default_branch)
-        await alice.rooms.get_relationships(db=db)
-        await alice.rooms.update(db=db, data=[single.id])
+        await alice.get_relationship("rooms").get_relationships(db=db)
+        await alice.get_relationship("rooms").update(db=db, data=[single.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
-        await constraint.check(relm=alice.rooms, node_schema=alice.get_schema(), node=alice)
+        await constraint.check(relm=alice.get_relationship("rooms"), node_schema=alice.get_schema(), node=alice)
 
 
 class TestCountGenericPeerWithGenericRel:
@@ -101,7 +103,7 @@ class TestCountGenericPeerWithGenericRel:
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
+            await constraint.check(relm=bob.get_relationship("rooms"), node_schema=bob.get_schema(), node=bob)
 
         assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
@@ -110,7 +112,7 @@ class TestCountGenericPeerWithGenericRel:
         alice = await _make_person(db, default_branch, "alice", [single.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
-        await constraint.check(relm=alice.rooms, node_schema=alice.get_schema(), node=alice)
+        await constraint.check(relm=alice.get_relationship("rooms"), node_schema=alice.get_schema(), node=alice)
 
 
 class TestCountGenericPeerMixedSubtypes:
@@ -133,7 +135,7 @@ class TestCountGenericPeerMixedSubtypes:
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
+            await constraint.check(relm=bob.get_relationship("rooms"), node_schema=bob.get_schema(), node=bob)
 
         assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
@@ -144,7 +146,7 @@ class TestCountGenericPeerMixedSubtypes:
         bob = await _make_person(db, default_branch, "bob", [dorm.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
-        await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
+        await constraint.check(relm=bob.get_relationship("rooms"), node_schema=bob.get_schema(), node=bob)
 
     async def test_failure_when_mixed_peers_only_exclusive_violates(
         self, db: InfrahubDatabase, default_branch: Branch
@@ -157,7 +159,7 @@ class TestCountGenericPeerMixedSubtypes:
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
+            await constraint.check(relm=bob.get_relationship("rooms"), node_schema=bob.get_schema(), node=bob)
 
         assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
@@ -181,7 +183,7 @@ class TestCountGenericPeerMaxCount:
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=extra.rooms, node_schema=extra.get_schema(), node=extra)
+            await constraint.check(relm=extra.get_relationship("rooms"), node_schema=extra.get_schema(), node=extra)
 
         assert f"Node {dorm.id} has 4 peers for person__room, maximum of 3 allowed" in exc.value.message
 
@@ -193,7 +195,7 @@ class TestCountGenericPeerMaxCount:
         extra = await _make_person(db, default_branch, "extra", [dorm.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
-        await constraint.check(relm=extra.rooms, node_schema=extra.get_schema(), node=extra)
+        await constraint.check(relm=extra.get_relationship("rooms"), node_schema=extra.get_schema(), node=extra)
 
 
 class TestCountGenericPeerMinCount:
@@ -213,12 +215,12 @@ class TestCountGenericPeerMinCount:
 
         # Re-load alice so the RelationshipManager observes the post-save state.
         alice = await NodeManager.get_one(db=db, id=alice.id, branch=default_branch)
-        await alice.rooms.get_relationships(db=db)
-        await alice.rooms.update(db=db, data=[])
+        await alice.get_relationship("rooms").get_relationships(db=db)
+        await alice.get_relationship("rooms").update(db=db, data=[])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=alice.rooms, node_schema=alice.get_schema(), node=alice)
+            await constraint.check(relm=alice.get_relationship("rooms"), node_schema=alice.get_schema(), node=alice)
 
         assert f"Node {dorm.id} has 0 peers for person__room, no fewer than 1 allowed" in exc.value.message
 
@@ -230,11 +232,11 @@ class TestCountGenericPeerMinCount:
         await bob.save(db=db)
 
         alice = await NodeManager.get_one(db=db, id=alice.id, branch=default_branch)
-        await alice.rooms.get_relationships(db=db)
-        await alice.rooms.update(db=db, data=[])
+        await alice.get_relationship("rooms").get_relationships(db=db)
+        await alice.get_relationship("rooms").update(db=db, data=[])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
-        await constraint.check(relm=alice.rooms, node_schema=alice.get_schema(), node=alice)
+        await constraint.check(relm=alice.get_relationship("rooms"), node_schema=alice.get_schema(), node=alice)
 
 
 class TestCountGenericPeerDirection:
@@ -265,7 +267,7 @@ class TestCountGenericPeerDirection:
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
-            await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
+            await constraint.check(relm=bob.get_relationship("rooms"), node_schema=bob.get_schema(), node=bob)
 
         assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
