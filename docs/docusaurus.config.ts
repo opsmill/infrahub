@@ -83,10 +83,11 @@ const config: Config = {
     ],
   ],
   themeConfig: {
-    // announcementBar: {
-    //   content: 'Welcome to our brand new docs!',
-    //   isCloseable: true,
-    // },
+    announcementBar: {
+      id: 'docs-restructure-2026',
+      content: '📚 New docs structure: content is now grouped by capability, not split across Topics and Guides. <a href="/docs/release-notes/infrahub/docs-restructure"><strong>See what changed →</strong></a>',
+      isCloseable: true,
+    },
     navbar: {
       logo: {
         alt: "Infrahub",
