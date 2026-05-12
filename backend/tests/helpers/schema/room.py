@@ -2,13 +2,14 @@
 
 A ``TestRoom`` generic exposes two concrete subtypes:
 
-- ``TestSingleRoom`` — each room holds at most one occupant (cardinality=one).
-- ``TestDorm`` — a dorm may hold many occupants (cardinality=many).
+- ``TestSingleRoom`` — always cardinality=one (a single room holds one occupant).
+- ``TestDorm`` — always cardinality=many; an optional ``max_count`` / ``min_count``
+  can be set to bound the number of occupants.
 
 ``TestPerson`` declares a ``rooms`` relationship whose peer is the generic
-``TestRoom``. Builder parameters control whether the cardinality constraint
-sits on the generic or only on the concrete subtype, the constraint type
-(cardinality, max_count, min_count), and the relationship directions.
+``TestRoom``. Builder parameters control whether the cardinality constraints
+sit on the generic or only on the concrete subtypes, and the relationship
+directions.
 """
 
 from typing import Any
@@ -48,21 +49,17 @@ def _occupant_rel(
 def build_room_schema(
     *,
     generic_has_rel: bool = False,
-    single_room_cardinality: str = "one",
-    single_room_max_count: int | None = None,
-    single_room_min_count: int | None = None,
     include_dorm_subtype: bool = False,
-    single_room_direction: str = "inbound",
-    person_direction: str = "outbound",
+    dorm_max_count: int | None = None,
+    dorm_min_count: int | None = None,
+    occupant_direction: str = "inbound",
+    rooms_direction: str = "outbound",
 ) -> SchemaRoot:
-    direction = RelationshipDirection(single_room_direction)
-    single_occupant = _occupant_rel(
-        cardinality=RelationshipCardinality(single_room_cardinality),
-        direction=direction,
-        max_count=single_room_max_count,
-        min_count=single_room_min_count,
-    )
+    direction = RelationshipDirection(occupant_direction)
+    single_occupant = _occupant_rel(cardinality=RelationshipCardinality.ONE, direction=direction)
 
+    # The generic carries the ``cardinality=one`` declaration only when explicitly
+    # asked (``generic_has_rel=True``); otherwise the rel lives solely on the subtypes.
     room = GenericSchema(
         name="Room",
         namespace="Test",
@@ -83,6 +80,8 @@ def build_room_schema(
         dorm_occupant = _occupant_rel(
             cardinality=RelationshipCardinality.MANY,
             direction=direction,
+            max_count=dorm_max_count,
+            min_count=dorm_min_count,
         )
         nodes.append(
             NodeSchema(
@@ -105,7 +104,7 @@ def build_room_schema(
                     identifier="person__room",
                     cardinality=RelationshipCardinality.MANY,
                     optional=True,
-                    direction=RelationshipDirection(person_direction),
+                    direction=RelationshipDirection(rooms_direction),
                 )
             ],
         )

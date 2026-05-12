@@ -49,7 +49,7 @@ class TestCountGenericPeerCardinalityOne:
     declared peer is the parent generic."""
 
     @pytest.fixture(autouse=True)
-    async def _register(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+    async def _register_one_subtype_has_relationship_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         registry.schema.register_schema(schema=build_room_schema(), branch=default_branch.name)
 
     async def test_failure_when_concrete_peer_at_limit(self, db: InfrahubDatabase, default_branch: Branch) -> None:
@@ -90,7 +90,7 @@ class TestCountGenericPeerWithGenericRel:
     """Cardinality=one declared on the generic itself."""
 
     @pytest.fixture(autouse=True)
-    async def _register(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+    async def _register_generic_has_relationship_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         registry.schema.register_schema(schema=build_room_schema(generic_has_rel=True), branch=default_branch.name)
 
     async def test_failure_when_peer_at_limit(self, db: InfrahubDatabase, default_branch: Branch) -> None:
@@ -118,7 +118,9 @@ class TestCountGenericPeerMixedSubtypes:
     the same identifier."""
 
     @pytest.fixture(autouse=True)
-    async def _register(self, db: InfrahubDatabase, default_branch: Branch) -> None:
+    async def _register_two_subtypes_with_relationship_schema(
+        self, db: InfrahubDatabase, default_branch: Branch
+    ) -> None:
         registry.schema.register_schema(schema=build_room_schema(include_dorm_subtype=True), branch=default_branch.name)
 
     async def test_failure_when_exclusive_subtype_over_limit(
@@ -157,8 +159,7 @@ class TestCountGenericPeerMixedSubtypes:
         with pytest.raises(ValidationError) as exc:
             await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
 
-        assert single.id in exc.value.message
-        assert "maximum of 1 allowed" in exc.value.message
+        assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
 
 
 class TestCountGenericPeerMaxCount:
@@ -167,16 +168,16 @@ class TestCountGenericPeerMaxCount:
     @pytest.fixture(autouse=True)
     async def _register(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         registry.schema.register_schema(
-            schema=build_room_schema(single_room_cardinality="many", single_room_max_count=3),
+            schema=build_room_schema(include_dorm_subtype=True, dorm_max_count=3),
             branch=default_branch.name,
         )
 
     async def test_failure_when_max_count_exceeded(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        single = await _make_room(db, default_branch, "TestSingleRoom", "single")
+        dorm = await _make_room(db, default_branch, "TestDorm", "dorm")
         for name in ("p1", "p2", "p3"):
-            person = await _make_person(db, default_branch, name, [single.id])
+            person = await _make_person(db, default_branch, name, [dorm.id])
             await person.save(db=db)
-        extra = await _make_person(db, default_branch, "extra", [single.id])
+        extra = await _make_person(db, default_branch, "extra", [dorm.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         with pytest.raises(ValidationError) as exc:
@@ -185,11 +186,11 @@ class TestCountGenericPeerMaxCount:
         assert "maximum of 3 allowed" in exc.value.message
 
     async def test_success_when_max_count_not_reached(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        single = await _make_room(db, default_branch, "TestSingleRoom", "single")
+        dorm = await _make_room(db, default_branch, "TestDorm", "dorm")
         for name in ("p1", "p2"):
-            person = await _make_person(db, default_branch, name, [single.id])
+            person = await _make_person(db, default_branch, name, [dorm.id])
             await person.save(db=db)
-        extra = await _make_person(db, default_branch, "extra", [single.id])
+        extra = await _make_person(db, default_branch, "extra", [dorm.id])
 
         constraint = RelationshipCountConstraint(db=db, branch=default_branch)
         await constraint.check(relm=extra.rooms, node_schema=extra.get_schema(), node=extra)
@@ -201,13 +202,13 @@ class TestCountGenericPeerMinCount:
     @pytest.fixture(autouse=True)
     async def _register(self, db: InfrahubDatabase, default_branch: Branch) -> None:
         registry.schema.register_schema(
-            schema=build_room_schema(single_room_cardinality="many", single_room_min_count=1),
+            schema=build_room_schema(include_dorm_subtype=True, dorm_min_count=1),
             branch=default_branch.name,
         )
 
     async def test_failure_when_removing_drops_below_min(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        single = await _make_room(db, default_branch, "TestSingleRoom", "single")
-        alice = await _make_person(db, default_branch, "alice", [single.id])
+        dorm = await _make_room(db, default_branch, "TestDorm", "dorm")
+        alice = await _make_person(db, default_branch, "alice", [dorm.id])
         await alice.save(db=db)
 
         # Re-load alice so the RelationshipManager observes the post-save state.
@@ -222,10 +223,10 @@ class TestCountGenericPeerMinCount:
         assert "no fewer than 1 allowed" in exc.value.message
 
     async def test_success_when_removing_stays_above_min(self, db: InfrahubDatabase, default_branch: Branch) -> None:
-        single = await _make_room(db, default_branch, "TestSingleRoom", "single")
-        alice = await _make_person(db, default_branch, "alice", [single.id])
+        dorm = await _make_room(db, default_branch, "TestDorm", "dorm")
+        alice = await _make_person(db, default_branch, "alice", [dorm.id])
         await alice.save(db=db)
-        bob = await _make_person(db, default_branch, "bob", [single.id])
+        bob = await _make_person(db, default_branch, "bob", [dorm.id])
         await bob.save(db=db)
 
         alice = await NodeManager.get_one(db=db, id=alice.id, branch=default_branch)
@@ -237,15 +238,22 @@ class TestCountGenericPeerMinCount:
 
 
 class TestCountGenericPeerDirection:
-    """Direction variations on a generic-peer relationship."""
+    """Direction variations on a generic-peer relationship.
+
+    The bidirectional case is exercised end-to-end against the constraint. The
+    same-direction case is checked at the schema layer instead: the schema
+    validator rejects two relationships that share an identifier and a
+    non-bidirectional direction, so the corresponding branch in the constraint
+    code is unreachable in practice. The default outbound/inbound pair is
+    implicitly covered by every other test in this file."""
 
     async def test_failure_when_bidirectional_concrete_at_limit(
         self, db: InfrahubDatabase, default_branch: Branch
     ) -> None:
         registry.schema.register_schema(
             schema=build_room_schema(
-                single_room_direction="bidirectional",
-                person_direction="bidirectional",
+                occupant_direction="bidirectional",
+                rooms_direction="bidirectional",
             ),
             branch=default_branch.name,
         )
@@ -260,3 +268,15 @@ class TestCountGenericPeerDirection:
             await constraint.check(relm=bob.rooms, node_schema=bob.get_schema(), node=bob)
 
         assert "maximum of 1 allowed" in exc.value.message
+
+    async def test_schema_rejects_same_direction_same_identifier(
+        self, db: InfrahubDatabase, default_branch: Branch
+    ) -> None:
+        with pytest.raises(ValueError, match=r"Incompatible direction"):
+            registry.schema.register_schema(
+                schema=build_room_schema(
+                    occupant_direction="outbound",
+                    rooms_direction="outbound",
+                ),
+                branch=default_branch.name,
+            )

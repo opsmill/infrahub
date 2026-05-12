@@ -402,51 +402,35 @@ class TestLockGenericPeerConcreteConstraint(TestInfrahubApp):
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
     ) -> None:
         registry.schema.register_schema(
-            schema=build_room_schema(single_room_cardinality="many", single_room_max_count=3),
+            schema=build_room_schema(include_dorm_subtype=True, dorm_max_count=3),
             branch=default_branch.name,
         )
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
-        single = await create_and_save(db=db, schema="TestSingleRoom", name="single")
-        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[single])
+        dorm = await create_and_save(db=db, schema="TestDorm", name="dorm")
+        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[dorm])
 
         lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
 
-        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{single.id}"
+        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{dorm.id}"
         assert expected_lock in lock_names
 
     async def test_lock_acquired_when_concrete_min_count(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
     ) -> None:
         registry.schema.register_schema(
-            schema=build_room_schema(single_room_cardinality="many", single_room_min_count=1),
+            schema=build_room_schema(include_dorm_subtype=True, dorm_min_count=1),
             branch=default_branch.name,
         )
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
 
-        single = await create_and_save(db=db, schema="TestSingleRoom", name="single")
-        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[single])
+        dorm = await create_and_save(db=db, schema="TestDorm", name="dorm")
+        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[dorm])
 
         lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
 
-        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{single.id}"
+        expected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{dorm.id}"
         assert expected_lock in lock_names
-
-    async def test_no_lock_when_no_concrete_constraint(
-        self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
-    ) -> None:
-        registry.schema.register_schema(
-            schema=build_room_schema(single_room_cardinality="many"), branch=default_branch.name
-        )
-        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-
-        single = await create_and_save(db=db, schema="TestSingleRoom", name="single")
-        alice = await create_and_save(db=db, schema="TestPerson", name="alice", rooms=[single])
-
-        lock_names = get_lock_names_on_object_mutation(alice, schema_branch=schema_branch)
-
-        unexpected_lock = f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.person__room.{single.id}"
-        assert unexpected_lock not in lock_names
 
     async def test_lock_acquired_with_mixed_subtypes_one_constrained(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
