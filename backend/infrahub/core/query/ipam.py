@@ -1089,6 +1089,7 @@ class IPPrefixUtilization(Query):
 
         Returns:
             List of IPPrefixUtilizationResult containing prefix child allocation data.
+
         """
         return [IPPrefixUtilizationResult.from_db(result) for result in self.get_results()]
 
@@ -1543,6 +1544,7 @@ class IPPrefixReconcileQuery(Query):
         Returns:
             IPPrefixReconcileQueryResult containing reconciliation data,
             or None if no results found.
+
         """
         results = list(self.get_results())
         if not results:

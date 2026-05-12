@@ -301,7 +301,6 @@ class TestObjectPermissions:
         self, db: InfrahubDatabase, object_permissions_data: PermissionsTestData
     ) -> None:
         """In other branches the permissions for the first account should be updated if we modify the main branch"""
-
         branch2 = await create_branch(branch_name="pr-123abc", db=db)
 
         session = AccountSession(

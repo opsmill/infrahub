@@ -40,6 +40,7 @@ async def add_tags(
         namespace: Whether to add the TAG_NAMESPACE tag (default True).
         db_change: Whether to add a WorkflowTag.DATABASE_CHANGE tag, indicating
             the flow run modifies the database.
+
     """
     client = get_client(httpx_settings={"verify": get_http().verify_tls()}, sync_client=False)
     current_flow_run_id = flow_run.id

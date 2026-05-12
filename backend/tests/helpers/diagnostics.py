@@ -54,7 +54,6 @@ def _format_stack_block(creation_stack: str | None, indent: str) -> list[str]:
 
 def dump_event_loop_closed_diagnostic(nodeid: str, exc: BaseException) -> None:
     """Print a Redis pool state summary when a "Event loop is closed" RuntimeError is fired"""
-
     lines: list[str] = [
         "Event loop closed during test_client teardown — diagnostic dump",
         f"  node: {nodeid}",

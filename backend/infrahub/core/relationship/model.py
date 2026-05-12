@@ -155,7 +155,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     def __hash__(self) -> int:
         """Generate a hash based on the Peer and the properties."""
-
         values = [self.id, self.db_id, self.peer_id]
         for prop_name in self._flag_properties:
             values.append(getattr(self, prop_name))
@@ -191,6 +190,7 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         Returns:
             Branch:
+
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
             return registry.get_global_branch()
@@ -416,7 +416,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def _create(self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None) -> None:
         """Add a relationship with another object by creating a new relationship node."""
-
         create_at = Timestamp(at)
         self._set_created_by(value=user_id)
         self._set_created_at(value=create_at)
@@ -449,7 +448,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         at: Timestamp | None = None,
     ) -> None:
         """Update the properties of an existing relationship."""
-
         update_at = Timestamp(at)
         branch = self.get_branch_based_on_support_type()
 
@@ -529,7 +527,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         user_id: str = SYSTEM_USER_ID,
     ) -> None:
         """Resolve the peer of the relationship."""
-
         fields = fields or []
         query_fields = dict.fromkeys(fields)
         if "display_label" not in query_fields:
@@ -599,7 +596,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def save(self, db: InfrahubDatabase, at: Timestamp | None = None, user_id: str = SYSTEM_USER_ID) -> Self:
         """Create or Update the Relationship in the database."""
-
         save_at = Timestamp(at)
 
         if not self.id:
@@ -610,7 +606,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
     async def to_graphql(self, fields: dict | None, db: InfrahubDatabase, related_node_ids: set | None = None) -> dict:
         """Generate GraphQL Payload for the associated Peer."""
-
         if not fields:
             peer_fields, rel_fields = {}, {}
         else:
@@ -691,6 +686,7 @@ class RelationshipValidatorList:
 
     Raises:
         ValidationError: If the number of relationships is not within the min and max count.
+
     """
 
     def __init__(
@@ -704,6 +700,7 @@ class RelationshipValidatorList:
 
         Raises:
             ValidationError: The number of relationships is not within the min and max count.
+
         """
         if max_count is not None and min_count is not None and max_count < min_count:
             raise ValidationError({"msg": "max_count must be greater than min_count"})
@@ -1069,6 +1066,7 @@ class RelationshipManager:
 
         Returns:
             Branch:
+
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
             return registry.get_global_branch()
@@ -1135,7 +1133,6 @@ class RelationshipManager:
         force_refresh: bool = True,
     ) -> None:
         """Fetch the latest relationships from the database and update the local cache."""
-
         details = await self.fetch_relationship_ids(
             at=at, db=db, branch_agnostic=branch_agnostic, force_refresh=force_refresh
         )
@@ -1319,7 +1316,6 @@ class RelationshipManager:
         db: InfrahubDatabase,
     ) -> bool:
         """Remove a peer id from the local relationships list"""
-
         for idx, rel in enumerate(await self.get_relationships(db=db)):
             if str(rel.peer_id) != str(peer_id):
                 continue
@@ -1368,7 +1364,6 @@ class RelationshipManager:
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Create or Update the Relationship in the database."""
-
         await self.resolve(db=db, user_id=user_id)
         branch_agnostic = self.schema.branch is BranchSupportType.AGNOSTIC
 
@@ -1416,7 +1411,6 @@ class RelationshipManager:
         self, db: InfrahubDatabase, at: Timestamp | None = None
     ) -> RelationshipCardinalityManyChangelog | RelationshipCardinalityOneChangelog:
         """Delete all the relationships."""
-
         delete_at = Timestamp(at)
         relationship_mapper = ChangelogRelationshipMapper(schema=self.schema)
 

@@ -171,7 +171,8 @@ async def test_import_last_commit_rejects_non_read_only_repository(
     default_permission_backend: None,
 ) -> None:
     """Calling InfrahubReadOnlyRepositoryImportLastCommit on a CoreRepository must fail
-    with a clear error instead of an AttributeError on the missing 'ref' attribute."""
+    with a clear error instead of an AttributeError on the missing 'ref' attribute.
+    """
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
     service = await InfrahubServices.new(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())

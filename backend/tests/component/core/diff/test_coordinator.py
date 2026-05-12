@@ -544,7 +544,8 @@ class TestDiffCoordinator:
         pc_state: ProposedChangeState,
     ) -> None:
         """When update_branch_diff is called without proposed_change_id but an OPEN or MERGING
-        CoreProposedChange exists for the branch, the diff should be linked to it."""
+        CoreProposedChange exists for the branch, the diff should be linked to it.
+        """
         branch = await create_branch(db=db, branch_name="branch")
 
         proposed_change = await Node.init(db=db, schema=InfrahubKind.PROPOSEDCHANGE, branch=default_branch)

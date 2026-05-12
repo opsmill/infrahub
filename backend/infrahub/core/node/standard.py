@@ -168,7 +168,6 @@ class StandardNode(BaseModel):
 
     async def save(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create or Update the Node in the database."""
-
         if self.id:
             return await self.update(db=db, user_id=user_id)
 
@@ -176,7 +175,6 @@ class StandardNode(BaseModel):
 
     async def delete(self, db: InfrahubDatabase) -> None:
         """Delete the Node in the database."""
-
         query: Query = await StandardNodeDeleteQuery.init(db=db, node=self)
         await query.execute(db=db)
 
@@ -214,7 +212,6 @@ class StandardNode(BaseModel):
     @classmethod
     async def get(cls, id: str, db: InfrahubDatabase) -> Optional[Self]:
         """Get a node from the database identified by its ID."""
-
         node = await cls._get_item_raw(id=id, db=db)
         if node:
             return cls.from_db(node)
@@ -241,8 +238,8 @@ class StandardNode(BaseModel):
 
         Returns:
             StandardNode: Proper StandardNode object
-        """
 
+        """
         attrs = {}
         node_data = dict(node)
         extras = extras or {}

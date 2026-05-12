@@ -20,8 +20,7 @@ log = get_logger()
 
 
 class Migration038(InternalSchemaMigration):
-    """
-    Re-run migration 026 after Migration037 updates AttributeValueIndexed vertices correctly so that the call to
+    """Re-run migration 026 after Migration037 updates AttributeValueIndexed vertices correctly so that the call to
     NodeManager.query will work
 
     If someone is upgrading from 1.2.4 (release before migration 026) or earlier to 1.4.x or later, then migration 026

@@ -119,6 +119,18 @@ The trigger definitions and gathering logic live in `backend/infrahub/display_la
 
 `set_display_label(value)` and `set_human_friendly_id(value)` set `manually_assigned=True`, which causes `compute()` to no-op on future calls.
 
+### Value Normalization (HFID Round-Trip)
+
+For attribute kinds whose accepted input form differs from their normalized storage form, `BaseAttribute.__init__()` calls `_normalize_value()` after `validate()` so `attr.value` always matches what `serialize_value()` writes to the DB. Without this, HFID compute (which reads `attr.value` *before* serialization) would emit the raw input while the DB stored the normalized form, breaking `get_one_by_hfid()` round-trips.
+
+| Kind | Normalized form |
+|------|-----------------|
+| `IPHost` | `ipaddress.ip_interface(value).with_prefixlen` (e.g. `192.0.2.1` → `192.0.2.1/32`) |
+| `IPNetwork` | `ipaddress.ip_network(value).with_prefixlen` (e.g. `2001:db8:0:0::/32` → `2001:db8::/32`) |
+| `MacAddress` | `netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()` (e.g. `aa-bb-cc-dd-ee-ff` → `AA:BB:CC:DD:EE:FF`) |
+
+`_normalize_value()` is intentionally a separate hook from `serialize_value()`. The latter is also used by `HashedPassword` (destructive hash), `ListAttribute`/`JSONAttribute` (type-changing JSON dump), and the base class (Enum unwrap) — transforms that cannot run on `attr.value` itself. For kinds that need input-time normalization, `serialize_value()` delegates to `_normalize_value(self.value)` so the normalized form has a single source of truth per class. When adding a new kind that needs input-time normalization, override `_normalize_value()` (not `serialize_value`).
+
 
 ## Hierarchical Relationships and Inline Fragments
 

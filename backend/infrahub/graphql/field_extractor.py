@@ -32,7 +32,6 @@ class GraphQLFieldExtractor:
 
         In the future we'll probably need to redesign how we read GraphQL queries to generate better Database query.
         """
-
         if not selection_set:
             return None
 

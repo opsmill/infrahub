@@ -42,10 +42,9 @@ OPTIONAL_TEXT_FIELDS = [
 
 
 def _json_schema_extra(schema: JsonDict) -> None:
-    """
-    Mutate the generated JSON Schema in place to:
-      - allow `null` for `display_labels`
-      - mark the non-null branch as deprecated
+    """Mutate the generated JSON Schema in place to:
+    - allow `null` for `display_labels`
+    - mark the non-null branch as deprecated
     """
     props = schema.get("properties")
     if not isinstance(props, dict):
@@ -132,7 +131,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def __hash__(self) -> int:
         """Return a hash of the object.
-        Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
+        Be careful hash generated from hash() have a salt by default and they will not be the same across run
+        """
         return hash(self.get_hash())
 
     @field_validator("attributes", mode="before")
@@ -180,7 +180,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""
-
         md5hash = hashlib.md5(usedforsecurity=False)
         md5hash.update(super().get_hash(display_values=display_values).encode())
 
@@ -194,7 +193,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def diff(self, other: Self) -> HashableModelDiff:
         """Extend the Diff Calculation to account for attributes and relationships."""
-
         node_diff = super().diff(other=other)
 
         # Attribute
@@ -466,7 +464,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         If display_labels is not defined, we return None which equal to everything.
         """
-
         if not self.display_labels:
             return None
 
@@ -481,7 +478,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         If display_labels is not defined, we return None which equal to everything.
         """
-
         if not self.human_friendly_id:
             return None
 
@@ -601,8 +597,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def _update_schema_paths(
         self, schema_paths_list: list[str], field_name_update_map: dict[str, str], deleted_field_names: set[str]
     ) -> list[str]:
-        """
-        For each schema_path (eg name__value, device__name_value), update the field name if the current name is
+        """For each schema_path (eg name__value, device__name_value), update the field name if the current name is
         in field_name_update_map, remove the path if the field name is in deleted_field_names
         """
         updated_element_list = []

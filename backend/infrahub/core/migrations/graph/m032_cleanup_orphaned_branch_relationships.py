@@ -16,9 +16,7 @@ log = get_logger()
 
 
 class DeletedBranchCleanupQuery(Query):
-    """
-    Find all unique edge branch names for which there is no Branch object
-    """
+    """Find all unique edge branch names for which there is no Branch object"""
 
     name = "deleted_branch_cleanup"
     type = QueryType.WRITE
@@ -38,9 +36,7 @@ RETURN DISTINCT (e.branch) AS branch_name
 
 
 class DeleteOrphanRelationshipsQuery(Query):
-    """
-    Find all Relationship vertices that link to fewer than 2 Node vertices and delete them
-    """
+    """Find all Relationship vertices that link to fewer than 2 Node vertices and delete them"""
 
     name = "delete_orphan_relationships"
     type = QueryType.WRITE
@@ -58,9 +54,7 @@ DETACH DELETE r
 
 
 class Migration032(ArbitraryMigration):
-    """
-    Delete edges for branches that were not completely deleted
-    """
+    """Delete edges for branches that were not completely deleted"""
 
     name: str = "032_cleanup_deleted_branches"
     minimum_version: int = 31

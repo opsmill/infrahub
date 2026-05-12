@@ -467,6 +467,7 @@ def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: 
 
     Raises:
         GatewayError: When the response body cannot be parsed or is empty
+
     """
     # Try to parse as JSON first
     try:
@@ -503,6 +504,7 @@ def extract_auth_error_message(response_body: str | dict[str, Any], base_message
 
     Returns:
         Formatted error message with provider details if available
+
     """
     if not isinstance(response_body, dict):
         return base_message
@@ -528,6 +530,7 @@ def validate_auth_response(response: httpx.Response, provider_type: str = "authe
 
     Raises:
         GatewayError: When the response indicates an error or invalid state
+
     """
     # If the status code is successful, simply return
     if 200 <= response.status_code <= 299:

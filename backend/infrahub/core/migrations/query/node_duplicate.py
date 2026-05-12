@@ -21,8 +21,7 @@ class SchemaNodeInfo(BaseModel):
 
 
 class NodeDuplicateQuery(Query):
-    """
-    Duplicates a Node to use a new kind or inheritance.
+    """Duplicates a Node to use a new kind or inheritance.
     Creates a copy of each affected Node and sets the new kind/inheritance.
     Adds duplicate edges to the new Node that match all the active edges on the old Node.
     Sets all the edges on the old Node to deleted.

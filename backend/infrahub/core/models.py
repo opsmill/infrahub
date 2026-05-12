@@ -76,9 +76,7 @@ class SchemaBranchHash(BaseModel):
 
     @property
     def is_valid(self) -> bool:
-        """
-        TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics.
-        """
+        """TODO: This is a temporary solution to avoid comparing schema hashes if there are less than 2 nodes or generics."""
         if len(self.nodes) < 2 and len(self.generics) < 2:
             return False
         return True
@@ -424,7 +422,6 @@ class HashableModel(BaseModel):
         In order for this function to work, it's recommended to exclude all objects or list of objects with _exclude_from_hash
         List of hashable elements are fine and they will be converted automatically to Tuple.
         """
-
         values = []
         md5hash = hashlib.md5(usedforsecurity=False)
         for field_name in sorted(self.__class__.model_fields.keys()):
@@ -525,12 +522,10 @@ class HashableModel(BaseModel):
     def update_list_hashable_model(
         field_name: str, attr_local: list[HashableModel], attr_other: list[HashableModel]
     ) -> list[Any]:
-        """
-        Merging the list is not easy,
+        """Merging the list is not easy,
         we need to create a unique id based on the sorting keys
         and if we have 2 sub items with the same key we can merge them recursively with update()
         """
-
         # Identify all nodes that are sharing a real IDs
         local_sub_real_ids = {item.id for item in attr_local if item.id}
         other_sub_real_ids = {item.id for item in attr_other if item.id}
@@ -579,7 +574,6 @@ class HashableModel(BaseModel):
 
         TODO Implement other fields type like dict
         """
-
         for field_name in other.__class__.model_fields.keys():
             if not hasattr(self, field_name):
                 with contextlib.suppress(ValueError):

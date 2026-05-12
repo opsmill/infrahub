@@ -274,7 +274,9 @@ async def test_validate_mac_address_returns(
         name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=mac_address
     )
 
-    assert test_mac.value == mac_address
+    # MacAddress canonicalizes the input to colon-uppercase EUI-48 so the
+    # in-memory value matches the DB-stored representation.
+    assert test_mac.value == "60:23:6C:C4:9F:7E"
     assert test_mac.version == 48
     assert test_mac.binary == "0b11000000010001101101100110001001001111101111110"
     assert test_mac.oui == "60-23-6C"
@@ -283,7 +285,7 @@ async def test_validate_mac_address_returns(
     assert test_mac.dot_notation == "6023.6cc4.9f7e"
     assert test_mac.semicolon_notation == "60:23:6c:c4:9f:7e"
     assert test_mac.split_notation == "60236c:c49f7e"
-    assert test_mac.to_db() == {"is_default": False, "value": "60-23-6C-C4-9F-7E"}
+    assert test_mac.to_db() == {"is_default": False, "value": "60:23:6C:C4:9F:7E"}
 
     test_mac = MacAddress(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data=None)
 
@@ -301,6 +303,72 @@ async def test_validate_mac_address_returns(
         MacAddress(
             name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="thisisnotamacaddress"
         )
+
+
+@pytest.mark.parametrize(
+    "input_value",
+    [
+        "aa:bb:cc:dd:ee:ff",
+        "AA:BB:CC:DD:EE:FF",
+        "AA-BB-CC-DD-EE-FF",
+        "aabb.ccdd.eeff",
+        "aabbccddeeff",
+    ],
+)
+async def test_mac_address_normalizes_value(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema, input_value: str
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+    attr = MacAddress(
+        name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="AA:BB:CC:DD:EE:FF"
+    )
+
+    assert attr._normalize_value(input_value) == "AA:BB:CC:DD:EE:FF"
+
+
+@pytest.mark.parametrize(
+    "input_value,normalized_value",
+    [
+        ("192.0.2.10", "192.0.2.10/32"),
+        ("192.0.2.10/32", "192.0.2.10/32"),
+        ("2001:db8::1", "2001:db8::1/128"),
+        ("2001:0db8:0000:0000:0000:0000:0000:0001/128", "2001:db8::1/128"),
+        ("2001:DB8::1/128", "2001:db8::1/128"),
+    ],
+)
+async def test_iphost_normalizes_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    input_value: str,
+    normalized_value: str,
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+    attr = IPHost(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/32")
+
+    assert attr._normalize_value(input_value) == normalized_value
+
+
+@pytest.mark.parametrize(
+    "input_value,normalized_value",
+    [
+        ("192.0.2.0/24", "192.0.2.0/24"),
+        ("2001:db8::/32", "2001:db8::/32"),
+        ("2001:0db8:0000:0000:0000:0000:0000:0000/32", "2001:db8::/32"),
+        ("2001:DB8::/32", "2001:db8::/32"),
+    ],
+)
+async def test_ipnetwork_normalizes_value(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    criticality_schema: NodeSchema,
+    input_value: str,
+    normalized_value: str,
+) -> None:
+    schema = criticality_schema.get_attribute("name")
+    attr = IPNetwork(name="test", schema=schema, branch=default_branch, at=Timestamp(), node=None, data="192.0.2.0/24")
+
+    assert attr._normalize_value(input_value) == normalized_value
 
 
 async def test_validate_content_dropdown(

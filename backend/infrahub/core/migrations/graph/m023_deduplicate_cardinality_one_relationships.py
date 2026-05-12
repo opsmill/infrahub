@@ -24,11 +24,9 @@ class DedupCardinalityOneRelsQuery(Query):
     insert_return = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        """
-        Nodes having cardinality one relationship might end up with more than one relationship due to some concurrency
+        """Nodes having cardinality one relationship might end up with more than one relationship due to some concurrency
         issue. In that case, this query keeps only the most recent relationship.
         """
-
         # load schemas from database into registry
         initialize_lock()
         await initialization(db=db)
