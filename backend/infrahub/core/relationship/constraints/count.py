@@ -1,4 +1,4 @@
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 
 from infrahub.core import registry
@@ -43,28 +43,19 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         peer_schema = registry.schema.get(name=relm.schema.peer, branch=branch, duplicate=False)
         peer_rels = peer_schema.get_relationships_by_identifier(id=relm.schema.get_identifier())
         update_details = await relm.fetch_relationship_ids(db=self.db, force_refresh=False)
-        local_ids = set(update_details.peer_ids_present_local_only)
-        db_ids = set(update_details.peer_ids_present_database_only)
-        candidate_peer_ids = local_ids | db_ids
+        added_peer_ids = update_details.peer_ids_present_local_only
+        removed_peer_ids = update_details.peer_ids_present_database_only
 
         if peer_rels:
             nodes_to_validate = self._build_validation_targets(
-                relm=relm,
-                peer_rels=peer_rels,
-                candidate_peer_ids=candidate_peer_ids,
-                local_ids=local_ids,
-                db_ids=db_ids,
+                relm=relm, peer_rels=peer_rels, added_peer_ids=added_peer_ids, removed_peer_ids=removed_peer_ids
             )
         elif isinstance(peer_schema, GenericSchema):
             # The relationship is declared on a concrete subtype rather than on the
             # generic peer itself. Resolve each peer's concrete kind and use its
             # schema to find the applicable cardinality constraint.
             nodes_to_validate = await self._build_validation_targets_from_concrete(
-                relm=relm,
-                branch=branch,
-                candidate_peer_ids=candidate_peer_ids,
-                local_ids=local_ids,
-                db_ids=db_ids,
+                relm=relm, branch=branch, added_peer_ids=added_peer_ids, removed_peer_ids=removed_peer_ids
             )
         else:
             return
@@ -101,79 +92,76 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         self,
         relm: RelationshipManager,
         peer_rels: list[RelationshipSchema],
-        candidate_peer_ids: set[str],
-        local_ids: set[str],
-        db_ids: set[str],
+        added_peer_ids: Iterable[str],
+        removed_peer_ids: Iterable[str],
     ) -> list[NodeToValidate]:
         """Build validation targets when the peer schema directly declares the relevant
-        relationships. The same ``peer_rels`` apply to every candidate peer."""
-        return [
-            target
-            for peer_id in candidate_peer_ids
-            for target in self._targets_for_peer(
-                peer_id=peer_id, peer_rels=peer_rels, relm=relm, local_ids=local_ids, db_ids=db_ids
-            )
-        ]
+        relationships. The same ``peer_rels`` apply to every changed peer."""
+        targets: list[NodeToValidate] = []
+        for peer_id in added_peer_ids:
+            targets.extend(self._targets_for_added(peer_id=peer_id, peer_rels=peer_rels, relm=relm))
+        for peer_id in removed_peer_ids:
+            targets.extend(self._targets_for_removed(peer_id=peer_id, peer_rels=peer_rels, relm=relm))
+        return targets
 
     async def _build_validation_targets_from_concrete(
         self,
         relm: RelationshipManager,
         branch: Branch,
-        candidate_peer_ids: set[str],
-        local_ids: set[str],
-        db_ids: set[str],
+        added_peer_ids: Iterable[str],
+        removed_peer_ids: Iterable[str],
     ) -> list[NodeToValidate]:
         """Build validation targets when the declared peer is a generic that does not
         carry the relationship. Each peer's concrete kind is resolved from the database,
         and the applicable ``peer_rels`` may differ between peers (e.g. one subtype
         carries cardinality=one while a sibling carries cardinality=many)."""
-        if not candidate_peer_ids:
+        all_changed = [*added_peer_ids, *removed_peer_ids]
+        if not all_changed:
             return []
 
-        kind_query = await NodeGetKindQuery.init(db=self.db, ids=list(candidate_peer_ids), branch=branch)
+        kind_query = await NodeGetKindQuery.init(db=self.db, ids=all_changed, branch=branch)
         await kind_query.execute(db=self.db)
         kind_per_peer = await kind_query.get_node_kind_map()
 
         rels_by_kind: dict[str, list[RelationshipSchema]] = {}
         identifier = relm.schema.get_identifier()
 
+        def rels_for(peer_id: str) -> list[RelationshipSchema]:
+            kind = kind_per_peer.get(peer_id)
+            if kind is None:
+                return []
+            if kind not in rels_by_kind:
+                concrete_schema = registry.schema.get(name=kind, branch=branch, duplicate=False)
+                rels_by_kind[kind] = concrete_schema.get_relationships_by_identifier(id=identifier)
+            return rels_by_kind[kind]
+
         targets: list[NodeToValidate] = []
-        for peer_id in candidate_peer_ids:
-            concrete_kind = kind_per_peer.get(peer_id)
-            if concrete_kind is None:
-                continue
-            if concrete_kind not in rels_by_kind:
-                concrete_schema = registry.schema.get(name=concrete_kind, branch=branch, duplicate=False)
-                rels_by_kind[concrete_kind] = concrete_schema.get_relationships_by_identifier(id=identifier)
-            targets.extend(
-                self._targets_for_peer(
-                    peer_id=peer_id,
-                    peer_rels=rels_by_kind[concrete_kind],
-                    relm=relm,
-                    local_ids=local_ids,
-                    db_ids=db_ids,
-                )
-            )
+        for peer_id in added_peer_ids:
+            targets.extend(self._targets_for_added(peer_id=peer_id, peer_rels=rels_for(peer_id), relm=relm))
+        for peer_id in removed_peer_ids:
+            targets.extend(self._targets_for_removed(peer_id=peer_id, peer_rels=rels_for(peer_id), relm=relm))
         return targets
 
     @staticmethod
-    def _targets_for_peer(
-        peer_id: str,
-        peer_rels: list[RelationshipSchema],
-        relm: RelationshipManager,
-        local_ids: set[str],
-        db_ids: set[str],
+    def _targets_for_added(
+        peer_id: str, peer_rels: list[RelationshipSchema], relm: RelationshipManager
     ) -> Iterator[NodeToValidate]:
-        """Yield validation targets for ``peer_id`` — zero, one, or more depending on
-        how many of ``peer_rels`` carry an applicable constraint. ``local_ids`` and
-        ``db_ids`` are disjoint by construction, so a peer is at most one of an add or
-        a remove."""
+        """Yield max_count targets for a peer that is being added."""
         for peer_rel in peer_rels:
             if not _direction_is_compatible(relm=relm, peer_rel=peer_rel):
                 continue
-            if peer_rel.max_count and peer_id in local_ids:
+            if peer_rel.max_count:
                 yield NodeToValidate(uuid=peer_id, max_count=peer_rel.max_count)
-            elif peer_rel.min_count and peer_id in db_ids:
+
+    @staticmethod
+    def _targets_for_removed(
+        peer_id: str, peer_rels: list[RelationshipSchema], relm: RelationshipManager
+    ) -> Iterator[NodeToValidate]:
+        """Yield min_count targets for a peer that is being removed."""
+        for peer_rel in peer_rels:
+            if not _direction_is_compatible(relm=relm, peer_rel=peer_rel):
+                continue
+            if peer_rel.min_count:
                 yield NodeToValidate(uuid=peer_id, min_count=peer_rel.min_count)
 
 
