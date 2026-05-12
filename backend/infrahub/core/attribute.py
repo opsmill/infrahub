@@ -980,9 +980,8 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def serialize_value(self) -> str:
-        """Serialize the value before storing it in the database. If network is an IPv6 network, it is converted to collapsed form."""
-        return ipaddress.ip_network(self.value).with_prefixlen
+    def _normalize_value(self, value: Any) -> str:
+        return ipaddress.ip_network(value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
@@ -1116,9 +1115,8 @@ class IPHost(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def serialize_value(self) -> str:
-        """Adds a prefix to address before storing it in the database. If address in an IPv6 address, it is converted to collapsed form."""
-        return ipaddress.ip_interface(self.value).with_prefixlen
+    def _normalize_value(self, value: Any) -> str:
+        return ipaddress.ip_interface(value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
