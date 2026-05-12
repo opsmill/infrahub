@@ -8,6 +8,7 @@ import {
   type UseFormReturn,
   useForm,
   useFormContext,
+  useFormState,
 } from "react-hook-form";
 
 import { SlideOverContext } from "@/shared/components/display/slide-over";
@@ -97,8 +98,9 @@ export const FormLabel = ({ ...props }: LabelProps) => {
 interface FormInputProps extends React.ComponentProps<typeof Slot> {}
 
 export const FormInput = ({ className, ref, ...props }: FormInputProps) => {
-  const { getFieldState, formState } = useFormContext();
+  const { getFieldState } = useFormContext();
   const { id, name } = React.use(FormFieldContext);
+  const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
 
   return (
@@ -117,9 +119,9 @@ export const FormMessage = ({
   className,
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) => {
-  const { getFieldState, formState } = useFormContext();
+  const { getFieldState } = useFormContext();
   const { name } = React.use(FormFieldContext);
-
+  const formState = useFormState({ name });
   const { error } = getFieldState(name, formState);
 
   const message = error?.message?.toString() ?? children;
