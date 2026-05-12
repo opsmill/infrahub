@@ -834,30 +834,57 @@ async def test_agnostic_source_relationship_update(
     assert base_root_path.nodes == []
     branch_root_path = calculated_diffs.diff_branch_diff
     assert branch_root_path.branch == branch.name
-    assert len(branch_root_path.nodes) == 1
-    diff_node = branch_root_path.nodes.pop()
-    assert diff_node.uuid == new_car.get_id()
-    assert diff_node.action is DiffAction.UPDATED
-    assert diff_node.is_node_kind_migration is False
-    assert diff_node.attributes == []
-    assert len(diff_node.relationships) == 1
-    diff_relationship = diff_node.relationships.pop()
-    assert diff_relationship.name == "owner"
-    assert diff_relationship.action is DiffAction.UPDATED
-    assert len(diff_relationship.relationships) == 1
-    diff_element = diff_relationship.relationships.pop()
-    assert diff_element.peer_id == person_1.get_id()
-    assert diff_element.action is DiffAction.UPDATED
-    diff_props_by_type = {p.property_type: p for p in diff_element.properties}
-    assert set(diff_props_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.HAS_SOURCE}
-    diff_prop_is_related = diff_props_by_type[DatabaseEdgeType.IS_RELATED]
-    assert diff_prop_is_related.previous_value == person_1.get_id()
-    assert diff_prop_is_related.new_value == person_1.get_id()
-    assert diff_prop_is_related.action is DiffAction.UNCHANGED
-    diff_prop_has_source = diff_props_by_type[DatabaseEdgeType.HAS_SOURCE]
-    assert diff_prop_has_source.previous_value is None
-    assert diff_prop_has_source.new_value == person_1.get_id()
-    assert diff_prop_has_source.action is DiffAction.ADDED
+    # The HAS_SOURCE addition on the IS_RELATED edge surfaces under both endpoints:
+    # the AWARE Car (via its `owner` relationship) and the AGNOSTIC Person (via its
+    # inverse `cars` relationship).
+    diff_nodes_by_id = {n.uuid: n for n in branch_root_path.nodes}
+    assert set(diff_nodes_by_id.keys()) == {new_car.get_id(), person_1.get_id()}
+
+    diff_node_car = diff_nodes_by_id[new_car.get_id()]
+    assert diff_node_car.action is DiffAction.UPDATED
+    assert diff_node_car.is_node_kind_migration is False
+    assert diff_node_car.attributes == []
+    assert len(diff_node_car.relationships) == 1
+    diff_relationship_owner = diff_node_car.relationships[0]
+    assert diff_relationship_owner.name == "owner"
+    assert diff_relationship_owner.action is DiffAction.UPDATED
+    assert len(diff_relationship_owner.relationships) == 1
+    diff_element_owner = diff_relationship_owner.relationships[0]
+    assert diff_element_owner.peer_id == person_1.get_id()
+    assert diff_element_owner.action is DiffAction.UPDATED
+    owner_props_by_type = {p.property_type: p for p in diff_element_owner.properties}
+    assert set(owner_props_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.HAS_SOURCE}
+    owner_is_related = owner_props_by_type[DatabaseEdgeType.IS_RELATED]
+    assert owner_is_related.previous_value == person_1.get_id()
+    assert owner_is_related.new_value == person_1.get_id()
+    assert owner_is_related.action is DiffAction.UNCHANGED
+    owner_has_source = owner_props_by_type[DatabaseEdgeType.HAS_SOURCE]
+    assert owner_has_source.previous_value is None
+    assert owner_has_source.new_value == person_1.get_id()
+    assert owner_has_source.action is DiffAction.ADDED
+
+    diff_node_person = diff_nodes_by_id[person_1.get_id()]
+    assert diff_node_person.action is DiffAction.UPDATED
+    assert diff_node_person.is_node_kind_migration is False
+    assert diff_node_person.attributes == []
+    assert len(diff_node_person.relationships) == 1
+    diff_relationship_cars = diff_node_person.relationships[0]
+    assert diff_relationship_cars.name == "cars"
+    assert diff_relationship_cars.action is DiffAction.UPDATED
+    assert len(diff_relationship_cars.relationships) == 1
+    diff_element_cars = diff_relationship_cars.relationships[0]
+    assert diff_element_cars.peer_id == new_car.get_id()
+    assert diff_element_cars.action is DiffAction.UPDATED
+    cars_props_by_type = {p.property_type: p for p in diff_element_cars.properties}
+    assert set(cars_props_by_type.keys()) == {DatabaseEdgeType.IS_RELATED, DatabaseEdgeType.HAS_SOURCE}
+    cars_is_related = cars_props_by_type[DatabaseEdgeType.IS_RELATED]
+    assert cars_is_related.previous_value == new_car.get_id()
+    assert cars_is_related.new_value == new_car.get_id()
+    assert cars_is_related.action is DiffAction.UNCHANGED
+    cars_has_source = cars_props_by_type[DatabaseEdgeType.HAS_SOURCE]
+    assert cars_has_source.previous_value is None
+    assert cars_has_source.new_value == person_1.get_id()
+    assert cars_has_source.action is DiffAction.ADDED
 
 
 async def test_agnostic_owner_relationship_added(
