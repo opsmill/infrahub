@@ -103,6 +103,19 @@ describe("CredentialsForm", () => {
     expect(setToken).not.toHaveBeenCalled();
   });
 
+  test("shows generic 'Could not log in' toast for unrecognized errors", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new Error("something weird"));
+
+    const component = await render(<CredentialsForm onSubmit={onSubmit} />);
+
+    await component.getByLabelText("Username").fill("alice");
+    await component.getByLabelText("Password").fill("secret");
+    await component.getByRole("button", { name: "Log in" }).click();
+
+    await expect.element(component.getByText("Could not log in")).toBeVisible();
+    expect(setToken).not.toHaveBeenCalled();
+  });
+
   test("validates required fields before submitting", async () => {
     const onSubmit = vi.fn();
 

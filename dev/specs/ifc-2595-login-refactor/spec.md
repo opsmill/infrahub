@@ -208,6 +208,10 @@ useConfig() ─► useAvailableAuthMethods() ─► AuthMethod[]
 ```
 `*` = added by the LDAP follow-up.
 
+### Design decision: default to SSO when available
+
+When 2+ methods are available AND no `LAST_USED_METHOD_KEY` is stored, the picker defaults to **SSO**, not the first method in the array. This preserves the pre-refactor UX (the old `Login` component started in SSO mode). The default is implemented via `useLastUsedMethod(methods, preferredDefault(methods))` where `preferredDefault` returns the SSO method when present. A stored preference always overrides this default.
+
 ## Edge cases
 
 | Scenario | Behavior |
