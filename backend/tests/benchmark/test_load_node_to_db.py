@@ -13,7 +13,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 
 
-def test_create_node_in_db_node_schema(
+def test_load_node_to_db_node_schema(
     aio_benchmark: Callable[..., Any], db: InfrahubDatabase, default_branch: Branch
 ) -> None:
     registry.schema = SchemaManager()
