@@ -156,6 +156,7 @@ class SchemaUpdateConstraintInfo(BaseModel):
     model_config = ConfigDict(extra="forbid")
     path: SchemaPath
     constraint_name: str
+    node_uuids: set[str] | None = None
 
     @property
     def routing_key(self) -> str:
@@ -163,6 +164,13 @@ class SchemaUpdateConstraintInfo(BaseModel):
 
     def __hash__(self) -> int:
         return hash((type(self),) + tuple(self.constraint_name + self.path.get_path()))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, SchemaUpdateConstraintInfo):
+            return NotImplemented
+        # node_uuids is an optional scoping payload — not part of identity.
+        # Dedup must match __hash__ which only considers constraint_name + path.
+        return self.constraint_name == other.constraint_name and self.path == other.path
 
 
 class SchemaUpdateValidationResult(BaseModel):

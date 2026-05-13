@@ -482,7 +482,12 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
         schema=candidate_schema, diff_summary=diff_summary
     )
     constraints_from_schema_diff = validation_result.constraints
-    constraints = set(constraints_from_data_diff + constraints_from_schema_diff)
+    # Order matters for dedup: SchemaUpdateConstraintInfo.__eq__ compares only
+    # (constraint_name, path). Add schema-diff constraints first so that, when
+    # the same constraint is also data-diff-derived, the schema-diff version
+    # (node_uuids=None → full scan) wins. A schema change that adds/widens a
+    # uniqueness constraint must scan every node of the kind.
+    constraints = set(constraints_from_schema_diff + constraints_from_data_diff)
 
     if not constraints:
         return
@@ -536,6 +541,7 @@ async def _get_proposed_change_schema_integrity_constraints(
         if node_kind not in node_diff_field_summary_map:
             node_diff_field_summary_map[node_kind] = NodeDiffFieldSummary(kind=node_kind)
         field_summary = node_diff_field_summary_map[node_kind]
+        field_summary.node_uuids.add(node_diff["id"])
         for element in node_diff["elements"]:
             element_name = element["name"]
             element_type = element["element_type"]

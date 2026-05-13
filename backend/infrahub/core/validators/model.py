@@ -16,6 +16,16 @@ class SchemaConstraintValidatorRequest(BaseModel):
     node_schema: NodeSchema | GenericSchema = Field(..., description="Schema of Node or Generic to validate")
     schema_path: SchemaPath = Field(..., description="SchemaPath to the element of the schema to validate")
     schema_branch: SchemaBranch = Field(..., description="SchemaBranch of the element to validate")
+    node_uuids: set[str] | None = Field(
+        default=None,
+        description=(
+            "Optional set of node UUIDs to scope the validation to. When provided, "
+            "checkers may pre-fetch current values for these nodes and run a "
+            "narrowed query instead of scanning every node of the kind. None means "
+            "fall back to the full-scan path (required for schema-diff-driven "
+            "constraint changes)."
+        ),
+    )
 
     @model_serializer()
     def serialize_model(self) -> dict[str, Any]:
@@ -25,6 +35,7 @@ class SchemaConstraintValidatorRequest(BaseModel):
             "node_schema": self.node_schema.model_dump(),
             "schema_path": self.schema_path.model_dump(),
             "schema_branch": self.schema_branch.to_dict_schema_object(),
+            "node_uuids": list(self.node_uuids) if self.node_uuids is not None else None,
         }
 
     @field_validator("schema_branch", mode="before")

@@ -26,6 +26,7 @@ class ConstraintValidatorDeterminer:
         self._node_kinds: set[str] = set()
         self._attribute_element_map: dict[str, set[str]] = {}
         self._relationship_element_map: dict[str, set[str]] = {}
+        self._node_uuid_map: dict[str, set[str]] = {}
 
     def _index_node_diffs(self, node_diffs: list[NodeDiffFieldSummary]) -> None:
         for node_diff in node_diffs:
@@ -38,6 +39,23 @@ class ConstraintValidatorDeterminer:
                 self._relationship_element_map[node_diff.kind] = set()
             for relationship_name in node_diff.relationship_names:
                 self._relationship_element_map[node_diff.kind].add(relationship_name)
+            if node_diff.kind not in self._node_uuid_map:
+                self._node_uuid_map[node_diff.kind] = set()
+            self._node_uuid_map[node_diff.kind].update(node_diff.node_uuids)
+
+    def _node_uuids_for(self, kind: str) -> set[str] | None:
+        # A generic schema's constraints apply to its derived node kinds; the
+        # diff carries the concrete kind, so we union across any inheriting
+        # kinds the determiner has seen. Returns None when no UUIDs are known
+        # (forces a full scan, preserving correctness for schema-diff origins).
+        node_schema = self.schema_branch.get(name=kind, duplicate=False)
+        derived_kinds = {kind}
+        if hasattr(node_schema, "used_by") and node_schema.used_by:
+            derived_kinds.update(node_schema.used_by)
+        uuids: set[str] = set()
+        for derived in derived_kinds:
+            uuids.update(self._node_uuid_map.get(derived, set()))
+        return uuids or None
 
     def _has_attribute_diff(self, kind: str, name: str) -> bool:
         return name in self._attribute_element_map.get(kind, set())
@@ -135,7 +153,13 @@ class ConstraintValidatorDeterminer:
             if not do_constraint_validation:
                 continue
 
-            constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+            constraints.append(
+                SchemaUpdateConstraintInfo(
+                    constraint_name=constraint_name,
+                    path=schema_path,
+                    node_uuids=self._node_uuids_for(schema.kind),
+                )
+            )
         return constraints
 
     async def _get_attribute_constraints_for_one_schema(
@@ -208,5 +232,11 @@ class ConstraintValidatorDeterminer:
                 property_name=prop_name,
             )
 
-            constraints.append(SchemaUpdateConstraintInfo(constraint_name=constraint_name, path=schema_path))
+            constraints.append(
+                SchemaUpdateConstraintInfo(
+                    constraint_name=constraint_name,
+                    path=schema_path,
+                    node_uuids=self._node_uuids_for(schema.kind),
+                )
+            )
         return constraints

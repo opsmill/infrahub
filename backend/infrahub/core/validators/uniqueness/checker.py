@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
+from infrahub.core.manager import NodeManager
 from infrahub.core.path import DataPath, GroupedDataPaths
 from infrahub.core.schema import AttributeSchema, MainSchemaTypes, RelationshipSchema
 from infrahub.core.validators.uniqueness.index import UniquenessQueryResultsIndex
@@ -22,6 +23,7 @@ from .model import (
 from .query import NodeUniqueAttributeConstraintQuery
 
 if TYPE_CHECKING:
+    from infrahub.core.node import Node
     from infrahub.core.query import QueryResult
     from infrahub.database import InfrahubDatabase
 
@@ -66,7 +68,9 @@ class UniquenessChecker(ConstraintCheckerInterface):
 
     async def check(self, request: SchemaConstraintValidatorRequest) -> list[GroupedDataPaths]:
         schema_objects = [request.node_schema]
-        non_unique_nodes_lists = await asyncio.gather(*[self.check_one_schema(schema) for schema in schema_objects])
+        non_unique_nodes_lists = await asyncio.gather(
+            *[self.check_one_schema(schema, node_uuids=request.node_uuids) for schema in schema_objects]
+        )
 
         grouped_data_paths = GroupedDataPaths()
         for non_unique_node in chain(*non_unique_nodes_lists):
@@ -112,8 +116,12 @@ class UniquenessChecker(ConstraintCheckerInterface):
     async def check_one_schema(
         self,
         schema: MainSchemaTypes,
+        node_uuids: set[str] | None = None,
     ) -> list[NonUniqueNode]:
-        query_request = await self.build_query_request(schema)
+        if node_uuids:
+            query_request = await self.build_scoped_query_request(schema=schema, node_uuids=node_uuids)
+        else:
+            query_request = await self.build_query_request(schema)
 
         if not query_request:
             return []
@@ -126,6 +134,154 @@ class UniquenessChecker(ConstraintCheckerInterface):
                 query_results = await query.execute(db=db)
 
         return await self._parse_results(schema=schema, query_results=query_results.results)
+
+    async def build_scoped_query_request(
+        self, schema: MainSchemaTypes, node_uuids: set[str]
+    ) -> NodeUniquenessQueryRequest:
+        """Build a value-anchored query request for a known set of node UUIDs.
+
+        Pre-fetches the current values of every attribute/relationship referenced
+        by any uniqueness constraint on the schema, then emits
+        QueryAttributePath/QueryRelationshipAttributePath entries with `value`
+        set. The existing query routes these through its `_with_value` subqueries,
+        which can use the :AttributeValueIndexed(value) index instead of doing a
+        kind-wide label scan.
+
+        Why pre-fetch every constraint field (not just the diffed ones): a
+        constraint like (name, location) requires both values even if only `name`
+        diffed. We must look up `location` so the resulting valued query can find
+        peers sharing the full (name, location) tuple.
+        """
+        attr_schemas_in_constraints: dict[str, tuple[AttributeSchema, str | None]] = {}
+        rel_paths_in_constraints: list[tuple[RelationshipSchema, str | None]] = []
+
+        for attr_schema in schema.unique_attributes:
+            attr_schemas_in_constraints[f"{attr_schema.name}|value"] = (attr_schema, "value")
+
+        if schema.uniqueness_constraints:
+            for uniqueness_constraint in schema.uniqueness_constraints:
+                for path in uniqueness_constraint:
+                    sub_schema, property_name = get_attribute_path_from_string(path, schema)
+                    if isinstance(sub_schema, AttributeSchema):
+                        key = f"{sub_schema.name}|{property_name or 'value'}"
+                        attr_schemas_in_constraints[key] = (sub_schema, property_name)
+                    elif isinstance(sub_schema, RelationshipSchema):
+                        rel_paths_in_constraints.append((sub_schema, property_name))
+
+        if not attr_schemas_in_constraints and not rel_paths_in_constraints:
+            return NodeUniquenessQueryRequest(kind=schema.kind)
+
+        fields_filter: dict[str, dict] = {}
+        for attr_schema, _ in attr_schemas_in_constraints.values():
+            fields_filter[attr_schema.name] = {}
+        for rel_schema, _ in rel_paths_in_constraints:
+            fields_filter[rel_schema.name] = {}
+
+        branch = await self.get_branch()
+        nodes = await NodeManager.get_many(
+            db=self.db,
+            ids=list(node_uuids),
+            fields=fields_filter,
+            branch=branch,
+        )
+
+        unique_attr_paths: set[QueryAttributePath] = set()
+        relationship_attr_paths: set[QueryRelationshipAttributePath] = set()
+
+        for node in nodes.values():
+            for attr_schema, property_name in attr_schemas_in_constraints.values():
+                self._extract_attribute_path(
+                    node=node,
+                    attr_schema=attr_schema,
+                    property_name=property_name,
+                    paths=unique_attr_paths,
+                )
+            for rel_schema, property_name in rel_paths_in_constraints:
+                await self._extract_relationship_path(
+                    node=node,
+                    rel_schema=rel_schema,
+                    property_name=property_name,
+                    paths=relationship_attr_paths,
+                )
+
+        return NodeUniquenessQueryRequest(
+            kind=schema.kind,
+            unique_attribute_paths=unique_attr_paths,
+            relationship_attribute_paths=relationship_attr_paths,
+        )
+
+    @staticmethod
+    def _extract_attribute_path(
+        node: Node,
+        attr_schema: AttributeSchema,
+        property_name: str | None,
+        paths: set[QueryAttributePath],
+    ) -> None:
+        attr = getattr(node, attr_schema.name, None)
+        if attr is None:
+            return
+        attr_value = getattr(attr, property_name or "value", None)
+        if attr_value is None:
+            return
+        paths.add(
+            QueryAttributePath(
+                attribute_name=attr_schema.name,
+                attribute_kind=attr_schema.kind,
+                property_name=property_name,
+                value=attr_value,
+            )
+        )
+
+    async def _extract_relationship_path(
+        self,
+        node: Node,
+        rel_schema: RelationshipSchema,
+        property_name: str | None,
+        paths: set[QueryRelationshipAttributePath],
+    ) -> None:
+        rel_manager = getattr(node, rel_schema.name, None)
+        if rel_manager is None or rel_schema.cardinality != "one":
+            # Cardinality-many relationships in uniqueness constraints are
+            # uncommon and don't translate cleanly to a single peer value —
+            # emit an unvalued path so the existing query still exercises the
+            # constraint (it just won't be value-scoped).
+            paths.add(
+                QueryRelationshipAttributePath(
+                    identifier=rel_schema.get_identifier(),
+                    attribute_name=property_name,
+                )
+            )
+            return
+        relationships = await rel_manager.get_relationships(db=self.db)
+        if not relationships:
+            return
+        peer_id = relationships[0].peer_id
+        if peer_id is None:
+            return
+        if property_name is None:
+            # Relationship-only path: value is the peer UUID.
+            paths.add(
+                QueryRelationshipAttributePath(
+                    identifier=rel_schema.get_identifier(),
+                    attribute_name=None,
+                    value=peer_id,
+                )
+            )
+            return
+        # Relationship + peer-attribute path: value is the peer's attribute value.
+        peer = await rel_manager.get_peer(db=self.db)
+        if peer is None:
+            return
+        peer_attr = getattr(peer, property_name, None)
+        if peer_attr is None or peer_attr.value is None:
+            return
+        paths.add(
+            QueryRelationshipAttributePath(
+                identifier=rel_schema.get_identifier(),
+                attribute_name=property_name,
+                value=peer_attr.value,
+            )
+        )
 
     async def _parse_results(self, schema: MainSchemaTypes, query_results: list[QueryResult]) -> list[NonUniqueNode]:
         relationship_schema_by_identifier = {rel.identifier: rel for rel in schema.relationships}

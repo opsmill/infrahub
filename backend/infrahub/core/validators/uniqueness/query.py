@@ -55,7 +55,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
             if is_large_attribute_type(attr_path.attribute_kind):
                 attrs_include_large_type = True
             attribute_names.add(attr_path.attribute_name)
-            if attr_path.value:
+            if attr_path.value is not None:
                 attr_paths_with_value.append((attr_path.attribute_name, property_rel_name, attr_path.value))
                 attr_values.append(attr_path.value)
             else:
@@ -74,7 +74,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
         relationship_attr_paths_with_value = []
         for rel_path in self.query_request.relationship_attribute_paths:
             relationship_names.add(rel_path.identifier)
-            if rel_path.attribute_name and rel_path.value:
+            if rel_path.attribute_name and rel_path.value is not None:
                 relationship_attr_paths_with_value.append(
                     (rel_path.identifier, rel_path.attribute_name, rel_path.value)
                 )
@@ -83,7 +83,7 @@ class NodeUniqueAttributeConstraintQuery(Query):
                 relationship_attr_paths.append((rel_path.identifier, rel_path.attribute_name))
             else:
                 relationship_only_attr_paths.append(rel_path.identifier)
-                if rel_path.value:
+                if rel_path.value is not None:
                     relationship_only_attr_values.append(rel_path.value)
 
         if (

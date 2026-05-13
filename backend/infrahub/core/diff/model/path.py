@@ -105,6 +105,7 @@ class NodeDiffFieldSummary:
     kind: str
     attribute_names: set[str] = field(default_factory=set)
     relationship_names: set[str] = field(default_factory=set)
+    node_uuids: set[str] = field(default_factory=set)
 
 
 @dataclass
