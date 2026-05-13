@@ -30,9 +30,11 @@ class AttributeNumberPoolUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["attr_name"] = self.attribute_schema.name
         self.params["start_range"] = self.attribute_schema.parameters.start_range
         self.params["end_range"] = self.attribute_schema.parameters.end_range
+        self.params["node_uuids"] = self.node_uuids
 
         query = """
         MATCH (n:%(node_kind)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -99,7 +101,11 @@ class AttributeNumberPoolChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

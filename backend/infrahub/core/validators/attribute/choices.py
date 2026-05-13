@@ -38,10 +38,12 @@ class AttributeChoicesUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["allowed_values"] = [choice.name for choice in self.attribute_schema.choices]
         self.params["null_value"] = NULL_VALUE
         self.params["excluded_kinds"] = self.excluded_kinds
+        self.params["node_uuids"] = self.node_uuids
 
         query = """
         MATCH (n:%(node_kind)s)
-        WHERE size($excluded_kinds) = 0 OR NOT n.kind IN $excluded_kinds
+        WHERE (size($excluded_kinds) = 0 OR NOT n.kind IN $excluded_kinds)
+          AND ($node_uuids IS NULL OR n.uuid IN $node_uuids)
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -121,6 +123,7 @@ class AttributeChoicesChecker(ConstraintCheckerInterface):
                 node_schema=request.node_schema,
                 schema_path=request.schema_path,
                 excluded_kinds=excluded_kinds,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

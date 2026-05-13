@@ -28,8 +28,10 @@ class AttributeEnumUpdateValidatorQuery(AttributeSchemaValidatorQuery):
         self.params["attr_name"] = self.attribute_schema.name
         self.params["allowed_values"] = self.attribute_schema.enum
         self.params["null_value"] = NULL_VALUE
+        self.params["node_uuids"] = self.node_uuids
         query = """
         MATCH (n:%(node_kind)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH path = (root:Root)<-[rr:IS_PART_OF]-(n)-[ra:HAS_ATTRIBUTE]-(:Attribute { name: $attr_name } )-[rv:HAS_VALUE]-(av:AttributeValue)
             WHERE all(
@@ -94,7 +96,11 @@ class AttributeEnumChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                node_uuids=request.node_uuids,
             )
 
             await query.execute(db=self.db)

@@ -14,10 +14,16 @@ class SchemaValidatorQuery(Query):
         self,
         node_schema: NodeSchema | GenericSchema,
         schema_path: SchemaPath,
+        node_uuids: set[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self.node_schema = node_schema
         self.schema_path = schema_path
+        # Optional scope for data-diff-driven constraint runs. Subclasses that
+        # opt in stamp this on $node_uuids and gate their initial MATCH with
+        # `WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids`, falling back to
+        # a full kind scan when None (the schema-diff-origin case).
+        self.node_uuids: list[str] | None = list(node_uuids) if node_uuids else None
         super().__init__(**kwargs)
 
     async def get_paths(self) -> GroupedDataPaths:
