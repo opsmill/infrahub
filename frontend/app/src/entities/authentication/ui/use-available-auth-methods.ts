@@ -1,16 +1,13 @@
 import type { AuthMethod } from "@/entities/authentication/types";
-import type { ConfigAPI } from "@/entities/config/types";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
-type MethodResolver = (config: ConfigAPI) => Array<AuthMethod>;
-
-const METHOD_RESOLVERS: Array<MethodResolver> = [
-  () => [{ kind: "local", label: "Username & password" }],
-  ({ sso }) =>
-    sso?.enabled && sso.providers?.length ? [{ kind: "sso", providers: sso.providers }] : [],
-];
-
 export function useAvailableAuthMethods(): Array<AuthMethod> {
-  const config = useConfig();
-  return METHOD_RESOLVERS.flatMap((resolve) => resolve(config));
+  const { sso } = useConfig();
+  const methods: Array<AuthMethod> = [{ kind: "local", label: "Username & password" }];
+
+  if (sso?.enabled && sso.providers && sso.providers.length > 0) {
+    methods.push({ kind: "sso", providers: sso.providers });
+  }
+
+  return methods;
 }
