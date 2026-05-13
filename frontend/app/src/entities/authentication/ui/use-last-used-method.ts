@@ -4,10 +4,11 @@ import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
 import type { AuthMethod } from "@/entities/authentication/types";
 
 function pickInitial(methods: Array<AuthMethod>, defaultMethod?: AuthMethod): AuthMethod | null {
-  if (methods.length === 0) return null;
+  const first = methods[0];
+  if (!first) return null;
   const storedKind = localStorage.getItem(LAST_USED_METHOD_KEY);
   const found = storedKind ? methods.find((m) => m.kind === storedKind) : undefined;
-  return found ?? defaultMethod ?? methods[0];
+  return found ?? defaultMethod ?? first;
 }
 
 export function useLastUsedMethod(
