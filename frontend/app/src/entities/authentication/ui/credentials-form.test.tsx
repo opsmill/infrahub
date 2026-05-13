@@ -85,6 +85,22 @@ describe("CredentialsForm", () => {
     await component.getByRole("button", { name: "Log in" }).click();
 
     await expect.element(component.getByText("Authentication service unavailable")).toBeVisible();
+    expect(setToken).not.toHaveBeenCalled();
+  });
+
+  test("shows network-error toast when fetch fails with a TypeError", async () => {
+    const onSubmit = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const component = await render(<CredentialsForm onSubmit={onSubmit} />);
+
+    await component.getByLabelText("Username").fill("alice");
+    await component.getByLabelText("Password").fill("secret");
+    await component.getByRole("button", { name: "Log in" }).click();
+
+    await expect
+      .element(component.getByText("Network error — check your connection"))
+      .toBeVisible();
+    expect(setToken).not.toHaveBeenCalled();
   });
 
   test("validates required fields before submitting", async () => {

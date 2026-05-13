@@ -17,16 +17,21 @@ export interface CredentialsFormProps {
 }
 
 function toLoginError(error: unknown): LoginError {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    return { code: "network", message: "Network error — check your connection" };
-  }
   const status = (error as { status?: number } | null)?.status;
+
   if (status === 401) {
     return { code: "invalid_credentials", message: "Invalid username or password" };
   }
   if (typeof status === "number" && status >= 500) {
     return { code: "server", message: "Authentication service unavailable" };
   }
+
+  const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const isFetchFailure = error instanceof TypeError;
+  if (status === undefined && (isOffline || isFetchFailure)) {
+    return { code: "network", message: "Network error — check your connection" };
+  }
+
   return { code: "unknown", message: "Could not log in" };
 }
 
