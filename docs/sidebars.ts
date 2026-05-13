@@ -553,7 +553,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Events',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'reference/infrahub-events/overview' },
           items: [
             { type: 'doc', id: 'reference/infrahub-events/account', label: 'Account events' },
             { type: 'doc', id: 'reference/infrahub-events/artifact', label: 'Artifact events' },
