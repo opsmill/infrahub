@@ -10,9 +10,14 @@
 SchemaAttribute(
     name="origin",
     kind=AttributeKind.Dropdown,
-    optional=False,            # NOT nullable post-migration
+    optional=True,              # Nullable — only the auto-creation path writes a value (FR-012, clarification 2026-05-13)
     read_only=True,             # Read-only from every external write path (FR-021)
-    description="Provenance of this group: which auth path created it, or 'manual' / 'system'.",
+    branch=BranchSupportType.AGNOSTIC,
+    # UI-hidden — schema-driven UI MUST NOT render `origin` on default CoreAccountGroup views (FR-012, clarification 2026-05-13).
+    # Use whichever existing "hidden" / "internal" attribute flag the schema definition framework already exposes
+    # (e.g., `inherited=False, branch=AGNOSTIC, order_weight=...` plus the project's UI-hidden flag — confirm against
+    # how other system-managed attributes (e.g., `member_of_groups` internal fields) suppress UI rendering today).
+    description="Auth path that auto-created this group; unset for manually-created and platform-seeded groups.",
     choices=[
         DropdownChoice(name="oidc_provider1"),
         DropdownChoice(name="oidc_provider2"),
@@ -21,13 +26,13 @@ SchemaAttribute(
         DropdownChoice(name="oauth2_provider2"),
         DropdownChoice(name="oauth2_google"),
         DropdownChoice(name="ldap"),
-        DropdownChoice(name="manual"),
-        DropdownChoice(name="system"),
+        # NOTE: `manual` and `system` literals were dropped per clarification 2026-05-13.
+        # Those creation paths leave `origin` unset instead of writing a literal.
     ],
 )
 ```
 
-> Field names (`read_only`, etc.) above are illustrative — implementation MUST use whatever fields the existing `SchemaAttribute` / `Dropdown` types in `permission.py` and adjacent definition files already expose for "system-managed" and "static enum" semantics. If no `read_only`-style flag exists today, enforcement falls to (a) the input-validation layer rejecting user-supplied values on create/update, and (b) the write layer always overriding `origin__value` from the server-determined origin per FR-021.
+> Field names (`read_only`, `optional`, the UI-hidden flag, etc.) above are illustrative — implementation MUST use whatever fields the existing `SchemaAttribute` / `Dropdown` types in `permission.py` and adjacent definition files already expose for "system-managed", "optional/nullable", "UI-hidden", and "static enum" semantics. If no `read_only`-style flag exists today, enforcement falls to (a) the input-validation layer rejecting user-supplied values on create/update, and (b) the write layer always overriding `origin__value` from the server-determined origin per FR-021. If no native UI-hidden flag exists, the implementation MUST add one (or extend the schema definition framework) — surfacing `origin` in the schema-driven UI is explicitly out of scope (clarification 2026-05-13).
 
 ### Generated artifacts to regenerate
 
@@ -51,33 +56,16 @@ And (after running a local instance):
 
 These regenerations are required per Constitution Principle I; never hand-edit the generated files.
 
-## Schema migration (new)
+## Schema migration
 
-**File**: `backend/infrahub/core/migrations/graph/mNNN_set_account_group_origin.py`
-**Template**: `m069_set_comment_thread_created_by_on_node.py`
-**Trigger**: Runs as part of the 1.10 upgrade.
+**No data-migration script is required** (FR-014, clarification 2026-05-13). Because `origin` is optional, the schema change is purely a schema definition update — pre-existing `CoreAccountGroup` rows post-upgrade are valid with their `origin` attribute unset. Adding the attribute follows the standard non-destructive schema additive path used by the existing schema runtime; no Cypher MATCH/SET pass is needed.
 
-### Cypher
+### Post-upgrade invariant
 
-```cypher
-MATCH (g:CoreAccountGroup)
-WHERE g.origin__value IS NULL
-SET g.origin__value = "manual"
-```
+After upgrading to 1.10:
 
-### Validation step
+- Every pre-existing `CoreAccountGroup` row has its `origin` attribute unset (no value written).
+- Every new `CoreAccountGroup` row created via admin-facing paths (UI/GraphQL/REST/schema load) likewise has `origin` unset (FR-013).
+- Every new `CoreAccountGroup` row created via the auto-creation path has `origin` set to the corresponding enum literal (FR-013).
 
-```cypher
-MATCH (g:CoreAccountGroup)
-WHERE g.origin__value IS NULL
-RETURN count(g) AS unset_count
-```
-
-The migration MUST assert `unset_count == 0` after the SET (SC-005 — no nulls).
-
-### Notes
-
-- Backfills every pre-existing `CoreAccountGroup` row with `origin = "manual"` (FR-014).
-- Non-destructive (no row deletion, no attribute removal).
-- Uses parameterized Cypher (Principle V); no string interpolation.
-- Idempotent: re-running is a no-op because the `WHERE g.origin__value IS NULL` guard excludes already-backfilled rows.
+The previous Cypher backfill (`SET g.origin__value = "manual"`) is intentionally not implemented — the `manual` enum value no longer exists in the schema, and unset is a valid state.

@@ -12,9 +12,9 @@ This feature touches the data model in one place: the addition of a single `orig
 
 ### New attribute
 
-| Field | Kind | Optional | Default | Read-only from external paths | Validation |
-|---|---|---|---|---|---|
-| `origin` | Dropdown (static enum) | No | None (must be set by system at every creation path) | Yes (FR-021) | Value must be one of the 9 literals below |
+| Field | Kind | Optional | UI visibility | Default | Read-only from external paths | Validation |
+|---|---|---|---|---|---|---|
+| `origin` | Dropdown (static enum) | **Yes** (nullable) | **Hidden** from the schema-driven UI by default (clarification 2026-05-13) | None — unset is the documented state for any group not created by the auto-creation path | Yes (FR-021) | When set, value MUST be one of the 7 literals below |
 
 **Enum literal value set** (fixed at schema level; runtime config changes do NOT extend this set — FR-012):
 
@@ -26,9 +26,9 @@ oauth2_provider1
 oauth2_provider2
 oauth2_google
 ldap
-manual
-system
 ```
+
+The literals `manual` and `system` previously enumerated here are removed per clarification 2026-05-13. Admin-facing and platform-bootstrap creation paths leave `origin` unset; the *absence* of a value is itself the "not auto-created" signal.
 
 **Mapping rule from auth flow to enum literal** (clarification 2026-05-11, formalized in FR-013):
 
@@ -42,19 +42,19 @@ system
 | OAuth2 login through `Oauth2Provider.GOOGLE` | `oauth2_google` |
 | Native LDAP login (INFP-105) | `ldap` |
 | OIDC-fronted LDAP/AD login | corresponding `oidc_*` slot value (NOT `ldap`) |
-| Any other admin-facing creation route (UI, GraphQL, REST, schema load) | `manual` |
-| Platform bootstrap/seeding (`create_default_account_groups`) | `system` |
+| Any other admin-facing creation route (UI, GraphQL, REST, schema load) | **unset** (no value written) |
+| Platform bootstrap/seeding (`create_default_account_groups`) | **unset** (no value written) |
 
 ### Validation rules
 
-- `origin` MUST be set on every `CoreAccountGroup` row; no nulls (SC-005).
-- `origin` MUST be one of the 9 enum literals; any other value rejected at the schema validation layer.
+- `origin` is optional — `null`/unset is a valid state for any `CoreAccountGroup` row.
+- When set, `origin` MUST be one of the 7 enum literals; any other value rejected at the schema validation layer.
 - User-supplied `origin` on a create or update operation MUST be rejected or silently ignored (FR-021).
-- Once written, the value MUST NOT change via any external write path (FR-021). Only the schema migration + the platform's own creation paths may set it.
+- Once written by the auto-creation path, the value MUST NOT change via any external write path (FR-021). Only the auto-creation path may set it. Admin-facing and bootstrap paths MUST NOT write any value to `origin` (FR-013).
 
 ### State transitions
 
-`origin` is immutable post-write. No state transitions.
+`origin` has two states: unset (initial state for every row) and set-to-an-enum-literal (terminal — written only by the auto-creation path at first creation). No transitions out of the set state are permitted via external paths. The unset → set transition occurs only during the auto-creation atomic create.
 
 ---
 

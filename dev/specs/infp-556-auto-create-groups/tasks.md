@@ -41,13 +41,13 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 **Purpose**: Schema delta, schema migration, Pydantic config, and shared enums that every user story depends on. ⚠️ No user story work can begin until this phase is complete.
 
-- [ ] T003 Add `origin` Dropdown attribute to `CoreAccountGroup` in `backend/infrahub/core/schema/definitions/core/permission.py:159` with the 9 enum literals from `contracts/schema-delta.md` (FR-012)
+- [ ] T003 Add `origin` Dropdown attribute to `CoreAccountGroup` in `backend/infrahub/core/schema/definitions/core/permission.py:159` with the **7** enum literals from `contracts/schema-delta.md` (FR-012). Attribute MUST be marked `optional=True` (nullable) AND **UI-hidden** by default. Do NOT include `manual` or `system` literals (clarification 2026-05-13). [Sync: Gap Report]
 - [ ] T004 Regenerate schema artifacts with `uv run invoke backend.generate`; verify `backend/infrahub/core/schema/generated/` and `backend/infrahub/core/protocols.py` are updated (depends on T003)
-- [ ] T005 [P] Add `AccountGroupOrigin` StrEnum in `backend/infrahub/auth_groups/origin.py` mirroring the 9 schema literals (single source of truth for Python-side comparisons)
+- [ ] T005 [P] Add `AccountGroupOrigin` StrEnum in `backend/infrahub/auth_groups/origin.py` mirroring the **7** schema literals (`oidc_provider1`, `oidc_provider2`, `oidc_google`, `oauth2_provider1`, `oauth2_provider2`, `oauth2_google`, `ldap`). Do NOT include `manual` or `system` — those creation paths leave `origin` unset (clarification 2026-05-13). [Sync: Gap Report]
 - [ ] T006 [P] Add `auto_create_groups_filter: str | list[str] | None` field plus `_compile_filter_patterns` `@field_validator` to `SecuritySettings` in `backend/infrahub/config.py:743+`, storing compiled patterns on a private attribute and raising `ValueError` with setting name + position on bad regex (FR-001 to FR-004, contracts/config-settings.md)
 - [ ] T007 [P] Add `auto_create_groups_max_per_login: int = 50` field to `SecuritySettings` in `backend/infrahub/config.py:743+` with `>= 1` validation (FR-020 config, contracts/config-settings.md)
-- [ ] T008 Add migration `backend/infrahub/core/migrations/graph/m073_set_account_group_origin.py` modeled on `m069_set_comment_thread_created_by_on_node.py`, setting `g.origin__value = "manual"` where null, with post-set assertion `unset_count == 0` (FR-014, SC-005)
-- [ ] T009 Register `m073_set_account_group_origin` migration in the migration index and bump the schema minimum-version constant (depends on T008)
+- [ ] ~~T008~~ **REMOVED** (clarification 2026-05-13): No data-migration backfill is needed — `origin` is optional and pre-existing rows are valid with an unset value (FR-014). The previously-planned `m073_set_account_group_origin.py` MUST NOT be added; if any earlier branch added a stub, delete it. [Sync: Gap Report]
+- [ ] ~~T009~~ **REMOVED** (clarification 2026-05-13): No migration to register. [Sync: Gap Report]
 
 **Checkpoint**: Schema attribute exists, migration ready, config surface in place. User story implementation can now begin.
 
@@ -123,17 +123,18 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 ### Tests for User Story 4 ⚠️ Write FIRST, ensure they FAIL before implementation
 
-- [ ] T024 [P] [US4] Integration_docker test for schema migration backfill in `backend/tests/integration_docker/auth_groups/test_schema_migration_backfill.py`: seed pre-feature `CoreAccountGroup` rows without `origin`, run `m073`, assert every row has `origin = manual` and no row is left null (FR-014, SC-005)
-- [ ] T025 [P] [US4] Functional test default `origin = manual` on every admin-facing creation path (UI/GraphQL/REST/schema-load) in `backend/tests/functional/auth_groups/test_origin_manual.py` (FR-013 manual)
-- [ ] T026 [P] [US4] Functional test `origin = system` on platform-seeded bootstrap groups in `backend/tests/functional/auth_groups/test_origin_system.py` (FR-013 system)
-- [ ] T027 [P] [US4] Functional test `origin` read-only enforcement in `backend/tests/functional/auth_groups/test_origin_readonly.py`: GraphQL create-with-origin, GraphQL update-origin, REST PATCH origin, schema-load with origin — all rejected or silently ignored; original value preserved on existing rows (FR-021, US4 acceptance scenario 5)
+- [ ] T024 [P] [US4] Integration_docker test for upgrade-path invariant in `backend/tests/integration_docker/auth_groups/test_origin_unset_on_upgrade.py`: seed pre-feature `CoreAccountGroup` rows, run the 1.10 schema definition update (no data-migration script), assert every pre-existing row has `origin` unset (null/absent) and that the schema accepts that state (FR-014 reshaped, clarification 2026-05-13). Replaces the previously-planned `test_schema_migration_backfill.py`. [Sync: Gap Report]
+- [ ] T025 [P] [US4] Functional test that admin-facing creation paths (UI/GraphQL/REST/schema-load) leave `origin` **unset** in `backend/tests/functional/auth_groups/test_origin_unset_on_admin_paths.py` — create a group via each surface, assert `origin` is null/absent on every read-back (FR-013, clarification 2026-05-13). Replaces the previously-planned `test_origin_manual.py`. [Sync: Gap Report]
+- [ ] T026 [P] [US4] Functional test that platform-seeded bootstrap groups have `origin` **unset** in `backend/tests/functional/auth_groups/test_origin_unset_on_bootstrap.py` — inspect every group created by `create_default_account_groups` and assert `origin` is null/absent (FR-013, clarification 2026-05-13). Replaces the previously-planned `test_origin_system.py`. [Sync: Gap Report]
+- [ ] T027 [P] [US4] Functional test `origin` read-only enforcement in `backend/tests/functional/auth_groups/test_origin_readonly.py`: GraphQL create-with-origin, GraphQL update-origin, REST PATCH origin, schema-load with origin — all rejected or silently ignored. Verify enforcement for BOTH (a) a group whose `origin` is currently set (auto-created — value preserved) and (b) a group whose `origin` is currently unset (admin-created — must remain unset, no value accepted) (FR-021, US4 acceptance scenario 5). [Sync: Gap Report]
+- [ ] T046 [P] [US4] Functional test that `origin` is hidden from the schema-driven UI in `backend/tests/functional/auth_groups/test_origin_ui_hidden.py` — assert the schema metadata exposed to the UI marks `origin` as hidden (no field/column rendered by default) on `CoreAccountGroup` views (FR-012 UI-hidden, US4 acceptance scenario 6, clarification 2026-05-13). [Sync: Gap Report]
 
 ### Implementation for User Story 4
 
-- [ ] T028 [P] [US4] Set `origin = system` on platform-seeded bootstrap groups in `backend/infrahub/core/initialization.py::create_accounts_group` at line ~512 (FR-013 system)
-- [ ] T029 [P] [US4] Default `origin = manual` on every other admin-facing CoreAccountGroup creation path (GraphQL mutation, REST writes, schema-load) so any path that does not explicitly set `origin` writes `manual` (FR-013 manual)
-- [ ] T030 [P] [US4] Enforce `origin` read-only at the schema input-validation layer: reject user-supplied `origin` values on create/update with a clear validation error or silently ignore them (FR-021, R5)
-- [ ] T031 [US4] Enforce `origin` read-only at the Cypher/Node write layer: server-determined `origin` value always wins; user-supplied values never reach the write path (FR-021 defense-in-depth, R5 — depends on T030)
+- [ ] ~~T028~~ **REMOVED** (clarification 2026-05-13): Platform bootstrap MUST NOT set `origin`. Do NOT edit `backend/infrahub/core/initialization.py::create_accounts_group`. If any earlier branch added the `origin=system` write, revert it (FR-013). [Sync: Gap Report]
+- [ ] ~~T029~~ **REMOVED** (clarification 2026-05-13): Admin-facing creation paths (GraphQL/REST/schema-load) MUST NOT write any value to `origin`. The optional schema attribute leaves the value unset by default, which is the documented state. Revert any default-to-`manual` logic on those paths (FR-013). [Sync: Gap Report]
+- [ ] T030 [P] [US4] Enforce `origin` read-only at the schema input-validation layer: reject user-supplied `origin` values on create/update with a clear validation error or silently ignore them (FR-021, R5). Updated scope: this also covers the "cannot set initial value via admin paths" requirement now that no admin path sets `origin` (FR-013, clarification 2026-05-13). [Sync: Gap Report]
+- [ ] T031 [US4] Enforce `origin` read-only at the Cypher/Node write layer: server-determined `origin` value always wins (auto-creation path only); user-supplied values never reach the write path; admin/bootstrap paths never set `origin__value` (FR-021 defense-in-depth, FR-013, R5 — depends on T030)
 
 **Checkpoint**: User Stories 1, 2, 3, AND 4 all pass independently. `origin` is correctly set everywhere and immune to external tampering.
 

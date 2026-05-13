@@ -4,7 +4,7 @@ This quickstart walks an admin through enabling the feature, observing it on a f
 
 ## Prerequisites
 
-- Infrahub 1.10 instance (with the `origin` schema migration applied).
+- Infrahub 1.10 instance (the schema definition update adds the optional `origin` attribute; no data backfill runs — see `contracts/schema-delta.md`).
 - At least one configured SSO/OIDC/OAuth2 provider, or native LDAP (INFP-105) for the LDAP path.
 - A test user in the external IdP carrying at least one group claim that you control.
 
@@ -32,9 +32,11 @@ Expected:
 
 - The login completes successfully.
 - A `CoreAccountGroup` named `network-engineering` (the captured name) now exists.
-- Its `origin` attribute is set to the value matching the auth path you used (e.g., `oidc_provider1` if you logged in via the OIDC `provider1` slot; `ldap` if via native LDAP).
+- Its `origin` attribute is set to the value matching the auth path you used (e.g., `oidc_provider1` if you logged in via the OIDC `provider1` slot; `ldap` if via native LDAP). Note: `origin` is UI-hidden by default — inspect it via the API (GraphQL/REST) rather than the group detail screen.
 - The test user is a member of that group.
 - The group has zero attached roles and zero attached permissions (auto-created groups land empty by design — FR-009).
+
+Independently, query a manually-created or platform-seeded `CoreAccountGroup` via the API and confirm its `origin` attribute is **unset** (null/absent). Only the auto-creation path writes a value (FR-013, clarification 2026-05-13).
 
 ## 4 — Verify provenance & idempotency
 
@@ -68,12 +70,14 @@ Log in another test user whose claims include unrelated groups (e.g., `slack/gen
 
 Attempt to modify the `origin` attribute on the auto-created group via:
 
-- The UI form for that group → save should be rejected or `origin` should be non-editable.
+- The UI form for that group → `origin` is hidden by default; if surfaced via developer tooling, save must reject.
 - A GraphQL mutation setting `origin` → expect a validation error, OR the field is silently ignored.
 - A REST PATCH/PUT → same.
 - A schema-load that includes a manual `origin` value → same.
 
 In every case, the existing `origin` value MUST be preserved (FR-021).
+
+Also attempt to *set* an initial `origin` value on a manually-created group via the same four surfaces — every attempt MUST be rejected/ignored, and the group's `origin` MUST remain unset (FR-013, FR-021).
 
 ## 8 — Verify the cap (only if you can simulate many claims)
 
