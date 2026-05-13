@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { renderHook } from "vitest-browser-react";
 
+import type { AuthMethod } from "@/entities/authentication/auth-methods";
 import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
-import type { AuthMethod } from "@/entities/authentication/types";
 
 import { useLastUsedMethod } from "./use-last-used-method";
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
+import type { AuthMethod } from "@/entities/authentication/auth-methods";
 import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
-import type { AuthMethod } from "@/entities/authentication/types";
 
 function pickInitial(methods: Array<AuthMethod>, defaultMethod?: AuthMethod): AuthMethod | null {
   const first = methods[0];

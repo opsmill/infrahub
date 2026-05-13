@@ -1,7 +1,5 @@
 import type { components } from "@/shared/api/rest/types.generated";
 
-import type { SSOProvider } from "@/entities/config/types";
-
 export type User = {
   id: string;
 };
@@ -14,8 +12,3 @@ export type LoginError = {
   code: LoginErrorCode;
   message: string;
 };
-
-export type AuthMethod = { kind: "local" } | { kind: "sso"; providers: Array<SSOProvider> };
-// Future: | { kind: "ldap" };
-
-export type AuthMethodKind = AuthMethod["kind"];
