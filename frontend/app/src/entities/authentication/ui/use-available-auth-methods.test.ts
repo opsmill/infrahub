@@ -17,7 +17,7 @@ describe("useAvailableAuthMethods", () => {
 
     const { result } = await renderHook(() => useAvailableAuthMethods());
 
-    expect(result.current).toEqual([{ kind: "local", label: "Username & password" }]);
+    expect(result.current).toEqual([{ kind: "local" }]);
   });
 
   test("returns [local, sso] when SSO is enabled with at least one provider", async () => {
@@ -35,10 +35,7 @@ describe("useAvailableAuthMethods", () => {
 
     const { result } = await renderHook(() => useAvailableAuthMethods());
 
-    expect(result.current).toEqual([
-      { kind: "local", label: "Username & password" },
-      { kind: "sso", providers },
-    ]);
+    expect(result.current).toEqual([{ kind: "local" }, { kind: "sso", providers }]);
   });
 
   test("returns [local] when SSO is enabled but providers list is empty", async () => {
@@ -46,7 +43,7 @@ describe("useAvailableAuthMethods", () => {
 
     const { result } = await renderHook(() => useAvailableAuthMethods());
 
-    expect(result.current).toEqual([{ kind: "local", label: "Username & password" }]);
+    expect(result.current).toEqual([{ kind: "local" }]);
   });
 
   test("returns [local] when SSO is enabled but providers is undefined", async () => {
@@ -54,6 +51,6 @@ describe("useAvailableAuthMethods", () => {
 
     const { result } = await renderHook(() => useAvailableAuthMethods());
 
-    expect(result.current).toEqual([{ kind: "local", label: "Username & password" }]);
+    expect(result.current).toEqual([{ kind: "local" }]);
   });
 });

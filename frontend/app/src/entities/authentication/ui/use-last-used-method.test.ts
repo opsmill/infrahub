@@ -6,7 +6,7 @@ import type { AuthMethod } from "@/entities/authentication/types";
 
 import { useLastUsedMethod } from "./use-last-used-method";
 
-const local: AuthMethod = { kind: "local", label: "Username & password" };
+const local: AuthMethod = { kind: "local" };
 const sso: AuthMethod = { kind: "sso", providers: [] };
 
 beforeEach(() => {
