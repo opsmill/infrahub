@@ -1,0 +1,73 @@
+---
+feature: Objects & Object Templates
+pr: https://github.com/opsmill/infrahub/pull/9178
+description: |
+  Migration of Objects and Object Templates docs. topics/object-template.mdx and
+  guides/object-template.mdx replaced by a hub + 3 spokes under object-templates/.
+  topics/object-conversion.mdx, topics/metadata.mdx, and guides/object-load.mdx
+  moved under objects/. A new objects/index.mdx hub page was created (no prior
+  equivalent — the section previously used a generated-index).
+
+redirects:
+  - from: /docs/topics/object-template
+    to: /docs/object-templates/
+  - from: /docs/guides/object-template
+    to: /docs/object-templates/use
+  - from: /docs/topics/object-conversion
+    to: /docs/objects/convert-object-kind
+  - from: /docs/topics/metadata
+    to: /docs/objects/metadata
+  - from: /docs/guides/object-load
+    to: /docs/objects/load-from-yaml
+
+new_pages:
+  - path: /docs/objects/
+    title: Objects (hub)
+  - path: /docs/objects/convert-object-kind
+    title: Convert object kind
+  - path: /docs/objects/metadata
+    title: Metadata & lineage
+  - path: /docs/objects/load-from-yaml
+    title: Load data in bulk using YAML file
+  - path: /docs/object-templates/
+    title: Object Templates (hub)
+  - path: /docs/object-templates/use
+    title: Use object templates
+  - path: /docs/object-templates/with-profiles
+    title: Assign Profiles to a template
+  - path: /docs/object-templates/allocate-resources-from-pools
+    title: Allocate resources from pools
+
+cross_links_to_update:
+  - file: docs/docs/schema/nodes-and-attributes.mdx
+    line: 274
+    current: ../topics/object-template
+    should_be: ../object-templates/
+  - file: docs/docs/schema/relationships.mdx
+    line: 62
+    current: ../topics/object-template
+    should_be: ../object-templates/
+  - file: docs/docs/profiles/index.mdx
+    line: 72
+    current: ../topics/object-template.mdx
+    should_be: ../object-templates/
+  - file: docs/docs/profiles/index.mdx
+    line: 83
+    current: ../topics/object-template.mdx#integration-with-profiles
+    should_be: ../object-templates/#integration-with-profiles
+  - file: docs/docs/profiles/index.mdx
+    line: 268
+    current: ../topics/object-template.mdx
+    should_be: ../object-templates/
+  - file: docs/docs/profiles/index.mdx
+    line: 270
+    current: ../topics/metadata.mdx
+    should_be: ../objects/metadata
+  - file: docs/docs/overview/overview.mdx
+    line: 59
+    current: ../topics/metadata.mdx
+    should_be: ../objects/metadata
+  - file: docs/docs/tutorials/getting-started/lineage-information.mdx
+    line: 9
+    current: ../../topics/metadata.mdx
+    should_be: ../../objects/metadata

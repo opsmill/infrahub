@@ -1,0 +1,79 @@
+---
+title: Hardware requirements
+---
+
+import EnterpriseBadge from '@site/src/components/EnterpriseBadge';
+
+This page outlines the hardware requirements for running Infrahub, including minimum and recommended specifications, enterprise sizing, cloud provider machine types, and a utility for benchmarking your system's performance.
+
+If you only want to try Infrahub, follow the [Quick Start](../../overview/quickstart.mdx).
+
+## General hardware requirements
+
+The system on which you want to run Infrahub should meet the following requirements:
+
+| Level       | CPU Cores | RAM  | Storage / database (Neo4j) |
+|-------------|-----------|------|----------------------------|
+| Minimum     | 6         | 12GB | SSD and/or >= 5000 IOPS    |
+| Recommended | 8         | 16GB | SSD and/or >= 5000 IOPS    |
+
+For cloud deployments, use at least the following machine types:
+
+| Cloud provider              | Machine type       |
+|-----------------------------|--------------------|
+| Google Cloud Platform       | c4d-standard-4     |
+| Amazon Web Services         | m8a.xlarge         |
+| Microsoft Azure             | Standard_D4as_v7   |
+| Oracle Cloud Infrastructure | VM.Standard.E6     |
+| Alibaba Cloud               | ecs.g9a.xlarge     |
+
+## Enterprise sizing <EnterpriseBadge />
+
+For enterprise deployments, use these guidelines:
+
+| Enterprise Product | CPU Cores | RAM  | Storage / database (Neo4j) |
+|--------------------|-----------|------|----------------------------|
+| Small              | 8         | 16GB | SSD and/or >= 5000 IOPS    |
+| Medium Data        | 16        | 32GB | SSD and/or >= 5000 IOPS    |
+| Medium Action      | 16        | 32GB | SSD and/or >= 5000 IOPS    |
+| Large Data         | 32        | 64GB | SSD and/or >= 5000 IOPS    |
+| Large Action       | 32        | 64GB | SSD and/or >= 5000 IOPS    |
+
+For detailed information about enterprise products and their features, see the [OpsMill pricing page](https://opsmill.com/pricing/).
+
+## Performance benchmark utility
+
+To evaluate your system's performance, use our benchmarking utility. It tests CPU, memory, and disk IOPS.
+
+:::note
+
+Even with the right amount of CPU cores and memory, other factors such as CPU speed can impact Infrahub performance.
+
+:::
+
+Run the tool using Docker:
+
+```shell title="❯ docker run --pull always --rm registry.opsmill.io/opsmill/bench"
+docker run --pull always --rm registry.opsmill.io/opsmill/bench
+```
+
+Sample output:
+
+```shell
+latest: Pulling from opsmill/bench
+09f376ebb190: Already exists
+6008598ecd4d: Already exists
+b70c7f4d3f19: Pull complete
+84e80b988953: Pull complete
+Digest: sha256:6f0031a0f61823cca7d319033087f80524eadffa87b1981b2e82d841ada12895
+Status: Downloaded newer image for registry.opsmill.io/opsmill/bench:latest
+Running Disk IOPS benchmark... hold on
+Running CPU/Memory benchmark... hold on
+
+Benchmark results:
+
+Memory: 15611 MB - Required: 8000 MB : OK
+CPU Perf: 2337 - Required: 1500 : OK
+Disk Read IOPS: 47742 - Required: 5000 : OK
+Disk Write IOPS: 15885 - Required: 5000 : OK
+```
