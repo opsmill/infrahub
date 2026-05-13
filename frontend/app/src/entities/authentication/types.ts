@@ -15,9 +15,7 @@ export type LoginError = {
   message: string;
 };
 
-export type AuthMethod =
-  | { kind: "local"; label: string }
-  | { kind: "sso"; providers: Array<SSOProvider> };
-// Future: | { kind: "ldap"; label: string };
+export type AuthMethod = { kind: "local" } | { kind: "sso"; providers: Array<SSOProvider> };
+// Future: | { kind: "ldap" };
 
 export type AuthMethodKind = AuthMethod["kind"];
