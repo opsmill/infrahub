@@ -304,6 +304,7 @@ mutation UpdateNumberPool(
     object {
       display_label
       id
+      end_range { value }
     }
   }
 }
@@ -1315,7 +1316,7 @@ class TestNumberPoolUpsertImmutableFields:
 
         pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch_scope_class)
         assert pool is not None
-        assert pool.get_attribute("end_range").value == 30  # type: ignore[union-attr]
+        assert pool.get_attribute("end_range").value == 30
 
     async def test_update_with_unchanged_node_fields(
         self,
@@ -1360,7 +1361,11 @@ class TestNumberPoolUpsertImmutableFields:
             },
         )
         assert not update_same_values.errors
-        assert update_same_values.data
+        assert update_same_values.data["CoreNumberPoolUpdate"]["object"]["end_range"]["value"] == 25
+
+        pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch_scope_class)
+        assert pool is not None
+        assert pool.get_attribute("end_range").value == 25
 
     async def test_update_rejects_node_attribute_change(
         self,
