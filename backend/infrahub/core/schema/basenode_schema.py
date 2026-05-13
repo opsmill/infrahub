@@ -675,9 +675,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
         super().update(other=other)
 
-        # Allow to specify empty string to remove existing fields values
+        # Allow to specify empty string to remove existing fields values.
+        # Only clear when self actually has a value to clear — otherwise we synthesize a
+        # phantom diff (e.g. "" → None) when both sides start identical, which falsely
+        # triggers schema migration validation in the proposed-change integrity flow.
         for field_name in OPTIONAL_TEXT_FIELDS:
-            if getattr(other, field_name, None) == "":  # noqa: PLC1901
+            if getattr(other, field_name, None) == "" and getattr(self, field_name, None) not in (None, ""):  # noqa: PLC1901
                 setattr(self, field_name, None)
 
         return self
