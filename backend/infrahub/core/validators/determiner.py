@@ -83,16 +83,17 @@ class ConstraintValidatorDeterminer:
 
     async def _get_all_property_constraints(self) -> list[SchemaUpdateConstraintInfo]:
         constraints: list[SchemaUpdateConstraintInfo] = []
-        schemas = list(self.schema_branch.get_all(duplicate=False).values())
+        # Scope to kinds with actual data diffs — otherwise we revalidate node-level
+        # constraints (uniqueness, hierarchy, inherit_from, generate_profile) for every
+        # schema in the branch even when only one kind's data changed.
+        schemas = [
+            schema for schema in self.schema_branch.get_all(duplicate=False).values() if schema.kind in self._node_kinds
+        ]
         # added here to check their uniqueness constraints
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaNode", duplicate=False))
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaGeneric", duplicate=False))
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaAttribute", duplicate=False))
-        with contextlib.suppress(SchemaNotFoundError):
-            schemas.append(self.schema_branch.get_node(name="SchemaRelationship", duplicate=False))
+        for schema_kind in ("SchemaNode", "SchemaGeneric", "SchemaAttribute", "SchemaRelationship"):
+            if schema_kind in self._node_kinds:
+                with contextlib.suppress(SchemaNotFoundError):
+                    schemas.append(self.schema_branch.get_node(name=schema_kind, duplicate=False))
         for schema in schemas:
             constraints.extend(await self._get_property_constraints_for_one_schema(schema=schema))
         return constraints

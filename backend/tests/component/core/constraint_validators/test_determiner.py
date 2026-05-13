@@ -55,15 +55,6 @@ def person_name_node_diff(
                 property_name="inherit_from",
             ),
         ),
-        SchemaUpdateConstraintInfo(
-            constraint_name="node.inherit_from.update",
-            path=SchemaPath(
-                path_type=SchemaPathType.NODE,
-                schema_kind="TestCar",
-                field_name="inherit_from",
-                property_name="inherit_from",
-            ),
-        ),
     }
     return node_diff, schema_updated_constraint_infos
 
@@ -192,15 +183,6 @@ class TestConstraintDeterminer:
                 property_name="uniqueness_constraints",
             ),
         )
-        car_uniqueness_constraint_info = SchemaUpdateConstraintInfo(
-            constraint_name="node.uniqueness_constraints.update",
-            path=SchemaPath(
-                path_type=SchemaPathType.NODE,
-                schema_kind="TestCar",
-                field_name="uniqueness_constraints",
-                property_name="uniqueness_constraints",
-            ),
-        )
         max_length_param_constraint_info = SchemaUpdateConstraintInfo(
             constraint_name=ConstraintIdentifier.ATTRIBUTE_PARAMETERS_MAX_LENGTH_UPDATE.value,
             path=SchemaPath(
@@ -211,7 +193,6 @@ class TestConstraintDeterminer:
             ),
         )
         constraint_info_set.add(person_uniqueness_constraint_info)
-        constraint_info_set.add(car_uniqueness_constraint_info)
         constraint_info_set.add(max_length_param_constraint_info)
 
         constraints = await determiner.get_constraints(node_diffs=[node_diff])

@@ -134,9 +134,8 @@ async def test_get_proposed_change_schema_integrity_constraints(
         schema=schema, diff_summary=branch_diff_01_summary
     )
     non_generate_profile_constraints = [c for c in constraints if c.constraint_name != "node.generate_profile.update"]
-    # should be updated/removed when ConstraintValidatorDeterminer is updated (#2592)
-    assert len(constraints) == 248
-    assert len(non_generate_profile_constraints) == 151
+    assert len(constraints) == 14
+    assert len(non_generate_profile_constraints) == 13
     dumped_constraints = [c.model_dump() for c in non_generate_profile_constraints]
     assert {
         "constraint_name": "relationship.optional.update",
@@ -228,46 +227,10 @@ async def test_get_proposed_change_schema_integrity_constraints(
             "schema_kind": "TestPerson",
         },
     } in dumped_constraints
-    assert {
-        "constraint_name": "node.parent.update",
-        "path": {
-            "field_name": "parent",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "parent",
-            "schema_id": None,
-            "schema_kind": "CoreStandardGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.children.update",
-        "path": {
-            "field_name": "children",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "children",
-            "schema_id": None,
-            "schema_kind": "CoreStandardGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.parent.update",
-        "path": {
-            "field_name": "parent",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "parent",
-            "schema_id": None,
-            "schema_kind": "CoreGraphQLQueryGroup",
-        },
-    } in dumped_constraints
-    assert {
-        "constraint_name": "node.children.update",
-        "path": {
-            "field_name": "children",
-            "path_type": SchemaPathType.NODE,
-            "property_name": "children",
-            "schema_id": None,
-            "schema_kind": "CoreGraphQLQueryGroup",
-        },
-    } in dumped_constraints
+    # Constraints are scoped to kinds with actual data diffs in branch_diff_01_summary
+    # (TestPerson only) — kinds like CoreStandardGroup or CoreGraphQLQueryGroup are not
+    # revalidated despite having property-level update constraints.
+    assert all(c.path.schema_kind == "TestPerson" for c in constraints)
 
 
 async def test_schema_integrity(
