@@ -2432,15 +2432,22 @@ class SchemaBranch:
             ):
                 continue
 
+            # Synthetic, deterministic id so diff matching is stable across processed schemas.
+            # See _diff_element in basenode_schema.py: two synthetic relationships with id=None
+            # on either side are reported as `added` even when structurally identical.
+            synthetic_id = f"__virtual__/{node_name}/{PROFILES_RELATIONSHIP_NAME}"
+
             # Add relationship between node and profile
             if PROFILES_RELATIONSHIP_NAME not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
 
-                node_schema.relationships.append(RelationshipSchema(**profiles_rel_settings))
+                node_schema.relationships.append(RelationshipSchema(id=synthetic_id, **profiles_rel_settings))
                 self.set(name=node_name, schema=node_schema)
             else:
                 has_changes: bool = False
                 rel_profiles = node.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
+                if rel_profiles.id != synthetic_id:
+                    has_changes = True
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         has_changes = True
@@ -2450,6 +2457,8 @@ class SchemaBranch:
 
                 node_schema = self.get(name=node_name, duplicate=True)
                 rel_profiles = node_schema.get_relationship(name=PROFILES_RELATIONSHIP_NAME)
+                if rel_profiles.id != synthetic_id:
+                    rel_profiles.id = synthetic_id
                 for name, value in profiles_rel_settings.items():
                     if getattr(rel_profiles, name) != value:
                         setattr(rel_profiles, name, value)
@@ -2550,16 +2559,19 @@ class SchemaBranch:
                 "max_count": 1,
                 "min_count": 0,
             }
+            synthetic_id = f"__virtual__/{node_name}/{OBJECT_TEMPLATE_RELATIONSHIP_NAME}"
 
             # Add relationship between node and template
             if OBJECT_TEMPLATE_RELATIONSHIP_NAME not in node.relationship_names:
                 node_schema = self.get(name=node_name, duplicate=True)
 
-                node_schema.relationships.append(RelationshipSchema(**template_rel_settings))
+                node_schema.relationships.append(RelationshipSchema(id=synthetic_id, **template_rel_settings))
                 self.set(name=node_name, schema=node_schema)
             else:
                 has_changes: bool = False
                 rel_template = node.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME)
+                if rel_template.id != synthetic_id:
+                    has_changes = True
                 for name, value in template_rel_settings.items():
                     if getattr(rel_template, name) != value:
                         has_changes = True
@@ -2569,6 +2581,8 @@ class SchemaBranch:
 
                 node_schema = self.get(name=node_name, duplicate=True)
                 rel_template = node_schema.get_relationship(name=OBJECT_TEMPLATE_RELATIONSHIP_NAME)
+                if rel_template.id != synthetic_id:
+                    rel_template.id = synthetic_id
                 for name, value in template_rel_settings.items():
                     if getattr(rel_template, name) != value:
                         setattr(rel_template, name, value)
@@ -2746,7 +2760,8 @@ class SchemaBranch:
             if PROFILES_RELATIONSHIP_NAME not in [r.name for r in template_schema.relationships]:
                 settings = dict(profiles_rel_settings)
                 settings["identifier"] = PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER
-                template_schema.relationships.append(RelationshipSchema(**settings))
+                synthetic_id = f"__virtual__/{template_schema.kind}/{PROFILES_RELATIONSHIP_NAME}"
+                template_schema.relationships.append(RelationshipSchema(id=synthetic_id, **settings))
 
         self.set(name=template_schema.kind, schema=template_schema)
 
