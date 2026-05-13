@@ -1,6 +1,5 @@
-import { useConfig } from "@/entities/config/ui/config-provider";
-
 import type { AuthMethod } from "@/entities/authentication/types";
+import { useConfig } from "@/entities/config/ui/config-provider";
 
 export function useAvailableAuthMethods(): Array<AuthMethod> {
   const config = useConfig();

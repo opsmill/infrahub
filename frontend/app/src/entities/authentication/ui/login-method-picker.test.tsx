@@ -47,7 +47,9 @@ describe("LoginMethodPicker", () => {
 
     // The picker defaults to SSO when available and no preference is stored
     // (preserves the existing UX from the old Login component).
-    await expect.element(component.getByRole("link", { name: "Continue with Google" })).toBeVisible();
+    await expect
+      .element(component.getByRole("link", { name: "Continue with Google" }))
+      .toBeVisible();
     await expect
       .element(component.getByRole("button", { name: "Log in with your credentials" }))
       .toBeVisible();

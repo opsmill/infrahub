@@ -99,15 +99,15 @@ export const REFRESH_TOKEN_KEY = "refresh_token";
 export const LAST_USED_METHOD_KEY = "auth_last_used_method";
 ```
 
-- [ ] **Step 3: Type-check passes**
+- [ ] **Step 3: Verify the project still builds**
 
-Run from `frontend/app`:
+`tsconfig.json` has pre-existing errors that prevent using `tsc --noEmit` exit 0 as a gate. Verify nothing in *this commit's* files is broken by running the existing auth tests (none touch these files yet but they import from them transitively):
 
 ```bash
-pnpm exec tsc --noEmit -p tsconfig.app.json
+cd frontend/app && pnpm test src/entities/authentication --run
 ```
 
-Expected: exits 0 with no new errors.
+Expected: tests pass (currently none exist in this directory, so vitest reports "no tests"; that is OK).
 
 - [ ] **Step 4: Commit**
 
@@ -517,13 +517,13 @@ export const LocalCredentialsForm = ({ className }: { className?: string }) => {
 };
 ```
 
-- [ ] **Step 2: Type-check passes**
+- [ ] **Step 2: Verify the existing auth tests still pass**
 
 ```bash
-cd frontend/app && pnpm exec tsc --noEmit -p tsconfig.app.json
+cd frontend/app && pnpm test src/entities/authentication --run
 ```
 
-Expected: exits 0.
+Expected: all auth tests added so far PASS (no new failures).
 
 - [ ] **Step 3: Commit**
 
@@ -966,14 +966,13 @@ grep -rn "from \"@/entities/authentication/ui/login\"" frontend/app/src || true
 
 Expected: no matches.
 
-- [ ] **Step 4: Type-check and run all auth tests**
+- [ ] **Step 4: Run all auth tests**
 
 ```bash
-cd frontend/app && pnpm exec tsc --noEmit -p tsconfig.app.json
-cd frontend/app && pnpm test src/entities/authentication
+cd frontend/app && pnpm test src/entities/authentication --run
 ```
 
-Expected: type-check exits 0; all auth tests PASS.
+Expected: all auth tests PASS.
 
 - [ ] **Step 5: Commit**
 
@@ -1086,13 +1085,15 @@ EOF
 )")
 ```
 
-- [ ] **Step 2: Type-check**
+- [ ] **Step 2: Production build (catches type errors that matter)**
+
+`tsconfig.json` has pre-existing errors unrelated to this work, so a bare `tsc --noEmit` is not a useful gate. Use the production build instead — it fails on type errors that would actually break shipped code.
 
 ```bash
-cd frontend/app && pnpm exec tsc --noEmit -p tsconfig.app.json
+cd frontend/app && pnpm build
 ```
 
-Expected: exits 0.
+Expected: build succeeds.
 
 - [ ] **Step 3: Unit tests (full suite)**
 

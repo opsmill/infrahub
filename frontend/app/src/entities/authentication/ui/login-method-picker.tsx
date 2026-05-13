@@ -19,16 +19,14 @@ function MethodContent({ method }: { method: AuthMethod }) {
     case "local":
       return <LocalCredentialsForm className="fade-in animate-in" />;
     case "sso":
-      return (
-        <LoginWithSSOButtons providers={method.providers} className="fade-in animate-in" />
-      );
+      return <LoginWithSSOButtons providers={method.providers} className="fade-in animate-in" />;
   }
 }
 
 // When multiple methods are available and no preference is stored, prefer SSO
 // to preserve the existing default UX. Stored preferences override this.
 function preferredDefault(methods: Array<AuthMethod>): AuthMethod | undefined {
-  if (methods.length === 0) return undefined;
+  if (methods.length === 0) return;
   return methods.find((m) => m.kind === "sso") ?? methods[0];
 }
 
