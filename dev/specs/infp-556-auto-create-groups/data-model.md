@@ -14,47 +14,35 @@ This feature touches the data model in one place: the addition of a single `orig
 
 | Field | Kind | Optional | UI visibility | Default | Read-only from external paths | Validation |
 |---|---|---|---|---|---|---|
-| `origin` | Dropdown (static enum) | **Yes** (nullable) | **Hidden** from the schema-driven UI by default (clarification 2026-05-13) | None — unset is the documented state for any group not created by the auto-creation path | Yes (FR-021) | When set, value MUST be one of the 7 literals below |
+| `origin` | **`Text`** (free-form string) | **Yes** (nullable) | **`display: extra`** — hidden from the default schema-driven UI view but revealable via the extra/advanced-attributes toggle (FR-012, clarification 2026-05-13) | None — unset is the documented state for any group not created by the auto-creation path | Yes (FR-021) | When set, value is the configured name of the identity provider that triggered auto-creation (no enum constraint — any non-empty string is accepted; provider names are constrained at the configuration layer, not here) |
 
-**Enum literal value set** (fixed at schema level; runtime config changes do NOT extend this set — FR-012):
+**Value semantics** (FR-012, FR-013, clarification 2026-05-13):
 
-```text
-oidc_provider1
-oidc_provider2
-oidc_google
-oauth2_provider1
-oauth2_provider2
-oauth2_google
-ldap
-```
+- The value, when set, holds the **configured name of the identity provider** that authenticated the triggering login — taken verbatim from the auth-flow context (e.g., the configured OIDC provider name from `INFRAHUB_SECURITY_OIDC_PROVIDERS`, the configured OAuth2 provider name, or the configured LDAP provider name).
+- There is **no fixed enum value set**. The previously-planned `oidc_provider1` / `oidc_provider2` / `oidc_google` / `oauth2_provider1` / `oauth2_provider2` / `oauth2_google` / `ldap` literals are fully superseded by the Text-with-provider-name model from clarification 2026-05-13.
+- There is **no Python `AccountGroupOrigin` enum** in the codebase. The value type at every layer (schema, service, event payload) is `str`.
 
-The literals `manual` and `system` previously enumerated here are removed per clarification 2026-05-13. Admin-facing and platform-bootstrap creation paths leave `origin` unset; the *absence* of a value is itself the "not auto-created" signal.
-
-**Mapping rule from auth flow to enum literal** (clarification 2026-05-11, formalized in FR-013):
+**Mapping rule from auth flow to attribute value** (clarification 2026-05-13 supersedes the prior 2026-05-11 mapping):
 
 | Source path | Resulting `origin` value |
 |---|---|
-| OIDC login through `OIDCProvider.PROVIDER1` | `oidc_provider1` |
-| OIDC login through `OIDCProvider.PROVIDER2` | `oidc_provider2` |
-| OIDC login through `OIDCProvider.GOOGLE` | `oidc_google` |
-| OAuth2 login through `Oauth2Provider.PROVIDER1` | `oauth2_provider1` |
-| OAuth2 login through `Oauth2Provider.PROVIDER2` | `oauth2_provider2` |
-| OAuth2 login through `Oauth2Provider.GOOGLE` | `oauth2_google` |
-| Native LDAP login (INFP-105) | `ldap` |
-| OIDC-fronted LDAP/AD login | corresponding `oidc_*` slot value (NOT `ldap`) |
+| OIDC login through a configured OIDC provider | the configured **name** of that OIDC provider (string from settings) |
+| OAuth2 login through a configured OAuth2 provider | the configured **name** of that OAuth2 provider (string from settings) |
+| Native LDAP login (INFP-105) through a configured LDAP provider | the configured **name** of that LDAP provider (string from settings) |
+| OIDC-fronted LDAP/AD login | the configured name of the OIDC provider that authenticated the request (the LDAP-behind-OIDC is opaque to Infrahub) |
 | Any other admin-facing creation route (UI, GraphQL, REST, schema load) | **unset** (no value written) |
 | Platform bootstrap/seeding (`create_default_account_groups`) | **unset** (no value written) |
 
 ### Validation rules
 
 - `origin` is optional — `null`/unset is a valid state for any `CoreAccountGroup` row.
-- When set, `origin` MUST be one of the 7 enum literals; any other value rejected at the schema validation layer.
+- When set, `origin` is a non-empty `Text` value; the schema validation layer does not enforce a fixed value set (free-form provider name).
 - User-supplied `origin` on a create or update operation MUST be rejected or silently ignored (FR-021).
 - Once written by the auto-creation path, the value MUST NOT change via any external write path (FR-021). Only the auto-creation path may set it. Admin-facing and bootstrap paths MUST NOT write any value to `origin` (FR-013).
 
 ### State transitions
 
-`origin` has two states: unset (initial state for every row) and set-to-an-enum-literal (terminal — written only by the auto-creation path at first creation). No transitions out of the set state are permitted via external paths. The unset → set transition occurs only during the auto-creation atomic create.
+`origin` has two states: unset (initial state for every row) and set-to-a-provider-name-string (terminal — written only by the auto-creation path at first creation). No transitions out of the set state are permitted via external paths. The unset → set transition occurs only during the auto-creation atomic create. A subsequent contribution from a different provider does NOT overwrite the value (Edge Case "Same effective name from two providers" — provenance for additional contributions lives in the auto-creation event log only).
 
 ---
 
@@ -77,7 +65,7 @@ Concrete intermediate base for any event emitted by the auto-creation flow durin
 
 | Field | Type | Notes |
 |---|---|---|
-| `idp` | `str` | Identifier of the originating IdP: `<protocol>_<slot>`, e.g., `oidc_provider1`, `ldap` |
+| `idp` | `str` | The **configured name** of the originating identity provider (free-form string from settings — e.g., `"AzureAD-corp"`, `"OktaProd"`, `"corp-ldap"`). Same value that is written to the new group's `origin` attribute. Supersedes the prior `<protocol>_<slot>` shape from the enum-era reconcile. |
 | `triggering_user_id` | `UUID` | The account whose login produced the event |
 | `triggering_user_name` | `str` | Login name of the triggering account |
 | `protocol` | `ExternalAuthProtocol` | `OAUTH2 \| OIDC \| LDAP` |
@@ -91,7 +79,7 @@ Extends `GroupAutoCreateEvent` with:
 | `group_id` | `UUID` | The newly-created `CoreAccountGroup` node id |
 | `group_name` | `str` | Effective local name |
 | `source_pattern` | `str` | The raw regex pattern that matched (verbatim from config) |
-| `origin_value` | `AccountGroupOrigin` | The literal enum value written to the new group's `origin` attribute |
+| `origin_value` | `str` | The configured identity-provider name written to the new group's `origin` attribute (same string as `idp` on the base event; carried explicitly here for self-contained event payloads). Type is `str` — no enum (clarification 2026-05-13). |
 
 Emitted once per successful auto-creation (creation only, not on subsequent membership adds — FR-015).
 

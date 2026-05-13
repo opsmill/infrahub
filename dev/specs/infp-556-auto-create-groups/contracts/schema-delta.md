@@ -9,30 +9,20 @@
 ```python
 SchemaAttribute(
     name="origin",
-    kind=AttributeKind.Dropdown,
-    optional=True,              # Nullable — only the auto-creation path writes a value (FR-012, clarification 2026-05-13)
+    kind=AttributeKind.Text,    # Free-form string (FR-012, clarification 2026-05-13)
+    optional=True,              # Nullable — only the auto-creation path writes a value
     read_only=True,             # Read-only from every external write path (FR-021)
     branch=BranchSupportType.AGNOSTIC,
-    # UI-hidden — schema-driven UI MUST NOT render `origin` on default CoreAccountGroup views (FR-012, clarification 2026-05-13).
-    # Use whichever existing "hidden" / "internal" attribute flag the schema definition framework already exposes
-    # (e.g., `inherited=False, branch=AGNOSTIC, order_weight=...` plus the project's UI-hidden flag — confirm against
-    # how other system-managed attributes (e.g., `member_of_groups` internal fields) suppress UI rendering today).
-    description="Auth path that auto-created this group; unset for manually-created and platform-seeded groups.",
-    choices=[
-        DropdownChoice(name="oidc_provider1"),
-        DropdownChoice(name="oidc_provider2"),
-        DropdownChoice(name="oidc_google"),
-        DropdownChoice(name="oauth2_provider1"),
-        DropdownChoice(name="oauth2_provider2"),
-        DropdownChoice(name="oauth2_google"),
-        DropdownChoice(name="ldap"),
-        # NOTE: `manual` and `system` literals were dropped per clarification 2026-05-13.
-        # Those creation paths leave `origin` unset instead of writing a literal.
-    ],
+    display="extra",            # display: extra — hidden from default UI view, revealable via extra/advanced-attributes toggle (FR-012, clarification 2026-05-13)
+    description="Configured name of the identity provider that auto-created this group; unset for manually-created and platform-seeded groups.",
 )
+# NOTE: No `choices=[...]` block — origin is free-form Text holding the configured provider name (e.g.,
+#       "AzureAD-corp", "OktaProd", "corp-ldap"). The enum literals from the earlier reconcile
+#       (oidc_provider1, oidc_provider2, oidc_google, oauth2_provider1, oauth2_provider2, oauth2_google, ldap)
+#       are fully superseded by clarification 2026-05-13.
 ```
 
-> Field names (`read_only`, `optional`, the UI-hidden flag, etc.) above are illustrative — implementation MUST use whatever fields the existing `SchemaAttribute` / `Dropdown` types in `permission.py` and adjacent definition files already expose for "system-managed", "optional/nullable", "UI-hidden", and "static enum" semantics. If no `read_only`-style flag exists today, enforcement falls to (a) the input-validation layer rejecting user-supplied values on create/update, and (b) the write layer always overriding `origin__value` from the server-determined origin per FR-021. If no native UI-hidden flag exists, the implementation MUST add one (or extend the schema definition framework) — surfacing `origin` in the schema-driven UI is explicitly out of scope (clarification 2026-05-13).
+> Field names (`read_only`, `optional`, `display`, etc.) above MUST be matched to whatever the existing `SchemaAttribute` type in `permission.py` and adjacent definition files actually exposes. If the schema framework uses a different keyword for the `display: extra` capability (e.g., `display_mode`, `ui_visibility`, `extras=...`), use that. The contract here is the semantics, not the literal Python keyword. If no `read_only` flag exists, enforcement falls to (a) the input-validation layer rejecting user-supplied values on create/update, and (b) the write layer always sourcing `origin__value` from the auth-flow context per FR-021. The `display: extra` property is an **existing** schema capability — no extension to the schema definition framework is required (this is the key difference from the previous reconcile, which assumed a UI-hidden flag did not exist).
 
 ### Generated artifacts to regenerate
 
@@ -66,6 +56,6 @@ After upgrading to 1.10:
 
 - Every pre-existing `CoreAccountGroup` row has its `origin` attribute unset (no value written).
 - Every new `CoreAccountGroup` row created via admin-facing paths (UI/GraphQL/REST/schema load) likewise has `origin` unset (FR-013).
-- Every new `CoreAccountGroup` row created via the auto-creation path has `origin` set to the corresponding enum literal (FR-013).
+- Every new `CoreAccountGroup` row created via the auto-creation path has `origin` set to the **configured name** of the identity provider that authenticated the triggering login (free-form string from settings — FR-013).
 
-The previous Cypher backfill (`SET g.origin__value = "manual"`) is intentionally not implemented — the `manual` enum value no longer exists in the schema, and unset is a valid state.
+The previous Cypher backfill (`SET g.origin__value = "manual"`) is intentionally not implemented — `manual` is no longer a valid `origin` value, and unset is a valid state.

@@ -32,7 +32,7 @@ Expected:
 
 - The login completes successfully.
 - A `CoreAccountGroup` named `network-engineering` (the captured name) now exists.
-- Its `origin` attribute is set to the value matching the auth path you used (e.g., `oidc_provider1` if you logged in via the OIDC `provider1` slot; `ldap` if via native LDAP). Note: `origin` is UI-hidden by default — inspect it via the API (GraphQL/REST) rather than the group detail screen.
+- Its `origin` attribute is set to the **configured name** of the identity provider you logged in through (e.g., the value of the `name` field on your OIDC provider config — `"AzureAD-corp"`, `"OktaProd"`, etc., or the configured LDAP provider name). The value is the same string as is recorded on the auto-creation event's `idp` field. Note: `origin` uses `display: extra` — it is hidden from the default group detail view but appears when you toggle on the extra/advanced-attributes view; via the API (GraphQL/REST) it is always queryable.
 - The test user is a member of that group.
 - The group has zero attached roles and zero attached permissions (auto-created groups land empty by design — FR-009).
 
@@ -54,9 +54,9 @@ Query the activity event log filtered to `GroupAutoCreatedEvent` for the first l
 
 - `group_name = "network-engineering"`
 - `source_pattern = "^LDAP/group/(?P<name>.+)$"`
-- `idp` = the protocol+slot string (e.g., `oidc_provider1`, `ldap`)
+- `idp` = the **configured name** of the identity provider that authenticated the login (e.g., `"AzureAD-corp"`, `"OktaProd"`, `"corp-ldap"`) — same string as `origin` on the new group
 - `triggering_user_id` + `triggering_user_name` = the first test user
-- `origin_value` = the same value as the group's `origin` attribute
+- `origin_value` = the same value as the group's `origin` attribute (and as `idp`)
 
 ## 6 — Verify filter scoping (negative path)
 
@@ -70,7 +70,7 @@ Log in another test user whose claims include unrelated groups (e.g., `slack/gen
 
 Attempt to modify the `origin` attribute on the auto-created group via:
 
-- The UI form for that group → `origin` is hidden by default; if surfaced via developer tooling, save must reject.
+- The UI form for that group → toggle on the extra/advanced-attributes view so `origin` is rendered; the field MUST be presented as read-only (no editable input) per FR-021. If somehow surfaced as editable via developer tooling, the save MUST still reject.
 - A GraphQL mutation setting `origin` → expect a validation error, OR the field is silently ignored.
 - A REST PATCH/PUT → same.
 - A schema-load that includes a manual `origin` value → same.

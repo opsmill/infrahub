@@ -41,9 +41,9 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 **Purpose**: Schema delta, schema migration, Pydantic config, and shared enums that every user story depends on. ⚠️ No user story work can begin until this phase is complete.
 
-- [ ] T003 Add `origin` Dropdown attribute to `CoreAccountGroup` in `backend/infrahub/core/schema/definitions/core/permission.py:159` with the **7** enum literals from `contracts/schema-delta.md` (FR-012). Attribute MUST be marked `optional=True` (nullable) AND **UI-hidden** by default. Do NOT include `manual` or `system` literals (clarification 2026-05-13). [Sync: Gap Report]
+- [ ] T003 Add `origin` **`Text`** attribute to `CoreAccountGroup` in `backend/infrahub/core/schema/definitions/core/permission.py:159` per `contracts/schema-delta.md` (FR-012, clarification 2026-05-13). Attribute MUST be marked `optional=True` (nullable), `read_only=True`, and declared with the schema property `display: extra` (use whichever keyword the existing `SchemaAttribute` exposes for that capability — `display`, `display_mode`, or equivalent). Do NOT add a `choices=` list — the value is free-form text holding the configured provider name. [Sync: Gap Report]
 - [ ] T004 Regenerate schema artifacts with `uv run invoke backend.generate`; verify `backend/infrahub/core/schema/generated/` and `backend/infrahub/core/protocols.py` are updated (depends on T003)
-- [ ] T005 [P] Add `AccountGroupOrigin` StrEnum in `backend/infrahub/auth_groups/origin.py` mirroring the **7** schema literals (`oidc_provider1`, `oidc_provider2`, `oidc_google`, `oauth2_provider1`, `oauth2_provider2`, `oauth2_google`, `ldap`). Do NOT include `manual` or `system` — those creation paths leave `origin` unset (clarification 2026-05-13). [Sync: Gap Report]
+- [ ] ~~T005~~ **REMOVED** (clarification 2026-05-14): No Python `AccountGroupOrigin` StrEnum is needed — `origin` is free-form `Text` holding the configured provider name (string). The auth-flow context already exposes the configured provider name; the service passes it through to the new row's `origin__value` verbatim. Do NOT add `backend/infrahub/auth_groups/origin.py`; if any earlier branch added a stub, delete it. [Sync: Gap Report]
 - [ ] T006 [P] Add `auto_create_groups_filter: str | list[str] | None` field plus `_compile_filter_patterns` `@field_validator` to `SecuritySettings` in `backend/infrahub/config.py:743+`, storing compiled patterns on a private attribute and raising `ValueError` with setting name + position on bad regex (FR-001 to FR-004, contracts/config-settings.md)
 - [ ] T007 [P] Add `auto_create_groups_max_per_login: int = 50` field to `SecuritySettings` in `backend/infrahub/config.py:743+` with `>= 1` validation (FR-020 config, contracts/config-settings.md)
 - [ ] ~~T008~~ **REMOVED** (clarification 2026-05-13): No data-migration backfill is needed — `origin` is optional and pre-existing rows are valid with an unset value (FR-014). The previously-planned `m073_set_account_group_origin.py` MUST NOT be added; if any earlier branch added a stub, delete it. [Sync: Gap Report]
@@ -55,23 +55,23 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 ## Phase 3: User Story 1 - Auto-create groups from a filter pattern with name capture (Priority: P1) 🎯 MVP
 
-**Goal**: First time a user logs in with an external claim matching the configured filter, a `CoreAccountGroup` with the captured name is atomically created (zero roles/permissions, `origin` set to the auth-flow value), the user is added as a member, and concurrent first-logins for the same brand-new claim produce exactly one group.
+**Goal**: First time a user logs in with an external claim matching the configured filter, a `CoreAccountGroup` with the captured name is atomically created (zero roles/permissions, `origin` set to the configured name of the identity provider that authenticated the login), the user is added as a member, and concurrent first-logins for the same brand-new claim produce exactly one group.
 
-**Independent Test**: With filter `^LDAP/group/(?P<name>.+)$`, simulate a login carrying `LDAP/group/network-engineering`. Verify the group is created with the captured name, the user is a member, `origin` matches the auth flow (e.g. `oidc_provider1` or `ldap`), and a second user's login reuses the same group rather than duplicating it.
+**Independent Test**: With filter `^LDAP/group/(?P<name>.+)$`, simulate a login carrying `LDAP/group/network-engineering`. Verify the group is created with the captured name, the user is a member, `origin` holds the configured provider name string (e.g. `"AzureAD-corp"` or `"corp-ldap"`), and a second user's login reuses the same group rather than duplicating it.
 
 ### Tests for User Story 1 ⚠️ Write FIRST, ensure they FAIL before implementation
 
 - [ ] T010 [P] [US1] Unit test `FilterPattern` matching + named-capture extraction + no-capture fallback (FR-005 to FR-008) in `backend/tests/unit/auth_groups/test_filter.py`
-- [ ] T011 [P] [US1] Unit test provider-slot → origin mapping for all 7 sources (OIDC×3, OAuth2×3, LDAP) in `backend/tests/unit/auth_groups/test_mapper.py` (R1, FR-013)
+- [ ] ~~T011~~ **REMOVED** (clarification 2026-05-14): No provider-slot → enum mapping exists in the new design. The service receives the configured provider name (string) directly from the auth-flow context and writes it through. Unit tests for the auth-flow-context → `origin` value pass-through live inside `T012` functional tests (which assert against a known configured provider name). Do NOT create `backend/tests/unit/auth_groups/test_mapper.py`. [Sync: Gap Report]
 - [ ] T012 [P] [US1] Functional test happy-path auto-creation in `backend/tests/functional/auth_groups/test_autocreate_flow.py` covering US1 acceptance scenarios 1, 2, 3, and 5 (capture, dedup-on-reuse, no-capture full-claim, CoreGroup-name collision fallback) plus FR-018 dedup-within-login
 - [ ] T013 [P] [US1] Integration_docker test for concurrent first-logins in `backend/tests/integration_docker/auth_groups/test_concurrent_first_logins.py` issuing N simultaneous logins for the same brand-new claim and asserting exactly one group is created and every login succeeds (FR-011, SC-008)
 
 ### Implementation for User Story 1
 
 - [ ] T014 [P] [US1] Implement `FilterPattern` dataclass + `evaluate(claim) -> effective_name | None` (first-match-per-claim, in declared order) in `backend/infrahub/auth_groups/filter.py` (FR-005 to FR-008)
-- [ ] T015 [P] [US1] Implement provider-slot → origin mapping function `origin_for_auth_flow(protocol, slot)` in `backend/infrahub/auth_groups/mapper.py` returning the matching `AccountGroupOrigin` literal (R1, FR-013, depends on T005)
-- [ ] T016 [US1] Implement `autocreate_groups_for_login(db, account, protocol, slot, claims, settings)` in `backend/infrahub/auth_groups/service.py` using the 3-layer find-or-create pattern from research.md R3 (fast-path lookup → distributed lock `lock.registry.get(name=..., namespace="auto-create-group")` with under-lock re-check → `Node.init(...).save()` catching `UniqueConstraintViolation`), setting `origin` from T015, deduping effective names within the login, skipping claims whose effective name fails `CoreAccountGroup` identifier validation, and falling back to `sso_user_default_group` only when zero matches (FR-005 to FR-011, FR-016 partial, FR-017 skip behavior, FR-018) — depends on T014, T015
-- [ ] T017 [US1] Hook `autocreate_groups_for_login` into `signin_sso_account` in `backend/infrahub/auth.py:310` so every OIDC and OAuth2 login routes external group claims through the service before the existing membership-add path (FR-005 entry) — depends on T016
+- [ ] ~~T015~~ **REMOVED** (clarification 2026-05-14): No mapper module needed. The service in T016 receives the configured provider name (`provider_name: str`) directly from the auth-flow context and writes it through to `origin__value` verbatim. Do NOT create `backend/infrahub/auth_groups/mapper.py`. [Sync: Gap Report]
+- [ ] T016 [US1] Implement `autocreate_groups_for_login(db, account, protocol, provider_name, claims, settings)` in `backend/infrahub/auth_groups/service.py` using the 3-layer find-or-create pattern from research.md R3 (fast-path lookup → distributed lock `lock.registry.get(name=..., namespace="auto-create-group")` with under-lock re-check → `Node.init(...).save()` catching `UniqueConstraintViolation`), setting `origin = provider_name` verbatim from the auth-flow context (no enum lookup), deduping effective names within the login, skipping claims whose effective name fails `CoreAccountGroup` identifier validation, and falling back to `sso_user_default_group` only when zero matches (FR-005 to FR-011, FR-013, FR-016 partial, FR-017 skip behavior, FR-018, clarification 2026-05-14) — depends on T014
+- [ ] T017 [US1] Hook `autocreate_groups_for_login` into `signin_sso_account` in `backend/infrahub/auth.py:310` so every OIDC and OAuth2 login routes external group claims through the service before the existing membership-add path. The call site MUST pass the **configured provider name** (the `name` field on the OIDC/OAuth2 provider config that authenticated the request) as `provider_name`, NOT a slot identifier (FR-005 entry, FR-013, clarification 2026-05-14) — depends on T016
 
 **Checkpoint**: An admin can configure a filter, log a user in, and observe the matching claim produce a new local group with the user as a member; concurrent first-logins produce exactly one group.
 
@@ -117,9 +117,9 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 ## Phase 6: User Story 4 - Distinguish auto-created groups from manually-created ones (Priority: P2)
 
-**Goal**: `origin` is set correctly across every CoreAccountGroup creation path (`oidc_*` / `oauth2_*` / `ldap` for auto-creation, `manual` for admin-facing routes, `system` for platform bootstrap), pre-existing rows are backfilled to `manual` by the migration, and `origin` is read-only from all external write paths.
+**Goal**: `origin` carries the configured provider name on every auto-created group, is unset on every other group (manually-created, platform-seeded, pre-upgrade existing), and is read-only from all external write paths. The attribute is declared `display: extra` so it is hidden from the default UI view but revealable via the extra/advanced-attributes toggle.
 
-**Independent Test**: Trigger auto-creation via an OIDC login and verify the resulting group's `origin = oidc_providerN`. Create a group manually via the API and verify `origin = manual`. Inspect a platform-seeded bootstrap group and verify `origin = system`. After running the schema migration on a fixture with pre-existing groups, verify every row has `origin = manual` with zero nulls. Attempt to set/change `origin` via UI form, GraphQL mutation, REST PATCH, and schema-load; verify all four are rejected or silently ignored, and the original value is preserved.
+**Independent Test**: Trigger auto-creation via an OIDC login configured under provider name `"AzureAD-corp"` and verify the resulting group's `origin == "AzureAD-corp"`. Create a group manually via the API and verify its `origin` is null/unset. Inspect a platform-seeded bootstrap group and verify `origin` is null/unset. Verify pre-existing rows from an upgrade fixture have `origin` null/unset (no backfill ran). Attempt to set/change `origin` via UI form, GraphQL mutation, REST PATCH, and schema-load; verify all four are rejected or silently ignored, and the original value is preserved (or remains unset).
 
 ### Tests for User Story 4 ⚠️ Write FIRST, ensure they FAIL before implementation
 
@@ -127,7 +127,7 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 - [ ] T025 [P] [US4] Functional test that admin-facing creation paths (UI/GraphQL/REST/schema-load) leave `origin` **unset** in `backend/tests/functional/auth_groups/test_origin_unset_on_admin_paths.py` — create a group via each surface, assert `origin` is null/absent on every read-back (FR-013, clarification 2026-05-13). Replaces the previously-planned `test_origin_manual.py`. [Sync: Gap Report]
 - [ ] T026 [P] [US4] Functional test that platform-seeded bootstrap groups have `origin` **unset** in `backend/tests/functional/auth_groups/test_origin_unset_on_bootstrap.py` — inspect every group created by `create_default_account_groups` and assert `origin` is null/absent (FR-013, clarification 2026-05-13). Replaces the previously-planned `test_origin_system.py`. [Sync: Gap Report]
 - [ ] T027 [P] [US4] Functional test `origin` read-only enforcement in `backend/tests/functional/auth_groups/test_origin_readonly.py`: GraphQL create-with-origin, GraphQL update-origin, REST PATCH origin, schema-load with origin — all rejected or silently ignored. Verify enforcement for BOTH (a) a group whose `origin` is currently set (auto-created — value preserved) and (b) a group whose `origin` is currently unset (admin-created — must remain unset, no value accepted) (FR-021, US4 acceptance scenario 5). [Sync: Gap Report]
-- [ ] T046 [P] [US4] Functional test that `origin` is hidden from the schema-driven UI in `backend/tests/functional/auth_groups/test_origin_ui_hidden.py` — assert the schema metadata exposed to the UI marks `origin` as hidden (no field/column rendered by default) on `CoreAccountGroup` views (FR-012 UI-hidden, US4 acceptance scenario 6, clarification 2026-05-13). [Sync: Gap Report]
+- [ ] T046 [P] [US4] Functional test that the `origin` attribute's schema metadata declares `display: extra` in `backend/tests/functional/auth_groups/test_origin_display_extra.py` — read the active schema for `CoreAccountGroup`, locate the `origin` attribute definition, assert its `display` (or equivalent UI-visibility field) equals the `extra` literal. This is the test for FR-012 / US4 acceptance scenario 6 under the Text-attribute design (clarification 2026-05-14 supersedes the earlier "fully UI-hidden" test). [Sync: Gap Report]
 
 ### Implementation for User Story 4
 
@@ -148,13 +148,13 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 ### Tests for User Story 5 ⚠️ Write FIRST, ensure they FAIL before implementation
 
-- [ ] T032 [P] [US5] Functional test `GroupAutoCreatedEvent` emission in `backend/tests/functional/auth_groups/test_event_created.py`: one event per actual create, no event on reuse of existing auto-created group (US5 acceptance scenarios 1 and 2, FR-015)
+- [ ] T032 [P] [US5] Functional test `GroupAutoCreatedEvent` emission in `backend/tests/functional/auth_groups/test_event_created.py`: one event per actual create, no event on reuse of existing auto-created group. Assert `origin_value` is a `str` carrying the configured provider name (not an enum literal — clarification 2026-05-14); assert `idp == origin_value` on the emitted event (US5 acceptance scenarios 1 and 2, FR-015) [Sync: Gap Report]
 - [ ] T033 [P] [US5] Functional test `GroupAutoCreateRejectedClaimEvent` emission in `backend/tests/functional/auth_groups/test_event_rejected.py` when an effective name fails `CoreAccountGroup` identifier validation (FR-017)
 - [ ] T034 [P] [US5] Functional test `GroupAutoCreateCapBreachEvent` emission in `backend/tests/functional/auth_groups/test_event_cap_breach.py`: exactly one event per cap-breaching login, payload carries verbatim length-truncated dropped claims (FR-020 event, 2026-05-11 verbatim clarification)
 
 ### Implementation for User Story 5
 
-- [ ] T035 [US5] Add `GroupAutoCreateEvent` concrete intermediate + `GroupAutoCreatedEvent`, `GroupAutoCreateRejectedClaimEvent`, `GroupAutoCreateCapBreachEvent` leaves to `backend/infrahub/events/group_action.py` modeled on the existing `GroupMutatedEvent` + `GroupMemberAddedEvent` / `GroupMemberRemovedEvent` shape, each with its own `event_name` ClassVar under the `EVENT_NAMESPACE.group.auto_create.*` prefix (contracts/events.md)
+- [ ] T035 [US5] Add `GroupAutoCreateEvent` concrete intermediate + `GroupAutoCreatedEvent`, `GroupAutoCreateRejectedClaimEvent`, `GroupAutoCreateCapBreachEvent` leaves to `backend/infrahub/events/group_action.py` modeled on the existing `GroupMutatedEvent` + `GroupMemberAddedEvent` / `GroupMemberRemovedEvent` shape, each with its own `event_name` ClassVar under the `EVENT_NAMESPACE.group.auto_create.*` prefix (contracts/events.md). `GroupAutoCreateEvent.idp: str` carries the configured provider name. `GroupAutoCreatedEvent.origin_value: str` (NOT `AccountGroupOrigin` — that enum was removed; clarification 2026-05-14). [Sync: Gap Report]
 - [ ] T036 [US5] Emit `GroupAutoCreatedEvent` exactly once per successful new-group create from `autocreate_groups_for_login` in `backend/infrahub/auth_groups/service.py` — NOT on existing-group reuse, NOT on constraint-violation re-fetch (FR-015, R3 critical post-write invariant — depends on T016, T035)
 - [ ] T037 [US5] Emit `GroupAutoCreateRejectedClaimEvent` when a matched claim's effective name fails identifier validation in `backend/infrahub/auth_groups/service.py`; claim value stored verbatim with length truncation only (FR-017, 2026-05-11 verbatim clarification — depends on T016, T035)
 - [ ] T038 [US5] Emit a single `GroupAutoCreateCapBreachEvent` when the per-login cap is reached in `backend/infrahub/auth_groups/service.py`; dropped claims stored verbatim per-entry, length-truncated; login completes (FR-020 event, 2026-05-11 verbatim clarification — depends on T020, T035)
@@ -167,7 +167,7 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 **Purpose**: Documentation, changelog, formatting, and full quickstart validation.
 
-- [ ] T039 [P] Update `docs/topics/security/sso.mdx` per FR-019: working example with `^LDAP/group/(?P<name>.+)$`, explicit safety note about filter scoping, interaction with IFC-922 default group, credit to community PR #8515 author (wording to be coordinated with Yvonne at release time)
+- [ ] T039 [P] Update `docs/topics/security/sso.mdx` per FR-019: working example with `^LDAP/group/(?P<name>.+)$`, explicit safety note about filter scoping, interaction with IFC-922 default group, credit to community PR #8515 author (wording to be coordinated with Yvonne at release time). Updated scope (clarifications 2026-05-13 + 2026-05-14): also document that `origin` is a `Text` attribute declared with `display: extra` (hidden from default UI view, revealable via extra/advanced-attributes toggle, exposed unconditionally via API); that the value holds the **configured provider name** (not an enum literal); and that manually-created, platform-seeded, and pre-existing groups carry no `origin` value. [Sync: Gap Report]
 - [ ] T040 [P] Add towncrier fragment `changelog/+INFP-556-auto-create-account-groups.added.md` summarizing the user-facing change
 - [ ] T041 Run `uv run invoke format` and `uv run invoke lint` to ensure no style/typing regressions
 - [ ] T042 Walk through every step of `specs/infp-556-auto-create-groups/quickstart.md` against a running local instance; capture deltas (if any) back into the doc
@@ -180,7 +180,7 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 - **Setup (Phase 1)**: No dependencies — can start immediately.
 - **Foundational (Phase 2)**: Depends on Setup. **Blocks all user stories.** T004 (regenerate schema) blocks anything importing `CoreAccountGroup` with the new attribute. T008 and T009 were removed per clarification 2026-05-13 (no data-migration backfill needed).
-- **US1 (Phase 3)**: Depends on Foundational (needs schema, config, and `AccountGroupOrigin`).
+- **US1 (Phase 3)**: Depends on Foundational (needs schema attribute + config). The previously-listed `AccountGroupOrigin` Python enum dependency was removed in clarification 2026-05-14 — the service now passes the configured provider name string through directly.
 - **US2 (Phase 4)**: Depends on US1 T016 (extends `autocreate_groups_for_login` with the cap counter).
 - **US3 (Phase 5)**: Depends on US1 T017 (wires the auto-creation hook ahead of the default-group fallback).
 - **US4 (Phase 6)**: Depends on Foundational (`origin` attribute must exist). Does NOT depend on US1's service; runs in parallel with US1/US2/US3.
@@ -190,7 +190,7 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 ### Within Each User Story
 
 - Tests are written first and must FAIL before implementation tasks are merged.
-- `FilterPattern` and `mapper` are pure-logic and parallel; `service.py` depends on both.
+- `FilterPattern` is pure-logic; `service.py` depends on it (and on the config). No mapper module exists in the new design — the configured provider name passes through directly from the auth-flow context (clarification 2026-05-14).
 - The hook into `auth.py:signin_sso_account` (T017) depends on the service being importable.
 - Event classes (T035) must exist before service code emits them (T036–T038).
 
@@ -198,8 +198,8 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 
 - T001, T002 in Phase 1 are fully parallel.
 - T003, T005, T006, T007 in Phase 2 touch different files and are parallel; T004 serializes after T003. (T008 and T009 removed — see clarification 2026-05-13.)
-- All US1 tests (T010, T011, T012, T013) are parallel.
-- T014 and T015 in US1 are parallel (different files); T016 serializes after both; T017 serializes after T016.
+- All US1 tests (T010, T012, T013) are parallel. (T011 was removed in clarification 2026-05-14 — no mapper test.)
+- T014 in US1 is the sole pure-logic implementation; T016 serializes after it; T017 serializes after T016. (T015 was removed in clarification 2026-05-14 — no mapper module.)
 - US4 has the highest parallelism: T024, T025, T026, T027, T046 (tests) and T030 (impl) all parallel; T031 serializes after T030. (T028 and T029 removed — see clarification 2026-05-13: those creation paths must NOT set `origin`.)
 - US5 tests T032, T033, T034 are parallel; T035 must precede T036–T038, which are sequential because they all edit `service.py`.
 - Polish T039, T040 are parallel; T041 and T042 are sequential at the end.
@@ -211,17 +211,15 @@ Backend-only feature in a monorepo. All paths absolute from repo root.
 ```bash
 # All tests for US1 in parallel (different files, all FAIL initially):
 Task: "Unit test FilterPattern in backend/tests/unit/auth_groups/test_filter.py"
-Task: "Unit test mapper in backend/tests/unit/auth_groups/test_mapper.py"
 Task: "Functional test autocreate flow in backend/tests/functional/auth_groups/test_autocreate_flow.py"
 Task: "Integration_docker test concurrent first-logins in backend/tests/integration_docker/auth_groups/test_concurrent_first_logins.py"
 
-# Then the pure-logic implementations in parallel:
+# Then the pure-logic implementation (only one — no mapper module per clarification 2026-05-14):
 Task: "Implement FilterPattern in backend/infrahub/auth_groups/filter.py"
-Task: "Implement origin mapper in backend/infrahub/auth_groups/mapper.py"
 
 # Then sequentially:
-Task: "Implement autocreate_groups_for_login in backend/infrahub/auth_groups/service.py"
-Task: "Hook service into signin_sso_account in backend/infrahub/auth.py"
+Task: "Implement autocreate_groups_for_login in backend/infrahub/auth_groups/service.py (passes configured provider_name through to origin verbatim)"
+Task: "Hook service into signin_sso_account in backend/infrahub/auth.py (call site supplies the configured provider name)"
 ```
 
 ---
@@ -231,8 +229,8 @@ Task: "Hook service into signin_sso_account in backend/infrahub/auth.py"
 ### MVP (User Story 1 only)
 
 1. Complete Phase 1 (Setup).
-2. Complete Phase 2 (Foundational) — schema attribute (optional + UI-hidden, 7-literal enum) + config + Python `AccountGroupOrigin` enum. No data-migration backfill (clarification 2026-05-13).
-3. Complete Phase 3 (US1) — filter + mapper + service + hook + tests.
+2. Complete Phase 2 (Foundational) — schema attribute (`Text`, optional, read-only, `display: extra`) + config. No data-migration backfill, no `AccountGroupOrigin` Python enum, no mapper module (clarifications 2026-05-13 + 2026-05-14).
+3. Complete Phase 3 (US1) — filter + service + hook + tests. (No mapper.)
 4. STOP and VALIDATE against US1 Independent Test.
 
 The MVP delivers the core value proposition: admins can enable the filter and onboard a team by first-login. US2's filter-scoping behavior is already exercised by US1's tests (only matching claims drive creation); the explicit US2 scoping tests and the cap are the next safety increment.
@@ -249,7 +247,7 @@ The MVP delivers the core value proposition: admins can enable the filter and on
 
 ### Sequencing Risk: INFP-105
 
-Per research.md R9, INFP-105 (native LDAP) lands in 1.10 alongside this feature. `autocreate_groups_for_login` exposes the `protocol=LDAP` branch from day one so the API is stable; INFP-105 supplies the LDAP call site. The schema enum already carries `ldap`, so no follow-up schema migration is needed when INFP-105 lands.
+Per research.md R9, INFP-105 (native LDAP) lands in 1.10 alongside this feature. `autocreate_groups_for_login` exposes the `protocol=LDAP` branch from day one so the API is stable; INFP-105 supplies the LDAP call site, passing the configured LDAP provider name as `provider_name`. Because `origin` is a free-form `Text` attribute (not an enum), no schema or enum change is needed when INFP-105 lands — the LDAP call site simply passes its configured provider name string through (clarification 2026-05-14).
 
 ---
 
@@ -264,8 +262,12 @@ Per research.md R9, INFP-105 (native LDAP) lands in 1.10 alongside this feature.
 
 ## Remediation: Gaps
 
-**Purpose**: Reconciliation tasks generated by `/speckit.reconcile.run` on 2026-05-13 to close the drift documented in Clarification Session 2026-05-13 ("origin will be optional and hidden; only auth-provider auto-creation fills it in"). T046 also belongs to this batch but is placed inside Phase 6 (US4) tests, where it logically slots.
+**Purpose**: Reconciliation tasks generated by `/speckit.reconcile.run` to close drift between the design artifacts and `spec.md`. Two reconcile passes are recorded here:
 
-- [ ] T043 [P] [US4] Verify the schema definition framework exposes a UI-hidden flag for `SchemaAttribute` (grep `backend/infrahub/core/schema/` for an existing "hidden", "internal", "ui_hidden", or equivalent property used by other system-managed attributes). If absent, extend `backend/infrahub/core/schema/attribute_schema.py` (and any generated counterparts via `uv run invoke backend.generate`) to introduce a `hidden: bool = False` flag, and propagate it to the schema metadata surface that the frontend schema-driven renderer consumes (FR-012 UI-hidden, clarification 2026-05-13). [Sync: Gap Report]
-- [ ] T044 [US4] Verify the frontend schema-driven `CoreAccountGroup` views (list + detail) honor the UI-hidden flag — `origin` MUST NOT render as a default field/column. Confirm via the schema-driven renderers under `frontend/app/src/shared/components/` (no bespoke code path expected; this is verification + a Playwright check). If the frontend ignores the hidden flag today, file a follow-up rather than expanding scope here. Integration test in `frontend/app/tests/e2e/account-groups-origin-hidden.spec.ts`: log in as admin, open the `CoreAccountGroup` list and detail views, assert `origin` is not rendered. Depends on T043. [Sync: Gap Report]
+1. **2026-05-13** ("origin will be optional and hidden; only auth-provider auto-creation fills it in") — produced the T043/T044/T045/T046 batch (now superseded; see below).
+2. **2026-05-14** (rebase onto `pmi-ifc-2521-auto-create-groups`; spec.md became ground truth) — reshaped `origin` from Dropdown enum → `Text` attribute, "fully UI-hidden" → `display: extra`, and removed the planned `AccountGroupOrigin` Python enum + mapper module. Modified T003, T005, T011, T015, T016, T017, T032, T035, T046 in place and updated T043/T044/T046 below.
+
+- [ ] ~~T043~~ **REMOVED** (clarification 2026-05-14): No new "hidden flag" needs to be added to the schema definition framework — `display: extra` is an **existing** schema capability. The earlier task's premise ("verify or add a hidden flag") is invalid. Use the existing `display`/equivalent attribute property on `SchemaAttribute` directly in T003. If the existing keyword is unclear, grep `backend/infrahub/core/schema/` for `display` / `display_mode` usage on system-managed attributes already in the codebase before T003 begins. [Sync: Gap Report]
+- [ ] T044 [US4] Verify the frontend schema-driven `CoreAccountGroup` views honor `display: extra` on `origin`: by default, `origin` MUST NOT render in the group detail/list views; when the user toggles on extra/advanced attributes, `origin` MUST appear (read-only). Playwright test in `frontend/app/tests/e2e/account-groups-origin-display-extra.spec.ts`: log in as admin, open the `CoreAccountGroup` detail view, assert `origin` is hidden; toggle extra-attributes on, assert `origin` is now visible and presented read-only. This replaces the previously-planned `account-groups-origin-hidden.spec.ts` (clarification 2026-05-14 supersedes the "fully UI-hidden" expectation). [Sync: Gap Report]
 - [ ] T045 [P] Integration_docker test in `backend/tests/integration_docker/auth_groups/test_origin_attribute_optional.py`: against a real Neo4j instance, create a `CoreAccountGroup` row with `origin` unset via the standard create path, read it back, assert the attribute is present in the schema but the value is null/absent; then update the same row via a non-origin field, assert `origin` remains unset (FR-012 optional, FR-013, FR-021, clarification 2026-05-13). [Sync: Gap Report]
+- [ ] T047 [P] Integration_docker test in `backend/tests/integration_docker/auth_groups/test_origin_provider_name_passthrough.py`: configure two distinct providers in the test instance with provider names `"AzureAD-corp"` and `"corp-ldap"`; trigger auto-creation through each; assert the resulting groups' `origin` attribute reads `"AzureAD-corp"` and `"corp-ldap"` verbatim (FR-013, clarification 2026-05-14 — verifies the passthrough semantic that replaces the prior enum mapping). [Sync: Gap Report]

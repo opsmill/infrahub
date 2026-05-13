@@ -13,7 +13,7 @@ Concrete base for any event emitted by the auto-create-group flow during a login
 ```python
 class GroupAutoCreateEvent(InfrahubEvent):
     """Base for any event emitted by the auto-create-group flow during a login."""
-    idp: str = Field(..., description="Originating IdP identifier: <protocol>_<slot>, e.g. oidc_provider1, ldap")
+    idp: str = Field(..., description="Configured name of the originating identity provider (free-form string from settings — e.g. 'AzureAD-corp', 'OktaProd', 'corp-ldap'). Same value that is written to the new group's origin attribute. Clarification 2026-05-13 supersedes the prior <protocol>_<slot> shape.")
     triggering_user_id: UUID = Field(..., description="The account whose login produced the event")
     triggering_user_name: str = Field(..., description="Login identifier of the triggering account")
     protocol: ExternalAuthProtocol = Field(..., description="OAUTH2 | OIDC | LDAP")
@@ -30,7 +30,7 @@ class GroupAutoCreatedEvent(GroupAutoCreateEvent):
     group_id: UUID
     group_name: str
     source_pattern: str           # raw regex pattern from INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER
-    origin_value: AccountGroupOrigin
+    origin_value: str             # The configured identity-provider name written to the new group's `origin` attribute. Type is `str` (no AccountGroupOrigin enum — superseded 2026-05-13). Carried in addition to the base `idp` field for self-contained payloads.
 ```
 
 ## `GroupAutoCreateRejectedClaimEvent` (extends `GroupAutoCreateEvent`) — FR-017
