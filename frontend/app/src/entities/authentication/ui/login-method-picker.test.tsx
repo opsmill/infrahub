@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
+import type { ConfigAPI, SSOProvider } from "@/entities/config/types";
 import { useConfig } from "@/entities/config/ui/config-provider";
 
 import { render } from "../../../../tests/components/render";
@@ -7,7 +9,7 @@ import { LoginMethodPicker } from "./login-method-picker";
 
 vi.mock("@/entities/config/ui/config-provider");
 
-const ssoProvider = {
+const ssoProvider: SSOProvider = {
   name: "google",
   display_label: "Google",
   icon: "mdi:google",
@@ -15,6 +17,9 @@ const ssoProvider = {
   authorize_path: "/api/oauth2/google/authorize",
   token_path: "/api/oauth2/google/token",
 };
+
+const configWithSso = (sso: Partial<ConfigAPI["sso"]>): ConfigAPI =>
+  ({ sso }) as unknown as ConfigAPI;
 
 beforeEach(() => {
   localStorage.clear();
@@ -27,9 +32,7 @@ afterEach(() => {
 
 describe("LoginMethodPicker", () => {
   test("renders the local form without a toggle when local is the only method", async () => {
-    vi.mocked(useConfig).mockReturnValue({
-      sso: { enabled: false, providers: [] },
-    } as any);
+    vi.mocked(useConfig).mockReturnValue(configWithSso({ enabled: false, providers: [] }));
 
     const component = await render(<LoginMethodPicker />);
 
@@ -39,9 +42,9 @@ describe("LoginMethodPicker", () => {
   });
 
   test("renders the local form and a 'Log in with SSO' toggle when SSO is available", async () => {
-    vi.mocked(useConfig).mockReturnValue({
-      sso: { enabled: true, providers: [ssoProvider] },
-    } as any);
+    vi.mocked(useConfig).mockReturnValue(
+      configWithSso({ enabled: true, providers: [ssoProvider] })
+    );
 
     const component = await render(<LoginMethodPicker />);
 
@@ -56,9 +59,9 @@ describe("LoginMethodPicker", () => {
   });
 
   test("switching to credentials shows the credentials form and a 'Log in with SSO' toggle", async () => {
-    vi.mocked(useConfig).mockReturnValue({
-      sso: { enabled: true, providers: [ssoProvider] },
-    } as any);
+    vi.mocked(useConfig).mockReturnValue(
+      configWithSso({ enabled: true, providers: [ssoProvider] })
+    );
 
     const component = await render(<LoginMethodPicker />);
 
@@ -69,10 +72,10 @@ describe("LoginMethodPicker", () => {
   });
 
   test("restores the last-used method from localStorage", async () => {
-    localStorage.setItem("auth_last_used_method", "local");
-    vi.mocked(useConfig).mockReturnValue({
-      sso: { enabled: true, providers: [ssoProvider] },
-    } as any);
+    localStorage.setItem(LAST_USED_METHOD_KEY, "local");
+    vi.mocked(useConfig).mockReturnValue(
+      configWithSso({ enabled: true, providers: [ssoProvider] })
+    );
 
     const component = await render(<LoginMethodPicker />);
 
@@ -81,10 +84,8 @@ describe("LoginMethodPicker", () => {
   });
 
   test("falls back gracefully when the stored method is no longer available", async () => {
-    localStorage.setItem("auth_last_used_method", "ldap");
-    vi.mocked(useConfig).mockReturnValue({
-      sso: { enabled: false, providers: [] },
-    } as any);
+    localStorage.setItem(LAST_USED_METHOD_KEY, "ldap");
+    vi.mocked(useConfig).mockReturnValue(configWithSso({ enabled: false, providers: [] }));
 
     const component = await render(<LoginMethodPicker />);
 

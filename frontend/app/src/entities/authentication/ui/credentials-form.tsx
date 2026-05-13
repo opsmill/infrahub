@@ -16,13 +16,21 @@ export interface CredentialsFormProps {
   submitLabel?: string;
 }
 
+function getErrorStatus(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "status" in error) {
+    const { status } = error;
+    return typeof status === "number" ? status : undefined;
+  }
+  return;
+}
+
 function toLoginError(error: unknown): LoginError {
-  const status = (error as { status?: number } | null)?.status;
+  const status = getErrorStatus(error);
 
   if (status === 401) {
     return { code: "invalid_credentials", message: "Invalid username or password" };
   }
-  if (typeof status === "number" && status >= 500) {
+  if (status !== undefined && status >= 500) {
     return { code: "server", message: "Authentication service unavailable" };
   }
 
@@ -33,6 +41,14 @@ function toLoginError(error: unknown): LoginError {
   }
 
   return { code: "unknown", message: "Could not log in" };
+}
+
+function readStringField(field: unknown): string {
+  if (field && typeof field === "object" && "value" in field) {
+    const { value } = field;
+    return typeof value === "string" ? value : "";
+  }
+  return "";
 }
 
 export const CredentialsForm = ({
@@ -47,8 +63,8 @@ export const CredentialsForm = ({
       className={classNames("w-full", className)}
       onSubmit={async (formData) => {
         const values = {
-          username: formData.username.value as string,
-          password: formData.password.value as string,
+          username: readStringField(formData.username),
+          password: readStringField(formData.password),
         };
         try {
           const result = await onSubmit(values);
