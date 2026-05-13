@@ -1,0 +1,24 @@
+---
+title: Create a branch
+---
+
+Start a new branch from the default branch (typically `main` or `master`). This creates a snapshot of the current state that can be modified independently. Creating a new branch is almost instantaneous because Infrahub uses [copy-on-write semantics](./overview.mdx#copy-on-write-semantics) — no data is duplicated, only a pointer to the base timestamp and the delta of subsequent changes.
+
+## When you create a branch
+
+When creating a branch, you specify:
+
+- A **name** that clearly identifies the branch's purpose, for example `feature-network-redesign` or `fix-datacenter-connectivity`
+- An optional **description** to help team members understand its scope
+- Whether the branch should **synchronize with Git repositories** (`sync_with_git: true`) — see [Branch isolation modes](./overview.mdx#branch-isolation-modes) for the differences between full branches and data-only branches
+
+## Branch creation methods
+
+Branch creation can be initiated through the Infrahub user interface, GraphQL API, the Python SDK, or the `infrahubctl` CLI. The branch is created immediately and you can begin making changes once it exists.
+
+## Related
+
+- [Branches](./overview.mdx) — concepts, hierarchy, isolation modes
+- [Merge a branch](./merge.mdx) — when work is complete
+- [Rebase a branch](./rebase.mdx) — incorporate upstream changes
+- [Selective branch synchronization](../git-integration/branch-synchronization.mdx) — control which Git branches sync to Infrahub

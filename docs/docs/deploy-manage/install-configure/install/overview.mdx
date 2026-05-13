@@ -1,0 +1,41 @@
+---
+title: Installation
+---
+
+import VideoPlayer from '../../../../src/components/VideoPlayer';
+import ReferenceLink from "../../../../src/components/Card";
+
+# Installation
+
+Infrahub Community and Enterprise are deployed as container-based architectures. The installation methods below are for non-resilient deployments suitable for development, testing, and single-node production environments.
+
+For high-availability production deployments, see [High availability deployment examples](../production-deployment/high-availability.mdx).
+
+## Prerequisites
+
+- Verify your system meets the [hardware requirements](../hardware-requirements.mdx) before installing Infrahub.
+- Each installation method has additional prerequisites listed in its own section.
+
+:::info
+
+Allocating more CPU cores to the Neo4j database only improves performance on Infrahub Enterprise, which uses parallel query execution.
+
+:::
+
+<div style={{ textAlign: 'center' }}>
+  <VideoPlayer url='https://www.youtube.com/watch?v=onVhaTVFkrM' light />
+</div>
+
+## Installation guides
+
+Choose the edition that matches your license:
+
+- [Install Infrahub Community](./community.mdx) — Docker Compose (curl), git clone, or Kubernetes with Helm.
+- [Install Infrahub Enterprise](./enterprise.mdx) — Docker Compose (curl), Kubernetes with Helm, or bare metal.
+
+## Related resources
+
+- [Database backup and restore](../../maintain-upgrade/database-backup/overview.mdx)
+- [High availability architecture](../../../overview/architecture.mdx#scalability-and-high-availability)
+- [Local demo environment](../../../development-resources/local-demo-environment)
+- [Hardware requirements](../hardware-requirements.mdx)

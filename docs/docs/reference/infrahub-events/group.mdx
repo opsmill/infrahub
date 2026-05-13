@@ -1,0 +1,63 @@
+---
+title: Group events
+---
+
+<!-- vale off -->
+## Group Member Added Event
+<!-- vale on -->
+
+**Type**: infrahub.group.member_added
+**Description**: Event generated when a one or more members have been added to a group
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | N/A |
+| **members** | Updated members during this event. |
+| **ancestors** | A list of groups that are ancestors of this group. |
+<!-- vale on -->
+
+<!-- vale off -->
+## Group Member Removed Event
+<!-- vale on -->
+
+**Type**: infrahub.group.member_removed
+**Description**: Event generated when a one or more members have been removed to a group
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of updated group |
+| **node_id** | The ID of the updated group |
+| **action** | N/A |
+| **members** | Updated members during this event. |
+| **ancestors** | A list of groups that are ancestors of this group. |
+<!-- vale on -->

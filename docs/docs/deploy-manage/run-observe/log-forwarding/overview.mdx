@@ -1,0 +1,207 @@
+---
+title: Log forwarding
+---
+
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Log forwarding <EnterpriseBadge />
+
+Log forwarding enables Infrahub to stream audit events and application logs to external systems via the syslog protocol. This supports compliance, security monitoring, and operational visibility by integrating with SIEM platforms and centralized log management.
+
+:::info Enterprise Edition
+
+Log forwarding is available exclusively in the Enterprise Edition. The Community Edition includes the configuration model but uses a no-op implementation that does not transmit messages. See [Community vs Enterprise](../../../overview/community-vs-enterprise.mdx) for details.
+
+:::
+
+To configure log forwarding destinations, see [Configure log forwarding](./configure-log-forwarding.mdx).
+
+## Why log forwarding matters
+
+Many organizations face regulatory and operational requirements that demand centralized, tamper-evident logging across all infrastructure tools:
+
+- **Compliance**: Standards such as SOC 2, PCI-DSS, and ISO 27001 require historical tracing of user actions across all systems in a central location
+- **Security monitoring**: Real-time detection of suspicious activity such as permission denied events, unexpected schema changes, or mass deletions
+- **Operational visibility**: Correlate infrastructure data changes in Infrahub with network incidents tracked in external monitoring systems
+- **Production deployment approval**: Security teams often require centralized log export before approving tools for production use
+
+Infrahub provides two complementary mechanisms for event visibility:
+
+- The [activity log](../activity-log.mdx) provides in-app visibility for browsing and filtering events through the web interface
+- Log forwarding exports those same events to purpose-built external tools for long-term retention, alerting, and cross-system correlation
+
+Log forwarding is distinct from [webhooks](../../../webhooks/overview.mdx). Webhooks are HTTP callbacks designed for real-time integrations with custom payloads. Log forwarding uses the syslog protocol for compliance and SIEM use cases where standardized log ingestion is required.
+
+## Architecture overview
+
+Log forwarding uses a queue-based, non-blocking architecture to ensure event processing is never delayed by slow or unreachable syslog receivers.
+
+The data flow is:
+
+1. An action in Infrahub generates an event (or a permission denied exception)
+2. The log forwarding service converts it to a syslog message and enqueues it
+3. Each configured destination has its own independent async queue (bounded by `queue_size`, default 10,000)
+4. A per-destination consumer task reads from the queue and transmits over the configured protocol
+5. TCP connections use exponential backoff reconnection (capped at `max_reconnect_interval`)
+6. On graceful shutdown, queues are drained up to `shutdown_drain_timeout` seconds before connections close
+
+In the Community Edition, a no-op stub replaces the enterprise implementation. All methods return immediately with zero overhead.
+
+:::note
+
+The syslog header hostname defaults to `socket.getfqdn()`. In Docker environments, this resolves to the container ID. Set `hostname` explicitly in the log forwarding configuration when running in containers.
+
+:::
+
+## Message categories
+
+Log forwarding handles two categories of messages, each mapped to a different syslog facility:
+
+- **Audit events** (`AUDIT_EVENT`): Generated from Infrahub events representing user and system actions. Uses syslog facility `LOG_AUTH` (4). Always forwarded when a destination is configured.
+- **Application logs** (`APPLICATION_LOG`): Currently used exclusively for forwarding permission denied exceptions. Uses syslog facility `LOG_LOCAL0` (16). Opt-in per destination via `forward_application_logs`.
+
+The facility distinction allows receivers to separate and route audit events independently from application-level messages.
+
+### Forwarded audit event types
+
+The following event types are forwarded as audit events:
+
+- **Account**: `infrahub.account.logged_in`, `infrahub.account.logged_out`
+- **Node**: `infrahub.node.created`, `infrahub.node.updated`, `infrahub.node.deleted`
+- **Branch**: `infrahub.branch.created`, `infrahub.branch.deleted`, `infrahub.branch.merged`, `infrahub.branch.rebased`
+- **Proposed change**: `infrahub.proposed_change.approved`, `infrahub.proposed_change.rejected`, `infrahub.proposed_change.merged`, and others
+- **Schema**: `infrahub.schema.updated`
+
+For the complete list of event types and their payload fields, see the [Infrahub events reference](../../../reference/infrahub-events.mdx).
+
+### Permission denied events
+
+Permission denied events (`infrahub.permission.denied`) are categorized as `APPLICATION_LOG`, not `AUDIT_EVENT`. They are forwarded through the `forward_exception()` path and require `forward_application_logs = true` on the destination to be received.
+
+These events carry security context useful for detecting unauthorized access attempts:
+
+- `account_id`: ID of the account that made the request
+- `auth_type`: Authentication method used
+- `ip_address`: Source IP address of the request
+- `request_path`: API endpoint or path targeted
+- `operation`: GraphQL operation name (if applicable)
+- `query_type`: Whether it was a query or mutation (if applicable)
+- `graphql_operations`: List of GraphQL operations requested (if applicable)
+
+:::warning
+
+If `forward_application_logs` is not enabled on a destination, permission denied events are silently dropped for that destination.
+
+:::
+
+## Syslog format standards
+
+Infrahub supports two syslog format standards. The format is configured per destination.
+
+### RFC 5424 (default)
+
+RFC 5424 is the modern syslog standard with structured headers and ISO 8601 timestamps. This is the recommended format for new deployments.
+
+Message structure:
+
+```text
+<PRI>VERSION TIMESTAMP HOSTNAME APP-NAME PROCID MSGID STRUCTURED-DATA MSG
+```
+
+Example:
+
+```text
+<38>1 2025-01-15T10:30:00.000000Z infrahub.example.com infrahub worker-01 - - {"event":"infrahub.node.created","meta":{"branch":"main","account_id":"01234567-abcd-0000-0000-000000000001"},"kind":"InfraDevice","node_id":"01234567-abcd-0000-0000-000000000002","action":"created"}
+```
+
+### RFC 3164 (legacy)
+
+RFC 3164 is the older BSD syslog format with shorter timestamps and a simpler header. Use this when the receiving system does not support RFC 5424.
+
+Message structure:
+
+```text
+<PRI>TIMESTAMP HOSTNAME TAG[PID]: MSG
+```
+
+Example:
+
+```text
+<38>Jan 15 10:30:00 infrahub.example.com infrahub[worker-01]: {"event":"infrahub.node.created","meta":{"branch":"main","account_id":"01234567-abcd-0000-0000-000000000001"},"kind":"InfraDevice","node_id":"01234567-abcd-0000-0000-000000000002","action":"created"}
+```
+
+### PRI value calculation
+
+The PRI (priority) value encodes both facility and severity: `PRI = facility * 8 + severity`.
+
+For audit events using LOG_AUTH (facility 4) at INFORMATIONAL severity (6): `4 * 8 + 6 = 38`.
+
+The severity codes follow RFC 5424:
+
+| Code | Severity | Description |
+|------|----------|-------------|
+| 0 | Emergency | System is unusable |
+| 1 | Alert | Action must be taken immediately |
+| 2 | Critical | Critical conditions |
+| 3 | Error | Error conditions |
+| 4 | Warning | Warning conditions |
+| 5 | Notice | Normal but significant condition |
+| 6 | Informational | Informational messages |
+| 7 | Debug | Debug-level messages |
+
+### Message payload
+
+The MSG field always contains a JSON representation of the event. For audit events, this includes the full event payload with metadata (branch, account, timestamps, affected objects). For application log messages such as permission denials, this includes the exception details and request context.
+
+## Transport protocols
+
+### UDP (default)
+
+UDP is connectionless and fire-and-forget. It offers lower overhead but provides no delivery guarantee. Messages may be lost if the receiver is unavailable or the network drops packets.
+
+- Default port: 514
+- No connection state or reconnection logic
+- Suitable for high-volume, loss-tolerant scenarios
+
+### TCP
+
+TCP provides connection-oriented, reliable delivery with acknowledgment. The sender maintains a persistent connection to the receiver and automatically reconnects with exponential backoff if the connection drops.
+
+- Default port: 514 (or 6514 with TLS)
+- Recommended for compliance use cases where message loss is unacceptable
+- Two framing options:
+  - `newline` (default): messages are delimited by a newline character
+  - `octet-counting`: messages are length-prefixed per RFC 6587; required by some receivers (notably certain rsyslog configurations)
+
+### TLS
+
+TLS adds encryption on top of TCP. It is only valid with TCP — configuring TLS with UDP raises a validation error.
+
+- Default port changes to 6514 when TLS is enabled without an explicit port
+- `tls_ca_bundle` accepts a file path to a CA certificate bundle or an inline PEM string
+- The server certificate is validated against the provided CA bundle
+
+## Security considerations
+
+- **Use TLS** for any deployment transmitting logs over untrusted networks. Syslog payloads contain sensitive data including account IDs, IP addresses, node details, and permission denial reasons.
+- **Queue overflow**: When a destination queue fills (default 10,000 messages), new messages are dropped rather than blocking event processing. Size the queue appropriately for your event volume and receiver throughput.
+- **Receiver authentication**: The syslog protocol itself does not authenticate the sender. Use network-level controls (firewall rules, VPN, network segmentation) in addition to TLS.
+- **Certificate management**: The `tls_ca_bundle` should point to a properly managed certificate store that is rotated according to your organization's security policies.
+
+## SIEM platform integration
+
+Log forwarding works with any syslog-compatible receiver. Brief guidance for common platforms:
+
+- **Splunk**: Configure a TCP or UDP syslog input on a Heavy Forwarder or Universal Forwarder. Set the sourcetype to `syslog` or a custom type. RFC 5424 enables structured field extraction.
+- **Datadog**: Use the Datadog Agent's syslog input or configure a syslog-to-Datadog pipeline. Point Infrahub at the agent's syslog listening port.
+- **Elastic (ELK)**: Configure Logstash with a `syslog` input plugin or use the Filebeat syslog input for a lighter footprint. RFC 5424 works well with the Logstash syslog codec.
+- **IBM QRadar / ArcSight**: Use standard syslog ingestion. RFC 5424 is recommended. Configure a log source pointing to Infrahub's hostname.
+
+In all cases, configure the receiver to parse JSON from the MSG field to extract structured event data for indexing and alerting.
+
+## Relationship to other features
+
+- **Activity log**: The in-app UI for browsing and filtering events. Log forwarding exports the same events to external systems. See [Activity log](../activity-log.mdx).
+- **Webhooks**: HTTP callbacks for real-time integrations with custom payloads. Log forwarding uses syslog for compliance and SIEM use cases. See [Webhooks](../../../webhooks/overview.mdx).
+- **Event framework**: Log forwarding consumes the same events that power the activity log, webhooks, and event rules. See [Events](../../../events/event-system) and the [Infrahub events reference](../../../reference/infrahub-events.mdx).
+- **Configuration reference**: All log forwarding parameters are documented in the [configuration reference](../../../reference/configuration.mdx#log-forwarding).

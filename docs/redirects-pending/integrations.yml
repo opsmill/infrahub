@@ -1,0 +1,31 @@
+---
+feature: Integrations
+pr: TBD
+description: |
+  Integrations sub-category gets a real landing page. Previously the
+  Automation & Outputs > Integrations sidebar entry rendered as a
+  Docusaurus auto-generated card list (`generated-index`) — three titles
+  with outbound `↗` arrows and no description. Yvonne flagged this on the
+  May 6 Wim docs review: "creates better content for these overview pages
+  that kind of describes each of these and what they're for."
+
+  Two changes:
+  - New landing page at integrations/index.mdx with concise descriptions
+    of all three OpsMill-maintained integrations (Ansible, Nornir,
+    Infrahub Sync). Descriptions assume reader knows Ansible/Nornir
+    already; focus on what each integration enables specifically.
+  - sidebars.ts: Integrations category points at the new landing page
+    (`type: 'doc'` instead of `generated-index`); the three TODO stub
+    URLs replaced with the real `https://docs.infrahub.app/{ansible,nornir,sync}`.
+
+  No legacy URL redirects needed — the integrations folder didn't exist
+  before this PR, so the new path /docs/integrations/ is purely additive.
+
+# No URLs change for this migration; the new landing page is purely additive.
+redirects: []
+
+new_pages:
+  - path: /docs/integrations/
+    title: Integrations (landing page)
+
+cross_links_to_update: []
