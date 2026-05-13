@@ -1,5 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 
+import { LOGIN_ERRORS } from "@/entities/authentication/constants";
+
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
 const disableSSO = async (page: Page) => {
@@ -106,9 +108,9 @@ test.describe("/login", () => {
         await page.getByLabel("Password").fill("wrong password");
         await page.getByRole("button", { name: "Log in" }).click();
 
-        await expect(page.locator("#alert-error-sign-in")).toContainText(
-          "Invalid username or password"
-        );
+        await expect(
+          page.locator(`#alert-error-sign-in-${LOGIN_ERRORS.invalid_credentials.code}`)
+        ).toContainText(LOGIN_ERRORS.invalid_credentials.message);
       });
 
       test("should redirect to the initial page after login", async ({ page }) => {

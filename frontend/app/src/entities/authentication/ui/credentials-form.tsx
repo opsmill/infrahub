@@ -7,6 +7,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 import { classNames } from "@/shared/utils/common";
 
+import { LOGIN_ERRORS } from "@/entities/authentication/constants";
 import type { LoginError, UserToken } from "@/entities/authentication/types";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 
@@ -28,19 +29,19 @@ function toLoginError(error: unknown): LoginError {
   const status = getErrorStatus(error);
 
   if (status === 401) {
-    return { code: "invalid_credentials", message: "Invalid username or password" };
+    return LOGIN_ERRORS.invalid_credentials;
   }
   if (status !== undefined && status >= 500) {
-    return { code: "server", message: "Authentication service unavailable" };
+    return LOGIN_ERRORS.server;
   }
 
   const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
   const isFetchFailure = error instanceof TypeError;
   if (status === undefined && (isOffline || isFetchFailure)) {
-    return { code: "network", message: "Network error — check your connection" };
+    return LOGIN_ERRORS.network;
   }
 
-  return { code: "unknown", message: "Could not log in" };
+  return LOGIN_ERRORS.unknown;
 }
 
 function readStringField(field: unknown): string {

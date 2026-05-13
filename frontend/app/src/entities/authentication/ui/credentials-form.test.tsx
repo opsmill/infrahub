@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
+import { LOGIN_ERRORS } from "@/entities/authentication/constants";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 import { render } from "../../../../tests/components/render";
@@ -70,7 +71,9 @@ describe("CredentialsForm", () => {
     await component.getByLabelText("Password").fill("wrong");
     await component.getByRole("button", { name: "Log in" }).click();
 
-    await expect.element(component.getByText("Invalid username or password")).toBeVisible();
+    await expect
+      .element(component.getByText(LOGIN_ERRORS.invalid_credentials.message))
+      .toBeVisible();
     expect(setToken).not.toHaveBeenCalled();
   });
 
@@ -83,7 +86,7 @@ describe("CredentialsForm", () => {
     await component.getByLabelText("Password").fill("secret");
     await component.getByRole("button", { name: "Log in" }).click();
 
-    await expect.element(component.getByText("Authentication service unavailable")).toBeVisible();
+    await expect.element(component.getByText(LOGIN_ERRORS.server.message)).toBeVisible();
     expect(setToken).not.toHaveBeenCalled();
   });
 
@@ -96,9 +99,7 @@ describe("CredentialsForm", () => {
     await component.getByLabelText("Password").fill("secret");
     await component.getByRole("button", { name: "Log in" }).click();
 
-    await expect
-      .element(component.getByText("Network error — check your connection"))
-      .toBeVisible();
+    await expect.element(component.getByText(LOGIN_ERRORS.network.message)).toBeVisible();
     expect(setToken).not.toHaveBeenCalled();
   });
 
@@ -111,7 +112,7 @@ describe("CredentialsForm", () => {
     await component.getByLabelText("Password").fill("secret");
     await component.getByRole("button", { name: "Log in" }).click();
 
-    await expect.element(component.getByText("Could not log in")).toBeVisible();
+    await expect.element(component.getByText(LOGIN_ERRORS.unknown.message)).toBeVisible();
     expect(setToken).not.toHaveBeenCalled();
   });
 
