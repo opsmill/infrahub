@@ -100,7 +100,6 @@ class TestLDAPSettingsDefaults:
         assert s.per_server_timeout == 10.0
         assert s.display_label == "Sign in with LDAP"
         assert s.icon == "mdi:account-key-outline"
-        assert s.has_any_server is False
         assert s.admin_enabled is False
         assert s.enterprise_features == []
 

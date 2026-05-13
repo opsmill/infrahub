@@ -40,6 +40,7 @@ Schema definitions (Python)
 | Added/modified schema definitions (attributes, relationships) | `uv run invoke backend.generate` |
 | Changed GraphQL schema structure | `uv run invoke schema.generate-graphqlschema` + `npm run codegen` |
 | New GraphQL queries/mutations in frontend | `npm run codegen` |
+| New FastAPI route, changed request/response model, or added field on a response model | `uv run invoke schema.generate-jsonschema` (regenerates `schema/openapi.json`) + `npm run codegen` |
 
 Changes that do **not** require regeneration:
 - Modifying Python business logic

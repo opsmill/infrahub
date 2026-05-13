@@ -1053,6 +1053,10 @@ class PolicySettings(BaseSettings):
         return features
 
 
+LDAP_DEFAULT_DISPLAY_LABEL = "Sign in with LDAP"
+LDAP_DEFAULT_ICON = "mdi:account-key-outline"
+
+
 class LDAPGroupResolutionStrategy(StrEnum):
     BFS = "bfs"
     AD_IN_CHAIN = "ad_in_chain"
@@ -1229,11 +1233,11 @@ class LDAPInfo(BaseModel):
         ),
     )
     display_label: str = Field(
-        default="Sign in with LDAP",
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
         description="Text shown on the LDAP sign-in button on the login page.",
     )
     icon: str = Field(
-        default="mdi:account-key-outline",
+        default=LDAP_DEFAULT_ICON,
         description="Icon shown on the LDAP sign-in button on the login page.",
     )
 
@@ -1328,21 +1332,17 @@ class LDAPSettings(BaseSettings):
     )
 
     display_label: str = Field(
-        default="Sign in with LDAP",
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
         description="Text shown on the LDAP sign-in button on the login page.",
     )
     icon: str = Field(
-        default="mdi:account-key-outline",
+        default=LDAP_DEFAULT_ICON,
         description="Icon shown on the LDAP sign-in button on the login page.",
     )
 
     @property
-    def has_any_server(self) -> bool:
-        return bool(self.servers)
-
-    @property
     def admin_enabled(self) -> bool:
-        return self.enabled and self.has_any_server
+        return self.enabled and bool(self.servers)
 
     @model_validator(mode="after")
     def derive_default_user_search_filter(self) -> Self:

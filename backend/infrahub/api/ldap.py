@@ -26,7 +26,7 @@ router = APIRouter(prefix="/auth/ldap")
 
 class LDAPCredentials(BaseModel):
     username: str = Field(..., min_length=1, max_length=256)
-    password: str = Field(..., min_length=1, max_length=1024, repr=False)
+    password: str = Field(..., min_length=1, repr=False)
 
 
 class EnterpriseRequiredResponse(BaseModel):
@@ -79,7 +79,9 @@ async def login_ldap(
             status_code=502, content={"error_code": "LDAP_DIRECTORY_UNAVAILABLE", "message": exc.message}
         )
     except LDAPAuthenticationError as exc:
-        # LDAPLookupError inherits from LDAPAuthenticationError so it lands here too
+        # Intentional: every authn failure (wrong password, unknown user, disabled account,
+        # ambiguous lookup via LDAPLookupError) collapses into one envelope so the response
+        # cannot be used to enumerate accounts. Do not split this branch.
         return JSONResponse(status_code=401, content={"error_code": "AUTHENTICATION_FAILED", "message": exc.message})
 
     response.set_cookie(

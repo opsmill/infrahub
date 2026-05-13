@@ -31,10 +31,15 @@ def credentials() -> LDAPCredentials:
     return LDAPCredentials(username="alice", password="any-non-empty-string")
 
 
-# The community stub raises before touching the database, so passing
-# `None` cast to the expected type is sufficient and avoids spinning a
-# real database for a unit-level contract test.
-_NO_DB = cast("InfrahubDatabase", None)
+class _UnusableDB:
+    def __getattr__(self, name: str) -> object:
+        raise AssertionError(
+            f"Community LDAP stub touched the database (attribute {name!r}); "
+            "it must raise EnterpriseRequiredError before any DB access."
+        )
+
+
+_NO_DB = cast("InfrahubDatabase", _UnusableDB())
 
 
 class TestRouterMounting:

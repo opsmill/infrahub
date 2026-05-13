@@ -5239,7 +5239,6 @@
                     },
                     "password": {
                         "type": "string",
-                        "maxLength": 1024,
                         "minLength": 1,
                         "title": "Password"
                     }

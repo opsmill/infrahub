@@ -437,7 +437,7 @@ class EnterpriseRequiredError(Error):
         super().__init__(self.message)
 
 
-class LDAPAuthenticationError(AuthorizationError):
+class LDAPAuthenticationError(Error):
     """Generic LDAP authentication failure.
 
     Raised for wrong password, unknown user, disabled account, and any other
@@ -468,7 +468,9 @@ class LDAPCollisionError(Error):
     """LDAP login attempted for a username that exists as a local-only account."""
 
     HTTP_CODE: int = 409
-    DESCRIPTION: str = "An Infrahub account already exists for this username and is not attributed to LDAP. Contact your administrator."
+    DESCRIPTION: str = (
+        "An account already exists for this username and is not attributed to LDAP. Contact your administrator."
+    )
 
     def __init__(self, account_name: str, message: str | None = None) -> None:
         self.account_name = account_name
