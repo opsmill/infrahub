@@ -1,0 +1,93 @@
+---
+title: Node events
+---
+
+<!-- vale off -->
+## Node Created Event
+<!-- vale on -->
+
+**Type**: infrahub.node.created
+**Description**: Event generated when a node has been created
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **changelog** | Data on modified object |
+| **fields** | Fields provided in the mutation |
+<!-- vale on -->
+
+<!-- vale off -->
+## Node Deleted Event
+<!-- vale on -->
+
+**Type**: infrahub.node.deleted
+**Description**: Event generated when a node has been deleted
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **changelog** | Data on modified object |
+| **fields** | Fields provided in the mutation |
+<!-- vale on -->
+
+<!-- vale off -->
+## Node Updated Event
+<!-- vale on -->
+
+**Type**: infrahub.node.updated
+**Description**: Event generated when a node has been updated
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `true`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of object modified |
+| **node_id** | The ID of the mutated node |
+| **action** | N/A |
+| **changelog** | Data on modified object |
+| **fields** | Fields provided in the mutation |
+<!-- vale on -->

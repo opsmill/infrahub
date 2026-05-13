@@ -1,0 +1,42 @@
+---
+title: Objects
+---
+
+An object is a record stored in Infrahub that conforms to a schema node definition. If schema nodes are the blueprints, objects are the actual instances of data — a specific router, an interface, a BGP session, a rack.
+
+## What is an object?
+
+Schema nodes define the shape of data: which attributes exist, what types they are, which relationships they have. Objects are individual instances of those definitions, each holding concrete values.
+
+For example, a schema node named `InfraDevice` defines that every device has a `name`, a `serial`, and a relationship to `interfaces`. An object of kind `InfraDevice` is then a real record — `core-router-01`, serial `ABC123`, with three interfaces attached.
+
+Objects are the primary unit of data in Infrahub. Everything you store, query, and manage — IP addresses, devices, locations, services — exists as objects.
+
+## How objects work
+
+### Attributes and relationships
+
+Each object holds values for the attributes defined on its schema node and can be linked to other objects through relationships. Relationships are typed and carry semantics (parent/child, attribute, generic) that govern how objects interact.
+
+### Branch awareness
+
+How an object behaves across branches depends on its schema definition. By default, objects are branch-aware: creating, editing, or deleting a record is tracked on the active branch and the change remains isolated until merged. When a schema node is marked as branch-agnostic however, objects of that kind exist globally — a change on any branch is immediately visible everywhere, with no merge required.
+
+### Metadata and data lineage
+
+Objects, their attribute values, and their relationships all carry metadata. At the object level, this includes ownership and source tracking. At the attribute level, each value records where it came from and when it was last changed — whether set manually, inherited from a Profile, or allocated from a resource pool. Relationship metadata tracks the same lineage for each link between objects. This lets you trace the origin of any piece of data across the entire record.
+
+## Objects and related concepts
+
+| Concept | What it is |
+|---------|-----------|
+| Schema node | The type definition — attributes, relationships, constraints |
+| Object | A concrete record that follows a schema node definition |
+| Object Template | A reusable structural starting point for creating objects of a given kind |
+| Group | A collection of objects used for querying or automation targeting |
+
+## What you can do with objects
+
+- **[Convert object kind](./convert-object-kind.mdx)** — Change the schema kind of an existing object while preserving its data
+- **[Metadata & lineage](./metadata.mdx)** — Inspect where each attribute value came from and track data origin
+- **[Load data in bulk using YAML file](./load-from-yaml.mdx)** — Bulk-create or update objects by loading structured YAML files

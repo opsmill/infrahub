@@ -1,0 +1,97 @@
+---
+title: Write a Jinja2 Transformation
+---
+
+# Write a Jinja2 Transformation
+
+A Jinja2 Transformation renders Infrahub data through a Jinja template, producing plain text output (configurations, manifests, payloads). The steps below cover how to write one.
+
+For conceptual background, see [Transformations](./overview).
+For a step-by-step walkthrough with a running example, see [Build a Jinja2 Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) in the Academy tutorials.
+
+> Assumes a working Infrahub instance, a connected Git repository, and `infrahubctl` configured locally. See [Installation](../deploy-manage/install-configure/install/overview) and [Connect a repository](../git-integration/connect-repository) if you're starting fresh.
+
+## Write the GraphQL query
+
+Create a `.gql` file with the data you need to render in the Git repository. Use variables for per-target scoping.
+
+```graphql title="queries/your_query.gql"
+query MyQuery($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        name { value }
+        # ... other fields
+      }
+    }
+  }
+}
+```
+
+For reusable query fragments shared across Transformations or Generators, see [GraphQL fragments](../development-resources/graphql-fragments).
+
+## Write the Jinja template
+
+Create a `.j2` template under `templates/` (or wherever fits your repository structure). The GraphQL query result is available as `data` in the template context.
+
+```jinja title="templates/your_template.j2"
+{% set device = data.InfraDevice.edges[0].node %}
+hostname {{ device.name.value }}
+{# ... your config rendering logic #}
+```
+
+The template can include other templates with `{% include %}`. See the [SDK Templating Reference]($(base_url)python-sdk/reference/templating) for the full filter set.
+
+## Register in `.infrahub.yml`
+
+Add the Transformation definition to your repository's `.infrahub.yml`:
+
+```yaml
+jinja2_transforms:
+  - name: <your_transform>
+    description: "<one-line description>"
+    query: <your_query>
+    template_path: "templates/<your_template>.j2"
+
+queries:
+  - name: <your_query>
+    file_path: "queries/<your_query>.gql"
+```
+
+For full `.infrahub.yml` syntax, see [infrahub.yml configuration](../git-integration/infrahub-yml).
+
+## Test locally
+
+Render the Transformation against your data:
+
+```shell
+infrahubctl render <your_transform> <var_name>=<value>
+```
+
+Use `--branch=<branch_name>` to render against a specific branch. Output prints to the terminal. Add `--debug` to surface the rendered query and intermediate state.
+
+## Deploy to Infrahub
+
+Commit your changes to the repository and push them up to your remote. The Transformation registers with Infrahub when the repository syncs.
+
+## Render via the API
+
+Once deployed, render on demand:
+
+```text
+GET https://<host>/api/transform/jinja2/<your_transform>?branch=<branch_name>&<var>=<value>
+```
+
+The endpoint is branch-aware. Pass query variables as URL parameters.
+
+## Generate as an artifact
+
+To cache rendered output and tie it to a specific target object, define an artifact that uses this Transformation. See [Use artifacts](../artifacts/use).
+
+## Related
+
+- [Transformations](./overview) — concept and architecture
+- [Write a Python transformation](./python) — for non-template logic
+- [GraphQL fragments](../development-resources/graphql-fragments) — share query fragments across Transformations
+- [Use artifacts](../artifacts/use) — cache Transformation output
+- [infrahub.yml configuration](../git-integration/infrahub-yml)
