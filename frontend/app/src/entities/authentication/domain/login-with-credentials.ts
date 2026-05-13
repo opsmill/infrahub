@@ -1,7 +1,6 @@
 import { apiClient } from "@/shared/api/rest/client";
 
 import type { UserToken } from "@/entities/authentication/types";
-import { saveTokensInLocalStorage } from "@/entities/authentication/utils";
 
 export type LoginWithCredentialsParams = {
   username: string;
@@ -17,6 +16,5 @@ export const loginWithCredentials: LoginWithCredentials = async (params) => {
 
   if (error) throw error;
 
-  saveTokensInLocalStorage(data);
   return data;
 };
