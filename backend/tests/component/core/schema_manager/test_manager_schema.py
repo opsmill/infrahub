@@ -25,6 +25,7 @@ from infrahub.core.constants import (
     SchemaPathType,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.models import HashableModelDiff
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
@@ -2983,7 +2984,7 @@ async def test_schema_manager_purge(default_branch: Branch, reset_registry: None
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_create_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3004,7 +3005,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
         ],
         relationships=[RelationshipSchema(name="others", peer="TestingCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
@@ -3015,7 +3016,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     assert node_from_db
 
 
-async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_create_node_in_db_generic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3027,7 +3028,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -3079,8 +3080,12 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(
-        node=NodeSchema(**SCHEMA), db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    await registry.schema.create_node_in_db(
+        node=NodeSchema(**SCHEMA),
+        db=db,
+        branch=default_branch,
+        at=Timestamp(),
+        user_id="user-id",
     )
 
     node = registry.schema.get(name="TestingCriticality", branch=default_branch)
@@ -3090,14 +3095,170 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(
-        node=new_node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    diff = HashableModelDiff(
+        changed={
+            "default_filter": None,
+            "attributes": HashableModelDiff(changed={new_node.attributes[0].name: None}),
+        }
+    )
+    await registry.schema.update_node_in_db_based_on_diff(
+        node=new_node, diff=diff, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
     )
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)
 
     assert results[new_node.id].default_filter.value == "kind__value"
     assert results[new_node.attributes[0].id].unique.value is False
+
+
+async def test_load_schema_to_db_idempotent(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """Loading a schema twice with id-less items must not produce duplicate DB rows."""
+    registry.schema = SchemaManager()
+    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
+
+    user_schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Widget",
+                namespace="Testing",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            )
+        ]
+    )
+    schema_branch = registry.schema.register_schema(schema=user_schema, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch, at=Timestamp())
+
+    # Build a fresh SchemaBranch from the same definition with no ids
+    fresh_branch = SchemaBranch(cache=registry.schema._cache, name=default_branch.name)
+    fresh_branch.load_schema(schema=user_schema)
+    fresh_branch.process()
+    await registry.schema.load_schema_to_db(schema=fresh_branch, db=db, branch=default_branch, at=Timestamp())
+
+    node_schema = registry.schema.get(name="SchemaNode", branch=default_branch)
+    results = await SchemaManager.query(
+        schema=node_schema,
+        db=db,
+        branch=default_branch,
+        filters={"namespace__value": "Testing", "name__value": "Widget"},
+    )
+    assert len(results) == 1
+
+
+async def test_load_schema_to_db_overrides_input_id_with_existing_db_id(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
+) -> None:
+    """``load_schema_to_db`` resolves existing rows by ``(namespace, name)`` and uses the DB's
+    uuid regardless of any stale id carried on the input schema."""
+    node = NodeSchema(
+        name="OverrideGadget",
+        namespace="Testing",
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    db_id = registry.schema.get(name="TestingOverrideGadget", branch=default_branch).id
+
+    # Build a fresh SchemaBranch whose registered schema carries a fake id. ``load_schema_to_db``
+    # should ignore the fake id, find the existing row by (namespace, name), and update it.
+    fake_id = str(uuid.uuid4())
+    stale_node = NodeSchema(
+        id=fake_id,
+        name="OverrideGadget",
+        namespace="Testing",
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    fresh_branch = SchemaBranch(cache=registry.schema._cache, name=default_branch.name)
+    fresh_branch.load_schema(schema=SchemaRoot(nodes=[stale_node]))
+    fresh_branch.set(name=stale_node.kind, schema=stale_node)  # ensure the stale id sticks
+    fresh_branch.process()
+    await registry.schema.load_schema_to_db(
+        schema=fresh_branch, db=db, branch=default_branch, limit=[stale_node.kind], at=Timestamp()
+    )
+
+    result = registry.schema.get(name="TestingOverrideGadget", branch=default_branch)
+    assert result.id == db_id
+    assert result.id != fake_id
+
+
+async def test_load_schema_to_db_no_duplicate_children_when_registry_stale(
+    db: InfrahubDatabase, default_branch: Branch
+) -> None:
+    """Loading a schema with id-less attributes and relationships when DB rows already exist must
+    reuse existing child rows (no duplicate ``SchemaAttribute`` / ``SchemaRelationship``) by
+    matching on the child's name."""
+    registry.schema = SchemaManager()
+    registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
+
+    user_schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Owner",
+                namespace="Testing",
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+            ),
+            NodeSchema(
+                name="Vehicle",
+                namespace="Testing",
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    AttributeSchema(name="size", kind="Number", optional=True),
+                ],
+                relationships=[
+                    RelationshipSchema(name="primary_owner", peer="TestingOwner", optional=True, cardinality="one"),
+                ],
+            ),
+        ]
+    )
+    schema_branch = registry.schema.register_schema(schema=user_schema, branch=default_branch.name)
+    await registry.schema.load_schema_to_db(schema=schema_branch, db=db, branch=default_branch, at=Timestamp())
+
+    # Build a fresh SchemaBranch from the same definition (no ids, no inherited state).
+    # ``load_schema_to_db`` should match the existing ``SchemaAttribute`` and ``SchemaRelationship``
+    # children by name rather than creating duplicates.
+    fresh_branch = SchemaBranch(cache=registry.schema._cache, name=default_branch.name)
+    fresh_branch.load_schema(schema=user_schema)
+    fresh_branch.process()
+    await registry.schema.load_schema_to_db(schema=fresh_branch, db=db, branch=default_branch, at=Timestamp())
+
+    parent_id = registry.schema.get(name="TestingVehicle", branch=default_branch).id
+    attribute_schema = registry.schema.get(name="SchemaAttribute", branch=default_branch)
+    attr_rows = await SchemaManager.query(
+        schema=attribute_schema, db=db, branch=default_branch, filters={"node__id": parent_id}
+    )
+    assert sorted(a.name.value for a in attr_rows) == ["name", "size"]
+
+    relationship_schema = registry.schema.get(name="SchemaRelationship", branch=default_branch)
+    rel_rows = await SchemaManager.query(
+        schema=relationship_schema, db=db, branch=default_branch, filters={"node__id": parent_id}
+    )
+    assert sorted(r.name.value for r in rel_rows) == ["primary_owner"]
+
+
+async def test_load_schema_to_db_rejects_type_mismatch(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
+) -> None:
+    """If a ``(namespace, name)`` exists on the DB as a SchemaNode but the input is a
+    GenericSchema (or vice versa), the upsert pipeline raises rather than silently routing
+    through the wrong type bucket."""
+    await registry.schema.create_node_in_db(
+        node=NodeSchema(name="TypeMismatch", namespace="Testing"),
+        db=db,
+        branch=default_branch,
+        at=Timestamp(),
+        user_id="user-id",
+    )
+
+    mismatched = GenericSchema(name="TypeMismatch", namespace="Testing")
+    fresh_branch = SchemaBranch(cache=registry.schema._cache, name=default_branch.name)
+    fresh_branch.load_schema(schema=SchemaRoot(generics=[mismatched]))
+    fresh_branch.process()
+    with pytest.raises(ValueError, match=r"type mismatch"):
+        await registry.schema.load_schema_to_db(
+            schema=fresh_branch,
+            db=db,
+            branch=default_branch,
+            limit=[mismatched.kind],
+            at=Timestamp(),
+        )
 
 
 async def test_load_schema_to_db_internal_models(db: InfrahubDatabase, default_branch: Branch) -> None:
