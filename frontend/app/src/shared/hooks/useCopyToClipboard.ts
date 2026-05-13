@@ -1,12 +1,18 @@
 import React from "react";
 
 function oldSchoolCopy(text: string) {
-  const tempTextArea = document.createElement("textarea");
-  tempTextArea.value = text;
-  document.body.appendChild(tempTextArea);
-  tempTextArea.select();
-  document.execCommand("copy");
-  document.body.removeChild(tempTextArea);
+  const textNode = document.createTextNode(text);
+  document.body.appendChild(textNode);
+  const range = document.createRange();
+  range.selectNode(textNode);
+  const selection = window.getSelection();
+  if (selection) {
+    selection.removeAllRanges();
+    selection.addRange(range);
+    document.execCommand("copy");
+    selection.removeAllRanges();
+  }
+  document.body.removeChild(textNode);
 }
 
 const COPIED_FEEDBACK_DURATION = 2000;
@@ -14,19 +20,25 @@ const COPIED_FEEDBACK_DURATION = 2000;
 export function useCopyToClipboard() {
   const [isCopied, setIsCopied] = React.useState(false);
 
-  const copyToClipboard = React.useCallback(async (value: string) => {
+  const copyToClipboard = React.useCallback((value: string) => {
     function confirmCopied() {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
     }
 
-    try {
-      await navigator.clipboard.writeText(value);
-      confirmCopied();
-    } catch {
+    if (!window.isSecureContext || !navigator.clipboard) {
       oldSchoolCopy(value);
       confirmCopied();
+      return;
     }
+
+    navigator.clipboard
+      .writeText(value)
+      .then(confirmCopied)
+      .catch(() => {
+        oldSchoolCopy(value);
+        confirmCopied();
+      });
   }, []);
 
   return { isCopied, copyToClipboard };
