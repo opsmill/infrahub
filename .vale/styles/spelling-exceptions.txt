@@ -106,6 +106,7 @@ inlining
 Instruqt
 IPAddress
 IPHost
+IPNetwork
 IPs
 Jinja
 Jinja2
