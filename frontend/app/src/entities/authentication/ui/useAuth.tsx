@@ -12,16 +12,26 @@ import {
 
 export type AuthContextType = {
   accessToken: string | null;
-  data?: any;
   isAuthenticated: boolean;
   setToken: (token: UserToken | null) => void;
   user: User | null;
 };
 
+function extractUser(payload: unknown): User | null {
+  if (
+    payload &&
+    typeof payload === "object" &&
+    "sub" in payload &&
+    typeof payload.sub === "string"
+  ) {
+    return { id: payload.sub };
+  }
+  return null;
+}
+
 export const AuthContext = React.createContext<AuthContextType>({
   accessToken: null,
   isAuthenticated: false,
-  data: undefined,
   setToken: () => {},
   user: null,
 });
@@ -39,14 +49,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const data = parseJwt(accessToken);
-
   const value: AuthContextType = {
     accessToken,
-    data,
     isAuthenticated: !!accessToken,
     setToken,
-    user: data?.sub ? { id: data?.sub } : null,
+    user: extractUser(parseJwt(accessToken)),
   };
 
   return <AuthContext value={value}>{children}</AuthContext>;

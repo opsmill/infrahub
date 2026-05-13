@@ -12,7 +12,6 @@ const setToken = vi.fn();
 beforeEach(() => {
   vi.mocked(useAuth).mockReturnValue({
     accessToken: null,
-    data: undefined,
     isAuthenticated: false,
     setToken,
     user: null,
