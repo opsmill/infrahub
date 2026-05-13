@@ -54,4 +54,9 @@ describe("useLastUsedMethod", () => {
     const { result } = await renderHook(() => useLastUsedMethod([]));
     expect(result.current[0]).toBeNull();
   });
+
+  test("uses defaultMethod when nothing is stored and a default is provided", async () => {
+    const hook = await renderHook(() => useLastUsedMethod([local, sso], sso));
+    expect(hook.result.current[0]).toEqual(sso);
+  });
 });
