@@ -15,6 +15,7 @@ from infrahub.api import (
     diff,
     file,
     internal,
+    ldap,
     menu,
     oauth2,
     oidc,
@@ -37,6 +38,7 @@ router.include_router(auth.router)
 router.include_router(diff.router)
 router.include_router(file.router)
 router.include_router(internal.router)
+router.include_router(ldap.router)
 router.include_router(menu.router)
 router.include_router(oauth2.router)
 router.include_router(oidc.router)
