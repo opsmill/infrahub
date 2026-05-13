@@ -26,7 +26,7 @@ describe("useAvailableAuthMethods", () => {
         name: "google",
         display_label: "Google",
         icon: "mdi:google",
-        protocol: "oauth2",
+        protocol: "oauth2" as const,
         authorize_path: "/api/oauth2/google/authorize",
         token_path: "/api/oauth2/google/token",
       },
