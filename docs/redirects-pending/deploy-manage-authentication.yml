@@ -1,0 +1,37 @@
+---
+feature: Deployment & Management — Authentication (move)
+pr: TBD
+description: |
+  Moves topics/authentication.mdx into deploy-manage/user-management/authentication.mdx.
+  This is a single-page move (no split); relative links updated for new directory depth.
+  Original source file remains on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/topics/authentication
+    to: /docs/deploy-manage/user-management/authentication
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/user-management/authentication
+    title: Authentication
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/reference/sso.mdx
+    line: 10
+    current: ../topics/authentication.mdx
+    should_be: ../deploy-manage/user-management/authentication.mdx
+  - file: docs/docs/tutorials/getting-started/readme.mdx
+    line: 87
+    current: ../../topics/authentication.mdx
+    should_be: ../../deploy-manage/user-management/authentication.mdx
+  - file: docs/docs/guides/sso.mdx
+    line: 35
+    current: ../topics/authentication.mdx
+    should_be: ../deploy-manage/user-management/authentication.mdx
+  - file: docs/docs/guides/sso.mdx
+    line: 449
+    current: ../topics/authentication.mdx
+    should_be: ../deploy-manage/user-management/authentication.mdx

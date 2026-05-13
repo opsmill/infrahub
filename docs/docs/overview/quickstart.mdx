@@ -16,7 +16,7 @@ This quick start serves a dual purpose: it teaches you the fundamentals of Infra
 **What you will build**: A running Infrahub instance with a network location data model, location data, and a branch with proposed changes.
 
 :::note
-Running Infrahub locally with Docker is the most convenient setup for development and experimentation, but it requires a machine with adequate resources. See [hardware requirements](../topics/hardware-requirements.mdx) for details. If you prefer a lighter option, try the [Infrahub Sandbox](https://sandbox.infrahub.app/) or the [Getting Started Lab](https://opsmill.instruqt.com/pages/labs) instead.
+Running Infrahub locally with Docker is the most convenient setup for development and experimentation, but it requires a machine with adequate resources. See [hardware requirements](../deploy-manage/install-configure/hardware-requirements) for details. If you prefer a lighter option, try the [Infrahub Sandbox](https://sandbox.infrahub.app/) or the [Getting Started Lab](https://opsmill.instruqt.com/pages/labs) instead.
 :::
 
 **Prerequisites**:
@@ -78,7 +78,7 @@ You should see the Infrahub web interface with a navigation menu on the left sid
 
 ## Load a schema
 
-A schema defines the structure of your infrastructure data in Infrahub — the types of objects, their attributes, and how they relate to each other. [Learn more about schemas](../topics/schema.mdx).
+A schema defines the structure of your infrastructure data in Infrahub — the types of objects, their attributes, and how they relate to each other. [Learn more about schemas](../schema/overview).
 
 Rather than writing a schema from scratch, use the [Schema Library](https://github.com/opsmill/schema-library), a community-maintained collection of reusable data models.
 
@@ -154,7 +154,7 @@ Go to [http://localhost:8000](http://localhost:8000) and navigate to the **Count
 
 ## Explore branching
 
-Branches in Infrahub work like Git branches — they let you stage changes in isolation without affecting the main dataset. This is one of Infrahub's most powerful features: you can propose, review, and test data changes before merging them. [Learn more about branching](../topics/branching.mdx).
+Branches in Infrahub work like Git branches — they let you stage changes in isolation without affecting the main dataset. This is one of Infrahub's most powerful features: you can propose, review, and test data changes before merging them. [Learn more about branching](../branches/overview).
 
 1. Create a branch called `add-locations`:
 

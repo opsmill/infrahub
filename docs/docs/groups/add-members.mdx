@@ -1,0 +1,115 @@
+---
+title: Add members to a group
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Add members to a group
+
+Attach existing objects to a Standard group.
+
+:::warning GraphQL replaces, it does not append
+`CoreStandardGroupUpdate` with a `members` list **replaces** the current membership. To append, include the current members in the new list. The SDK and the web UI append by default.
+:::
+
+:::note
+This page applies to **Standard** groups. Generator and Query groups have their membership managed automatically by the Generator or query that owns them.
+:::
+
+## Prerequisites
+
+- An existing Standard group and its `hfid` (or name).
+- The IDs of the objects you want to add.
+
+## Find the object IDs
+
+Before appending via GraphQL, look up the IDs of the objects you want to add:
+
+```graphql
+query {
+  BuiltinTag(name__values: ["<value-1>", "<value-2>"]) {
+    edges {
+      node {
+        id
+        display_label
+      }
+    }
+  }
+}
+```
+
+Replace `BuiltinTag` with the kind of object you're adding.
+
+## Add members
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+1. Open the group from the Groups list.
+2. Go to the **Members** tab.
+3. Click **Add Members** and select the objects.
+4. Click **Save**.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+**Append** — include any existing member IDs plus the new ones:
+
+```graphql
+mutation AppendMembers {
+  CoreStandardGroupUpdate(
+    data: {
+      hfid: ["<group-name>"],
+      members: [
+        {id: "<existing-member-id>"},
+        {id: "<new-member-id-1>"},
+        {id: "<new-member-id-2>"}
+      ]
+    }
+  ) {
+    ok
+  }
+}
+```
+
+If you omit existing IDs, those members will be removed.
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+group = client.get(kind="CoreStandardGroup", name__value="<group-name>")
+
+obj_a = client.get(kind="<KindOfObject>", name__value="<value-a>")
+obj_b = client.get(kind="<KindOfObject>", name__value="<value-b>")
+
+group.members.add(obj_a)
+group.members.add(obj_b)
+group.save()
+```
+
+`.members.add()` appends; existing members are preserved.
+
+</TabItem>
+</Tabs>
+
+## Verify
+
+Use [Query group membership](./query-members.mdx) to confirm the expected objects are attached.
+
+## Troubleshooting
+
+**Called update but existing members disappeared.** GraphQL update replaces the full list. Re-run with the existing IDs included.
+
+**Members don't appear.** Confirm the object IDs are correct and that the objects exist on the same branch as the group.
+
+**Permission denied.** You need write access to both the group and the members being attached.
+
+## Next
+
+- [Query group membership](./query-members.mdx)
+- [Remove members from a group](./remove-members.mdx)
+- [Use groups in automation](./use-in-automation.mdx)

@@ -1,0 +1,31 @@
+---
+title: Commit events
+---
+
+<!-- vale off -->
+## Commit Updated Event
+<!-- vale on -->
+
+**Type**: infrahub.repository.update_commit
+**Description**: Event generated when the the commit within a repository has been updated.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **commit** | The commit the repository was updated to |
+| **repository_id** | The ID of the repository |
+| **repository_name** | The name of the repository |
+<!-- vale on -->

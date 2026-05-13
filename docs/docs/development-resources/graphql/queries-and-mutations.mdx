@@ -1,0 +1,203 @@
+---
+title: Queries & mutations
+---
+
+# Queries & mutations
+
+In GraphQL, a query is used to fetch data and mutations are used to create/update or delete data. In Infrahub, a GraphQL query and 4 mutations will be generated for each model you define in the schema. The name of the query or mutation is based on the namespace and name of the model.
+
+For example, for the model `CoreRepository` the following query and mutations have been generated:
+
+- `Query` : **CoreRepository** to fetch `CoreRepository` nodes from Infrahub
+- `Mutation` : **CoreRepositoryCreate** to create a `CoreRepository` node
+- `Mutation` : **CoreRepositoryUpdate** to update an existing `CoreRepository` node
+- `Mutation` : **CoreRepositoryUpsert** to create or update a `CoreRepository` node
+- `Mutation` : **CoreRepositoryDelete** to delete a `CoreRepository` node
+
+## Query format
+
+The top level query for each model will always return a list of objects and the query will have the following format `CoreRepository` > `edges` > `node` > `display_label`
+
+```graphql
+query {
+  CoreRepository {            # PaginatedCoreRepository object
+    count
+    edges {                 # EdgedCoreRepository object
+      node {                # CoreRepository object
+        id
+        hfid
+        display_label
+        __typename
+      }
+    }
+  }
+}
+```
+
+:::info
+
+All list of objects will be nested under `edges` & `node` to make it possible to control the pagination and access the attribute `count`.
+
+:::
+
+### `ID`, `hfid` and `display_label`
+
+For all nodes, the attribute `id`, `hfid` and `display_label` are automatically available.
+
+The value used to generate the `display_label` can be defined for each model in the schema. If no value has been provided a generic display label with the kind and the ID of the Node will be generated.
+
+The value used to generate the `hfid` can be defined for each model in the schema. If no value has been provided and the `model` has a single uniqueness constraint defined, then the `hfid` will be automatically generated from the uniqueness constraint.
+
+At the object level, there are mainly 3 types of resources that can be accessed, each with a different format:
+
+- `Attribute`
+- `Relationship` of `Cardinality One`
+- `Relationship` of `Cardinality Many`
+
+### Attribute
+
+Each attribute is its own object in GraphQL to expose the value and all the metadata.
+
+In the query below, to access the attribute **name** of the object the query must be `CoreRepository` > `edges` > `node` > `name` > `value`.
+At the same level all the metadata of the attribute are also available, for example: `is_protected`, `source` & `owner`
+
+```graphql {6-14} title="Example query to access the value and the properties of the attribute 'name'"
+query {
+  CoreRepository {
+    count
+    edges {
+      node {
+        name {              # TextAttribute object
+          value
+          is_protected
+          source {
+            id
+            display_label
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Relationship of `Cardinality One`
+
+A relationship to another model with a cardinality of `One` will be represented with a `NestedEdged` object composed of a `node` and a `properties` objects. The `node` gives access to the remote `node` (the peer of the relationship) while `properties` gives access to the properties of the relationship itself.
+
+```graphql {6-19} title="Example query to access the peer and the properties of the relationship 'account', with a cardinality of one."
+query {
+  CoreRepository {
+    count
+    edges {
+      node {
+        account {
+          properties {
+            is_protected
+            source {
+              id
+              display_label
+            }
+          }
+          node {
+            display_label
+            hfid
+            id
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### Relationship of `Cardinality Many`
+
+A relationship with a cardinality of `Many` will be represented with a `NestedPaginated` object composed. It was the same format as the top level `PaginatedObject` with `count` and `edges` but the child element will expose both `node` and `properties`. The `node` gives access to the remote `node` (the peer of the relationship) while `properties` gives access to the properties of the relationship itself.
+
+```graphql {6-20} title="Example query to access the relationship 'tags', with a cardinality of Many."
+query {
+  CoreRepository {
+    count
+    edges {
+      node {
+        tags {                      # NestedPaginatedBuiltinTag object
+          count
+          edges {                   # NestedEdgedBuiltinTag object
+            properties {
+              is_protected
+              source {
+                id
+              }
+            }
+            node {
+              display_label
+              hfid
+              id
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Mutations format
+
+The format of the mutation to `Create`, `Update` and `Upsert` an object has some similarities with the query format. The format will be slightly different for:
+
+- An `Attribute`
+- A relationship of `Cardinality One`
+- A relationship of `Cardinality Many`
+
+### Create, update and upsert
+
+To `Create`, `Update` or `Upsert` an object, the mutations will have the following properties.
+
+- The input for the mutation must be provided inside `data`.
+- All mutations will return `ok` and `object` to access some information after the mutation has been executed.
+- `Update` mutations require you to provide an `id` or `hfid` to identify the object you want to update.
+- `Upsert` mutations do not require you to provide the `id` or the `hfid`, but enough information needs to be provided for the back-end to uniquely identify the node. Typically this means that all the attribute or relationship values need to be provided that make up the `hfid` or `uniqueness_constraints` of the node.
+
+```graphql
+mutation {
+  CoreRepositoryCreate(
+    data: {
+      name: { value: "myrepop" },           # Attribute
+      location: { value: "myrepop" },       # Attribute
+      account: { hfid: ["my_account"] },         # Relationship One
+      tags: [ { hfid: ["my_tag"] } ]}            # Relationship Many
+  ) {
+    ok
+    object {
+      id
+      hfid
+    }
+  }
+}
+```
+
+### Delete
+
+For a `Delete` mutation, we have to provide the `id` or the `hfid` of the node as part of the `data` argument.
+
+```graphql
+mutation {
+  CoreRepositoryDelete(data: {hfid: ["myrepo"]}) {
+    ok
+  }
+}
+```
+
+## Branch management
+
+In addition to the queries and the mutations automatically generated based on the schema, there are some queries and mutations to interact with the branches.
+
+- **Query**: `Branch`, Query a list of all branches
+- **Mutation**: `BranchCreate`, Create a new branch
+- **Mutation**: `BranchUpdate`, Update the description of a branch
+- **Mutation**: `BranchDelete`, Delete an existing branch
+- **Mutation**: `BranchRebase`, Rebase an existing branch with the main branch
+- **Mutation**: `BranchMerge`, Merge a branch into main
+- **Mutation**: `BranchValidate`, Validate if a branch has some conflicts

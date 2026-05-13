@@ -1,0 +1,73 @@
+---
+title: Account events
+---
+
+<!-- vale off -->
+## Account Logged In Event
+<!-- vale on -->
+
+**Type**: infrahub.account.logged_in
+**Description**: Emitted when a user successfully authenticates.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of account object |
+| **account_id** | UUID of the account |
+| **account_name** | Username of the account |
+| **account_type** | USER or SCRIPT |
+| **auth_method** | How they authenticated |
+| **session_id** | UUID of the session |
+| **groups** | List of group names/IDs |
+| **roles** | List of role names/IDs |
+| **identity_source** | External identity provider name (if applicable) |
+| **client_ip** | Source IP address |
+| **user_agent** | Browser/client info |
+| **timestamp** | When the login occurred (UTC) |
+<!-- vale on -->
+
+<!-- vale off -->
+## Account Logged Out Event
+<!-- vale on -->
+
+**Type**: infrahub.account.logged_out
+**Description**: Emitted when a user explicitly logs out.
+<!-- vale off -->
+**Uses node_kind filter for webhooks**: `false`
+<!-- vale on -->
+
+<!-- vale off -->
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **kind** | The type of account object |
+| **account_id** | UUID of the account |
+| **account_name** | Username of the account |
+| **session_id** | UUID of the session being terminated |
+| **logout_type** | How logout occurred |
+| **client_ip** | Source IP address |
+| **user_agent** | Browser/client info |
+| **timestamp** | When the logout occurred (UTC) |
+<!-- vale on -->
