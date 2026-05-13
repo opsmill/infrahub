@@ -752,8 +752,10 @@ class ConfigurationSection:
 
 
 def _generate_infrahub_events_documentation() -> None:
-    """Generate documentation for all Infrahub events into a single MDX file
-    using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.
+    """Generate per-category MDX files for all Infrahub events using a Jinja2 template.
+
+    Outputs one file per event category to docs/docs/reference/infrahub-events/.
+    Accessible via `invoke generate_infrahub_event_documentation`.
 
     Note: Ensure all event classes (like GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
     so that they appear in the introspection.
@@ -829,7 +831,7 @@ def _generate_infrahub_events_documentation() -> None:
         return grouped
 
     template_file = DOCUMENTATION_DIRECTORY / "_templates" / "infrahub-events.j2"
-    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events.mdx"
+    output_dir = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events"
 
     print(" - Generating Infrahub Events documentation")
 
@@ -846,8 +848,8 @@ def _generate_infrahub_events_documentation() -> None:
     all_event_classes = get_all_events()
     event_groups = group_events_by_category(event_classes=all_event_classes)
 
-    rendered_doc = template.render(event_groups=event_groups)
-
-    output_file.parent.mkdir(exist_ok=True, parents=True)
-    output_file.write_text(rendered_doc, encoding="utf-8")
-    print(f"Docs saved to: {output_file}")
+    output_dir.mkdir(exist_ok=True, parents=True)
+    for category, events in event_groups.items():
+        output_file = output_dir / f"{category.lower()}.mdx"
+        output_file.write_text(template.render(title=category, events=events), encoding="utf-8")
+        print(f"Docs saved to: {output_file}")

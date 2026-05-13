@@ -2,17 +2,12 @@
 title: Branch events
 ---
 
-<!-- vale off -->
 ## Branch Created Event
-<!-- vale on -->
 
 **Type**: infrahub.branch.created
 **Description**: Event generated when a branch has been created
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `false`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -28,19 +23,13 @@ title: Branch events
 | **branch_name** | The name of the branch |
 | **branch_id** | The ID of the branch |
 | **sync_with_git** | Indicates if the branch was extended to Git |
-<!-- vale on -->
 
-<!-- vale off -->
 ## Branch Deleted Event
-<!-- vale on -->
 
 **Type**: infrahub.branch.deleted
 **Description**: Event generated when a branch has been deleted
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `false`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -57,19 +46,13 @@ title: Branch events
 | **branch_id** | The ID of the mutated node |
 | **sync_with_git** | Indicates if the branch was extended to Git |
 | **proposed_change_id** | Proposed change ID if available |
-<!-- vale on -->
 
-<!-- vale off -->
 ## Branch Merged Event
-<!-- vale on -->
 
 **Type**: infrahub.branch.merged
 **Description**: Event generated when a branch has been merged
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `false`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -85,19 +68,13 @@ title: Branch events
 | **branch_name** | The name of the branch |
 | **branch_id** | The ID of the branch |
 | **proposed_change_id** | The ID of the proposed change that merged this branch if applicable |
-<!-- vale on -->
 
-<!-- vale off -->
 ## Branch Migrated Event
-<!-- vale on -->
 
 **Type**: infrahub.branch.migrated
 **Description**: Event generated when a branch has been migrated
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `false`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -112,19 +89,13 @@ title: Branch events
 | **meta.ancestors** | Any event used to trigger this event |
 | **branch_id** | The ID of the branch |
 | **branch_name** | The name of the branch |
-<!-- vale on -->
 
-<!-- vale off -->
 ## Branch Rebased Event
-<!-- vale on -->
 
 **Type**: infrahub.branch.rebased
 **Description**: Event generated when a branch has been rebased
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `false`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -139,4 +110,3 @@ title: Branch events
 | **meta.ancestors** | Any event used to trigger this event |
 | **branch_id** | The ID of the branch |
 | **branch_name** | The name of the branch |
-<!-- vale on -->
