@@ -22,6 +22,10 @@ def parse_helper_get_input(text: str) -> str:
     Format2 (without usehttppath true)(default)
       protocol=https
       host=github.com
+
+    Raises:
+        ValueError: When the input is missing required keys or when ``path`` is not provided.
+
     """
     input_dict = {line.split("=")[0]: line.split("=")[1] for line in text.splitlines() if "=" in line}
 

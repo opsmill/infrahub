@@ -74,7 +74,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @staticmethod
     def _enhance_attribute_validation_error(exc: ValidationError, attr_name: str, idx: int) -> NoReturn:
-        """Enhance validation error with attribute name and correct index in location path."""
+        """Enhance validation error with attribute name and correct index in location path.
+
+        Raises:
+            from_exception_data: ValidationError rebuilt with enriched location and input metadata derived from the original error.
+
+        """
         errors = []
         for error in exc.errors():
             error_copy = error.copy()

@@ -387,6 +387,11 @@ class InfrahubMutationMixin:
         default_filter. If not, we will try to create the node, but this creation might fail if payload contains
         hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
         we would update the node without rerunning uniqueness constraint.
+
+        Raises:
+            NodeNotFoundError: When an existing node matched by HFID cannot be retrieved on the current branch.
+            RuntimeError: When more than one node matches the same human-friendly ID.
+
         """
         schema = cls._meta.active_schema
         schema_name = schema.kind

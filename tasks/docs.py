@@ -133,6 +133,10 @@ def markdownlint(context: Context) -> None:
     """Lint markdown files with markdownlint-cli2.
 
     Uses .markdownlint-cli2.yaml for configuration, globs, and ignore patterns.
+
+    Raises:
+        SystemExit: When the markdownlint-cli2 command is not installed.
+
     """
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 

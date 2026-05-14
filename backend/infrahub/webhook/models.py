@@ -138,6 +138,10 @@ class WebhookHeader(BaseModel):
         """Resolve the header value based on its kind.
 
         Raises WebhookHeaderResolutionError if the value cannot be resolved.
+
+        Raises:
+            WebhookHeaderResolutionError: When the referenced environment variable is not set.
+
         """
         match self.kind:
             case HeaderKind.STATIC:
@@ -202,7 +206,12 @@ class Webhook(BaseModel):
 
     @property
     def signing_key(self) -> str:
-        """Return the signing key for the webhook."""
+        """Return the signing key for the webhook.
+
+        Raises:
+            ValueError: When the webhook has no shared key configured.
+
+        """
         if self.shared_key:
             return self.shared_key
         raise ValueError("Shared key is not set for the webhook")
