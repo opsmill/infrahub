@@ -1,0 +1,35 @@
+---
+title: About schema
+---
+
+import VideoPlayer from '../../src/components/VideoPlayer';
+
+# About schema
+
+The schema is Infrahub's data model — a flexible, organization-specific definition of what objects exist in your infrastructure, design, and business logic, what properties they have, and how they relate to each other. It acts as an abstraction layer over the graph database, so no knowledge of database administration is needed for day-to-day use.
+
+Because the schema is stored in the database like any other object, Infrahub supports a different schema per branch. Schema changes go through the same branch-and-propose workflow as data changes, meaning you can test schema evolution in isolation before merging it to the main branch.
+
+## Building blocks
+
+A schema is composed of four primary types:
+
+- **[Node](./nodes-and-attributes)**: A concrete object in your infrastructure model, such as a device, interface, or IP address. Nodes have attributes and relationships.
+- **[Attribute](./nodes-and-attributes#attribute-kinds)**: A direct value on a node, such as a name (`Text`), an IP address (`IPHost`), or a flag (`Boolean`).
+- **[Relationship](./relationships)**: A typed link between two nodes. Relationships have a cardinality (`one` or `many`) and a kind that controls how they appear in the UI and behave during deletion.
+- **[Generic](./generics-and-inheritance)**: A reusable base that shares attributes and relationships across multiple node types. Similar to class inheritance in object-oriented programming.
+
+## Video: exploring the Infrahub schema
+
+<center>
+  <VideoPlayer url='https://www.youtube.com/live/0Z_SBoPmGws' light />
+</center>
+
+## In this section
+
+- [Nodes & attributes](./nodes-and-attributes) — Define nodes, attribute kinds, uniqueness constraints, and human-friendly identifiers
+- [Relationships](./relationships) — Model connections between nodes, including kinds, direction, and identifiers
+- [Generics & inheritance](./generics-and-inheritance) — Share structure across node types and control inheritance behavior
+- [Branch awareness](./branch-awareness) — Control how schema objects behave across branches
+- [Hierarchy](./hierarchy) — Organise nodes in trees with ancestor and descendant queries
+- [Schema extensions](./extensions) — Add attributes and relationships to existing nodes without modifying their definition

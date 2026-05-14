@@ -22,7 +22,7 @@ export function IpNamespaceTabs({ objectId, schema }: IpNamespaceTabsProps) {
           parentKind={schema.kind!}
           parentId={objectId}
           relationship={relationshipSchemaWithIpPrefix}
-          href={constructPathForIpam("/ipam")}
+          to={constructPathForIpam("/ipam")}
         />
       )}
 
@@ -31,7 +31,7 @@ export function IpNamespaceTabs({ objectId, schema }: IpNamespaceTabsProps) {
           parentKind={schema.kind!}
           parentId={objectId}
           relationship={relationshipSchemaWithIpAddress}
-          href={constructPathForIpam("/ipam/ip_addresses")}
+          to={constructPathForIpam("/ipam/ip_addresses")}
         />
       )}
     </div>

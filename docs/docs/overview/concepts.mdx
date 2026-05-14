@@ -18,7 +18,7 @@ Example schemas can be found in the [Schema Library](https://github.com/opsmill/
 
 The schema can be loaded using the [`infrahubctl schema load`]($(base_url)infrahubctl/infrahubctl-load) command for development, or via Infrahub Git integration for production deployments. Once loaded, it's stored and version controlled in the graph database. Changes to the schema can be made at any time, and it's best practice to make schema changes in a branch to allow for testing before implementation.
 
-<ReferenceLink title="Learn more about schema" url="../guides/create-schema" />
+<ReferenceLink title="Learn more about schema" url="../academy/tutorials/build-your-first-schema" />
 
 ## Transformations
 
@@ -28,7 +28,7 @@ Transformations allow users to extract and export infrastructure data in a struc
 
 These Transformations allow for flexible and powerful data manipulation, making it easier to integrate and utilize data in various applications and workflows — from generating device configurations to producing documentation or compliance reports.
 
-<ReferenceLink title="Learn more about Transformations" url="../topics/transformation" />
+<ReferenceLink title="Learn more about Transformations" url="../transformations/overview" />
 
 ## Generators
 
@@ -38,7 +38,7 @@ Generators use templates as a starting point and prompt users for specific infor
 
 Advanced users can create custom Generators to suit their organization's specific needs and integrate them into workflows and CI/CD pipelines for automated infrastructure provisioning.
 
-<ReferenceLink title="Learn more about Generators" url="../topics/generator" />
+<ReferenceLink title="Learn more about Generators" url="../generators/overview" />
 
 ## Version control
 
@@ -68,7 +68,7 @@ Infrahub combines its graph database with Git for version control. This integrat
 
 Infrahub supports CI processes by running checks on proposed changes during the review process. These checks ensure data integrity and help identify potential issues before merging. Custom checks can be implemented to enforce specific business logic or operational requirements.
 
-<ReferenceLink title="Learn more about version control" url="../topics/version-control" />
+<ReferenceLink title="Learn more about version control" url="../immutable-history/overview" />
 
 ## Putting it together
 
@@ -76,7 +76,7 @@ These concepts are tightly integrated and work together to address a wide range 
 
 ### Design-driven automation and service catalog
 
-Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../topics/schema.mdx) and instantiated by a Generator.
+Having a flexible schema opens up new possibilities not previously available. Infrahub allows a business workflow or service to be implemented in the [schema](../schema/overview) and instantiated by a Generator.
 
 Downstream objects are linked to the Generator. If a business service needs updating or expansion, all needed changes can be generated to keep the infrastructure consistent and validated.
 

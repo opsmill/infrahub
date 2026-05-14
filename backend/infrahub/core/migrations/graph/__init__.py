@@ -7,7 +7,6 @@ from .discovery import discover_migrations
 if TYPE_CHECKING:
     from ..shared import BaseMigration
 
-
 MIGRATIONS: list[type[BaseMigration]] = discover_migrations()
 
 

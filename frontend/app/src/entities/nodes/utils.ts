@@ -14,26 +14,28 @@ import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 export const getObjectDetailsUrl = (
   objectKind: string,
   objectId?: string,
-  overrideParams?: overrideQueryParams[]
+  overrideParams?: overrideQueryParams[],
+  tabSegment?: string
 ) => {
+  const tab = tabSegment ? `/${tabSegment}` : "";
   const { schema } = getSchema(objectKind);
   if (!schema) {
-    const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
+    const path = objectId ? `/objects/${objectKind}/${objectId}${tab}` : `/objects/${objectKind}`;
     return constructPath(path, overrideParams);
   }
 
   if (isOfKind(IP_PREFIX_GENERIC, schema)) {
-    const path = objectId ? `/ipam/${objectKind}/${objectId}` : "/ipam";
+    const path = objectId ? `/ipam/${objectKind}/${objectId}${tab}` : "/ipam";
     return constructPathForIpam(path, overrideParams);
   }
 
   if (isOfKind(IP_ADDRESS_GENERIC, schema)) {
-    const path = objectId ? `/ipam/${objectKind}/${objectId}` : "/ipam/ip_addresses";
+    const path = objectId ? `/ipam/${objectKind}/${objectId}${tab}` : "/ipam/ip_addresses";
     return constructPathForIpam(path, overrideParams);
   }
 
   if (isOfKind(IP_NAMESPACE_GENERIC, schema)) {
-    const path = objectId ? `/ipam/namespaces/${objectKind}/${objectId}` : "/ipam/namespaces";
+    const path = objectId ? `/ipam/namespaces/${objectKind}/${objectId}${tab}` : "/ipam/namespaces";
     return constructPathForIpam(path, overrideParams);
   }
 
@@ -42,10 +44,10 @@ export const getObjectDetailsUrl = (
   }
 
   if (isOfKind(PROPOSED_CHANGE_OBJECT, schema)) {
-    const path = objectId ? `/proposed-changes/${objectId}` : "/proposed-changes";
+    const path = objectId ? `/proposed-changes/${objectId}${tab}` : "/proposed-changes";
     return constructPathForIpam(path, overrideParams);
   }
 
-  const path = objectId ? `/objects/${objectKind}/${objectId}` : `/objects/${objectKind}`;
+  const path = objectId ? `/objects/${objectKind}/${objectId}${tab}` : `/objects/${objectKind}`;
   return constructPath(path, overrideParams);
 };

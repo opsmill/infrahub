@@ -306,6 +306,30 @@ async def test_create_node_with_oversized_hfid(
     assert await retrieved.get_hfid(db=db) == ["x" * char_count]
 
 
+async def test_iphost_attribute_value_is_normalized_after_save(db: InfrahubDatabase, default_branch: Branch) -> None:
+    """An IPHost attribute exposes its normalized value after a save/reload cycle."""
+    schema_root = SchemaRoot(
+        nodes=[
+            {
+                "name": "HostAddress",
+                "namespace": "Test",
+                "attributes": [{"name": "address", "kind": "IPHost"}],
+            }
+        ]
+    )
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+
+    node = await Node.init(db=db, schema="TestHostAddress", branch=default_branch)
+    await node.new(db=db, address="192.0.2.10")
+    await node.save(db=db)
+
+    assert node.address.value == "192.0.2.10/32"
+
+    reloaded = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+    assert reloaded is not None
+    assert reloaded.address.value == "192.0.2.10/32"
+
+
 async def test_macaddress_attribute_value_is_normalized_after_save(
     db: InfrahubDatabase, default_branch: Branch
 ) -> None:

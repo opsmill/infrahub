@@ -53,6 +53,7 @@ export function ObjectRelationshipsManager({
           permission={permission}
           schema={parentNodeSchema}
           objectDetailsData={parentNodeData}
+          relationshipName={relationshipName}
         />
       </Row>
       <RelationshipTable

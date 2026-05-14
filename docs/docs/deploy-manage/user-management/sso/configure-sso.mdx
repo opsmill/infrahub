@@ -1,0 +1,332 @@
+---
+title: Configure SSO
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import ReferenceLink from "../../../../src/components/Card";
+
+# Configure SSO (Single sign-on)
+
+This guide walks you through configuring single sign-on (SSO) in Infrahub using OpenID Connect (OIDC) or OAuth2 authentication protocols.
+
+When complete, users will be able to authenticate with Infrahub through your existing organizational identity provider, eliminating the need for separate Infrahub credentials.
+
+## Prerequisites
+
+Before configuring SSO, you need:
+
+- Administrative access to your identity provider (like Entra ID, Okta, Google Workspace, etc.)
+- Administrative access to your Infrahub configuration
+
+## Steps overview
+
+1. Choose your protocol and collect necessary information
+2. Create the application in your identity provider
+3. Configure Infrahub to connect to your identity provider
+4. Validate the SSO integration
+
+## Step 1: Prepare and collect information
+
+### Choose an authentication protocol
+
+Select a protocol based on your identity provider's support. Most modern providers support both OIDC and OAuth2.
+
+:::info
+OIDC provides standardized user information and is recommended for new implementations. See [Authentication](../authentication.mdx) for details on the differences between OIDC and OAuth2.
+:::
+
+<Tabs groupId="selected-protocol" queryString>
+  <TabItem value="oidc" default>
+  OpenID Connect (OIDC) is recommended when available as it provides standardized user Profile information.
+  </TabItem>
+  <TabItem value="oauth2">
+  OAuth2 is a widely supported authorization protocol that may require additional configuration for user Profile mapping.
+  </TabItem>
+</Tabs>
+
+### Select a provider configuration slot
+
+Infrahub provides six configuration slots for identity providers:
+
+- **OIDC slots**: PROVIDER1, PROVIDER2, GOOGLE
+- **OAuth2 slots**: PROVIDER1, PROVIDER2, GOOGLE
+
+:::warning
+This guide uses the first provider slot (`PROVIDER1`). For multiple providers, follow the same steps with the appropriate slot name. Google Workspace integration requires the `GOOGLE` slot.
+:::
+
+### Determine your redirect URI
+
+When registering Infrahub in your identity provider, you'll need a redirect URI - the URL where users are sent after successful authentication.
+
+Use this format:
+
+```text
+https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback
+```
+
+For a production Infrahub instance at `infrahub.example.com`:
+
+<Tabs groupId="selected-protocol" queryString>
+  <TabItem value="oidc" default>
+  ```
+  https://infrahub.example.com/auth/oidc/provider1/callback
+  ```
+  </TabItem>
+  <TabItem value="oauth2">
+  ```
+  https://infrahub.example.com/auth/oauth2/provider1/callback
+  ```
+  </TabItem>
+</Tabs>
+
+:::note Reverse proxy setup
+Use the `INFRAHUB_PUBLIC_URL` environment variable to specify the externally accessible URL for your Infrahub instance. This configuration is critical when Infrahub is deployed behind a reverse proxy, load balancer, or in containerized environments where the internal and external URLs differ. When configuring SSO ensure this URL matches the redirect URI or callback URL configured in your SSO provider.
+:::
+
+For a local development instance:
+
+<Tabs groupId="selected-protocol" queryString>
+  <TabItem value="oidc" default>
+  ```
+  http://localhost:8000/auth/oidc/provider1/callback
+  ```
+  </TabItem>
+  <TabItem value="oauth2">
+  ```
+  http://localhost:8000/auth/oauth2/provider1/callback
+  ```
+  </TabItem>
+</Tabs>
+
+## Step 2: Configure the identity provider
+
+### Create the application in your identity provider
+
+Create an application in your identity provider that Infrahub will use for authentication.
+
+:::info
+While this guide tries to cover common identity providers, if your specific provider isn't listed, please refer to your provider's documentation for instructions on "creating an application registration" or "configuring OAuth2/OIDC integration."
+:::
+
+<details>
+    <summary><b>Using Entra ID (formerly Azure AD)</b></summary>
+
+#### Create an application in Entra ID
+
+1. Sign in to the [Microsoft Entra admin center](https://entra.microsoft.com)
+2. Navigate to **App registrations**
+3. Click **+ New registration**
+4. Enter a name for your application (for example "Infrahub")
+5. Select the appropriate account type (usually "Accounts in this organizational directory only" for internal use)
+6. Under **Redirect URI**:
+   - Select **Web** for the platform
+   - Enter your redirect URI determined earlier
+7. Click **Register**
+
+#### Create a client secret
+
+1. In your new app registration, navigate to **Certificates & secrets**
+2. Click **+ New client secret**
+3. Add a description and select an expiration period
+4. Click **Add**
+
+:::danger
+Copy the **Value** immediately - you won't be able to see it again after navigating away from this page!
+:::
+
+#### Collect the required information
+
+Make note of the following information for Infrahub configuration:
+
+:::info
+On the registration overview page, click the **Endpoints** tab to find the necessary URLs.
+:::
+
+<Tabs groupId="selected-protocol" queryString>
+<TabItem value="oidc" default>
+| Field | Location/Value |
+|-------|-------|
+| Client ID | The "Application (client) ID" shown on the app overview page |
+| Client Secret | The value of the client secret you created (only visible at creation time) |
+| Discovery URL | Called "OpenID Connect metadata document" under the **Endpoints** tab |
+| Display Label | For example: `Microsoft Entra ID` |
+| Icon | For example: `mdi:microsoft` |
+</TabItem>
+<TabItem value="oauth2">
+| Field | Location/Value |
+|-------|-------|
+| Client ID | The "Application (client) ID" shown on the app overview page |
+| Client Secret | The value of the client secret you created (only visible at creation time) |
+| Authorization URL | The "OAuth 2.0 authorization endpoint (v2)" URL under the **Endpoints** tab |
+| Token URL | The "OAuth 2.0 token endpoint (v2)" URL under the **Endpoints** tab |
+| Userinfo URL | The value is static: `https://graph.microsoft.com/oidc/userinfo` |
+| Display Label | For example: `Microsoft Entra ID` |
+| Icon | For example: `mdi:microsoft` |
+</TabItem>
+</Tabs>
+</details>
+
+:::success
+At the end of this step, you should have gathered all the necessary information to configure SSO in Infrahub.
+
+<Tabs groupId="selected-protocol" queryString>
+<TabItem value="oidc" default>
+
+| Client ID | Client Secret | Discovery URL |
+|-----------|--------------|--------------|
+
+</TabItem>
+<TabItem value="oauth2">
+
+| Client ID | Client Secret | Authorization URL | Token URL | Userinfo URL |
+|-----------|--------------|-------------------|-----------|--------------|
+
+</TabItem>
+</Tabs>
+
+:::
+
+## Step 3: Configure Infrahub
+
+Now configure Infrahub to connect to your identity provider using either environment variables or the `infrahub.toml` configuration file.
+
+:::info
+The configuration process will require a restart of the Infrahub server and depends on your deployment method.
+
+For detailed instructions on how to apply configuration changes to your Infrahub instance, see [Configure Infrahub](../../install-configure/configure-infrahub.mdx).
+
+For detailed configuration options, see the [configuration reference](../../../reference/configuration.mdx).
+
+For multiple identity providers, refer to the [Advanced Configuration Section](./advanced-sso.mdx#multiple-identity-providers).
+:::
+
+<Tabs groupId="selected-protocol" queryString>
+<TabItem value="oidc" default>
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Replace values with informations collected during the previous step
+export INFRAHUB_OIDC_PROVIDER1_CLIENT_ID="client-id"
+export INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET="client-secret"
+export INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL="discovery-url"
+
+# Optional: Set display label and icon for the login screen
+export INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL="display-label"
+export INFRAHUB_OIDC_PROVIDER1_ICON="mdi:key"
+
+# Then enable the provider
+export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1"]'
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[security.oidc_provider_settings.provider1]
+# Replace values with informations collected during the previous step
+client_id = "client-id"
+client_secret = "client-secret"
+discovery_url = "discovery-url"
+
+# Optional: Set display label and icon for the login screen
+display_label = "display-label"
+icon = "mdi:key"
+
+[security]
+# Then enable the provider
+oidc_providers = ["provider1"]
+```
+
+</TabItem>
+</Tabs>
+
+</TabItem>
+<TabItem value="oauth2">
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Replace values with informations collected during the previous step
+export INFRAHUB_OAUTH2_PROVIDER1_CLIENT_ID="client-id"
+export INFRAHUB_OAUTH2_PROVIDER1_CLIENT_SECRET="client-secret"
+export INFRAHUB_OAUTH2_PROVIDER1_AUTHORIZATION_URL="authorization-url"
+export INFRAHUB_OAUTH2_PROVIDER1_TOKEN_URL="token-url"
+export INFRAHUB_OAUTH2_PROVIDER1_USERINFO_URL="userinfo-url"
+
+# Optional: Set display label and icon for the login screen
+export INFRAHUB_OAUTH2_PROVIDER1_DISPLAY_LABEL="display-label"
+export INFRAHUB_OAUTH2_PROVIDER1_ICON="mdi:key"
+
+# Then enable the provider
+export INFRAHUB_SECURITY_OAUTH2_PROVIDERS='["provider1"]'
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[security.oauth2_provider_settings.provider1]
+# Replace values with informations collected during the previous step
+client_id = "client-id"
+client_secret = "client-secret"
+authorization_url = "authorization-url"
+token_url = "token-url"
+userinfo_url = "userinfo-url"
+
+# Optional: Set display label and icon for the login screen
+display_label = "display-label"
+icon = "mdi:key"
+
+[security]
+# Then enable the provider
+oauth2_providers = ["provider1"]
+```
+
+</TabItem>
+</Tabs>
+</TabItem>
+</Tabs>
+
+<ReferenceLink title="Configure Infrahub" url="../../install-configure/configure-infrahub" openInNewTab />
+
+:::success
+After restarting, Infrahub will authenticate users through your configured identity provider.
+
+If Infrahub fails to restart, check the [Troubleshooting section](#troubleshooting).
+:::
+
+## Step 4: Validate the SSO configuration
+
+To verify your SSO configuration:
+
+1. Navigate to your Infrahub login page
+2. Look for a button labeled with your configured `display_label` next to the standard login form
+3. Click the SSO button
+4. You should be redirected to your identity provider's login screen
+5. After authenticating, you should be redirected back to Infrahub and logged in
+
+:::success
+When correctly configured, you'll successfully log in through your identity provider.
+
+If authentication fails, check the [Troubleshooting section](#troubleshooting).
+:::
+
+## Troubleshooting
+
+:::info
+Every SSO authentication attempt is logged in the Infrahub server logs. Review these logs for detailed error messages that can help diagnose issues.
+:::
+
+| Issue | Possible Cause | Solution |
+|-------|---------------|----------|
+| "Redirect URI mismatch" error | The redirect URI in your identity provider doesn't match the one Infrahub expects | Verify the redirect URI follows the exact format: `https://<your-infrahub-hostname>/auth/<protocol>/<provider-slot>/callback` |
+| "Invalid client" error | Client ID or secret is incorrect | Double-check your client ID and secret values for typos or extra spaces |
+
+## Related resources
+
+- [SSO overview](./overview.mdx)
+- [Advanced SSO configuration](./advanced-sso.mdx)
+- [Authentication](../authentication.mdx)
+- [SSO reference](../../../reference/sso.mdx)

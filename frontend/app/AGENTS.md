@@ -25,6 +25,7 @@ cd frontend/app && pnpm codegen    # Generate GraphQL types
 
 - `dev/guidelines/frontend/component-patterns.md` - Reuse-first checklist, early returns, layout extraction
 - `dev/guidelines/frontend/page-architecture.md` - State ownership, URL sync, size budgets, backend-authoritative rule
+- `dev/guidelines/frontend/route-architecture.md` - Detail-page nested routes, tab bars, outlet context, route param hooks
 - `dev/guidelines/frontend/naming-conventions.md` - File naming patterns and query-key shape
 - `dev/guidelines/frontend/typescript.md` - TypeScript and React patterns
 - `dev/guidelines/frontend/styling.md` - Tailwind CSS and CVA
