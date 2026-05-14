@@ -3233,6 +3233,68 @@ async def test_load_schema_to_db_no_duplicate_children_when_registry_stale(
     assert sorted(r.name.value for r in rel_rows) == ["primary_owner"]
 
 
+async def test_load_schema_to_db_rename_with_new_idless_child_reuses_db_row(
+    db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
+) -> None:
+    """Renaming a parent while adding a field that already exists on the renamed schema must
+    not insert a duplicate field.
+    """
+    # Create the original schema
+    original = NodeSchema(
+        name="OldKind",
+        namespace="Renametest",
+        attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+    )
+    await registry.schema.create_node_in_db(
+        node=original, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    )
+    after_create = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    old_schema = after_create.get(name="RenametestOldKind", duplicate=True)
+    assert isinstance(old_schema, NodeSchema)
+    old_schema_id = old_schema.id
+    name_attr_id = next(a.id for a in old_schema.attributes if a.name == "name")
+
+    # Simulate another worker adding ``color`` to the schema on the database
+    old_schema.attributes.append(AttributeSchema(name="color", kind="Text", optional=True))
+    diff = HashableModelDiff(changed={"attributes": HashableModelDiff(added={"color": None})})
+    await registry.schema.update_node_in_db_based_on_diff(
+        db=db, node=old_schema, diff=diff, branch=default_branch, at=Timestamp(), user_id="other-worker"
+    )
+
+    # Build the renamed input schema: node kind changes (id preserved), ``name`` attr keeps its
+    # id, the new ``color`` attribute is id-less (registry never saw it)
+    renamed = NodeSchema(
+        id=old_schema_id,
+        name="NewKind",
+        namespace="Renametest2",
+        attributes=[
+            AttributeSchema(id=name_attr_id, name="name", kind="Text", unique=True),
+            AttributeSchema(name="color", kind="Text", optional=True),
+        ],
+    )
+    fresh_branch = SchemaBranch(cache={}, name=default_branch.name)
+    fresh_branch.load_schema(schema=SchemaRoot(nodes=[renamed]))
+    fresh_branch.set(name=renamed.kind, schema=renamed)
+    fresh_branch.process()
+    await registry.schema.load_schema_to_db(
+        schema=fresh_branch, db=db, branch=default_branch, limit=[renamed.kind], at=Timestamp()
+    )
+
+    # Verify: node schema was renamed (same uuid), and there is exactly one ``color`` SchemaAttribute
+    # linked to it (the pre-existing row was reused)
+    final = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+    renamed_schema = final.get(name="Renametest2NewKind", duplicate=False)
+    assert renamed_schema.id == old_schema_id
+    attribute_schema = registry.schema.get(name="SchemaAttribute", branch=default_branch)
+    color_rows = await SchemaManager.query(
+        schema=attribute_schema,
+        db=db,
+        branch=default_branch,
+        filters={"node__id": old_schema_id, "name__value": "color"},
+    )
+    assert len(color_rows) == 1
+
+
 async def test_load_schema_to_db_rejects_type_mismatch(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:

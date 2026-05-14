@@ -376,32 +376,23 @@ class SchemaManager(NodeManager):
         db: InfrahubDatabase,
         at: Timestamp | None = None,
     ) -> dict[str, tuple[Node, SchemaSummary]]:
-        """Resolve which DB rows the given schemas should update, returning ``(Node, SchemaSummary)`` per kind.
+        """Retrieve the current database object (Node) and SchemaSummary for all ``schemas``
 
         Returns a dict keyed by ``kind`` (``namespace + name``) mapping to a tuple of:
-        - the pre-fetched parent ``Node`` ready to pass into ``_upsert_node_to_db``, and
-        - ``Sch`` carrying the parent uuid plus active SchemaAttribute /
-          SchemaRelationship children keyed by name — needed by the update path to detect
-          existing children by name and avoid creating duplicates when the registry is stale.
+        - the current ``Node`` for the schema object, if it exists
+        - ``SchemaSummary`` linking each schema kind to its ID and its ID-less fields to their
+        IDs if they already exist
 
-        Items that have no existing DB row are absent from the dict.
-
-        Two-step batch lookup with a fixed cost per load operation regardless of item count:
-        1. One dedicated Cypher query (``SchemaSummaryQuery``) returns the parent uuid plus
-           child {name → uuid} maps for each matching kind on the branch.
-        2. Up to two ``self.query(filters={"ids": ...})`` calls (one per parent schema type)
-           bulk-fetch the full parent Node instances — with attributes and relationships
-           prefetched — only for the rows we actually need to update.
+        Schemas that do not exist on the database will not be in the returned dictionary.
         """
         if not schemas:
             return {}
 
+        # both filters are necessary to account for renamed schemas
         kind_filter = [(one_schema.namespace, one_schema.name) for one_schema in schemas]
-        # The expensive child-collection phases of SchemaSummaryQuery only matter to the update
-        # path when an input attribute / relationship is missing its ``id`` — that's when
-        # ``_update_existing_node_in_db`` falls back to matching by name. Pass only the names that
-        # actually need name-based fallback (i.e. items with ``id is None``); items with ids will
-        # be matched by id directly and don't need their names in the filter.
+        uuid_filter = [one_schema.id for one_schema in schemas if one_schema.id]
+        # only retrieve fields for a schema if the field is being added
+        # (it has no ID set b/c it has not come from the database)
         attribute_names = list(
             {attr.name for one_schema in schemas for attr in one_schema.local_attributes if attr.id is None}
         )
@@ -418,43 +409,51 @@ class SchemaManager(NodeManager):
             branch=branch,
             at=at,
             kind_filter=kind_filter,
+            uuid_filter=uuid_filter,
             attribute_names=attribute_names,
             relationship_names=relationship_names,
         )
         await query.execute(db=db)
-        existing_by_kind = query.get_summaries_by_name()
+        summary_index = query.get_summaries()
 
-        selected: dict[str, SchemaSummary] = {}
+        summaries_by_kind: dict[str, SchemaSummary] = {}
         for one_schema in schemas:
-            info = existing_by_kind.get(one_schema.kind)
-            if info is None:
+            # Try to match by UUID first to make sure a kind update is handled correctly
+            summary: SchemaSummary | None = None
+            if one_schema.id:
+                summary = summary_index.get_summary_by_uuid(uuid=one_schema.id)
+            if summary is None:
+                summary = summary_index.get_summary_by_kind(kind=one_schema.kind)
+            if summary is None:
                 continue
+
+            # unlikely case, but better to prevent it for sure
             schema_is_generic = isinstance(one_schema, GenericSchema)
-            if info.is_generic != schema_is_generic:
+            if summary.is_generic != schema_is_generic:
                 input_type = "GenericSchema" if schema_is_generic else "NodeSchema"
-                db_type = "SchemaGeneric" if info.is_generic else "SchemaNode"
+                db_type = "SchemaGeneric" if summary.is_generic else "SchemaNode"
                 raise ValueError(
                     f"Schema kind {one_schema.kind!r} on branch {branch.name!r} has a type mismatch: "
-                    f"input is a {input_type} but the existing DB row is a {db_type} (uuid={info.uuid})."
+                    f"input is a {input_type} but the existing DB row is a {db_type} (uuid={summary.uuid})."
                 )
-            selected[one_schema.kind] = info
+            summaries_by_kind[one_schema.kind] = summary
 
-        if not selected:
+        if not summaries_by_kind:
             return {}
 
         nodes_by_id = await self.get_many(
-            ids=[info.uuid for info in selected.values()],
+            ids=[summary.uuid for summary in summaries_by_kind.values()],
             db=db,
             branch=branch,
             at=at,
             prefetch_relationships=True,
         )
         result: dict[str, tuple[Node, SchemaSummary]] = {}
-        for kind, info in selected.items():
-            db_node = nodes_by_id.get(info.uuid)
-            if db_node is None:
+        for kind, summary in summaries_by_kind.items():
+            schema_object = nodes_by_id.get(summary.uuid)
+            if schema_object is None:
                 continue
-            result[kind] = (db_node, info)
+            result[kind] = (schema_object, summary)
         return result
 
     async def _prefetch_existing_children(
@@ -464,27 +463,23 @@ class SchemaManager(NodeManager):
         branch: Branch,
         db: InfrahubDatabase,
     ) -> dict[str, Node]:
-        """Bulk-fetch the SchemaAttribute / SchemaRelationship Nodes the update path will touch.
-
-        Walks each input item that has a resolved DB row, computes the union of child uuids the
-        update path would otherwise fetch one parent at a time, and issues a single ``get_many``.
-        For a typical worker-restart batch (N parents, M children each) this collapses N
-        ``get_many`` round-trips into one.
-        """
+        """Bulk-fetch the SchemaAttribute / SchemaRelationship Nodes the update path will touch."""
         all_ids: set[str] = set()
         for one_schema in schemas:
             resolved = schema_summary_map.get(one_schema.kind)
+            # schema does not exist on the database yet, so nothing to fetch
             if resolved is None:
                 continue
-            _, info = resolved
+            _, summary = resolved
             for attr in one_schema.local_attributes:
-                child_id = attr.id or info.attributes.get(attr.name)
+                # prefer ID from the database over incoming ID
+                child_id = summary.attributes.get(attr.name) or attr.id
                 if child_id:
                     all_ids.add(child_id)
             for rel in one_schema.local_relationships:
                 if self._is_virtual_relationship(rel.name):
                     continue
-                child_id = rel.id or info.relationships.get(rel.name)
+                child_id = summary.relationships.get(rel.name) or rel.id
                 if child_id:
                     all_ids.add(child_id)
 
@@ -502,9 +497,7 @@ class SchemaManager(NodeManager):
     ) -> NodeSchema | GenericSchema:
         """Insert a new schema node with its attributes and relationships.
 
-        Pure INSERT — does not check whether a row with the same ``(namespace, name)`` already
-        exists on the branch. Callers needing idempotency should use ``update_node_in_db`` for an
-        update or go through ``load_schema_to_db`` / ``update_schema_to_db`` for batched upserts.
+        Always adds the schema. Does not check if it already exists.
         """
         branch = await registry.get_branch(branch=branch, db=db)
         return await self._create_node_in_db(node=node, branch=branch, db=db, at=at, user_id=user_id)
@@ -520,19 +513,12 @@ class SchemaManager(NodeManager):
         existing_fields: dict[str, Node],
         branch: Branch,
     ) -> NodeSchema | GenericSchema:
-        """Insert or update a schema node based on a pre-resolved DB Node.
-
-        Internal dispatch helper used by ``load_schema_to_db`` and ``update_schema_to_db`` after
-        they have resolved the existence state for every schema in the batch via
-        ``_resolve_existing_db_nodes`` and pre-fetched the child Nodes via
-        ``_prefetch_existing_children``. No DB lookups of its own. ``existing_db_node=None`` means
-        INSERT; otherwise UPDATE.
-        """
+        """Insert or update a schema node based on a pre-resolved DB Node."""
         if existing_db_node is None:
             return await self._create_node_in_db(node=node, branch=branch, db=db, at=at, user_id=user_id)
         return await self._update_existing_node_in_db(
             schema=node,
-            obj=existing_db_node,
+            existing_schema_object=existing_db_node,
             existing_summary=existing_summary,
             existing_fields=existing_fields,
             branch=branch,
@@ -614,7 +600,7 @@ class SchemaManager(NodeManager):
         self,
         db: InfrahubDatabase,
         schema: NodeSchema | GenericSchema,
-        obj: Node,
+        existing_schema_object: Node,
         existing_summary: SchemaSummary | None,
         existing_fields: dict[str, Node],
         user_id: str,
@@ -623,30 +609,26 @@ class SchemaManager(NodeManager):
     ) -> NodeSchema | GenericSchema:
         """Update the supplied DB node with the schema's attributes and relationships.
 
-        The DB node ``obj`` is treated as the source of truth for identity: the returned schema
-        will carry ``obj.id`` regardless of what was on the input ``node``.
+        The returned schema will carry ``existing_schema_object.id`` regardless of what was on the
+        input ``schema``.
 
-        When ``existing_info`` is supplied, each input attribute/relationship without an ``id`` is
-        matched against ``existing_info.attributes`` / ``existing_info.relationships`` by name
-        before deciding to create. This prevents duplicate child rows when the registry on this
-        worker is stale relative to the DB (e.g., another worker added the field, or the same
-        schema definition is being re-applied with fresh ids).
+        ``existing_summary`` (when supplied) names the attributes and relationships already on
+        ``existing_schema_object`` in the DB, keyed by name. Each input field is resolved by
+        preferring the DB-known uuid for that name, to prevent duplicate fields
 
-        ``existing_children`` is a pre-fetched ``{uuid: Node}`` dict — the caller (typically the
-        batch path in ``load_schema_to_db`` / ``update_schema_to_db``) bulk-fetches every child
-        Node it expects to update across *all* parents in one ``get_many`` call to avoid one
-        round-trip per parent. The public ``update_node_in_db`` builds it for its single item.
+        ``existing_fields`` is a pre-fetched ``{uuid: Node}`` dict for every field this
+        update path will touch
         """
         schema_dict = schema.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
-            if obj_attr := getattr(obj, key, None):
+            if obj_attr := getattr(existing_schema_object, key, None):
                 obj_attr.value = value
 
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
         new_node = schema.duplicate()
-        new_node.id = obj.id
+        new_node.id = existing_schema_object.id
 
         existing_attrs = existing_summary.attributes if existing_summary else {}
         existing_rels = existing_summary.relationships if existing_summary else {}
@@ -668,9 +650,13 @@ class SchemaManager(NodeManager):
                 rel_resolved_ids[relationship.name] = resolved
 
         # Update the parent's link lists using the resolved ids
-        await obj.get_relationship("attributes").update(db=db, data=list(attr_resolved_ids.values()), at=at)
-        await obj.get_relationship("relationships").update(db=db, data=list(rel_resolved_ids.values()), at=at)
-        await obj.save(db=db, at=at, user_id=user_id)
+        await existing_schema_object.get_relationship("attributes").update(
+            db=db, data=list(attr_resolved_ids.values()), at=at
+        )
+        await existing_schema_object.get_relationship("relationships").update(
+            db=db, data=list(rel_resolved_ids.values()), at=at
+        )
+        await existing_schema_object.save(db=db, at=at, user_id=user_id)
 
         new_attr_by_name = {a.name: a for a in new_node.local_attributes}
         new_rel_by_name = {r.name: r for r in new_node.local_relationships}
@@ -684,7 +670,13 @@ class SchemaManager(NodeManager):
                 new_attr_by_name[attribute.name].id = resolved_id
             elif not resolved_id:
                 new_db_attr = await self.create_attribute_in_db(
-                    schema=attribute_schema, item=attribute, branch=branch, db=db, parent=obj, at=at, user_id=user_id
+                    schema=attribute_schema,
+                    item=attribute,
+                    branch=branch,
+                    db=db,
+                    parent=existing_schema_object,
+                    at=at,
+                    user_id=user_id,
                 )
                 new_attr_by_name[attribute.name].id = new_db_attr.id
 
@@ -703,7 +695,7 @@ class SchemaManager(NodeManager):
                     item=relationship,
                     branch=branch,
                     db=db,
-                    parent=obj,
+                    parent=existing_schema_object,
                     at=at,
                     user_id=user_id,
                 )
@@ -729,7 +721,7 @@ class SchemaManager(NodeManager):
         if not obj:
             raise SchemaNotFoundError(
                 branch_name=branch.name,
-                identifier=node.id,
+                identifier=node.get_id(),
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
             )
 
@@ -749,10 +741,12 @@ class SchemaManager(NodeManager):
         )
 
         if diff_attributes:
-            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
+            await obj.get_relationship("attributes").update(
+                db=db, data=[item.id for item in node.local_attributes if item.id], at=at
+            )
 
         if diff_relationships:
-            await obj.relationships.update(
+            await obj.get_relationship("relationships").update(
                 db=db,
                 data=[
                     item.id

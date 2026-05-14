@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub.core import registry
+from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.queries import SchemaSummaryQuery
 from infrahub.core.timestamp import Timestamp
@@ -42,7 +43,7 @@ class TestSchemaSummaryQuery:
                             name="primary_owner",
                             peer="QuerytestAttrsOnly",
                             optional=True,
-                            cardinality="one",
+                            cardinality=RelationshipCardinality.ONE,
                         ),
                     ],
                 ),
@@ -58,7 +59,7 @@ class TestSchemaSummaryQuery:
                             name="secondary_owner",
                             peer="QuerytestAttrsOnly",
                             optional=True,
-                            cardinality="one",
+                            cardinality=RelationshipCardinality.ONE,
                         ),
                     ],
                 ),
@@ -88,7 +89,7 @@ class TestSchemaSummaryQuery:
             kind_filter=[("Querytest", "AttrsOnly")],
         )
         await query.execute(db=db)
-        assert set(query.get_summaries_by_name().keys()) == {"QuerytestAttrsOnly"}
+        assert query.get_summaries().get_kinds() == {"QuerytestAttrsOnly"}
 
     async def test_kind_filter_multiple(
         self,
@@ -103,7 +104,7 @@ class TestSchemaSummaryQuery:
             kind_filter=[("Querytest", "AttrsOnly"), ("Querytest", "Both")],
         )
         await query.execute(db=db)
-        assert set(query.get_summaries_by_name().keys()) == {"QuerytestAttrsOnly", "QuerytestBoth"}
+        assert query.get_summaries().get_kinds() == {"QuerytestAttrsOnly", "QuerytestBoth"}
 
     async def test_kind_filter_nonexistent(
         self,
@@ -118,7 +119,7 @@ class TestSchemaSummaryQuery:
             kind_filter=[("Querytest", "DoesNotExist")],
         )
         await query.execute(db=db)
-        assert query.get_summaries_by_name() == {}
+        assert len(query.get_summaries()) == 0
 
     async def test_no_kind_filter_includes_all_test_kinds(
         self,
@@ -129,9 +130,9 @@ class TestSchemaSummaryQuery:
         """kind_filter=None returns every kind on the branch (incl. internal models)."""
         query = await SchemaSummaryQuery.init(db=db, branch=default_branch_scope_class)
         await query.execute(db=db)
-        summaries = query.get_summaries_by_name()
+        summaries = query.get_summaries()
         for kind in ("QuerytestAttrsOnly", "QuerytestRelsOnly", "QuerytestBoth", "QuerytestNeither"):
-            assert kind in summaries
+            assert kind in summaries.get_kinds()
 
     async def test_attribute_names_none_returns_all(
         self,
@@ -147,8 +148,9 @@ class TestSchemaSummaryQuery:
             attribute_names=None,
         )
         await query.execute(db=db)
-        attrs = query.get_summaries_by_name()["QuerytestAttrsOnly"].attributes
-        assert set(attrs.keys()) == {"name", "color"}
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestAttrsOnly")
+        assert summary is not None
+        assert set(summary.attributes.keys()) == {"name", "color"}
 
     async def test_attribute_names_empty_returns_none_but_preserves_parent(
         self,
@@ -164,9 +166,11 @@ class TestSchemaSummaryQuery:
             attribute_names=[],
         )
         await query.execute(db=db)
-        summaries = query.get_summaries_by_name()
-        assert "QuerytestAttrsOnly" in summaries
-        assert summaries["QuerytestAttrsOnly"].attributes == {}
+        summaries = query.get_summaries()
+        assert "QuerytestAttrsOnly" in summaries.get_kinds()
+        summary = summaries.get_summary_by_kind(kind="QuerytestAttrsOnly")
+        assert summary is not None
+        assert summary.attributes == {}
 
     async def test_attribute_names_specific(
         self,
@@ -182,8 +186,9 @@ class TestSchemaSummaryQuery:
             attribute_names=["name"],
         )
         await query.execute(db=db)
-        attrs = query.get_summaries_by_name()["QuerytestAttrsOnly"].attributes
-        assert set(attrs.keys()) == {"name"}
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestAttrsOnly")
+        assert summary is not None
+        assert set(summary.attributes.keys()) == {"name"}
 
     async def test_attribute_names_no_match_preserves_parent(
         self,
@@ -199,9 +204,11 @@ class TestSchemaSummaryQuery:
             attribute_names=["does_not_exist"],
         )
         await query.execute(db=db)
-        summaries = query.get_summaries_by_name()
-        assert "QuerytestAttrsOnly" in summaries
-        assert summaries["QuerytestAttrsOnly"].attributes == {}
+        summaries = query.get_summaries()
+        assert "QuerytestAttrsOnly" in summaries.get_kinds()
+        summary = summaries.get_summary_by_kind(kind="QuerytestAttrsOnly")
+        assert summary is not None
+        assert summary.attributes == {}
 
     async def test_relationship_names_none_returns_all(
         self,
@@ -217,8 +224,9 @@ class TestSchemaSummaryQuery:
             relationship_names=None,
         )
         await query.execute(db=db)
-        rels = query.get_summaries_by_name()["QuerytestBoth"].relationships
-        assert set(rels.keys()) == {"secondary_owner"}
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestBoth")
+        assert summary is not None
+        assert set(summary.relationships.keys()) == {"secondary_owner"}
 
     async def test_relationship_names_empty_returns_none_but_preserves_parent(
         self,
@@ -234,9 +242,11 @@ class TestSchemaSummaryQuery:
             relationship_names=[],
         )
         await query.execute(db=db)
-        summaries = query.get_summaries_by_name()
-        assert "QuerytestBoth" in summaries
-        assert summaries["QuerytestBoth"].relationships == {}
+        summaries = query.get_summaries()
+        assert "QuerytestBoth" in summaries.get_kinds()
+        summary = summaries.get_summary_by_kind(kind="QuerytestBoth")
+        assert summary is not None
+        assert summary.relationships == {}
 
     async def test_relationship_names_specific(
         self,
@@ -252,8 +262,9 @@ class TestSchemaSummaryQuery:
             relationship_names=["secondary_owner"],
         )
         await query.execute(db=db)
-        rels = query.get_summaries_by_name()["QuerytestBoth"].relationships
-        assert set(rels.keys()) == {"secondary_owner"}
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestBoth")
+        assert summary is not None
+        assert set(summary.relationships.keys()) == {"secondary_owner"}
 
     async def test_schema_with_attributes_only(
         self,
@@ -268,7 +279,8 @@ class TestSchemaSummaryQuery:
             kind_filter=[("Querytest", "AttrsOnly")],
         )
         await query.execute(db=db)
-        summary = query.get_summaries_by_name()["QuerytestAttrsOnly"]
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestAttrsOnly")
+        assert summary is not None
         assert set(summary.attributes.keys()) == {"name", "color"}
         assert summary.relationships == {}
 
@@ -285,7 +297,8 @@ class TestSchemaSummaryQuery:
             kind_filter=[("Querytest", "RelsOnly")],
         )
         await query.execute(db=db)
-        summary = query.get_summaries_by_name()["QuerytestRelsOnly"]
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestRelsOnly")
+        assert summary is not None
         assert summary.attributes == {}
         assert set(summary.relationships.keys()) == {"primary_owner"}
 
@@ -302,7 +315,8 @@ class TestSchemaSummaryQuery:
             kind_filter=[("Querytest", "Both")],
         )
         await query.execute(db=db)
-        summary = query.get_summaries_by_name()["QuerytestBoth"]
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestBoth")
+        assert summary is not None
         assert set(summary.attributes.keys()) == {"name", "description"}
         assert set(summary.relationships.keys()) == {"secondary_owner"}
 
@@ -319,7 +333,8 @@ class TestSchemaSummaryQuery:
             kind_filter=[("Querytest", "Neither")],
         )
         await query.execute(db=db)
-        summary = query.get_summaries_by_name()["QuerytestNeither"]
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestNeither")
+        assert summary is not None
         assert summary.is_generic is False
         assert summary.uuid
         assert summary.attributes == {}

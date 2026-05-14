@@ -19,11 +19,44 @@ class SchemaSummary:
     relationships: dict[str, str] = field(default_factory=dict)
 
 
+class SchemaSummaryIndex:
+    """Indexed view of ``SchemaSummaryQuery`` results, look-up by either ``kind`` or ``uuid``.
+
+    Internal ``kind`` and ``uuid`` maps point at the *same* ``SchemaSummary`` instances — they
+    are alternate keys on the same underlying rows.
+    """
+
+    def __init__(self) -> None:
+        self._by_kind: dict[str, SchemaSummary] = {}
+        self._by_uuid: dict[str, SchemaSummary] = {}
+
+    def add(self, kind: str, summary: SchemaSummary) -> None:
+        """Record a summary under both its ``kind`` and ``uuid`` keys."""
+        self._by_kind[kind] = summary
+        self._by_uuid[summary.uuid] = summary
+
+    def get_summary_by_kind(self, kind: str) -> SchemaSummary | None:
+        """Return the ``SchemaSummary`` indexed under ``kind``, or ``None`` if not present."""
+        return self._by_kind.get(kind)
+
+    def get_summary_by_uuid(self, uuid: str) -> SchemaSummary | None:
+        """Return the ``SchemaSummary`` indexed under ``uuid``, or ``None`` if not present."""
+        return self._by_uuid.get(uuid)
+
+    def get_kinds(self) -> set[str]:
+        """Return the set of all known ``kind`` keys."""
+        return set(self._by_kind.keys())
+
+    def __len__(self) -> int:
+        return len(self._by_kind)
+
+
 class SchemaSummaryQuery(Query):
     """Fast lookup of SchemaNode / SchemaGeneric on a branch with their fields.
 
     When ``kind_filter`` is supplied (a list of ``(namespace, name)`` tuples), results are filtered
-    to just the specified kinds.
+    to those kinds. When ``uuid_filter`` is also supplied, any node whose ``uuid`` is in the list is
+    additionally included regardless of its current ``(namespace, name)``
     """
 
     name: str = "existing_schema_nodes"
@@ -32,11 +65,13 @@ class SchemaSummaryQuery(Query):
     def __init__(
         self,
         kind_filter: list[tuple[str, str]] | None = None,
+        uuid_filter: list[str] | None = None,
         attribute_names: list[str] | None = None,
         relationship_names: list[str] | None = None,
         **kwargs: Any,
     ) -> None:
         self.kind_filter = kind_filter
+        self.uuid_filter = uuid_filter
         # ``None`` -> include all attribute / relationship children.
         # ``[]``   -> include none (skip the name-keyed dicts entirely).
         # ``[...]``-> include only children whose ``name`` value is in the list.
@@ -49,35 +84,46 @@ class SchemaSummaryQuery(Query):
         self.params.update(branch_params)
         self.params["attribute_names"] = self.attribute_names
         self.params["relationship_names"] = self.relationship_names
+        self.params["filter_uuids"] = self.uuid_filter or None
 
         if self.kind_filter:
             filter_namespaces: set[str] = set()
             filter_names: set[str] = set()
-            filter_kinds: set[str] = set()
             for namespace, name in self.kind_filter:
                 filter_namespaces.add(namespace)
                 filter_names.add(name)
-                filter_kinds.add(f"{namespace}{name}")
-            self.params["filter_namespaces"] = list(filter_namespaces) or None
-            self.params["filter_names"] = list(filter_names) or None
-            self.params["filter_kinds"] = list(filter_kinds) or None
+            self.params["filter_namespaces"] = list(filter_namespaces)
+            self.params["filter_names"] = list(filter_names)
+            # Prefilter matches a parent that EITHER has (namespace, name) in the filter OR has
+            # its uuid in $filter_uuids
+            filter_kinds: set[str] = {f"{namespace}{name}" for namespace, name in self.kind_filter}
+            self.params["filter_kinds"] = list(filter_kinds)
             prefilter_clause = """
 // ---------------------------
-// Filter by name and namespace
+// Prefilter: by (namespace, name) OR by uuid
 // ---------------------------
-MATCH (n:SchemaNode|SchemaGeneric)
-    -[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})
-    -[:HAS_VALUE]->(av_ns:AttributeValue)
-WHERE av_ns.value IN $filter_namespaces
-WITH DISTINCT n
-MATCH (n)
-    -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
-    -[:HAS_VALUE]->(av_name:AttributeValue)
-WHERE av_name.value IN $filter_names
+CALL () {
+    MATCH (n:SchemaNode|SchemaGeneric)
+        -[:HAS_ATTRIBUTE]->(:Attribute {name: "namespace"})
+        -[:HAS_VALUE]->(av_ns:AttributeValue)
+    WHERE av_ns.value IN $filter_namespaces
+    WITH DISTINCT n
+    MATCH (n)
+        -[:HAS_ATTRIBUTE]->(:Attribute {name: "name"})
+        -[:HAS_VALUE]->(av_name:AttributeValue)
+    WHERE av_name.value IN $filter_names
+    RETURN DISTINCT n
+    UNION
+    MATCH (n:SchemaNode|SchemaGeneric)
+    WHERE $filter_uuids IS NOT NULL AND n.uuid IN $filter_uuids
+    RETURN DISTINCT n
+}
 WITH DISTINCT n
             """
         else:
             self.params["filter_kinds"] = None
+            self.params["filter_namespaces"] = None
+            self.params["filter_names"] = None
             prefilter_clause = "MATCH (n:SchemaNode|SchemaGeneric)"
 
         self.add_to_query(prefilter_clause)
@@ -132,7 +178,10 @@ WITH
     n,
     namespace_value + name_value AS kind,
     "SchemaGeneric" IN labels(n) AS is_generic
-WHERE $filter_kinds IS NULL OR kind IN $filter_kinds
+WHERE
+    ($filter_kinds IS NULL AND $filter_uuids IS NULL)
+    OR ($filter_kinds IS NOT NULL AND kind IN $filter_kinds)
+    OR ($filter_uuids IS NOT NULL AND n.uuid IN $filter_uuids)
 
 // ---------------------------
 // Phase 1: SchemaAttributes
@@ -280,17 +329,18 @@ WITH n.uuid AS uuid, kind, is_generic, attributes, relationships
         self.add_to_query(query)
         self.return_labels = ["kind", "is_generic", "uuid", "attributes", "relationships"]
 
-    def get_summaries_by_name(self) -> dict[str, SchemaSummary]:
-        """Return a dict keyed by ``kind`` mapping to ``SchemaSummary``."""
-        existing: dict[str, SchemaSummary] = {}
+    def get_summaries(self) -> SchemaSummaryIndex:
+        """Return a ``SchemaSummaryIndex`` keyed by both ``kind`` and ``uuid``."""
+        index = SchemaSummaryIndex()
         for result in self.get_results():
             kind = result.get_as_type("kind", return_type=str)
             attributes_raw = cast("list[list[str]]", result.get("attributes") or [])
             relationships_raw = cast("list[list[str]]", result.get("relationships") or [])
-            existing[kind] = SchemaSummary(
+            summary = SchemaSummary(
                 uuid=result.get_as_type("uuid", return_type=str),
                 is_generic=result.get_as_type("is_generic", return_type=bool),
                 attributes={pair[1]: pair[0] for pair in attributes_raw if pair and pair[1] is not None},
                 relationships={pair[1]: pair[0] for pair in relationships_raw if pair and pair[1] is not None},
             )
-        return existing
+            index.add(kind=kind, summary=summary)
+        return index
