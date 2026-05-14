@@ -596,6 +596,12 @@ class Query:
     async def count(self, db: InfrahubDatabase) -> int:
         """Count the number of results matching a READ query.
         OFFSET and LIMIT are automatically excluded when counting.
+
+        Raises:
+            TypeError: When the query is a WRITE query.
+            ValueError: When the query type is not READ.
+            QueryError: When the count query returns no results and `raise_error_if_empty` is True.
+
         """
         if self.type == QueryType.WRITE:
             raise TypeError("Unable to count the number of response on a Write query.")

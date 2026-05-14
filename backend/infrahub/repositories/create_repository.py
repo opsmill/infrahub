@@ -42,6 +42,11 @@ class RepositoryFinalizer:
     ) -> None:
         """Method meant to be called after a repository has been created in the database.
         It mainly checks the connectivity to the remote repository and submit the workflow to create the repository in the local filesystem.
+
+        Raises:
+            ValidationError: When connectivity to the remote repository cannot be established.
+            ValueError: When the repository kind is neither a regular nor a read-only repository.
+
         """
         # If the connectivity is not good, we remove the repository to allow the user to add a new one
         if delete_on_connectivity_failure:

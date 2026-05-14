@@ -460,6 +460,9 @@ async def validate_database(
         retry (int, optional): Number of retry before raising an exception. Defaults to 0.
         retry_interval (int, optional): Time between retries in second. Defaults to 1.
 
+    Raises:
+        ClientError: When the database query fails and retries are exhausted.
+
     """
     try:
         session = driver.session(database=database_name)

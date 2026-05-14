@@ -70,7 +70,14 @@ class HttpxAdapter(InfrahubHTTP):
         headers: dict[str, Any] | None = None,
         verify: bool | None = None,
     ) -> httpx.Response:
-        """Returns an httpx.Response object or raises HTTPServerError or child classes."""
+        """Returns an httpx.Response object or raises HTTPServerError or child classes.
+
+        Raises:
+            HTTPServerSSLError: When TLS certificate verification fails.
+            HTTPServerTimeoutError: When the request times out before receiving a response.
+            HTTPServerError: When any other httpx request error occurs.
+
+        """
         params: dict[str, Any] = {}
         if data:
             params["data"] = data

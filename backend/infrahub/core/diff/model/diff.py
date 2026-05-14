@@ -290,6 +290,10 @@ class DiffSummary(BaseModel):
         """Increase one of the counter by 1.
 
         Return the new value of the counter.
+
+        Raises:
+            ValueError: When `name` does not match an existing counter on `DiffSummary`.
+
         """
         try:
             cnt = getattr(self, name)

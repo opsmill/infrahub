@@ -30,7 +30,13 @@ async def get_file(
     commit: str | None = None,
     _: str = Depends(get_current_user),
 ) -> PlainTextResponse:
-    """Retrieve a file from a git repository."""
+    """Retrieve a file from a git repository.
+
+    Raises:
+        CommitNotFoundError: When no commit is provided and the repository has no commits.
+        PropagatedFromWorkerError: When the worker returns an error response while reading the file.
+
+    """
     service: InfrahubServices = request.app.state.service
 
     repo: CoreRepository | CoreReadOnlyRepository = await NodeManager.get_one_by_id_or_default_filter(

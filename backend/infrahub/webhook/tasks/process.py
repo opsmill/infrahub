@@ -90,7 +90,12 @@ async def webhook_process(
     event_payload: dict,
     branch_name: str | None = None,
 ) -> None:
-    """Resolve a webhook's configuration from cache (or DB on miss) and send the HTTP request."""
+    """Resolve a webhook's configuration from cache (or DB on miss) and send the HTTP request.
+
+    Raises:
+        ValueError: When the cached webhook type is not a supported webhook kind.
+
+    """
     log = get_run_logger()
     client = get_client()
     cache = await get_cache()

@@ -55,7 +55,12 @@ class PermissionManager:
         return self.resolver.has_permissions(permissions=permissions)
 
     def raise_for_permission(self, permission: GlobalPermission | ObjectPermission, message: str = "") -> None:
-        """Same as `has_permission` but raise a `PermissionDeniedError` if the permission is not granted."""
+        """Same as `has_permission` but raise a `PermissionDeniedError` if the permission is not granted.
+
+        Raises:
+            PermissionDeniedError: When the requested permission is not granted.
+
+        """
         if self.has_permission(permission=permission):
             return
 
@@ -70,7 +75,12 @@ class PermissionManager:
     def raise_for_permissions(
         self, permissions: Sequence[GlobalPermission | ObjectPermission], message: str = ""
     ) -> None:
-        """Same as `has_permissions` but raise a `PermissionDeniedError` if any of the permissions is not granted."""
+        """Same as `has_permissions` but raise a `PermissionDeniedError` if any of the permissions is not granted.
+
+        Raises:
+            PermissionDeniedError: When at least one of the requested permissions is not granted.
+
+        """
         if self.has_permissions(permissions=permissions):
             return
 

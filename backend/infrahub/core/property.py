@@ -107,7 +107,11 @@ class NodePropertyMixin:
 
     def _get_node_property_from_cache(self, name: str) -> Node:
         """Return the node attribute if it's already present locally,
-        Otherwise raise an exception
+        Otherwise raise an exception.
+
+        Raises:
+            LookupError: When the property is not present in the local cache.
+
         """
         item = getattr(self, f"_{name}", None)
         if not item:
@@ -132,6 +136,10 @@ class NodePropertyMixin:
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
         if the value is None, we just initialize the 2 variables.
+
+        Raises:
+            ValueError: When the supplied value cannot be interpreted as a node property.
+
         """
         if isinstance(value, str | UUID):
             setattr(self, f"{name}_id", value)
