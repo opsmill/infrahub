@@ -37,9 +37,8 @@ class TestSchemaLoadWithFakeId(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def widget_schema_with_fake_id(self, widget_schema: dict[str, Any]) -> dict[str, Any]:
-        with_id = {"version": "1.0", "nodes": [dict(widget_schema["nodes"][0])]}
-        with_id["nodes"][0]["id"] = str(uuid.uuid4())
-        return with_id
+        widget_node = {**widget_schema["nodes"][0], "id": str(uuid.uuid4())}
+        return {"version": "1.0", "nodes": [widget_node]}
 
     async def test_step_01_load_initial(self, client: InfrahubClient, widget_schema: dict[str, Any]) -> None:
         response = await client.schema.load(schemas=[widget_schema])
