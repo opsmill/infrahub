@@ -247,7 +247,11 @@ async def showmigration_cmd(
     migration_number: int = typer.Argument(..., help="Migration number to inspect"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Show detailed information about a specific migration."""
+    """Show detailed information about a specific migration.
+
+    Raises:
+        typer.Exit: If the migration number does not match any known migration.
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
