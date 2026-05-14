@@ -2190,8 +2190,13 @@ async def hierarchical_groups_data(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> dict[str, Node]:
     def batched(iterable: Any, n: int):
-        """Local implementation of the new batched function that was added to itertools in 3.12
+        """Local implementation of the new batched function that was added to itertools in 3.12.
+
         https://docs.python.org/3/library/itertools.html
+
+        Raises:
+            ValueError: When ``n`` is less than 1.
+
         """
         # batched('ABCDEFG', 3) --> ABC DEF G
         if n < 1:

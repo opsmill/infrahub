@@ -486,7 +486,12 @@ DEVICE_STATUSES = ["active", "provisioning", "drained"]
 class SiteDesign:
     def __init__(self, number_of_device: int) -> None:
         """Takes the number of devices that need to be created on a given site.
+
         This method will decide how many device of each type to create and return all those objects as a list.
+
+        Raises:
+            ValueError: When ``number_of_device`` is not a positive integer.
+
         """
         if number_of_device > 0:
             self.number_of_device = number_of_device

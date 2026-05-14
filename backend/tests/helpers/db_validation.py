@@ -103,7 +103,12 @@ async def validate_node_relationships(node: Node, branch: Branch, db: InfrahubDa
 
 
 async def verify_no_duplicate_paths(db: InfrahubDatabase) -> None:
-    """Verify that no duplicate paths exist at the database level"""
+    """Verify that no duplicate paths exist at the database level.
+
+    Raises:
+        ValueError: When duplicate paths are found between two nodes.
+
+    """
     query = """
 MATCH path = (p)-[e]->(q)
 WITH
@@ -144,6 +149,10 @@ async def verify_no_orphaned_active_edges(db: InfrahubDatabase) -> None:
     sub-edges (HAS_VALUE, IS_PROTECTED, HAS_OWNER, HAS_SOURCE, far-side IS_RELATED)
     hanging off the same Attribute/Relationship vertex on the same branch should also
     be deleted/closed.
+
+    Raises:
+        ValueError: When an active second-level edge is found under a deleted first-level edge.
+
     """
     query = """
 // ----------------
@@ -222,6 +231,10 @@ async def verify_relationship_edge_counts(db: InfrahubDatabase) -> None:
     A Relationship vertex connects two Node vertices. For any given branch, there should be
     either 0 active IS_RELATED edges (relationship not active on that branch) or exactly 2
     (one to each Node). Having 1 or 3+ is always invalid.
+
+    Raises:
+        ValueError: When a Relationship has an invalid number of active IS_RELATED edges on a branch.
+
     """
     query = """
 MATCH (rel:Relationship)

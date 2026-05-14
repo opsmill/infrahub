@@ -42,17 +42,18 @@ class BranchDiffer:
         db: InfrahubDatabase | None = None,
         service: InfrahubServices | None = None,
     ) -> None:
-        """_summary_
+        """Initialize a BranchDiffer to compute differences between a branch and its origin.
 
         Args:
-            branch (Branch): Main branch this diff is caculated from
+            branch (Branch): Main branch this diff is calculated from
             origin_branch (Branch): Storing the origin branch the main branch started from for convenience.
             branch_only (bool, optional): When True, only consider the changes in the branch, ignore the changes in main. Defaults to False.
             diff_from (Union[str, Timestamp], optional): Time from when the diff is calculated. Defaults to None.
             diff_to (Union[str, Timestamp], optional): Time to when the diff is calculated. Defaults to None.
 
         Raises:
-            ValueError: if diff_from and diff_to are not correct
+            DiffFromRequiredOnDefaultBranchError: When diffing on the default branch without providing `diff_from`.
+            DiffRangeValidationError: When `diff_to` is earlier than `diff_from`.
 
         """
         self.branch = branch

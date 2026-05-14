@@ -64,6 +64,10 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Synchronize the repository with its remote origin and with the database.
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
+
+        Raises:
+            GraphQLError: When creating a branch in the graph fails for a reason other than the branch already existing.
+
         """
         log.info("Starting the synchronization.", repository=self.name)
 
@@ -158,6 +162,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Merge the source branch into the destination branch.
 
         After the rebase we need to resync the data
+
+        Raises:
+            ValueError: When no worktree exists for the destination branch.
+            RepositoryError: When the underlying ``git merge`` command fails.
+
         """
         repo = self.get_git_repo_worktree(identifier=dest_branch)
         if not repo:
@@ -219,7 +228,12 @@ class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
         return self
 
     def get_commit_value(self, branch_name: str, remote: bool = False) -> str:  # noqa: ARG002
-        """Always get the latest commit for this repository's ref on the remote"""
+        """Always get the latest commit for this repository's ref on the remote.
+
+        Raises:
+            ValueError: When the configured ref cannot be resolved on the remote.
+
+        """
         git_repo = self.get_git_repo_main()
         git_repo.remotes.origin.fetch()
 

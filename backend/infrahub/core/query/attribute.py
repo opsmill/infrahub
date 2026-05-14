@@ -392,7 +392,13 @@ async def default_attribute_query_filter(
     db: InfrahubDatabase | None = None,  # noqa: ARG001
     partial_match: bool = False,
 ) -> tuple[list[QueryElement], dict[str, Any], list[str]]:
-    """Generate Query String Snippet to filter the right node."""
+    """Generate Query String Snippet to filter the right node.
+
+    Raises:
+        TypeError: When `filter_value` is not of a supported type.
+        ValueError: When the property name or property attribute referenced by `filter_name` is not valid.
+
+    """
     attribute_value_label = GraphAttributeValueNode.get_default_label()
     if attribute_kind and not is_large_attribute_type(attribute_kind):
         attribute_value_label = GraphAttributeValueIndexedNode.get_default_label()

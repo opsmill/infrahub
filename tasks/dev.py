@@ -229,7 +229,12 @@ def test_add_dummy_data(context: Context, branch: str = "main") -> str:  # noqa:
 
 @task
 def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -> None:  # noqa: ARG001
-    """Rebase branch and check for schema and data."""
+    """Rebase branch and check for schema and data.
+
+    Raises:
+        AssertionError: When the precondition fails or the expected schema is missing after rebase.
+
+    """
     from infrahub_sdk import InfrahubClientSync
     from infrahub_sdk.exceptions import NodeNotFoundError
     from infrahub_sdk.task.models import TaskFilter
@@ -273,7 +278,12 @@ def test_branch_rebase(context: Context, branch: str, data_to_check: str = "") -
 
 @task
 def test_branch_graph_version(context: Context, branch: str) -> None:  # noqa: ARG001
-    """Verify a branch has been rebased and upgraded with a valid graph version."""
+    """Verify a branch has been rebased and upgraded with a valid graph version.
+
+    Raises:
+        AssertionError: When the branch has no graph version set.
+
+    """
     from infrahub_sdk import InfrahubClientSync
 
     client = InfrahubClientSync()
