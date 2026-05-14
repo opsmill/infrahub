@@ -13,7 +13,12 @@ if TYPE_CHECKING:
 
 
 async def apply_external_context(graphql_context: GraphqlContext, context_input: ContextInput | None) -> None:
-    """Applies context provided by an external mutation to the GraphQL context"""
+    """Applies context provided by an external mutation to the GraphQL context.
+
+    Raises:
+        ValidationError: When the requested account override does not exist.
+
+    """
     if not context_input or not context_input.account or not context_input.account.id:
         return
 

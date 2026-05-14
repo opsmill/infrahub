@@ -543,7 +543,6 @@ ignore = [
     "DOC201",   # docstring-missing-returns
     "DOC202",   # docstring-extraneous-returns
     "DOC402",   # docstring-missing-yields
-    "DOC501",   # docstring-missing-exception
     "DOC502",   # docstring-extraneous-exception
 ]
 

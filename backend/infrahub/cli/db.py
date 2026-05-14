@@ -151,7 +151,12 @@ async def check_inheritance_cmd(
     fix: bool = typer.Option(False, help="Fix the inheritance of any invalid nodes."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the database for any vertices with incorrect inheritance"""
+    """Check the database for any vertices with incorrect inheritance.
+
+    Raises:
+        Exit: When inheritance checks fail (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -182,6 +187,12 @@ async def reset_deployment_id_cmd(
 
     Running Infrahub server and worker processes cache this value at startup and
     must be restarted after this command to pick up the new value.
+
+    Raises:
+        Exit: When the provided deployment_id is not a valid UUID, the user declines the
+            confirmation prompt, or resetting the deployment_id fails (raises typer.Exit to
+            terminate the CLI command).
+
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -231,7 +242,12 @@ async def check_duplicate_schema_fields_cmd(
     fix: bool = typer.Option(False, help="Fix the duplicate schema fields on the default branch."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check for any duplicate schema attributes or relationships on the default branch"""
+    """Check for any duplicate schema attributes or relationships on the default branch.
+
+    Raises:
+        Exit: When duplicate schema fields are detected and not resolved (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -277,7 +293,12 @@ async def constraint(
     action: ConstraintAction = typer.Argument(ConstraintAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Manage Database Constraints"""
+    """Manage Database Constraints.
+
+    Raises:
+        Exit: When the configured database type is not supported (raises typer.Exit to terminate the CLI command).
+
+    """
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
@@ -491,7 +512,13 @@ async def initialize_internal_schema() -> None:
 
 
 async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debug: bool = False) -> None:
-    """Update the core schema of Infrahub to the latest version"""
+    """Update the core schema of Infrahub to the latest version.
+
+    Raises:
+        Exit: When schema validation fails, migration validation reports violations, or the
+            schema update execution raises an exception (raises typer.Exit to terminate the CLI command).
+
+    """
     # ----------------------------------------------------------
     # Initialize Schema and Registry
     # ----------------------------------------------------------

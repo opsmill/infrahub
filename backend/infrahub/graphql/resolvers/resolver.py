@@ -65,6 +65,10 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     When it returns 2, they are organized as follow
         - parent
         - info
+
+    Raises:
+        ValueError: When the resolver is called with an unexpected number of positional arguments.
+
     """
     parent = None
     info = None

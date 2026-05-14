@@ -151,7 +151,12 @@ class SchemaUpdate(BaseModel):
 
 
 def _merge_candidate_schemas(schemas: Sequence[SchemaRoot]) -> SchemaRoot:
-    """Merge multiple schemas into one suitable to be loaded."""
+    """Merge multiple schemas into one suitable to be loaded.
+
+    Raises:
+        ValueError: When the provided sequence of schemas is empty.
+
+    """
     if not schemas:
         raise ValueError("Cannot merge an empty list of schemas")
 

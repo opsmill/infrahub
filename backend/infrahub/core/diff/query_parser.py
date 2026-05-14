@@ -108,7 +108,12 @@ class DiffPropertyIntermediate:
         return ordered_values[0]
 
     def get_property_details(self, from_time: Timestamp) -> tuple[DiffAction, Timestamp, Any, Any]:
-        """Returns action, timestamp, previous_value, new_value"""
+        """Returns action, timestamp, previous_value, new_value.
+
+        Raises:
+            DiffNoChildPathError: When no ordered diff values are available.
+
+        """
         ordered_values = self.get_ordered_values_asc()
         previous: Any = None
         new: Any = None

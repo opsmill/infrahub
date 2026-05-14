@@ -432,7 +432,12 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
         return named_fragment
 
     async def get_models_in_use(self, types: dict[str, Any]) -> set[str]:
-        """List of Infrahub models that are referenced in the query."""
+        """List of Infrahub models that are referenced in the query.
+
+        Raises:
+            ValueError: When the schema has not been provided to the analyzer.
+
+        """
         graphql_types = set()
         models = set()
 
@@ -538,7 +543,12 @@ class InfrahubGraphQLQueryAnalyzer(GraphQLQueryAnalyzer):
 
     @property
     def _sorted_fragment_definitions(self) -> list[FragmentDefinitionNode]:
-        """Sort fragments so that we start processing fragments that don't depend on other fragments"""
+        """Sort fragments so that we start processing fragments that don't depend on other fragments.
+
+        Raises:
+            ValueError: When a circular dependency is detected between fragments.
+
+        """
         dependencies = deepcopy(self._fragment_dependencies)
 
         independent_fragments = deque([frag for frag, deps in dependencies.items() if not deps])
