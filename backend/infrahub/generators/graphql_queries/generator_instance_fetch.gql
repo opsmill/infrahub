@@ -1,5 +1,5 @@
 query GeneratorInstanceFetch($definition_id: ID, $object_id: ID) {
-    CoreGeneratorInstance(definition__ids: [$definition_id], object__ids: [$object_id], limit: 1) {
+    CoreGeneratorInstance(definition__ids: [$definition_id], object__ids: [$object_id]) {
         edges {
             node {
                 id

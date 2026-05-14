@@ -44,15 +44,7 @@ class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeConvertQueryRes
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepository(BaseModel):
-    node: (
-        Annotated[
-            ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepository
-            | ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepository
-            | ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepository,
-            Field(discriminator="typename__"),
-        ]
-        | None
-    )
+    node: Annotated[ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepository | ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreReadOnlyRepository | ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreRepository, Field(discriminator="typename__")] | None
 
 
 class ComputedAttributeFetchTransformCoreTransformPythonEdgesNodeRepositoryNodeCoreGenericRepository(BaseModel):
