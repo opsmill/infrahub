@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from infrahub_sdk.graphql import Query as GraphQLQuery
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
@@ -95,30 +94,12 @@ async def process_transform(
         if not transform:
             continue
 
-        commit_query = GraphQLQuery(
-            name="FetchRepositoryCommit",
-            query={
-                transform.repository_typename: {
-                    "@filters": {"ids": [transform.repository_id]},
-                    "edges": {"node": {"commit": {"value": None}}},
-                }
-            },
-        )
-        commit_response = await client.execute_graphql(query=commit_query.render(), branch_name=branch_name)
-        repository_commit = (
-            commit_response.get(transform.repository_typename, {})
-            .get("edges", [{}])[0]
-            .get("node", {})
-            .get("commit", {})
-            .get("value")
-        )
-
         repo = await get_initialized_repo(
             client=client,
             repository_id=transform.repository_id,
             name=transform.repository_name,
             repository_kind=transform.repository_typename,
-            commit=repository_commit,
+            commit=transform.repository_commit,
         )
 
         data = await client.query_gql_query(
@@ -132,7 +113,7 @@ async def process_transform(
         transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout)(
             client=client,
             branch_name=branch_name,
-            commit=repository_commit,
+            commit=transform.repository_commit,
             location=f"{transform.file_path}::{transform.class_name}",
             data=data,
             convert_query_response=transform.convert_query_response,

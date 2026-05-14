@@ -640,6 +640,10 @@ allow-dunder-method-names = [
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
+"backend/infrahub/**/graphql_queries/*.py" = [
+    "E501",  # Generated discriminated-union annotations can exceed the line limit
+]
+
 "backend/infrahub/cli/db.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule

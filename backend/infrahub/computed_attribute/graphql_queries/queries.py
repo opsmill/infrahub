@@ -11,48 +11,7 @@ from infrahub.computed_attribute.graphql_queries.computed_attribute_fetch_transf
 )
 from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
-TRANSFORM_QUERY_BY_NAME = (Path(__file__).parent / "transform_fetch.gql").read_text()
-
-TRANSFORM_QUERY_BY_IDS = """
-query ComputedAttributeFetchTransform($transform_ids: [ID]) {
-    CoreTransformPython(ids: $transform_ids) {
-        edges {
-            node {
-                id
-                file_path {
-                    value
-                }
-                class_name {
-                    value
-                }
-                timeout {
-                    value
-                }
-                convert_query_response {
-                    value
-                }
-                repository {
-                    node {
-                        id
-                        __typename
-                        name {
-                            value
-                        }
-                    }
-                }
-                query {
-                    node {
-                        id
-                        name {
-                            value
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-"""
+TRANSFORM_QUERY = (Path(__file__).parent / "transform_fetch.gql").read_text()
 
 
 def _is_uuid(value: str) -> bool:
@@ -78,6 +37,7 @@ class TransformNode(BaseModel):
     repository_id: str
     repository_typename: str
     repository_name: str
+    repository_commit: str | None
     query_name: str
 
 
@@ -91,9 +51,7 @@ class ComputedAttributeTransformQuery(BaseModel):
         return {"transform_name": self.transform_id}
 
     def render_query(self) -> str:
-        if _is_uuid(self.transform_id):
-            return TRANSFORM_QUERY_BY_IDS
-        return TRANSFORM_QUERY_BY_NAME
+        return TRANSFORM_QUERY
 
     def parse_response(self, response: dict[str, Any]) -> TransformNode | None:
         try:
@@ -134,6 +92,7 @@ class ComputedAttributeTransformQuery(BaseModel):
                 repository_id=repo.id,
                 repository_typename=repo.typename__,
                 repository_name=repo.name.value,
+                repository_commit=commit.value if (commit := getattr(repo, "commit", None)) else None,
                 query_name=query_node.name.value,
             )
         return None

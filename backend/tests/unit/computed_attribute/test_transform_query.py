@@ -58,6 +58,7 @@ class TestComputedAttributeTransformQuery:
                                     "id": "repo-001",
                                     "__typename": "CoreRepository",
                                     "name": {"value": "my-repo"},
+                                    "commit": {"value": "abc123"},
                                 }
                             },
                             "query": {"node": {"id": "query-001", "name": {"value": "tshirt-pitch"}}},
@@ -76,6 +77,7 @@ class TestComputedAttributeTransformQuery:
             repository_id="repo-001",
             repository_typename="CoreRepository",
             repository_name="my-repo",
+            repository_commit="abc123",
             query_name="tshirt-pitch",
         )
 
