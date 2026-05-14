@@ -3,8 +3,8 @@ import pytest
 from infrahub.core.branch import Branch
 from infrahub.core.initialization import create_branch
 from infrahub.core.node import Node
-from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.database import InfrahubDatabase
+from infrahub.graph_traversal.path import PathTraversalQuery
 
 
 @pytest.fixture
