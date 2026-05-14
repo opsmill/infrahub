@@ -74,6 +74,9 @@ $ infrahub db showmigrations [OPTIONS] [CONFIG_FILE]
 
 Show detailed information about a specific migration.
 
+Raises:
+    typer.Exit: If the migration number does not match any known migration.
+
 **Usage**:
 
 ```console
