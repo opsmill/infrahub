@@ -24,12 +24,12 @@ def has_data_changes(diff_summary: list[NodeDiff], branch: str) -> bool:
 
 
 def has_node_changes(diff_summary: list[NodeDiff], branch: str) -> bool:
-    """Indicates if there is at least one node object that has been modified in the branch"""
+    """Indicates if there is at least one node object that has been modified in the branch."""
     return any(entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"]) for entry in diff_summary)
 
 
 def get_modified_kinds(diff_summary: list[NodeDiff], branch: str) -> list[str]:
-    """Return a list of non schema kinds that have been modified on the branch"""
+    """Return a list of non schema kinds that have been modified on the branch."""
     return list(
         {
             entry["kind"]
@@ -40,7 +40,7 @@ def get_modified_kinds(diff_summary: list[NodeDiff], branch: str) -> list[str]:
 
 
 def get_modified_node_ids(diff_summary: list[NodeDiff], branch: str) -> list[str]:
-    """Return a list of non schema nodes that have been modified on the branch"""
+    """Return a list of non schema nodes that have been modified on the branch."""
     return [
         entry["id"] for entry in diff_summary if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
     ]

@@ -40,7 +40,8 @@ async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase, at: Timestamp
 
 
 async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, ConversionFieldInput], node: Node) -> dict:
-    """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node,
+    """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node,.
+
     or a raw value.
 
     Raises:
@@ -147,6 +148,7 @@ async def convert_object_type(
     db: InfrahubDatabase,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
+
     An extra check is performed on input node peers relationships to make sure they are still valid.
 
     Raises:

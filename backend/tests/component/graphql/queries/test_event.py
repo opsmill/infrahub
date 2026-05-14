@@ -404,8 +404,10 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
 
 
 def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]) -> dict[str, Any]:
-    """Because we can't guarantee that Prefect is empty at the start of the test easily
+    """Because we can't guarantee that Prefect is empty at the start of the test easily.
+
     we need to exclude all events not created by this test suite.
+
     """
     filtered_events = [event for event in result_data["InfrahubEvent"]["edges"] if event["node"]["id"] in in_scope_ids]
     return {"InfrahubEvent": {"count": len(filtered_events), "edges": filtered_events}}

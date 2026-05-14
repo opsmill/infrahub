@@ -96,8 +96,10 @@ class CarWithDiffInSecondBranchGenerator(CarGenerator):
         return cars
 
     async def load_data(self, nb_elements: int) -> None:
-        """Load cars in main branch, rebase diff branch on main branch, then load changes
+        """Load cars in main branch, rebase diff branch on main branch, then load changes.
+
         within diff branch according to a given ratio.
+
         Differences are:
         - Updates some cars attributes as well as 1:1, 1:N, N:N relationships.
         - Add new cars.
@@ -158,6 +160,7 @@ class PersonGenerator(DataGenerator):
         cars: dict[str, Node] | None = None,
     ) -> dict[str, Node]:
         """Load persons and return a mapping person_name -> person_node.
+
         If 'cars' is specified, each person created is linked to a few random cars.
         """
         default_branch = await registry.get_branch(db=self.db)
@@ -201,6 +204,7 @@ class CarGeneratorWithOwnerHavingUniqueCar(CarGenerator):
 
     async def load_data(self, nb_elements: int) -> None:
         """Generate cars with an owner, in a way that an owner can't have multiple cars.
+
         Also generate distinct nb_seats per car.
         """
         default_branch = await registry.get_branch(db=self.db)

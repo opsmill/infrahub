@@ -22,7 +22,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Check the current format of the internal...
 * `constraint`: Manage Database Constraints.
-* `index`: Manage Database Indexes
+* `index`: Manage Database Indexes.
 * `selected-export`: Export database structure of selected...
 * `load-export`: Cannot be used for backup/restore...
 * `check`: Run database sanity checks and output the...
@@ -30,7 +30,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 
 ## `infrahub db migrate`
 
-Check the current format of the internal graph and apply the necessary migrations
+Check the current format of the internal graph and apply the necessary migrations.
 
 **Usage**:
 
@@ -122,7 +122,7 @@ $ infrahub db check-duplicate-schema-fields [OPTIONS] [CONFIG_FILE]
 
 ## `infrahub db update-core-schema`
 
-Check the current format of the internal graph and apply the necessary migrations
+Check the current format of the internal graph and apply the necessary migrations.
 
 **Usage**:
 
@@ -163,7 +163,7 @@ $ infrahub db constraint [OPTIONS] [ACTION]:[show|add|drop] [CONFIG_FILE]
 
 ## `infrahub db index`
 
-Manage Database Indexes
+Manage Database Indexes.
 
 **Usage**:
 
@@ -182,7 +182,7 @@ $ infrahub db index [OPTIONS] [ACTION]:[show|add|drop] [CONFIG_FILE]
 
 ## `infrahub db selected-export`
 
-Export database structure of selected nodes from the database without any actual data
+Export database structure of selected nodes from the database without any actual data.
 
 **Usage**:
 
@@ -205,6 +205,7 @@ $ infrahub db selected-export [OPTIONS] [CONFIG_FILE]
 ## `infrahub db load-export`
 
 Cannot be used for backup/restore functionality.
+
 Loads an anonymized export into Neo4j.
 Only used for analysis of output of the selected-export command.
 

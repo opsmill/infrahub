@@ -117,7 +117,7 @@ class TestMigration039(TestInfrahubApp):
     async def net140_updated(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch: Branch
     ) -> IpPrefixDetails:
-        """Update prefix from 10.10.0.0/16 to 10.10.0.0/17 and set parent to self"""
+        """Update prefix from 10.10.0.0/16 to 10.10.0.0/17 and set parent to self."""
         ns1 = initial_dataset["ns1"]
         net140 = initial_dataset["net140"]
         net143 = initial_dataset["net143"]
@@ -140,7 +140,7 @@ class TestMigration039(TestInfrahubApp):
     async def net142_updated(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch: Branch
     ) -> IpPrefixDetails:
-        """Update prefix from ns1 to ns2 on branch"""
+        """Update prefix from ns1 to ns2 on branch."""
         net142 = initial_dataset["net142"]
         ns2 = initial_dataset["ns2"]
         net142_branch = await NodeManager.get_one(db=db, branch=branch, id=net142.id)
@@ -160,7 +160,7 @@ class TestMigration039(TestInfrahubApp):
     async def net143_updated(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch_2: Branch
     ) -> IpPrefixDetails:
-        """Update prefix from "10.10.1.0/27" to 10.10.0.0/20"""
+        """Update prefix from "10.10.1.0/27" to 10.10.0.0/20."""
         ns1 = initial_dataset["ns1"]
         net140 = initial_dataset["net140"]
         net142 = initial_dataset["net142"]
@@ -182,7 +182,7 @@ class TestMigration039(TestInfrahubApp):
     async def address10_updated(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], branch: Branch
     ) -> IpAddressDetails:
-        """Update address value on branch"""
+        """Update address value on branch."""
         address10 = initial_dataset["address10"]
         ns1 = initial_dataset["ns1"]
         net146 = initial_dataset["net146"]

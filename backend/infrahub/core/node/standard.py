@@ -241,7 +241,7 @@ class StandardNode(BaseModel):
 
     @classmethod
     def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
-        """Convert a Neo4j Node to a Infrahub StandardNode
+        """Convert a Neo4j Node to a Infrahub StandardNode.
 
         Args:
             node (neo4j.graph.Node): Neo4j Node object

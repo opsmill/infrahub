@@ -7,7 +7,7 @@ if TYPE_CHECKING:
 
 
 async def refresh_heartbeat(service: InfrahubServices) -> None:
-    """Update API server worker information in the cache
+    """Update API server worker information in the cache.
 
     The goal of this job is to provide an updated list of API server workers in the cache, it will have a freshness
     of 15 seconds after which workers that haven't updated their entry in the cache will be removed.

@@ -6468,7 +6468,7 @@
                     "schema_updated": {
                         "type": "boolean",
                         "title": "Schema Updated",
-                        "description": "Indicates if the loading of the schema changed the existing schema",
+                        "description": "Indicates if the loading of the schema changed the existing schema.",
                         "readOnly": true
                     }
                 },

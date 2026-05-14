@@ -23,9 +23,11 @@ from tests.helpers.diagnostics import (
 
 @pytest.fixture(autouse=True)
 def _reset_known_loops() -> Generator[None, None, None]:
-    """Snapshot and clear the loop-label registry around each test so the session-scope
+    """Snapshot and clear the loop-label registry around each test so the session-scope.
+
     `_register_pytest_session_loop` fixture (and any registrations from other tests) do
     not leak into substring assertions here.
+
     """
     snapshot = diagnostics._KNOWN_LOOPS.copy()
     diagnostics._KNOWN_LOOPS.clear()
@@ -45,9 +47,11 @@ def captured_stderr(monkeypatch: pytest.MonkeyPatch) -> io.StringIO:
 
 @pytest.fixture
 def install_service_pool(monkeypatch: pytest.MonkeyPatch) -> Callable[[ConnectionPool | None], None]:
-    """Install a service on app.state whose ._cache.connection.connection_pool resolves
+    """Install a service on app.state whose ._cache.connection.connection_pool resolves.
+
     to the given pool. Uses a real redis.Redis for the .connection layer
     so only the outer service/cache pair is a SimpleNamespace.
+
     """
 
     def _install(pool: ConnectionPool | None) -> None:
@@ -65,9 +69,11 @@ _WriterWithLoop = tuple[asyncio.StreamWriter, asyncio.AbstractEventLoop]
 
 @pytest.fixture
 def closed_loop_writer() -> Generator[_WriterWithLoop, None, None]:
-    """Real StreamWriter whose event loop has been closed — mirrors the production
+    """Real StreamWriter whose event loop has been closed — mirrors the production.
+
     failure mode. GC of the orphaned writer emits ResourceWarning; callers should
     use @pytest.mark.filterwarnings("ignore::ResourceWarning").
+
     """
     loop = asyncio.new_event_loop()
     sock_a, sock_b = socket.socketpair()
@@ -219,8 +225,10 @@ def test_dump_surfaces_attribute_error_when_pool_internals_change(
 
 @pytest.fixture
 def reset_diagnostics_install() -> Generator[None, None, None]:
-    """Snapshot and restore the patched redis methods so a test can reinstall
+    """Snapshot and restore the patched redis methods so a test can reinstall.
+
     from a clean slate without leaking state into other tests.
+
     """
     original_connect = Connection._connect
     original_disconnect = ConnectionPool.disconnect

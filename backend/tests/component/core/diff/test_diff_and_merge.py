@@ -2027,8 +2027,10 @@ class TestDiffAndMerge:
         default_branch: Branch,
         hierarchical_location_schema_simple: SchemaRoot,
     ) -> None:
-        """After merging a branch that changes a node's parent, the hierarchy query on the
+        """After merging a branch that changes a node's parent, the hierarchy query on the.
+
         default branch should only return the new parent.
+
         """
         # Create hierarchy data on the default branch: europe -> paris, north-america -> seattle
         hierarchy_data = await _build_hierarchical_location_data(db=db, branch=default_branch)

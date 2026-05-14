@@ -16,6 +16,7 @@ RELATIONSHIP_COUNT_LOCK_NAMESPACE = "relationship_count"
 
 def _get_kinds_to_lock_on_object_mutation(kind: str, schema_branch: SchemaBranch) -> list[str]:
     """Return kinds for which we want to lock during creating / updating an object of a given schema node.
+
     Lock should be performed on schema kind and its generics having a uniqueness_constraint defined.
     If a generic uniqueness constraint is the same as the node schema one,
     it means node schema overrided this constraint, in which case we only need to lock on the generic.
@@ -67,6 +68,7 @@ def _any_subtype_has_count_constraint(
 
 def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """Return lock names for object on which we want to avoid concurrent mutation (create/update).
+
     Lock names include kind, some generic kinds, resource pool ids, peer ids for cardinality one relationships,
     and values of attributes of corresponding uniqueness constraints.
     """

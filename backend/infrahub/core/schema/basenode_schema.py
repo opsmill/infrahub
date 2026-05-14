@@ -43,8 +43,10 @@ OPTIONAL_TEXT_FIELDS = [
 
 def _json_schema_extra(schema: JsonDict) -> None:
     """Mutate the generated JSON Schema in place to:
+
     - allow `null` for `display_labels`
-    - mark the non-null branch as deprecated
+    - mark the non-null branch as deprecated.
+
     """
     props = schema.get("properties")
     if not isinstance(props, dict):
@@ -136,7 +138,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def __hash__(self) -> int:
         """Return a hash of the object.
-        Be careful hash generated from hash() have a salt by default and they will not be the same across run
+
+        Be careful hash generated from hash() have a salt by default and they will not be the same across run.
         """
         return hash(self.get_hash())
 
@@ -229,8 +232,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         get_map_func: Callable,
         obj_type: type[AttributeSchema | RelationshipSchema],
     ) -> HashableModelDiff:
-        """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
-        The logic is the same for both, except that the functions we are using to access these objects are differents
+        """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff.
+
+        The logic is the same for both, except that the functions we are using to access these objects are differents.
 
         To map elements from the local and other objects together, we are using a combinasion of ID and name
         If the same id is present on both we'll use the ID to match the elements on both side
@@ -371,7 +375,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         raise ValueError(f"Unable to find the relationship {id}")
 
     def get_relationships_by_identifier(self, id: str) -> list[RelationshipSchema]:
-        """Return a list of relationship instead of a single one"""
+        """Return a list of relationship instead of a single one."""
         rels: list[RelationshipSchema] = []
         for item in self.relationships:
             if item.identifier == id:
@@ -464,7 +468,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return fields
 
     def generate_fields_for_display_label(self) -> dict | None:
-        """Generate a dictionary containing the list of fields that are required
+        """Generate a dictionary containing the list of fields that are required.
+
         to generate the display_label.
 
         If display_labels is not defined, we return None which equal to everything.
@@ -478,7 +483,8 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return fields
 
     def generate_fields_for_hfid(self) -> dict | None:
-        """Generate a dictionary containing the list of fields that are required
+        """Generate a dictionary containing the list of fields that are required.
+
         to generate the hfid.
 
         If display_labels is not defined, we return None which equal to everything.
@@ -602,8 +608,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def _update_schema_paths(
         self, schema_paths_list: list[str], field_name_update_map: dict[str, str], deleted_field_names: set[str]
     ) -> list[str]:
-        """For each schema_path (eg name__value, device__name_value), update the field name if the current name is
-        in field_name_update_map, remove the path if the field name is in deleted_field_names
+        """For each schema_path (eg name__value, device__name_value), update the field name if the current name is.
+
+        in field_name_update_map, remove the path if the field name is in deleted_field_names.
+
         """
         updated_element_list = []
         for schema_path in schema_paths_list:

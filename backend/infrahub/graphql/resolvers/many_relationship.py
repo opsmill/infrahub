@@ -101,7 +101,7 @@ class ManyRelationshipResolver:
         limit: int | None = None,
         **kwargs: Any,
     ) -> dict[str, Any]:
-        """Resolver for relationships of cardinality=one for Edged responses
+        """Resolver for relationships of cardinality=one for Edged responses.
 
         This resolver is used for paginated responses and as such we redefined the requested
         fields by only reusing information below the 'node' key.

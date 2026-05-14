@@ -414,8 +414,10 @@ class TestTemplateResourcePoolExclusiveConstraint:
 
 
 class TestNodeConstraintRunnerPoolFilterExpansion:
-    """Tests that NodeConstraintRunner expands field_filters to include _from_resource_pool
+    """Tests that NodeConstraintRunner expands field_filters to include _from_resource_pool.
+
     relationships when an attribute is being updated on a template.
+
     """
 
     async def test_runner_rejects_attribute_update_when_pool_is_set(

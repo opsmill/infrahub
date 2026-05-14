@@ -20,6 +20,7 @@ class Error(Exception):
 
 class PropagatedFromWorkerError(Error):
     """Used to re-raise server side an error that happened worker side.
+
     Note we might want to improve this so we raise the exact same error that happened worker side.
     """
 
@@ -378,7 +379,7 @@ class DiffFromRequiredOnDefaultBranchError(DiffError): ...
 
 
 class HTTPServerError(Error):
-    """Errors raised when communicating with external HTTP servers"""
+    """Errors raised when communicating with external HTTP servers."""
 
     HTTP_CODE = 502
 

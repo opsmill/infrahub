@@ -33,7 +33,7 @@ class DisplayLabelRequest:
 
 
 class DiffLabelsEnricher(DiffEnricherInterface):
-    """Add display labels for nodes and labels for relationships"""
+    """Add display labels for nodes and labels for relationships."""
 
     def __init__(self, db: InfrahubDatabase) -> None:
         self.db = db
