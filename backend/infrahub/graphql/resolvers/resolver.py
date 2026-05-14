@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any
 
+from graphql import GraphQLError
 from graphql.type.definition import GraphQLNonNull
 from opentelemetry import trace
 
@@ -64,6 +65,10 @@ async def default_resolver(*args: Any, **kwargs) -> dict | list[dict] | None:
     When it returns 2, they are organized as follow
         - parent
         - info
+
+    Raises:
+        ValueError: When the resolver is called with an unexpected number of positional arguments.
+
     """
     parent = None
     info = None
@@ -182,6 +187,13 @@ def _transform_metadata_day_filters(filters: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def validate_offset_and_limit(offset: int | None, limit: int | None) -> None:
+    if limit is not None and limit < 0:
+        raise GraphQLError("limit must be a non-negative integer")
+    if offset is not None and offset < 0:
+        raise GraphQLError("offset must be a non-negative integer")
+
+
 @trace.get_tracer(__name__).start_as_current_span("default_paginated_list_resolver")
 @retry_db_transaction(name="default_paginated_list_resolver")
 async def default_paginated_list_resolver(
@@ -193,6 +205,7 @@ async def default_paginated_list_resolver(
     partial_match: bool = False,
     **kwargs: dict[str, Any],
 ) -> dict[str, Any]:
+    validate_offset_and_limit(offset, limit)
     schema: MainSchemaTypes = (
         info.return_type.of_type.graphene_type._meta.schema
         if isinstance(info.return_type, GraphQLNonNull)

@@ -178,7 +178,11 @@ def build_regex_attrs(values: list[str | int | bool]) -> str:
 def build_regex_attr(value: str | int | bool) -> str:
     """Build a single regex to match a value in a JSON string
     For a string, it must have quotes
-    For int and bool, it must not have quotes
+    For int and bool, it must not have quotes.
+
+    Raises:
+        ValueError: When `value` is not a string, integer, or boolean.
+
     """
     if isinstance(value, str):
         return f'"{value}"'
@@ -227,7 +231,12 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
     """This class improves __init_subclass__ to receive automatically the options from meta"""
 
     def __init_subclass__(cls, **meta_options: Any) -> None:
-        """This method just terminates the super() chain"""
+        """This method just terminates the super() chain.
+
+        Raises:
+            TypeError: When the inner `Meta` attribute is neither a class nor a dict.
+
+        """
         _Meta = getattr(cls, "Meta", None)
         _meta_props = {}
         if _Meta:

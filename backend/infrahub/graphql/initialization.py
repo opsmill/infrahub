@@ -50,9 +50,13 @@ class GraphqlContext:
 
     @property
     def active_account_session(self) -> AccountSession:
-        """Return an account session or raise an error
+        """Return an account session or raise an error.
 
         Eventualy this property should be removed, that can be done after self.account_session is no longer optional
+
+        Raises:
+            InitializationError: When the GraphQL context does not contain an account session.
+
         """
         if self.account_session:
             return self.account_session
@@ -60,10 +64,14 @@ class GraphqlContext:
 
     @property
     def active_permissions(self) -> PermissionManager:
-        """Return a permission manager or raise an error
+        """Return a permission manager or raise an error.
 
         This property should be removed, once self.account_session is no longer optional which will imply self.permissions will no longer be optional
         as well.
+
+        Raises:
+            InitializationError: When the GraphQL context does not contain permissions.
+
         """
         if self.permissions:
             return self.permissions

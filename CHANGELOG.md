@@ -11,6 +11,23 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.9.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.4) - 2026-05-12
+
+### Added
+
+- Add a `rebase_branch` global permission so administrators can grant non-admin users the ability to rebase branches without requiring `super_admin`. ([#8050](https://github.com/opsmill/infrahub/issues/8050))
+
+### Fixed
+
+- Fixed inconsistent IPHost and IPNetwork attribute representations across HFID, display labels, and API responses by normalizing values at input time. Added a migration that recomputes HFID/display labels for nodes whose schema references an IPHost, IPNetwork, or MacAddress attribute. ([#8896](https://github.com/opsmill/infrahub/issues/8896))
+- Standardized stored MacAddress attribute values to colon-separated EUI-48 form (`AA:BB:CC:DD:EE:FF`) and rebuilt HFIDs / display labels for nodes referencing MAC attributes. ([#9015](https://github.com/opsmill/infrahub/issues/9015))
+- Prevent users from deleting their own account through the `CoreAccountDelete` mutation. ([#9138](https://github.com/opsmill/infrahub/issues/9138))
+- Remove the unresolvable `is_inherited` field from `AttributeInterface` and all concrete attribute types in the GraphQL schema. The field had no resolver, so any query selecting it failed with `'<AttributeKind>' object has no attribute 'is_inherited'`. ([#9146](https://github.com/opsmill/infrahub/issues/9146))
+- Skip artifacts whose `object` peer can no longer be resolved when validating artifact generation in a Proposed Change. A single orphan row no longer prevents `CheckArtifactCreate` from being dispatched for the rest of the group. ([#9188](https://github.com/opsmill/infrahub/issues/9188))
+- Fix diff calculation logic to correctly include updates to branch-aware attributes of branch-agnostic schemas. ([#9221](https://github.com/opsmill/infrahub/issues/9221))
+- Diff calculation between branches no longer scales with the total size of the database. Diffs now complete in a time proportional to the number of changes on the branch. ([#9224](https://github.com/opsmill/infrahub/issues/9224))
+- Reset a Proposed Change's status to "open" following a merge failure that raises an unexpected error.
+
 ## [Infrahub - v1.9.3](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.3) - 2026-05-05
 
 ### Fixed

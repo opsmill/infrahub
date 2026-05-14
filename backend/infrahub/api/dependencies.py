@@ -97,7 +97,12 @@ async def get_current_user(
     db: InfrahubDatabase = Depends(get_db),
     api_key: str = Depends(api_key_scheme),
 ) -> AccountSession:
-    """Return current user"""
+    """Return current user.
+
+    Raises:
+        AuthorizationError: When authentication is required but the request is not authenticated.
+
+    """
     jwt_token = None
     if jwt_header:
         jwt_token = jwt_header.credentials

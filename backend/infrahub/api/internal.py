@@ -95,6 +95,10 @@ class SearchDocs:
             h: section.hash,
             p: title_id,
         }
+
+        Raises:
+            NodeNotFoundError: When the documentation index file cannot be found on disk.
+
         """
         try:
             with config.SETTINGS.main.docs_index_path.open(encoding="utf-8") as f:

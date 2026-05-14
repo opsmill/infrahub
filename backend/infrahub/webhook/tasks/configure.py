@@ -50,6 +50,10 @@ def parse_flow_params(event_type: str | None, event_data: dict | None) -> Webhoo
 
     Maps event types to actions via EVENT_TO_ACTION. Defaults to RECONCILE_ALL
     when no event_type is provided (e.g. scheduled runs).
+
+    Raises:
+        ValueError: When ``event_type`` is provided but is not a known webhook event.
+
     """
     if event_type and event_type not in EVENT_TO_ACTION:
         raise ValueError(f"Unknown webhook event type: {event_type}")

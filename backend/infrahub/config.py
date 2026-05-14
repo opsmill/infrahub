@@ -219,7 +219,12 @@ class MainSettings(BaseSettings):
 
     @property
     def infrahub_address(self) -> str:
-        """This is the address that the Prefect worker will use to connect to Infrahub API."""
+        """This is the address that the Prefect worker will use to connect to Infrahub API.
+
+        Raises:
+            InitializationError: When `internal_address` has not been configured.
+
+        """
         if self.internal_address:
             return self.internal_address
 

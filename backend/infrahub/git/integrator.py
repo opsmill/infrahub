@@ -585,7 +585,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_all_graphql_query(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
-        """Search for all .gql file and import them as GraphQL query."""
+        """Search for all .gql file and import them as GraphQL query.
+
+        Raises:
+            Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
+
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
@@ -897,7 +902,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch: str,
         file_type: type[InfrahubFile],
     ) -> None:
-        """Load one or multiple objects files into Infrahub."""
+        """Load one or multiple objects files into Infrahub.
+
+        Raises:
+            ValueError: When a referenced schema lacks both ``human_friendly_id`` and ``default_filter``.
+
+        """
         log = get_run_logger()
         files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
 
@@ -1247,7 +1257,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         client: InfrahubClient,
         params: dict | None = None,
     ) -> InfrahubCheck:
-        """Execute A Python Check stored in the repository."""
+        """Execute A Python Check stored in the repository.
+
+        Raises:
+            CheckError: When the check module cannot be loaded, the class is missing or running the check raises an unexpected exception.
+
+        """
         log = get_run_logger()
 
         commit_worktree = self.get_commit_worktree(commit=commit)
@@ -1306,7 +1321,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         convert_query_response: bool,
         data: dict | None = None,
     ) -> Any:
-        """Execute A Python Transform stored in the repository."""
+        """Execute A Python Transform stored in the repository.
+
+        Raises:
+            ValueError: When ``location`` does not contain the expected ``module::class`` separator.
+            TransformError: When the transform module cannot be loaded, the class is missing or running the transform raises an unexpected exception.
+
+        """
         log = get_run_logger()
 
         if "::" not in location:

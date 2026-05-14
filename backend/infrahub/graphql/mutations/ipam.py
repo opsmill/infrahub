@@ -37,7 +37,12 @@ async def validate_namespace(
     data: InputObjectType,
     existing_namespace_id: str | None = None,
 ) -> str:
-    """Validate or set (if not present) the namespace to pass to the mutation and return its ID."""
+    """Validate or set (if not present) the namespace to pass to the mutation and return its ID.
+
+    Raises:
+        ValidationError: When the provided ip_namespace does not include a valid identifier.
+
+    """
     namespace_id: str | None = None
     if "ip_namespace" not in data or not data["ip_namespace"]:
         namespace_id = existing_namespace_id or registry.default_ipnamespace

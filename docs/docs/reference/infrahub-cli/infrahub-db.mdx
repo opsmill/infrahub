@@ -21,7 +21,7 @@ $ infrahub db [OPTIONS] COMMAND [ARGS]...
 * `reset-deployment-id`: Reset the internal deployment_id on the...
 * `check-duplicate-schema-fields`: Check for any duplicate schema attributes...
 * `update-core-schema`: Check the current format of the internal...
-* `constraint`: Manage Database Constraints
+* `constraint`: Manage Database Constraints.
 * `index`: Manage Database Indexes
 * `selected-export`: Export database structure of selected...
 * `load-export`: Cannot be used for backup/restore...
@@ -50,7 +50,10 @@ $ infrahub db migrate [OPTIONS] [CONFIG_FILE]
 
 ## `infrahub db check-inheritance`
 
-Check the database for any vertices with incorrect inheritance
+Check the database for any vertices with incorrect inheritance.
+
+Raises:
+    Exit: When inheritance checks fail (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
@@ -74,6 +77,11 @@ Reset the internal deployment_id on the Root node.
 Running Infrahub server and worker processes cache this value at startup and
 must be restarted after this command to pick up the new value.
 
+Raises:
+    Exit: When the provided deployment_id is not a valid UUID, the user declines the
+        confirmation prompt, or resetting the deployment_id fails (raises typer.Exit to
+        terminate the CLI command).
+
 **Usage**:
 
 ```console
@@ -92,7 +100,10 @@ $ infrahub db reset-deployment-id [OPTIONS] [CONFIG_FILE]
 
 ## `infrahub db check-duplicate-schema-fields`
 
-Check for any duplicate schema attributes or relationships on the default branch
+Check for any duplicate schema attributes or relationships on the default branch.
+
+Raises:
+    Exit: When duplicate schema fields are detected and not resolved (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
@@ -130,7 +141,10 @@ $ infrahub db update-core-schema [OPTIONS] [CONFIG_FILE]
 
 ## `infrahub db constraint`
 
-Manage Database Constraints
+Manage Database Constraints.
+
+Raises:
+    Exit: When the configured database type is not supported (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
@@ -243,12 +257,16 @@ $ infrahub db patch [OPTIONS] COMMAND [ARGS]...
 **Commands**:
 
 * `plan`: Create a plan for a given patch and save...
-* `apply`: Apply a given patch plan
-* `revert`: Revert a given patch plan
+* `apply`: Apply a given patch plan.
+* `revert`: Revert a given patch plan.
 
 ### `infrahub db patch plan`
 
-Create a plan for a given patch and save it in the patch plans directory to be applied/reverted
+Create a plan for a given patch and save it in the patch plans directory to be applied/reverted.
+
+Raises:
+    Exit: When no PatchQuery subclass is found in the provided module or when more than one
+        is defined (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
@@ -269,7 +287,11 @@ $ infrahub db patch plan [OPTIONS] PATCH_PATH [CONFIG_FILE]
 
 ### `infrahub db patch apply`
 
-Apply a given patch plan
+Apply a given patch plan.
+
+Raises:
+    Exit: When the provided patch_plan_dir does not exist or is not a directory
+        (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
@@ -288,7 +310,11 @@ $ infrahub db patch apply [OPTIONS] PATCH_PLAN_DIR [CONFIG_FILE]
 
 ### `infrahub db patch revert`
 
-Revert a given patch plan
+Revert a given patch plan.
+
+Raises:
+    Exit: When the provided patch_plan_dir does not exist or is not a directory
+        (raises typer.Exit to terminate the CLI command).
 
 **Usage**:
 
