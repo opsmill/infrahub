@@ -59,4 +59,48 @@ describe("useLastUsedMethod", () => {
     const hook = await renderHook(() => useLastUsedMethod([local, sso], sso));
     expect(hook.result.current[0]).toEqual(sso);
   });
+
+  test("falls back when the selected method disappears between renders", async () => {
+    localStorage.setItem(LAST_USED_METHOD_KEY, "sso");
+
+    const hook = await renderHook<Array<AuthMethod>, ReturnType<typeof useLastUsedMethod>>(
+      (methods = [local, sso]) => useLastUsedMethod(methods),
+      { initialProps: [local, sso] }
+    );
+
+    expect(hook.result.current[0]).toEqual(sso);
+
+    await hook.rerender([local]);
+
+    expect(hook.result.current[0]).toEqual(local);
+  });
+
+  test("reflects updated method data (e.g. SSO providers) on rerender", async () => {
+    const ssoEmpty: AuthMethod = { kind: "sso", providers: [] };
+    const ssoFull: AuthMethod = {
+      kind: "sso",
+      providers: [
+        {
+          name: "google",
+          display_label: "Google",
+          icon: "",
+          protocol: "oauth2",
+          authorize_path: "/auth/google",
+          token_path: "/token/google",
+        },
+      ],
+    };
+    localStorage.setItem(LAST_USED_METHOD_KEY, "sso");
+
+    const hook = await renderHook<Array<AuthMethod>, ReturnType<typeof useLastUsedMethod>>(
+      (methods = [local, ssoEmpty]) => useLastUsedMethod(methods),
+      { initialProps: [local, ssoEmpty] }
+    );
+
+    expect(hook.result.current[0]).toEqual(ssoEmpty);
+
+    await hook.rerender([local, ssoFull]);
+
+    expect(hook.result.current[0]).toEqual(ssoFull);
+  });
 });

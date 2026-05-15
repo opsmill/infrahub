@@ -14,7 +14,8 @@ export const loginWithCredentials: LoginWithCredentials = async (params) => {
     body: params,
   });
 
-  if (error) throw Object.assign(new Error("Login failed"), { status: response.status, body: error });
+  if (error)
+    throw Object.assign(new Error("Login failed"), { status: response.status, body: error });
 
   return data;
 };
