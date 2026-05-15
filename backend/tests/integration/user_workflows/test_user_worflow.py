@@ -236,8 +236,7 @@ class TestUserWorkflow01(TestInfrahubApp):
     ) -> None:
         """Query all devices to ensure that we have some data in the database.
 
-        and overall that everything is working correctly.
-
+        Confirms overall that everything is working correctly.
         """
         headers = await integration_helper.admin_headers()
 

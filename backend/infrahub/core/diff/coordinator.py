@@ -529,10 +529,10 @@ class DiffCoordinator:
         diff_request: EnrichedDiffRequest,
         partial_enriched_diffs: list[EnrichedDiffsMetadata] | None,
     ) -> tuple[EnrichedDiffs | EnrichedDiffsMetadata, set[NodeIdentifier]]:
-        """If return is an EnrichedDiffsMetadata, it acts as a pointer to a diff in the database that has all the.
+        """If the return is an EnrichedDiffsMetadata, it acts as a pointer to a diff in the database.
 
-        necessary data for this diff_request. Might have a different time range and/or tracking_id.
-
+        The referenced diff has all the necessary data for this diff_request and might have a
+        different time range and/or tracking_id.
         """
         aggregated_enriched_diffs: EnrichedDiffs | EnrichedDiffsMetadata | None = None
         if not partial_enriched_diffs:

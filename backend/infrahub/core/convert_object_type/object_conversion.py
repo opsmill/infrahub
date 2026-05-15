@@ -40,9 +40,7 @@ async def get_out_rels_peers_ids(node: Node, db: InfrahubDatabase, at: Timestamp
 
 
 async def build_data_new_node(db: InfrahubDatabase, mapping: dict[str, ConversionFieldInput], node: Node) -> dict:
-    """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node,.
-
-    or a raw value.
+    """Value of a given field on the target kind to convert is either an input source attribute/relationship of the source node, or a raw value.
 
     Raises:
         ValueError: When a `ConversionFieldInput` entry has not been validated correctly.

@@ -608,10 +608,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def _update_schema_paths(
         self, schema_paths_list: list[str], field_name_update_map: dict[str, str], deleted_field_names: set[str]
     ) -> list[str]:
-        """For each schema_path (eg name__value, device__name_value), update the field name if the current name is.
+        """For each schema_path (eg name__value, device__name_value), update the field name or remove the path.
 
-        in field_name_update_map, remove the path if the field name is in deleted_field_names.
-
+        Updates the field name if the current name is in field_name_update_map. Removes the path
+        if the field name is in deleted_field_names.
         """
         updated_element_list = []
         for schema_path in schema_paths_list:

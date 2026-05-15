@@ -72,10 +72,9 @@ WHERE size(fields_reverse_chron) > 1
 
 
 class GetDuplicateSchemaFields(DuplicateSchemaFields):
-    """Get the kind, field type, and field name for any duplicated attributes or relationships on a given schema.
+    """Get the kind, field type, and field name for any duplicated attributes or relationships.
 
-    on the default branch.
-
+    Operates on a given schema on the default branch.
     """
 
     name = "get_duplicate_schema_fields"

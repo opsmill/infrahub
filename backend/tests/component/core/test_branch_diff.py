@@ -146,10 +146,9 @@ async def test_diff_get_files_repository(
 async def test_diff_get_files_repositories_for_branch_case01(
     db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict[str, Node]
 ) -> None:
-    """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database.
+    """Test get_modified_paths_repositories_for_branch_case01 with 2 repositories in the database.
 
-    but only one has a different commit value between 2 and from so we expect only 2 files.
-
+    Only one has a different commit value between 2 and from, so we expect only 2 files.
     """
 
     def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
@@ -190,10 +189,9 @@ async def test_diff_get_files_repositories_for_branch_case02(
     default_branch: Branch,
     repos_in_main: dict[str, Node],
 ) -> None:
-    """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database.
+    """Test get_modified_paths_repositories_for_branch_case01 with 2 repositories in the database.
 
-    both repositories have a new commit value so we expect both to return something.
-
+    Both repositories have a new commit value, so we expect both to return something.
     """
 
     def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
@@ -241,10 +239,9 @@ async def test_diff_get_files_repositories_for_branch_case02(
 
 
 async def test_diff_get_files(db: InfrahubDatabase, default_branch: Branch, repos_in_main: dict[str, Node]) -> None:
-    """Testing the get_modified_paths_repositories_for_branch_case01 method with 2 repositories in the database.
+    """Test get_modified_paths_repositories_for_branch_case01 with 2 repositories in the database.
 
-    both repositories have a new commit value so we expect both to return something.
-
+    Both repositories have a new commit value, so we expect both to return something.
     """
 
     def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):

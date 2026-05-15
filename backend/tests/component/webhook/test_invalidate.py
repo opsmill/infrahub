@@ -151,9 +151,8 @@ class TestCacheInvalidationFlow:
     ) -> None:
         """When one of two webhooks has its headers deleted, only the remaining one is found.
 
-        Cache deletion should be
-        managed through the configure flow related to webhooks headers, not this one.
-
+        Cache deletion should be managed through the configure flow related to webhooks headers,
+        not this one.
         """
         default_branch.update_schema_hash()
         kv = await _create_keyvalue(db, default_branch, "x-shared-del", "X-Shared-Del", "shared")

@@ -47,10 +47,10 @@ WHERE is_deleted = FALSE
 
 
 class Migration034(ArbitraryMigration):
-    """Finds active SchemaRelationship and SchemaAttribute vertices with deleted relationships to SchemaNodes or.
+    """Finds active SchemaRelationship and SchemaAttribute vertices with deleted relationships.
 
-    SchemaGenerics and deletes them on the same branch at the same time.
-
+    The deleted relationships go to SchemaNodes or SchemaGenerics. Deletes the orphaned vertices
+    on the same branch at the same time.
     """
 
     name: str = "034_find_orphaned_schema_fields"

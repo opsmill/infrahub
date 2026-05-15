@@ -104,10 +104,9 @@ def _collect_plans(
 
 
 class Migration071(MigrationRequiringRebase):
-    """Recompute hfid/display_label for any schema that depends on an IPHost or IPNetwork attribute,.
+    """Recompute hfid/display_label for any schema that depends on an IPHost or IPNetwork attribute.
 
-    so derived values match the canonical form stored on the attribute.
-
+    Ensures derived values match the canonical form stored on the attribute.
     """
 
     name: str = "071_recompute_hfid_for_ip_attributes"

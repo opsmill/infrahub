@@ -1314,10 +1314,9 @@ async def test_relationship_property_added_on_source_branch_kind_migration(
     person_john_main: Node,
     person_alfred_main: Node,
 ) -> None:
-    """Validate diff for relationship when peer kind is migrated on the branch after branch forks.
+    """Validate diff for relationship when peer kind is migrated and source property is updated.
 
-    and the source property is updated on the branch.
-
+    Both changes happen on the branch after branch forks.
     """
     branch = await create_branch(db=db, branch_name="branch-src-migration-rel-prop")
     from_time = Timestamp(branch.created_at)
@@ -1382,10 +1381,9 @@ async def test_relationship_property_branch_change_with_target_branch_kind_migra
     person_john_main: Node,
     person_alfred_main: Node,
 ) -> None:
-    """Validate diff for relationship source when one of the peers is migrated to a new kind on the target branch.
+    """Validate diff for relationship source when one of the peers is migrated to a new kind.
 
-    after branch forks.
-
+    The migration is on the target branch after branch forks.
     """
     branch = await create_branch(db=db, branch_name="branch-tgt-migration-rel-prop")
     from_time = Timestamp(branch.created_at)

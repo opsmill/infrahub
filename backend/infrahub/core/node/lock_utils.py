@@ -56,9 +56,10 @@ def _hash(value: str) -> str:
 def _any_subtype_has_count_constraint(
     schema_branch: SchemaBranch, generic_schema: GenericSchema, identifier: str
 ) -> bool:
-    """Return True if any concrete subtype of ``generic_schema`` declares a relationship
-    with the given ``identifier`` and a count constraint (cardinality=one, max_count, or
-    min_count)."""
+    """Return True if any concrete subtype of ``generic_schema`` declares ``identifier`` with a count constraint.
+
+    A count constraint is cardinality=one, max_count, or min_count.
+    """
     return any(
         rel.cardinality == RelationshipCardinality.ONE or rel.max_count or rel.min_count
         for subtype_kind in generic_schema.used_by

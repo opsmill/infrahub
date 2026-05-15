@@ -188,11 +188,7 @@ class QueryResult:
             self.branch_score += branch_level
 
     def calculate_time_score(self) -> None:
-        """The time score look into the to and from time all relationships.
-
-        if the 'to' field is not defined.
-
-        """
+        """The time score look into the to and from time all relationships if the 'to' field is not defined."""
         self.time_score = 0
 
         for rel in self.get_rels():

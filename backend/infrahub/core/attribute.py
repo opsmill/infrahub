@@ -55,8 +55,9 @@ MAX_STRING_LENGTH = 4096
 
 
 def validate_string_length(value: str | None) -> None:
-    """Validates input string length does not exceed a given threshold, as Neo4J cannot index string values larger than 8167 bytes,.
+    """Validates input string length does not exceed a given threshold.
 
+    Neo4J cannot index string values larger than 8167 bytes,
     see https://neo4j.com/developer/kb/index-limitations-and-workaround/.
 
     Note `value` parameter is optional as this function could be called from an attribute class
