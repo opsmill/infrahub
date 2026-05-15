@@ -767,6 +767,74 @@ class SecuritySettings(BaseSettings):
         default=None,
         description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
     )
+    auto_create_groups_filter: str | list[str] | None = Field(
+        default=None,
+        description=(
+            "Regex pattern(s) used to scope auto-creation of CoreAccountGroup rows from external "
+            "identity-provider group claims. Accepts a single regex string or a list of regex strings; "
+            "first match per claim wins. A named capture group `(?P<name>...)` extracts the local group "
+            "name. Unset / empty / whitespace-only / empty list deactivates auto-creation (no separate "
+            "enable flag — the presence of a usable filter is the sole activation surface)."
+        ),
+    )
+    auto_create_groups_max_per_login: int = Field(
+        default=50,
+        ge=1,
+        description=(
+            "Per-login soft cap on the number of new CoreAccountGroup rows the auto-creation flow may "
+            "produce within a single login. Creations beyond this cap are dropped for that login; the "
+            "login still completes and a warning event is emitted. Counts new creations only; membership "
+            "assignments to already-existing groups are unbounded."
+        ),
+    )
+    _auto_create_groups_filter_patterns: tuple[re.Pattern[str], ...] = PrivateAttr(default_factory=tuple)
+
+    @field_validator("auto_create_groups_filter", mode="after")
+    @classmethod
+    def _validate_auto_create_groups_filter(cls, value: str | list[str] | None) -> str | list[str] | None:
+        """Validate that every configured regex compiles cleanly at startup.
+
+        Empty / unset values are accepted unchanged — they mean "feature off".
+        Compilation failures are raised as ValueError so Pydantic surfaces them with the
+        setting name and the parser error attached.
+        """
+        if value is None:
+            return value
+
+        raw_patterns: list[str] = [value] if isinstance(value, str) else list(value)
+        raw_patterns = [p for p in raw_patterns if p and p.strip()]
+        for index, pattern in enumerate(raw_patterns):
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ValueError(f"auto_create_groups_filter[{index}]: invalid regex {pattern!r}: {exc}") from exc
+        return value
+
+    @model_validator(mode="after")
+    def _compile_auto_create_groups_filter_patterns(self) -> Self:
+        """Compile the validated filter patterns into a tuple stored on the private attribute. """
+        if self.auto_create_groups_filter is None:
+            self._auto_create_groups_filter_patterns = ()
+            return self
+
+        raw_patterns: list[str]
+        if isinstance(self.auto_create_groups_filter, str):
+            raw_patterns = [self.auto_create_groups_filter]
+        else:
+            raw_patterns = list(self.auto_create_groups_filter)
+        raw_patterns = [p for p in raw_patterns if p and p.strip()]
+        self._auto_create_groups_filter_patterns = tuple(re.compile(p) for p in raw_patterns)
+        return self
+
+    @property
+    def auto_create_groups_filter_patterns(self) -> tuple[re.Pattern[str], ...]:
+        """Compiled filter patterns. Empty tuple means the feature is off."""
+        return self._auto_create_groups_filter_patterns
+
+    @property
+    def auto_create_groups_enabled(self) -> bool:
+        """True iff at least one usable filter pattern is configured."""
+        return len(self._auto_create_groups_filter_patterns) > 0
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
