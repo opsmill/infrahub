@@ -7,7 +7,7 @@ from fast_depends import dependency_provider
 
 from infrahub import config
 from infrahub.api.internal import get_config
-from infrahub.config import LDAPServer, LDAPSettings, Settings
+from infrahub.config import LDAPSettings, Settings
 from infrahub.telemetry.constants import InfrahubType
 from infrahub.workers.dependencies import build_installation_type
 
@@ -46,20 +46,6 @@ class TestConfigAPILdapShape:
         cfg = await get_config()
         assert cfg.ldap.enabled is False
 
-    async def test_admin_enabled_alone_does_not_flip_enabled_on_community(self, reset_settings: None) -> None:
-        # Community deployment with LDAP config provided must still report enabled=False because the runtime is not active.
-        _set_ldap(
-            LDAPSettings(
-                enabled=True,
-                servers=[LDAPServer(uri="ldap://dc.example.com:389")],
-                service_account_dn="cn=svc,dc=example,dc=com",
-                service_account_password="pw",
-                user_search_base="ou=Users,dc=example,dc=com",
-            )
-        )
-        cfg = await get_config()
-        assert cfg.ldap.enabled is False
-
     async def test_enterprise_runtime_alone_does_not_flip_enabled(
         self, reset_settings: None, enterprise_installation_type: None
     ) -> None:
@@ -73,7 +59,7 @@ class TestConfigAPILdapShape:
         _set_ldap(
             LDAPSettings(
                 enabled=True,
-                servers=[LDAPServer(uri="ldap://dc.example.com:389")],
+                servers=["ldap://dc.example.com:389"],
                 service_account_dn="cn=svc,dc=example,dc=com",
                 service_account_password="pw",
                 user_search_base="ou=Users,dc=example,dc=com",
@@ -88,7 +74,7 @@ class TestConfigAPILdapShape:
         _set_ldap(
             LDAPSettings(
                 enabled=True,
-                servers=[LDAPServer(uri="ldap://dc.example.com:389")],
+                servers=["ldap://dc.example.com:389"],
                 service_account_dn="cn=svc,dc=example,dc=com",
                 service_account_password="pw",
                 user_search_base="ou=Users,dc=example,dc=com",

@@ -262,6 +262,84 @@
                 ]
             }
         },
+        "/api/auth/ldap/login": {
+            "post": {
+                "summary": "Login Ldap",
+                "operationId": "login_ldap_api_auth_ldap_login_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LDAPCredentials"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserToken"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication failed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Enterprise runtime not active.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EnterpriseRequiredResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Username collides with an existing local-only account.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPCollisionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "LDAP directory unavailable.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/diff/files": {
             "get": {
                 "summary": "Get Diff Files",
@@ -578,84 +656,6 @@
                         "APIKeyHeader": []
                     }
                 ]
-            }
-        },
-        "/api/auth/ldap/login": {
-            "post": {
-                "summary": "Login Ldap",
-                "operationId": "login_ldap_api_auth_ldap_login_post",
-                "requestBody": {
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "$ref": "#/components/schemas/LDAPCredentials"
-                            }
-                        }
-                    },
-                    "required": true
-                },
-                "responses": {
-                    "200": {
-                        "description": "Successful Response",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/UserToken"
-                                }
-                            }
-                        }
-                    },
-                    "401": {
-                        "description": "Authentication failed.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "403": {
-                        "description": "Enterprise runtime not active.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/EnterpriseRequiredResponse"
-                                }
-                            }
-                        }
-                    },
-                    "409": {
-                        "description": "Username collides with an existing local-only account.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LDAPCollisionResponse"
-                                }
-                            }
-                        }
-                    },
-                    "502": {
-                        "description": "LDAP directory unavailable.",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
-                                }
-                            }
-                        }
-                    },
-                    "422": {
-                        "description": "Validation Error",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "$ref": "#/components/schemas/HTTPValidationError"
-                                }
-                            }
-                        }
-                    }
-                }
             }
         },
         "/api/menu": {

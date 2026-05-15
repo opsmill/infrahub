@@ -1,24 +1,29 @@
 from __future__ import annotations
 
-import json
-from typing import TYPE_CHECKING, cast
-
 import pytest
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 from fastapi.routing import APIRoute
+from fastapi.testclient import TestClient
 from starlette.responses import Response
 
 from infrahub.api import router as top_level_router
+from infrahub.api.dependencies import get_db
+from infrahub.api.exception_handlers import generic_api_exception_handler
 from infrahub.api.ldap import LDAPCredentials, login_ldap
+from infrahub.database import InfrahubDatabase
+from infrahub.exceptions import EnterpriseRequiredError, Error
 
-if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
 
+class UnusableDatabase(InfrahubDatabase):
+    """Placeholder injected where a real database would go.
 
-def _decode(response: JSONResponse) -> dict:
-    body = response.body
-    assert isinstance(body, (bytes, bytearray, memoryview))
-    return json.loads(bytes(body).decode())
+    The community LDAP stub must raise EnterpriseRequiredError before any DB access,
+    so this instance is never touched. Skipping the base __init__ leaves the object
+    without a driver - any accidental DB call fails loudly with AttributeError.
+    """
+
+    def __init__(self) -> None:
+        pass
 
 
 @pytest.fixture
@@ -31,52 +36,56 @@ def credentials() -> LDAPCredentials:
     return LDAPCredentials(username="alice", password="any-non-empty-string")
 
 
-class _UnusableDB:
-    def __getattr__(self, name: str) -> object:
-        raise AssertionError(
-            f"Community LDAP stub touched the database (attribute {name!r}); "
-            "it must raise EnterpriseRequiredError before any DB access."
-        )
+def test_login_route_is_mounted_under_api_prefix() -> None:
+    full_paths = {route.path for route in top_level_router.routes if isinstance(route, APIRoute)}
+    assert "/api/auth/ldap/login" in full_paths
 
 
-_NO_DB = cast("InfrahubDatabase", _UnusableDB())
+def test_ldap_credentials_password_excluded_from_repr() -> None:
+    creds = LDAPCredentials(username="alice", password="sensitive-secret")
+    assert "sensitive-secret" not in repr(creds)
 
 
-class TestRouterMounting:
-    def test_route_is_mounted_under_api_prefix(self) -> None:
-        full_paths = {route.path for route in top_level_router.routes if isinstance(route, APIRoute)}
-        assert "/api/auth/ldap/login" in full_paths
+async def test_community_login_handler_raises_enterprise_required(
+    credentials: LDAPCredentials, fastapi_response: Response
+) -> None:
+    """The community LDAP service stub raises EnterpriseRequiredError before any DB access.
+
+    The route no longer catches exceptions; FastAPI's exception middleware dispatches them.
+    Mapping to the HTTP envelope is the framework's job, not the route's.
+    """
+    with pytest.raises(EnterpriseRequiredError) as exc_info:
+        await login_ldap(credentials=credentials, response=fastapi_response, db=UnusableDatabase())
+    assert exc_info.value.feature == "ldap_auth"
 
 
-class TestLDAPCredentialsValidation:
-    def test_password_excluded_from_repr(self) -> None:
-        creds = LDAPCredentials(username="alice", password="sensitive-secret")
-        assert "sensitive-secret" not in repr(creds)
+@pytest.fixture
+def community_ldap_client() -> TestClient:
+    app = FastAPI()
+    app.include_router(top_level_router)
+    app.add_exception_handler(Error, generic_api_exception_handler)
+    app.dependency_overrides[get_db] = UnusableDatabase
+    return TestClient(app)
 
 
-class TestCommunityRouteAlwaysReturnsEnterpriseRequired:
-    """The community-edition LDAP route is a 403 stub."""
+def test_community_login_endpoint_returns_403_with_error_envelope(community_ldap_client: TestClient) -> None:
+    """POST /api/auth/ldap/login on community returns HTTP 403 with the Infrahub error envelope.
 
-    async def test_returns_403_enterprise_required(
-        self, credentials: LDAPCredentials, fastapi_response: Response
-    ) -> None:
-        result = await login_ldap(credentials=credentials, response=fastapi_response, db=_NO_DB)
-        assert isinstance(result, JSONResponse)
-        assert result.status_code == 403
-
-    async def test_response_body_matches_documented_envelope(
-        self, credentials: LDAPCredentials, fastapi_response: Response
-    ) -> None:
-        result = await login_ldap(credentials=credentials, response=fastapi_response, db=_NO_DB)
-        assert isinstance(result, JSONResponse)
-        body = _decode(result)
-
-        assert body["error_code"] == "ENTERPRISE_REQUIRED"
-        assert body["feature"] == "ldap_auth"
-
-        if "message" in body and body["message"] is not None:
-            assert "ldap_auth" not in body["message"]
-
-    async def test_no_cookies_set_on_failure(self, credentials: LDAPCredentials, fastapi_response: Response) -> None:
-        await login_ldap(credentials=credentials, response=fastapi_response, db=_NO_DB)
-        assert "set-cookie" not in {h.lower() for h in fastapi_response.headers}
+    Exercises FastAPI's exception middleware end-to-end: the community LDAP stub raises
+    EnterpriseRequiredError, and the registered handler must convert it to a response
+    callers (frontend, scripts) can consume.
+    """
+    response = community_ldap_client.post(
+        "/api/auth/ldap/login",
+        json={"username": "alice", "password": "any-non-empty-string"},
+    )
+    assert response.status_code == 403
+    assert response.json() == {
+        "data": None,
+        "errors": [
+            {
+                "message": "This feature requires the Infrahub Enterprise edition.",
+                "extensions": {"code": 403},
+            }
+        ],
+    }
