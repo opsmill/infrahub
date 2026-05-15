@@ -37,6 +37,8 @@ from infrahub.external_protocols import ExternalAuthProtocol  # noqa: TC001
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     import httpx
 
     from infrahub.database import InfrahubDatabase
@@ -591,6 +593,50 @@ async def get_groups_from_provider(
                 return [membership["groupKey"]["id"] for membership in group_memberships["memberships"]]
 
     return []
+
+
+def extract_sso_groups(
+    *,
+    payload: Mapping[str, Any],
+    claim_key: str,
+    provider_name: str,
+    source: str,
+) -> list[str]:
+    if claim_key not in payload:
+        log.warning(
+            "sso groups claim miss",
+            provider=provider_name,
+            source=source,
+            configured_claim=claim_key,
+            available_keys=sorted(payload.keys()),
+            miss_reason="absent",
+        )
+        return []
+
+    value = payload[claim_key]
+    if not isinstance(value, list):
+        log.warning(
+            "sso groups claim miss",
+            provider=provider_name,
+            source=source,
+            configured_claim=claim_key,
+            available_keys=sorted(payload.keys()),
+            miss_reason="not_list",
+        )
+        return []
+
+    if not all(isinstance(item, str) for item in value):
+        log.warning(
+            "sso groups claim miss",
+            provider=provider_name,
+            source=source,
+            configured_claim=claim_key,
+            available_keys=sorted(payload.keys()),
+            miss_reason="list_has_non_string",
+        )
+        return []
+
+    return value
 
 
 def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: bool = True) -> str | dict[str, Any]:
