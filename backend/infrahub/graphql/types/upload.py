@@ -23,6 +23,10 @@ class Upload(Scalar):
         """Serialize is not supported for `Upload` scalar.
 
         Upload is an input-only type and cannot be returned in query responses.
+
+        Raises:
+            GraphQLError: Always, because the `Upload` scalar cannot be serialized.
+
         """
         raise GraphQLError("Upload scalar cannot be serialized. It is input-only.")
 
@@ -44,5 +48,9 @@ class Upload(Scalar):
         """Parse literal values is not supported for `Upload` scalar.
 
         `Upload` values must be provided via multipart form data, not as literal values in the GraphQL query.
+
+        Raises:
+            GraphQLError: Always, because `Upload` values cannot be supplied as literal values.
+
         """
         raise GraphQLError("Upload scalar cannot be used as a literal value. Use multipart form data.")

@@ -1654,7 +1654,12 @@ class TestDiffRepositorySaveAndLoad(DiffRepositoryTestBase):
 
 
 async def verify_no_orphaned_nodes(db: InfrahubDatabase) -> None:
-    """Verify that no diff elements have been orphaned"""
+    """Verify that no diff elements have been orphaned.
+
+    Raises:
+        ValueError: When orphaned diff nodes are found in the database.
+
+    """
     query = """
 CALL () {
     MATCH (d:DiffNode)

@@ -139,7 +139,12 @@ class DisplayLabel(NodePropertyAttribute[str]):
             self._analyze_jinja2_value()
 
     async def compute(self, db: InfrahubDatabase, node: Node) -> None:
-        """Update the display label value by recomputing it from the template."""
+        """Update the display label value by recomputing it from the template.
+
+        Raises:
+            ValueError: When the node's schema does not match the schema bound to this property.
+
+        """
         if self.template is None or self._manually_assigned:
             return
 
@@ -201,7 +206,12 @@ class HumanFriendlyIdentifier(NodePropertyAttribute[list[str]]):
             self._analyze_single_variable(value=item)
 
     async def compute(self, db: InfrahubDatabase, node: Node) -> None:
-        """Update the HFID value by recomputing it from the template."""
+        """Update the HFID value by recomputing it from the template.
+
+        Raises:
+            ValueError: When the node's schema does not match the schema bound to this property.
+
+        """
         if self.template is None or self._manually_assigned:
             return
 

@@ -27,7 +27,12 @@ class DiffQuery(Query):
         diff_to: Timestamp | str = None,
         **kwargs,
     ) -> None:
-        """A diff is always in the context of a branch"""
+        """A diff is always in the context of a branch.
+
+        Raises:
+            ValueError: When `diff_from` is missing on the main branch or when `diff_to` is earlier than `diff_from`.
+
+        """
         if not diff_from and branch.is_default:
             raise ValueError("diff_from is mandatory when the diff is on the main branch.")
 

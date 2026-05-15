@@ -384,6 +384,10 @@ class SchemaManager(NodeManager):
         IDs if they already exist
 
         Schemas that do not exist on the database will not be in the returned dictionary.
+
+        Raises:
+            ValueError: When a member of `schemas` has a different type than its counterpart
+                in the database. For example, incoming NodeScheam versus existing GenericSchema.
         """
         if not schemas:
             return {}
@@ -607,7 +611,7 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch,
     ) -> NodeSchema | GenericSchema:
-        """Update the supplied DB node with the schema's attributes and relationships.
+        """Update a Node with its attributes and its relationships in the database.
 
         The returned schema will carry ``existing_schema_object.id`` regardless of what was on the
         input ``schema``.
@@ -618,6 +622,9 @@ class SchemaManager(NodeManager):
 
         ``existing_fields`` is a pre-fetched ``{uuid: Node}`` dict for every field this
         update path will touch
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
         """
         schema_dict = schema.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
@@ -714,7 +721,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
-        """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
+        """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff.
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
@@ -847,7 +859,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         user_id: str,
     ) -> None:
-        """Create, update, or delete attribute and relationship DB nodes based on the schema diff."""
+        """Create, update, or delete attribute and relationship DB nodes based on the schema diff.
+
+        Raises:
+            ValueError: When an attribute or relationship marked for update or removal cannot be found in the existing items.
+
+        """
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
@@ -916,7 +933,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> None:
-        """Delete the node with its attributes and relationships."""
+        """Delete the node with its attributes and relationships.
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db, prefetch_relationships=True)

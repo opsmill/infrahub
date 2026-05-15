@@ -38,7 +38,12 @@ class ConvertObjectType(Mutation):
         info: GraphQLResolveInfo,
         data: ConvertObjectTypeInput,
     ) -> Self:
-        """Convert an input node to a given compatible kind."""
+        """Convert an input node to a given compatible kind.
+
+        Raises:
+            ValidationError: When the fields mapping is malformed or when an attribute originates from a profile.
+
+        """
         graphql_context: GraphqlContext = info.context
 
         node_to_convert = await NodeManager.get_one(

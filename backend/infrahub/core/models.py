@@ -468,7 +468,12 @@ class HashableModel(BaseModel):
         return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
 
     def _sorting_keys(self, other: HashableModel) -> tuple[list[Any], list[Any]]:
-        """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
+        """Retrieve the values of the attributes listed in the _sort_key list, for both objects.
+
+        Raises:
+            TypeError: When sorting is not supported for either object because `_sort_by` is not defined.
+
+        """
         if not self._sort_by:
             raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
 
@@ -524,7 +529,11 @@ class HashableModel(BaseModel):
     ) -> list[Any]:
         """Merging the list is not easy,
         we need to create a unique id based on the sorting keys
-        and if we have 2 sub items with the same key we can merge them recursively with update()
+        and if we have 2 sub items with the same key we can merge them recursively with update().
+
+        Raises:
+            ValueError: When items cannot produce a unique `_sorting_id`, or when duplicate sorting ids are detected.
+
         """
         # Identify all nodes that are sharing a real IDs
         local_sub_real_ids = {item.id for item in attr_local if item.id}

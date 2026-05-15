@@ -52,6 +52,19 @@ def _hash(value: str) -> str:
     return hashlib.sha256(value.encode()).hexdigest()
 
 
+def _any_subtype_has_count_constraint(
+    schema_branch: SchemaBranch, generic_schema: GenericSchema, identifier: str
+) -> bool:
+    """Return True if any concrete subtype of ``generic_schema`` declares a relationship
+    with the given ``identifier`` and a count constraint (cardinality=one, max_count, or
+    min_count)."""
+    return any(
+        rel.cardinality == RelationshipCardinality.ONE or rel.max_count or rel.min_count
+        for subtype_kind in generic_schema.used_by
+        for rel in schema_branch.get(name=subtype_kind, duplicate=False).get_relationships_by_identifier(id=identifier)
+    )
+
+
 def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -> list[str]:
     """Return lock names for object on which we want to avoid concurrent mutation (create/update).
     Lock names include kind, some generic kinds, resource pool ids, peer ids for cardinality one relationships,
@@ -88,6 +101,18 @@ def get_lock_names_on_object_mutation(node: Node, schema_branch: SchemaBranch) -
             if peer_rel and (
                 peer_rel.cardinality == RelationshipCardinality.ONE or peer_rel.max_count or peer_rel.min_count
             ):
+                lock_names.add(f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.{rel.schema.identifier}.{peer_id}")
+            elif (
+                peer_rel is None
+                and isinstance(peer_schema, GenericSchema)
+                and _any_subtype_has_count_constraint(
+                    schema_branch=schema_branch, generic_schema=peer_schema, identifier=rel.schema.identifier
+                )
+            ):
+                # The relationship is declared on a concrete subtype rather than on the
+                # generic peer. Acquire the lock conservatively if any subtype carries
+                # a count constraint for this identifier: this never under-locks; it
+                # may over-lock when the actual peer's concrete kind has no constraint.
                 lock_names.add(f"{RELATIONSHIP_COUNT_LOCK_NAMESPACE}.{rel.schema.identifier}.{peer_id}")
 
     lock_kinds = _get_kinds_to_lock_on_object_mutation(node.get_kind(), schema_branch)
