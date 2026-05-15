@@ -46,7 +46,9 @@ useConfig() ─► resolveAvailableAuthMethods(config) ─► AuthMethod[]
                             mutateAsync ─► setToken(result)  (useAuth)
                                                 │
                                                 ▼
-                                    localStorage (single write site)
+                                    localStorage (interactive write site;
+                                     background refresh writes directly —
+                                     see refresh-access-token)
 ```
 
 ## Components and hooks
