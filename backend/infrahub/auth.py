@@ -10,6 +10,8 @@ import jwt
 from pydantic import BaseModel, PrivateAttr
 
 from infrahub import config, lock, models
+from infrahub.auth_groups.filter import ClaimFilter
+from infrahub.auth_groups.service import AutoCreatedGroups
 from infrahub.config import (
     SecurityOAuth2Google,
     SecurityOAuth2Settings,
@@ -215,12 +217,28 @@ async def create_fresh_access_token(
     return models.AccessTokenResponse(access_token=access_token)
 
 
-async def signin_sso_account(  # noqa: PLR0915
+async def signin_sso_account(
     db: InfrahubDatabase, external_identity: ExternalIdentity, sso_groups: list[str]
 ) -> AuthResult:
-    lock_key = f"{external_identity.protocol}:{external_identity.provider_name}:{external_identity.sub}"
+    existing_identity = await _find_existing_identity(db=db, external_identity=external_identity)
+    if existing_identity is not None:
+        account = await _account_from_existing_identity(
+            db=db, identity_node=existing_identity, external_identity=external_identity
+        )
+    else:
+        account = await _create_account_for_new_identity(db=db, external_identity=external_identity)
 
-    identity_nodes = await NodeManager.query(
+    await _assign_group_memberships(
+        db=db, account=account, external_identity=external_identity, sso_groups=sso_groups
+    )
+    return await _build_signin_result(db=db, account=account)
+
+
+async def _find_existing_identity(
+    *, db: InfrahubDatabase, external_identity: ExternalIdentity
+) -> Node | None:
+    """Look up the `CoreExternalIdentity` row for `(sub, provider_name, protocol)`, or `None`."""
+    matches = await NodeManager.query(
         db=db,
         schema=InfrahubKind.EXTERNALIDENTITY,
         filters={
@@ -231,89 +249,143 @@ async def signin_sso_account(  # noqa: PLR0915
         prefetch_relationships=True,
         limit=1,
     )
+    return matches[0] if matches else None
 
-    if identity_nodes:
-        identity_node = identity_nodes[0]
-        account = await identity_node.account.get_peer(db=db)
-        if account.label.value != external_identity.display_name:
-            account.label.value = external_identity.display_name
-            await account.save(db=db)
-    else:
-        async with lock.registry.get(name=lock_key, namespace="sso-account"):
-            account_by_name = await NodeManager.get_one_by_default_filter(
-                db=db, id=external_identity.display_name, kind=InfrahubKind.ACCOUNT
+
+async def _account_from_existing_identity(
+    *, db: InfrahubDatabase, identity_node: Node, external_identity: ExternalIdentity
+) -> Node:
+    """Return the account linked to an existing identity, refreshing its label when stale."""
+    account = await identity_node.get_relationship(name="account").get_peer(db=db)
+    await _refresh_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
+    return account
+
+
+async def _create_account_for_new_identity(
+    *, db: InfrahubDatabase, external_identity: ExternalIdentity
+) -> Node:
+    """Resolve or create the account for a never-before-seen external identity.
+
+    Serialized through the `sso-account` lock so concurrent first-logins for the same identity
+    cannot produce duplicate rows. Three outcomes:
+
+    - An account with that `display_name` already exists and has **no** linked identity →
+      link this identity to it (unclaimed-account transition).
+    - An account with that `display_name` already exists and **is claimed** by another SSO
+      user → create a new account using `email` as the unique `name`. If `email` is also
+      already taken as a `name`, raise.
+    - No account by that name → create a new account with `display_name` as its `name`.
+    """
+    lock_key = f"{external_identity.protocol}:{external_identity.provider_name}:{external_identity.sub}"
+    async with lock.registry.get(name=lock_key, namespace="sso-account"):
+        account_by_name = await NodeManager.get_one_by_default_filter(
+            db=db, id=external_identity.display_name, kind=InfrahubKind.ACCOUNT
+        )
+
+        if account_by_name is not None and not await _account_has_identity(db=db, account=account_by_name):
+            return await _link_unclaimed_account(
+                db=db, account=account_by_name, external_identity=external_identity
             )
 
-            name_collision = False
-            if account_by_name:
-                existing_identities = await NodeManager.query(
-                    db=db,
-                    schema=InfrahubKind.EXTERNALIDENTITY,
-                    filters={"account__ids": [account_by_name.id]},
-                    limit=1,
-                )
-                if existing_identities:
-                    # Account belongs to a different SSO user — treat as name collision
-                    name_collision = True
-                else:
-                    # Unclaimed account: true transition case, safe to link
-                    account = account_by_name
-                    identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
-                    await identity_node.new(
-                        db=db,
-                        sub=external_identity.sub,
-                        provider_name=external_identity.provider_name,
-                        protocol=external_identity.protocol,
-                        account=account.id,
-                    )
-                    await identity_node.save(db=db)
-                    if account.label.value != external_identity.display_name:
-                        account.label.value = external_identity.display_name
-                        await account.save(db=db)
+        account_name = await _pick_account_name(
+            db=db, external_identity=external_identity, name_collision=account_by_name is not None
+        )
+        return await _create_account_with_identity(
+            db=db, account_name=account_name, external_identity=external_identity
+        )
 
-            if not account_by_name or name_collision:
-                if name_collision:
-                    existing_by_email = await NodeManager.get_one_by_default_filter(
-                        db=db, id=external_identity.email, kind=InfrahubKind.ACCOUNT
-                    )
-                    if existing_by_email:
-                        raise ProcessingError(
-                            message=(
-                                f"Cannot create account: both '{external_identity.display_name}'"
-                                f" and '{external_identity.email}' are already in use as account names."
-                            )
-                        )
-                    account_name = external_identity.email
-                else:
-                    account_name = external_identity.display_name
 
-                account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
-                await account.new(
-                    db=db,
-                    name=account_name,
-                    label=external_identity.display_name,
-                    account_type="User",
-                    password=str(uuid.uuid4()),
-                )
-                await account.save(db=db)
+async def _account_has_identity(*, db: InfrahubDatabase, account: Node) -> bool:
+    identities = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.EXTERNALIDENTITY,
+        filters={"account__ids": [account.id]},
+        limit=1,
+    )
+    return bool(identities)
 
-                identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
-                await identity_node.new(
-                    db=db,
-                    sub=external_identity.sub,
-                    provider_name=external_identity.provider_name,
-                    protocol=external_identity.protocol,
-                    account=account.id,
-                )
-                await identity_node.save(db=db)
 
+async def _link_unclaimed_account(
+    *, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity
+) -> Node:
+    """Attach the new external identity to an existing local-only account."""
+    await _create_identity_node(db=db, account=account, external_identity=external_identity)
+    await _refresh_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
+    return account
+
+
+async def _pick_account_name(
+    *, db: InfrahubDatabase, external_identity: ExternalIdentity, name_collision: bool
+) -> str:
+    """Pick the `name` for a new account, falling back to email on display-name collision."""
+    if not name_collision:
+        return external_identity.display_name
+
+    existing_by_email = await NodeManager.get_one_by_default_filter(
+        db=db, id=external_identity.email, kind=InfrahubKind.ACCOUNT
+    )
+    if existing_by_email is not None:
+        raise ProcessingError(
+            message=(
+                f"Cannot create account: both '{external_identity.display_name}'"
+                f" and '{external_identity.email}' are already in use as account names."
+            )
+        )
+    return external_identity.email
+
+
+async def _create_account_with_identity(
+    *, db: InfrahubDatabase, account_name: str, external_identity: ExternalIdentity
+) -> Node:
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(
+        db=db,
+        name=account_name,
+        label=external_identity.display_name,
+        account_type="User",
+        password=str(uuid.uuid4()),
+    )
+    await account.save(db=db)
+    await _create_identity_node(db=db, account=account, external_identity=external_identity)
+    return account
+
+
+async def _create_identity_node(
+    *, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity
+) -> None:
+    identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
+    await identity_node.new(
+        db=db,
+        sub=external_identity.sub,
+        provider_name=external_identity.provider_name,
+        protocol=external_identity.protocol,
+        account=account.id,
+    )
+    await identity_node.save(db=db)
+
+
+async def _refresh_label_if_stale(*, db: InfrahubDatabase, account: Node, display_name: str) -> None:
+    if account.label.value == display_name:
+        return
+    account.label.value = display_name
+    await account.save(db=db)
+
+
+async def _assign_group_memberships(
+    *,
+    db: InfrahubDatabase,
+    account: Node,
+    external_identity: ExternalIdentity,
+    sso_groups: list[str],
+) -> None:
+    """Attach the account to local groups derived from the external claims.
+
+    When the auto-create filter is configured, each claim is evaluated against it and matching
+    claims drive a find-or-create of a `CoreAccountGroup`. Non-matching claims are silently
+    skipped. Without a filter, the legacy exact-name lookup-and-add path runs against the
+    provided `sso_groups`.
+    """
     if config.SETTINGS.security.auto_create_groups_enabled:
-        # When a filter is configured, each external claim is evaluated against it. Matching
-        # claims drive a find-or-create of a CoreAccountGroup; non-matching claims are silently
-        # skipped, replacing the legacy exact-name lookup-and-add path below.
-        from infrahub.auth_groups.filter import ClaimFilter
-        from infrahub.auth_groups.service import AutoCreatedGroups
-
         await AutoCreatedGroups(
             db=db,
             account=account,
@@ -322,24 +394,33 @@ async def signin_sso_account(  # noqa: PLR0915
             claims=sso_groups,
             claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),
         )
-    elif sso_groups:
-        infrahub_groups = await NodeManager.query(
-            db=db,
-            schema=CoreAccountGroup,
-            filters={"name__values": sso_groups},
-            prefetch_relationships=True,
-        )
-        for group in infrahub_groups:
-            members = await group.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
-            if account.id not in members:
-                await group.members.add(db=db, data=account)
-                await group.members.save(db=db)
+        return
 
-    now = datetime.now(tz=UTC)
-    refresh_expires = now + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
+    if not sso_groups:
+        return
+
+    infrahub_groups = await NodeManager.query(
+        db=db,
+        schema=CoreAccountGroup,
+        filters={"name__values": sso_groups},
+        prefetch_relationships=True,
+    )
+    for group in infrahub_groups:
+        members_rel = group.get_relationship(name="members")
+        members = await members_rel.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
+        if account.id in members:
+            continue
+        await members_rel.add(db=db, data=account)
+        await members_rel.save(db=db)
+
+
+async def _build_signin_result(*, db: InfrahubDatabase, account: Node) -> AuthResult:
+    refresh_expires = datetime.now(tz=UTC) + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
-    refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
+    refresh_token = generate_refresh_token(
+        account_id=account.id, session_id=session_id, expiration=refresh_expires
+    )
 
     groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
     typed_account = cast("CoreAccount", account)
