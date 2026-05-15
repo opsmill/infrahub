@@ -75,6 +75,21 @@ describe("CredentialsForm", () => {
     expect(setToken).not.toHaveBeenCalled();
   });
 
+  test("shows 'Invalid username or password' toast on 404 error", async () => {
+    const onSubmit = vi.fn().mockRejectedValue({ status: 404 });
+
+    const component = await render(<CredentialsForm onSubmit={onSubmit} />);
+
+    await component.getByLabelText("Username").fill("unknown");
+    await component.getByLabelText("Password").fill("secret");
+    await component.getByRole("button", { name: "Log in" }).click();
+
+    await expect
+      .element(component.getByText(LOGIN_ERRORS.invalid_credentials.message))
+      .toBeVisible();
+    expect(setToken).not.toHaveBeenCalled();
+  });
+
   test("shows server-error toast on 5xx error", async () => {
     const onSubmit = vi.fn().mockRejectedValue({ status: 503 });
 

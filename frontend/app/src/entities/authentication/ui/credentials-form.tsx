@@ -28,7 +28,7 @@ function getErrorStatus(error: unknown): number | undefined {
 function toLoginError(error: unknown): LoginError {
   const status = getErrorStatus(error);
 
-  if (status === 401) {
+  if (status === 401 || status === 404) {
     return LOGIN_ERRORS.invalid_credentials;
   }
   if (status !== undefined && status >= 500) {

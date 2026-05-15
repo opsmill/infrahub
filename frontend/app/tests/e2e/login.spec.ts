@@ -1,7 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-import { LOGIN_ERRORS } from "@/entities/authentication/constants";
-
+import { LOGIN_ERRORS } from "../../src/entities/authentication/constants";
 import { ACCOUNT_STATE_PATH, ADMIN_CREDENTIALS } from "../constants";
 
 const disableSSO = async (page: Page) => {
