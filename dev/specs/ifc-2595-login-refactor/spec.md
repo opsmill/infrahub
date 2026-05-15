@@ -158,7 +158,7 @@ Replaces the existing `Login` component. Behavior:
 
 - **0 methods**: render an error message. (Defensive — shouldn't happen because `local` is always present.)
 - **1 method**: render that method's form/buttons directly, no picker chrome.
-- **2+ methods**: render the active method's content plus toggle buttons for the others. Initial selection comes from `localStorage[LAST_USED_METHOD_KEY]` if set and still available; otherwise the first method.
+- **2+ methods**: render the active method's content plus toggle buttons for the others. Initial selection comes from `localStorage[LAST_USED_METHOD_KEY]` if set and still available; otherwise the preferred default (see "Default to SSO when available" below).
 
 ```typescript
 export const LoginMethodPicker = () => {
