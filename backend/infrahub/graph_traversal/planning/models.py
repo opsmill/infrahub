@@ -85,6 +85,7 @@ class UserFilters:
     excluded_kinds: frozenset[str] = field(default_factory=frozenset)
     excluded_namespaces: frozenset[str] = field(default_factory=lambda: frozenset(DEFAULT_EXCLUDED_NAMESPACES))
     relationship_filter: frozenset[str] = field(default_factory=frozenset)
+    allow_schema_revisits: bool = False
 
     @classmethod
     def from_graphql_input(
@@ -103,11 +104,17 @@ class UserFilters:
         else:
             excluded_namespaces = frozenset(raw_excluded_namespaces)
 
+        # `allow_schema_revisits` is `False` by default; the GraphQL field may
+        # be omitted (None), in which case the default applies.
+        raw_allow_revisits = getattr(data, "allow_schema_revisits", None)
+        allow_schema_revisits = bool(raw_allow_revisits) if raw_allow_revisits is not None else False
+
         return cls(
             kind_filter=kind_filter,
             excluded_kinds=excluded_kinds,
             excluded_namespaces=excluded_namespaces,
             relationship_filter=relationship_filter,
+            allow_schema_revisits=allow_schema_revisits,
         )
 
 

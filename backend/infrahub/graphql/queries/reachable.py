@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
+from graphene import Boolean, Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
 from infrahub.core.manager import NodeManager
@@ -43,6 +43,17 @@ class ReachableNodesInput(InputObjectType):
     target_kinds = List(of_type=NonNull(String), required=True, description="Node kinds to search for")
     max_depth = Int(required=False, default_value=5, description="Maximum traversal depth (default: 5, max: 20)")
     max_results = Int(required=False, default_value=50, description="Maximum results (default: 50, max: 200)")
+    allow_schema_revisits = Boolean(
+        required=False,
+        default_value=False,
+        description=(
+            "If false (default), routes that revisit the same schema kind are excluded — "
+            "a route's intermediate kinds must be distinct, with the single exception that "
+            "the source kind may also be the terminal kind (for same-kind source/target queries). "
+            "If true, the planner emits all paths bounded only by max_depth, allowing kinds "
+            "to repeat anywhere along a route."
+        ),
+    )
 
 
 async def reachable_nodes_resolver(

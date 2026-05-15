@@ -15,10 +15,8 @@ class SchemaPlanner:
         *,
         schema_branch: SchemaBranch,
         branch: Branch,
-        account_session: AccountSession,
+        permission_resolver: PermissionResolver,
     ) -> None: ...
-
-    async def initialize(self, *, db: InfrahubDatabase) -> None: ...
 
     def plan(
         self,
@@ -30,11 +28,11 @@ class SchemaPlanner:
     ) -> Plan: ...
 ```
 
-The lifecycle is **sync `__init__` → async `initialize()` → sync `plan()` (one or more times)**. `__init__` does no I/O and never `await`s. `initialize()` performs the single async step (loading the per-request permission resolver) and constructs the internal `KindPermissionCache`. `plan()` is synchronous and may be called multiple times on the same planner instance after `initialize()` has completed.
+The planner is fully synchronous from the outside: every dependency (schema view, branch, permission resolver) is injected at construction time. `plan()` is callable any number of times.
 
-Calling `plan()` before `initialize()` raises `RuntimeError("SchemaPlanner.initialize() must be awaited before plan()")`. `initialize()` is idempotent — a second await is a no-op.
+The caller is responsible for building the `PermissionResolver` before constructing the planner. This is one `await PermissionLoader.load(...)` followed by `PermissionResolver(permissions=..., default_branch_name=...)` — see the Caller Contract below.
 
-This shape gives the caller a single, ordered, statically-checkable surface and keeps `KindPermissionCache` planner-internal (callers neither construct nor pass it).
+`KindPermissionCache` is built internally by `__init__` from the injected resolver and is not part of the planner's public surface; callers neither construct nor pass it.
 
 ## Inputs
 
@@ -43,24 +41,18 @@ This shape gives the caller a single, ordered, statically-checkable surface and 
 | Parameter | Purpose | Validation |
 |---|---|---|
 | `schema_branch` | The schema view for the request's branch at the requested time. Obtained via `db.schema.get_schema_branch(branch=branch)` (or equivalent) in the caller before the planner is built. | Must be a populated `SchemaBranch`. |
-| `branch` | Branch context. Used to scope the permission resolver to the right branch. | Must exist on `db.schema`. |
-| `account_session` | Requester identity for permission resolution. Held until `initialize()` is awaited. | Passed through to `PermissionManager.load_for_account` during `initialize()`. |
+| `branch` | Branch context. Used by the internal `KindPermissionCache` to pick the right `PermissionDecisionFlag` value (`ALLOW_DEFAULT` vs `ALLOW_OTHER`). | Must exist on `db.schema`. |
+| `permission_resolver` | A pre-built `PermissionResolver` carrying the requester's loaded permissions, scoped to `branch`. The caller builds this via `PermissionLoader.load(...)` followed by `PermissionResolver(permissions=..., default_branch_name=...)`. | Must be a populated `PermissionResolver`. |
 
-On construction the planner stores references only; no eager iteration. Per-kind lookups (during `plan()`) go directly through the `schema_branch` API:
+`__init__` constructs the internal `KindPermissionCache(resolver=..., branch=..., schema_branch=...)` eagerly. No I/O occurs; the resolver's permissions were already loaded by the caller.
 
-- Relationships on a kind: `schema_branch.get(kind).relationships`.
-- Concrete kinds implementing a generic: `GenericSchema.used_by` (a direct reverse index — no `get_all()` pass is performed).
-- Kind namespace: `schema_branch.get(kind).namespace`.
+Per-kind lookups (during `plan()`) go directly through the `schema_branch` API:
 
-The planner MAY memoize results of these lookups on the instance for the lifetime of one `plan()` call. The cache is bounded by the subset of kinds reachable from `source_kind` within `max_depth`, not by the whole schema. All caches are discarded when the planner instance goes out of scope.
+- Relationships on a concrete kind: `schema_branch.get_node(name=kind, duplicate=False).relationships`.
+- Concrete kinds implementing a generic: `schema_branch.get_generic(name=kind, duplicate=False).used_by` (a direct reverse index — no `get_all()` pass is performed).
+- Kind namespace: `schema_branch.get(name=kind, duplicate=False).namespace`.
 
-### `initialize` — async setup, called once
-
-| Parameter | Purpose | Validation |
-|---|---|---|
-| `db` | Database handle used to load the per-request `PermissionResolver` via `PermissionManager.load_for_account`. | Must be open. |
-
-`initialize()` performs exactly one external I/O call (the permission load), builds the internal `KindPermissionCache`, and returns. It does not consult the data graph and does not enumerate routes.
+The planner MAY memoize results of these lookups on the instance. The cache is bounded by the subset of kinds reachable from `source_kind` within `max_depth`, not by the whole schema. All caches are discarded when the planner instance goes out of scope.
 
 ### `plan` — synchronous
 
@@ -86,9 +78,9 @@ A `Plan` as defined in the data model. Always returned (never raises for "no pat
      - For `TerminalById`: a route's `terminal_kind` must match the kind of the destination object. Caller resolves the destination's kind once and passes it via `terminal_predicate` (i.e., `TerminalById.node_id` carries the uuid; the caller MAY also need to communicate the kind — see Caller Contract below).
      - For `TerminalByKinds`: a route's `terminal_kind` must be in `kinds`.
 2. **Generic expansion**: A `RelationshipSchema` whose `peer` is a generic is expanded to one route per concrete implementor, subject to permission/filter pruning downstream. The generic kind itself never appears in a `Hop`.
-3. **Cycle handling**: A kind may appear multiple times in a route as long as total `len(hops) ≤ max_depth`. The planner does not deduplicate by kind sequence beyond that.
-4. **User-filter pruning**: Apply `UserFilters` before permission pruning. Routes that violate any filter go to `pruned_for_user_filters`.
-5. **Permission pruning**: For each surviving route, query `permission_cache.can_view(kind)` for every kind in `route.kinds` (excluding the source if the caller specifies it has already been admitted by upstream auth — see "Caller Contract" #2 below). Drop routes with any forbidden kind; record in `pruned_for_permission`.
+3. **Cycle handling**: When `UserFilters.allow_schema_revisits` is `False` (the default) the planner prunes any candidate route in which a kind appears more than once, except for the single boundary case `route.kinds[0] == route.kinds[-1]` (source kind equals terminal kind). When the setting is `True`, a kind may appear multiple times bounded only by `max_depth`. Routes pruned by the revisit rule go to `pruned_for_user_filters`; the planner does not enumerate further along branches that would already revisit, so the pruning is also a BFS-time efficiency win.
+4. **User-filter pruning**: Apply `UserFilters` before permission pruning. Routes that violate any filter (including the revisit rule) go to `pruned_for_user_filters`.
+5. **Permission pruning**: For each surviving route, query `permission_cache.can_view(kind)` for every kind in `route.kinds`. The cache memoizes per kind, so re-querying the source kind across routes is effectively free. Drop routes with any forbidden kind; record in `pruned_for_permission`.
 6. **Determinism (FR-016)**: After all filtering, sort `routes` lexicographically by `(length, kinds, tuple(hop.relationship_identifier for hop in hops), tuple(hop.direction for hop in hops))`.
 7. **Diagnostic logging**: Emit one `traversal_plan_computed` INFO event and zero or more `traversal_plan_route` DEBUG events per call. Fields per spec FR-014.
 
@@ -105,6 +97,7 @@ The **GraphQL resolver** orchestrates planning and only constructs the `Query` i
 
 ```python
 # backend/infrahub/graphql/queries/path.py — top-of-file imports
+from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.planning import (
@@ -112,6 +105,8 @@ from infrahub.graph_traversal.planning import (
     TerminalById,
     UserFilters,
 )
+from infrahub.permissions.loader import PermissionLoader
+from infrahub.permissions.resolver import PermissionResolver
 
 async def path_traversal_resolver(root, info, data):
     graphql_context = info.context
@@ -122,13 +117,21 @@ async def path_traversal_resolver(root, info, data):
     destination = await NodeManager.get_one(db=db, branch=branch, at=at, id=data.destination_id)
     # (existence/identity errors handled here, same as today)
 
-    # 2. Build the plan
+    # 2. Build the permission resolver and the planner.
+    #    The caller does the one `await` on the permission load itself, so the
+    #    planner can stay fully synchronous after construction.
+    permissions = await PermissionLoader(account_session=graphql_context.account_session).load(
+        db=db, branch=branch,
+    )
+    resolver = PermissionResolver(
+        permissions=permissions,
+        default_branch_name=registry.default_branch,
+    )
     planner = SchemaPlanner(
         schema_branch=db.schema.get_schema_branch(branch=branch),
         branch=branch,
-        account_session=graphql_context.account_session,
+        permission_resolver=resolver,
     )
-    await planner.initialize(db=db)
     plan = planner.plan(
         source_kind=source.get_kind(),
         terminal_predicate=TerminalById(node_id=data.destination_id, kind=destination.get_kind()),
@@ -188,9 +191,9 @@ class PathTraversalQuery(Query):
 Responsibilities:
 
 1. **GraphQL resolver** resolves source/destination objects and their kinds via `NodeManager.get_one(...)`. Same existence-error handling as today.
-2. **GraphQL resolver** constructs and initializes the `SchemaPlanner` and calls `plan()`. It then constructs `TerminalById(node_id=destination_id, kind=destination_kind)` so the planner can match terminal kind without re-loading the destination node.
+2. **GraphQL resolver** builds the `PermissionResolver` (`PermissionLoader.load(...)` → `PermissionResolver(...)`), constructs the `SchemaPlanner` with it, and calls `plan()`. It then constructs `TerminalById(node_id=destination_id, kind=destination_kind)` so the planner can match terminal kind without re-loading the destination node.
 3. **GraphQL resolver** is responsible for the empty-plan short-circuit (FR-004): if `plan.routes` is empty, return an empty GraphQL result without instantiating or executing the Query class. No pointless Cypher reaches the database.
-4. **GraphQL resolver** authorizes the source object via `NodeManager.get_one` (existing behavior). The planner therefore does not redundantly check `can_view(source_kind)` — but it does check it for the destination kind and every intermediate kind.
+4. **GraphQL resolver** authorizes the source object via `NodeManager.get_one` (existing behavior). The planner does its own `can_view` pass over every kind in the route — including the source — and the cache makes the duplication trivially cheap.
 5. **Query class** takes a non-empty `Plan` in `__init__` and emits Cypher in `query_init` via `render_plan_to_cypher`. It does not call the planner. It does not contain a short-circuit path. Module-top imports only — no in-function imports.
 6. **Planner package** must not import or call anything from `graph_traversal/_cypher.py`; **Query class** must not import or call anything from `graph_traversal/planning/`'s planner (the data models are fine to import — `Plan`, `Route`, `Hop`, `TerminalPredicate`).
 
@@ -198,12 +201,11 @@ Responsibilities:
 
 | Condition | Behavior |
 |---|---|
-| `plan()` called before `initialize()` was awaited | Raise `RuntimeError("SchemaPlanner.initialize() must be awaited before plan()")`. |
 | `source_kind` not in schema | Raise `ValueError`; caller surfaces as `GraphQLError`. |
 | `max_depth` out of bounds | Raise `ValueError`. |
-| Terminal kind not in schema (for `TerminalByKinds`) | Raise `ValueError`. |
+| Terminal kind not in schema (for `TerminalByKinds` or `TerminalById`) | Raise `ValueError`. |
 | No viable routes after all pruning | Return `Plan` with empty `routes`. Not an error. |
-| Permission resolver fails to load during `initialize()` | Propagate exception; caller surfaces. |
+| Permission resolver fails to load (in the caller, before construction) | Caller's exception; planner never reached. |
 
 ## Tests required
 
