@@ -10,11 +10,11 @@ export type LoginWithCredentialsParams = {
 export type LoginWithCredentials = (params: LoginWithCredentialsParams) => Promise<UserToken>;
 
 export const loginWithCredentials: LoginWithCredentials = async (params) => {
-  const { data, error } = await apiClient.POST("/api/auth/login", {
+  const { data, error, response } = await apiClient.POST("/api/auth/login", {
     body: params,
   });
 
-  if (error) throw error;
+  if (error) throw Object.assign(new Error("Login failed"), { status: response.status, body: error });
 
   return data;
 };
