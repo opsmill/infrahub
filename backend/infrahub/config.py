@@ -769,23 +769,17 @@ class SecuritySettings(BaseSettings):
     )
     auto_create_groups_filter: str | list[str] | None = Field(
         default=None,
-        description=(
-            "Regex pattern(s) used to scope auto-creation of CoreAccountGroup rows from external "
-            "identity-provider group claims. Accepts a single regex string or a list of regex strings; "
-            "first match per claim wins. A named capture group `(?P<name>...)` extracts the local group "
-            "name. Unset / empty / whitespace-only / empty list deactivates auto-creation (no separate "
-            "enable flag — the presence of a usable filter is the sole activation surface)."
-        ),
+        description="Regex(es) that decide which external identity-provider group claims become "
+        "Infrahub groups. Accepts one regex or a list; the first matching pattern wins. "
+        "Use a named capture group `(?P<name>...)` to set the group name; otherwise the "
+        "full claim is used. Leave empty to disable auto-creation.",
     )
     auto_create_groups_max_per_login: int = Field(
         default=50,
         ge=1,
-        description=(
-            "Per-login soft cap on the number of new CoreAccountGroup rows the auto-creation flow may "
-            "produce within a single login. Creations beyond this cap are dropped for that login; the "
-            "login still completes and a warning event is emitted. Counts new creations only; membership "
-            "assignments to already-existing groups are unbounded."
-        ),
+        description="Maximum number of groups that can be auto-created during a single login. "
+        "Once reached, further new groups are skipped (with a warning) but the login "
+        "still succeeds. Adding the user to groups that already exist is not limited.",
     )
     _auto_create_groups_filter_patterns: tuple[re.Pattern[str], ...] = PrivateAttr(default_factory=tuple)
 

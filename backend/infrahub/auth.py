@@ -307,7 +307,22 @@ async def signin_sso_account(  # noqa: PLR0915
                 )
                 await identity_node.save(db=db)
 
-    if sso_groups:
+    if config.SETTINGS.security.auto_create_groups_enabled:
+        # When a filter is configured, each external claim is evaluated against it. Matching
+        # claims drive a find-or-create of a CoreAccountGroup; non-matching claims are silently
+        # skipped, replacing the legacy exact-name lookup-and-add path below.
+        from infrahub.auth_groups.filter import ClaimFilter
+        from infrahub.auth_groups.service import AutoCreatedGroups
+
+        await AutoCreatedGroups(
+            db=db,
+            account=account,
+            provider_name=external_identity.provider_name,
+        ).assign(
+            claims=sso_groups,
+            claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),
+        )
+    elif sso_groups:
         infrahub_groups = await NodeManager.query(
             db=db,
             schema=CoreAccountGroup,
