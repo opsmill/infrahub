@@ -12,8 +12,6 @@ sit on the generic or only on the concrete subtypes, and the relationship
 directions.
 """
 
-from typing import Any
-
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection
 from infrahub.core.schema import (
     AttributeSchema,
@@ -31,19 +29,16 @@ def _occupant_rel(
     max_count: int | None = None,
     min_count: int | None = None,
 ) -> RelationshipSchema:
-    kwargs: dict[str, Any] = {
-        "name": "occupant",
-        "peer": "TestPerson",
-        "identifier": "person__room",
-        "cardinality": cardinality,
-        "optional": True,
-        "direction": direction,
-    }
-    if max_count is not None:
-        kwargs["max_count"] = max_count
-    if min_count is not None:
-        kwargs["min_count"] = min_count
-    return RelationshipSchema(**kwargs)
+    return RelationshipSchema(
+        name="occupant",
+        peer="TestPerson",
+        identifier="person__room",
+        cardinality=cardinality,
+        optional=True,
+        direction=direction,
+        max_count=max_count or 0,
+        min_count=min_count or 0,
+    )
 
 
 def build_room_schema(
