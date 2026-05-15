@@ -28,17 +28,13 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-def autocreate_filter_enabled() -> Iterator[None]:
-    """Enable the auto-creation filter for the duration of the test.
-
-    Uses the real `SecuritySettings` validator chain so the compiled-pattern invariant from
-    config.py is exercised end-to-end. Restores the previous setting on teardown.
-    """
+def autocreate_filter_disabled() -> Iterator[None]:
+    """Force the auto-creation filter OFF for the duration of the test (legacy path)."""
     original_filter = config.SETTINGS.security.auto_create_groups_filter
     original_compiled = config.SETTINGS.security._auto_create_groups_filter_patterns
 
-    config.SETTINGS.security.auto_create_groups_filter = r"^LDAP/group/(?P<name>.+)$"
-    config.SETTINGS.security._compile_auto_create_groups_filter_patterns()
+    config.SETTINGS.security.auto_create_groups_filter = None
+    config.SETTINGS.security._auto_create_groups_filter_patterns = ()
 
     try:
         yield
@@ -48,13 +44,17 @@ def autocreate_filter_enabled() -> Iterator[None]:
 
 
 @pytest.fixture
-def autocreate_filter_disabled() -> Iterator[None]:
-    """Force the auto-creation filter OFF for the duration of the test (legacy path)."""
+def autocreate_filter_no_named_capture() -> Iterator[None]:
+    """Activate an auto-create filter that has no named capture group.
+
+    Used to exercise the branch where the local group name is taken verbatim from the matched
+    claim instead of from a `(?P<name>...)` group.
+    """
     original_filter = config.SETTINGS.security.auto_create_groups_filter
     original_compiled = config.SETTINGS.security._auto_create_groups_filter_patterns
 
-    config.SETTINGS.security.auto_create_groups_filter = None
-    config.SETTINGS.security._auto_create_groups_filter_patterns = ()
+    config.SETTINGS.security.auto_create_groups_filter = r"^network-.*$"
+    config.SETTINGS.security.recompile_auto_create_groups_filter_patterns()
 
     try:
         yield
@@ -128,7 +128,9 @@ class TestAutoCreationWhenFilterEnabled:
         assert group.origin.value == "AzureAD-corp", "origin must hold the configured provider name verbatim"
 
         refreshed = await NodeManager.get_one(db=db, id=group.id, prefetch_relationships=True)
-        members = await refreshed.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
+        members = await refreshed.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
         accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Alice Auto"})
         assert len(accounts) == 1
         assert accounts[0].id in members
@@ -160,7 +162,9 @@ class TestAutoCreationWhenFilterEnabled:
         )
 
         refreshed = await NodeManager.get_one(db=db, id=groups[0].id, prefetch_relationships=True)
-        members = await refreshed.members.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
+        members = await refreshed.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
         carol = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Carol Auto"})
         dave = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Dave Auto"})
         assert carol[0].id in members
@@ -171,25 +175,17 @@ class TestAutoCreationWhenFilterEnabled:
         db: InfrahubDatabase,
         default_branch: Branch,
         register_core_models_schema: SchemaBranch,
+        autocreate_filter_no_named_capture: None,
     ) -> None:
         """A pattern without a `name` named capture group uses the full claim string as the local
         group name.
         """
-        original_filter = config.SETTINGS.security.auto_create_groups_filter
-        original_compiled = config.SETTINGS.security._auto_create_groups_filter_patterns
-        config.SETTINGS.security.auto_create_groups_filter = r"^network-.*$"
-        config.SETTINGS.security._compile_auto_create_groups_filter_patterns()
+        identity = _make_identity(sub="sub-autocreate-fullclaim", display_name="Eve Auto")
+        await signin_sso_account(db=db, external_identity=identity, sso_groups=["network-eng-c"])
 
-        try:
-            identity = _make_identity(sub="sub-autocreate-fullclaim", display_name="Eve Auto")
-            await signin_sso_account(db=db, external_identity=identity, sso_groups=["network-eng-c"])
-
-            groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "network-eng-c"})
-            assert len(groups) == 1
-            assert groups[0].origin.value == "AzureAD-corp"
-        finally:
-            config.SETTINGS.security.auto_create_groups_filter = original_filter
-            config.SETTINGS.security._auto_create_groups_filter_patterns = original_compiled
+        groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "network-eng-c"})
+        assert len(groups) == 1
+        assert groups[0].origin.value == "AzureAD-corp"
 
     async def test_within_login_dedup_collapses_duplicate_effective_names(
         self,
@@ -265,12 +261,12 @@ class TestAutoCreationWhenFilterDisabled:
 
 
 class TestDefaultGroupFallback:
-    """IFC-922 default-group fallback behavior owned by `_assign_group_memberships`.
+    """Default-group fallback behavior owned by `_assign_group_memberships`.
 
-    These tests pin down the spec contract that when auto-creation produces no memberships
-    (filter active but no claim matches, or filter inactive with empty claims), the user is
-    added to `sso_user_default_group` if it is configured. They also lock down that a
-    matched claim takes precedence over the default group (Story 3 #2).
+    These tests pin down that when auto-creation produces no memberships (filter active but
+    no claim matches, or filter inactive with empty claims), the user is added to
+    `sso_user_default_group` if it is configured. They also lock down that a matched claim
+    takes precedence over the default group.
     """
 
     async def test_filter_active_non_matching_claims_fall_through_to_default_group(
@@ -283,7 +279,7 @@ class TestDefaultGroupFallback:
     ) -> None:
         """Filter active + non-empty claims + zero matches + default configured: user lands in
         the default group. The non-matching original claims must NOT have become groups
-        (FR-001 / Story 2 #1 silently-skip semantics).
+        (silently-skipped).
         """
         default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await default_group.new(db=db, name=sso_user_default_group_configured)
@@ -368,7 +364,7 @@ class TestDefaultGroupFallback:
         sso_user_default_group_configured: str,
     ) -> None:
         """When at least one claim matches the filter, the auto-created (or reused) group wins
-        and the default group is NOT stacked on top (Story 3 acceptance #2).
+        and the default group is NOT stacked on top.
         """
         default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await default_group.new(db=db, name=sso_user_default_group_configured)
@@ -412,7 +408,7 @@ class TestDefaultGroupFallback:
     ) -> None:
         """Filter inactive + empty claims + default configured: user lands in the default group.
 
-        Locks down legacy IFC-922 parity now that the fallback lives inside
+        Locks down legacy parity now that the fallback lives inside
         `_assign_group_memberships` rather than upstream in oidc.py / oauth2.py.
         """
         default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)

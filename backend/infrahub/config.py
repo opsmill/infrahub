@@ -789,8 +789,11 @@ class SecuritySettings(BaseSettings):
         """Validate that every configured regex compiles cleanly at startup.
 
         Empty / unset values are accepted unchanged — they mean "feature off".
-        Compilation failures are raised as ValueError so Pydantic surfaces them with the
-        setting name and the parser error attached.
+
+        Raises:
+            ValueError: When a configured regex pattern fails to compile. Pydantic surfaces the
+                error attached to the setting name.
+
         """
         if value is None:
             return value
@@ -806,10 +809,19 @@ class SecuritySettings(BaseSettings):
 
     @model_validator(mode="after")
     def _compile_auto_create_groups_filter_patterns(self) -> Self:
-        """Compile the validated filter patterns into a tuple stored on the private attribute."""
+        self.recompile_auto_create_groups_filter_patterns()
+        return self
+
+    def recompile_auto_create_groups_filter_patterns(self) -> None:
+        """Compile `auto_create_groups_filter` into the private patterns tuple.
+
+        Plain method (not a validator) so callers that mutate `auto_create_groups_filter`
+        on the live settings singleton — e.g. test fixtures — can re-trigger compilation
+        without going through Pydantic's validator chain.
+        """
         if self.auto_create_groups_filter is None:
             self._auto_create_groups_filter_patterns = ()
-            return self
+            return
 
         raw_patterns: list[str]
         if isinstance(self.auto_create_groups_filter, str):
@@ -818,7 +830,6 @@ class SecuritySettings(BaseSettings):
             raw_patterns = list(self.auto_create_groups_filter)
         raw_patterns = [p for p in raw_patterns if p and p.strip()]
         self._auto_create_groups_filter_patterns = tuple(re.compile(p) for p in raw_patterns)
-        return self
 
     @property
     def auto_create_groups_filter_patterns(self) -> tuple[re.Pattern[str], ...]:

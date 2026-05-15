@@ -31,6 +31,12 @@ class TestNameForSingleClaim:
 
         assert claim_filter.name_for("network-eng") == "network-eng"
 
+    def test_no_capture_hierarchy_name_returns_full_claim(self) -> None:
+        """A pattern without a `name` named capture group yields the full claim string."""
+        claim_filter = ClaimFilter(patterns=_compile(r"^LDAP/group/*"))
+
+        assert claim_filter.name_for("LDAP/group/network-engineering") == "LDAP/group/network-engineering"
+
     def test_non_matching_claim_returns_none(self) -> None:
         """Claims that match no pattern produce no effective name."""
         claim_filter = ClaimFilter(patterns=_compile(r"^LDAP/group/(?P<name>.+)$"))

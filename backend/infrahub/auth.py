@@ -305,7 +305,12 @@ async def _link_unclaimed_account(*, db: InfrahubDatabase, account: Node, extern
 
 
 async def _pick_account_name(*, db: InfrahubDatabase, external_identity: ExternalIdentity, name_collision: bool) -> str:
-    """Pick the `name` for a new account, falling back to email on display-name collision."""
+    """Pick the `name` for a new account, falling back to email on display-name collision.
+
+    Raises:
+        ProcessingError: When both `display_name` and `email` are already in use as account names.
+
+    """
     if not name_collision:
         return external_identity.display_name
 
@@ -351,11 +356,11 @@ async def _create_identity_node(*, db: InfrahubDatabase, account: Node, external
 
 
 async def _refresh_label_if_stale(*, db: InfrahubDatabase, account: Node, display_name: str) -> None:
-    typed = cast("CoreAccount", account)
-    if typed.label.value == display_name:
+    label = account.get_attribute(name="label")
+    if label.value == display_name:
         return
-    typed.label.value = display_name
-    await typed.save(db=db)
+    label.value = display_name
+    await account.save(db=db)
 
 
 async def _assign_group_memberships(
@@ -387,8 +392,8 @@ async def _assign_group_memberships(
         )
         if granted:
             return
-        # Filter active but produced nothing: per FR-001 / Story 2 #1 non-matching claims are
-        # silently skipped, so the only remaining path is the IFC-922 default-group fallback.
+        # Filter active but produced nothing: non-matching claims are silently skipped, so
+        # the only remaining path is the default-group fallback.
         sso_groups = []
 
     if not sso_groups:
