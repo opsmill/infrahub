@@ -408,17 +408,34 @@ export interface CredentialsFormProps {
   submitLabel?: string;
 }
 
-function toLoginError(error: unknown): LoginError {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    return { code: "network", message: "Network error — check your connection" };
+function getErrorStatus(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "status" in error) {
+    const { status } = error;
+    return typeof status === "number" ? status : undefined;
   }
-  const status = (error as { status?: number } | null)?.status;
+  return;
+}
+
+function toLoginError(error: unknown): LoginError {
+  const status = getErrorStatus(error);
+
   if (status === 401) {
     return { code: "invalid_credentials", message: "Invalid username or password" };
   }
-  if (typeof status === "number" && status >= 500) {
+  if (status !== undefined && status >= 500) {
     return { code: "server", message: "Authentication service unavailable" };
   }
+
+  // `fetch()` throws a TypeError on transport failures (DNS, connection refused,
+  // CORS, etc.), and `navigator.onLine === false` catches the offline case where
+  // no request was attempted. Without the TypeError branch, real network
+  // failures fall through to "unknown".
+  const isOffline = typeof navigator !== "undefined" && navigator.onLine === false;
+  const isFetchFailure = error instanceof TypeError;
+  if (status === undefined && (isOffline || isFetchFailure)) {
+    return { code: "network", message: "Network error — check your connection" };
+  }
+
   return { code: "unknown", message: "Could not log in" };
 }
 
