@@ -69,6 +69,10 @@ class InfrahubScheduler:
         """Execute the task provided in the schedule as per the defined interval
 
         Once the service is marked to be shutdown the scheduler will stop executing tasks.
+
+        Raises:
+            ValueError: When the scheduler has not been initialized with a service instance.
+
         """
         for _ in range(schedule.start_delay):
             if not self.running:

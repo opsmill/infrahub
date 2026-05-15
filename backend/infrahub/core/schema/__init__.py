@@ -79,7 +79,12 @@ class SchemaRoot(BaseModel):
         return True
 
     def get(self, name: str) -> NodeSchema | GenericSchema:
-        """Check if a schema exist locally as a node or as a generic."""
+        """Check if a schema exist locally as a node or as a generic.
+
+        Raises:
+            SchemaNotFoundError: When no node or generic with the given name exists locally.
+
+        """
         for item in self.nodes + self.generics:
             if item.kind == name:
                 return item

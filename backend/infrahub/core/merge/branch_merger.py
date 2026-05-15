@@ -150,7 +150,14 @@ class BranchMerger:
         self,
         at: str | Timestamp | None = None,
     ) -> None:
-        """Merge the current branch into main."""
+        """Merge the current branch into main.
+
+        Raises:
+            ValidationError: When the source branch is the default branch or when there are
+                unresolved conflicts.
+            MergeFailedError: When the underlying graph merge raises an exception.
+
+        """
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
         log.info("Updating diff for merge")

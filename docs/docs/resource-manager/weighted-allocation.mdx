@@ -1,0 +1,195 @@
+---
+title: Weighted allocation
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+When multiple resources can be allocated from a pool, you can control the allocation order using weights. Resources with higher weights are allocated first.
+
+:::info Prefix pool & Address pool
+
+While this guide uses IP address pools, the same principles apply to IP prefix pools.
+
+:::
+
+## Prerequisites
+
+- A running Infrahub instance
+- Basic familiarity with IP address pools (see [Allocate IP addresses](./allocate-ip-address.mdx))
+
+The examples on this page require your IP prefix node to inherit from `CoreWeightedPoolResource`. This adds an `allocation_weight` attribute to the node.
+
+```yaml
+nodes:
+  - name: IPPrefix
+    namespace: Ipam
+    inherit_from:
+      - "BuiltinIPPrefix"
+      - "CoreWeightedPoolResource"
+```
+
+## Step 1: Create a low-weight prefix
+
+Create a prefix with a lower allocation weight:
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Navigate to **IPAM** → **IP Prefixes** and create a new prefix with:
+
+- **Prefix**: `10.100.5.0/24`
+- **Member Type**: `address`
+- **Allocation Weight**: `100`
+
+Click **Save**.
+
+  </TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamIPPrefixCreate(
+    data: {
+      prefix: {value: "10.100.5.0/24"}
+      member_type: {value: "address"}
+      allocation_weight: {value: 100}
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+:::important
+
+Save the prefix ID for the next step!
+
+:::
+
+  </TabItem>
+</Tabs>
+
+## Step 2: Create a high-weight prefix
+
+Create a second prefix with a higher allocation weight:
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Navigate to **IPAM** → **IP Prefixes** and create a new prefix with:
+
+- **Prefix**: `10.100.6.0/24`
+- **Member Type**: `address`
+- **Allocation Weight**: `200`
+
+Click **Save**.
+
+  </TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  IpamIPPrefixCreate(
+    data: {
+      prefix: {value: "10.100.6.0/24"}
+      member_type: {value: "address"}
+      allocation_weight: {value: 200}
+    }
+  ) {
+    ok
+    object {
+      id
+    }
+  }
+}
+```
+
+:::important
+
+Save the prefix ID for the next step!
+
+:::
+
+  </TabItem>
+</Tabs>
+
+## Step 3: Create a pool with both prefixes
+
+Create a `CoreIPAddressPool` Resource Manager referencing both prefixes:
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web interface" default>
+
+Navigate to **Object Management** → **Resource Manager** and create a new IP Address Pool with:
+
+- **Name**: `My Weighted IP address pool`
+- **Default Address Type**: `IpamIPAddress`
+- **Default Prefix Length**: `24`
+- **Resources**: Select the `10.100.5.0/24` and `10.100.6.0/24` prefixes
+- **IP Namespace**: `default`
+
+</TabItem>
+
+<TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation {
+  CoreIPAddressPoolCreate(
+    data: {
+      name: {value: "My Weighted IP address pool"}
+      default_address_type: {value: "IpamIPAddress"}
+      default_prefix_length: {value: 24}
+      resources: [
+        {id: "<prefix01-id>"},
+        {id: "<prefix02-id>"}
+      ]
+      ip_namespace: {id: "default"}
+    }
+  ) {
+    ok
+    object {
+      id
+      hfid
+    }
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Step 4: Allocate from the pool
+
+```graphql
+mutation {
+  InfrahubIPAddressPoolGetResource(
+    data: {
+      hfid: ["My Weighted IP address pool"]
+      data: {description: "my first allocated ip"}
+    }
+  ) {
+    ok
+    node {
+      id
+      display_label
+    }
+  }
+}
+```
+
+:::success Weighted allocation
+
+You should have received an IP address from the `10.100.6.0/24` prefix, as it has a higher weight (200) than `10.100.5.0/24` (100).
+
+:::
+
+## Next
+
+- [Allocate IP addresses](./allocate-ip-address.mdx)
+- [Allocate IP prefixes](./allocate-ip-prefix.mdx)

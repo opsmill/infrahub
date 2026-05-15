@@ -22,7 +22,12 @@ CURRENT_DIRECTORY = Path(__file__).parent.resolve()
 async def wait_for_artifacts(
     client: InfrahubClient, expected_name: str | None = None, interval: int = 3, retries: int = 10
 ) -> list[CoreArtifact]:
-    """Poll until all artifacts (or those matching expected_name) reach a terminal state."""
+    """Poll until all artifacts (or those matching expected_name) reach a terminal state.
+
+    Raises:
+        TimeoutError: When artifacts do not reach a terminal state within the retry budget.
+
+    """
     for _ in range(retries):
         artifacts = await client.all(kind=CoreArtifact)
 

@@ -63,7 +63,7 @@ Each packaging option comes with trade-offs. It's important to also consider you
 
 ### How can I install Infrahub?
 
-Check out the [Installing Infrahub](../guides/installation.mdx) guide for detailed setup instructions.
+Check out the [Installing Infrahub](../deploy-manage/install-configure/install/overview) guide for detailed setup instructions.
 
 ### Where can I deploy Infrahub?
 
@@ -90,17 +90,17 @@ Infrahub is production-ready and has been deployed in a number of organizations 
 
 If you are planning to deploy Infrahub in a critical environment we recommend reaching out to our customer success team via [Discord](https://discord.gg/opsmill), [contact@opsmill.com](mailto:contact@opsmill.com) or [Online Meeting](https://cal.com/team/opsmill/meet).
 
-For teams preparing a production rollout, the [production deployment guide](../guides/production-deployment.mdx) collects the hardening recommendations we apply in customer environments.
+For teams preparing a production rollout, the [production deployment guide](../deploy-manage/install-configure/production-deployment/overview) collects the hardening recommendations we apply in customer environments.
 
 ### How much data can Infrahub handle right now?
 
-Capacity depends heavily on the schema you define, so we publish sizing tiers rather than one number. The [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page documents recommended resource allocations across deployment profiles, from moderate environments up to tens of thousands of device-class objects. Production deployments today manage datasets well into the hundreds of thousands of managed objects on a single instance.
+Capacity depends heavily on the schema you define, so we publish sizing tiers rather than one number. The [Community vs Enterprise](../overview/community-vs-enterprise.mdx) page documents recommended resource allocations across deployment profiles, from moderate environments up to tens of thousands of device-class objects. Production deployments today manage datasets well into the hundreds of thousands of managed objects on a single instance.
 
 If you want to evaluate Infrahub against your own schema and dataset size, reach out on [Discord](https://discord.gg/opsmill) or at [contact@opsmill.com](mailto:contact@opsmill.com), and we happy to help.
 
 ### What does a high-availability Infrahub deployment look like?
 
-A production Infrahub deployment runs as a single clustered instance with component-level redundancy: database clustering with automatic leader election, cache failover, and mirrored message queues. This is the default topology we recommend for most organisations, and it is what the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) page describes under the HA tiers.
+A production Infrahub deployment runs as a single clustered instance with component-level redundancy: database clustering with automatic leader election, cache failover, and mirrored message queues. This is the default topology we recommend for most organisations, and it is what the [Community vs Enterprise](../overview/community-vs-enterprise.mdx) page describes under the HA tiers.
 
 Running a single logical instance means one schema, one resource allocation authority for IPs, prefixes, and identifiers, and one target for monitoring and upgrades.
 
@@ -121,7 +121,7 @@ No. A single Infrahub instance is designed as one clustered deployment in one re
 
 ### How do I back up and restore Infrahub?
 
-Database backup is a routine, automated operation, with native support for S3-compatible object storage. Compressed backups for large production deployments typically fall in the single-digit to tens of gigabytes range. See the [database backup and restore topic](../topics/database-backup.mdx) for step-by-step guidance and scheduling recommendations.
+Database backup is a routine, automated operation, with native support for S3-compatible object storage. Compressed backups for large production deployments typically fall in the single-digit to tens of gigabytes range. See the [database backup and restore topic](../deploy-manage/maintain-upgrade/database-backup/overview) for step-by-step guidance and scheduling recommendations.
 
 ### What are realistic recovery targets for Infrahub?
 
@@ -133,25 +133,25 @@ In deployment patterns where data-plane agents enforce their last-known desired 
 
 The `infrahub upgrade` command handles schema and database migrations. On Kubernetes, Helm runs the upgrade as a job during the release update and manages rolling pod updates. For VM-based deployments, documented procedures define the stop/upgrade/restart sequence with safety checks.
 
-We recommend a full database backup before every upgrade and validation in a staging environment that mirrors production topology. The [upgrade guide](../guides/upgrade.mdx) has the detailed steps.
+We recommend a full database backup before every upgrade and validation in a staging environment that mirrors production topology. The [upgrade guide](../deploy-manage/maintain-upgrade/upgrade/overview) has the detailed steps.
 
 ### What monitoring and observability does Infrahub provide?
 
-Infrahub exposes a metrics endpoint by default, and the Infrahub Exporter provides Prometheus-format scraping and OTLP push to monitoring systems such as Prometheus and OpenTelemetry collectors. Workflow orchestration runs on Prefect, which provides task-level observability. 
+Infrahub exposes a metrics endpoint by default, and the Infrahub Exporter provides Prometheus-format scraping and OTLP push to monitoring systems such as Prometheus and OpenTelemetry collectors. Workflow orchestration runs on Prefect, which provides task-level observability.
 
 In production, the most commonly monitored signals are API request latency, task manager queue depth, database connection pool usage, and disk utilisation.
 
 ### How does Infrahub handle authentication and access control?
 
-Infrahub supports OAuth2 / OIDC single sign-on (see the [SSO guide](../guides/sso.mdx)) and token-based API authentication (see [managing API tokens](../guides/managing-api-tokens.mdx)).
+Infrahub supports OAuth2 / OIDC single sign-on (see the [SSO guide](../deploy-manage/user-management/sso/overview) and token-based API authentication (see [managing API tokens](../deploy-manage/user-management/managing-api-tokens)).
 
-The RBAC model provides pre-configured roles (Admin, Standard User, Anonymous User), custom role creation, global permissions, and namespace-scoped object-level permissions with configurable decision types. Enterprise adds workflow-based approval processes with configurable approval thresholds and enforced approval gates. All changes are tracked immutably with actor attribution. Full details are in the [permissions reference](../reference/permissions.mdx) and the [change approval workflow guide](../guides/change-approval-workflow.mdx).
+The RBAC model provides pre-configured roles (Admin, Standard User, Anonymous User), custom role creation, global permissions, and namespace-scoped object-level permissions with configurable decision types. Enterprise adds workflow-based approval processes with configurable approval thresholds and enforced approval gates. All changes are tracked immutably with actor attribution. Full details are in the [permissions reference](../reference/permissions.mdx) and the [change approval workflow guide](../change-approval/change-approval-workflow.mdx).
 
 ### If I start with Community, can I move to Enterprise later?
 
 Yes. Community and Enterprise share the same core engine, data model, and APIs, so moving from one to the other does not require a data migration or re-architecture — your schema, data, integrations, and Generators carry over. Enterprise capabilities are enabled on top of the same platform.
 
-See the [Community vs Enterprise](../topics/community-vs-enterprise.mdx) comparison for the full breakdown of what each edition includes.
+See the [Community vs Enterprise](../overview/community-vs-enterprise.mdx) comparison for the full breakdown of what each edition includes.
 
 ### What drives Infrahub performance at scale, and what can I tune?
 
@@ -182,7 +182,7 @@ Infrahub is built on an open source foundation to allow for broad community acce
 - **Infrahub Community** - Infrahub is an open source project that delivers a unified system to model, store, version, validate, and generate infrastructure data and configurations.
 - **Infrahub Enterprise** - Get SLA-backed support, advanced integrations, and enhanced performance and high-availability. Gain the benefits of mature infrastructure automation with greater velocity and quality assurance.
 
-For a detailed comparison of features, use cases, and decision guidance, see our [Community vs Enterprise](../topics/community-vs-enterprise.mdx) documentation.
+For a detailed comparison of features, use cases, and decision guidance, see our [Community vs Enterprise](../overview/community-vs-enterprise.mdx) documentation.
 
 You can find pricing and feature details on [our website](https://opsmill.com/pricing/).
 

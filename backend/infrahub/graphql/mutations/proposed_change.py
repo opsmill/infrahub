@@ -296,6 +296,10 @@ class ProposedChangeReview(Mutation):
     ) -> dict[str, bool]:
         """This mutation is used to approve or reject a proposed change.
         It can also be used to undo an approval or rejection.
+
+        Raises:
+            ValidationError: When the current user attempts to review a proposed change they created.
+
         """
         graphql_context: GraphqlContext = info.context
         graphql_context.active_permissions.raise_for_permission(
@@ -351,7 +355,12 @@ class ProposedChangeReview(Mutation):
         current_user: Node,
         context: GraphqlContext,
     ) -> InfrahubEvent | None:
-        """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision."""
+        """Modify approved_by and rejected_by relationships of the prpoposed change based on the decision.
+
+        Raises:
+            ValidationError: When the requested decision conflicts with the user's current approval state.
+
+        """
         approved_by = await proposed_change.approved_by.get_peers(db=db)
         rejected_by = await proposed_change.rejected_by.get_peers(db=db)
         approved_by_ids = [node.id for _, node in approved_by.items()]

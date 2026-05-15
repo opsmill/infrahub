@@ -111,7 +111,12 @@ class AttributeSchema(GeneratedAttributeSchema):
     @model_validator(mode="before")
     @classmethod
     def validate_dropdown_choices(cls, values: Any) -> Any:
-        """Validate that choices are defined for a dropdown but not for other kinds."""
+        """Validate that choices are defined for a dropdown but not for other kinds.
+
+        Raises:
+            ValueError: When choices are provided for a non-Dropdown kind, or when choices are missing for Dropdown.
+
+        """
         if isinstance(values, dict):
             kind = values.get("kind")
             choices = values.get("choices")

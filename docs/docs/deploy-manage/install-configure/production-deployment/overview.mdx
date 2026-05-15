@@ -1,0 +1,128 @@
+---
+title: Production deployment
+---
+
+import ReferenceLink from "../../../../src/components/Card";
+import EnterpriseBadge from "../../../../src/components/EnterpriseBadge";
+
+# Production deployment
+
+This guide walks you through deploying Infrahub in a production environment with enhanced security, reliability, and maintainability. By following these steps, you'll set up a production-ready Infrahub instance that follows industry best practices.
+
+:::warning
+This guide is currently under development. Please use it as a reference checklist when preparing your Infrahub environment for production deployment.
+:::
+
+## Prerequisites
+
+Before beginning your production deployment, ensure you have:
+
+- Selected your deployment technology (Docker or Kubernetes)
+- Verified your system meets the [hardware requirements](../hardware-requirements.mdx)
+- Administrative access to your deployment environment
+- Decided between Community or Enterprise edition based on your support and feature needs
+- Access to your organization's identity provider (for SSO configuration)
+- A backup strategy and storage location
+
+## Step 1: Create a hardened configuration file
+
+Production environments require secure configuration settings that differ from development defaults. Create a configuration file that overwrites default values to enhance security.
+
+```shell title=".env"
+# Environment settings
+INFRAHUB_ALLOW_ANONYMOUS_ACCESS=false
+INFRAHUB_PRODUCTION=true
+INFRAHUB_LOG_LEVEL=INFO
+
+# Security keys & tokens (generate strong unique values)
+INFRAHUB_SECURITY_SECRET_KEY=<strong-random-string-at-least-32-chars>
+INFRAHUB_INITIAL_ADMIN_PASSWORD=<strong-admin-password>
+INFRAHUB_INITIAL_ADMIN_TOKEN=<generate-uuid>  # Generate with: uuidgen
+INFRAHUB_INITIAL_AGENT_TOKEN=<generate-uuid>  # Generate with: uuidgen
+
+# Database & message broker security
+INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
+INFRAHUB_DB_PASSWORD=<strong-database-password>
+
+# TLS & Certificates
+INFRAHUB_DB_TLS_ENABLED=true
+INFRAHUB_DB_TLS_CA_FILE=/opt/ssl/ca.pem
+INFRAHUB_BROKER_TLS_ENABLED=true
+INFRAHUB_CACHE_TLS_ENABLED=true
+```
+
+:::warning
+Never use default passwords or tokens in production. Generate strong unique values for each environment. You can generate UUIDs using the `uuidgen` command or an online UUID generator.
+:::
+
+<ReferenceLink title="Complete configuration reference" url="/reference/configuration" />
+
+## Step 2: Install Infrahub
+
+Install Infrahub using your chosen deployment technology, applying your hardened configuration.
+
+:::info
+For high availability deployments on Kubernetes, use the HA manifest which includes proper replication and resource requests/limits.
+:::
+
+<ReferenceLink title="Detailed installation instructions" url="/deploy-manage/install-configure/install/overview" />
+
+:::success
+Navigate to `https://your-server-address` in your browser. You should see the Infrahub login page.
+:::
+
+## Step 3: Configure SSO (recommended)
+
+Connect Infrahub to your organization's identity provider to enhance security and simplify user management.
+
+<ReferenceLink title="Detailed SSO configuration guide" url="/deploy-manage/user-management/sso/overview" />
+
+## Step 4: Set up database backups
+
+Implement regular database backups to prevent data loss in case of hardware failure or other issues.
+
+<ReferenceLink title="Complete backup and restore guide" url="/deploy-manage/maintain-upgrade/database-backup/overview" />
+
+:::success
+Test your backup and restore process periodically to ensure it works as expected.
+:::
+
+## Operations and maintenance
+
+### Upgrading Infrahub
+
+To upgrade to a new version of Infrahub:
+
+1. Review the release notes for breaking changes
+2. Create a full backup of your database
+3. Update the container images
+
+:::danger
+Always create a backup before upgrading to ensure you can restore if needed.
+:::
+
+<ReferenceLink title="Detailed upgrade procedures" url="/deploy-manage/maintain-upgrade/upgrade/overview" />
+
+## Support options
+
+### Community support
+
+- GitHub Issues: [github.com/opsmill/infrahub](https://github.com/opsmill/infrahub)
+- Discord Community: [discord.gg/infrahub](https://discord.gg/infrahub)
+- Documentation: [docs.infrahub.app](https://docs.infrahub.app)
+
+### Enterprise support <EnterpriseBadge />
+
+- 24/7 support with SLA guarantees
+- Dedicated support engineer
+- Professional services for deployment
+- Training and certification programs
+
+Contact [support@opsmill.com](mailto:support@opsmill.com) for enterprise support.
+
+## Related resources
+
+- [Architecture overview](../../../overview/architecture.mdx)
+- [Configuration reference](../../../reference/configuration.mdx)
+- [API server reference](../../../reference/api-server.mdx)
+- [High availability](./high-availability.mdx)
