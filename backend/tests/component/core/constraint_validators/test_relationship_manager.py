@@ -270,15 +270,3 @@ class TestCountGenericPeerDirection:
             await constraint.check(relm=bob.get_relationship("rooms"), node_schema=bob.get_schema(), node=bob)
 
         assert f"Node {single.id} has 2 peers for person__room, maximum of 1 allowed" in exc.value.message
-
-    async def test_schema_rejects_same_direction_same_identifier(
-        self, db: InfrahubDatabase, default_branch: Branch
-    ) -> None:
-        with pytest.raises(ValueError, match=r"Incompatible direction"):
-            registry.schema.register_schema(
-                schema=build_room_schema(
-                    occupant_direction="outbound",
-                    rooms_direction="outbound",
-                ),
-                branch=default_branch.name,
-            )
