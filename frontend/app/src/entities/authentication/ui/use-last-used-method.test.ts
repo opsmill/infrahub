@@ -55,9 +55,20 @@ describe("useLastUsedMethod", () => {
     expect(result.current[0]).toBeNull();
   });
 
+  test("returns null active when no methods are available even if a default is provided", async () => {
+    const { result } = await renderHook(() => useLastUsedMethod([], local));
+    expect(result.current[0]).toBeNull();
+  });
+
   test("uses defaultMethod when nothing is stored and a default is provided", async () => {
     const hook = await renderHook(() => useLastUsedMethod([local, sso], sso));
     expect(hook.result.current[0]).toEqual(sso);
+  });
+
+  test("ignores a defaultMethod whose kind is not in methods", async () => {
+    // `sso` here is not in `methods`; fall back to `methods[0]`.
+    const { result } = await renderHook(() => useLastUsedMethod([local], sso));
+    expect(result.current[0]).toEqual(local);
   });
 
   test("falls back when the selected method disappears between renders", async () => {

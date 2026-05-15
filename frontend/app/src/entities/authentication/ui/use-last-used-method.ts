@@ -1,10 +1,15 @@
 import { useState } from "react";
 
-import type { AuthMethod, AuthMethodKind } from "@/entities/authentication/auth-methods";
+import {
+  AUTH_METHODS,
+  type AuthMethod,
+  type AuthMethodKind,
+} from "@/entities/authentication/auth-methods";
 import { LAST_USED_METHOD_KEY } from "@/entities/authentication/constants";
 
 function readStoredKind(): AuthMethodKind | null {
-  return (localStorage.getItem(LAST_USED_METHOD_KEY) as AuthMethodKind | null) ?? null;
+  const raw = localStorage.getItem(LAST_USED_METHOD_KEY);
+  return raw !== null && raw in AUTH_METHODS ? (raw as AuthMethodKind) : null;
 }
 
 export function useLastUsedMethod(
@@ -18,9 +23,15 @@ export function useLastUsedMethod(
     setActiveKind(method.kind);
   };
 
-  // Resolve from current methods every render so providers stay fresh and a
-  // method that becomes unavailable falls back gracefully.
-  const active = methods.find((m) => m.kind === activeKind) ?? defaultMethod ?? methods[0] ?? null;
+  // Resolve from `methods` every render so providers stay fresh and a method
+  // that becomes unavailable falls back gracefully. `defaultMethod` is only
+  // honored if it's actually in `methods`, so callers can't surface a method
+  // that isn't available.
+  const active =
+    methods.find((m) => m.kind === activeKind) ??
+    methods.find((m) => m.kind === defaultMethod?.kind) ??
+    methods[0] ??
+    null;
 
   return [active, setActive];
 }

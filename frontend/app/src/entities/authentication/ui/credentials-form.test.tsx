@@ -57,9 +57,7 @@ describe("CredentialsForm", () => {
     await component.getByLabelText("Password").fill("secret");
     await component.getByRole("button", { name: "Log in" }).click();
 
-    // microtask flush
-    await new Promise((r) => setTimeout(r, 0));
-    expect(setToken).toHaveBeenCalledWith(token);
+    await vi.waitFor(() => expect(setToken).toHaveBeenCalledWith(token));
   });
 
   test("shows 'Invalid username or password' toast on 401 error", async () => {
