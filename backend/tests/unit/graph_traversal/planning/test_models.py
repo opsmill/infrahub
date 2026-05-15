@@ -185,6 +185,7 @@ class FakeGraphqlInput:
     excluded_kinds: list[str] | None = None
     excluded_namespaces: list[str] | None = None
     relationship_filter: list[str] | None = None
+    allow_schema_revisits: bool | None = None
 
 
 class TestUserFilters:
@@ -194,6 +195,23 @@ class TestUserFilters:
         assert filters.excluded_kinds == frozenset()
         assert filters.relationship_filter == frozenset()
         assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)
+        assert filters.allow_schema_revisits is False
+
+    def test_from_graphql_input_reads_allow_schema_revisits_true(self) -> None:
+        data = FakeGraphqlInput(name="revisits_on", allow_schema_revisits=True)
+        filters = UserFilters.from_graphql_input(data)
+        assert filters.allow_schema_revisits is True
+
+    def test_from_graphql_input_reads_allow_schema_revisits_false_explicit(self) -> None:
+        data = FakeGraphqlInput(name="revisits_off", allow_schema_revisits=False)
+        filters = UserFilters.from_graphql_input(data)
+        assert filters.allow_schema_revisits is False
+
+    def test_from_graphql_input_defaults_allow_schema_revisits_when_field_missing(self) -> None:
+        """Input objects that omit the field — including ``None`` — default to False."""
+        data = FakeGraphqlInput(name="omitted", allow_schema_revisits=None)
+        filters = UserFilters.from_graphql_input(data)
+        assert filters.allow_schema_revisits is False
 
     def test_from_graphql_input_with_empty_excluded_namespaces_replaces_defaults(self) -> None:
         """Replacement semantics: empty list = 'include all' (matches GraphQL input doc)."""

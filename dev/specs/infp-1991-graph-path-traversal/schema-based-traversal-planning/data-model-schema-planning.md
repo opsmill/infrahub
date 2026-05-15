@@ -107,7 +107,7 @@ Per-request, in-memory yes/no answers for "can the requester view kind X." **Int
 
 | Field | Type | Description |
 |---|---|---|
-| `_resolver` | `PermissionResolver` | Loaded by `SchemaPlanner.initialize()` via `PermissionManager.load_for_account(...)`. |
+| `_resolver` | `PermissionResolver` | Injected into `SchemaPlanner.__init__` by the caller. The caller builds it via `PermissionLoader.load(...)` + `PermissionResolver(...)` before constructing the planner. |
 | `_branch` | `Branch` | The branch the request is bound to. |
 | `_schema_branch` | `SchemaBranch` | Used by `can_view` to resolve `kind → namespace` when constructing `ObjectPermission`. |
 | `_decisions` | `dict[str, bool]` | Memoized `kind → can_view` map. Mutated only by the cache itself. |
@@ -115,7 +115,7 @@ Per-request, in-memory yes/no answers for "can the requester view kind X." **Int
 **Public API**:
 - `can_view(kind: str) -> bool` — memoized; constructs an `ObjectPermission(namespace, name, action="view", ...)` from `schema_branch.get(kind).namespace` and `kind`, then defers to the resolver.
 
-**Lifecycle**: Constructed inside `SchemaPlanner.initialize()`; discarded when the planner instance is garbage-collected.
+**Lifecycle**: Constructed eagerly inside `SchemaPlanner.__init__` from the injected `PermissionResolver`; discarded when the planner instance is garbage-collected.
 
 ### `UserFilters`
 
@@ -127,6 +127,7 @@ A typed view of the GraphQL inputs the planner uses for plan-level filtering.
 | `excluded_kinds` | `frozenset[str]` | No kind in a route may be in this set. | empty |
 | `excluded_namespaces` | `frozenset[str]` | No kind whose namespace is in this set may appear (with default Core/Internal/Builtin/Lineage/Profile/Template exclusions applied if the input is `None`). | spec-defined defaults |
 | `relationship_filter` | `frozenset[str]` | If non-empty, every `Hop.relationship_identifier` MUST be in this set. | empty |
+| `allow_schema_revisits` | `bool` | If `False` (the default), routes in which a schema kind appears more than once are pruned — with the explicit exception that the source kind may also appear at the terminal position (same-kind source/terminal queries). If `True`, the planner enumerates all routes bounded only by `max_depth`, allowing kinds to repeat anywhere. | `False` |
 
 **Notes**:
 - `UserFilters` is constructed by the GraphQL resolver from `PathTraversalInput` / `ReachableNodesInput` and passed to the planner. The planner does not consult GraphQL types directly (Constitution III — boundary typing).
@@ -136,16 +137,17 @@ A typed view of the GraphQL inputs the planner uses for plan-level filtering.
 
 ## Entity Relationships
 
-The `SchemaPlanner` lifecycle is **sync `__init__` + explicit async `initialize()` + sync `plan()`**. The async I/O for permission loading is encapsulated inside `initialize()` so callers never touch `KindPermissionCache` directly; calling `plan()` before `initialize()` raises `RuntimeError`. See [contracts/planner.md §Surface](contracts/planner.md#surface).
+The `SchemaPlanner` is fully synchronous from the outside: every dependency (schema view, branch, permission resolver) is injected at construction time. The caller does the one `await` for permission loading itself, before building the planner. Callers never touch `KindPermissionCache` directly; it is constructed by `__init__` from the injected resolver. See [contracts/planner.md §Surface](contracts/planner.md#surface).
 ```text
 GraphQL resolver (backend/infrahub/graphql/queries/{path,reachable}.py):
 
     1. Resolve source/destination objects via NodeManager.get_one(...)
-    2. planner = SchemaPlanner(schema_branch, branch, account_session)
-       await planner.initialize(db=db)
+    2. permissions = await PermissionLoader(account_session=...).load(db=db, branch=branch)
+       resolver = PermissionResolver(permissions=permissions, default_branch_name=registry.default_branch)
+    3. planner = SchemaPlanner(schema_branch=..., branch=..., permission_resolver=resolver)
        plan = planner.plan(source_kind, terminal_predicate, max_depth, user_filters)
-    3. if not plan.routes: return empty result  ← short-circuit (FR-004)
-    4. query = PathTraversalQuery(plan=plan, source_id=..., ...)
+    4. if not plan.routes: return empty result  ← short-circuit (FR-004)
+    5. query = PathTraversalQuery(plan=plan, source_id=..., ...)
        await query.execute(db=db)
 
 Query class (backend/infrahub/graph_traversal/{path,reachable}.py):
