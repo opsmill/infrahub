@@ -1,5 +1,6 @@
-"""Loading a schema with a fabricated ``id`` for an already-existing ``(namespace, name)`` must
-not insert a duplicate ``SchemaNode`` row — dedup is by ``(namespace, name)``.
+"""Loading a schema with a fabricated ``id`` must always be rejected without mutating the
+database — both when the ``(namespace, name)`` is previously unknown and when it already
+exists on the branch.
 """
 
 from __future__ import annotations
@@ -18,47 +19,54 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+def _widget_schema(name: str, fake_id: str | None = None) -> dict[str, Any]:
+    node: dict[str, Any] = {
+        "name": name,
+        "namespace": "Faketest",
+        "attributes": [
+            {"name": "name", "kind": "Text", "unique": True},
+            {"name": "color", "kind": "Text", "optional": True},
+        ],
+    }
+    if fake_id is not None:
+        node["id"] = fake_id
+    return {"version": "1.0", "nodes": [node]}
+
+
 class TestSchemaLoadWithFakeId(TestInfrahubApp):
     @pytest.fixture(scope="class")
-    def widget_schema(self) -> dict[str, Any]:
-        return {
-            "version": "1.0",
-            "nodes": [
-                {
-                    "name": "Widget",
-                    "namespace": "Faketest",
-                    "attributes": [
-                        {"name": "name", "kind": "Text", "unique": True},
-                        {"name": "color", "kind": "Text", "optional": True},
-                    ],
-                }
-            ],
-        }
+    def reload_fake_id(self) -> str:
+        return str(uuid.uuid4())
 
     @pytest.fixture(scope="class")
-    def widget_schema_with_fake_id(self, widget_schema: dict[str, Any]) -> dict[str, Any]:
-        widget_node = {**widget_schema["nodes"][0], "id": str(uuid.uuid4())}
-        return {"version": "1.0", "nodes": [widget_node]}
-
-    async def test_step_01_load_initial(self, client: InfrahubClient, widget_schema: dict[str, Any]) -> None:
-        response = await client.schema.load(schemas=[widget_schema])
+    async def pre_existing_widget_id(self, client: InfrahubClient, db: InfrahubDatabase) -> str:
+        """Load ``FaketestRepeatWidget`` with the normal id-less flow and return its DB-assigned uuid."""
+        response = await client.schema.load(schemas=[_widget_schema(name="RepeatWidget")])
         assert not response.errors
+        rows = await NodeManager.query(
+            db=db,
+            schema="SchemaNode",
+            filters={"name__value": "RepeatWidget", "namespace__value": "Faketest"},
+        )
+        assert len(rows) == 1
+        return rows[0].id
 
-    async def test_step_02_only_one_db_row_after_initial_load(self, db: InfrahubDatabase) -> None:
-        schema_nodes = await NodeManager.query(db=db, schema="SchemaNode", filters={"name__value": "Widget"})
-        assert len(schema_nodes) == 1
-
-    async def test_step_03_load_with_fake_id(
-        self, client: InfrahubClient, widget_schema_with_fake_id: dict[str, Any]
+    async def test_reload_with_fake_id_for_existing_schema_is_rejected(
+        self,
+        client: InfrahubClient,
+        db: InfrahubDatabase,
+        pre_existing_widget_id: str,
+        reload_fake_id: str,
     ) -> None:
-        """Re-loading the same ``(namespace, name)`` with a fabricated ``id`` must be rejected:
-        the load returns an error rather than silently mutating state, and DB rows are unchanged
-        (asserted in ``test_step_04``)."""
-        response = await client.schema.load(schemas=[widget_schema_with_fake_id])
+        """Re-loading an existing ``(namespace, name)`` with a fabricated id is rejected; the
+        existing DB row keeps its original uuid."""
+        response = await client.schema.load(schemas=[_widget_schema(name="RepeatWidget", fake_id=reload_fake_id)])
         assert response.errors
-        assert "Unable to find the Schema associated with" in str(response.errors)
 
-    async def test_step_04_still_only_one_db_row(self, db: InfrahubDatabase) -> None:
-        rows = await NodeManager.query(db=db, schema="SchemaNode", filters={"name__value": "Widget"})
-        widget_rows = [r for r in rows if r.namespace.value == "Faketest"]
-        assert len(widget_rows) == 1
+        rows = await NodeManager.query(
+            db=db,
+            schema="SchemaNode",
+            filters={"name__value": "RepeatWidget", "namespace__value": "Faketest"},
+        )
+        assert len(rows) == 1
+        assert rows[0].id == pre_existing_widget_id

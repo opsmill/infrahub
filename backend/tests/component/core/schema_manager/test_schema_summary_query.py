@@ -121,6 +121,31 @@ class TestSchemaSummaryQuery:
         await query.execute(db=db)
         assert len(query.get_summaries()) == 0
 
+    async def test_kind_filter_mix_existing_and_nonexistent(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        schemas_loaded: None,
+    ) -> None:
+        """kind_filter with a mix of real and missing pairs returns only the real kinds.
+
+        Importantly, when ``namespace`` matches an existing kind but ``name`` does not (and
+        vice versa), only the real kinds are returned
+        """
+        query = await SchemaSummaryQuery.init(
+            db=db,
+            branch=default_branch_scope_class,
+            kind_filter=[
+                ("Querytest", "AttrsOnly"),  # exists
+                ("Querytest", "Both"),  # exists
+                ("Querytest", "Ghost"),  # name does not exist (namespace does)
+                ("Nope", "AttrsOnly"),  # namespace does not exist (name does)
+                ("Nope", "AlsoNope"),  # neither exists
+            ],
+        )
+        await query.execute(db=db)
+        assert query.get_summaries().get_kinds() == {"QuerytestAttrsOnly", "QuerytestBoth"}
+
     async def test_no_kind_filter_includes_all_test_kinds(
         self,
         db: InfrahubDatabase,
@@ -210,6 +235,24 @@ class TestSchemaSummaryQuery:
         assert summary is not None
         assert summary.attributes == {}
 
+    async def test_attribute_names_mix_existing_and_nonexistent(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        schemas_loaded: None,
+    ) -> None:
+        """attribute_names with a mix returns only the existing attributes and keeps the parent."""
+        query = await SchemaSummaryQuery.init(
+            db=db,
+            branch=default_branch_scope_class,
+            kind_filter=[("Querytest", "AttrsOnly")],
+            attribute_names=["name", "does_not_exist", "color", "also_missing"],
+        )
+        await query.execute(db=db)
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestAttrsOnly")
+        assert summary is not None
+        assert set(summary.attributes.keys()) == {"name", "color"}
+
     async def test_relationship_names_none_returns_all(
         self,
         db: InfrahubDatabase,
@@ -260,6 +303,24 @@ class TestSchemaSummaryQuery:
             branch=default_branch_scope_class,
             kind_filter=[("Querytest", "Both")],
             relationship_names=["secondary_owner"],
+        )
+        await query.execute(db=db)
+        summary = query.get_summaries().get_summary_by_kind(kind="QuerytestBoth")
+        assert summary is not None
+        assert set(summary.relationships.keys()) == {"secondary_owner"}
+
+    async def test_relationship_names_mix_existing_and_nonexistent(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        schemas_loaded: None,
+    ) -> None:
+        """relationship_names with a mix returns only the existing relationships and keeps the parent."""
+        query = await SchemaSummaryQuery.init(
+            db=db,
+            branch=default_branch_scope_class,
+            kind_filter=[("Querytest", "Both")],
+            relationship_names=["secondary_owner", "does_not_exist", "also_missing"],
         )
         await query.execute(db=db)
         summary = query.get_summaries().get_summary_by_kind(kind="QuerytestBoth")
