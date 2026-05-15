@@ -72,3 +72,4 @@ jobs:
           committer: opsmill-bot <github-bot@opsmill.com>
           author: opsmill-bot <github-bot@opsmill.com>
           delete-branch: true
+          team-reviewers: sa
