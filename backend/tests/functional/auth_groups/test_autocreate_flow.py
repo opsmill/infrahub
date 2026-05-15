@@ -16,6 +16,7 @@ from infrahub import config
 from infrahub.auth import ExternalAuthProtocol, ExternalIdentity, signin_sso_account
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
+from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
 
 if TYPE_CHECKING:
@@ -60,6 +61,33 @@ def autocreate_filter_disabled() -> Iterator[None]:
     finally:
         config.SETTINGS.security.auto_create_groups_filter = original_filter
         config.SETTINGS.security._auto_create_groups_filter_patterns = original_compiled
+
+
+@pytest.fixture
+def sso_user_default_group_configured() -> Iterator[str]:
+    """Set `sso_user_default_group` to a stable name and restore on teardown.
+
+    The fixture does NOT pre-create the matching `CoreAccountGroup` row — each test creates
+    it explicitly so the membership assertion is unambiguous about what was set up.
+    """
+    original = config.SETTINGS.security.sso_user_default_group
+    default_name = "sso-default-group"
+    config.SETTINGS.security.sso_user_default_group = default_name
+    try:
+        yield default_name
+    finally:
+        config.SETTINGS.security.sso_user_default_group = original
+
+
+@pytest.fixture
+def sso_user_default_group_unset() -> Iterator[None]:
+    """Force `sso_user_default_group` to None for the duration of the test."""
+    original = config.SETTINGS.security.sso_user_default_group
+    config.SETTINGS.security.sso_user_default_group = None
+    try:
+        yield
+    finally:
+        config.SETTINGS.security.sso_user_default_group = original
 
 
 def _make_identity(
@@ -118,9 +146,7 @@ class TestAutoCreationWhenFilterEnabled:
         identity_a = _make_identity(
             sub="sub-autocreate-shared-1", provider_name="AzureAD-corp", display_name="Carol Auto"
         )
-        identity_b = _make_identity(
-            sub="sub-autocreate-shared-2", provider_name="OktaProd", display_name="Dave Auto"
-        )
+        identity_b = _make_identity(sub="sub-autocreate-shared-2", provider_name="OktaProd", display_name="Dave Auto")
 
         await signin_sso_account(db=db, external_identity=identity_a, sso_groups=["LDAP/group/network-engineering-b"])
         await signin_sso_account(db=db, external_identity=identity_b, sso_groups=["LDAP/group/network-engineering-b"])
@@ -236,3 +262,171 @@ class TestAutoCreationWhenFilterDisabled:
             db=db, schema=CoreAccountGroup, filters={"name__value": "should-not-be-created-x"}
         )
         assert len(groups) == 0, "auto-creation must be inactive when no filter is configured"
+
+
+class TestDefaultGroupFallback:
+    """IFC-922 default-group fallback behavior owned by `_assign_group_memberships`.
+
+    These tests pin down the spec contract that when auto-creation produces no memberships
+    (filter active but no claim matches, or filter inactive with empty claims), the user is
+    added to `sso_user_default_group` if it is configured. They also lock down that a
+    matched claim takes precedence over the default group (Story 3 #2).
+    """
+
+    async def test_filter_active_non_matching_claims_fall_through_to_default_group(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_enabled: None,
+        sso_user_default_group_configured: str,
+    ) -> None:
+        """Filter active + non-empty claims + zero matches + default configured: user lands in
+        the default group. The non-matching original claims must NOT have become groups
+        (FR-001 / Story 2 #1 silently-skip semantics).
+        """
+        default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await default_group.new(db=db, name=sso_user_default_group_configured)
+        await default_group.save(db=db)
+
+        identity = _make_identity(sub="sub-default-fallback-1", display_name="Iris Default")
+
+        await signin_sso_account(
+            db=db,
+            external_identity=identity,
+            sso_groups=["slack/general-z", "github/contributors-z"],
+        )
+
+        assert await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "slack/general-z"}) == []
+        assert (
+            await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "github/contributors-z"})
+            == []
+        )
+
+        refreshed = await NodeManager.get_one(db=db, id=default_group.id, prefetch_relationships=True)
+        members_rel = refreshed.get_relationship(name="members")
+        members = await members_rel.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
+        accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Iris Default"})
+        assert len(accounts) == 1
+        assert accounts[0].id in members
+
+    async def test_filter_active_empty_claims_fall_through_to_default_group(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_enabled: None,
+        sso_user_default_group_configured: str,
+    ) -> None:
+        """Filter active + empty claims + default configured: user lands in the default group.
+
+        Pre-refactor, the `if not sso_groups: sso_groups = [default]` swap-in lived upstream in
+        oidc.py / oauth2.py. Post-refactor it is owned by `_assign_group_memberships`; this test
+        invokes that function directly with an empty claim list, which is the path the upstream
+        callers now always take.
+        """
+        default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await default_group.new(db=db, name=sso_user_default_group_configured)
+        await default_group.save(db=db)
+
+        identity = _make_identity(sub="sub-default-fallback-empty", display_name="Jules Default")
+
+        await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+        refreshed = await NodeManager.get_one(db=db, id=default_group.id, prefetch_relationships=True)
+        members_rel = refreshed.get_relationship(name="members")
+        members = await members_rel.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
+        accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Jules Default"})
+        assert len(accounts) == 1
+        assert accounts[0].id in members
+
+    async def test_filter_active_no_match_no_default_configured_yields_no_membership(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_enabled: None,
+        sso_user_default_group_unset: None,
+    ) -> None:
+        """Filter active + non-empty claims + zero matches + no default configured: the login
+        completes but the user gets no group membership. This locks down that "no default" is
+        not treated as an error.
+        """
+        identity = _make_identity(sub="sub-no-fallback-1", display_name="Kai NoDefault")
+
+        auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=["slack/general-w"])
+
+        assert auth_result.token.access_token, "login must still succeed when no default exists"
+        assert await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "slack/general-w"}) == []
+
+    async def test_match_takes_precedence_over_default(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_enabled: None,
+        sso_user_default_group_configured: str,
+    ) -> None:
+        """When at least one claim matches the filter, the auto-created (or reused) group wins
+        and the default group is NOT stacked on top (Story 3 acceptance #2).
+        """
+        default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await default_group.new(db=db, name=sso_user_default_group_configured)
+        await default_group.save(db=db)
+
+        identity = _make_identity(sub="sub-match-precedence-1", display_name="Lea Match")
+
+        await signin_sso_account(
+            db=db,
+            external_identity=identity,
+            sso_groups=["slack/general-q", "LDAP/group/matched-precedence-q"],
+        )
+
+        accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Lea Match"})
+        assert len(accounts) == 1
+        account_id = accounts[0].id
+
+        matched = await NodeManager.query(
+            db=db, schema=CoreAccountGroup, filters={"name__value": "matched-precedence-q"}
+        )
+        assert len(matched) == 1
+        refreshed_match = await NodeManager.get_one(db=db, id=matched[0].id, prefetch_relationships=True)
+        match_members = await refreshed_match.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
+        assert account_id in match_members
+
+        refreshed_default = await NodeManager.get_one(db=db, id=default_group.id, prefetch_relationships=True)
+        default_members = await refreshed_default.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
+        assert account_id not in default_members, "default group must not be added on top of a matched group"
+
+    async def test_filter_disabled_empty_claims_fall_through_to_default_group(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_disabled: None,
+        sso_user_default_group_configured: str,
+    ) -> None:
+        """Filter inactive + empty claims + default configured: user lands in the default group.
+
+        Locks down legacy IFC-922 parity now that the fallback lives inside
+        `_assign_group_memberships` rather than upstream in oidc.py / oauth2.py.
+        """
+        default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await default_group.new(db=db, name=sso_user_default_group_configured)
+        await default_group.save(db=db)
+
+        identity = _make_identity(sub="sub-legacy-default-1", display_name="Mira Legacy")
+
+        await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+        refreshed = await NodeManager.get_one(db=db, id=default_group.id, prefetch_relationships=True)
+        members = await refreshed.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
+        accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Mira Legacy"})
+        assert len(accounts) == 1
+        assert accounts[0].id in members

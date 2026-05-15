@@ -806,7 +806,7 @@ class SecuritySettings(BaseSettings):
 
     @model_validator(mode="after")
     def _compile_auto_create_groups_filter_patterns(self) -> Self:
-        """Compile the validated filter patterns into a tuple stored on the private attribute. """
+        """Compile the validated filter patterns into a tuple stored on the private attribute."""
         if self.auto_create_groups_filter is None:
             self._auto_create_groups_filter_patterns = ()
             return self

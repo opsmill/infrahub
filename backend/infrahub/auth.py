@@ -228,15 +228,11 @@ async def signin_sso_account(
     else:
         account = await _create_account_for_new_identity(db=db, external_identity=external_identity)
 
-    await _assign_group_memberships(
-        db=db, account=account, external_identity=external_identity, sso_groups=sso_groups
-    )
+    await _assign_group_memberships(db=db, account=account, external_identity=external_identity, sso_groups=sso_groups)
     return await _build_signin_result(db=db, account=account)
 
 
-async def _find_existing_identity(
-    *, db: InfrahubDatabase, external_identity: ExternalIdentity
-) -> Node | None:
+async def _find_existing_identity(*, db: InfrahubDatabase, external_identity: ExternalIdentity) -> Node | None:
     """Look up the `CoreExternalIdentity` row for `(sub, provider_name, protocol)`, or `None`."""
     matches = await NodeManager.query(
         db=db,
@@ -256,14 +252,12 @@ async def _account_from_existing_identity(
     *, db: InfrahubDatabase, identity_node: Node, external_identity: ExternalIdentity
 ) -> Node:
     """Return the account linked to an existing identity, refreshing its label when stale."""
-    account = await identity_node.get_relationship(name="account").get_peer(db=db)
+    account = await identity_node.get_relationship(name="account").get_peer(db=db, raise_on_error=True)
     await _refresh_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
     return account
 
 
-async def _create_account_for_new_identity(
-    *, db: InfrahubDatabase, external_identity: ExternalIdentity
-) -> Node:
+async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_identity: ExternalIdentity) -> Node:
     """Resolve or create the account for a never-before-seen external identity.
 
     Serialized through the `sso-account` lock so concurrent first-logins for the same identity
@@ -283,9 +277,7 @@ async def _create_account_for_new_identity(
         )
 
         if account_by_name is not None and not await _account_has_identity(db=db, account=account_by_name):
-            return await _link_unclaimed_account(
-                db=db, account=account_by_name, external_identity=external_identity
-            )
+            return await _link_unclaimed_account(db=db, account=account_by_name, external_identity=external_identity)
 
         account_name = await _pick_account_name(
             db=db, external_identity=external_identity, name_collision=account_by_name is not None
@@ -305,18 +297,14 @@ async def _account_has_identity(*, db: InfrahubDatabase, account: Node) -> bool:
     return bool(identities)
 
 
-async def _link_unclaimed_account(
-    *, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity
-) -> Node:
+async def _link_unclaimed_account(*, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity) -> Node:
     """Attach the new external identity to an existing local-only account."""
     await _create_identity_node(db=db, account=account, external_identity=external_identity)
     await _refresh_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
     return account
 
 
-async def _pick_account_name(
-    *, db: InfrahubDatabase, external_identity: ExternalIdentity, name_collision: bool
-) -> str:
+async def _pick_account_name(*, db: InfrahubDatabase, external_identity: ExternalIdentity, name_collision: bool) -> str:
     """Pick the `name` for a new account, falling back to email on display-name collision."""
     if not name_collision:
         return external_identity.display_name
@@ -350,9 +338,7 @@ async def _create_account_with_identity(
     return account
 
 
-async def _create_identity_node(
-    *, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity
-) -> None:
+async def _create_identity_node(*, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity) -> None:
     identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
     await identity_node.new(
         db=db,
@@ -365,10 +351,11 @@ async def _create_identity_node(
 
 
 async def _refresh_label_if_stale(*, db: InfrahubDatabase, account: Node, display_name: str) -> None:
-    if account.label.value == display_name:
+    typed = cast("CoreAccount", account)
+    if typed.label.value == display_name:
         return
-    account.label.value = display_name
-    await account.save(db=db)
+    typed.label.value = display_name
+    await typed.save(db=db)
 
 
 async def _assign_group_memberships(
@@ -380,13 +367,17 @@ async def _assign_group_memberships(
 ) -> None:
     """Attach the account to local groups derived from the external claims.
 
-    When the auto-create filter is configured, each claim is evaluated against it and matching
-    claims drive a find-or-create of a `CoreAccountGroup`. Non-matching claims are silently
-    skipped. Without a filter, the legacy exact-name lookup-and-add path runs against the
-    provided `sso_groups`.
+    Resolution order:
+      1. If the auto-create filter is configured, evaluate every claim against it. Membership
+         goes to the matched (created-or-reused) `CoreAccountGroup` rows. Claims that do not
+         match are silently skipped.
+      2. If auto-create produced no memberships (filter inactive, or active but no claim
+         matched), and `sso_user_default_group` is configured, add the account to that default
+         group.
+      3. Otherwise, the legacy exact-name lookup runs against the raw `sso_groups`.
     """
     if config.SETTINGS.security.auto_create_groups_enabled:
-        await AutoCreatedGroups(
+        granted = await AutoCreatedGroups(
             db=db,
             account=account,
             provider_name=external_identity.provider_name,
@@ -394,10 +385,22 @@ async def _assign_group_memberships(
             claims=sso_groups,
             claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),
         )
-        return
+        if granted:
+            return
+        # Filter active but produced nothing: per FR-001 / Story 2 #1 non-matching claims are
+        # silently skipped, so the only remaining path is the IFC-922 default-group fallback.
+        sso_groups = []
 
     if not sso_groups:
-        return
+        default_name = config.SETTINGS.security.sso_user_default_group
+        if not default_name:
+            return
+        log.info(
+            "auth_groups.default_group_fallback_applied",
+            provider_name=external_identity.provider_name,
+            default_group=default_name,
+        )
+        sso_groups = [default_name]
 
     infrahub_groups = await NodeManager.query(
         db=db,
@@ -418,9 +421,7 @@ async def _build_signin_result(*, db: InfrahubDatabase, account: Node) -> AuthRe
     refresh_expires = datetime.now(tz=UTC) + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
-    refresh_token = generate_refresh_token(
-        account_id=account.id, session_id=session_id, expiration=refresh_expires
-    )
+    refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
     typed_account = cast("CoreAccount", account)
