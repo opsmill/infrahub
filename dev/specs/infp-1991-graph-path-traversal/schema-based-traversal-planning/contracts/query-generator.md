@@ -37,7 +37,7 @@ class RenderedCypher:
 | `_render_default_branch` | `branch.is_default` is `True` | On the default branch there is at most one authoritative edge between any pair of vertices: at the requested time `$at` it is current iff `e.branch IN [$default_branch, $global_branch] AND e.status = "active" AND e.from <= $at AND (e.to IS NULL OR e.to >= $at)`. No `ORDER BY r.branch_level DESC, r.from DESC LIMIT 1` subquery is needed. An inline four-predicate `WHERE` on each `IS_RELATED` edge replaces the per-edge `CALL` block; queries are smaller and Neo4j's planner can fold the conjunction into a simple edge-property filter. |
 | `_render_user_branch` | `branch.is_default` is `False` | On a user branch, the authoritative edge per pair is "latest on (default, global, user) with user winning on ties." The default-branch shortcut does not apply. We use a **single quantified-path-pattern (QPP) MATCH** parameterized by `$allowed_path_maps` (a nested map encoding the planner's `plan.routes` as `start_kind → rel_name → set[end_kind]`) instead of one `UNION ALL` branch per route. This collapses N route MATCHes into one declarative walk and lets Neo4j's planner pick the search strategy. Deletion on the user branch is checked with `NOT EXISTS { ... :IS_RELATED {status: "deleted", branch: $user_branch} ... }`. |
 
-Importable only from `backend/infrahub/graph_traversal/path.py` and `backend/infrahub/graph_traversal/reachable.py`. The `_` prefix on the module name signals "internal to `graph_traversal/`"; nothing in `planning/` may import it.
+Importable only from other modules in `graph_traversal/`. The `_` prefix on the module name signals "internal to `graph_traversal/`"; nothing in `planning/` may import it.
 
 ## Inputs
 
