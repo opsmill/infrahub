@@ -36,7 +36,7 @@ The pipeline uses a single PR throughout: `/bug-tdd` opens it, `/bug-fix` adds t
 - **Where to invoke:**
   - On the bug **issue** (initial test mode) — opens a draft PR with a failing test.
   - On the resulting test **PR** (revision mode) — reworks the test based on reviewer feedback.
-- **What it does:** writes a single failing test that reproduces the bug, verifies it fails for the right reason, opens (or updates) a draft PR against `stable`, and stamps `AGENT_TEST_COMPLETE` in the PR body. Production code is never modified.
+- **What it does:** writes a single failing test that reproduces the bug, verifies it fails for the right reason, opens (or updates) a draft PR against `stable` from a branch named `ai-bug-pipeline-<issue_number>-<slug>`, and stamps `AGENT_TEST_COMPLETE` in the PR body. The branch prefix is what the reviewer keys off — do not rename the branch. Production code is never modified.
 - **Preconditions:**
   - Initial mode: a comment from the bug pipeline bot on the issue containing `AGENT_ANALYSIS_COMPLETE`.
   - Revision mode: PR body contains `AGENT_TEST_COMPLETE`, does **not** contain `AGENT_FIX_COMPLETE`, and a prior reviewer comment with `AGENT_REVIEW_VERDICT: TEST_CHANGES_REQUESTED` exists.
