@@ -89,8 +89,8 @@ Write a single targeted test that reproduces the bug:
 
 **CRITICAL: Verify the test FAILS on the current code.** Run it:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
-- Frontend unit/component: `cd frontend/app && npm run test path/to/test`
-- Frontend E2E: `cd frontend/app && npx playwright test path/to/test`
+- Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
+- Frontend E2E: `cd frontend/app && pnpm exec playwright test path/to/test`
 - If a test run takes more than 5 minutes, kill it and investigate why.
 - The test must fail with an **assertion error that directly relates to the root cause**
   described by the analyst. For example, if the root cause is "no uniqueness enforcement,"
@@ -117,7 +117,7 @@ uv run invoke lint
 
 **Frontend** (if applicable):
 ```bash
-cd frontend/app && npx biome check --write .
+cd frontend/app && pnpm exec biome check --write .
 ```
 
 ## Step 9: Commit test files

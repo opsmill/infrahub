@@ -43,8 +43,8 @@ Before writing any code, reason explicitly about the fix:
 
 Run the specific test the test-writer wrote using the same runner they used:
 - Backend: `uv run pytest path/to/test_file.py::TestClass::test_name -x -v`
-- Frontend unit/component: `cd frontend/app && npm run test path/to/test`
-- Frontend E2E: `cd frontend/app && npx playwright test path/to/test`
+- Frontend unit/component: `cd frontend/app && pnpm run test path/to/test`
+- Frontend E2E: `cd frontend/app && pnpm exec playwright test path/to/test`
 - If the test still FAILS, revisit your fix. Do NOT proceed until it passes.
 - Before continuing, verify `git diff` shows no changes to the test file(s) from the
   test-writer's PR. If you accidentally modified a test file, revert those changes.
@@ -58,7 +58,7 @@ separately (do NOT amend previous commits).
 ```bash
 uv run invoke format
 uv run invoke docs.format
-(cd frontend/app && npx biome check --write .)
+(cd frontend/app && pnpm exec biome check --write .)
 ```
 
 If Phase 1 changed any source files, you must re-run from Phase 2.
@@ -73,9 +73,9 @@ If Phase 1 changed any source files, you must re-run from Phase 2.
 - `uv run invoke main.lint`
 - `uv run invoke backend.lint`
 - `uv run invoke docs.lint`
-- `(cd frontend/app && npm run codegen:graphql)`
-- `(cd frontend/app && npm run codegen:openapi)`
-- `(cd frontend/app && npx betterer --update)`
+- `(cd frontend/app && pnpm run codegen:graphql)`
+- `(cd frontend/app && pnpm run codegen:openapi)`
+- `(cd frontend/app && pnpm exec betterer --update)`
 
 Stage any files changed by generation or betterer by name (`git add path/to/file`)
 -- never use `git add .` or `git add -A`.
@@ -86,7 +86,7 @@ uv run invoke backend.test-unit
 ```
 If the fix touches frontend code, also run:
 ```bash
-cd frontend/app && npm run test
+cd frontend/app && pnpm run test
 ```
 
 If any check fails, fix the issue and re-run that check before proceeding.
