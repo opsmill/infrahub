@@ -767,6 +767,79 @@ class SecuritySettings(BaseSettings):
         default=None,
         description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
     )
+    auto_create_groups_filter: str | list[str] | None = Field(
+        default=None,
+        description="Regex(es) that decide which external identity-provider group claims become "
+        "Infrahub groups. Accepts one regex or a list; the first matching pattern wins. "
+        "Use a named capture group `(?P<name>...)` to set the group name; otherwise the "
+        "full claim is used. Leave empty to disable auto-creation.",
+    )
+    auto_create_groups_max_per_login: int = Field(
+        default=50,
+        ge=1,
+        description="Maximum number of groups that can be auto-created during a single login. "
+        "Once reached, further new groups are skipped (with a warning) but the login "
+        "still succeeds. Adding the user to groups that already exist is not limited.",
+    )
+    _auto_create_groups_filter_patterns: tuple[re.Pattern[str], ...] = PrivateAttr(default_factory=tuple)
+
+    @field_validator("auto_create_groups_filter", mode="after")
+    @classmethod
+    def _validate_auto_create_groups_filter(cls, value: str | list[str] | None) -> str | list[str] | None:
+        """Validate that every configured regex compiles cleanly at startup.
+
+        Empty / unset values are accepted unchanged — they mean "feature off".
+
+        Raises:
+            ValueError: When a configured regex pattern fails to compile. Pydantic surfaces the
+                error attached to the setting name.
+
+        """
+        if value is None:
+            return value
+
+        raw_patterns: list[str] = [value] if isinstance(value, str) else list(value)
+        raw_patterns = [p for p in raw_patterns if p and p.strip()]
+        for index, pattern in enumerate(raw_patterns):
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                raise ValueError(f"auto_create_groups_filter[{index}]: invalid regex {pattern!r}: {exc}") from exc
+        return value
+
+    @model_validator(mode="after")
+    def _compile_auto_create_groups_filter_patterns(self) -> Self:
+        self.recompile_auto_create_groups_filter_patterns()
+        return self
+
+    def recompile_auto_create_groups_filter_patterns(self) -> None:
+        """Compile `auto_create_groups_filter` into the private patterns tuple.
+
+        Plain method (not a validator) so callers that mutate `auto_create_groups_filter`
+        on the live settings singleton — e.g. test fixtures — can re-trigger compilation
+        without going through Pydantic's validator chain.
+        """
+        if self.auto_create_groups_filter is None:
+            self._auto_create_groups_filter_patterns = ()
+            return
+
+        raw_patterns: list[str]
+        if isinstance(self.auto_create_groups_filter, str):
+            raw_patterns = [self.auto_create_groups_filter]
+        else:
+            raw_patterns = list(self.auto_create_groups_filter)
+        raw_patterns = [p for p in raw_patterns if p and p.strip()]
+        self._auto_create_groups_filter_patterns = tuple(re.compile(p) for p in raw_patterns)
+
+    @property
+    def auto_create_groups_filter_patterns(self) -> tuple[re.Pattern[str], ...]:
+        """Compiled filter patterns. Empty tuple means the feature is off."""
+        return self._auto_create_groups_filter_patterns
+
+    @property
+    def auto_create_groups_enabled(self) -> bool:
+        """True iff at least one usable filter pattern is configured."""
+        return len(self._auto_create_groups_filter_patterns) > 0
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
