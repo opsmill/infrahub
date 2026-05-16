@@ -305,6 +305,7 @@ async def resolve_number_pool_utilization(
     db: InfrahubDatabase, pool: Node, at: Timestamp | str | None, branch: Branch
 ) -> dict:
     """Returns a mapping containg utilization info of a number pool.
+
     The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
     """
     core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind="CoreNumberPool")

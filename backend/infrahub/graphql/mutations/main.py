@@ -383,7 +383,8 @@ class InfrahubMutationMixin:
         database: InfrahubDatabase | None = None,
         file_processor: FileUploadProcessor | None = None,
     ) -> UpsertResult:
-        """First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
+        """First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for.
+
         default_filter. If not, we will try to create the node, but this creation might fail if payload contains
         hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
         we would update the node without rerunning uniqueness constraint.

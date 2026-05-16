@@ -10,8 +10,10 @@ from tests.helpers.graphql import graphql
 async def test_iphost_hfid_roundtrip_via_graphql(
     db: InfrahubDatabase, default_branch: Branch, data_schema: None
 ) -> None:
-    """A bare IPHost value provided at creation time is exposed in canonical form via GraphQL,
-    and the returned hfid can be fed back as input to retrieve the same node (issue #8896)."""
+    """A bare IPHost value provided at creation time is exposed in canonical form via GraphQL.
+
+    The returned hfid can be fed back as input to retrieve the same node.
+    """
     schema_root = SchemaRoot(
         nodes=[
             {

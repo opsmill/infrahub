@@ -1,4 +1,5 @@
-"""Verify that removing a Number attribute (or changing its kind) also removes
+"""Verify that removing a Number attribute (or changing its kind) also removes.
+
 the corresponding _from_resource_pool relationship from the template schema.
 
 Flow:

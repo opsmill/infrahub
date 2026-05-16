@@ -10,11 +10,12 @@ from infrahub.database import InfrahubDatabase
 
 class ValidateNodeRelationshipQuery(Query):
     """This query will return error message if for any couple (input_node, relationship):
+
     - If relationship type is agnostic, all edges branches should be -global-
     - Else, there should not be any edge on global branch
     - Considering edges on the input branch:
         - Either 1 active edge without `to`
-        - Either 1 deleted edge, and potentially 1 active edge having `active.to` = `deleted.from`
+        - Either 1 deleted edge, and potentially 1 active edge having `active.to` = `deleted.from`.
 
     NOTE: This query currently validates a subset of all possible valid edge states as edges states are mainly
           validated on input branch. Having a validation on any branch would require more logic
@@ -289,7 +290,7 @@ RETURN rel.name AS rel_name, rel.uuid AS rel_uuid, branch, active_count
 
 
 async def validate_no_duplicate_attributes(db: InfrahubDatabase, branch: Branch) -> list[str]:
-    """Validate that no Nodes have duplicated attribute or relationship names"""
+    """Validate that no Nodes have duplicated attribute or relationship names."""
     branch_filter, branch_params = branch.get_query_filter_path()
 
     query = """

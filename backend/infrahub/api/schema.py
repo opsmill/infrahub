@@ -146,7 +146,7 @@ class SchemaUpdate(BaseModel):
 
     @computed_field
     def schema_updated(self) -> bool:
-        """Indicates if the loading of the schema changed the existing schema"""
+        """Indicates if the loading of the schema changed the existing schema."""
         return self.hash != self.previous_hash
 
 

@@ -100,8 +100,10 @@ def _collect_plans(schema_branch: SchemaBranch, branch_filter: tuple[BranchSuppo
 
 
 class Migration070(MigrationRequiringRebase):
-    """Rewrite stored MacAddress attribute values to colon-uppercase form and recompute hfid/display_label
+    """Rewrite stored MacAddress attribute values to colon-uppercase form and recompute hfid/display_label.
+
     for any schema that depends on a MacAddress attribute.
+
     """
 
     name: str = "070_normalize_mac_address_values_to_colon"

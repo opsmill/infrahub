@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class LogForwardingService(ABC):
-    """Abstract base for log forwarding"""
+    """Abstract base for log forwarding."""
 
     @abstractmethod
     async def start(self) -> None:
@@ -34,7 +34,7 @@ class LogForwardingService(ABC):
 
 
 class LogForwardingServiceCommunity(LogForwardingService):
-    """No-op stub for community edition"""
+    """No-op stub for community edition."""
 
     async def start(self) -> None:
         pass

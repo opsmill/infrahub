@@ -49,7 +49,7 @@ async def test_calculate_with_migrated_kind_node(
     person_alfred_main: Node,
     person_albert_main: Node,
 ) -> None:
-    """Test that the diff can correctly handle a schema kind migration, which results in 2 nodes with the same UUID"""
+    """Test that the diff can correctly handle a schema kind migration, which results in 2 nodes with the same UUID."""
     branch = await create_branch(db=db, branch_name="branch-migrated-kind")
     branch_car = await Node.init(db=db, schema="TestCar", branch=branch)
     await branch_car.new(db=db, name="nova", nbr_seats=2, is_electric=False, owner=person_jane_main.id)
@@ -633,7 +633,7 @@ async def test_calculate_with_migrated_attr_name(
     person_john_main: Node,
     person_jane_main: Node,
 ) -> None:
-    """Test that the diff can correctly handle an attribute name migration"""
+    """Test that the diff can correctly handle an attribute name migration."""
     branch = await create_branch(db=db, branch_name="branch")
     schema = registry.schema.get_schema_branch(name=default_branch.name)
     prev_car_schema = schema.get(name="TestCar")
@@ -719,7 +719,7 @@ async def test_calculate_with_renamed_relationships(
     person_john_main: Node,
     person_jane_main: Node,
 ) -> None:
-    """Test that the diff can correctly handle an attribute name migration"""
+    """Test that the diff can correctly handle an attribute name migration."""
     branch = await create_branch(db=db, branch_name="branch")
     new_rel_identifier = "brand_new_identifier"
     schema = registry.schema.get_schema_branch(name=default_branch.name)
@@ -1160,8 +1160,10 @@ async def test_migrated_kind_on_main_then_relationship_update_on_branch(
     person_alfred_main: Node,
     person_albert_main: Node,
 ) -> None:
-    """Test that when a schema kind is migrated on the default branch, relationships to instances
+    """Test that when a schema kind is migrated on the default branch, relationships to instances.
+
     of the migrated node can be updated on a branch before the diff is calculated.
+
     """
     # Migrate TestPerson kind on default branch
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
@@ -1312,8 +1314,9 @@ async def test_relationship_property_added_on_source_branch_kind_migration(
     person_john_main: Node,
     person_alfred_main: Node,
 ) -> None:
-    """Validate diff for relationship when peer kind is migrated on the branch after branch forks
-    and the source property is updated on the branch
+    """Validate diff for relationship when peer kind is migrated and source property is updated.
+
+    Both changes happen on the branch after branch forks.
     """
     branch = await create_branch(db=db, branch_name="branch-src-migration-rel-prop")
     from_time = Timestamp(branch.created_at)
@@ -1378,8 +1381,9 @@ async def test_relationship_property_branch_change_with_target_branch_kind_migra
     person_john_main: Node,
     person_alfred_main: Node,
 ) -> None:
-    """Validate diff for relationship source when one of the peers is migrated to a new kind on the target branch
-    after branch forks
+    """Validate diff for relationship source when one of the peers is migrated to a new kind.
+
+    The migration is on the target branch after branch forks.
     """
     branch = await create_branch(db=db, branch_name="branch-tgt-migration-rel-prop")
     from_time = Timestamp(branch.created_at)
@@ -1438,8 +1442,10 @@ async def test_cleared_attribute_property_with_target_branch_kind_migration(
     person_john_main: Node,
     person_alfred_main: Node,
 ) -> None:
-    """A pre-fork HAS_SOURCE that the branch clears must surface in the diff
+    """A pre-fork HAS_SOURCE that the branch clears must surface in the diff.
+
     even when the target branch ran a node-kind migration after the fork.
+
     """
     # Set name.source = alfred on main before fork so the branch has a
     # pre-existing source to clear.

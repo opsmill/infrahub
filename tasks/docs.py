@@ -238,7 +238,7 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
 
 def _generate_infrahub_schema_documentation() -> None:
-    """Generate documentation for the schema"""
+    """Generate documentation for the schema."""
     import jinja2
 
     from infrahub.core.schema import internal, internal_schema
@@ -539,7 +539,7 @@ def _get_env_vars() -> dict[str, str]:
 
 
 def _generate_infrahub_sdk_configuration_documentation() -> None:
-    """Generate documentation for the Infrahub SDK configuration"""
+    """Generate documentation for the Infrahub SDK configuration."""
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
@@ -589,7 +589,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
 
 
 def _generate_infrahub_repository_configuration_documentation() -> None:
-    """Generate documentation for the Infrahub repository configuration file"""
+    """Generate documentation for the Infrahub repository configuration file."""
     from copy import deepcopy
 
     import jinja2
@@ -640,8 +640,9 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
 
 def _generate_infrahub_bus_events_documentation() -> None:
-    """Generate documentation for all classes in the event system into a single file
-    using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
+    """Generate documentation for all classes in the event system into a single file using a Jinja2 template.
+
+    Accessible via `invoke generate_infrahub_events_documentation`.
     """
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
@@ -781,6 +782,7 @@ def _generate_infrahub_events_documentation() -> None:
 
     def format_event_name(raw_name: str) -> str:
         """Insert spaces before capitals and remove a trailing "Event", if present.
+
         For example: "NodeCreatedEvent" becomes "Node Created Event".
         """
         formatted = re.sub(r"(?<!^)(?=[A-Z])", " ", raw_name)
