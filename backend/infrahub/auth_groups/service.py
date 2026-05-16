@@ -39,11 +39,13 @@ class AutoCreatedGroupsService:
         account: Node,
         provider_name: str,
         lock_registry: InfrahubLockRegistry,
+        node_manager: type[NodeManager] = NodeManager,
     ) -> None:
         self._db = db
         self._account = account
         self._provider_name = provider_name
         self._lock_registry = lock_registry
+        self._node_manager = node_manager
 
     async def assign(self, claims: Iterable[str], claim_filter: ClaimFilter) -> tuple[str, ...]:
         """Find-or-create groups for `claims` under `claim_filter` and add the account as member.
@@ -97,7 +99,7 @@ class AutoCreatedGroupsService:
 
     async def _lookup_by_name(self, name: str) -> Node | None:
         """Return any `CoreGroup`-derived row named `name`, or None."""
-        results = await NodeManager.query(
+        results = await self._node_manager.query(
             db=self._db,
             schema=InfrahubKind.GENERICGROUP,
             filters={"name__value": name},
@@ -119,7 +121,7 @@ class AutoCreatedGroupsService:
 
     async def _add_member(self, group: CoreAccountGroup | Node) -> None:
         """Add the logging-in account to `group` as a member, idempotently."""
-        refreshed = await NodeManager.get_one(db=self._db, id=group.id, prefetch_relationships=True)
+        refreshed = await self._node_manager.get_one(db=self._db, id=group.id, prefetch_relationships=True)
         if refreshed is None:
             log.warning("auth_groups.group_disappeared_after_create", group_id=group.id)
             return
