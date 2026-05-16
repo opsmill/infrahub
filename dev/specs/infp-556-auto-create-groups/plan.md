@@ -69,34 +69,46 @@ specs/infp-556-auto-create-groups/
 ```text
 backend/
 ├── infrahub/
-│   ├── auth.py                                           # MODIFIED — hook into signin_sso_account (line ~310)
-│   ├── config.py                                         # MODIFIED — two new SecuritySettings fields + regex validator (line ~743)
+│   ├── auth.py                                           # MODIFIED in PR #9257 — `signin_sso_account` split into focused helpers (no behavior change). The auto-create hook lives in the extracted `_assign_group_memberships` helper (line ~366), NOT inline in `signin_sso_account`.
+│   ├── api/oauth2.py                                     # MODIFIED in PR #9257 — small cleanup (-3 lines) coordinating with the auth.py helper split.
+│   ├── api/oidc.py                                       # MODIFIED in PR #9257 — small cleanup (-3 lines) coordinating with the auth.py helper split.
+│   ├── config.py                                         # MODIFIED — two new SecuritySettings fields + regex validator (line ~770)
 │   ├── core/
-│   │   └── schema/definitions/core/permission.py         # MODIFIED — add `origin` attribute (Text, optional, read_only, display="extra") to CoreAccountGroup (line ~159)
+│   │   └── schema/definitions/core/permission.py         # MODIFIED — add `origin` attribute (Text, optional, read_only=True, display="extra") to CoreAccountGroup (line ~159)
 │   │   # NOTE: No `migrations/graph/mNNN_set_account_group_origin.py` is needed (FR-014, clarification 2026-05-13).
 │   │   #       The attribute is optional; pre-existing rows are valid with unset `origin`.
 │   │   # NOTE: `core/initialization.py` is NOT modified — platform bootstrap MUST NOT set `origin` (FR-013).
 │   ├── auth_groups/                                      # NEW package — auto-creation domain (single small module)
 │   │   ├── __init__.py
-│   │   ├── filter.py                                     # Compiled-filter dataclass + name extraction
-│   │   └── service.py                                    # autocreate_groups_for_login(...) — the hook implementation; pulls configured provider name from auth-flow context and writes it verbatim to origin (no enum mapping)
+│   │   ├── filter.py                                     # `ClaimFilter` class — wraps compiled `re.Pattern` tuple; `name_for(claim)`, `names_for(claims)`, `is_active`
+│   │   └── service.py                                    # `AutoCreatedGroups` class — constructed `AutoCreatedGroups(db, account, provider_name)`; `assign(claims, claim_filter) -> tuple[str, ...]`; pulls configured provider name from auth-flow context and writes it verbatim to origin (no enum mapping)
+│   │   # NOTE: shipped surface is a class, NOT the free function `autocreate_groups_for_login(...)` originally
+│   │   #       described in tasks.md. The `settings` parameter was eliminated — the call site builds a
+│   │   #       `ClaimFilter` from `config.SETTINGS.security.auto_create_groups_filter_patterns` and passes
+│   │   #       it in directly. Class name is `ClaimFilter` (not `FilterPattern` / `FilterEvaluator`).
 │   │   # NOTE: `auth_groups/mapper.py` and `auth_groups/origin.py` are NOT created — the previous enum-mapping design
 │   │   #       was superseded by clarification 2026-05-13 (Text attribute holding the configured provider name).
 │   └── events/
-│       └── group_action.py                               # MODIFIED — add GroupAutoCreateEvent (intermediate) + 3 leaf classes: GroupAutoCreatedEvent, GroupAutoCreateRejectedClaimEvent, GroupAutoCreateCapBreachEvent (structural template: GroupMutatedEvent + GroupMemberAddedEvent/GroupMemberRemovedEvent)
+│       └── group_action.py                               # PENDING (US5 follow-up) — add GroupAutoCreateEvent (intermediate) + 3 leaf classes: GroupAutoCreatedEvent, GroupAutoCreateRejectedClaimEvent, GroupAutoCreateCapBreachEvent (structural template: GroupMutatedEvent + GroupMemberAddedEvent/GroupMemberRemovedEvent)
 └── tests/
     ├── unit/auth_groups/
-    │   └── test_filter.py                                # NEW
+    │   └── test_filter.py                                # SHIPPED in PR #9257
     │   # NOTE: test_mapper.py is NOT created — no enum mapping exists in the Text-attribute design.
-    ├── functional/auth_groups/
-    │   └── test_autocreate_flow.py                       # NEW (asserts origin == configured-provider-name string passed in via the auth-flow context)
-    └── integration_docker/auth_groups/
-        ├── test_concurrent_first_logins.py               # NEW (FR-011)
-        └── test_origin_unset_on_upgrade.py               # NEW (FR-014 reshaped — asserts pre-existing rows have unset origin post-upgrade)
+    └── component/auth_groups/                            # SHIPPED in PR #9257 — single directory for all non-unit auth_groups tests
+        ├── conftest.py                                   # SHIPPED — fixtures (28 lines)
+        ├── test_autocreate_flow.py                       # SHIPPED — ~430 lines, covers US1 happy-path + US2 scoping (`test_non_matching_claims_produce_no_groups_when_filter_is_on`) + US3 default-group fallback (`TestDefaultGroupFallback` class — see tasks.md T021/T022/T023)
+        ├── test_concurrent_first_logins.py               # PENDING (T013/T048 follow-up — FR-011)
+        └── test_origin_unset_on_upgrade.py               # PENDING (US4 follow-up — FR-014 reshaped)
 
-docs/topics/security/sso.mdx                              # MODIFIED — FR-019 docs
+# NOTE: tasks.md originally placed component tests under `backend/tests/functional/auth_groups/` and
+#       `backend/tests/integration_docker/auth_groups/`. The shipped layout is a single `component/auth_groups/`
+#       directory (reconciled 2026-05-15).
 
-changelog/+INFP-556-auto-create-account-groups.added.md  # NEW (towncrier)
+docs/topics/security/sso.mdx                              # PENDING (US3 polish — IFC-2593) — FR-019 docs
+docs/docs/reference/configuration.mdx                     # MODIFIED in PR #9257 — auto-generated 2-line bump for the new SecuritySettings fields
+docker-compose.yml                                        # MODIFIED in PR #9257 — 2-line addition for the new SecuritySettings fields
+
+changelog/+INFP-556-auto-create-account-groups.added.md  # PENDING (IFC-2593) — towncrier fragment
 ```
 
 **Structure Decision**: Backend-only feature. A new tiny package `backend/infrahub/auth_groups/` houses the three pure-logic units (filter, mapper, service) so they are unit-testable without the FastAPI/Neo4j stack. The actual hook lives in `auth.py::signin_sso_account` and calls into `auth_groups.service`. Schema, config, migration, and event additions slot into existing locations and follow established templates (no new patterns introduced).
@@ -120,3 +132,7 @@ changelog/+INFP-556-auto-create-account-groups.added.md  # NEW (towncrier)
 ### Revision: Implementation Sync 2026-05-14
 
 - Reason: Re-aligned to spec.md after rebase onto `pmi-ifc-2521-auto-create-groups`. The Session 2026-05-13 clarification now lands a substantially different shape than what the previous reconcile produced: `origin` is a `Text` attribute (NOT a Dropdown enum), value is the **configured provider name** (free-form string, NOT one of seven enum literals), and UI visibility is governed by the existing **`display: extra`** schema property (hidden from default view, revealable via the extra/advanced-attributes toggle — NOT fully UI-hidden). Updated Summary, Constraints, Constitution rows I/III/IV/VII, Frontend principles, and Project Structure (removed `auth_groups/mapper.py`, `auth_groups/origin.py`, `tests/unit/auth_groups/test_mapper.py`). Spec.md, contracts/schema-delta.md, contracts/events.md, data-model.md, quickstart.md, tasks.md updated in the same pass. Long-term direction (metadata-framework + identity-provider `CoreNode`) recorded in spec.md Out of Scope; plan does not implement it.
+
+### Revision: Implementation Sync 2026-05-15
+
+- Reason: PR #9257 ("User groups auto-creation MVP IFC-2586 IFC-2587 IFC-2588 IFC-2590") merged and the shipped code drifted from this plan's Project Structure in three load-bearing ways: (1) **Test layout** — what the plan placed under `backend/tests/functional/auth_groups/` and `backend/tests/integration_docker/auth_groups/` was consolidated into a single `backend/tests/component/auth_groups/` directory, with a single `test_autocreate_flow.py` (~430 lines + `conftest.py`) absorbing US1 happy-path + US2 scoping + US3 default-group fallback scenarios. The concurrent-first-logins test (FR-011) was NOT included — tracked as T048 in tasks.md. (2) **Service surface** — `backend/infrahub/auth_groups/service.py` ships as the class `AutoCreatedGroups(db, account, provider_name).assign(claims, claim_filter)`, not the free function `autocreate_groups_for_login(db, account, provider_name, claims, settings)` named in the original plan; the `settings` parameter was eliminated (the call site builds a `ClaimFilter` directly). (3) **Filter class** — `backend/infrahub/auth_groups/filter.py` ships as `ClaimFilter` (not `FilterPattern` / `FilterEvaluator`) with methods `name_for(claim) -> str | None` and `names_for(claims) -> tuple[str, ...]` (not `evaluate` / `evaluate_many`). Additionally: `auth.py::signin_sso_account` was split into focused helpers in the same PR (no behavior change) and the auto-create hook now lives in the extracted `_assign_group_memberships` helper; `api/oauth2.py` and `api/oidc.py` had small (-3 line) cleanups; `docker-compose.yml` and `docs/docs/reference/configuration.mdx` each got an auto-generated 2-line bump for the new `SecuritySettings` fields. Project Structure section updated; tasks.md status flips, class/method renames, and path rewrites tracked in the parallel tasks.md Sync entry. Spec.md is unchanged — user-facing behavior matches what shipped for US1 and US3, plus the US2 scoping subset.
