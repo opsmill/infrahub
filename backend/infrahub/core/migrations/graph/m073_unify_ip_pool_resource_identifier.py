@@ -355,7 +355,7 @@ class Migration073(ArbitraryMigration):
             registry.schema.register_schema(schema=SchemaRoot(**internal_schema))
 
         default_branch = await registry.get_branch(branch=registry.default_branch, db=db)
-        await registry.schema.load_node_to_db(
+        await registry.schema.create_node_in_db(
             node=core_ip_pool.duplicate(),
             db=db,
             branch=default_branch,
