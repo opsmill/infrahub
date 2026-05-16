@@ -213,6 +213,7 @@ def _conflicting_value(current: Any, original: Any) -> Any:
 
     Raises:
         ValueError: For booleans — any value that differs from ``current`` is equal to ``original``.
+
     """
     if isinstance(current, bool) or isinstance(original, bool):
         raise ValueError(

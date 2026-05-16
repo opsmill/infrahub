@@ -79,6 +79,7 @@ class BaseMigration(BaseModel):
 
         Raises:
             ValueError: If the class name does not start with the ``Migration`` prefix.
+
         """
         cls_name = type(self).__name__
         prefix = "Migration"

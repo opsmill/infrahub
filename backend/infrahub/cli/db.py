@@ -251,6 +251,7 @@ async def showmigration_cmd(
 
     Raises:
         typer.Exit: If the migration number does not match any known migration.
+
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)

@@ -1,5 +1,6 @@
-"""Loading a schema with a fabricated ``id`` must always be rejected without mutating the
-database — both when the ``(namespace, name)`` is previously unknown and when it already
+"""Loading a schema with a fabricated ``id`` must always be rejected without mutating the database.
+
+Applies both when the ``(namespace, name)`` is previously unknown and when it already
 exists on the branch.
 """
 
@@ -58,8 +59,10 @@ class TestSchemaLoadWithFakeId(TestInfrahubApp):
         pre_existing_widget_id: str,
         reload_fake_id: str,
     ) -> None:
-        """Re-loading an existing ``(namespace, name)`` with a fabricated id is rejected; the
-        existing DB row keeps its original uuid."""
+        """Re-loading an existing ``(namespace, name)`` with a fabricated id is rejected.
+
+        The existing DB row keeps its original uuid.
+        """
         response = await client.schema.load(schemas=[_widget_schema(name="RepeatWidget", fake_id=reload_fake_id)])
         assert response.errors
 

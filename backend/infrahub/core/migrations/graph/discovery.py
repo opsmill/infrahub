@@ -21,6 +21,7 @@ def discover_migrations() -> list[type[BaseMigration]]:
     Raises:
         ImportError: If a migration module is missing its expected ``Migration{NNN}``
             class, or if two migrations share the same number.
+
     """
     migration_dir = Path(__file__).parent
     migrations: list[tuple[int, type[BaseMigration]]] = []

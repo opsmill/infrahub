@@ -33,8 +33,11 @@ class RelationshipPropertyPath(NamedTuple):
 
 
 class CardinalityOneDiffResolution(NamedTuple):
-    """Identifies a cardinality-one rel where DIFF won — the bulk merge should keep the selected
-    peer's edges and close any other peer edges on the target branch."""
+    """Identifies a cardinality-one rel where DIFF won.
+
+    The bulk merge should keep the selected peer's edges and close any other peer edges
+    on the target branch.
+    """
 
     node_uuid: str
     relationship_identifier: str
@@ -42,10 +45,11 @@ class CardinalityOneDiffResolution(NamedTuple):
 
 
 class CarryOverBaseRelProperty(NamedTuple):
-    """A property under a cardinality-one rel-element where the element resolved to DIFF
-    (selected peer = source's) but the property resolved to BASE. Base's property edge lives
-    on the displaced rel-vertex and would otherwise be lost when that vertex is closed —
-    the bulk merge copies the property edge onto the selected rel-vertex instead.
+    """A property under a DIFF-resolved cardinality-one rel-element whose property resolved to BASE.
+
+    The selected peer comes from source. Base's property edge lives on the displaced
+    rel-vertex and would otherwise be lost when that vertex is closed — the bulk merge
+    copies the property edge onto the selected rel-vertex instead.
     """
 
     node_uuid: str
@@ -55,10 +59,11 @@ class CarryOverBaseRelProperty(NamedTuple):
 
 
 class CarryOverDiffRelProperty(NamedTuple):
-    """A property under a cardinality-one rel-element where the element resolved to BASE
-    (kept peer = base's) but the property resolved to DIFF. Source's property edge lives on
-    the source-side rel-vertex (which is excluded from the merge). The bulk merge applies
-    source's value to the kept (base-side) rel-vertex on target.
+    """A property under a BASE-resolved cardinality-one rel-element whose property resolved to DIFF.
+
+    The kept peer is base's. Source's property edge lives on the source-side rel-vertex
+    (which is excluded from the merge). The bulk merge applies source's value to the kept
+    (base-side) rel-vertex on target.
     """
 
     node_uuid: str

@@ -365,11 +365,11 @@ class Migration073(ArbitraryMigration):
         console.log(f"  Bootstrapped CoreIPPool SchemaGeneric with from={at}.")
 
     async def _append_inherit_from_for_all_pools(self, db: InfrahubDatabase) -> None:
-        """Read inherit_from for both pool SchemaNodes, then rewrite the ones whose
-        value doesn't yet contain ``CoreIPPool`` in a single bulk write.
+        """Bulk-rewrite inherit_from for pool SchemaNodes whose value doesn't yet contain ``CoreIPPool``.
 
-        The new HAS_VALUE edge inherits the original edge's properties
-        so past-timestamp queries see the new value as if it were always there.
+        Reads inherit_from for both pool SchemaNodes, then writes the missing entries in a
+        single pass. The new HAS_VALUE edge inherits the original edge's properties so
+        past-timestamp queries see the new value as if it were always there.
         """
         default_branch_name = registry.default_branch
         read_query = await ReadInheritFromValuesQuery.init(db=db, default_branch_name=default_branch_name)

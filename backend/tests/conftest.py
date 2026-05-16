@@ -1235,7 +1235,9 @@ def branch99() -> BranchData:
 @pytest.fixture
 def git_upstream_repo_01(git_sources_dir: Path) -> dict[str, str | Path]:
     """Git repository with 4 branches: main, branch01, branch02, and clean-branch.
-    There is a conflict between branch01 and branch02."""
+
+    There is a conflict between branch01 and branch02.
+    """
     name = "infrahub-test-fixture-01"
     file_repo = FileRepo(name=name, sources_directory=git_sources_dir)
     return {"name": name, "path": Path(file_repo.path)}
