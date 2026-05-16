@@ -284,6 +284,7 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
 
 
 class CoreAccountGroup(LineageOwner, LineageSource, CoreGroup):
+    origin: StringOptional
     roles: RelationshipManager[CoreAccountRole]
 
 
