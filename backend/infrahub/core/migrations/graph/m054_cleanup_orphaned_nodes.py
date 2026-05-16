@@ -11,8 +11,10 @@ if TYPE_CHECKING:
 
 
 class CleanupOrphanedNodesQuery(Query):
-    """Clean up orphaned Node vertices (no IS_PART_OF edge to Root) and their linked
+    """Clean up orphaned Node vertices (no IS_PART_OF edge to Root) and their linked.
+
     Attributes and Relationships.
+
     """
 
     name = "cleanup_orphaned_nodes"

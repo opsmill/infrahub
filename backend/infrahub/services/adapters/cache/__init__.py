@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class InfrahubCache(ABC):
-    """Base class for caching services"""
+    """Base class for caching services."""
 
     @abstractmethod
     async def delete(self, key: str) -> None:

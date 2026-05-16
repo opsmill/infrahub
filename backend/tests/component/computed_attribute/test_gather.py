@@ -82,8 +82,10 @@ async def test_gather_trigger_computed_attribute_python_only_on_branch(
     car_person_schema: SchemaBranch,
     transform01: Node,
 ) -> None:
-    """Test that gather_trigger_computed_attribute_python handles the case where
+    """Test that gather_trigger_computed_attribute_python handles the case where.
+
     a computed attribute only exists on a branch (not on main).
+
     """
     # Create a branch
     branch = await create_branch(branch_name="branch_with_computed_attr", db=db)

@@ -210,7 +210,7 @@ def upgrade(context: Context, database: str = INFRAHUB_DATABASE, rebase_branches
 
 @task
 def test_add_dummy_data(context: Context, branch: str = "main") -> str:  # noqa: ARG001
-    """Load dummy data for testing"""
+    """Load dummy data for testing."""
     from infrahub_sdk import InfrahubClientSync
     from infrahub_sdk.uuidt import generate_uuid
 

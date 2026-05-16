@@ -553,7 +553,7 @@ const sidebars: SidebarsConfig = {
         {
           type: 'category',
           label: 'Events',
-          link: { type: 'generated-index' },
+          link: { type: 'doc', id: 'reference/infrahub-events/overview' },
           items: [
             { type: 'doc', id: 'reference/infrahub-events/account', label: 'Account events' },
             { type: 'doc', id: 'reference/infrahub-events/artifact', label: 'Artifact events' },
@@ -561,7 +561,7 @@ const sidebars: SidebarsConfig = {
             { type: 'doc', id: 'reference/infrahub-events/commit', label: 'Commit events' },
             { type: 'doc', id: 'reference/infrahub-events/group', label: 'Group events' },
             { type: 'doc', id: 'reference/infrahub-events/node', label: 'Node events' },
-            { type: 'doc', id: 'reference/infrahub-events/proposed-change', label: 'Proposed change events' },
+            { type: 'doc', id: 'reference/infrahub-events/proposed', label: 'Proposed change events' },
             { type: 'doc', id: 'reference/infrahub-events/schema', label: 'Schema events' },
             { type: 'doc', id: 'reference/infrahub-events/validator', label: 'Validator events' },
           ],

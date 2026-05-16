@@ -17,7 +17,7 @@ log = get_logger()
 
 
 class HttpxAdapter(InfrahubHTTP):
-    """The HttpxAdapter is a generic interface for InfrahubHTTP
+    """The HttpxAdapter is a generic interface for InfrahubHTTP.
 
     The class provides a way to send HTTP requests from Infrahub for example
     when sending webhooks, telemetry data or when communicating with SSO

@@ -125,7 +125,7 @@ CALL (rel) {
 
 
 class Migration041(ArbitraryMigration):
-    """Clean up improper merges that duplicated edges to nodes with migrated kinds
+    """Clean up improper merges that duplicated edges to nodes with migrated kinds.
 
     - delete all existing diffs b/c they could contain incorrect nodes linking to deleted nodes with migrated kind/inheritance
     - delete all edges added to any nodes AFTER they were deleted on main

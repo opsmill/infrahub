@@ -14,7 +14,7 @@ from .models import InfrahubEvent
 
 
 class NodeMutatedEvent(InfrahubEvent):
-    """Event generated when a node has been mutated"""
+    """Event generated when a node has been mutated."""
 
     kind: str = Field(..., description="The type of object modified")
     node_id: str = Field(..., description="The ID of the mutated node")
@@ -133,7 +133,7 @@ class NodeMutatedEvent(InfrahubEvent):
 
 
 class NodeCreatedEvent(NodeMutatedEvent):
-    """Event generated when a node has been created"""
+    """Event generated when a node has been created."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.created"
     action: MutationAction = MutationAction.CREATED
@@ -141,7 +141,7 @@ class NodeCreatedEvent(NodeMutatedEvent):
 
 
 class NodeUpdatedEvent(NodeMutatedEvent):
-    """Event generated when a node has been updated"""
+    """Event generated when a node has been updated."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.updated"
     action: MutationAction = MutationAction.UPDATED
@@ -149,7 +149,7 @@ class NodeUpdatedEvent(NodeMutatedEvent):
 
 
 class NodeDeletedEvent(NodeMutatedEvent):
-    """Event generated when a node has been deleted"""
+    """Event generated when a node has been deleted."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.node.deleted"
     action: MutationAction = MutationAction.DELETED

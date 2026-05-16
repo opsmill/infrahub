@@ -1014,7 +1014,7 @@ class SchemaManager(NodeManager):
         db: InfrahubDatabase,
         branch: Branch | str | None = None,
     ) -> SchemaBranch:
-        """Load the schema either from the cache or from the database"""
+        """Load the schema either from the cache or from the database."""
         branch = await registry.get_branch(branch=branch, db=db)
 
         if not branch.is_default and branch.origin_branch:

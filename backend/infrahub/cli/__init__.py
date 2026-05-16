@@ -19,7 +19,7 @@ app = AsyncTyper(name="Infrahub CLI", pretty_exceptions_enable=False)
 
 @app.callback()
 def common(ctx: typer.Context) -> None:
-    """Infrahub CLI"""
+    """Infrahub CLI."""
     ctx.obj = CliContext()
 
 

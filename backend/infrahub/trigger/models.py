@@ -261,7 +261,7 @@ class TriggerDefinition(BaseModel):
     actions: list[TriggerActionType]
 
     def get_deployment_names(self) -> list[str]:
-        """Return the name of all deployments used by this trigger"""
+        """Return the name of all deployments used by this trigger."""
         return [action.name for action in self.actions if isinstance(action, ExecuteWorkflow)]
 
     def get_description(self) -> str:

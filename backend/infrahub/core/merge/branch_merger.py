@@ -86,9 +86,10 @@ class BranchMerger:
 
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
+
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
          - having a faster way to pull a previous version of the schema
-         - using the diff generated from the data
+         - using the diff generated from the data.
         """
         if self._initial_source_schema:
             return self._initial_source_schema

@@ -296,7 +296,7 @@ async def create_global_branch(db: InfrahubDatabase) -> Branch:
 async def create_branch(
     branch_name: str, db: InfrahubDatabase, description: str = "", isolated: bool = True, at: str | None = None
 ) -> Branch:
-    """Create a new Branch, currently all the branches are based on Main
+    """Create a new Branch, currently all the branches are based on Main.
 
     Because all branches are based on main, the hierarchy_level of hardcoded to 2.
     """

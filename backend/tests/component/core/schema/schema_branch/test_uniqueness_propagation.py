@@ -76,7 +76,8 @@ def _describe_hash_diff(before: SchemaBranch, after: SchemaBranch) -> str:
 
 
 def _validate_process_idempotent(schema_branch: SchemaBranch, iterations: int = 4) -> None:
-    """Call process() once to establish baseline, then `iterations` more times
+    """Call process() once to establish baseline, then `iterations` more times.
+
     asserting the full schema state is unchanged across calls.
 
     Checks the schema hash (nodes + generics), node/generic/template/profile
@@ -671,8 +672,10 @@ class TestSchemaProcessUniquenessIdempotent:
         register_core_models_schema: SchemaBranch,
         conflicting_inherit_schema: SchemaRoot,
     ) -> None:
-        """A node inheriting the same attribute from two generics with
+        """A node inheriting the same attribute from two generics with.
+
         conflicting `unique` settings must still process idempotently.
+
         """
         schema_branch = register_core_models_schema.duplicate()
         schema_branch.load_schema(schema=conflicting_inherit_schema)

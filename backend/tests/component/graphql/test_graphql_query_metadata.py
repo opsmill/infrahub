@@ -851,7 +851,7 @@ class TestMetadataFilters:
     async def test_combined_created_by_and_created_at_after(
         self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
-        """Test combining created_by__id with created_at__after"""
+        """Test combining created_by__id with created_at__after."""
         query = """
         query($userId: ID!, $cutoff: DateTime!) {
             TestCriticality(node_metadata__created_by__id: $userId, node_metadata__created_at__after: $cutoff) {
@@ -873,7 +873,7 @@ class TestMetadataFilters:
     async def test_combined_updated_by_and_updated_at_after(
         self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
-        """Test combining updated_by__id with updated_at__after"""
+        """Test combining updated_by__id with updated_at__after."""
         query = """
         query($userId: ID!, $cutoff: DateTime!) {
             TestCriticality(node_metadata__updated_by__id: $userId, node_metadata__updated_at__after: $cutoff) {
@@ -895,7 +895,7 @@ class TestMetadataFilters:
     async def test_created_at_range(
         self, db: InfrahubDatabase, default_branch: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
-        """Test created_at__after combined with created_at__before (date range)"""
+        """Test created_at__after combined with created_at__before (date range)."""
         query = """
         query($after: DateTime!, $before: DateTime!) {
             TestCriticality(node_metadata__created_at__after: $after, node_metadata__created_at__before: $before) {

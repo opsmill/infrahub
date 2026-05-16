@@ -46,7 +46,7 @@ class ComputedAttributes:
         self._python.add_attribute(node, attribute)
 
     def get_kinds_python_attributes(self) -> list[str]:
-        """Return kinds that have Python attributes defined"""
+        """Return kinds that have Python attributes defined."""
         return self._python.get_kinds()
 
     def get_python_attributes_per_node(self) -> dict[str, list[AttributeSchema]]:

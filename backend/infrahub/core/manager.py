@@ -213,7 +213,7 @@ class NodeManager:
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
-        """Return the total number of nodes using a given filter
+        """Return the total number of nodes using a given filter.
 
         Args:
             schema (NodeSchema): Infrahub Schema or Name of a schema present in the registry.
@@ -1350,7 +1350,7 @@ class NodeManager:
         cascade_delete: bool = True,
         user_id: str = SYSTEM_USER_ID,
     ) -> list[Node]:
-        """Returns list of deleted nodes because of cascading deletes"""
+        """Returns list of deleted nodes because of cascading deletes."""
         branch = await registry.get_branch(branch=branch, db=db)
         nodes_to_delete = copy(nodes)
         if cascade_delete:

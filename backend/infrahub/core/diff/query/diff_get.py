@@ -27,7 +27,7 @@ QUERY_MATCH_NODES = """
 
 
 class EnrichedDiffGetQuery(Query):
-    """Get all EnrichedDiffRoots for the given branches that are within the given timeframe in chronological order"""
+    """Get all EnrichedDiffRoots for the given branches that are within the given timeframe in chronological order."""
 
     name = "enriched_diff_get"
     type = QueryType.READ

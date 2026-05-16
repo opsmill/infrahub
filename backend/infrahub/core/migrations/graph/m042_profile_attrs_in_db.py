@@ -23,7 +23,7 @@ log = get_logger()
 
 
 class GetUpdatedProfilesForBranchQuery(Query):
-    """Get CoreProfile UUIDs with updated attributes on this branch"""
+    """Get CoreProfile UUIDs with updated attributes on this branch."""
 
     name = "get_profiles_by_branch"
     type = QueryType.READ
@@ -39,12 +39,12 @@ WITH DISTINCT profile.uuid AS profile_uuid
         self.return_labels = ["profile_uuid"]
 
     def get_profile_ids(self) -> list[str]:
-        """Get list of updated profile UUIDs"""
+        """Get list of updated profile UUIDs."""
         return [result.get_as_type("profile_uuid", str) for result in self.get_results()]
 
 
 class GetNodesWithProfileUpdatesForBranchQuery(Query):
-    """Get Node UUIDs by which branches they have updated profiles on"""
+    """Get Node UUIDs by which branches they have updated profiles on."""
 
     name = "get_nodes_with_profile_updates_by_branch"
     type = QueryType.READ
@@ -61,16 +61,18 @@ WITH DISTINCT node.uuid AS node_uuid
         self.return_labels = ["node_uuid"]
 
     def get_node_ids(self) -> list[str]:
-        """Get list of updated node UUIDs"""
+        """Get list of updated node UUIDs."""
         return [result.get_as_type("node_uuid", str) for result in self.get_results()]
 
 
 class Migration042(MigrationRequiringRebase):
-    """Save profile attribute values on each node using the profile in the database
+    """Save profile attribute values on each node using the profile in the database.
+
     For any profile that has updates on a given branch (including default branch)
     - run NodeProfilesApplier.apply_profiles on each node related to the profile on that branch
     For any node that has an updated relationship to a profile on a given branch
-    - run NodeProfilesApplier.apply_profiles on the node on that branch
+    - run NodeProfilesApplier.apply_profiles on the node on that branch.
+
     """
 
     name: str = "042_profile_attrs_in_db"

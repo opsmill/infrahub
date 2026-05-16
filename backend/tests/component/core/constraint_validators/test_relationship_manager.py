@@ -47,8 +47,10 @@ async def test_node_validate_constraint_relationship_count_success(
 
 
 class TestCountGenericPeerCardinalityOne:
-    """Cardinality=one declared only on a concrete subtype while the relationship's
-    declared peer is the parent generic."""
+    """Cardinality=one declared only on a concrete subtype.
+
+    The relationship's declared peer is the parent generic.
+    """
 
     @pytest.fixture(autouse=True)
     async def _register_one_subtype_has_relationship_schema(self, db: InfrahubDatabase, default_branch: Branch) -> None:
@@ -116,8 +118,7 @@ class TestCountGenericPeerWithGenericRel:
 
 
 class TestCountGenericPeerMixedSubtypes:
-    """Generic with two concrete subtypes that declare different cardinalities for
-    the same identifier."""
+    """Generic with two concrete subtypes that declare different cardinalities for the same identifier."""
 
     @pytest.fixture(autouse=True)
     async def _register_two_subtypes_with_relationship_schema(
@@ -247,7 +248,8 @@ class TestCountGenericPeerDirection:
     validator rejects two relationships that share an identifier and a
     non-bidirectional direction, so the corresponding branch in the constraint
     code is unreachable in practice. The default outbound/inbound pair is
-    implicitly covered by every other test in this file."""
+    implicitly covered by every other test in this file.
+    """
 
     async def test_failure_when_bidirectional_concrete_at_limit(
         self, db: InfrahubDatabase, default_branch: Branch
