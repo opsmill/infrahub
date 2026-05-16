@@ -11,7 +11,7 @@ from pydantic import BaseModel, PrivateAttr
 
 from infrahub import config, lock, models
 from infrahub.auth_groups.filter import ClaimFilter
-from infrahub.auth_groups.service import AutoCreatedGroups
+from infrahub.auth_groups.service import AutoCreatedGroupsService
 from infrahub.config import (
     SecurityOAuth2Google,
     SecurityOAuth2Settings,
@@ -253,7 +253,7 @@ async def _account_from_existing_identity(
 ) -> Node:
     """Return the account linked to an existing identity, refreshing its label when stale."""
     account = await identity_node.get_relationship(name="account").get_peer(db=db, raise_on_error=True)
-    await _refresh_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
+    await _set_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
     return account
 
 
@@ -300,7 +300,7 @@ async def _account_has_identity(*, db: InfrahubDatabase, account: Node) -> bool:
 async def _link_unclaimed_account(*, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity) -> Node:
     """Attach the new external identity to an existing local-only account."""
     await _create_identity_node(db=db, account=account, external_identity=external_identity)
-    await _refresh_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
+    await _set_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
     return account
 
 
@@ -355,7 +355,7 @@ async def _create_identity_node(*, db: InfrahubDatabase, account: Node, external
     await identity_node.save(db=db)
 
 
-async def _refresh_label_if_stale(*, db: InfrahubDatabase, account: Node, display_name: str) -> None:
+async def _set_label_if_stale(*, db: InfrahubDatabase, account: Node, display_name: str) -> None:
     label = account.get_attribute(name="label")
     if label.value == display_name:
         return
@@ -382,10 +382,11 @@ async def _assign_group_memberships(
       3. Otherwise, the legacy exact-name lookup runs against the raw `sso_groups`.
     """
     if config.SETTINGS.security.auto_create_groups_enabled:
-        granted = await AutoCreatedGroups(
+        granted = await AutoCreatedGroupsService(
             db=db,
             account=account,
             provider_name=external_identity.provider_name,
+            lock_registry=lock.registry,
         ).assign(
             claims=sso_groups,
             claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),

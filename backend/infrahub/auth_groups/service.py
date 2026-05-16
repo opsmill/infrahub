@@ -1,20 +1,19 @@
-"""`AutoCreatedGroups` — the set of local `CoreAccountGroup` rows produced (or reused) for one
-external login's matched claims.
+"""`AutoCreatedGroupsService` — find-or-create local `CoreAccountGroup` rows for one external
+login's matched claims and add the logging-in account as a member.
 
-The object encapsulates the per-login find-or-create operation: for each effective name yielded
-by the configured `ClaimFilter`, the corresponding `CoreAccountGroup` is either looked up or
-created atomically, and the logging-in account is added as a member. Concurrent first-logins
-for the same brand-new claim are serialized through the distributed lock registry so exactly
-one row is produced per name. On creation, the configured provider name is written verbatim to
-the new group's `origin` attribute; on reuse, `origin` is left untouched. Names that fail the
-local-name invariants (empty / whitespace-only) are logged and skipped; the login completes.
+For each effective name yielded by the configured `ClaimFilter`, the corresponding
+`CoreAccountGroup` is either looked up or created atomically, and the logging-in account is
+added as a member. Concurrent first-logins for the same brand-new claim are serialized through
+the injected lock registry so exactly one row is produced per name. On creation, the configured
+provider name is written verbatim to the new group's `origin` attribute; on reuse, `origin` is
+left untouched. Names that fail the local-name invariants (empty / whitespace-only) are logged
+and skipped; the login completes.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterable
 
-from infrahub import lock
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -23,26 +22,34 @@ from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+    from infrahub.lock import InfrahubLockRegistry
 
     from .filter import ClaimFilter
 
 log = get_logger()
 
 
-class AutoCreatedGroups:
-    """The CoreAccountGroup rows derived from one login's external claims."""
+class AutoCreatedGroupsService:
+    """Find-or-create CoreAccountGroup rows from external claims and assign membership."""
 
-    def __init__(self, *, db: InfrahubDatabase, account: Node, provider_name: str) -> None:
+    def __init__(
+        self,
+        *,
+        db: InfrahubDatabase,
+        account: Node,
+        provider_name: str,
+        lock_registry: InfrahubLockRegistry,
+    ) -> None:
         self._db = db
         self._account = account
         self._provider_name = provider_name
+        self._lock_registry = lock_registry
 
     async def assign(self, claims: Iterable[str], claim_filter: ClaimFilter) -> tuple[str, ...]:
         """Find-or-create groups for `claims` under `claim_filter` and add the account as member.
 
         Returns the effective names that resulted in a successful membership, in matching order.
-        An empty tuple means auto-creation produced no memberships — the caller may then fall
-        through to the SSO default-group path.
+        An empty tuple means no claim matched the filter or every matched claim was skipped.
         """
         if not claim_filter.is_active:
             return ()
@@ -78,7 +85,7 @@ class AutoCreatedGroups:
             return self._reuse_or_skip(name, existing)
 
         lock_key = f"auto-create-group:{name}"
-        async with lock.registry.get(name=lock_key, namespace="auto-create-group"):
+        async with self._lock_registry.get(name=lock_key, namespace="auto-create-group"):
             existing = await self._lookup_by_name(name)
             if existing is not None:
                 return self._reuse_or_skip(name, existing)
