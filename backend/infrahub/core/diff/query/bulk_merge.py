@@ -441,8 +441,9 @@ SET rel.created_at = $at, rel.created_by = from_user_id
 
 
 class BulkMergeCardinalityOneResolutionQuery(Query):
-    """Apply cardinality-one Relationship element conflict resolutions on top of the bulk IS_RELATED
-    merge. Three concerns are handled in order:
+    """Apply cardinality-one Relationship element conflict resolutions on top of the bulk IS_RELATED merge.
+
+    Three concerns are handled in order:
 
     1. ``carry_over_base_relationship_properties`` DIFF element + BASE prop. Copies base's
        active prop edge from the displaced Relationship vertex onto the selected (source-side)

@@ -381,8 +381,7 @@ class TestGetKindsLock(TestInfrahubApp):
 
 
 class TestLockGenericPeerConcreteConstraint(TestInfrahubApp):
-    """Lock acquisition when the declared peer is a generic but the count
-    constraint lives on a concrete subtype."""
+    """Lock acquisition when the declared peer is a generic but the count constraint lives on a concrete subtype."""
 
     async def test_lock_acquired_when_concrete_cardinality_one(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient
@@ -452,8 +451,7 @@ class TestLockGenericPeerConcreteConstraint(TestInfrahubApp):
 
 
 class TestLockGenericPeerGenericRel(TestInfrahubApp):
-    """Lock acquisition when the cardinality constraint is declared on the generic
-    itself."""
+    """Lock acquisition when the cardinality constraint is declared on the generic itself."""
 
     async def test_lock_acquired_when_generic_cardinality_one(
         self, db: InfrahubDatabase, default_branch: Branch, client: InfrahubClient

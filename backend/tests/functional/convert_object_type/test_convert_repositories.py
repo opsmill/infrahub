@@ -135,8 +135,10 @@ class TestConvertRepository(TestInfrahubApp):
         git_repos_source_dir_module_scope: Path,
         local_repo: None,
     ) -> None:
-        """First build fields mapping required to convert a CoreRepository to a CoreReadOnlyRepository,
+        """First build fields mapping required to convert a CoreRepository to a CoreReadOnlyRepository,.
+
         then convert the repository, and finally check that the repository is working properly.
+
         """
         start_time = Timestamp()
 
@@ -271,8 +273,10 @@ class TestConvertRepository(TestInfrahubApp):
         local_repo: None,
         git_repos_source_dir_module_scope: Path,
     ) -> None:
-        """First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,
+        """First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,.
+
         then convert the repository, and finally check that the repository is working properly.
+
         """
         start_time = Timestamp()
 
@@ -416,8 +420,10 @@ class TestConvertRepository(TestInfrahubApp):
         local_repo: None,
         git_repos_source_dir_module_scope: Path,
     ) -> None:
-        """First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,
+        """First build fields mapping required to convert a CoreReadOnlyRepository to a CoreRepository,.
+
         then convert the repository, and finally check that the repository is working properly.
+
         """
         start_time = Timestamp()
 

@@ -365,7 +365,7 @@ class TestObjectPermissions:
     async def test_first_account_graphql_and_repos(
         self, db: InfrahubDatabase, permissions_helper: PermissionsHelper
     ) -> None:
-        """The user should have permissions to list GraphQLQueries but not repositories linked to them"""
+        """The user should have permissions to list GraphQLQueries but not repositories linked to them."""
         checker = ObjectPermissionChecker()
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT

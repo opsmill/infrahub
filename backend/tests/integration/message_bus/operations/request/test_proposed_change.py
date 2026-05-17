@@ -104,7 +104,7 @@ class TestProposedChange(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def context(self, user_account: Node) -> InfrahubContext:
-        """Placeholder context for now, would be good to implement some auth and permissions here"""
+        """Placeholder context for now, would be good to implement some auth and permissions here."""
         return InfrahubContext(
             account=AccountSession(authenticated=False, account_id=user_account.get_id(), auth_type=AuthType.NONE),
             branch=BranchContext(name="main", id="placeholder"),

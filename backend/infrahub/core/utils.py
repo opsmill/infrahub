@@ -171,12 +171,13 @@ def convert_ip_to_binary_str(
 
 
 def build_regex_attrs(values: list[str | int | bool]) -> str:
-    """Build a regex to match one or multiple values in a JSON string, mainly used to match on an attribute of type List"""
+    """Build a regex to match one or multiple values in a JSON string, mainly used to match on an attribute of type List."""
     return ".*(" + "|".join([build_regex_attr(value=value) for value in values]) + ").*"
 
 
 def build_regex_attr(value: str | int | bool) -> str:
-    """Build a single regex to match a value in a JSON string
+    """Build a single regex to match a value in a JSON string.
+
     For a string, it must have quotes
     For int and bool, it must not have quotes.
 
@@ -228,7 +229,7 @@ class SubclassWithMeta_Meta(type):
 
 
 class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
-    """This class improves __init_subclass__ to receive automatically the options from meta"""
+    """This class improves __init_subclass__ to receive automatically the options from meta."""
 
     def __init_subclass__(cls, **meta_options: Any) -> None:
         """This method just terminates the super() chain.
@@ -261,4 +262,4 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
 
     @classmethod
     def __init_subclass_with_meta__(cls, **meta_options: Any) -> None:
-        """This method just terminates the super() chain"""
+        """This method just terminates the super() chain."""

@@ -337,7 +337,8 @@ class NumberPoolGetReserved(Query):
 
 class PoolChangeReserved(Query):
     """Change the identifier on all pools.
-    This is useful when a node is being converted to a different type and its ID has changed
+
+    This is useful when a node is being converted to a different type and its ID has changed.
     """
 
     name = "pool_change_reserved"

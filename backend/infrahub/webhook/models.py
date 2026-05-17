@@ -327,7 +327,7 @@ class Webhook(BaseModel):
 
 
 class CustomWebhook(Webhook):
-    """Custom webhook"""
+    """Custom webhook."""
 
     @classmethod
     def from_object(cls, obj: CoreCustomWebhook, custom_headers: list[WebhookHeader] | None = None) -> Self:

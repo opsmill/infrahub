@@ -85,6 +85,7 @@ async def upgrade_cmd(
 
     Raises:
         typer.Exit: If the prerequisite validation fails before upgrading.
+
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class DiffMergeMetadataQuery(Query):
-    """Set metadata properties on Nodes, Attributes, and Relationships included in this merge
+    """Set metadata properties on Nodes, Attributes, and Relationships included in this merge.
 
     Each Node, Attribute, and Relationship should have its current updated_at/by (if it exists) saved in the
     previous_updated_at/by properties to support a rollback.

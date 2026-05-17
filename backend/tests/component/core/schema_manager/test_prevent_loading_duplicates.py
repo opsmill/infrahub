@@ -55,8 +55,10 @@ async def test_load_schema_to_db_idempotent(db: InfrahubDatabase, default_branch
 async def test_load_schema_to_db_overrides_input_id_with_existing_db_id(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
-    """``load_schema_to_db`` resolves existing rows by ``(namespace, name)`` and uses the DB's
-    uuid regardless of any stale id carried on the input schema."""
+    """``load_schema_to_db`` resolves existing rows by ``(namespace, name)``, using the DB's uuid.
+
+    Any stale id carried on the input schema is ignored.
+    """
     node = NodeSchema(
         name="OverrideGadget",
         namespace="Testing",
@@ -90,9 +92,11 @@ async def test_load_schema_to_db_overrides_input_id_with_existing_db_id(
 async def test_load_schema_to_db_no_duplicate_children_when_registry_stale(
     db: InfrahubDatabase, default_branch: Branch
 ) -> None:
-    """Loading a schema with id-less attributes and relationships when DB rows already exist must
-    reuse existing child rows (no duplicate ``SchemaAttribute`` / ``SchemaRelationship``) by
-    matching on the child's name."""
+    """Loading id-less attributes/relationships when DB rows already exist reuses the existing rows.
+
+    Match on child name to avoid creating duplicate ``SchemaAttribute`` /
+    ``SchemaRelationship`` records.
+    """
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -144,9 +148,7 @@ async def test_load_schema_to_db_no_duplicate_children_when_registry_stale(
 async def test_load_schema_to_db_rename_with_new_idless_child_reuses_db_row(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
-    """Renaming a parent while adding a field that already exists on the renamed schema must
-    not insert a duplicate field.
-    """
+    """Renaming a parent while adding a field that already exists on the renamed schema must not duplicate the field."""
     # Create the original schema
     original = NodeSchema(
         name="OldKind",
@@ -206,9 +208,11 @@ async def test_load_schema_to_db_rename_with_new_idless_child_reuses_db_row(
 async def test_load_schema_to_db_rejects_type_mismatch(
     db: InfrahubDatabase, default_branch: Branch, register_internal_models_schema: SchemaBranch
 ) -> None:
-    """If a ``(namespace, name)`` exists on the DB as a SchemaNode but the input is a
-    GenericSchema (or vice versa), the upsert pipeline raises rather than silently routing
-    through the wrong type bucket."""
+    """An upsert with a type mismatch on an existing ``(namespace, name)`` raises rather than re-routing.
+
+    Applies when the DB row is a SchemaNode but the input is a GenericSchema, and vice
+    versa; the upsert pipeline must not silently route through the wrong type bucket.
+    """
     await registry.schema.create_node_in_db(
         node=NodeSchema(name="TypeMismatch", namespace="Testing"),
         db=db,

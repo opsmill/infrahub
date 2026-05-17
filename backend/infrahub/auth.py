@@ -455,7 +455,9 @@ async def get_groups_from_provider(
 
 
 def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: bool = True) -> str | dict[str, Any]:
-    """Safely extract response body from HTTP response. If the response body cannot be JSON parsed or is empty,
+    """Safely extract response body from HTTP response.
+
+    If the response body cannot be JSON parsed or is empty,
     it raises a GatewayError.
 
     Args:

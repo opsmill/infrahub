@@ -60,7 +60,8 @@ def _scan_flow(workflow: WorkflowDefinition) -> list[str]:
     [pytest.param(workflow, id=workflow.name) for workflow in get_workflows()],
 )
 def test_flow_does_not_reuse_shared_database_session(workflow: WorkflowDefinition) -> None:
-    """Prefect flows that take a `service: InfrahubServices` parameter must access
+    """Prefect flows that take a `service: InfrahubServices` parameter must access.
+
     `service.database` only through `.start_session(` or `.start_transaction(`.
 
     Passing `service.database` directly (e.g. `db=service.database`) reuses the

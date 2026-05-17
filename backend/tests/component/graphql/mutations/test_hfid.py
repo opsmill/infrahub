@@ -186,8 +186,10 @@ async def test_update_hfid_sends_node_updated_event(
     session_first_account: AccountSession,
     first_account: Node,
 ) -> None:
-    """UpdateHFID emits a NodeUpdatedEvent whose changelog contains the correct display label,
+    """UpdateHFID emits a NodeUpdatedEvent whose changelog contains the correct display label,.
+
     even when the display label template references attributes on the far side of a relationship.
+
     """
     schema_root = SchemaRoot(nodes=[COLOR, TSHIRT])
     registry.schema.register_schema(schema=schema_root, branch=default_branch.name)

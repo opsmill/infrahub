@@ -234,8 +234,9 @@ class TestUserWorkflow01(TestInfrahubApp):
     async def test_query_all_devices(
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
     ) -> None:
-        """Query all devices to ensure that we have some data in the database
-        and overall that everything is working correctly
+        """Query all devices to ensure that we have some data in the database.
+
+        Confirms overall that everything is working correctly.
         """
         headers = await integration_helper.admin_headers()
 
@@ -259,8 +260,10 @@ class TestUserWorkflow01(TestInfrahubApp):
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
     ) -> None:
         """Query Loopback0 interface on spine one to ensure that the filters are working properly and to store:
+
         - the ID of the interface to reuse later
-        - The initial value of the description on this interface
+        - The initial value of the description on this interface.
+
         """
         intf_name = "Loopback0"
 
@@ -286,7 +289,7 @@ class TestUserWorkflow01(TestInfrahubApp):
     async def test_query_spine1_ethernet1(
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
     ) -> None:
-        """Query Ethernet1 to gather its ID"""
+        """Query Ethernet1 to gather its ID."""
         headers = await integration_helper.admin_headers()
 
         intf_name = "Ethernet1"
@@ -314,7 +317,7 @@ class TestUserWorkflow01(TestInfrahubApp):
     async def test_create_first_branch(
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
     ) -> None:
-        """Create a first Branch from Main"""
+        """Create a first Branch from Main."""
         headers = await integration_helper.admin_headers()
 
         response = await test_client.post(
@@ -334,7 +337,7 @@ class TestUserWorkflow01(TestInfrahubApp):
         test_client: InfrahubTestClient,
         integration_helper: IntegrationHelper,
     ) -> None:
-        """Update the description of the interface in the new branch and validate that its being properly updated"""
+        """Update the description of the interface in the new branch and validate that its being properly updated."""
         headers = await integration_helper.admin_headers()
 
         new_description = f"New description in {branch1}"
@@ -377,7 +380,7 @@ class TestUserWorkflow01(TestInfrahubApp):
     async def test_update_intf_description_main(
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
     ) -> None:
-        """Update the description of the interface Ethernet1 in the main branch and validate that its being properly updated"""
+        """Update the description of the interface Ethernet1 in the main branch and validate that its being properly updated."""
         headers = await integration_helper.admin_headers()
         new_description = f"New description in {main_branch}"
 
@@ -509,7 +512,7 @@ class TestUserWorkflow01(TestInfrahubApp):
     async def test_update_intf_description_branch1_again(
         self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper
     ) -> None:
-        """Update the description of the interface in the new branch again and validate that its being properly updated"""
+        """Update the description of the interface in the new branch again and validate that its being properly updated."""
         headers = await integration_helper.admin_headers()
 
         new_description = f"New New description in {branch1}"
@@ -731,7 +734,7 @@ class TestUserWorkflow01(TestInfrahubApp):
         assert intfs[0]["node"]["description"]["value"] == old_description
 
     async def test_rebase_branch2(self, test_client: InfrahubTestClient, integration_helper: IntegrationHelper) -> None:
-        """Rebase Branch 2"""
+        """Rebase Branch 2."""
         headers = await integration_helper.admin_headers()
 
         intf_name = "Ethernet1"

@@ -9,7 +9,8 @@ from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class TestMigration048:
-    """Test Migration048 to fix Relationship vertices missing IS_VISIBLE/IS_PROTECTED edges
+    """Test Migration048 to fix Relationship vertices missing IS_VISIBLE/IS_PROTECTED edges.
+
     and remove duplicate IS_RELATED edges.
 
     The migration should:

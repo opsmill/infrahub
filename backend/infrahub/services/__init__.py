@@ -88,8 +88,10 @@ class InfrahubServices:
         http: InfrahubHTTP | None = None,
         log_forwarding: LogForwardingService | None = None,
     ) -> InfrahubServices:
-        """Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular
+        """Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular.
+
         dependency with InfrahubServices.
+
         """
         component_type = component_type or ComponentType.NONE
 

@@ -169,7 +169,7 @@ async def migrate_cmd(
         None, help="Apply a specific migration by number, regardless of current database version"
     ),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
+    """Check the current format of the internal graph and apply the necessary migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -251,6 +251,7 @@ async def showmigration_cmd(
 
     Raises:
         typer.Exit: If the migration number does not match any known migration.
+
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -422,7 +423,7 @@ async def update_core_schema_cmd(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
+    """Check the current format of the internal graph and apply the necessary migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -494,7 +495,7 @@ async def index(
     action: IndexAction = typer.Argument(IndexAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Manage Database Indexes"""
+    """Manage Database Indexes."""
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
@@ -865,7 +866,7 @@ async def selected_export_cmd(
     export_dir: Path = typer.Option(Path("infrahub-exports"), help="Path of directory to save exports"),  # noqa: B008
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Export database structure of selected nodes from the database without any actual data"""
+    """Export database structure of selected nodes from the database without any actual data."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -1031,6 +1032,7 @@ async def load_export_cmd(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Cannot be used for backup/restore functionality.
+
     Loads an anonymized export into Neo4j.
     Only used for analysis of output of the selected-export command.
     """

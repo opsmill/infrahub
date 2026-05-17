@@ -180,7 +180,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_01_humanoid_uniqueness_constraint_failure(self, schema_humanoid_base: dict[str, Any]) -> dict[str, Any]:
-        """Add uniqueness constraint to TestHumanoid that does not fit existing data"""
+        """Add uniqueness constraint to TestHumanoid that does not fit existing data."""
         schema_humanoid_base["uniqueness_constraints"] = [["height__value", "name__value"]]
         return schema_humanoid_base
 

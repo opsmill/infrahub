@@ -95,8 +95,10 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         added_peer_ids: Iterable[str],
         removed_peer_ids: Iterable[str],
     ) -> list[NodeToValidate]:
-        """Build validation targets when the peer schema directly declares the relevant
-        relationships. The same ``peer_rels`` apply to every changed peer."""
+        """Build validation targets when the peer schema directly declares the relevant relationships.
+
+        The same ``peer_rels`` apply to every changed peer.
+        """
         targets: list[NodeToValidate] = []
         for peer_id in added_peer_ids:
             targets.extend(self._targets_for_added(peer_id=peer_id, peer_rels=peer_rels, relm=relm))
@@ -111,10 +113,11 @@ class RelationshipCountConstraint(RelationshipManagerConstraintInterface):
         added_peer_ids: Iterable[str],
         removed_peer_ids: Iterable[str],
     ) -> list[NodeToValidate]:
-        """Build validation targets when the declared peer is a generic that does not
-        carry the relationship. Each peer's concrete kind is resolved from the database,
-        and the applicable ``peer_rels`` may differ between peers (e.g. one subtype
-        carries cardinality=one while a sibling carries cardinality=many)."""
+        """Build validation targets when the declared peer is a generic that does not carry the relationship.
+
+        Each peer's concrete kind is resolved from the database, and the applicable ``peer_rels`` may differ
+        between peers (e.g. one subtype carries cardinality=one while a sibling carries cardinality=many).
+        """
         all_changed = [*added_peer_ids, *removed_peer_ids]
         if not all_changed:
             return []

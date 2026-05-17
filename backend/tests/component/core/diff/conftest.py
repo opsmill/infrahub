@@ -21,7 +21,7 @@ REPO_MIRROR_KIND = "TestingRepoMirror"
 
 @pytest.fixture
 async def repo_mirror_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
-    """Agnostic schema with aware and agnostic attributes, like CoreReadOnlyRepository"""
+    """Agnostic schema with aware and agnostic attributes, like CoreReadOnlyRepository."""
     repo_mirror = NodeSchema(
         name="RepoMirror",
         namespace="Testing",

@@ -658,6 +658,7 @@ async def test_task_query_with_log_offset(
     flow_runs_data: dict[str, FlowRun],
 ) -> None:
     """In unit tests logs are not forwarded to the Prefect server for unknown reasons.
+
     Therefore this test mainly tests log_offset and log_limit do not break the query when they are specified,
     but their logic itself is not tested on a large amount of logs.
     """

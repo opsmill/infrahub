@@ -388,6 +388,7 @@ class SchemaManager(NodeManager):
         Raises:
             ValueError: When a member of `schemas` has a different type than its counterpart
                 in the database. For example, incoming NodeScheam versus existing GenericSchema.
+
         """
         if not schemas:
             return {}
@@ -625,6 +626,7 @@ class SchemaManager(NodeManager):
 
         Raises:
             SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
         """
         schema_dict = schema.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
@@ -1014,7 +1016,7 @@ class SchemaManager(NodeManager):
         db: InfrahubDatabase,
         branch: Branch | str | None = None,
     ) -> SchemaBranch:
-        """Load the schema either from the cache or from the database"""
+        """Load the schema either from the cache or from the database."""
         branch = await registry.get_branch(branch=branch, db=db)
 
         if not branch.is_default and branch.origin_branch:

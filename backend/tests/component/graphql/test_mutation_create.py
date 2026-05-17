@@ -1569,7 +1569,7 @@ async def test_create_with_object_template(
 async def test_create_with_object_template_and_real_object(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch, branch: Branch
 ) -> None:
-    """Test that relationships on sub-templates will correctly link the created sub-object to an existing object on non-component relationships"""
+    """Test that relationships on sub-templates will correctly link the created sub-object to an existing object on non-component relationships."""
     updated_car_schema = CAR_SCHEMA.duplicate()
     manufacturer_schema = updated_car_schema.get(name=TestKind.MANUFACTURER)
     manufacturer_schema.generate_template = True

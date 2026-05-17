@@ -18,6 +18,7 @@ async def run_checks_and_update_validator(
     proposed_change_id: str,
 ) -> None:
     """Execute a list of checks coroutines, and set validator fields accordingly.
+
     Tasks are retrieved by completion order so as soon as we detect a failing check,
     we set validator conclusion to failure.
     """

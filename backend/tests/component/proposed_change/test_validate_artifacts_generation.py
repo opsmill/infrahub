@@ -555,6 +555,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: dev1 and dev3 change 'name' (queried), dev2 changes 'description' (not queried).
+
         Only art1 and art3 should be regenerated.
         """
         pipeline_id = uuid.uuid4()
@@ -592,6 +593,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: all devices change 'description' (not queried).
+
         No artifacts should be regenerated.
         """
         pipeline_id = uuid.uuid4()
@@ -629,6 +631,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query: all 4 devices change 'name' (queried).
+
         All 4 artifacts should be regenerated.
         """
         pipeline_id = uuid.uuid4()
@@ -672,6 +675,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Unique query with artdef_partial: dev3 changes 'description' (not queried).
+
         dev1 and dev2 have existing artifacts that are not impacted.
         dev3 and dev4 have no existing artifacts (artifact_id=None) → always regenerated.
         """
@@ -708,6 +712,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Non-unique query: only 'description' (not queried) changes.
+
         Even though the query can't target specific nodes, the queried fields
         haven't changed so no regeneration is needed.
         """
@@ -744,6 +749,7 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         client: InfrahubClient,
     ) -> None:
         """Non-unique query: dev2 changes 'name' (queried).
+
         Because the query cannot identify specific targets, all 4 artifacts must be regenerated.
         """
         pipeline_id = uuid.uuid4()
@@ -783,8 +789,10 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         admin_account: CoreAccount,
         client: InfrahubClient,
     ) -> None:
-        """When source branch is synced with git and the repository has file changes,
+        """When source branch is synced with git and the repository has file changes,.
+
         all artifacts must be regenerated regardless of which fields changed.
+
         """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
@@ -828,10 +836,13 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         admin_account: CoreAccount,
         client: InfrahubClient,
     ) -> None:
-        """An artifact whose `object` peer can no longer be resolved must not
+        """An artifact whose `object` peer can no longer be resolved must not.
+
         prevent the validator from dispatching artifact creation for the rest of
         the group. dev1 is a member of the orphan group with no existing artifact
-        for that definition, so it should always be regenerated."""
+        for that definition, so it should always be regenerated.
+
+        """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)
         diff_summary: list[dict] = []
@@ -862,8 +873,10 @@ class TestValidateArtifactsGeneration(TestInfrahubAppBase):
         admin_account: CoreAccount,
         client: InfrahubClient,
     ) -> None:
-        """When source branch is synced with git but no file changes, field-level targeting
+        """When source branch is synced with git but no file changes, field-level targeting.
+
         still applies. Only the artifact for dev1 (name changed) should be regenerated.
+
         """
         pipeline_id = uuid.uuid4()
         context = self._make_context(admin_account, default_branch)

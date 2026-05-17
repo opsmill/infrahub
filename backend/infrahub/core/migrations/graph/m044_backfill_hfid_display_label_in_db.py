@@ -35,9 +35,11 @@ if TYPE_CHECKING:
 
 
 class UpdateAttributeValuesQuery(Query):
-    """Update the values of the given attribute schema for the input Node-id-to-value map
+    """Update the values of the given attribute schema for the input Node-id-to-value map.
+
     Includes special handling for updating large-type attributes b/c they are not indexed and will be slow to update
-    on large data sets
+    on large data sets.
+
     """
 
     name = "update_attribute_values"

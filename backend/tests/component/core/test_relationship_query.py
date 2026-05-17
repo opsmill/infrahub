@@ -1315,7 +1315,7 @@ async def test_query_RelationshipGetPeerQuery_branch_agnostic(
     person_jane_main: Node,
     car_accord_main: Node,
 ) -> None:
-    """Test that RelationshipGetPeerQuery works correctly with branch_agnostic=True"""
+    """Test that RelationshipGetPeerQuery works correctly with branch_agnostic=True."""
     # Create a new branch
     branch = await create_branch(branch_name="test_agnostic_branch", db=db)
 
