@@ -414,3 +414,106 @@ class TestDefaultGroupFallback:
         accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Mira Legacy"})
         assert len(accounts) == 1
         assert accounts[0].id in members
+
+
+class TestPerLoginCap:
+    """Per-login soft cap on new-group creation.
+
+    The cap bounds how many BRAND-NEW groups one login can spawn. Membership additions to
+    already-existing groups do NOT consume cap budget. Once the cap is reached, every
+    subsequent matching claim that would have required a fresh creation is dropped and
+    the login still completes.
+    """
+
+    async def test_cap_limits_new_creations_and_drops_surplus_matching_claims(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_with_low_cap: int,
+    ) -> None:
+        """A login carrying more matching claims than the cap creates exactly `cap` groups,
+        completes successfully, and silently drops the surplus.
+        """
+        cap = autocreate_filter_with_low_cap  # 2
+        identity = _make_identity(sub="sub-cap-001", display_name="Nora Cap")
+
+        auth_result = await signin_sso_account(
+            db=db,
+            external_identity=identity,
+            sso_groups=[
+                "LDAP/group/cap-test-a",
+                "LDAP/group/cap-test-b",
+                "LDAP/group/cap-test-c",
+                "LDAP/group/cap-test-d",
+            ],
+        )
+
+        assert auth_result.token.access_token, "login must complete when the cap is breached"
+
+        accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Nora Cap"})
+        assert len(accounts) == 1
+        account_id = accounts[0].id
+
+        # First `cap` matching claims become groups and the user is a member of each.
+        for under_cap_name in ("cap-test-a", "cap-test-b"):
+            groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": under_cap_name})
+            assert len(groups) == 1, f"{under_cap_name} must be created (within the cap of {cap})"
+            refreshed = await NodeManager.get_one(db=db, id=groups[0].id, prefetch_relationships=True)
+            members = await refreshed.get_relationship(name="members").get_peers(
+                db=db, branch_agnostic=True, peer_type=CoreAccount
+            )
+            assert account_id in members, f"user must be a member of {under_cap_name}"
+
+        for over_cap_name in ("cap-test-c", "cap-test-d"):
+            groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": over_cap_name})
+            assert groups == [], f"{over_cap_name} must NOT be created (beyond the cap of {cap})"
+
+    async def test_existing_group_membership_does_not_consume_cap_budget(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        register_core_models_schema: SchemaBranch,
+        autocreate_filter_with_low_cap: int,
+    ) -> None:
+        """Memberships to already-existing groups do NOT count against the cap.
+
+        With cap = 2, a login matching one pre-existing group plus three new claims still
+        creates exactly two new groups and adds the user to all three existing-or-just-created
+        groups (1 reuse + 2 creates). The fourth matching claim is dropped.
+        """
+        cap = autocreate_filter_with_low_cap  # 2
+
+        preexisting = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
+        await preexisting.new(db=db, name="cap-test-preexisting")
+        await preexisting.save(db=db)
+
+        identity = _make_identity(sub="sub-cap-002", display_name="Oscar Cap")
+
+        await signin_sso_account(
+            db=db,
+            external_identity=identity,
+            sso_groups=[
+                "LDAP/group/cap-test-preexisting",
+                "LDAP/group/cap-test-new-a",
+                "LDAP/group/cap-test-new-b",
+                "LDAP/group/cap-test-new-c",
+            ],
+        )
+
+        for created_name in ("cap-test-new-a", "cap-test-new-b"):
+            groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": created_name})
+            assert len(groups) == 1, f"{created_name} must be created (within the cap of {cap})"
+
+        beyond = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "cap-test-new-c"})
+        assert beyond == [], "the claim beyond the cap must be dropped"
+
+        accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Oscar Cap"})
+        assert len(accounts) == 1
+        account_id = accounts[0].id
+
+        refreshed = await NodeManager.get_one(db=db, id=preexisting.id, prefetch_relationships=True)
+        members = await refreshed.get_relationship(name="members").get_peers(
+            db=db, branch_agnostic=True, peer_type=CoreAccount
+        )
+        assert account_id in members, "user must be a member of the pre-existing group (uncapped)"

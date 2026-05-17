@@ -8,6 +8,10 @@ the injected lock registry so exactly one row is produced per name. On creation,
 provider name is written verbatim to the new group's `origin` attribute; on reuse, `origin` is
 left untouched. Names that fail the local-name invariants (empty / whitespace-only) are logged
 and skipped; the login completes.
+
+A per-login cap bounds how many new groups one login can spawn. Memberships to already-existing
+groups do NOT consume cap budget. Once the cap is reached, every subsequent matching claim that
+would have required a fresh creation is dropped and the login still completes.
 """
 
 from __future__ import annotations
@@ -46,18 +50,37 @@ class AutoCreatedGroupsService:
         self._provider_name = provider_name
         self._lock_registry = lock_registry
         self._node_manager = node_manager
+        self.dropped_claims: tuple[str, ...] = ()
 
-    async def assign(self, claims: Iterable[str], claim_filter: ClaimFilter) -> tuple[str, ...]:
+    async def assign(
+        self,
+        claims: Iterable[str],
+        claim_filter: ClaimFilter,
+        max_per_login: int,
+    ) -> tuple[str, ...]:
         """Find-or-create groups for `claims` under `claim_filter` and add the account as member.
 
+        New-creation work is bounded by `max_per_login`. When the budget is exhausted, claims
+        that would require a brand-new group are silently dropped. Existing-group reuse continues
+        uncapped.
+
         Returns the effective names that resulted in a successful membership, in matching order.
-        An empty tuple means no claim matched the filter or every matched claim was skipped.
+        An empty tuple means auto-creation produced no memberships.
         """
+        self.dropped_claims = ()
+
         if not claim_filter.is_active:
             return ()
 
         granted: list[str] = []
-        for name in claim_filter.names_for(claims):
+        new_creations = 0
+        dropped: list[str] = []
+        seen: set[str] = set()
+
+        for claim in claims:
+            name = claim_filter.name_for(claim)
+            if name is None:
+                continue
             if not name or name.isspace():
                 log.info(
                     "auth_groups.skip_invalid_effective_name",
@@ -65,37 +88,64 @@ class AutoCreatedGroupsService:
                     effective_name=name,
                 )
                 continue
-
-            group = await self._find_or_create(name)
-            if group is None:
+            if name in seen:
                 continue
+            seen.add(name)
+
+            if new_creations < max_per_login:
+                group, was_created = await self._find_or_create(name)
+                if group is None:
+                    continue
+                if was_created:
+                    new_creations += 1
+            else:
+                # Cap exhausted: only allow reuse of an existing row. A claim that would
+                # require a fresh creation is dropped (verbatim) for later event emission.
+                existing = await self._lookup_by_name(name)
+                if existing is None:
+                    log.info(
+                        "auth_groups.skip_claim_over_per_login_cap",
+                        provider_name=self._provider_name,
+                        effective_name=name,
+                        max_per_login=max_per_login,
+                    )
+                    dropped.append(claim)
+                    continue
+                group = self._reuse_or_skip(name, existing)
+                if group is None:
+                    continue
 
             await self._add_member(group)
             granted.append(name)
 
+        self.dropped_claims = tuple(dropped)
         return tuple(granted)
 
-    async def _find_or_create(self, name: str) -> CoreAccountGroup | Node | None:
+    async def _find_or_create(self, name: str) -> tuple[CoreAccountGroup | Node | None, bool]:
         """Find a `CoreAccountGroup` named `name`, or create one with `origin = provider_name`.
 
         Serialized through the distributed lock registry under the `auto-create-group` namespace.
-        Returns `None` when a non-`CoreAccountGroup` `CoreGroup`-derived row already exists under
-        that name.
+        Returns `(group, was_created)`:
+
+        - `(existing, False)`: a reusable `CoreAccountGroup` already existed.
+        - `(new_group, True)`: we won the create race under the lock and saved the new row.
+        - `(None, False)`: a non-`CoreAccountGroup` `CoreGroup`-derived row already exists under
+          that name; the claim is skipped.
         """
         existing = await self._lookup_by_name(name)
         if existing is not None:
-            return self._reuse_or_skip(name, existing)
+            return self._reuse_or_skip(name, existing), False
 
         lock_key = f"auto-create-group:{name}"
         async with self._lock_registry.get(name=lock_key, namespace="auto-create-group"):
             existing = await self._lookup_by_name(name)
             if existing is not None:
-                return self._reuse_or_skip(name, existing)
+                return self._reuse_or_skip(name, existing), False
 
             group = await Node.init(db=self._db, schema=InfrahubKind.ACCOUNTGROUP)
             await group.new(db=self._db, name=name, origin=self._provider_name)
             await group.save(db=self._db)
-            return group
+            return group, True
 
     async def _lookup_by_name(self, name: str) -> Node | None:
         """Return any `CoreGroup`-derived row named `name`, or None."""
