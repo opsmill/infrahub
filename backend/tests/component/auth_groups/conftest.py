@@ -30,10 +30,7 @@ def autocreate_filter_enabled() -> Iterator[None]:
 
 @pytest.fixture
 def autocreate_filter_with_low_cap(autocreate_filter_enabled: None) -> Iterator[int]:
-    """Activate the auto-create filter and tighten `auto_create_groups_max_per_login` to 2.
-
-    Yields the configured cap value so tests can reference it without hardcoding.
-    """
+    """Activate the auto-create filter and tighten `auto_create_groups_max_per_login` to 2."""
     original_cap = config.SETTINGS.security.auto_create_groups_max_per_login
     low_cap = 2
     config.SETTINGS.security.auto_create_groups_max_per_login = low_cap
