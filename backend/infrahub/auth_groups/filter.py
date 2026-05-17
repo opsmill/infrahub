@@ -5,10 +5,6 @@ Patterns are tried in declared order. The first match per claim wins; subsequent
 not consulted for that claim. A pattern with a named capture group `(?P<name>...)` yields the
 captured value as the local group name; otherwise the full claim string is used. Positional
 capture groups are not used for name extraction.
-
-Compiled `re.Pattern` objects are produced by
-`SecuritySettings._compile_auto_create_groups_filter_patterns` at config load time, so by the
-time the filter is exercised here every pattern is known to compile.
 """
 
 from __future__ import annotations
