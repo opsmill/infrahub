@@ -1,10 +1,4 @@
-"""Functional tests for the auto-creation flow under `signin_sso_account`.
-
-Drives the real `signin_sso_account` (and therefore the real `autocreate_groups_for_login`
-service) against the test database — no mocking of either. Fixtures follow the pattern in
-`backend/tests/component/core/test_signin_sso_account.py` (`db`, `default_branch`,
-`register_core_models_schema`).
-"""
+"""Component tests for the auto-creation flow under `signin_sso_account`."""
 
 from __future__ import annotations
 
@@ -314,13 +308,7 @@ class TestDefaultGroupFallback:
         autocreate_filter_enabled: None,
         sso_user_default_group_configured: str,
     ) -> None:
-        """Filter active + empty claims + default configured: user lands in the default group.
-
-        Pre-refactor, the `if not sso_groups: sso_groups = [default]` swap-in lived upstream in
-        oidc.py / oauth2.py. Post-refactor it is owned by `_assign_group_memberships`; this test
-        invokes that function directly with an empty claim list, which is the path the upstream
-        callers now always take.
-        """
+        """Filter active + empty claims + default configured: user lands in the default group."""
         default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await default_group.new(db=db, name=sso_user_default_group_configured)
         await default_group.save(db=db)

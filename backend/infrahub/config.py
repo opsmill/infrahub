@@ -775,13 +775,6 @@ class SecuritySettings(BaseSettings):
         "Use a named capture group `(?P<name>...)` to set the group name; otherwise the "
         "full claim is used. Leave empty to disable auto-creation.",
     )
-    auto_create_groups_max_per_login: int = Field(
-        default=50,
-        ge=1,
-        description="Maximum number of groups that can be auto-created during a single login. "
-        "Once reached, further new groups are skipped (with a warning) but the login "
-        "still succeeds. Adding the user to groups that already exist is not limited.",
-    )
     _auto_create_groups_filter_patterns: tuple[re.Pattern[str], ...] = PrivateAttr(default_factory=tuple)
 
     @field_validator("auto_create_groups_filter", mode="after")
@@ -800,7 +793,7 @@ class SecuritySettings(BaseSettings):
             return value
 
         raw_patterns: list[str] = [value] if isinstance(value, str) else list(value)
-        raw_patterns = [p for p in raw_patterns if p and p.strip()]
+        raw_patterns = [stripped for p in raw_patterns if (stripped := p.strip())]
         for index, pattern in enumerate(raw_patterns):
             try:
                 re.compile(pattern)
@@ -829,7 +822,7 @@ class SecuritySettings(BaseSettings):
             raw_patterns = [self.auto_create_groups_filter]
         else:
             raw_patterns = list(self.auto_create_groups_filter)
-        raw_patterns = [p for p in raw_patterns if p and p.strip()]
+        raw_patterns = [stripped for p in raw_patterns if (stripped := p.strip())]
         self._auto_create_groups_filter_patterns = tuple(re.compile(p) for p in raw_patterns)
 
     @property
