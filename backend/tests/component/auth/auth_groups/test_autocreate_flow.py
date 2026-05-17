@@ -1,5 +1,3 @@
-"""Component tests for the auto-creation flow under `signin_sso_account`."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -7,11 +5,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import config
-from infrahub.auth import ExternalAuthProtocol, ExternalIdentity, signin_sso_account
+from infrahub.auth import ExternalIdentity, signin_sso_account
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
+from infrahub.external_protocols import ExternalAuthProtocol
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

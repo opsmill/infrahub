@@ -11,26 +11,47 @@ and skipped; the login completes.
 A per-login cap bounds how many new groups one login can spawn. Memberships to already-existing
 groups do NOT consume cap budget. Once the cap is reached, every subsequent matching claim that
 would have required a fresh creation is dropped and the login still completes.
+
+Three structured events accompany the flow when an event service is supplied: one per successful
+new creation, one per claim whose effective name fails identifier validation, and one per login
+that breaches the per-login cap.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Callable, Iterable
+from uuid import UUID
 
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
+from infrahub.events.group_action import (
+    GroupAutoCreateCapBreachEvent,
+    GroupAutoCreatedEvent,
+    GroupAutoCreateRejectedClaimEvent,
+)
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventMeta, InfrahubEvent
+    from infrahub.external_protocols import ExternalAuthProtocol
     from infrahub.lock import InfrahubLockRegistry
+    from infrahub.services.adapters.event import InfrahubEventService
 
     from .filter import ClaimFilter
 
 log = get_logger()
+
+MAX_CLAIM_VALUE_LENGTH = 1024
+
+
+def _truncate(value: str) -> str:
+    if len(value) <= MAX_CLAIM_VALUE_LENGTH:
+        return value
+    return value[:MAX_CLAIM_VALUE_LENGTH]
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,6 +67,15 @@ class FindOrCreateResult:
     was_created: bool
 
 
+@dataclass(frozen=True, slots=True)
+class EmissionDeps:
+    """Runtime dependencies required to emit auto-create events."""
+
+    event_service: InfrahubEventService
+    event_meta_factory: Callable[[], EventMeta]
+    protocol: ExternalAuthProtocol
+
+
 class AutoCreatedGroupsService:
     """Find-or-create CoreAccountGroup rows from external claims and assign membership."""
 
@@ -53,11 +83,12 @@ class AutoCreatedGroupsService:
         self,
         *,
         db: InfrahubDatabase,
-        account: Node,
+        account: CoreAccount,
         provider_name: str,
         lock_registry: InfrahubLockRegistry,
         max_per_login: int,
         node_manager: type[NodeManager] = NodeManager,
+        emission_deps: EmissionDeps | None = None,
     ) -> None:
         self._db = db
         self._account = account
@@ -65,6 +96,7 @@ class AutoCreatedGroupsService:
         self._lock_registry = lock_registry
         self._max_per_login = max_per_login
         self._node_manager = node_manager
+        self._emission_deps = emission_deps
 
     async def assign(
         self,
@@ -85,25 +117,28 @@ class AutoCreatedGroupsService:
 
         granted: list[str] = []
         new_creations = 0
+        dropped: list[str] = []
         seen: set[str] = set()
 
         for claim in claims:
-            name = claim_filter.name_for(claim)
-            if name is None:
+            match = claim_filter.match_for(claim)
+            if match is None:
                 continue
+            name = match.name
             if not name or name.isspace():
                 log.info(
                     "auth_groups.skip_invalid_effective_name",
                     provider_name=self._provider_name,
                     effective_name=name,
                 )
+                await self._emit_rejected_claim_event(claim=claim)
                 continue
             if name in seen:
                 continue
             seen.add(name)
 
             if new_creations < self._max_per_login:
-                result = await self._find_or_create(name)
+                result = await self._find_or_create(name=name, source_pattern=match.source_pattern)
                 group = result.group
                 if group is None:
                     continue
@@ -120,6 +155,7 @@ class AutoCreatedGroupsService:
                         effective_name=name,
                         max_per_login=self._max_per_login,
                     )
+                    dropped.append(claim)
                     continue
                 group = self._reuse_or_skip(name, existing)
                 if group is None:
@@ -128,9 +164,11 @@ class AutoCreatedGroupsService:
             if await self._add_member(group):
                 granted.append(name)
 
+        if dropped:
+            await self._emit_cap_breach_event(cap_value=self._max_per_login, dropped_claims=dropped)
         return tuple(granted)
 
-    async def _find_or_create(self, name: str) -> FindOrCreateResult:
+    async def _find_or_create(self, *, name: str, source_pattern: str) -> FindOrCreateResult:
         """Find a `CoreAccountGroup` named `name`, or create one with `origin = provider_name`.
 
         Serialized through the distributed lock registry under the `auto-create-group` namespace.
@@ -145,9 +183,10 @@ class AutoCreatedGroupsService:
             if existing is not None:
                 return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
-            group = await Node.init(db=self._db, schema=InfrahubKind.ACCOUNTGROUP)
+            group = await Node.init(db=self._db, schema=CoreAccountGroup)
             await group.new(db=self._db, name=name, origin=self._provider_name)
             await group.save(db=self._db)
+            await self._emit_created_event(group=group, source_pattern=source_pattern)
             return FindOrCreateResult(group=group, was_created=True)
 
     async def _lookup_by_name(self, name: str) -> Node | None:
@@ -187,6 +226,64 @@ class AutoCreatedGroupsService:
         members = await members_rel.get_peers(db=self._db, branch_agnostic=True, peer_type=CoreAccount)
         if self._account.id in members:
             return True
-        await members_rel.add(db=self._db, data=self._account)
+        await members_rel.add(db=self._db, data={"id": self._account.id})
         await members_rel.save(db=self._db)
         return True
+
+    async def _emit_created_event(self, *, group: CoreAccountGroup, source_pattern: str) -> None:
+        if self._emission_deps is None:
+            return
+        deps = self._emission_deps
+
+        event = GroupAutoCreatedEvent(
+            meta=deps.event_meta_factory(),
+            idp=self._provider_name,
+            triggering_user_id=UUID(self._account.id),
+            triggering_user_name=self._account.name.value,
+            protocol=deps.protocol,
+            group_id=UUID(group.id),
+            group_name=group.name.value,
+            source_pattern=source_pattern,
+            origin_value=self._provider_name,
+        )
+        await self._safe_send(event_service=deps.event_service, event=event)
+
+    async def _emit_rejected_claim_event(self, *, claim: str) -> None:
+        if self._emission_deps is None:
+            return
+        deps = self._emission_deps
+
+        event = GroupAutoCreateRejectedClaimEvent(
+            meta=deps.event_meta_factory(),
+            idp=self._provider_name,
+            triggering_user_id=UUID(self._account.id),
+            triggering_user_name=self._account.name.value,
+            protocol=deps.protocol,
+            rejected_claim_value=_truncate(claim),
+        )
+        await self._safe_send(event_service=deps.event_service, event=event)
+
+    async def _emit_cap_breach_event(self, *, cap_value: int, dropped_claims: list[str]) -> None:
+        if self._emission_deps is None:
+            return
+        deps = self._emission_deps
+
+        event = GroupAutoCreateCapBreachEvent(
+            meta=deps.event_meta_factory(),
+            idp=self._provider_name,
+            triggering_user_id=UUID(self._account.id),
+            triggering_user_name=self._account.name.value,
+            protocol=deps.protocol,
+            cap_value=cap_value,
+            dropped_claims=[_truncate(claim) for claim in dropped_claims],
+            dropped_count=len(dropped_claims),
+        )
+        await self._safe_send(event_service=deps.event_service, event=event)
+
+    @staticmethod
+    async def _safe_send(*, event_service: InfrahubEventService, event: InfrahubEvent) -> None:
+        """Send an event, swallowing send failures so they cannot abort the login."""
+        try:
+            await event_service.send(event=event)
+        except Exception:
+            log.exception("auth_groups.event_emission_failed", event_name=event.event_name)
