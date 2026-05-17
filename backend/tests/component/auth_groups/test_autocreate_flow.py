@@ -417,13 +417,7 @@ class TestDefaultGroupFallback:
 
 
 class TestPerLoginCap:
-    """Per-login soft cap on new-group creation.
-
-    The cap bounds how many BRAND-NEW groups one login can spawn. Membership additions to
-    already-existing groups do NOT consume cap budget. Once the cap is reached, every
-    subsequent matching claim that would have required a fresh creation is dropped and
-    the login still completes.
-    """
+    """Per-login soft cap on new-group creation."""
 
     async def test_cap_limits_new_creations_and_drops_surplus_matching_claims(
         self,
