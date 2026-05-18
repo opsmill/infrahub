@@ -32,10 +32,12 @@ class RelationshipPeerUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
 
         self.params["relationship_id"] = self.relationship_schema.identifier
         self.params["allowed_peer_kinds"] = allowed_peer_kinds
+        self.params["node_uuids"] = self.node_uuids
 
         # ruff: noqa: E501
         query = """
         MATCH (n:%(node_kind)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
             WHERE all(r in relationships(path) WHERE %(branch_filter)s)
@@ -120,7 +122,11 @@ class RelationshipPeerChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
@@ -149,6 +155,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
         self.params["peer_relationship_id"] = self.relationship.identifier
         self.params["parent_relationship_id"] = self.parent_relationship.identifier
         self.params["peer_parent_relationship_id"] = self.peer_parent_relationship.identifier
+        self.params["node_uuids"] = self.node_uuids
 
         parent_arrows = self.parent_relationship.get_query_arrows()
         parent_match = (
@@ -185,6 +192,7 @@ class RelationshipPeerParentValidatorQuery(RelationshipSchemaValidatorQuery):
 
         query = """
         MATCH (n:%(node_kind)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH path = (root:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
@@ -290,6 +298,7 @@ class RelationshipPeerParentChecker(ConstraintCheckerInterface):
                 relationship=relationship,
                 parent_relationship=parent_relationship,
                 peer_parent_relationship=peer_parent_relationship,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

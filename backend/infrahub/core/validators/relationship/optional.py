@@ -25,11 +25,13 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         self.params.update(branch_params)
 
         self.params["relationship_id"] = self.relationship_schema.identifier
+        self.params["node_uuids"] = self.node_uuids
 
         query = """
         // Query all Active Nodes of type
         // and store their UUID in uuids_active_node
         MATCH (n:%(node_kind)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(n)
             WHERE %(branch_filter)s
@@ -43,6 +45,7 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         // identifier all nodes with at least one active member for this relationship
         // and store their UUID in uuids_with_rel
         MATCH (n:%(node_kind)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n, uuids_active_node) {
             MATCH path = (n)-[r:IS_RELATED]-(:Relationship { name: $relationship_id })
             WHERE %(branch_filter)s
@@ -54,7 +57,8 @@ class RelationshipOptionalUpdateValidatorQuery(RelationshipSchemaValidatorQuery)
         WHERE r.status = "active"
         WITH COLLECT(node_with_rel.uuid) AS uuids_with_rel, uuids_active_node
         MATCH (n:%(node_kind)s)-[r:IS_PART_OF]->(:Root)
-        WHERE n.uuid IN uuids_active_node
+        WHERE ($node_uuids IS NULL OR n.uuid IN $node_uuids)
+          AND n.uuid IN uuids_active_node
           AND not n.uuid IN uuids_with_rel
           AND NOT exists((n)-[:IS_RELATED]-(:Relationship { name: $relationship_id }))
         """ % {"branch_filter": branch_filter, "node_kind": self.node_schema.kind}
@@ -102,7 +106,11 @@ class RelationshipOptionalChecker(ConstraintCheckerInterface):
         for query_class in self.query_classes:
             # TODO add exception handling
             query = await query_class.init(
-                db=self.db, branch=self.branch, node_schema=request.node_schema, schema_path=request.schema_path
+                db=self.db,
+                branch=self.branch,
+                node_schema=request.node_schema,
+                schema_path=request.schema_path,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())

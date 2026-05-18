@@ -45,11 +45,13 @@ class RelationshipCountUpdateValidatorQuery(RelationshipSchemaValidatorQuery):
         if max_count == 0:
             max_count = None
         self.params["max_count"] = max_count
+        self.params["node_uuids"] = self.node_uuids
 
         # ruff: noqa: E501
         query = """
         // get the nodes on these branches nodes
         MATCH (n:%(node_kind)s)
+        WHERE $node_uuids IS NULL OR n.uuid IN $node_uuids
         CALL (n) {
             MATCH path = (root:Root)<-[rroot:IS_PART_OF]-(n)
             WHERE all(r in relationships(path) WHERE %(branch_filter)s)
@@ -184,6 +186,7 @@ class RelationshipCountChecker(ConstraintCheckerInterface):
                 schema_path=request.schema_path,
                 min_count_override=min_count_override,
                 max_count_override=max_count_override,
+                node_uuids=request.node_uuids,
             )
             await query.execute(db=self.db)
             grouped_data_paths_list.append(await query.get_paths())
