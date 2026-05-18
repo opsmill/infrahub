@@ -25,6 +25,7 @@ core_base_permission = GenericSchema(
     icon="mdi:user-key",
     include_in_menu=False,
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="description", kind="Text", optional=True),
         Attr(
