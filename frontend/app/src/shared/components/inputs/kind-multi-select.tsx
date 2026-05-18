@@ -64,9 +64,7 @@ export function KindMultiSelect({
             )}
           >
             <div className="flex grow flex-wrap gap-1">
-              {value.length === 0 && (
-                <span className="text-gray-400 text-sm">{placeholder}</span>
-              )}
+              {value.length === 0 && <span className="text-gray-400 text-sm">{placeholder}</span>}
               {value.map((kind) => {
                 const node = nodes.find((n) => n.kind === kind);
                 return (
