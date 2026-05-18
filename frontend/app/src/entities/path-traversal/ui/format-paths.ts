@@ -1,4 +1,4 @@
-import type { PathResult, PathTraversalResponse } from "../domain/path-traversal.types";
+import type { PathTraversalResponse } from "../domain/path-traversal.types";
 
 export function formatPathAsText(data: PathTraversalResponse, pathIndex: number): string {
   const path = data.paths[pathIndex];
@@ -20,20 +20,4 @@ export function copyAllPathsAsText(data: PathTraversalResponse): string {
       (path, i) => `Path ${i + 1}: ${path.hops.map((hop) => hop.node.display_label).join(" → ")}`
     )
     .join("\n");
-}
-
-export function pathPreview(path: PathResult, maxHops = 3): string {
-  const names = path.hops.map((hop) => hop.node.display_label);
-  if (names.length <= maxHops) return names.join(" -> ");
-  return `${names[0]} -> ... -> ${names.at(-1)}`;
-}
-
-export function getKindCounts(path: PathResult): string {
-  const counts = new Map<string, number>();
-  for (const hop of path.hops) {
-    counts.set(hop.node.kind, (counts.get(hop.node.kind) ?? 0) + 1);
-  }
-  return Array.from(counts.entries())
-    .map(([kind, count]) => `${count}x ${kind}`)
-    .join(", ");
 }
