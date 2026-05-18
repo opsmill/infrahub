@@ -1,8 +1,10 @@
+import { Command } from "cmdk";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
-import { copyAllPathsAsText, formatPathAsText, getKindCounts, pathPreview } from "../format-paths";
+import { copyAllPathsAsText, formatPathAsText } from "../format-paths";
 import { useGetPathTraversal } from "../queries/get-path-traversal.query";
+import { getKindColor } from "../utils";
 import { PathModeForm } from "./path-mode-form";
 import {
   formValuesToParams,
@@ -69,59 +71,72 @@ export function PathModeSidebar() {
           </div>
 
           {data.paths.length > 0 ? (
-            <div className="space-y-1">
-              {data.paths.map((path, index) => (
-                <div
-                  key={index}
-                  className={`group flex items-start gap-1 rounded-md border p-2 transition-colors ${
-                    selectedPath === index
-                      ? "border-blue-300 bg-blue-50"
-                      : "border-transparent hover:border-gray-200 hover:bg-gray-50"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setParams({ selectedPath: index })}
-                    className="min-w-0 flex-1 text-left"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`font-medium text-xs ${
-                          selectedPath === index ? "text-blue-700" : "text-gray-600"
-                        }`}
-                      >
-                        Path {index + 1}
-                      </span>
-                      <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500">
-                        {path.depth} hop{path.depth !== 1 ? "s" : ""}
-                      </span>
-                    </div>
-                    <div className="mt-0.5 truncate text-[11px] text-gray-400">
-                      {pathPreview(path)}
-                    </div>
-                    <div className="mt-0.5 truncate text-[10px] text-gray-300">
-                      {getKindCounts(path)}
-                    </div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(formatPathAsText(data, index))}
-                    className="mt-0.5 flex-shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 group-hover:opacity-100"
-                    title="Copy this path"
-                  >
-                    copy
-                  </button>
-                </div>
-              ))}
-            </div>
+            <Command
+              shouldFilter={false}
+              loop
+              disablePointerSelection
+              value={String(selectedPath)}
+              onValueChange={(value) => setParams({ selectedPath: Number(value) })}
+              label="Path results"
+            >
+              <Command.List className="space-y-1">
+                {data.paths.map((path, index) => {
+                  const isExpanded = selectedPath === index;
+                  return (
+                    <Command.Item
+                      key={index}
+                      value={String(index)}
+                      onSelect={() => setParams({ selectedPath: index })}
+                      className="group block cursor-pointer rounded-md border border-transparent transition-colors hover:border-gray-200 hover:bg-gray-50 data-[selected=true]:border-blue-300 data-[selected=true]:bg-blue-50"
+                    >
+                      <div className="flex items-center gap-1 p-2">
+                        <div className="flex min-w-0 flex-1 items-center gap-2">
+                          <span
+                            className={`font-medium text-xs ${
+                              isExpanded ? "text-blue-700" : "text-gray-600"
+                            }`}
+                          >
+                            Path {index + 1}
+                          </span>
+                          <span className="rounded-full bg-gray-200 px-1.5 py-0.5 text-[10px] text-gray-500">
+                            {path.depth} hop{path.depth !== 1 ? "s" : ""}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopy(formatPathAsText(data, index));
+                          }}
+                          className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 focus-visible:opacity-100 group-hover:opacity-100"
+                          title="Copy this path"
+                        >
+                          copy
+                        </button>
+                      </div>
+                      {isExpanded && (
+                        <ul className="space-y-1 px-3 pb-2">
+                          {path.hops.map((hop, hopIndex) => (
+                            <li
+                              key={`${hop.node.id}-${hopIndex}`}
+                              className="flex items-center gap-2 text-[11px] text-gray-700"
+                            >
+                              <span
+                                className="size-1.5 shrink-0 rounded-full"
+                                style={{ backgroundColor: getKindColor(hop.node.kind) }}
+                              />
+                              <span className="truncate">{hop.node.display_label}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </Command.Item>
+                  );
+                })}
+              </Command.List>
+            </Command>
           ) : (
             <div className="text-center text-gray-400 text-sm">No paths found</div>
-          )}
-
-          {data.paths[selectedPath] && (
-            <div className="mt-3 rounded-md border border-gray-100 bg-gray-50 p-2 text-[11px] text-gray-600 leading-relaxed">
-              {formatPathAsText(data, selectedPath)}
-            </div>
           )}
         </div>
       )}
