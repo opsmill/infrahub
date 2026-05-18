@@ -16,6 +16,7 @@ would have required a fresh creation is dropped and the login still completes.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable
 
 from infrahub.core.constants import InfrahubKind
@@ -31,6 +32,19 @@ if TYPE_CHECKING:
     from .filter import ClaimFilter
 
 log = get_logger()
+
+
+@dataclass(frozen=True, slots=True)
+class FindOrCreateResult:
+    """Outcome of `AutoCreatedGroupsService._find_or_create`.
+
+    - `group is None`: a non-`CoreAccountGroup` row already holds the name; the claim is skipped.
+    - `group is not None, was_created is False`: an existing reusable group was found.
+    - `group is not None, was_created is True`: a new group was inserted by this call.
+    """
+
+    group: CoreAccountGroup | Node | None
+    was_created: bool
 
 
 class AutoCreatedGroupsService:
@@ -93,10 +107,11 @@ class AutoCreatedGroupsService:
             seen.add(name)
 
             if new_creations < max_per_login:
-                group, was_created = await self._find_or_create(name)
+                result = await self._find_or_create(name)
+                group = result.group
                 if group is None:
                     continue
-                if was_created:
+                if result.was_created:
                     new_creations += 1
             else:
                 # Cap exhausted: only allow reuse of an existing row. A claim that would
@@ -121,31 +136,25 @@ class AutoCreatedGroupsService:
         self.dropped_claims = tuple(dropped)
         return tuple(granted)
 
-    async def _find_or_create(self, name: str) -> tuple[CoreAccountGroup | Node | None, bool]:
+    async def _find_or_create(self, name: str) -> FindOrCreateResult:
         """Find a `CoreAccountGroup` named `name`, or create one with `origin = provider_name`.
 
         Serialized through the distributed lock registry under the `auto-create-group` namespace.
-        Returns `(group, was_created)`:
-
-        - `(existing, False)`: a reusable `CoreAccountGroup` already existed.
-        - `(new_group, True)`: we won the create race under the lock and saved the new row.
-        - `(None, False)`: a non-`CoreAccountGroup` `CoreGroup`-derived row already exists under
-          that name; the claim is skipped.
         """
         existing = await self._lookup_by_name(name)
         if existing is not None:
-            return self._reuse_or_skip(name, existing), False
+            return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
         lock_key = f"auto-create-group:{name}"
         async with self._lock_registry.get(name=lock_key, namespace="auto-create-group"):
             existing = await self._lookup_by_name(name)
             if existing is not None:
-                return self._reuse_or_skip(name, existing), False
+                return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
             group = await Node.init(db=self._db, schema=InfrahubKind.ACCOUNTGROUP)
             await group.new(db=self._db, name=name, origin=self._provider_name)
             await group.save(db=self._db)
-            return group, True
+            return FindOrCreateResult(group=group, was_created=True)
 
     async def _lookup_by_name(self, name: str) -> Node | None:
         """Return any `CoreGroup`-derived row named `name`, or None."""
