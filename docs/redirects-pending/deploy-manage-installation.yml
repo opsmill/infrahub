@@ -1,0 +1,70 @@
+---
+feature: Deployment & Management — Installation
+pr: TBD
+description: |
+  Splits the monolithic guides/installation.mdx (924 lines) into a hub + two
+  edition spokes under deploy-manage/install-configure/install/:
+    - index.mdx — hub (intro, prerequisites, edition links, related resources)
+    - community.mdx — Community installation methods (Docker Compose, git clone, Helm)
+    - enterprise.mdx — Enterprise installation methods (Docker Compose, Helm, bare metal)
+  The high-availability deployment examples section (lines 684–917) is not
+  included here — it moves to the HA spoke created in PR 3.
+  The original guides/installation.mdx remains on disk during iteration.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /docs/guides/installation
+    to: /docs/deploy-manage/install-configure/install/
+
+# Net-new pages introduced by this migration (canonical URLs for cross-reference)
+new_pages:
+  - path: /docs/deploy-manage/install-configure/install/
+    title: Installation (hub)
+  - path: /docs/deploy-manage/install-configure/install/community
+    title: Install Infrahub Community
+  - path: /docs/deploy-manage/install-configure/install/enterprise
+    title: Install Infrahub Enterprise
+
+# Internal cross-link references in OTHER files that point at legacy paths
+# (resolve via redirect at runtime; update to new paths at cleanup)
+cross_links_to_update:
+  - file: docs/docs/development/backend.mdx
+    line: 96
+    current: ../guides/installation.mdx
+    should_be: ../deploy-manage/install-configure/install/index.mdx
+  - file: docs/docs/faq/faq.mdx
+    line: 70
+    current: ../guides/installation.mdx
+    should_be: ../deploy-manage/install-configure/install/index.mdx
+  - file: docs/docs/guides/configuration-changes.mdx
+    line: 270
+    current: ./installation.mdx
+    should_be: ../deploy-manage/install-configure/install/index.mdx
+  - file: docs/docs/guides/upgrade.mdx
+    line: 13
+    current: ./installation.mdx
+    should_be: ../deploy-manage/install-configure/install/index.mdx
+  - file: docs/docs/guides/upgrade.mdx
+    line: 98
+    current: ./installation.mdx#enterprise
+    should_be: ../deploy-manage/install-configure/install/enterprise.mdx
+  - file: docs/docs/tutorials/getting-started/introduction-to-infrahub.mdx
+    line: 30
+    current: ../../guides/installation.mdx
+    should_be: ../../deploy-manage/install-configure/install/index.mdx
+  - file: docs/docs/tutorials/getting-started/readme.mdx
+    line: 58
+    current: ../../guides/installation.mdx
+    should_be: ../../deploy-manage/install-configure/install/index.mdx
+  - file: docs/docs/overview/next-steps.mdx
+    line: 49
+    current: ../guides/installation
+    should_be: ../deploy-manage/install-configure/install/
+  - file: docs/docs/topics/architecture.mdx
+    line: 333
+    current: ../guides/installation#high-availability-deployment-examples
+    should_be: ../deploy-manage/install-configure/production-deployment/high-availability.mdx
+  - file: docs/docs/topics/architecture.mdx
+    line: 337
+    current: ../guides/installation.mdx
+    should_be: ../deploy-manage/install-configure/install/index.mdx

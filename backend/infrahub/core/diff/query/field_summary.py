@@ -8,7 +8,7 @@ from ..model.path import NodeDiffFieldSummary, TrackingId
 
 
 class EnrichedDiffNodeFieldSummaryQuery(Query):
-    """Get node kind and names of all altered attributes and relationships for each kind"""
+    """Get node kind and names of all altered attributes and relationships for each kind."""
 
     name = "enriched_diff_node_field_summary"
     type = QueryType.READ

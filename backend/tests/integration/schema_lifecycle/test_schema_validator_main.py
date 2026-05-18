@@ -94,7 +94,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_01_person_name_regex_failure(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
-        """Add regex to TestPerson.name that does not fit existing data"""
+        """Add regex to TestPerson.name that does not fit existing data."""
         schema = copy.deepcopy(schema_person_base)
         schema["attributes"][0]["regex"] = "^Q[0-9]+$"
         return schema
@@ -114,7 +114,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_02_person_name_regex_success(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
-        """Add regex to TestPerson.name that fits existing data"""
+        """Add regex to TestPerson.name that fits existing data."""
         schema = copy.deepcopy(schema_person_base)
         schema["attributes"][0]["regex"] = "^J[a-z]+$"
         return schema
@@ -134,7 +134,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_03_tag_car_cardinality_failure(self, schema_tag_base: dict[str, Any]) -> dict[str, Any]:
-        """Update TestingTag.cars.cardinality to one, invalid"""
+        """Update TestingTag.cars.cardinality to one, invalid."""
         schema = copy.deepcopy(schema_tag_base)
         schema["relationships"][0]["cardinality"] = "one"
         return schema
@@ -159,7 +159,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_04_tag_person_cardinality_success(self, schema_tag_base: dict[str, Any]) -> dict[str, Any]:
-        """Update TestingTag.persons.cardinality to one, fits existing data"""
+        """Update TestingTag.persons.cardinality to one, fits existing data."""
         schema = copy.deepcopy(schema_tag_base)
         schema["relationships"][0]["cardinality"] = "many"
         schema["relationships"][1]["cardinality"] = "one"
@@ -185,7 +185,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_05_car_color_unique(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
-        """Update TestingCar.color to unique, invalid"""
+        """Update TestingCar.color to unique, invalid."""
         schema = copy.deepcopy(schema_car_base)
         schema["attributes"][2]["unique"] = "true"
         return schema
@@ -210,7 +210,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_07_car_generate_profile_false(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
-        """Update TestingCar.generate_profile to false"""
+        """Update TestingCar.generate_profile to false."""
         schema = copy.deepcopy(schema_car_base)
         schema["generate_profile"] = "false"
         return schema

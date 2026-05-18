@@ -73,7 +73,12 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
         return bool(peers_in_local_state or peers_untouched_in_db)
 
     async def _check_counterpart_not_set(self, node: Node, counterpart_name: str, current_name: str) -> None:
-        """Check that the counterpart relationship is not set."""
+        """Check that the counterpart relationship is not set.
+
+        Raises:
+            ValidationError: When the counterpart relationship already has peers.
+
+        """
         try:
             counterpart_relm = node.get_relationship(name=counterpart_name)
         except ValueError:
@@ -90,7 +95,12 @@ class TemplateResourcePoolExclusiveConstraint(RelationshipManagerConstraintInter
             )
 
     def _check_attribute_counterpart_not_set(self, node: Node, attribute_name: str, current_name: str) -> None:
-        """Check that the counterpart attribute does not have a user-set value."""
+        """Check that the counterpart attribute does not have a user-set value.
+
+        Raises:
+            ValidationError: When the counterpart attribute has a non-default user-set value.
+
+        """
         try:
             attr = node.get_attribute(name=attribute_name)
         except ValueError:

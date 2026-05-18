@@ -2,13 +2,18 @@ from infrahub.database import InfrahubDatabase
 
 
 async def verify_no_duplicate_relationships(db: InfrahubDatabase) -> None:
-    """Verify that no duplicate active relationships exist at the database level
+    """Verify that no duplicate active relationships exist at the database level.
+
     A duplicate is defined as
     - connecting the same two nodes
     - having the same identifier
     - having the same direction (inbound, outbound, bidirectional)
     - having the same branch
-    A more thorough check that no duplicates exist at any point in time is possible, but more complex
+    A more thorough check that no duplicates exist at any point in time is possible, but more complex.
+
+    Raises:
+        ValueError: When duplicate active relationships are found between the same pair of nodes.
+
     """
     query = """
 MATCH (a:Node)-[e1:IS_RELATED {status: "active"}]-(rel:Relationship)-[e2:IS_RELATED {branch: e1.branch, status: "active"}]-(b:Node)
@@ -38,7 +43,12 @@ RETURN a.uuid AS node_id1, b.uuid AS node_id2, rel_name, branch, direction, num_
 
 
 async def verify_no_edges_added_after_node_delete(db: InfrahubDatabase) -> None:
-    """Verify that no edges are added to a Node after it is deleted on a given branch"""
+    """Verify that no edges are added to a Node after it is deleted on a given branch.
+
+    Raises:
+        ValueError: When edges are found that were added to a deleted node after its deletion time.
+
+    """
     query = """
 // ------------
 // find deleted nodes

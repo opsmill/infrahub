@@ -326,7 +326,8 @@ async def device_part_schema_read_only_serial(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
-    serial_number starts read_only=True so it is NOT on template instances."""
+    serial_number starts read_only=True so it is NOT on template instances.
+    """
     part = _PART.duplicate()
     part.get_attribute("serial_number").read_only = True
     registry.schema.register_schema(
@@ -341,6 +342,7 @@ async def device_part_schema(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
+
     serial_number starts read_only=False so it IS on template instances.
     """
     registry.schema.register_schema(
@@ -508,7 +510,8 @@ async def device_part_schema_unique_serial(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> SchemaBranch:
     """TestDevice (generate_template=True) has COMPONENT TestPart (generate_template=False).
-    serial_number starts unique=True so it is NOT on template instances."""
+    serial_number starts unique=True so it is NOT on template instances.
+    """
     part = _PART.duplicate()
     part.get_attribute("serial_number").unique = True
     registry.schema.register_schema(

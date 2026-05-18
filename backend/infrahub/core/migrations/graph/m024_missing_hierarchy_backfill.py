@@ -53,9 +53,11 @@ class BackfillMissingHierarchyQuery(Query):
 
 
 class Migration024(GraphMigration):
-    """A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into
+    """A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into.
+
     main. This migration backfills the missing hierarchy data and accounts for the case when the branch that
     created the data has been deleted.
+
     """
 
     name: str = "024_backfill_hierarchy"

@@ -185,8 +185,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         raise ValueError("Cannot get ID for relationship node")
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Returns:
             Branch:
@@ -345,7 +346,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
     async def get_peer(self, db: InfrahubDatabase, peer_type: None = ...) -> Node: ...
 
     async def get_peer(self, db: InfrahubDatabase, peer_type: type[PeerType] | None = None) -> Any:  # noqa: ARG002
-        """Return the peer of the relationship."""
+        """Return the peer of the relationship.
+
+        Raises:
+            NodeNotFoundError: When the peer of the relationship cannot be resolved.
+
+        """
         if self._peer is None:
             await self._get_peer(db=db)
 
@@ -526,7 +532,12 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         fields: list[str] | None = None,
         user_id: str = SYSTEM_USER_ID,
     ) -> None:
-        """Resolve the peer of the relationship."""
+        """Resolve the peer of the relationship.
+
+        Raises:
+            NodeNotFoundError: When the resource pool referenced by `from_pool` cannot be found.
+
+        """
         fields = fields or []
         query_fields = dict.fromkeys(fields)
         if "display_label" not in query_fields:
@@ -1059,8 +1070,9 @@ class RelationshipManager:
         return nodes
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Note that if this relationship is Aware and source node is Agnostic, it will return -global- branch.
 
@@ -1096,9 +1108,11 @@ class RelationshipManager:
         force_refresh: bool = True,
     ) -> RelationshipUpdateDetails:
         """Fetch the latest relationships from the database and returns :
+
         - the list of nodes present on both sides
         - the list of nodes present only locally
-        - the list of nodes present only in the database
+        - the list of nodes present only in the database.
+
         """
         if not force_refresh and self._relationship_id_details is not None:
             return self._relationship_id_details
@@ -1211,7 +1225,12 @@ class RelationshipManager:
         user_id: str = SYSTEM_USER_ID,
         at: Timestamp | None = None,
     ) -> bool:
-        """Replace and Update the list of relationships with this one."""
+        """Replace and Update the list of relationships with this one.
+
+        Raises:
+            ValidationError: When the supplied data cannot form a valid relationship.
+
+        """
         if not isinstance(data, list):
             list_data: Sequence[str | Node | dict[str, Any] | PeerWithRelationshipMetadata | None] = [data]
         else:
@@ -1280,7 +1299,12 @@ class RelationshipManager:
         return changed
 
     async def add(self, data: dict[str, Any] | Node, db: InfrahubDatabase) -> bool:
-        """Add a new relationship to the list of existing ones, avoid duplication."""
+        """Add a new relationship to the list of existing ones, avoid duplication.
+
+        Raises:
+            ValidationError: When the supplied data cannot form a valid relationship.
+
+        """
         if not isinstance(data, self.rel_class | dict) and not hasattr(data, "_schema"):
             raise ValidationError({self.name: f"Invalid data provided to form a relationship {data}"})
 
@@ -1315,7 +1339,12 @@ class RelationshipManager:
         peer_id: str | UUID,
         db: InfrahubDatabase,
     ) -> bool:
-        """Remove a peer id from the local relationships list"""
+        """Remove a peer id from the local relationships list.
+
+        Raises:
+            IndexError: When no relationship matches the provided `peer_id`.
+
+        """
         for idx, rel in enumerate(await self.get_relationships(db=db)):
             if str(rel.peer_id) != str(peer_id):
                 continue

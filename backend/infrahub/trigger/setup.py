@@ -21,8 +21,10 @@ if TYPE_CHECKING:
 def compare_automations(
     target: AutomationCore, existing: Automation, trigger_type: TriggerType | None, force_update: bool = False
 ) -> TriggerComparison:
-    """Compare an AutomationCore with an existing Automation object to identify if they are identical,
+    """Compare an AutomationCore with an existing Automation object to identify if they are identical,.
+
     if it's a branch specific automation and the branch filter may be different, or if they are different.
+
     """
     if force_update:
         return TriggerComparison.UPDATE
@@ -160,7 +162,7 @@ async def setup_triggers(
 
 
 async def gather_all_automations(client: PrefectClient) -> list[Automation]:
-    """Gather all automations from the Prefect server
+    """Gather all automations from the Prefect server.
 
     By default the Prefect client only retrieves a limited number of automations, this function
     retrieves them all by paginating through the results. The default within Prefect is 200 items,

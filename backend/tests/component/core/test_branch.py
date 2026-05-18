@@ -445,7 +445,7 @@ async def test_delete_branch_after_merge_preserves_node(
 
 
 async def test_create_branch(db: InfrahubDatabase, empty_database: None) -> None:
-    """Validate that creating a branch with quotes in descriptions work and are properly handled with params"""
+    """Validate that creating a branch with quotes in descriptions work and are properly handled with params."""
     branch_name = "branching-out"
     description = "It's supported with quotes"
     await create_branch(branch_name=branch_name, db=db, description=description)

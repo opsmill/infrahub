@@ -133,6 +133,10 @@ export interface paths {
         /**
          * Get File
          * @description Retrieve a file from a git repository.
+         *
+         *     Raises:
+         *         CommitNotFoundError: When no commit is provided and the repository has no commits.
+         *         PropagatedFromWorkerError: When the worker returns an error response while reading the file.
          */
         get: operations["get_file_api_file__repository_id___file_path__get"];
         put?: never;
@@ -396,6 +400,9 @@ export interface paths {
          *     Requires `VIEW` permission on the FileObject node.
          *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
          *     filename.
+         *
+         *     Raises:
+         *         HTTPException: When the requested kind does not inherit from the FileObject schema.
          */
         get: operations["download_file_object_by_hfid_api_storage_files_by_hfid__kind__get"];
         put?: never;
@@ -420,6 +427,9 @@ export interface paths {
          *     Requires `VIEW` permission on the FileObject node.
          *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
          *     filename.
+         *
+         *     Raises:
+         *         NodeNotFoundError: When no FileObject node matches the provided storage_id.
          */
         get: operations["download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get"];
         put?: never;
@@ -2340,7 +2350,7 @@ export interface components {
             warnings?: components["schemas"]["SchemaWarning"][];
             /**
              * Schema Updated
-             * @description Indicates if the loading of the schema changed the existing schema
+             * @description Indicates if the loading of the schema changed the existing schema.
              */
             readonly schema_updated: boolean;
         };

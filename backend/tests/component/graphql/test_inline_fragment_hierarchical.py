@@ -136,9 +136,11 @@ async def test_computed_attr_graphql_query_executes_successfully(
     default_branch: Branch,
     hierarchical_schema: SchemaBranch,
 ) -> None:
-    """The GraphQL query generated for a computed attribute that references a
+    """The GraphQL query generated for a computed attribute that references a.
+
     peer-only parent attribute must use an inline fragment and execute without
     errors against the database.
+
     """
     continent = await Node.init(db=db, schema="TestingContinent", branch=default_branch)
     await continent.new(db=db, name="Europe", shortname="eu")
@@ -172,8 +174,10 @@ async def test_display_label_graphql_query_executes_successfully(
     default_branch: Branch,
     hierarchical_schema: SchemaBranch,
 ) -> None:
-    """The GraphQL query generated for a display label that references a
+    """The GraphQL query generated for a display label that references a.
+
     peer-only parent attribute must use an inline fragment and execute without errors.
+
     """
     continent = await Node.init(db=db, schema="TestingContinent", branch=default_branch)
     await continent.new(db=db, name="Asia", shortname="as")
@@ -205,8 +209,10 @@ async def test_hfid_graphql_query_executes_successfully(
     default_branch: Branch,
     hierarchical_schema: SchemaBranch,
 ) -> None:
-    """The GraphQL query generated for an HFID that references a peer-only
+    """The GraphQL query generated for an HFID that references a peer-only.
+
     parent attribute must use an inline fragment and execute without errors.
+
     """
     continent = await Node.init(db=db, schema="TestingContinent", branch=default_branch)
     await continent.new(db=db, name="Africa", shortname="af")

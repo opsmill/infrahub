@@ -177,8 +177,10 @@ async def test_concurrent_many_relationship_queries_recover_from_pool_exhaustion
     default_branch_stp: Branch,
     test_data_stp: None,
 ) -> None:
-    """Test that concurrent GraphQL queries hitting many-relationship resolvers
+    """Test that concurrent GraphQL queries hitting many-relationship resolvers.
+
     recover from Neo4j server thread pool exhaustion via retry_db_transaction.
+
     """
     num_concurrent = 10
     results = await asyncio.gather(
@@ -214,8 +216,10 @@ async def test_concurrent_queries_fail_without_retries(
     default_branch_stp: Branch,
     test_data_stp: None,
 ) -> None:
-    """Test that without retries, concurrent queries on a small thread pool fail
+    """Test that without retries, concurrent queries on a small thread pool fail.
+
     with TransientError, proving the retry mechanism is needed.
+
     """
     # Must be significantly higher than thread_pool_max_size to guarantee exhaustion.
     # Each coroutine makes multiple sequential DB calls; we need enough concurrent

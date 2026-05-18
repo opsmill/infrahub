@@ -219,7 +219,12 @@ class MainSettings(BaseSettings):
 
     @property
     def infrahub_address(self) -> str:
-        """This is the address that the Prefect worker will use to connect to Infrahub API."""
+        """This is the address that the Prefect worker will use to connect to Infrahub API.
+
+        Raises:
+            InitializationError: When `internal_address` has not been configured.
+
+        """
         if self.internal_address:
             return self.internal_address
 
@@ -342,7 +347,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class DevelopmentSettings(BaseSettings):
-    """The development settings are only relevant for local development"""
+    """The development settings are only relevant for local development."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DEV_")
 
@@ -588,7 +593,7 @@ def _default_scopes() -> list[str]:
 
 
 class SecurityOIDCBaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
@@ -606,7 +611,7 @@ class SecurityOIDCSettings(SecurityOIDCBaseSettings):
 
 
 class SecurityOIDCGoogle(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_GOOGLE_")
 
@@ -624,13 +629,13 @@ class SecurityOIDCGoogle(SecurityOIDCSettings):
 
 
 class SecurityOIDCProvider1(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER1_")
 
 
 class SecurityOIDCProvider2(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER2_")
 
@@ -644,7 +649,7 @@ class SecurityOIDCProviderSettings(BaseModel):
 
 
 class SecurityOAuth2BaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
@@ -654,7 +659,7 @@ class SecurityOAuth2BaseSettings(BaseSettings):
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
     client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
@@ -666,13 +671,13 @@ class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
 
 
 class SecurityOAuth2Provider1(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER1_")
 
 
 class SecurityOAuth2Provider2(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER2_")
 
@@ -936,8 +941,10 @@ _DESTINATION_NAME_RE = re.compile(r"^[a-z0-9_]+$")
 
 
 def _load_destination_from_env(name: str) -> LogForwardingDestination:
-    """Build a LogForwardingDestination by scanning os.environ for keys matching
+    """Build a LogForwardingDestination by scanning os.environ for keys matching.
+
     INFRAHUB_LOG_FORWARDING_DESTINATION_{NAME_UPPER}_{FIELD_UPPER}.
+
     """
     prefix = f"INFRAHUB_LOG_FORWARDING_DESTINATION_{name.upper()}_"
     valid_field_names = set(LogForwardingDestination.model_fields.keys()) - {"name"}

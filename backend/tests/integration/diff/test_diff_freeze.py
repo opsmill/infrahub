@@ -358,7 +358,7 @@ class TestDiffFreeze(TestInfrahubApp):
         initial_dataset: dict[str, Node],
         client: InfrahubClient,
     ) -> None:
-        """Test a branch-tracking diff using a previous frozen diff
+        """Test a branch-tracking diff using a previous frozen diff.
 
         This validates the scenario where:
         1. Create a branch

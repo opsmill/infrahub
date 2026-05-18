@@ -369,7 +369,7 @@ async def test_search_anywhere_by_string_no_results(
     register_core_models_schema: None,
     register_builtin_models_schema: None,
 ) -> None:
-    """Validate that the GraphQL an empty result is returned as an empty array and not a `null` value"""
+    """Validate that the GraphQL an empty result is returned as an empty array and not a `null` value."""
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 

@@ -1,0 +1,375 @@
+---
+title: Relationships
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Relationships
+
+A `Relationship` in Infrahub represents a typed link between two nodes. Unlike a simple foreign key, relationships have a `kind` that determines how they appear in the UI and how they behave during deletion and hierarchy traversal.
+
+## Relationship kinds
+
+- `Generic`: A flexible relationship with no specific functional significance. It is commonly used when an entity doesn't fit into specialized categories like `Component` or `Parent`.
+- `Attribute`: A relationship where related entities' attributes appear directly in the detailed view and list views. It's used for linking key information, like statuses or roles.
+- `Component`: This relationship indicates that one entity is part of another and appears in a separate tab in the detailed view of a node in the UI. It represents a composition-like relationship where one node is a component of the current node.
+- `Parent`: This relationship defines a hierarchical link, with the parent entity often serving as a container or owner of another node. **Parent relationships are mandatory** and allow filtering in the UI, such as showing all components for a given parent.
+- `Group` (system-managed): Defines a relationship where a node (inheriting from `CoreNode`) is a member or subscriber to a [group](../groups/overview) (inheriting from `CoreGroup`). Do not model this in user schemas; it's created/managed by Infrahub. These relationships appear in the "Manage Groups" form and enable organizational concepts fundamental to Infrahub's architecture.
+- `Profile`: A special relationship where a node is assigned a profile (inheriting from `CoreProfile`), visible during creation or updates through a "select profile" dropdown.
+
+<details>
+  <summary>Relationship kinds behavior in the UI</summary>
+
+  | ID                        | cardinality | Display in  List View | Display in  Detailed View | Display in Tab |
+  | ------------------------- | ----------- | --------------------- | ------------------------- | -------------- |
+  | `Generic`                 | `one`       | No                    | Yes                       | No             |
+  | `Generic`                 | `many`      | No                    | No                        | Yes            |
+  | `Attribute`               | `one`       | Yes                   | Yes                       | No             |
+  | `Attribute`               | `many`      | Yes                   | Yes                       | No             |
+  | `Component`               | `one`       | No                    | Yes                       | No             |
+  | `Component`               | `many`      | No                    | No                        | Yes            |
+  | `Hierarchical Parent`     | `one`       | Yes                   | Yes                       | No             |
+  | `Hierarchical  Children`  | `many`      | No                    | No                        | Yes            |
+  | `Parent`                  | `one`       | Yes                   | Yes                       | No             |
+
+</details>
+
+:::info Complementary relationship
+
+Component and Parent typically belong together:
+The `Component` relationship is typically paired with the `Parent` relationship.
+This ensures a strong relationship in both directions, where the parent node can manage its components, and the component refers back to its parent.
+
+:::
+
+:::warning Cascade deletion
+
+Relationships of kind `Component` include an implicit `on_delete: cascade`. This means that if you delete a node with a `Component` relationship, the related nodes connected by this relationship will also be deleted.
+
+:::
+
+:::info Internal Usage
+
+Group and Profile are **internal** relationship kinds:
+The `Group` and `Profile` relationship kinds are internal types and should not be directly used by the user in their schema.
+These are automatically handled by the system for managing memberships and configurations.
+
+:::
+
+:::info Object Template
+
+Relationships of kind `Component` will automatically be covered by the template when enabling template generation on a given schema node. See the [object-template topic](../object-templates/overview) for more information.
+
+:::
+
+To help you understand the relationship types better, here's an example schema using a real-world model of **Car**, **Person** and **Wheel**.
+
+```yaml
+version: "1.0"
+
+nodes:
+  - name: Car
+    namespace: Auto
+    description: "A vehicle used for transportation."
+    attributes:
+      - name: model
+        kind: Text
+        description: "The model of the car."
+      - name: year
+        kind: Number
+        description: "The manufacturing year of the car."
+      - name: license_plate
+        kind: Text
+        unique: true
+        description: "License plate number."
+    relationships:
+      - name: owner
+        peer: AutoPerson
+        kind: Attribute
+        cardinality: one
+        optional: false
+      - name: wheels
+        peer: AutoWheel
+        kind: Component
+        cardinality: many
+
+  - name: Wheel
+    namespace: Auto
+    description: "A wheel of the car, a critical component for movement."
+    attributes:
+      - name: wheel_size
+        kind: Number
+        description: "Size of the wheel in inches."
+      - name: type
+        kind: Text
+        description: "Type of the wheel (e.g., alloy, steel)."
+    relationships:
+      # A wheel must belong to a car, hence the Parent relationship is mandatory
+      - name: car
+        peer: AutoCar
+        kind: Parent
+        cardinality: one
+        optional: false
+
+  - name: Person
+    namespace: Auto
+    description: "A person who may own a car."
+    attributes:
+      - name: first_name
+        kind: Text
+        description: "First name of the person."
+      - name: last_name
+        kind: Text
+        description: "Last name of the person."
+      - name: driver_license_number
+        kind: Text
+        unique: true
+        description: "Driver's license number."
+    relationships:
+      - name: cars
+        peer: AutoCar
+        kind: Component
+        cardinality: many
+        optional: true
+```
+
+- A `Car` node might have an `owner` attribute linking it to a `Person`. This relationship will be visible in the car's detailed view.
+- A `Wheel` is a component of a `Car`, meaning wheels are an essential part of the car. The wheels will be displayed in a separate "Components" tab.
+- A `Car` can have a `ProfileCar` selected during its creation or update. The insurance details appear in the form where you can pick or assign a Profile for the car.
+
+## Direction and identifier
+
+Relationships in Infrahub schema connect nodes while defining how those connections behave and are traversed.
+Direction and identifier both constitute critical qualities for good relationship management.
+
+### Direction
+
+The **direction** attribute defines the flow of the relationship:
+
+- **Bidirectional**: Supports traversal in both directions. This is the **default value** if no direction is indicated.
+- **Outbound**: Defines a relationship that runs from the source node to the target node.
+- **Inbound**: Defines a relationship that flows from the target node to the source node.
+
+Even if a relationship is `bidirectional`, you still have to create it on both nodes to allow you to easily traverse them in both directions.
+
+For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship#direction)
+
+### Identifier
+
+To maintain consistent traversal, the **identifier** serves as the relationship's unique key and must match on both ends.
+If no identifier is provided, one will be generated automatically. It is encouraged to establish distinct ones for clarity and maintenance.
+
+If no identifier is specified, one will be automatically generated in the format `<node_kind_a>__<node_kind_z>`.
+Example: `infraautonomoussystem__organizationgeneric`
+
+For detailed information, see the [Relationship Reference Guide](../reference/schema/relationship#identifier)
+
+### Examples
+
+<details>
+  <summary>Example 1: Bidirectional Relationship with `device__interfaces`</summary>
+
+Here's an example schema that uses the identifier `device__interfaces` in a bidirectional connection to ensure that devices and interfaces can refer to each other seamlessly.
+
+```yaml {6,15} showLineNumbers
+  - name: Interface
+    namespace: Infra
+    relationships:
+      - name: device
+        peer: InfraDevice
+        identifier: "device__interfaces"
+        optional: false
+        cardinality: one
+        kind: Parent
+
+  - name: Device
+    namespace: Infra
+    relationships:
+      - name: interfaces
+        peer: InfraInterface
+        identifier: "device__interfaces"
+        cardinality: many
+        kind: Component
+```
+
+</details>
+
+<details>
+  <summary>Example 2: Relationships in InfraBGPGroup</summary>
+
+`InfraBGPGroup` has two relationships with the same node, `InfraAutonomousSystem`. To avoid issues with the auto-generated identifiers, we should specifically specify the ones we want.
+By including `bgppeergroup__local_as` and `bgppeergroup__remote_as`, we can clearly represent each relationship role.
+
+```yaml {5-6,11-12} showLineNumbers
+- name: BGPGroup
+  namespace: Infra
+  relationships:
+    - name: local_as
+      identifier: "bgppeergroup__local_as"
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+    - name: remote_as
+      identifier: "bgppeergroup__remote_as"
+      peer: InfraAutonomousSystem
+      optional: true
+      cardinality: one
+      kind: Attribute
+```
+
+</details>
+
+<details>
+  <summary>Example 3: Reflexive Relationships in Employee</summary>
+
+This example demonstrates how direction (`inbound` for `leader` and `outbound` for `team_members`) distinguishes connections within the same node type `OrganizationEmployee`.
+The `employee_team_relationship` identifier connects the `leader` and `team_members` relationships while maintaining their distinct roles.
+Since both sides of the relationship share the same `Kind`, we must avoid the default `bidirectional` assumption, therefore we have to specify a direction.
+
+```yaml {15-16,24-25} showLineNumbers
+nodes:
+  - name: Employee
+    namespace: Organization
+    description: "An employee in the organization with leadership and team relationships."
+    label: "Employee"
+    attributes:
+      - name: name
+        kind: Text
+        unique: true
+        description: "Name of the employee."
+    relationships:
+      - name: leader
+        label: Leader
+        peer: OrganizationEmployee
+        direction: inbound
+        identifier: "employee_team_relationship"
+        cardinality: one
+        kind: Attribute
+        optional: true
+        description: "The leader guiding this team member."
+      - name: team_members
+        label: Team Members
+        peer: OrganizationEmployee
+        direction: outbound
+        identifier: "employee_team_relationship"
+        cardinality: many
+        kind: Attribute
+        optional: true
+        description: "Employees who are part of this leader's team."
+```
+
+</details>
+
+### Generic node relationships
+
+When creating relationships between generic nodes and their implementations, always explicitly define matching identifiers:
+
+<details>
+  <summary>Example: Generic Interface and Device Relationship</summary>
+
+```yaml {7,16,27,36} showLineNumbers
+generics:
+  - name: Interface
+    namespace: Test
+    relationships:
+      - name: device
+        peer: TestDevice
+        identifier: "device__interface"  # Must match on both sides
+        optional: false
+        cardinality: one
+        kind: Parent
+
+nodes:
+  - name: Device
+    namespace: Test
+    relationships:
+      - name: interfaces
+        peer: TestInterface
+        identifier: "device__interface"  # Must match generic's identifier
+        cardinality: many
+        kind: Component
+        on_delete: cascade
+
+  - name: NetworkInterface
+    namespace: Infra
+    inherit_from:
+      - TestInterface
+    # Inherits the device relationship with correct identifier
+
+  - name: Router
+    namespace: Infra
+    inherit_from:
+      - TestDevice
+    # Inherits the interfaces relationship with correct identifier
+```
+
+In this example:
+
+- The generic `TestInterface` and `TestDevice` define the relationship with explicit identifier `device__interface`
+- Specific implementations (`InfraNetworkInterface`, `InfraRouter`) inherit these relationships with matching identifiers
+- Cascade deletion will work correctly because identifiers match on both sides
+
+</details>
+
+## Common parent relationships
+
+When defining relationships between nodes, you can ensure that related nodes share the same parent using the `common_parent` property.
+
+This is particularly useful for components that must belong to the same parent entity.
+
+```yaml {8} showLineNumbers
+- name: LagInterfaceL3
+  [...]
+  relationships:
+    - name: members
+      peer: InfraInterfaceL3
+      optional: true
+      cardinality: many
+      kind: Generic
+      common_parent: device
+    - name: device
+      peer: InfraDevice
+      kind: Parent
+      optional: false
+      cardinality: one
+- name: InterfaceL3
+  [...]
+  relationships:
+    - name: lag
+      peer: InfraLagInterfaceL3
+      optional: true
+      cardinality: one
+      kind: Generic
+      common_parent: device
+    - name: device
+      peer: InfraDevice
+      kind: Parent
+      optional: false
+      cardinality: one
+```
+
+:::info Important
+
+You need to define it on the **two** sides of the relationship.
+
+:::
+
+In this example, the `common_parent: device` property ensures that all members of this relationship must have the same device as their parent.
+
+This prevents users from adding interfaces from different devices to the same LAG interface group.
+
+:::warning Limitations
+
+- The parent relationship name must be the same on both sides of the relationship
+- Only standard parent relationships are supported (hierarchical parent relationships are not supported)
+- The parent relationship must be of kind `Parent` (and cardinality `one`)
+
+:::
+
+## Related concepts
+
+- [Nodes & attributes](./nodes-and-attributes) — Node and attribute definitions
+- [Generics & inheritance](./generics-and-inheritance) — Sharing relationships across node types
+- [Reference: Relationship](../reference/schema/relationship) — Full relationship property reference

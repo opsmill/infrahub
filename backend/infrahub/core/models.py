@@ -468,7 +468,12 @@ class HashableModel(BaseModel):
         return tuple(getattr(self, key) for key in self._sort_by if hasattr(self, key))
 
     def _sorting_keys(self, other: HashableModel) -> tuple[list[Any], list[Any]]:
-        """Retrieve the values of the attributes listed in the _sort_key list, for both objects."""
+        """Retrieve the values of the attributes listed in the _sort_key list, for both objects.
+
+        Raises:
+            TypeError: When sorting is not supported for either object because `_sort_by` is not defined.
+
+        """
         if not self._sort_by:
             raise TypeError(f"Sorting not supported for instance of {self.__class__.__name__}")
 
@@ -508,7 +513,7 @@ class HashableModel(BaseModel):
 
     @staticmethod
     def _organize_sub_items(items: list[HashableModel], shared_ids: set[str]) -> dict[tuple[Any], HashableModel]:
-        """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids"""
+        """Convert a list of HashableModel into a dict with the sorting_id is the key, or the id if it was provided as part of the shared_ids."""
         sub_items = {}
         for item in items:
             if item.id and item.id in shared_ids:
@@ -522,9 +527,14 @@ class HashableModel(BaseModel):
     def update_list_hashable_model(
         field_name: str, attr_local: list[HashableModel], attr_other: list[HashableModel]
     ) -> list[Any]:
-        """Merging the list is not easy,
+        """Merging the list is not easy,.
+
         we need to create a unique id based on the sorting keys
-        and if we have 2 sub items with the same key we can merge them recursively with update()
+        and if we have 2 sub items with the same key we can merge them recursively with update().
+
+        Raises:
+            ValueError: When items cannot produce a unique `_sorting_id`, or when duplicate sorting ids are detected.
+
         """
         # Identify all nodes that are sharing a real IDs
         local_sub_real_ids = {item.id for item in attr_local if item.id}

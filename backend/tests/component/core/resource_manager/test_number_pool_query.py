@@ -186,8 +186,10 @@ class TestNumberPoolGetAllocated:
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """When a node is deleted on main branch which is the only branch having this allocated value,
+        """When a node is deleted on main branch which is the only branch having this allocated value,.
+
         NumberPoolGetAllocated should not return it.
+
         """
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
@@ -278,8 +280,10 @@ class TestNumberPoolGetAllocated:
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """When HAS_SOURCE is cleared on the same branch it was created on and there are no additional branches which contain
+        """When HAS_SOURCE is cleared on the same branch it was created on and there are no additional branches which contain.
+
         this allocation, the allocation must not appear.
+
         """
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
@@ -311,9 +315,12 @@ class TestNumberPoolGetAllocated:
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """1. Create incidents on main
+        """1.
+
+        Create incidents on main
         2. Fork br1 and clear the source on br1
-        3. Clear the source on main
+        3. Clear the source on main.
+
         """
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)
@@ -352,8 +359,10 @@ class TestNumberPoolGetAllocated:
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """Scenario: on a child branch, source=pool -> source=null -> source=pool again; then the
+        """Scenario: on a child branch, source=pool -> source=null -> source=pool again; then the.
+
         main-branch active edge is closed so that it cannot satisfy the query on its own.
+
         """
         # Step 1: creation on main.
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
@@ -396,8 +405,11 @@ class TestNumberPoolGetAllocated:
         default_branch: Branch,
         run_number_pool_validation: None,
     ) -> None:
-        """Fork a branch from main, clear the source on forked branch. Merge the forked branch back into main. The value
+        """Fork a branch from main, clear the source on forked branch.
+
+        Merge the forked branch back into main. The value
         should not be allocated anymore.
+
         """
         incident_schema = registry.schema.get_node_schema(name=INCIDENT.kind, branch=default_branch)
         incidents = await create_objects(db=db, schema=incident_schema, branch=default_branch.name, start=1, end=3)

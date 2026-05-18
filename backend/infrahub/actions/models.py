@@ -32,7 +32,7 @@ class EventGroupMember(BaseModel):
 
 
 class CoreAction(BaseModel):
-    """CoreAction generic"""
+    """CoreAction generic."""
 
 
 class CoreGeneratorAction(CoreAction):
@@ -58,7 +58,7 @@ class CoreGroupTriggerRule(CoreTriggerRule):
 
 
 class CoreNodeTriggerMatch(BaseModel):
-    """Node Trigger Match Generic"""
+    """Node Trigger Match Generic."""
 
 
 class CoreNodeTriggerAttributeMatch(CoreNodeTriggerMatch):

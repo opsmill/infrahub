@@ -87,9 +87,10 @@ class BranchMerger:
 
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
+
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
          - having a faster way to pull a previous version of the schema
-         - using the diff generated from the data
+         - using the diff generated from the data.
         """
         if self._initial_source_schema:
             return self._initial_source_schema
@@ -151,7 +152,14 @@ class BranchMerger:
         self,
         at: str | Timestamp | None = None,
     ) -> EnrichedDiffRoot:
-        """Merge the current branch into main."""
+        """Merge the current branch into main.
+
+        Raises:
+            ValidationError: When the source branch is the default branch or when there are
+                unresolved conflicts.
+            MergeFailedError: When the underlying graph merge raises an exception.
+
+        """
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
         log.info("Updating diff for merge")

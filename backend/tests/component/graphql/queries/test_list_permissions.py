@@ -174,7 +174,7 @@ async def object_permissions_data(
 
 class TestObjectPermissions:
     async def test_first_account_tags(self, db: InfrahubDatabase, object_permissions_data: PermissionsTestData) -> None:
-        """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
+        """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches."""
         session = AccountSession(
             authenticated=True,
             account_id=object_permissions_data.account.id,
@@ -203,7 +203,7 @@ class TestObjectPermissions:
     async def test_first_account_tags_non_main_branch(
         self, db: InfrahubDatabase, object_permissions_data: PermissionsTestData
     ) -> None:
-        """In other branches the permissions for the first account is less restrictive"""
+        """In other branches the permissions for the first account is less restrictive."""
         branch2 = await create_branch(branch_name="pr-12345", db=db)
         session = AccountSession(
             authenticated=True,
@@ -229,7 +229,7 @@ class TestObjectPermissions:
     async def test_first_account_list_permissions_for_generics(
         self, db: InfrahubDatabase, object_permissions_data: PermissionsTestData
     ) -> None:
-        """In the main branch the first account doesn't have the permission to make changes"""
+        """In the main branch the first account doesn't have the permission to make changes."""
         session = AccountSession(
             authenticated=True,
             account_id=object_permissions_data.account.id,
@@ -271,7 +271,7 @@ class TestObjectPermissions:
     async def test_first_account_ipprefix_pool(
         self, db: InfrahubDatabase, object_permissions_data: PermissionsTestData
     ) -> None:
-        """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches"""
+        """In the main branch the first account doesn't have the permission to make changes, but it has in the other branches."""
         session = AccountSession(
             authenticated=True,
             account_id=object_permissions_data.account.id,
@@ -300,7 +300,7 @@ class TestObjectPermissions:
     async def test_first_account_tags_non_main_branch_non_isolated(
         self, db: InfrahubDatabase, object_permissions_data: PermissionsTestData
     ) -> None:
-        """In other branches the permissions for the first account should be updated if we modify the main branch"""
+        """In other branches the permissions for the first account should be updated if we modify the main branch."""
         branch2 = await create_branch(branch_name="pr-123abc", db=db)
 
         session = AccountSession(
@@ -449,7 +449,7 @@ class TestAttributePermissions:
     async def test_first_account_tags_main_branch(
         self, db: InfrahubDatabase, attribute_permissions_data: PermissionsTestData
     ) -> None:
-        """In the main branch the first account doesn't have the permission to make changes, so attribute cannot be changed"""
+        """In the main branch the first account doesn't have the permission to make changes, so attribute cannot be changed."""
         session = AccountSession(
             authenticated=True,
             account_id=attribute_permissions_data.account.id,
@@ -472,7 +472,7 @@ class TestAttributePermissions:
     async def test_first_account_tags_non_main_branch(
         self, db: InfrahubDatabase, attribute_permissions_data: PermissionsTestData
     ) -> None:
-        """In other branches the permissions for the first account is less restrictive, attribute should be updatable"""
+        """In other branches the permissions for the first account is less restrictive, attribute should be updatable."""
         branch2 = await create_branch(branch_name="pr-12345", db=db)
         session = AccountSession(
             authenticated=True,
