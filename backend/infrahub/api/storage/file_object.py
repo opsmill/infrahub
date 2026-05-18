@@ -109,6 +109,10 @@ async def download_file_object_by_hfid(
     Requires `VIEW` permission on the FileObject node.
     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
     filename.
+
+    Raises:
+        HTTPException: When the requested kind does not inherit from the FileObject schema.
+
     """
     schema = registry.schema.get_node_schema(name=kind, branch=branch_params.branch, duplicate=False)
 
@@ -150,6 +154,10 @@ async def download_file_object_by_storage_id(
     Requires `VIEW` permission on the FileObject node.
     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
     filename.
+
+    Raises:
+        NodeNotFoundError: When no FileObject node matches the provided storage_id.
+
     """
     file_objects = await registry.manager.query(
         db=db,

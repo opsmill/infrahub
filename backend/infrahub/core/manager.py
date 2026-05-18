@@ -213,7 +213,7 @@ class NodeManager:
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
-        """Return the total number of nodes using a given filter
+        """Return the total number of nodes using a given filter.
 
         Args:
             schema (NodeSchema): Infrahub Schema or Name of a schema present in the registry.
@@ -1033,7 +1033,13 @@ class NodeManager:
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
     ) -> Node | SchemaProtocol | None:
-        """Return one node based on its ID."""
+        """Return one node based on its ID.
+
+        Raises:
+            NodeNotFoundError: When the node cannot be found and `raise_on_error` is True,
+                or when the found node does not match the requested kind.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         result = await cls.get_many(
@@ -1093,7 +1099,12 @@ class NodeManager:
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
     ) -> dict[str, Node]:
-        """Return a list of nodes based on their IDs."""
+        """Return a list of nodes based on their IDs.
+
+        Raises:
+            SchemaNotFoundError: When the schema associated with one of the nodes cannot be found.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -1339,7 +1350,7 @@ class NodeManager:
         cascade_delete: bool = True,
         user_id: str = SYSTEM_USER_ID,
     ) -> list[Node]:
-        """Returns list of deleted nodes because of cascading deletes"""
+        """Returns list of deleted nodes because of cascading deletes."""
         branch = await registry.get_branch(branch=branch, db=db)
         nodes_to_delete = copy(nodes)
         if cascade_delete:

@@ -1,5 +1,4 @@
-"""Two-step conflict resolution: a conflict is produced, then manually resolved
-mid-diff by an edit on one branch, then the merge proceeds clean.
+"""Two-step conflict resolution: produce a conflict, manually resolve it mid-diff, then merge clean.
 
 Each test stages a conflict (delete-vs-update-rel on either side), verifies the
 conflict is present in the enriched diff, resolves it manually, re-runs

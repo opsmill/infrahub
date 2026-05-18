@@ -55,6 +55,10 @@ class NodeSchema(GeneratedNodeSchema):
         Checks:
             - Check that protected attributes and relationships are not overridden before inheriting them from interface.
             - Check that the attribute types to be inherited are same kind.
+
+        Raises:
+            ValueError: When an attribute or relationship overrides a protected one, has a mismatched kind, or has a mismatched peer.
+
         """
         for attribute in self.attributes:
             if attribute.name in interface.attribute_names:
@@ -103,8 +107,10 @@ class NodeSchema(GeneratedNodeSchema):
         return schema
 
     def get_labels(self) -> list[str]:
-        """Return the labels for this object, composed of the kind
+        """Return the labels for this object, composed of the kind.
+
         and the list of Generic this object is inheriting from.
+
         """
         labels: list[str] = [self.kind] + self.inherit_from
         if self.namespace not in ["Schema", "Internal"] and InfrahubKind.GENERICGROUP not in self.inherit_from:

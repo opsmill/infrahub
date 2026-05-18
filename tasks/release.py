@@ -99,7 +99,12 @@ def ship(context: Context) -> None:
 
 @task
 def update_helm_chart(context: Context, chart_repo: str | None = "helm/") -> None:  # noqa: ARG001
-    """Update helm/Chart.yaml with the current version from pyproject.toml."""
+    """Update helm/Chart.yaml with the current version from pyproject.toml.
+
+    Raises:
+        ValueError: When ``appVersion`` or ``version`` is missing from a Chart.yaml file.
+
+    """
     print(" - [release] Update Helm chart")
 
     # Import here to not require installing packaging when running invoke without installing dependencies.

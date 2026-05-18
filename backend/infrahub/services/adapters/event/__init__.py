@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class InfrahubEventService:
-    """Base class for infrahub event service"""
+    """Base class for infrahub event service."""
 
     def __init__(
         self,

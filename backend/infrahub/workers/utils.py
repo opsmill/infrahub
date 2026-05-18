@@ -13,9 +13,15 @@ if TYPE_CHECKING:
 
 
 def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: InfrahubServices) -> None:
-    """`service` object instantiates connections to various services (db, cache...) at worker startup,
+    """`service` object instantiates connections to various services (db, cache...) at worker startup,.
+
     so it is not meant to be sent by the server payload. We inject it here to avoid relying on a global variable.
+
     This mutates input `parameters`.
+
+    Raises:
+        ValueError: When ``parameters`` already contains an ``InfrahubServices`` instance.
+
     """
     # avoid circular imports
     from infrahub.services import InfrahubServices

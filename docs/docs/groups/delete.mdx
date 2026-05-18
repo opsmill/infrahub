@@ -1,0 +1,62 @@
+---
+title: Delete a group
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Delete a group
+
+Remove a group without affecting its member objects.
+
+## What happens when you delete a group
+
+- **Members** are **not** deleted. They remain in the graph and lose the `member_of_groups` relationship to this group.
+- **Subscribers** are **not** deleted. They lose the `subscriber_of_groups` relationship.
+- **Downstream automation** that targeted this group (Artifact Definitions, Transformations, Checks) will stop receiving this group's members. Review those integrations before deleting.
+
+:::warning Generator and Query groups
+Deleting a Generator group or Query group that is still referenced by the Generator or query that owns it can break that automation. Delete the owning Generator or query first, or reconfigure it to point elsewhere.
+:::
+
+## Delete the group
+
+<Tabs groupId="method" queryString>
+  <TabItem value="web" label="Web Interface" default>
+
+1. Open the group from the Groups list.
+2. Click **Delete** and confirm.
+
+</TabItem>
+
+  <TabItem value="graphql" label="GraphQL">
+
+```graphql
+mutation DeleteGroup {
+  CoreStandardGroupDelete(data: {hfid: ["<group-name>"]}) {
+    ok
+  }
+}
+```
+
+</TabItem>
+
+  <TabItem value="sdk" label="Python SDK">
+
+```python
+group = client.get(kind="CoreStandardGroup", name__value="<group-name>")
+group.delete()
+```
+
+</TabItem>
+</Tabs>
+
+## Troubleshooting
+
+**Delete returns a reference error.** Something else is pointing at this group (an artifact definition, Transformation, or Check). Locate and update the reference before retrying.
+
+**Permission denied.** You need delete permission on groups on this branch.
+
+## Next
+
+- [Create a group](./create.mdx) if you need to recreate it.

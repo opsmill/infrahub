@@ -864,9 +864,12 @@ def _map_artifacts_by_member(
     definition_name: str,
     log: logging.Logger | logging.LoggerAdapter,
 ) -> dict[str, str]:
-    """Map each member id to its existing artifact id, skipping artifacts whose
+    """Map each member id to its existing artifact id, skipping artifacts whose.
+
     `object` peer cannot be resolved. Such orphan rows can appear when a target
-    node has been removed via a path that does not cascade-delete artifacts."""
+    node has been removed via a path that does not cascade-delete artifacts.
+
+    """
     artifacts_by_member: dict[str, str] = {}
     for artifact in existing_artifacts:
         object_id = artifact.object.id
@@ -885,12 +888,13 @@ def _should_render_artifact(
     impacted_artifacts: list[str],
 ) -> bool:
     """Returns a boolean to indicate if an artifact should be generated or not.
+
     Will return true if:
         * The artifact_id wasn't set which could be that it's a new object that doesn't have a previous artifact
         * The source branch is synced with git and has file modifications (managed_branch)
         * The artifact_id exists in the impacted_artifacts list
     Will return false if:
-        * The artifact_id exists and is not in the impacted list
+        * The artifact_id exists and is not in the impacted list.
     """
     if not artifact_id or managed_branch:
         return True
@@ -1149,13 +1153,15 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
 
 def _run_generator(instance_id: str | None, managed_branch: bool, impacted_instances: list[str]) -> bool:
-    """Returns a boolean to indicate if a generator instance needs to be executed
+    """Returns a boolean to indicate if a generator instance needs to be executed.
+
     Will return true if:
         * The instance_id wasn't set which could be that it's a new object that doesn't have a previous generator instance
         * The source branch is set to sync with Git which would indicate that it could contain updates in git to the generator
         * The instance_id exists in the impacted_instances list
     Will return false if:
-        * The source branch is a not one that syncs with git and the instance_id exists and is not in the impacted list
+        * The source branch is a not one that syncs with git and the instance_id exists and is not in the impacted list.
+
     """
     if not instance_id or managed_branch:
         return True
@@ -1560,7 +1566,7 @@ class Repository(BaseModel):
 def _parse_proposed_change_repositories(
     model: RequestProposedChangePipeline, source: list[dict], destination: list[dict]
 ) -> list[ProposedChangeRepository]:
-    """This function assumes that the repos is a list of the edges
+    """This function assumes that the repos is a list of the edges.
 
     The data should come from the queries:
     * DESTINATION_ALLREPOSITORIES
@@ -1603,7 +1609,7 @@ def _parse_proposed_change_repositories(
 
 
 def _parse_repositories(repositories: list[dict]) -> list[Repository]:
-    """This function assumes that the repos is a list of the edges
+    """This function assumes that the repos is a list of the edges.
 
     The data should come from the queries:
     * DESTINATION_ALLREPOSITORIES
@@ -1625,7 +1631,7 @@ def _parse_repositories(repositories: list[dict]) -> list[Repository]:
 
 
 def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeArtifactDefinition]:
-    """This function assumes that definitions is a list of the edges
+    """This function assumes that definitions is a list of the edges.
 
     The edge should be of type CoreArtifactDefinition from the query
     * GATHER_ARTIFACT_DEFINITIONS

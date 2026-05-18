@@ -1,0 +1,91 @@
+---
+title: Upgrade Community
+---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Upgrade Community
+
+The process to migrate your instance of Infrahub to the latest version will vary depending on your deployment of Infrahub. However, at a high-level, it will involve getting the latest version and performing any needed Database Migrations and Schema updates.
+
+For installation instructions, please refer to our [Installation guide](../../install-configure/install/overview.mdx).
+
+Follow the instructions below for your current release version and deployment method.
+
+:::warning Upgrade path support
+Upgrades are supported only from the previous minor version (N-1), for example from Infrahub 1.3 to 1.4. If you need to upgrade from N-2 or older, upgrade sequentially one minor version at a time (for example: 1.2 -> 1.3 -> 1.4).
+:::
+
+:::info
+Even though a "smooth" migration is anticipated, we nonetheless strongly suggest creating a backup beforehand. For detailed information, see our [Backup guide](../database-backup/backup-and-restore.mdx).
+:::
+
+:::info
+In Infrahub 1.2 and later, the upgrade process has been streamlined with a unified upgrade command.
+For earlier versions, please refer to the [release notes](../../../release-notes/infrahub/) for specific upgrade instructions.
+:::
+
+## Upgrading to Infrahub 1.2 and after
+
+<Tabs groupId="deployment" queryString>
+<TabItem value="docker" label="Docker" default>
+
+```bash
+# Stop the current instance
+docker compose down
+
+# Retrieve the latest docker-compose version
+curl https://infrahub.opsmill.io > docker-compose.yml
+
+# Run the unified upgrade command
+docker compose run infrahub-server infrahub upgrade
+
+# Restart the instance
+docker compose up -d
+```
+
+:::note
+
+Old Docker images of Infrahub may remain on your machine and consume disk space after an upgrade. To free up space and keep disk usage under control, consider removing unused images.
+
+You can do this with: `docker image prune -a`
+
+:::
+
+</TabItem>
+<TabItem value="helm" label="Helm">
+
+```bash
+# Upgrade the Helm release
+helm upgrade
+
+# Run the unified upgrade command inside the server pod
+kubectl exec infrahub-infrahub-server-xxxxxx -- infrahub upgrade
+
+# Restart deployments to apply changes
+kubectl rollout restart deployment/prefect-server
+kubectl rollout restart deployment/infrahub-infrahub-server
+```
+
+</TabItem>
+
+<TabItem value="devdemo" label="Dev/Demo">
+
+```bash
+# Ensure you pull the latest opsmill/infrahub repo
+git pull
+
+# Stop the current instance
+invoke demo.stop
+
+# Rebuild and run migrations
+invoke demo.pull
+invoke demo.upgrade
+
+# Restart the instance
+invoke demo.start
+```
+
+</TabItem>
+</Tabs>

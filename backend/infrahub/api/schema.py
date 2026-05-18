@@ -146,12 +146,17 @@ class SchemaUpdate(BaseModel):
 
     @computed_field
     def schema_updated(self) -> bool:
-        """Indicates if the loading of the schema changed the existing schema"""
+        """Indicates if the loading of the schema changed the existing schema."""
         return self.hash != self.previous_hash
 
 
 def _merge_candidate_schemas(schemas: Sequence[SchemaRoot]) -> SchemaRoot:
-    """Merge multiple schemas into one suitable to be loaded."""
+    """Merge multiple schemas into one suitable to be loaded.
+
+    Raises:
+        ValueError: When the provided sequence of schemas is empty.
+
+    """
     if not schemas:
         raise ValueError("Cannot merge an empty list of schemas")
 

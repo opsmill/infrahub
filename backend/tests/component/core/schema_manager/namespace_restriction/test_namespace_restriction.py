@@ -42,8 +42,10 @@ class TestNamespaceRestrictionInvalidCases:
         self,
         schema_multi_generic_with_one_restricted: SchemaRoot,
     ) -> None:
-        """When a node inherits from multiple generics and only one has restricted_namespaces,
+        """When a node inherits from multiple generics and only one has restricted_namespaces,.
+
         the restriction from that generic must still be enforced.
+
         """
         schema = SchemaBranch(cache={}, name="test")
         schema.load_schema(schema=schema_multi_generic_with_one_restricted)

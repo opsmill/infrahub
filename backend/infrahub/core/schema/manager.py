@@ -36,11 +36,14 @@ from infrahub.exceptions import SchemaNotFoundError
 from infrahub.log import get_logger
 
 from .constants import IGNORE_FOR_NODE
+from .queries import SchemaSummary, SchemaSummaryQuery
 from .schema_branch import SchemaBranch
 
 log = get_logger()
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
 
@@ -240,43 +243,82 @@ class SchemaManager(NodeManager):
         """Load all nodes, generics and groups from a SchemaRoot object into the database."""
         branch = await registry.get_branch(branch=branch, db=db)
 
-        added_nodes = []
-        added_generics = []
-        for item_kind in diff.added.keys():
-            item = schema.get(name=item_kind, duplicate=False)
-            node = await self.load_node_to_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
-            schema.set(name=item_kind, schema=node)
-            if item.is_node_schema:
-                added_nodes.append(item_kind)
-            else:
-                added_generics.append(item_kind)
+        upsert_kinds = list(diff.added.keys()) + [k for k, d in diff.changed.items() if not d]
+        upsert_schemas: list[NodeSchema | GenericSchema] = []
+        for kind in upsert_kinds:
+            one_schema = schema.get(name=kind, duplicate=False)
+            # SchemaDiff excludes Profile/Template, so only NodeSchema/GenericSchema can appear here
+            # we also don't save Profile/Template schemas to the database, they're always generated
+            if isinstance(one_schema, (NodeSchema, GenericSchema)):
+                upsert_schemas.append(one_schema)
+        schema_summary_map = await self._get_existing_schema_summary_map(
+            schemas=upsert_schemas, branch=branch, db=db, at=at
+        )
+        existing_children = await self._prefetch_existing_children(
+            schemas=upsert_schemas, schema_summary_map=schema_summary_map, branch=branch, db=db
+        )
 
-        changed_nodes = []
-        changed_generics = []
-        for item_kind, item_diff in diff.changed.items():
-            item = schema.get(name=item_kind, duplicate=False)
-            if item_diff:
+        added_nodes: list[str] = []
+        added_generics: list[str] = []
+        changed_nodes: list[str] = []
+        changed_generics: list[str] = []
+        for schema_kind in diff.added.keys():
+            one_schema = schema.get(name=schema_kind, duplicate=False)
+            db_node, info = schema_summary_map.get(one_schema.kind, (None, None))
+            node = await self._upsert_node_to_db(
+                node=one_schema,
+                existing_db_node=db_node,
+                existing_summary=info,
+                existing_fields=existing_children,
+                branch=branch,
+                db=db,
+                at=at,
+                user_id=user_id,
+            )
+            schema.set(name=schema_kind, schema=node)
+            # The caller's diff said this kind was "added", but if a row already existed on the DB
+            # then this is actually "changed"
+            target_node_bucket = added_nodes if db_node is None else changed_nodes
+            target_generic_bucket = added_generics if db_node is None else changed_generics
+            if one_schema.is_node_schema:
+                target_node_bucket.append(schema_kind)
+            else:
+                target_generic_bucket.append(schema_kind)
+
+        for schema_kind, schema_diff in diff.changed.items():
+            one_schema = schema.get(name=schema_kind, duplicate=False)
+            if schema_diff:
                 node = await self.update_node_in_db_based_on_diff(
-                    node=item, branch=branch, db=db, diff=item_diff, at=at, user_id=user_id
+                    node=one_schema, branch=branch, db=db, diff=schema_diff, at=at, user_id=user_id
                 )
             else:
-                node = await self.update_node_in_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
-            schema.set(name=item_kind, schema=node)
-            if item.is_node_schema:
-                changed_nodes.append(item_kind)
+                db_node, info = schema_summary_map.get(one_schema.kind, (None, None))
+                node = await self._upsert_node_to_db(
+                    node=one_schema,
+                    existing_db_node=db_node,
+                    existing_summary=info,
+                    existing_fields=existing_children,
+                    branch=branch,
+                    db=db,
+                    at=at,
+                    user_id=user_id,
+                )
+            schema.set(name=schema_kind, schema=node)
+            if one_schema.is_node_schema:
+                changed_nodes.append(schema_kind)
             else:
-                changed_generics.append(item_kind)
+                changed_generics.append(schema_kind)
 
         removed_nodes = []
         removed_generics = []
-        for item_kind in diff.removed.keys():
-            item = schema.get(name=item_kind, duplicate=False)
-            node = await self.delete_node_in_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
-            schema.delete(name=item_kind)
-            if item.is_node_schema:
-                removed_nodes.append(item_kind)
+        for schema_kind in diff.removed.keys():
+            one_schema = schema.get(name=schema_kind, duplicate=False)
+            node = await self.delete_node_in_db(node=one_schema, branch=branch, db=db, at=at, user_id=user_id)
+            schema.delete(name=schema_kind)
+            if one_schema.is_node_schema:
+                removed_nodes.append(schema_kind)
             else:
-                removed_generics.append(item_kind)
+                removed_generics.append(schema_kind)
 
         return SchemaBranchDiff(
             added_nodes=added_nodes,
@@ -300,18 +342,157 @@ class SchemaManager(NodeManager):
         at = Timestamp(at)
         branch = await registry.get_branch(branch=branch, db=db)
 
-        for item_kind in schema.node_names + schema.generic_names_without_templates:
-            if limit and item_kind not in limit:
+        schemas: list[NodeSchema | GenericSchema] = []
+        for schema_kind in schema.node_names + schema.generic_names_without_templates:
+            if limit and schema_kind not in limit:
                 continue
-            item = schema.get(name=item_kind, duplicate=False)
-            if not item.id:
-                node = await self.load_node_to_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
-                schema.set(name=item_kind, schema=node)
-            else:
-                node = await self.update_node_in_db(node=item, branch=branch, db=db, at=at, user_id=user_id)
-                schema.set(name=item_kind, schema=node)
+            one_schema = schema.get(name=schema_kind, duplicate=False)
+            if isinstance(one_schema, (NodeSchema, GenericSchema)):
+                schemas.append(one_schema)
 
-    async def load_node_to_db(
+        schema_summary_map = await self._get_existing_schema_summary_map(schemas=schemas, branch=branch, db=db, at=at)
+        existing_children = await self._prefetch_existing_children(
+            schemas=schemas, schema_summary_map=schema_summary_map, branch=branch, db=db
+        )
+
+        for one_schema in schemas:
+            db_node, info = schema_summary_map.get(one_schema.kind, (None, None))
+            node = await self._upsert_node_to_db(
+                node=one_schema,
+                existing_db_node=db_node,
+                existing_fields=existing_children,
+                existing_summary=info,
+                branch=branch,
+                db=db,
+                at=at,
+                user_id=user_id,
+            )
+            schema.set(name=one_schema.kind, schema=node)
+
+    async def _get_existing_schema_summary_map(
+        self,
+        schemas: Sequence[NodeSchema | GenericSchema],
+        branch: Branch,
+        db: InfrahubDatabase,
+        at: Timestamp | None = None,
+    ) -> dict[str, tuple[Node, SchemaSummary]]:
+        """Retrieve the current database object (Node) and SchemaSummary for all ``schemas``
+
+        Returns a dict keyed by ``kind`` (``namespace + name``) mapping to a tuple of:
+        - the current ``Node`` for the schema object, if it exists
+        - ``SchemaSummary`` linking each schema kind to its ID and its ID-less fields to their
+        IDs if they already exist
+
+        Schemas that do not exist on the database will not be in the returned dictionary.
+
+        Raises:
+            ValueError: When a member of `schemas` has a different type than its counterpart
+                in the database. For example, incoming NodeScheam versus existing GenericSchema.
+
+        """
+        if not schemas:
+            return {}
+
+        # both filters are necessary to account for renamed schemas
+        kind_filter = [(one_schema.namespace, one_schema.name) for one_schema in schemas]
+        uuid_filter = [one_schema.id for one_schema in schemas if one_schema.id]
+        # only retrieve fields for a schema if the field is being added
+        # (it has no ID set b/c it has not come from the database)
+        attribute_names = list(
+            {attr.name for one_schema in schemas for attr in one_schema.local_attributes if attr.id is None}
+        )
+        relationship_names = list(
+            {
+                rel.name
+                for one_schema in schemas
+                for rel in one_schema.local_relationships
+                if rel.id is None and not self._is_virtual_relationship(rel.name)
+            }
+        )
+        query = await SchemaSummaryQuery.init(
+            db=db,
+            branch=branch,
+            at=at,
+            kind_filter=kind_filter,
+            uuid_filter=uuid_filter,
+            attribute_names=attribute_names,
+            relationship_names=relationship_names,
+        )
+        await query.execute(db=db)
+        summary_index = query.get_summaries()
+
+        summaries_by_kind: dict[str, SchemaSummary] = {}
+        for one_schema in schemas:
+            # Try to match by UUID first to make sure a kind update is handled correctly
+            summary: SchemaSummary | None = None
+            if one_schema.id:
+                summary = summary_index.get_summary_by_uuid(uuid=one_schema.id)
+            if summary is None:
+                summary = summary_index.get_summary_by_kind(kind=one_schema.kind)
+            if summary is None:
+                continue
+
+            # unlikely case, but better to prevent it for sure
+            schema_is_generic = isinstance(one_schema, GenericSchema)
+            if summary.is_generic != schema_is_generic:
+                input_type = "GenericSchema" if schema_is_generic else "NodeSchema"
+                db_type = "SchemaGeneric" if summary.is_generic else "SchemaNode"
+                raise ValueError(
+                    f"Schema kind {one_schema.kind!r} on branch {branch.name!r} has a type mismatch: "
+                    f"input is a {input_type} but the existing DB row is a {db_type} (uuid={summary.uuid})."
+                )
+            summaries_by_kind[one_schema.kind] = summary
+
+        if not summaries_by_kind:
+            return {}
+
+        nodes_by_id = await self.get_many(
+            ids=[summary.uuid for summary in summaries_by_kind.values()],
+            db=db,
+            branch=branch,
+            at=at,
+            prefetch_relationships=True,
+        )
+        result: dict[str, tuple[Node, SchemaSummary]] = {}
+        for kind, summary in summaries_by_kind.items():
+            schema_object = nodes_by_id.get(summary.uuid)
+            if schema_object is None:
+                continue
+            result[kind] = (schema_object, summary)
+        return result
+
+    async def _prefetch_existing_children(
+        self,
+        schemas: Sequence[NodeSchema | GenericSchema],
+        schema_summary_map: dict[str, tuple[Node, SchemaSummary]],
+        branch: Branch,
+        db: InfrahubDatabase,
+    ) -> dict[str, Node]:
+        """Bulk-fetch the SchemaAttribute / SchemaRelationship Nodes the update path will touch."""
+        all_ids: set[str] = set()
+        for one_schema in schemas:
+            resolved = schema_summary_map.get(one_schema.kind)
+            # schema does not exist on the database yet, so nothing to fetch
+            if resolved is None:
+                continue
+            _, summary = resolved
+            for attr in one_schema.local_attributes:
+                # prefer ID from the database over incoming ID
+                child_id = summary.attributes.get(attr.name) or attr.id
+                if child_id:
+                    all_ids.add(child_id)
+            for rel in one_schema.local_relationships:
+                if self._is_virtual_relationship(rel.name):
+                    continue
+                child_id = summary.relationships.get(rel.name) or rel.id
+                if child_id:
+                    all_ids.add(child_id)
+
+        if not all_ids:
+            return {}
+        return await self.get_many(ids=list(all_ids), db=db, branch=branch)
+
+    async def create_node_in_db(
         self,
         node: NodeSchema | GenericSchema,
         db: InfrahubDatabase,
@@ -319,9 +500,47 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
-        """Load a Node with its attributes and its relationships to the database."""
-        branch = await registry.get_branch(branch=branch, db=db)
+        """Insert a new schema node with its attributes and relationships.
 
+        Always adds the schema. Does not check if it already exists.
+        """
+        branch = await registry.get_branch(branch=branch, db=db)
+        return await self._create_node_in_db(node=node, branch=branch, db=db, at=at, user_id=user_id)
+
+    async def _upsert_node_to_db(
+        self,
+        node: NodeSchema | GenericSchema,
+        db: InfrahubDatabase,
+        user_id: str,
+        at: Timestamp,
+        existing_db_node: Node | None,
+        existing_summary: SchemaSummary | None,
+        existing_fields: dict[str, Node],
+        branch: Branch,
+    ) -> NodeSchema | GenericSchema:
+        """Insert or update a schema node based on a pre-resolved DB Node."""
+        if existing_db_node is None:
+            return await self._create_node_in_db(node=node, branch=branch, db=db, at=at, user_id=user_id)
+        return await self._update_existing_node_in_db(
+            schema=node,
+            existing_schema_object=existing_db_node,
+            existing_summary=existing_summary,
+            existing_fields=existing_fields,
+            branch=branch,
+            db=db,
+            at=at,
+            user_id=user_id,
+        )
+
+    async def _create_node_in_db(
+        self,
+        node: NodeSchema | GenericSchema,
+        db: InfrahubDatabase,
+        user_id: str,
+        at: Timestamp,
+        branch: Branch,
+    ) -> NodeSchema | GenericSchema:
+        """Insert a new schema node with its attributes and relationships."""
         node_type = "SchemaNode"
         if isinstance(node, GenericSchema):
             node_type = "SchemaGeneric"
@@ -345,101 +564,153 @@ class SchemaManager(NodeManager):
             new_node.relationships = []
             new_node.attributes = []
 
-            for item in node.attributes:
-                if item.inherited is False:
+            for attribute in node.attributes:
+                if attribute.inherited is False:
                     new_attr = await self.create_attribute_in_db(
-                        schema=attribute_schema, item=item, parent=obj, branch=branch, db=db, at=at, user_id=user_id
+                        schema=attribute_schema,
+                        item=attribute,
+                        parent=obj,
+                        branch=branch,
+                        db=db,
+                        at=at,
+                        user_id=user_id,
                     )
                 else:
-                    new_attr = item.duplicate()
+                    new_attr = attribute.duplicate()
                 new_node.attributes.append(new_attr)
 
-            for item in node.relationships:
-                if self._is_virtual_relationship(item.name):
-                    new_node.relationships.append(item.duplicate())
+            for relationship in node.relationships:
+                if self._is_virtual_relationship(relationship.name):
+                    new_node.relationships.append(relationship.duplicate())
                     continue
-                if item.inherited is False:
+                if relationship.inherited is False:
                     new_rel = await self.create_relationship_in_db(
-                        schema=relationship_schema, item=item, parent=obj, branch=branch, db=db, at=at, user_id=user_id
+                        schema=relationship_schema,
+                        item=relationship,
+                        parent=obj,
+                        branch=branch,
+                        db=db,
+                        at=at,
+                        user_id=user_id,
                     )
                 else:
-                    new_rel = item.duplicate()
+                    new_rel = relationship.duplicate()
                 new_node.relationships.append(new_rel)
 
         # Save back the node with the newly created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
         return new_node
 
-    async def update_node_in_db(
+    async def _update_existing_node_in_db(
         self,
         db: InfrahubDatabase,
-        node: NodeSchema | GenericSchema,
+        schema: NodeSchema | GenericSchema,
+        existing_schema_object: Node,
+        existing_summary: SchemaSummary | None,
+        existing_fields: dict[str, Node],
         user_id: str,
         at: Timestamp,
-        branch: Branch | str | None = None,
+        branch: Branch,
     ) -> NodeSchema | GenericSchema:
-        """Update a Node with its attributes and its relationships in the database."""
-        branch = await registry.get_branch(branch=branch, db=db)
+        """Update a Node with its attributes and its relationships in the database.
 
-        obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
-        if not obj:
-            raise SchemaNotFoundError(
-                branch_name=branch.name,
-                identifier=node.id,
-                message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
-            )
+        The returned schema will carry ``existing_schema_object.id`` regardless of what was on the
+        input ``schema``.
 
-        schema_dict = node.model_dump(exclude=IGNORE_FOR_NODE)
+        ``existing_summary`` (when supplied) names the attributes and relationships already on
+        ``existing_schema_object`` in the DB, keyed by name. Each input field is resolved by
+        preferring the DB-known uuid for that name, to prevent duplicate fields
+
+        ``existing_fields`` is a pre-fetched ``{uuid: Node}`` dict for every field this
+        update path will touch
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
+        schema_dict = schema.model_dump(exclude=IGNORE_FOR_NODE)
         for key, value in schema_dict.items():
-            if obj_attr := getattr(obj, key, None):
+            if obj_attr := getattr(existing_schema_object, key, None):
                 obj_attr.value = value
 
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
-        new_node = node.duplicate()
+        new_node = schema.duplicate()
+        new_node.id = existing_schema_object.id
 
-        # Update the attributes and the relationships nodes as well
-        await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
-        await obj.relationships.update(
-            db=db,
-            data=[
-                item.id for item in node.local_relationships if item.id and not self._is_virtual_relationship(item.name)
-            ],
-            at=at,
-        )
-        await obj.save(db=db, at=at, user_id=user_id)
+        existing_attrs = existing_summary.attributes if existing_summary else {}
+        existing_rels = existing_summary.relationships if existing_summary else {}
 
-        # Then Update the Attributes and the relationships
+        # For each local attr/rel, resolve the DB uuid to update (input id wins; fall back to
+        # name-based lookup from existing_info). Items still unresolved will be created.
+        attr_resolved_ids: dict[str, str] = {}
+        for attribute in schema.local_attributes:
+            resolved = attribute.id or existing_attrs.get(attribute.name)
+            if resolved:
+                attr_resolved_ids[attribute.name] = resolved
 
-        items = await self.get_many(
-            ids=[item.id for item in node.local_attributes + node.local_relationships if item.id],
-            db=db,
-            branch=branch,
-            include_metadata=MetadataOptions.LINKED_NODES,
-        )
-
-        for item in node.local_attributes:
-            if item.id and item.id in items:
-                await self.update_attribute_in_db(item=item, attr=items[item.id], db=db, at=at, user_id=user_id)
-            elif not item.id:
-                new_attr = await self.create_attribute_in_db(
-                    schema=attribute_schema, item=item, branch=branch, db=db, parent=obj, at=at, user_id=user_id
-                )
-                new_node.attributes.append(new_attr)
-
-        for item in node.local_relationships:
-            if self._is_virtual_relationship(item.name):
+        rel_resolved_ids: dict[str, str] = {}
+        for relationship in schema.local_relationships:
+            if self._is_virtual_relationship(relationship.name):
                 continue
-            if item.id and item.id in items:
-                await self.update_relationship_in_db(item=item, rel=items[item.id], db=db, at=at, user_id=user_id)
-            elif not item.id:
-                new_rel = await self.create_relationship_in_db(
-                    schema=relationship_schema, item=item, branch=branch, db=db, parent=obj, at=at, user_id=user_id
-                )
-                new_node.relationships.append(new_rel)
+            resolved = relationship.id or existing_rels.get(relationship.name)
+            if resolved:
+                rel_resolved_ids[relationship.name] = resolved
 
-        # Save back the node with the (potentially) newly created IDs in the SchemaManager
+        # Update the parent's link lists using the resolved ids
+        await existing_schema_object.get_relationship("attributes").update(
+            db=db, data=list(attr_resolved_ids.values()), at=at
+        )
+        await existing_schema_object.get_relationship("relationships").update(
+            db=db, data=list(rel_resolved_ids.values()), at=at
+        )
+        await existing_schema_object.save(db=db, at=at, user_id=user_id)
+
+        new_attr_by_name = {a.name: a for a in new_node.local_attributes}
+        new_rel_by_name = {r.name: r for r in new_node.local_relationships}
+
+        for attribute in schema.local_attributes:
+            resolved_id = attr_resolved_ids.get(attribute.name)
+            if resolved_id and resolved_id in existing_fields:
+                await self.update_attribute_in_db(
+                    item=attribute, attr=existing_fields[resolved_id], db=db, at=at, user_id=user_id
+                )
+                new_attr_by_name[attribute.name].id = resolved_id
+            elif not resolved_id:
+                new_db_attr = await self.create_attribute_in_db(
+                    schema=attribute_schema,
+                    item=attribute,
+                    branch=branch,
+                    db=db,
+                    parent=existing_schema_object,
+                    at=at,
+                    user_id=user_id,
+                )
+                new_attr_by_name[attribute.name].id = new_db_attr.id
+
+        for relationship in schema.local_relationships:
+            if self._is_virtual_relationship(relationship.name):
+                continue
+            resolved_id = rel_resolved_ids.get(relationship.name)
+            if resolved_id and resolved_id in existing_fields:
+                await self.update_relationship_in_db(
+                    item=relationship, rel=existing_fields[resolved_id], db=db, at=at, user_id=user_id
+                )
+                new_rel_by_name[relationship.name].id = resolved_id
+            elif not resolved_id:
+                new_db_rel = await self.create_relationship_in_db(
+                    schema=relationship_schema,
+                    item=relationship,
+                    branch=branch,
+                    db=db,
+                    parent=existing_schema_object,
+                    at=at,
+                    user_id=user_id,
+                )
+                new_rel_by_name[relationship.name].id = new_db_rel.id
+
+        # Save back the node with the resolved/created IDs in the SchemaManager
         self.set(name=new_node.kind, schema=new_node, branch=branch.name)
         return new_node
 
@@ -452,14 +723,19 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> NodeSchema | GenericSchema:
-        """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff."""
+        """Update a Node with its attributes and its relationships in the database based on a HashableModelDiff.
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db)
         if not obj:
             raise SchemaNotFoundError(
                 branch_name=branch.name,
-                identifier=node.id,
+                identifier=node.get_id(),
                 message=f"Unable to find the Schema associated with {node.id}, {node.kind}",
             )
 
@@ -479,10 +755,12 @@ class SchemaManager(NodeManager):
         )
 
         if diff_attributes:
-            await obj.attributes.update(db=db, data=[item.id for item in node.local_attributes if item.id], at=at)
+            await obj.get_relationship("attributes").update(
+                db=db, data=[item.id for item in node.local_attributes if item.id], at=at
+            )
 
         if diff_relationships:
-            await obj.relationships.update(
+            await obj.get_relationship("relationships").update(
                 db=db,
                 data=[
                     item.id
@@ -583,7 +861,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         user_id: str,
     ) -> None:
-        """Create, update, or delete attribute and relationship DB nodes based on the schema diff."""
+        """Create, update, or delete attribute and relationship DB nodes based on the schema diff.
+
+        Raises:
+            ValueError: When an attribute or relationship marked for update or removal cannot be found in the existing items.
+
+        """
         attribute_schema = self.get_node_schema(name="SchemaAttribute", branch=branch)
         relationship_schema = self.get_node_schema(name="SchemaRelationship", branch=branch)
 
@@ -652,7 +935,12 @@ class SchemaManager(NodeManager):
         at: Timestamp,
         branch: Branch | str | None = None,
     ) -> None:
-        """Delete the node with its attributes and relationships."""
+        """Delete the node with its attributes and relationships.
+
+        Raises:
+            SchemaNotFoundError: When no existing schema node matches the given node id on the branch.
+
+        """
         branch = await registry.get_branch(branch=branch, db=db)
 
         obj = await self.get_one(id=node.get_id(), branch=branch, db=db, prefetch_relationships=True)
@@ -728,7 +1016,7 @@ class SchemaManager(NodeManager):
         db: InfrahubDatabase,
         branch: Branch | str | None = None,
     ) -> SchemaBranch:
-        """Load the schema either from the cache or from the database"""
+        """Load the schema either from the cache or from the database."""
         branch = await registry.get_branch(branch=branch, db=db)
 
         if not branch.is_default and branch.origin_branch:

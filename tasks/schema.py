@@ -20,7 +20,7 @@ OPENAPI_PATH = REPO_BASE / "schema" / "openapi.json"
 
 @task
 def generate_graphqlschema(context: Context) -> None:
-    """Generate GraphQL schema into ./schema"""
+    """Generate GraphQL schema into ./schema."""
     with context.cd(ESCAPED_REPO_PATH):
         context.run(f"uv run infrahub dev export-graphql-schema --out {SCHEMA_PATH}")
         print(f"Wrote to {SCHEMA_PATH}")
@@ -28,7 +28,7 @@ def generate_graphqlschema(context: Context) -> None:
 
 @task
 def generate_jsonschema(context: Context) -> None:
-    """Generate JSON schemas into ./schema and also run `generate_repositoryconfig`"""
+    """Generate JSON schemas into ./schema and also run `generate_repositoryconfig`."""
     with context.cd(ESCAPED_REPO_PATH):
         context.run(f"uv run infrahub dev export-json-schema --out {OPENAPI_PATH}")
         print(f"Wrote to {OPENAPI_PATH}")
@@ -39,7 +39,7 @@ def generate_jsonschema(context: Context) -> None:
 
 @task
 def generate_repositoryconfig(context: Context) -> None:
-    """Generate repository config into generated/python-sdk/repository-config/develop.json"""
+    """Generate repository config into generated/python-sdk/repository-config/develop.json."""
     from infrahub_sdk.schema.repository import InfrahubRepositoryConfig
 
     with context.cd(ESCAPED_REPO_PATH):
@@ -51,7 +51,7 @@ def generate_repositoryconfig(context: Context) -> None:
 
 @task
 def generate_infrahubnodeschema(context: Context) -> None:
-    """Generate infrahub node schema into generated/infrahub/schema/develop.json"""
+    """Generate infrahub node schema into generated/infrahub/schema/develop.json."""
     with context.cd(ESCAPED_REPO_PATH):
         context.run(f"uv run infrahub dev export-node-schema --out {INFRAHUB_NODE_SCHEMA_PATH}")
         print(f"Wrote to {INFRAHUB_NODE_SCHEMA_PATH}")

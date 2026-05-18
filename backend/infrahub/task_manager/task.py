@@ -62,7 +62,8 @@ class PrefectTask:
         flow_run_filter: FlowRunFilter | None = None,
     ) -> int:
         """Method to count the number of flow runs based on a flow_run_filter.
-        The format of the body is the same as the one generated in read_flow_runs
+
+        The format of the body is the same as the one generated in read_flow_runs.
         """
         body = {
             "flows": flow_filter.model_dump(mode="json") if flow_filter else None,
@@ -117,7 +118,12 @@ class PrefectTask:
         cls, client: PrefectClient, flow_ids: list[UUID], log_limit: int | None, log_offset: int | None
     ) -> FlowLogs:
         """Return the logs for a flow run, based on log_limit and log_offset.
+
         At most, NB_LOGS_LIMIT logs will be returned per flow.
+
+        Raises:
+            ValueError: When the requested ``log_limit`` exceeds ``NB_LOGS_LIMIT``.
+
         """
         logs_flow = FlowLogs()
 

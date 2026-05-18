@@ -64,8 +64,10 @@ class DeletedNodeCtx:
 
 @dataclass
 class UpdatedAttributeValueCtx:
-    """An attribute whose value is set on the diff branch (covers both 'set from
-    previously-null' and 'overwrite existing value'; clearing is DeletedAttributeValueCtx).
+    """An attribute whose value is set on the diff branch.
+
+    Covers both 'set from previously-null' and 'overwrite existing value'; clearing is
+    DeletedAttributeValueCtx.
     """
 
     node_id: str

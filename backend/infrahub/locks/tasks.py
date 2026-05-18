@@ -15,7 +15,7 @@ from infrahub.services import InfrahubServices  # noqa: TC001  needed for prefec
     flow_run_name="Clean up deadlocks",
 )
 async def clean_up_deadlocks(service: InfrahubServices) -> None:
-    """Remove stale distributed locks left behind by inactive workers"""
+    """Remove stale distributed locks left behind by inactive workers."""
     keys = await service.cache.list_keys(filter_pattern=f"{LOCK_PREFIX}*")
     if not keys:
         return

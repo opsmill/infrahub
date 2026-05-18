@@ -872,9 +872,11 @@ async def test_node_from_template_with_profile_precedence(
     criticality_schema: NodeSchema,
     branch: Branch,
 ) -> None:
-    """Test that when creating a node from a template with profiles,
+    """Test that when creating a node from a template with profiles,.
+
     template's manually defined values take precedence over profile values,
     while profile values are used for attributes not set on the template.
+
     """
     profile_schema = registry.schema.get("ProfileTestCriticality", branch=branch)
     template_schema = registry.schema.get("TemplateTestCriticality", branch=branch)

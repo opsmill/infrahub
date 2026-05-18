@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.3"
+version = "1.9.4"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -54,7 +54,7 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
-    "authlib==1.6.11",
+    "authlib==1.6.12",
     "aiodataloader==0.4.3",
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
@@ -516,17 +516,10 @@ ignore = [
     "D105",     # undocumented-magic-method
     "D106",     # undocumented-public-nested-class
     "D107",     # undocumented-public-init
-    "D200",     # unnecessary-multiline-docstring
-    "D202",     # blank-line-after-function
-    "D205",     # missing-blank-line-after-summary
-    "D209",     # new-line-after-last-paragraph
-    "D212",     # multi-line-summary-first-line
     "D301",     # escape-sequence-in-docstring
     "D400",     # missing-trailing-period
     "D401",     # non-imperative-mood
-    "D403",     # first-word-uncapitalized
     "D404",     # docstring-starts-with-this
-    "D413",     # missing-blank-line-after-last-section
     "D415",     # missing-terminal-punctuation
     "D417",     # undocumented-param
     # pydoclint (DOC)
@@ -534,7 +527,6 @@ ignore = [
     "DOC201",   # docstring-missing-returns
     "DOC202",   # docstring-extraneous-returns
     "DOC402",   # docstring-missing-yields
-    "DOC501",   # docstring-missing-exception
     "DOC502",   # docstring-extraneous-exception
 ]
 

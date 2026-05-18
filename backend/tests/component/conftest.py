@@ -81,7 +81,8 @@ def load_component_dependency_registry() -> None:
 
 @pytest.fixture(scope="session")
 def neo4j_factory() -> _GraphHydrator:
-    """Return a Hydration Scope from Neo4j used to generate fake
+    """Return a Hydration Scope from Neo4j used to generate fake.
+
     Node and Relationship object.
 
     Example:
@@ -96,7 +97,7 @@ def neo4j_factory() -> _GraphHydrator:
 @pytest.fixture(scope="session", autouse=True)
 def prefect_test_fixture() -> Generator[None, None, None]:
     def _run_uvicorn_command(self: Any) -> subprocess.Popen[Any]:
-        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""
+        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead."""
         # used to turn off serving the UI
         server_env = {
             "PREFECT_UI_ENABLED": "0",
@@ -430,7 +431,8 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 @pytest.fixture
 async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_person_schema_global: None) -> dict:
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
-    This dataset is based on base_dataset_02 but it uses a different schema with person includes the global branch as well
+
+    This dataset is based on base_dataset_02 but it uses a different schema with person includes the global branch as well.
 
     To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
       * time0 is now
@@ -630,7 +632,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 @pytest.fixture
 async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> dict:
-    """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships
+    """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships.
 
     To recreate a deterministic timeline, there are 20 timestamps that are being created ahead of time:
       * time0 is now
@@ -2190,8 +2192,13 @@ async def hierarchical_groups_data(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> dict[str, Node]:
     def batched(iterable: Any, n: int):
-        """Local implementation of the new batched function that was added to itertools in 3.12
+        """Local implementation of the new batched function that was added to itertools in 3.12.
+
         https://docs.python.org/3/library/itertools.html
+
+        Raises:
+            ValueError: When ``n`` is less than 1.
+
         """
         # batched('ABCDEFG', 3) --> ABC DEF G
         if n < 1:

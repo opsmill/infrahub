@@ -360,7 +360,8 @@ async def test_delete_branch_aware_node_with_agnostic_relationship(
     db: InfrahubDatabase,
     default_branch: Branch,
 ) -> None:
-    """Test that deleting a branch-aware node with an explicitly branch-agnostic relationship
+    """Test that deleting a branch-aware node with an explicitly branch-agnostic relationship.
+
     only deletes the relationship on the specific branch, not globally.
 
     The scenario:

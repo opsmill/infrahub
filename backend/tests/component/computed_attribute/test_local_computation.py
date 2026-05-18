@@ -24,11 +24,13 @@ async def schema_with_jinja2(
     db: InfrahubDatabase, default_branch: Branch, node_group_schema: None, data_schema: None
 ) -> None:
     """Schema with all four flavours of Jinja2 computed attributes:
+
     - local_label: mandatory, depends on local attrs (name, role)
     - local_tag: optional, depends on local attrs (name, role)
     - remote_label: mandatory, depends on peer attr (owner.name) + local attr (name)
     - remote_tag: optional, depends on peer attr (owner.name) + local attr (role)
     Plus an unrelated attribute (description) for negative tests.
+
     """
     schema = SchemaRoot(
         nodes=[

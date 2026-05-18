@@ -36,8 +36,10 @@ class SetMissingHierarchyQuery(Query):
 
 
 class Migration021(GraphMigration):
-    """A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into
+    """A bug in diff merge logic caused the hierarchy information on IS_RELATED edges to be lost when merged into.
+
     main. This migration sets the missing hierarchy data.
+
     """
 
     name: str = "021_replace_hierarchy"

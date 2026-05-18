@@ -25,6 +25,7 @@ from infrahub.core.constants import (
     SchemaPathType,
 )
 from infrahub.core.manager import NodeManager
+from infrahub.core.models import HashableModelDiff
 from infrahub.core.node import Node
 from infrahub.core.schema import (
     AttributeSchema,
@@ -2983,7 +2984,7 @@ async def test_schema_manager_purge(default_branch: Branch, reset_registry: None
 # -----------------------------------------------------------------
 
 
-async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_create_node_in_db_node_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3004,7 +3005,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
         ],
         relationships=[RelationshipSchema(name="others", peer="TestingCriticality", optional=True, cardinality="many")],
     )
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     node2 = registry.schema.get(name=node.kind, branch=default_branch)
     assert node2.id
@@ -3015,7 +3016,7 @@ async def test_load_node_to_db_node_schema(db: InfrahubDatabase, default_branch:
     assert node_from_db
 
 
-async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
+async def test_create_node_in_db_generic_schema(db: InfrahubDatabase, default_branch: Branch) -> None:
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
 
@@ -3027,7 +3028,7 @@ async def test_load_node_to_db_generic_schema(db: InfrahubDatabase, default_bran
         ],
     }
     node = GenericSchema(**SCHEMA)
-    await registry.schema.load_node_to_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
+    await registry.schema.create_node_in_db(node=node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id")
 
     results = await SchemaManager.query(
         schema="SchemaGeneric", filters={"kind__value": "InfraGenericInterface"}, branch=default_branch, db=db
@@ -3079,8 +3080,12 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
 
     registry.schema = SchemaManager()
     registry.schema.register_schema(schema=SchemaRoot(**internal_schema), branch=default_branch.name)
-    await registry.schema.load_node_to_db(
-        node=NodeSchema(**SCHEMA), db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    await registry.schema.create_node_in_db(
+        node=NodeSchema(**SCHEMA),
+        db=db,
+        branch=default_branch,
+        at=Timestamp(),
+        user_id="user-id",
     )
 
     node = registry.schema.get(name="TestingCriticality", branch=default_branch)
@@ -3090,8 +3095,14 @@ async def test_update_node_in_db_node_schema(db: InfrahubDatabase, default_branc
     new_node.default_filter = "kind__value"
     new_node.attributes[0].unique = False
 
-    await registry.schema.update_node_in_db(
-        node=new_node, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
+    diff = HashableModelDiff(
+        changed={
+            "default_filter": None,
+            "attributes": HashableModelDiff(changed={new_node.attributes[0].name: None}),
+        }
+    )
+    await registry.schema.update_node_in_db_based_on_diff(
+        node=new_node, diff=diff, db=db, branch=default_branch, at=Timestamp(), user_id="user-id"
     )
 
     results = await SchemaManager.get_many(ids=[node.id, new_node.attributes[0].id], db=db)

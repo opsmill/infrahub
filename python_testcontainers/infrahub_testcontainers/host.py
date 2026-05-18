@@ -6,8 +6,10 @@ import psutil
 
 def get_system_stats() -> dict[str, Any]:
     """
-    Gather and return key system statistics about CPU, memory and platform
-    Returns a dictionary with system information
+    Gather and return key system statistics about CPU, memory and platform.
+
+    Returns a dictionary with system information.
+
     """
     # CPU information
     cpu_freq = psutil.cpu_freq()

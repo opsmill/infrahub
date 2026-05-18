@@ -24,7 +24,8 @@ ALL_NULL_PARAMETER_VALUES = [
 
 
 class FixBranchParametersQuery(Query):
-    """Find and fix spurious branch-specific parameters on SchemaAttributes of
+    """Find and fix spurious branch-specific parameters on SchemaAttributes of.
+
     SchemaNode and SchemaGeneric that were incorrectly written by a previous version of Migration056.
 
     For each affected parameters Attribute:
@@ -109,7 +110,7 @@ SET new_has_value.from = $at, new_has_value.to = NULL
 
 
 class Migration068(ArbitraryMigration):
-    """Clean up possible spurious edges created by old version of Migration056 on SchemaAttribute parameters
+    """Clean up possible spurious edges created by old version of Migration056 on SchemaAttribute parameters.
 
     The old version of Migration056 was too broad in what it saved to the database and could update the "parameters"
     attribute of SchemaAttribute objects from NULL to a JSON blobs. This is technically correct b/c parameters
