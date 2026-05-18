@@ -57,8 +57,6 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
               value={(field.value as string[]) ?? []}
               onChange={field.onChange}
               label="Target kinds"
-              showChips
-              chipTone="blue"
               filter={isVisibleNamespace}
             />
             <FormMessage />

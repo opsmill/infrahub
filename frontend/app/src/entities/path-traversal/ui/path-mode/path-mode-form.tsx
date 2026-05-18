@@ -161,9 +161,7 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                   value={(field.value as string[]) ?? []}
                   onChange={field.onChange}
                   label="Exclude kinds"
-                  placeholder="Search kinds to exclude..."
-                  showChips
-                  chipTone="red"
+                  placeholder="Select kinds to exclude..."
                   filter={isVisibleNamespace}
                 />
               )}
