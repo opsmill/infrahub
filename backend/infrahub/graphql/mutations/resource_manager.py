@@ -243,9 +243,9 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
                     hfid=data.get("hfid"),
                     branch=branch,
                 )
-            if new_node_value and new_node_value != node.get_attribute("node").value:  # type: ignore[union-attr]
+            if new_node_value and new_node_value != node.get_attribute("node").value:
                 raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
-            if new_node_attr_value and new_node_attr_value != node.get_attribute("node_attribute").value:  # type: ignore[union-attr]
+            if new_node_attr_value and new_node_attr_value != node.get_attribute("node_attribute").value:
                 raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
 
         async with graphql_context.db.start_transaction() as dbt:
