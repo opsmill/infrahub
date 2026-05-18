@@ -11,6 +11,15 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.9.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.5) - 2026-05-18
+
+### Fixed
+
+- Upserting a CoreNumberPool with allow_upsert=True no longer raises an error when node and node_attribute are unchanged. ([#5636](https://github.com/opsmill/infrahub/issues/5636))
+- Fixed the standard resolver for schema-based objects returning an unhelpful database error when negative values were provided for limit or offset query arguments. ([#7474](https://github.com/opsmill/infrahub/issues/7474))
+- Changing `unique` to `False` on a schema attribute now correctly triggers a migration that adds the attribute to existing profile and template objects. ([#8894](https://github.com/opsmill/infrahub/issues/8894))
+- Cardinality constraints (`cardinality: one`, `min_count`, `max_count`) were silently skipped when the relationship being updated declared its peer as a generic and the constraint was defined on a concrete subtype of that generic, letting data violate the schema. The constraint check and lock path now resolve each peer's concrete kind and enforce the constraint declared there. ([#8953](https://github.com/opsmill/infrahub/issues/8953))
+
 ## [Infrahub - v1.9.4](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.4) - 2026-05-12
 
 ### Added
