@@ -1,5 +1,5 @@
 import { useAtomValue } from "jotai";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { NodeKindSelect } from "@/shared/components/inputs/node-kind-select";
 import { PeerInput } from "@/shared/components/inputs/peer";
@@ -52,6 +52,23 @@ export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
           }
         : null;
 
+  // Deep links provide an id but no kind. Once the node resolves, mirror its
+  // __typename into the kind selector so changing the node stays scoped to
+  // the same kind instead of falling back to every CoreNode.
+  useEffect(() => {
+    if (peerValue?.__typename && !selectedKind) {
+      setSelectedKind(peerValue.__typename);
+    }
+  }, [peerValue?.__typename, selectedKind]);
+
+  function handleKindChange(kind: string | null) {
+    setSelectedKind(kind);
+    if (kind && peerValue && peerValue.__typename !== kind) {
+      setPickedNode(null);
+      onChange("");
+    }
+  }
+
   function handlePeerChange(node: Node | null) {
     setPickedNode(node);
     onChange(node?.id ?? "");
@@ -63,7 +80,7 @@ export function ObjectPicker({ label, value, onChange }: ObjectPickerProps) {
 
       <NodeKindSelect
         value={selectedKind}
-        onChange={setSelectedKind}
+        onChange={handleKindChange}
         filter={isVisibleNamespace}
         className="w-full"
       />
