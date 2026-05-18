@@ -67,7 +67,7 @@ Both strategies model the same underlying graph: every schema-level hop material
 | `INBOUND`  | `(:start_kind)<-[:IS_RELATED]-(:Relationship {name: $rel})<-[:IS_RELATED]-(:end_kind)` |
 | `BIDIR`    | `(:start_kind)-[:IS_RELATED]->(:Relationship {name: $rel})<-[:IS_RELATED]-(:end_kind)` |
 
-Kind names appear as **Neo4j labels** on `:Node` vertices (not as `{kind: $kind}` property predicates). Nodes in the Infrahub graph carry their kind as an additional label alongside `:Node` — verified at [`backend/infrahub/core/query/path.py:153`](../../../../backend/infrahub/core/query/path.py).
+Kind names appear as **Neo4j labels** on `:Node` vertices (not as `{kind: $kind}` property predicates). Nodes in the Infrahub graph carry their kind as an additional label alongside `:Node` — verified at `backend/infrahub/core/query/path.py:153`.
 
 Where the two strategies differ is **how edge validity is enforced**, which dominates query cost.
 
@@ -209,7 +209,7 @@ Shared between strategies:
   - `TerminalById`: emitted as `WHERE target_rR.uuid = $destination_id` inside each route subquery (each route's terminal vertex is aliased `target_r0`, `target_r1`, …). All routes share `$destination_id` as a single parameter.
   - `TerminalByKinds`: each route already commits to a specific terminal kind via its `:end_kind` label, so the kind constraint is structural; no extra `WHERE` clause is needed for kind filtering. The terminal id is unconstrained.
 - **Time filter (`$at`)**: both strategies bind `$at` directly from the renderer's `at` parameter (serialized in the same form the edge `from`/`to` properties use). The existing `branch.get_query_filter_path(at=at)` helper is **not** used by either new strategy — strategy A inlines its own four-predicate conjunction (branch, status, `from <= $at`, `to IS NULL OR to >= $at`), and strategy B inlines the same conjunction inside the QPP iteration plus the deletion-asymmetry check. The helper's all-in-one filter was tuned for the old single-MATCH variable-length shape and is no longer needed.
-- **Validation against EXPLAIN/PROFILE**: the per-hop CALL pattern is the established Infrahub idiom for "latest authoritative edge" (see [`path.py:184-196`](../../../../backend/infrahub/core/query/path.py)). The implementation MUST run `EXPLAIN` on a representative generated query during the benchmark task (SC-002) to confirm Neo4j is using the label index on the route's kind labels and the relationship-index on `(:Relationship).name`. If `EXPLAIN` shows an `AllNodesScan`, the implementation needs adjustment before merge.
+- **Validation against EXPLAIN/PROFILE**: the per-hop CALL pattern is the established Infrahub idiom for "latest authoritative edge" (see `backend/infrahub/core/query/path.py:184-196`). The implementation MUST run `EXPLAIN` on a representative generated query during the benchmark task (SC-002) to confirm Neo4j is using the label index on the route's kind labels and the relationship-index on `(:Relationship).name`. If `EXPLAIN` shows an `AllNodesScan`, the implementation needs adjustment before merge.
 
 ## Behavior — required
 
