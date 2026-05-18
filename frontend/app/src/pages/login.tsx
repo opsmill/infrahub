@@ -2,7 +2,7 @@ import { Navigate, useLocation } from "react-router";
 
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 
-import { Login } from "@/entities/authentication/ui/login";
+import { LoginMethodPicker } from "@/entities/authentication/ui/login-method-picker";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 
 function LoginPage() {
@@ -21,7 +21,7 @@ function LoginPage() {
 
         <h1 className="font-semibold text-neutral-900 text-xl">Log in to your account</h1>
 
-        <Login />
+        <LoginMethodPicker />
 
         {location?.state?.errors?.map(
           (error: { extensions: { code: number }; message: string }, index: number) => (
