@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
 
+import { copyEntriesAsText, formatPathHopsAsText } from "../format-paths";
+import { PathResultsList } from "../path-results-list";
 import { useGetReachableNodes } from "../queries/get-reachable-nodes.query";
-import { getKindColor } from "../utils";
 import { DependenciesModeForm } from "./dependencies-mode-form";
 import {
   type DependenciesModeFormValues,
@@ -29,6 +30,7 @@ export function DependenciesModeSidebar() {
   );
 
   const data = query.data;
+  const paths = data?.dependencies.map((dep) => dep.path) ?? [];
 
   return (
     <div className="flex h-full flex-col">
@@ -39,38 +41,21 @@ export function DependenciesModeSidebar() {
       />
 
       {data && (
-        <div className="border-gray-200 border-t p-4">
-          <div className="mb-2 rounded-md border border-amber-200 bg-amber-50 p-2">
-            <div className="font-medium text-amber-800 text-xs">
-              {data.count} dependenc{data.count === 1 ? "y" : "ies"} found
-            </div>
-          </div>
-          <div className="space-y-1">
-            {data.dependencies.map((dep, index) => (
-              <button
-                key={`${dep.node.id}-${index}`}
-                type="button"
-                onClick={() => setParams({ selectedIndex: index })}
-                className={`flex w-full items-center gap-2 rounded-md border p-2 text-left text-xs transition-colors ${
-                  params.selectedIndex === index
-                    ? "border-amber-300 bg-amber-50"
-                    : "border-transparent hover:border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                <div
-                  className="size-2 flex-shrink-0 rounded-full"
-                  style={{ backgroundColor: getKindColor(dep.node.kind) }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{dep.node.display_label}</div>
-                  <div className="truncate text-[10px] text-gray-400">
-                    {dep.node.kind} · {dep.depth} hop{dep.depth !== 1 ? "s" : ""}
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <PathResultsList
+          paths={paths}
+          countLabel={`${data.count} dependenc${data.count === 1 ? "y" : "ies"} found`}
+          selectedIndex={params.selectedIndex}
+          onSelect={(index) => setParams({ selectedIndex: index })}
+          variant="amber"
+          getItemTitle={(_, index) => data.dependencies[index]?.node.display_label ?? ""}
+          getItemSubtitle={(_, index) => data.dependencies[index]?.node.kind}
+          emptyMessage="No dependencies found"
+          copyAllText={() =>
+            copyEntriesAsText(paths, (_, i) => data.dependencies[i]?.node.display_label ?? "")
+          }
+          copyItemText={(index) => formatPathHopsAsText(paths[index]!)}
+          ariaLabel="Dependency results"
+        />
       )}
     </div>
   );
