@@ -49,6 +49,6 @@ class KindPermissionCache:
             action="view",
             decision=decision_flag.value,
         )
-        result = self._resolver.resolve_object_permission(permission_to_check=permission)
+        result = self._resolver.has_permission(permission=permission)
         self._decisions[kind] = result
         return result
