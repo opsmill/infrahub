@@ -1008,8 +1008,16 @@ jobs:
       - agent
       - detection
       - safe_outputs
+    # MANUAL PATCH: cross-repo (fork) PRs can't access GH_AW_APP_ID/PRIVATE_KEY
+    # secrets, which makes the create-github-app-token step in this job fail.
+    # `pre_activation`/`activation` already gate on cross-repo, but gh-aw does
+    # not propagate that gate to the `conclusion` job, so it ran and failed.
+    # The added clause below mirrors that gate. `gh aw compile` will strip
+    # this patch — re-apply it after any re-compile. Remove once
+    # https://github.com/github/gh-aw/issues/32991 is fixed.
     if: >
-      always() && (needs.agent.result != 'skipped' || needs.activation.outputs.lockdown_check_failed == 'true' ||
+      always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.id == github.repository_id) &&
+      (needs.agent.result != 'skipped' || needs.activation.outputs.lockdown_check_failed == 'true' ||
       needs.activation.outputs.stale_lock_file_failed == 'true')
     runs-on: ubuntu-slim
     permissions:

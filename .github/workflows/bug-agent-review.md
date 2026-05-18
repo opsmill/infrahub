@@ -1,4 +1,9 @@
 ---
+# IMPORTANT: bug-agent-review.lock.yml carries a hand patch that adds a
+# cross-repo gate to the `conclusion` job's `if:`. Running `gh aw compile`
+# will strip it — re-apply the patch from the lock file comment after any
+# re-compile. Remove the workaround once
+# https://github.com/github/gh-aw/issues/32991 is fixed.
 description: Review bug pipeline test and fix PRs (triggered on PR open/synchronize)
 on:
   pull_request:
