@@ -71,6 +71,7 @@ export const ComboboxContent = ({
 export interface ComboboxListProps extends React.ComponentProps<typeof CommandList> {
   shouldFilter?: boolean;
   onValueChange?: (search: string) => void;
+  placeholder?: string;
 }
 
 export const ComboboxList = ({
@@ -78,12 +79,13 @@ export const ComboboxList = ({
   className,
   autoFocus,
   onValueChange,
+  placeholder = "Filter...",
   ref,
   ...props
 }: ComboboxListProps) => {
   return (
     <Command shouldFilter={shouldFilter} className={className}>
-      <CommandInput placeholder="Filter..." autoFocus={autoFocus} onValueChange={onValueChange} />
+      <CommandInput placeholder={placeholder} autoFocus={autoFocus} onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>
   );
