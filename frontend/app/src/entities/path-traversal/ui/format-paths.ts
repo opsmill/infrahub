@@ -1,9 +1,21 @@
-import type { PathTraversalResponse } from "../domain/path-traversal.types";
+import type { PathResult, PathTraversalResponse } from "../domain/path-traversal.types";
 
 export function formatPathAsText(data: PathTraversalResponse, pathIndex: number): string {
   const path = data.paths[pathIndex];
   if (!path) return "";
 
+  return formatPathHopsAsText(path);
+}
+
+export function copyAllPathsAsText(data: PathTraversalResponse): string {
+  return data.paths
+    .map(
+      (path, i) => `Path ${i + 1}: ${path.hops.map((hop) => hop.node.display_label).join(" → ")}`
+    )
+    .join("\n");
+}
+
+export function formatPathHopsAsText(path: PathResult): string {
   return path.hops
     .map((hop, index) => {
       const label = hop.node.display_label;
@@ -14,10 +26,14 @@ export function formatPathAsText(data: PathTraversalResponse, pathIndex: number)
     .join(" ");
 }
 
-export function copyAllPathsAsText(data: PathTraversalResponse): string {
-  return data.paths
+export function copyEntriesAsText(
+  paths: PathResult[],
+  labelFor: (path: PathResult, index: number) => string
+): string {
+  return paths
     .map(
-      (path, i) => `Path ${i + 1}: ${path.hops.map((hop) => hop.node.display_label).join(" → ")}`
+      (path, i) =>
+        `${labelFor(path, i)}: ${path.hops.map((hop) => hop.node.display_label).join(" → ")}`
     )
     .join("\n");
 }
