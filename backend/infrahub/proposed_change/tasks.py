@@ -38,6 +38,7 @@ from infrahub.core.constants import (
     GeneratorInstanceStatus,
     InfrahubKind,
     RepositoryInternalStatus,
+    SchemaPathType,
     ValidatorConclusion,
 )
 from infrahub.core.diff.coordinator import DiffCoordinator
@@ -45,6 +46,8 @@ from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
+from infrahub.core.models import SchemaUpdateConstraintInfo
+from infrahub.core.path import SchemaPath
 from infrahub.core.protocols import CoreDataCheck, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.timestamp import Timestamp
@@ -52,6 +55,11 @@ from infrahub.core.validators.checks_runner import run_checks_and_update_validat
 from infrahub.core.validators.determiner import ConstraintValidatorDeterminer
 from infrahub.core.validators.models.validate_migration import SchemaValidateMigrationData
 from infrahub.core.validators.tasks import schema_validate_migrations
+from infrahub.core.validators.uniqueness.model import (
+    NodeUniquenessQueryRequest,
+    QueryRelationshipAttributePath,
+)
+from infrahub.core.validators.uniqueness.query import NodeUniqueAttributeConstraintQuery
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.events import EventMeta, ProposedChangeMergedEvent
 from infrahub.exceptions import MergeFailedError, SchemaNotFoundError, ValidationError
@@ -117,7 +125,6 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
 
-    from infrahub.core.models import SchemaUpdateConstraintInfo
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
 
@@ -478,9 +485,12 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     validation_result = dest_schema.validate_update(other=candidate_schema, diff=schema_diff)
 
     diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
-        schema=candidate_schema, diff_summary=diff_summary
-    )
+    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
+    database = await get_database()
+    async with database.start_session(read_only=True) as db:
+        constraints_from_data_diff = await _get_proposed_change_schema_integrity_constraints(
+            schema=candidate_schema, diff_summary=diff_summary, db=db, branch=source_branch
+        )
     constraints_from_schema_diff = validation_result.constraints
     # Order matters for dedup: SchemaUpdateConstraintInfo.__eq__ compares only
     # (constraint_name, path). Add schema-diff constraints first so that, when
@@ -495,7 +505,6 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
     # ----------------------------------------------------------
     # Validate if the new schema is valid with the content of the database
     # ----------------------------------------------------------
-    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
     responses = await schema_validate_migrations(
         message=SchemaValidateMigrationData(
             branch=source_branch, schema_branch=candidate_schema, constraints=list(constraints)
@@ -532,7 +541,10 @@ async def run_proposed_change_schema_integrity_check(model: RequestProposedChang
 
 
 async def _get_proposed_change_schema_integrity_constraints(
-    schema: SchemaBranch, diff_summary: list[NodeDiff]
+    schema: SchemaBranch,
+    diff_summary: list[NodeDiff],
+    db: InfrahubDatabase,
+    branch: Branch,
 ) -> list[SchemaUpdateConstraintInfo]:
     node_diff_field_summary_map: dict[str, NodeDiffFieldSummary] = {}
 
@@ -554,7 +566,104 @@ async def _get_proposed_change_schema_integrity_constraints(
                 field_summary.attribute_names.add(element_name)
 
     determiner = ConstraintValidatorDeterminer(schema_branch=schema)
-    return await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
+    constraints = await determiner.get_constraints(node_diffs=list(node_diff_field_summary_map.values()))
+
+    # Close the cross-kind uniqueness gap: when a diffed peer attribute is
+    # referenced by another kind's `rel__peer_attr` uniqueness path, the
+    # dependent kind needs re-validation even though it has no entry in the
+    # data diff.
+    cross_kind_dependents = determiner.find_cross_kind_uniqueness_dependents()
+    for (dependent_kind, rel_name), peer_uuids in cross_kind_dependents.items():
+        affected_uuids = await _resolve_cross_kind_dependent_uuids(
+            db=db,
+            branch=branch,
+            schema=schema,
+            dependent_kind=dependent_kind,
+            rel_name=rel_name,
+            peer_uuids=peer_uuids,
+        )
+        if not affected_uuids:
+            continue
+        _merge_uniqueness_constraint(
+            constraints=constraints,
+            dependent_kind=dependent_kind,
+            extra_node_uuids=affected_uuids,
+        )
+
+    return constraints
+
+
+async def _resolve_cross_kind_dependent_uuids(
+    db: InfrahubDatabase,
+    branch: Branch,
+    schema: SchemaBranch,
+    dependent_kind: str,
+    rel_name: str,
+    peer_uuids: set[str],
+) -> set[str]:
+    """Return UUIDs of `dependent_kind` nodes whose `rel_name` peer is in `peer_uuids`.
+
+    Reuses ``NodeUniqueAttributeConstraintQuery`` with ``min_count_required=0`` so
+    the existing ``relationship_only_attr_paths_subquery`` (which already does
+    ``related_n.uuid IN $relationship_only_attr_values``) returns every matching
+    dependent node, not only those already in a collision group.
+    """
+    dependent_schema = schema.get(name=dependent_kind, duplicate=False)
+    rel_schema = dependent_schema.get_relationship(name=rel_name)
+    request = NodeUniquenessQueryRequest(
+        kind=dependent_kind,
+        relationship_attribute_paths={
+            QueryRelationshipAttributePath(
+                identifier=rel_schema.get_identifier(),
+                attribute_name=None,
+                value=peer_uuid,
+            )
+            for peer_uuid in peer_uuids
+        },
+    )
+    query = await NodeUniqueAttributeConstraintQuery.init(
+        db=db,
+        branch=branch,
+        query_request=request,
+        min_count_required=0,
+    )
+    await query.execute(db=db)
+    return {str(result.get("node_id")) for result in query.results}
+
+
+def _merge_uniqueness_constraint(
+    constraints: list[SchemaUpdateConstraintInfo],
+    dependent_kind: str,
+    extra_node_uuids: set[str],
+) -> None:
+    """Add or merge a `node.uniqueness_constraints.update` constraint for `dependent_kind`.
+
+    If a matching constraint already exists with `node_uuids=None`, leave it
+    alone (full scan already covers the cross-kind scope). Otherwise union the
+    UUIDs, or append a new constraint if none exists yet.
+    """
+    schema_path = SchemaPath(
+        schema_kind=dependent_kind,
+        path_type=SchemaPathType.NODE,
+        field_name="uniqueness_constraints",
+        property_name="uniqueness_constraints",
+    )
+    for existing in constraints:
+        if (
+            existing.constraint_name == "node.uniqueness_constraints.update"
+            and existing.path == schema_path
+        ):
+            if existing.node_uuids is None:
+                return
+            existing.node_uuids |= extra_node_uuids
+            return
+    constraints.append(
+        SchemaUpdateConstraintInfo(
+            constraint_name="node.uniqueness_constraints.update",
+            path=schema_path,
+            node_uuids=extra_node_uuids,
+        )
+    )
 
 
 @flow(name="proposed-changed-repository-checks", flow_run_name="Process user defined checks")

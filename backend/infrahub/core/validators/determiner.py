@@ -48,14 +48,54 @@ class ConstraintValidatorDeterminer:
         # diff carries the concrete kind, so we union across any inheriting
         # kinds the determiner has seen. Returns None when no UUIDs are known
         # (forces a full scan, preserving correctness for schema-diff origins).
-        node_schema = self.schema_branch.get(name=kind, duplicate=False)
-        derived_kinds = {kind}
-        if hasattr(node_schema, "used_by") and node_schema.used_by:
-            derived_kinds.update(node_schema.used_by)
+        derived_kinds = self._derived_kinds(kind)
         uuids: set[str] = set()
         for derived in derived_kinds:
             uuids.update(self._node_uuid_map.get(derived, set()))
         return uuids or None
+
+    def _derived_kinds(self, kind: str) -> set[str]:
+        node_schema = self.schema_branch.get(name=kind, duplicate=False)
+        derived_kinds = {kind}
+        if hasattr(node_schema, "used_by") and node_schema.used_by:
+            derived_kinds.update(node_schema.used_by)
+        return derived_kinds
+
+    def find_cross_kind_uniqueness_dependents(self) -> dict[tuple[str, str], set[str]]:
+        """Identify uniqueness constraints whose values depend on a diffed peer attribute.
+
+        A path like ``device__name`` in kind S's uniqueness constraint means S's
+        constraint value depends on the peer kind's ``name`` attribute. If the
+        peer's ``name`` is in the diff, S's uniqueness must be re-checked even
+        though S itself has no entry in the diff.
+
+        Returns a dict keyed by (dependent_kind, rel_name) → diffed peer UUIDs
+        for the cases where the peer kind's referenced attribute is in the diff.
+        """
+        dependents: dict[tuple[str, str], set[str]] = {}
+        for schema in self.schema_branch.get_all(duplicate=False).values():
+            uniqueness_constraints = getattr(schema, "uniqueness_constraints", None)
+            if not uniqueness_constraints:
+                continue
+            for uniqueness_constraint in uniqueness_constraints:
+                for path in uniqueness_constraint:
+                    if "__" not in path:
+                        continue
+                    name, property_name = path.split("__", 1)
+                    rel_schema = schema.get_relationship_or_none(name=name)
+                    if rel_schema is None or not property_name:
+                        continue
+                    peer_concrete_kinds = self._derived_kinds(rel_schema.peer)
+                    diffed_peer_uuids: set[str] = set()
+                    for peer_kind in peer_concrete_kinds:
+                        if property_name not in self._attribute_element_map.get(peer_kind, set()):
+                            continue
+                        diffed_peer_uuids.update(self._node_uuid_map.get(peer_kind, set()))
+                    if not diffed_peer_uuids:
+                        continue
+                    key = (schema.kind, rel_schema.name)
+                    dependents.setdefault(key, set()).update(diffed_peer_uuids)
+        return dependents
 
     def _has_attribute_diff(self, kind: str, name: str) -> bool:
         return name in self._attribute_element_map.get(kind, set())
