@@ -1,40 +1,27 @@
+import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
+import React from "react";
 
+import { Badge } from "@/shared/components/ui/badge";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/shared/components/ui/command";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+} from "@/shared/components/ui/combobox";
+import { PopoverTrigger } from "@/shared/components/ui/popover";
+import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-
-type ChipTone = "blue" | "red";
-
-const TONE_CHIP: Record<ChipTone, string> = {
-  blue: "bg-blue-50 text-blue-700",
-  red: "bg-red-50 text-red-700",
-};
-
-const TONE_CHIP_REMOVE: Record<ChipTone, string> = {
-  blue: "text-blue-400 hover:text-blue-600",
-  red: "text-red-400 hover:text-red-600",
-};
-
-const TONE_CLEAR: Record<ChipTone, string> = {
-  blue: "text-blue-500 hover:text-blue-700",
-  red: "text-red-500 hover:text-red-700",
-};
 
 export interface KindMultiSelectProps {
   value: string[];
   onChange: (kinds: string[]) => void;
   label?: string;
   placeholder?: string;
-  showChips?: boolean;
-  chipTone?: ChipTone;
   filter?: (namespace: string) => boolean;
   className?: string;
 }
@@ -43,12 +30,11 @@ export function KindMultiSelect({
   value,
   onChange,
   label,
-  placeholder = "Search kinds...",
-  showChips = false,
-  chipTone = "blue",
+  placeholder = "Select kinds...",
   filter,
   className,
 }: KindMultiSelectProps) {
+  const [open, setOpen] = React.useState(false);
   const allNodes = useAtomValue(nodeSchemasAtom);
   const nodes = filter ? allNodes.filter((s) => filter(s.namespace as string)) : allNodes;
 
@@ -57,84 +43,80 @@ export function KindMultiSelect({
   }
 
   return (
-    <div className={classNames("space-y-1", className)}>
+    <div className="space-y-1">
       {label && (
         <span className="block font-medium text-gray-600 text-xs">
           {label} {value.length > 0 && `(${value.length})`}
         </span>
       )}
 
-      {showChips && value.length > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {value.map((kind) => {
-            const node = nodes.find((n) => n.kind === kind);
-            return (
-              <span
-                key={kind}
-                className={classNames(
-                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px]",
-                  TONE_CHIP[chipTone]
-                )}
-              >
-                {node?.label ?? kind}
-                <button
-                  type="button"
-                  onClick={() => toggle(kind)}
-                  className={TONE_CHIP_REMOVE[chipTone]}
-                >
-                  ✕
-                </button>
-              </span>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => onChange([])}
-            className={classNames("text-[10px]", TONE_CLEAR[chipTone])}
+      <Combobox open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <div
+            className={classNames(
+              inputStyle,
+              "has-[>:last-child:focus]:border-custom-blue-600 has-[>:last-child:focus]:outline-hidden has-[>:last-child:focus]:ring-2 has-[>:last-child:focus]:ring-custom-blue-600/25",
+              "cursor-pointer",
+              className
+            )}
           >
-            Clear all
-          </button>
-        </div>
-      )}
+            <div className="flex grow flex-wrap gap-1">
+              {value.length === 0 && (
+                <span className="text-gray-400 text-sm">{placeholder}</span>
+              )}
+              {value.map((kind) => {
+                const node = nodes.find((n) => n.kind === kind);
+                return (
+                  <Badge key={kind} className="flex items-center gap-1 pr-0.5">
+                    {node?.label ?? kind}
+                    <Button
+                      size="xs"
+                      shape="circle"
+                      variant="ghost"
+                      onPress={() => toggle(kind)}
+                      className="size-4 text-gray-500 data-hovered:text-gray-800"
+                      aria-label="Remove"
+                      data-testid="remove-option"
+                    >
+                      &times;
+                    </Button>
+                  </Badge>
+                );
+              })}
+            </div>
 
-      <Command className="rounded-md border border-gray-200">
-        <CommandInput placeholder={placeholder} />
-        <CommandList className="max-h-32">
-          <CommandEmpty>No kinds found</CommandEmpty>
-          {nodes.map((s) => {
-            const kind = s.kind as string;
-            const checked = value.includes(kind);
-            return (
-              <CommandItem
-                key={kind}
-                value={kind}
-                keywords={[s.label as string, s.namespace as string]}
-                onSelect={() => toggle(kind)}
-                className="text-xs"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  readOnly
-                  className="rounded border-gray-300"
-                />
-                <span className="truncate">{s.label ?? kind}</span>
-                <span className="ml-auto text-gray-400">{s.namespace}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandList>
-      </Command>
+            <button
+              type="button"
+              className="h-3.5 w-3.5 text-gray-600 outline-hidden"
+              onClick={() => setOpen(!open)}
+            >
+              <Icon icon="mdi:unfold-more-horizontal" />
+            </button>
+          </div>
+        </PopoverTrigger>
 
-      {!showChips && value.length > 0 && (
-        <button
-          type="button"
-          onClick={() => onChange([])}
-          className={classNames("text-xs", TONE_CLEAR[chipTone])}
-        >
-          Clear
-        </button>
-      )}
+        <ComboboxContent>
+          <ComboboxList>
+            <ComboboxEmpty>No kinds found</ComboboxEmpty>
+            {nodes.map((s) => {
+              const kind = s.kind as string;
+              const checked = value.includes(kind);
+              return (
+                <ComboboxItem
+                  key={kind}
+                  value={kind}
+                  selectedValue={checked ? kind : null}
+                  keywords={[s.label as string, s.namespace as string]}
+                  onSelect={() => toggle(kind)}
+                >
+                  <span className="truncate">{s.label ?? kind}</span>
+                  <span className="ml-auto text-gray-400 text-xs">{s.namespace}</span>
+                </ComboboxItem>
+              );
+            })}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
     </div>
   );
 }
