@@ -11,6 +11,7 @@ import {
   ComboboxItem,
   ComboboxList,
 } from "@/shared/components/ui/combobox";
+import Label from "@/shared/components/ui/label";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
@@ -24,6 +25,7 @@ export interface KindMultiSelectProps {
   placeholder?: string;
   filter?: (namespace: string) => boolean;
   className?: string;
+  id?: string;
 }
 
 export function KindMultiSelect({
@@ -33,8 +35,11 @@ export function KindMultiSelect({
   placeholder = "Select kinds...",
   filter,
   className,
+  id: idProp,
 }: KindMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const generatedId = React.useId();
+  const id = idProp ?? generatedId;
   const allNodes = useAtomValue(nodeSchemasAtom);
   const nodes = filter ? allNodes.filter((s) => filter(s.namespace as string)) : allNodes;
 
@@ -45,12 +50,12 @@ export function KindMultiSelect({
   return (
     <div className="space-y-1">
       {label && (
-        <span className="block font-medium text-gray-700 text-sm">
+        <Label htmlFor={id} className="block">
           {label}
           {value.length > 0 && (
             <span className="ml-1 font-normal text-gray-400 text-xs">({value.length})</span>
           )}
-        </span>
+        </Label>
       )}
 
       <Combobox open={open} onOpenChange={setOpen}>
@@ -87,6 +92,7 @@ export function KindMultiSelect({
             </div>
 
             <button
+              id={id}
               type="button"
               className="h-3.5 w-3.5 text-gray-600 outline-hidden"
               onClick={() => setOpen(!open)}

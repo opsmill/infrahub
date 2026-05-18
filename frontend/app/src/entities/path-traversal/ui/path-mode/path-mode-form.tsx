@@ -148,7 +148,8 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                 <KindMultiSelect
                   value={(field.value as string[]) ?? []}
                   onChange={field.onChange}
-                  label="Include only these kinds"
+                  label="Kinds to include"
+                  placeholder="Select kinds to include..."
                   filter={isVisibleNamespace}
                 />
               )}
@@ -160,7 +161,7 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
                 <KindMultiSelect
                   value={(field.value as string[]) ?? []}
                   onChange={field.onChange}
-                  label="Exclude kinds"
+                  label="Kinds to exclude"
                   placeholder="Select kinds to exclude..."
                   filter={isVisibleNamespace}
                 />
