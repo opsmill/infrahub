@@ -1,5 +1,1 @@
 offline = true
-exclude_path = [
-  "dev/specs",
-  "specs",
-]
