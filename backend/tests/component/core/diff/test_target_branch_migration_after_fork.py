@@ -1,6 +1,9 @@
-"""Merging a delete from a user branch when the same UUID was kind-migrated on
-the target branch *after* the user branch was forked must propagate the delete
-(and its metadata) to the post-migration Node vertex on the target branch.
+"""Delete-merge propagation across a post-fork target-branch kind migration.
+
+When the same UUID was kind-migrated on the target branch *after* the user
+branch was forked, merging a delete from the user branch must propagate the
+delete (and its metadata) to the post-migration Node vertex on the target
+branch.
 """
 
 from unittest.mock import AsyncMock
@@ -81,9 +84,11 @@ async def test_target_branch_migration_after_fork_delete_propagates_to_post_migr
     person_jane_main: Node,
     car_camry_main: Node,
 ) -> None:
-    """Post-migration ``Test2NewCar`` vertex must be fully deleted by the merge:
-    its active ``IS_PART_OF`` and child edges closed at ``merge_at``, and its
-    node-level ``updated_at`` / ``updated_by`` refreshed to reflect the delete.
+    """Post-migration ``Test2NewCar`` vertex must be fully deleted by the merge.
+
+    Its active ``IS_PART_OF`` and child edges must be closed at ``merge_at``,
+    and its node-level ``updated_at`` / ``updated_by`` refreshed to reflect
+    the delete.
     """
     branch_user = "branch-deleted-node-user"
 
