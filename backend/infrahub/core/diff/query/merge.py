@@ -867,7 +867,7 @@ CALL (n) {
 // --------------------
 CALL (n, is_part_of_e) {
     WITH n, is_part_of_e
-    WHERE n.updated_at IS NULL OR n.updated_at <> $at)
+    WHERE n.updated_at IS NULL OR n.updated_at <> $at
     WITH n, is_part_of_e, CASE
         WHEN is_part_of_e.from = $at THEN is_part_of_e.from_user_id
         WHEN is_part_of_e.to = $at THEN is_part_of_e.to_user_id
