@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 def _ip_range_display_label(node: Node) -> str:
-    """Return a human friendly summary of an IP range"""
+    """Return a human friendly summary of an IP range."""
     size = int(node.last_address.obj) - int(node.address.obj) + 1
 
     if size == 1:

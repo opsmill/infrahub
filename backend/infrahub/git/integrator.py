@@ -144,7 +144,8 @@ class TransformPythonInformation(BaseModel):
 
 
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
-    """This class provides interfaces to read and process information from .infrahub.yml files and can perform
+    """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
+
     actions for objects defined within those files.
 
     This class will later be broken out from the "InfrahubRepository" based classes and instead be a separate
@@ -1144,8 +1145,10 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def compare_python_check_definition(
         cls, check: CheckDefinitionInformation, existing_check: CoreCheckDefinition
     ) -> bool:
-        """Compare an existing Python Check Object with a Check Class
+        """Compare an existing Python Check Object with a Check Class.
+
         and identify if we need to update the object in the database.
+
         """
         if (
             existing_check.query.id != check.query

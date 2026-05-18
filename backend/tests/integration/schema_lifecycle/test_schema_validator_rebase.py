@@ -95,7 +95,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_01_person_name_regex(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
-        """Add regex to TestPerson.name that does not fit existing data"""
+        """Add regex to TestPerson.name that does not fit existing data."""
         new_schema = {**schema_person_base}
         new_schema["attributes"][0]["regex"] = "^[A-Z][a-z]+$"
         return new_schema

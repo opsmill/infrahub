@@ -84,7 +84,7 @@ async def test_migration_018_fail(
     car_person_schema: SchemaBranch,
     migration: InternalSchemaMigration,
 ) -> None:
-    """Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint"""
+    """Test migration correctly identifies nodes with NULL attribute values that violate uniqueness constraint."""
     schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     await registry.schema.load_schema_to_db(db=db, schema=schema_branch)
     car_red_update = await NodeManager.get_one(db=db, id=car_red.id)

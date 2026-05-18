@@ -68,9 +68,11 @@ class TestTemplateAttributeLifecycle(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def person_schema_add_attributes(self, person_schema_base: NodeSchema) -> NodeSchema:
         """Schema update that adds attributes to templates:
+
         - eye_color: read_only=False (was True) -> support_templates becomes True -> ADD to templates
         - new attribute 'weight': optional=True -> support_templates=True -> ADD to templates
-        - new attribute 'not_for_templates': read_only=True -> support_templates=False -> NOT added
+        - new attribute 'not_for_templates': read_only=True -> support_templates=False -> NOT added.
+
         """
         updated = person_schema_base.model_copy(deep=True)
         eye_color_attr = updated.get_attribute("eye_color")
@@ -100,8 +102,10 @@ class TestTemplateAttributeLifecycle(TestInfrahubApp):
         client: InfrahubClient,
     ) -> NodeSchema:
         """Schema update that removes attributes from templates:
+
         - lifespan: read_only=True (was False) -> support_templates becomes False -> REMOVE from templates
-        - hobby: state=ABSENT -> attribute removed entirely -> REMOVE from templates
+        - hobby: state=ABSENT -> attribute removed entirely -> REMOVE from templates.
+
         """
         current_template_schema = await client.schema.get(
             kind="LifecyclePerson", branch=default_branch.name, refresh=True

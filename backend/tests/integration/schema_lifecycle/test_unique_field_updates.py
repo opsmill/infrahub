@@ -94,7 +94,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_person_02_more_fields(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
-        """Add a new attribute and a new relationship"""
+        """Add a new attribute and a new relationship."""
         updated_schema = {**schema_person_base}
         updated_schema["attributes"].append(
             {"name": "tax_id", "kind": "Number", "optional": True},
@@ -109,7 +109,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_person_03_unique_fields(self, schema_person_02_more_fields: dict[str, Any]) -> dict[str, Any]:
-        """Make the new attribute unique, use the new relationship in node-level properties"""
+        """Make the new attribute unique, use the new relationship in node-level properties."""
         updated_schema = {**schema_person_02_more_fields}
         for attr in updated_schema["attributes"]:
             if attr["name"] == "tax_id":
@@ -125,7 +125,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     def schema_person_04_rename_original_unique_fields(
         self, schema_person_03_unique_fields: dict[str, Any]
     ) -> dict[str, Any]:
-        """Rename the name attribute"""
+        """Rename the name attribute."""
         updated_schema = {**schema_person_03_unique_fields}
         for attr in updated_schema["attributes"]:
             if attr["name"] == "name":
@@ -140,7 +140,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     def schema_person_05_delete_original_unique_fields(
         self, schema_person_04_rename_original_unique_fields: dict[str, Any]
     ) -> dict[str, Any]:
-        """Delete the name attribute"""
+        """Delete the name attribute."""
         updated_schema = {**schema_person_04_rename_original_unique_fields}
         for attr in updated_schema["attributes"]:
             if attr["name"] == "real_name":
@@ -154,7 +154,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
 
     @pytest.fixture(scope="class")
     def schema_generic_06_delete_unique_field(self, schema_generic_01: dict[str, Any]) -> dict[str, Any]:
-        """Delete the unique attribute"""
+        """Delete the unique attribute."""
         updated_schema = {**schema_generic_01}
         for attr in updated_schema["attributes"]:
             if attr["name"] == "unique_attr":
@@ -169,7 +169,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
     def schema_person_06_delete_unique_generic_field(
         self, schema_person_05_delete_original_unique_fields: dict[str, Any]
     ) -> dict[str, Any]:
-        """Update the human friendly ID to remove the deleted unique_attr field"""
+        """Update the human friendly ID to remove the deleted unique_attr field."""
         updated_schema = {**schema_person_05_delete_original_unique_fields}
         # has to be updated manually
         updated_schema["human_friendly_id"] = ["tax_id__value"]

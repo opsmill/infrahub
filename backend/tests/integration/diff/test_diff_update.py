@@ -251,7 +251,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_on_deleted_branch: EnrichedDiffRoot,
         client: InfrahubClient,
     ) -> None:
-        """Validate if the diff is properly created the first time"""
+        """Validate if the diff is properly created the first time."""
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": BRANCH_NAME})
         assert result["DiffUpdate"]["ok"]
 
@@ -264,7 +264,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_diff_second_update(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], create_diff: None, client: InfrahubClient
     ) -> None:
-        """Validate if the diff is properly updated the second time"""
+        """Validate if the diff is properly updated the second time."""
         branch1 = registry.get_branch_from_registry(branch=BRANCH_NAME)
 
         bob = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)

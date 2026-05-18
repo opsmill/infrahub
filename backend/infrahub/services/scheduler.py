@@ -66,7 +66,7 @@ class InfrahubScheduler:
         self.running = False
 
     async def run_schedule(self, schedule: Schedule) -> None:
-        """Execute the task provided in the schedule as per the defined interval
+        """Execute the task provided in the schedule as per the defined interval.
 
         Once the service is marked to be shutdown the scheduler will stop executing tasks.
 

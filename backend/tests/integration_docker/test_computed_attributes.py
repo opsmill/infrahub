@@ -39,7 +39,7 @@ class TestComputedAttributes(TestInfrahubDockerClient):
         return yaml.safe_load(Path(CURRENT_DIRECTORY / "test_files/computed_tshirt.yml").read_text(encoding="utf-8"))
 
     async def test_load_schema(self, client: InfrahubClient, schema_computed_tshirt: dict) -> None:
-        """Prepare the schema"""
+        """Prepare the schema."""
         tshirt_schema = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
         assert tshirt_schema.schema_updated
         # Validate that the schema is in sync after loading the device and interface schema

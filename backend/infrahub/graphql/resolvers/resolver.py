@@ -331,7 +331,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 async def hierarchy_resolver(
     direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> dict[str, Any]:
-    """Resolver for ancestors and dependants for Hierarchical nodes
+    """Resolver for ancestors and dependants for Hierarchical nodes.
 
     This resolver is used for paginated responses and as such we redefined the requested
     fields by only reusing information below the 'node' key.

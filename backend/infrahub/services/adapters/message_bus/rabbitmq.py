@@ -40,9 +40,7 @@ AioPikaInstrumentor().instrument()
 
 # TODO: remove this once https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1835 is resolved
 def patch_spanbuilder_set_channel() -> None:
-    """The default SpanBuilder.set_channel does not work with aio_pika 9.1 and the refactored connection
-    attribute
-    """
+    """The default SpanBuilder.set_channel does not work with aio_pika 9.1 and the refactored connection attribute."""
 
     def set_channel(self: SpanBuilder, channel: AbstractChannel) -> None:
         if hasattr(channel, "_connection"):

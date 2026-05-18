@@ -21,7 +21,7 @@ log = get_logger()
 
 
 class DiffCardinalityOneEnricher(DiffEnricherInterface):
-    """Clean up diffs for cardinality=one relationships to make them cleaner and more intuitive
+    """Clean up diffs for cardinality=one relationships to make them cleaner and more intuitive.
 
     Final result is that each EnrichedDiffRelationship for a relationship of cardinality one
      - MUST have a single EnrichedDiffSingleRelationship (we'll call it the element)

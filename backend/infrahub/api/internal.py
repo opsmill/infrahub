@@ -67,7 +67,8 @@ class SearchDocs:
 
     def _load_json(self) -> None:
         """The structure of search-index.json is organized into an array of 3 arrays representing indexes for:
-        [titleDocuments, headingDocuments, contentDocuments]
+
+        [titleDocuments, headingDocuments, contentDocuments].
 
         For titleDocuments, it consists of an array of dictionaries with the following structure:
         {

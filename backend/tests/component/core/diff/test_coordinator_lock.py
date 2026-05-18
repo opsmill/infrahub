@@ -251,7 +251,8 @@ class TestDiffCoordinatorLocks:
     async def test_proposed_change_linked_when_waiting_for_lock(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
     ) -> None:
-        """Test that when a diff update with proposed_change_id waits for an in-progress update,
+        """Test that when a diff update with proposed_change_id waits for an in-progress update,.
+
         the proposed change still gets linked to the diff.
 
         This tests the race condition scenario:

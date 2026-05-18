@@ -88,7 +88,7 @@ CALL (vertex_id) {
 
 
 class RebaseBranchQuery(Query):
-    """Rebase a branch onto the default branch by updating edge timestamps
+    """Rebase a branch onto the default branch by updating edge timestamps.
 
     For every edge on this branch
         if it has a from time before $at and no to time, update it to $at

@@ -157,8 +157,10 @@ class SchemaRoot(BaseModel):
         return warnings
 
     def generate_uuid(self) -> None:
-        """Generate UUID for all nodes, attributes & relationships
+        """Generate UUID for all nodes, attributes & relationships.
+
         Mainly useful during unit tests.
+
         """
         for node in self.nodes + self.generics:
             if not node.id:

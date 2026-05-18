@@ -102,8 +102,10 @@ async def car_person_schema_root() -> SchemaRoot:
 
 @pytest.fixture(scope="session")
 async def graph_generator() -> GraphProfileGenerator:
-    """Use GraphProfileGenerator as a fixture as it may allow to properly generate graphs from
+    """Use GraphProfileGenerator as a fixture as it may allow to properly generate graphs from.
+
     distinct tests, instead of having each test managing its own display.
+
     """
     return GraphProfileGenerator()
 

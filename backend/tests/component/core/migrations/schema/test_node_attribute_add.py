@@ -225,7 +225,7 @@ async def test_migration(
 
 
 async def test_migration_metadata(db: InfrahubDatabase, car_accord_main: Node, branch: Branch) -> None:
-    """Test that vertex metadata is set correctly when adding an attribute"""
+    """Test that vertex metadata is set correctly when adding an attribute."""
     schema = registry.schema.get_schema_branch(name=branch.name)
     car_schema = schema.get_node(name="TestCar")
 

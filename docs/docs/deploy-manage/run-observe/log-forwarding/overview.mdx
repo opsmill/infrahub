@@ -72,7 +72,7 @@ The following event types are forwarded as audit events:
 - **Proposed change**: `infrahub.proposed_change.approved`, `infrahub.proposed_change.rejected`, `infrahub.proposed_change.merged`, and others
 - **Schema**: `infrahub.schema.updated`
 
-For the complete list of event types and their payload fields, see the [Infrahub events reference](../../../reference/infrahub-events.mdx).
+For the complete list of event types and their payload fields, see the [Infrahub events reference](../../../reference/infrahub-events/overview.mdx).
 
 ### Permission denied events
 
@@ -203,5 +203,5 @@ In all cases, configure the receiver to parse JSON from the MSG field to extract
 
 - **Activity log**: The in-app UI for browsing and filtering events. Log forwarding exports the same events to external systems. See [Activity log](../activity-log.mdx).
 - **Webhooks**: HTTP callbacks for real-time integrations with custom payloads. Log forwarding uses syslog for compliance and SIEM use cases. See [Webhooks](../../../webhooks/overview.mdx).
-- **Event framework**: Log forwarding consumes the same events that power the activity log, webhooks, and event rules. See [Events](../../../events/event-system) and the [Infrahub events reference](../../../reference/infrahub-events.mdx).
+- **Event framework**: Log forwarding consumes the same events that power the activity log, webhooks, and event rules. See [Events](../../../events/event-system) and the [Infrahub events reference](../../../reference/infrahub-events/overview.mdx).
 - **Configuration reference**: All log forwarding parameters are documented in the [configuration reference](../../../reference/configuration.mdx#log-forwarding).

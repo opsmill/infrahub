@@ -140,7 +140,7 @@ class DatabaseSchemaManager:
 
 
 class InfrahubDatabase:
-    """Base class for database access"""
+    """Base class for database access."""
 
     def __init__(
         self,
@@ -187,8 +187,10 @@ class InfrahubDatabase:
         return False
 
     def get_context(self) -> dict[str, Any]:
-        """This method is meant to be overridden by subclasses in order to fill in subclass attributes
+        """This method is meant to be overridden by subclasses in order to fill in subclass attributes.
+
         to methods returning a copy of this object using self.__class__ constructor.
+
         """
         return {}
 

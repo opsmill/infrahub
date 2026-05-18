@@ -25,7 +25,7 @@ _singletons: dict[str, Any] = {}
 
 
 def clear_singletons() -> None:
-    """Drop every cached singleton"""
+    """Drop every cached singleton."""
     _singletons.clear()
 
 

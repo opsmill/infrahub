@@ -1227,7 +1227,7 @@ class TestDiffCombiner:
         assert self.expected_combined == combined
 
     async def test_added_removed_parent_with_surviving_child(self) -> None:
-        """Test an edge case where a parent relationship is removed from the schema and a parent object is deleted
+        """Test an edge case where a parent relationship is removed from the schema and a parent object is deleted.
 
         The earlier diff includes a child node with a kind=Parent relationship to a parent node.
         Then the parent relationship schema is removed from the diff, the parent node is deleted, and the child node
