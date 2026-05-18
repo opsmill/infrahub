@@ -1,6 +1,11 @@
+---
+paths:
+  - "backend/infrahub/**/*.py"
+---
+
 # Code documentation style
 
-Applies to docstrings, comments, and any inline documentation in source files (Python, TypeScript, TSX).
+Applies to docstrings, comments, and any inline documentation in Python source files.
 
 ## No references to other code
 
