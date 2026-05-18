@@ -81,7 +81,7 @@ export function PathModeForm({ form, onSubmit, isPending }: PathModeFormProps) {
 
       <Accordion type="single" collapsible>
         <AccordionItem value="advanced">
-          <AccordionTrigger>Advanced options</AccordionTrigger>
+          <AccordionTrigger>Search options</AccordionTrigger>
           <AccordionContent className="space-y-3">
             <div className="flex gap-4">
               <div className="flex-1 space-y-1">
