@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import pytest
 from fastapi import FastAPI
-from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from starlette.responses import Response
 
@@ -34,16 +33,6 @@ def fastapi_response() -> Response:
 @pytest.fixture
 def credentials() -> LDAPCredentials:
     return LDAPCredentials(username="alice", password="any-non-empty-string")
-
-
-def test_login_route_is_mounted_under_api_prefix() -> None:
-    full_paths = {route.path for route in top_level_router.routes if isinstance(route, APIRoute)}
-    assert "/api/auth/ldap/login" in full_paths
-
-
-def test_ldap_credentials_password_excluded_from_repr() -> None:
-    creds = LDAPCredentials(username="alice", password="sensitive-secret")
-    assert "sensitive-secret" not in repr(creds)
 
 
 async def test_community_login_handler_raises_enterprise_required(

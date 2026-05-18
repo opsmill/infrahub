@@ -421,10 +421,6 @@ class BranchNeedsRebaseError(BranchStatusError): ...
 class EnterpriseRequiredError(Error):
     """Raised when a community deployment invokes an Enterprise-gated feature.
 
-    The route layer translates this into a JSON envelope shared by every Enterprise-gated endpoint:
-
-        {"error_code": "ENTERPRISE_REQUIRED", "feature": "<feature_name>"}
-
     The `feature` attribute carries the stable, snake_case feature identifier (e.g. `"ldap_auth"`).
     """
 

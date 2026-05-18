@@ -29,6 +29,7 @@ class LDAPAuthService(ABC):
             LDAPAuthenticationError: on any credential/lookup/disabled-account failure.
             LDAPDirectoryUnavailableError: when every configured server is unreachable.
             LDAPCollisionError: when the username collides with an existing local-only Infrahub account.
+
         """
 
 
