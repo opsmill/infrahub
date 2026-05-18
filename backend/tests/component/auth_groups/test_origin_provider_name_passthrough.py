@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     ("provider_name", "captured_name"),
     [
         pytest.param("AzureAD-corp", "team-alpha", id="azure"),
-        pytest.param("corp-ldap", "team-beta", id="ldap"),
+        pytest.param("Okta-corp", "team-beta", id="okta"),
     ],
 )
 async def test_provider_name_is_written_verbatim_to_origin(
@@ -66,21 +66,21 @@ async def test_two_providers_produce_two_groups_with_distinct_origin_values(
         display_name="Pia Azure",
         email="pia.azure@example.com",
     )
-    ldap_identity = ExternalIdentity(
-        sub="sub-passthrough-ldap",
-        provider_name="corp-ldap",
+    okta_identity = ExternalIdentity(
+        sub="sub-passthrough-okta",
+        provider_name="Okta-corp",
         protocol=ExternalAuthProtocol.OIDC,
-        display_name="Lou LDAP",
-        email="lou.ldap@example.com",
+        display_name="Olivia Okta",
+        email="olivia.okta@example.com",
     )
 
     await signin_sso_account(db=db, external_identity=azure_identity, sso_groups=["LDAP/group/azure-only-team"])
-    await signin_sso_account(db=db, external_identity=ldap_identity, sso_groups=["LDAP/group/ldap-only-team"])
+    await signin_sso_account(db=db, external_identity=okta_identity, sso_groups=["LDAP/group/okta-only-team"])
 
     azure_groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "azure-only-team"})
-    ldap_groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "ldap-only-team"})
+    okta_groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "okta-only-team"})
 
     assert len(azure_groups) == 1
-    assert len(ldap_groups) == 1
+    assert len(okta_groups) == 1
     assert azure_groups[0].origin.value == "AzureAD-corp"
-    assert ldap_groups[0].origin.value == "corp-ldap"
+    assert okta_groups[0].origin.value == "Okta-corp"
