@@ -35,39 +35,36 @@ export function InfraNode({ data }: NodeProps) {
     navigate(url);
   }
 
-  let borderColor = "border-gray-300";
-  let bgColor = "bg-white";
-  const showKindStripe = !isSource && !isDestination && !nodeData.highlighted;
   const kindColor = getKindColor(nodeData.kind);
+  const isEndpoint = isSource || isDestination;
+
+  let borderClass = "";
+  let bgClass = "bg-white";
+  let borderStyle: string | undefined;
 
   if (isSource) {
-    borderColor = "border-emerald-500";
-    bgColor = "bg-emerald-50";
+    borderClass = "border-emerald-500";
+    bgClass = "bg-emerald-50";
   } else if (isDestination) {
-    borderColor = "border-orange-500";
-    bgColor = "bg-orange-50";
-  } else if (nodeData.highlighted) {
-    borderColor = "border-blue-400";
-    bgColor = "bg-blue-50";
+    borderClass = "border-orange-500";
+    bgClass = "bg-orange-50";
+  } else {
+    borderStyle = kindColor;
+    if (nodeData.highlighted) bgClass = "bg-blue-50";
   }
 
-  const dimmed = !nodeData.highlighted && !isSource && !isDestination;
+  const dimmed = !nodeData.highlighted && !isEndpoint;
 
   return (
     <div
-      className={`relative min-w-[150px] max-w-[220px] cursor-pointer rounded-lg border-2 px-3 py-2 text-center shadow-sm transition-all hover:shadow-md ${borderColor} ${bgColor}
+      className={`relative min-w-[150px] max-w-[220px] cursor-pointer rounded-lg border-2 px-3 py-2 text-center shadow-sm transition-all hover:shadow-md ${borderClass} ${bgClass}
         ${dimmed ? "opacity-40" : ""}
       `}
+      style={borderStyle ? { borderColor: borderStyle } : undefined}
       onClick={handleClick}
       onMouseEnter={() => setShowTooltip(true)}
       onMouseLeave={() => setShowTooltip(false)}
     >
-      {showKindStripe && (
-        <div
-          className="absolute top-0 left-0 h-full w-1 rounded-l-lg"
-          style={{ backgroundColor: kindColor }}
-        />
-      )}
       <Handle type="target" position={targetPosition} className="!bg-gray-400" />
 
       {/* Endpoint badge */}
