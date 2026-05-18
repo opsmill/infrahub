@@ -416,3 +416,59 @@ class BranchAlreadyMergedError(BranchStatusError): ...
 
 
 class BranchNeedsRebaseError(BranchStatusError): ...
+
+
+class EnterpriseRequiredError(Error):
+    """Raised when a community deployment invokes an Enterprise-gated feature.
+
+    The `feature` attribute carries the stable, snake_case feature identifier (e.g. `"ldap_auth"`).
+    """
+
+    HTTP_CODE: int = 403
+    DESCRIPTION: str = "This feature requires the Infrahub Enterprise edition."
+
+    def __init__(self, feature: str, message: str | None = None) -> None:
+        self.feature = feature
+        self.message = message or self.DESCRIPTION
+        super().__init__(self.message)
+
+
+class LDAPAuthenticationError(Error):
+    """Generic LDAP authentication failure.
+
+    Raised for wrong password, unknown user, disabled account, and any other
+    bind/search failure that should appear to the end user as a generic
+    credential failure. Never discloses the underlying cause.
+    """
+
+    HTTP_CODE: int = 401
+    message: str = "Authentication failed."
+
+
+class LDAPLookupError(LDAPAuthenticationError):
+    """LDAP user search returned multiple entries or a referral."""
+
+
+class LDAPDirectoryUnavailableError(Error):
+    """All configured LDAP servers timed out or refused the connection."""
+
+    HTTP_CODE: int = 502
+    message: str = "The LDAP directory is currently unavailable. Try again later."
+
+    def __init__(self, message: str | None = None) -> None:
+        self.message = message or self.message
+        super().__init__(self.message)
+
+
+class LDAPCollisionError(Error):
+    """LDAP login attempted for a username that exists as a local-only account."""
+
+    HTTP_CODE: int = 409
+    DESCRIPTION: str = (
+        "An account already exists for this username and is not attributed to LDAP. Contact your administrator."
+    )
+
+    def __init__(self, account_name: str, message: str | None = None) -> None:
+        self.account_name = account_name
+        self.message = message or self.DESCRIPTION
+        super().__init__(self.message)

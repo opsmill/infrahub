@@ -69,6 +69,9 @@ dependencies = [
     "ariadne-codegen==0.15.3",
 ]
 
+[project.optional-dependencies]
+enterprise = ["bonsai>=1.5.5"]
+
 [project.urls]
 Homepage = "https://opsmill.com"
 Repository = "https://github.com/opsmill/infrahub"

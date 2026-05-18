@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/ldap/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login Ldap */
+        post: operations["login_ldap_api_auth_ldap_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/diff/files": {
         parameters: {
             query?: never;
@@ -1423,6 +1440,7 @@ export interface components {
             analytics: components["schemas"]["AnalyticsSettings"];
             experimental_features: components["schemas"]["ExperimentalFeaturesSettings"];
             sso: components["schemas"]["SSOInfo"];
+            ldap: components["schemas"]["LDAPInfo"];
             /** Installation Type */
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
@@ -1446,6 +1464,18 @@ export interface components {
             color?: string | null;
             /** Label */
             label?: string | null;
+        };
+        /** EnterpriseRequiredResponse */
+        EnterpriseRequiredResponse: {
+            /**
+             * Error Code
+             * @default ENTERPRISE_REQUIRED
+             */
+            error_code: string;
+            /** Feature */
+            feature: string;
+            /** Message */
+            message?: string | null;
         };
         /** ExperimentalFeaturesSettings */
         ExperimentalFeaturesSettings: {
@@ -1666,6 +1696,53 @@ export interface components {
             additionalProperties?: boolean | {
                 [key: string]: unknown;
             } | null;
+        };
+        /** LDAPAuthErrorResponse */
+        LDAPAuthErrorResponse: {
+            /** Error Code */
+            error_code: string;
+            /** Message */
+            message?: string | null;
+        };
+        /** LDAPCollisionResponse */
+        LDAPCollisionResponse: {
+            /**
+             * Error Code
+             * @default LDAP_ACCOUNT_COLLISION
+             */
+            error_code: string;
+            /** Account Name */
+            account_name: string;
+            /** Message */
+            message?: string | null;
+        };
+        /** LDAPCredentials */
+        LDAPCredentials: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /** LDAPInfo */
+        LDAPInfo: {
+            /**
+             * Enabled
+             * @description True when LDAP sign-in is available on this deployment, meaning it has been configured and the running edition supports it.
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Display Label
+             * @description Text shown on the LDAP sign-in button on the login page.
+             * @default Sign in with LDAP
+             */
+            display_label: string;
+            /**
+             * Icon
+             * @description Icon shown on the LDAP sign-in button on the login page.
+             * @default mdi:account-key-outline
+             */
+            icon: string;
         };
         /**
          * ListAttributeParameters
@@ -2653,6 +2730,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    login_ldap_api_auth_ldap_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LDAPCredentials"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserToken"];
+                };
+            };
+            /** @description Authentication failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPAuthErrorResponse"];
+                };
+            };
+            /** @description Enterprise runtime not active. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseRequiredResponse"];
+                };
+            };
+            /** @description Username collides with an existing local-only account. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPCollisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description LDAP directory unavailable. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPAuthErrorResponse"];
                 };
             };
         };

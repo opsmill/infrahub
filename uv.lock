@@ -326,6 +326,26 @@ wheels = [
 ]
 
 [[package]]
+name = "bonsai"
+version = "1.5.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/75/4e/5572ad9689c8b04759ffa53dfcb0784524cc2e9f7884f67ed681508d6763/bonsai-1.5.5.tar.gz", hash = "sha256:417d2c28ec91af0300c9715cc724b84a79ec3b471bc41d3a0a71009fae0cb022", size = 151228, upload-time = "2026-02-18T20:35:10.507Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3f/27/8fca017575cc05e4074848f6c295e1c745596c09b4f8fb8a0d5881c23ec1/bonsai-1.5.5-cp312-cp312-macosx_14_0_arm64.whl", hash = "sha256:1b9d8228b3ae334dd3f9bde6bcc81fc432b07da6aacd4b2de8085b40b6f3aa5b", size = 2903501, upload-time = "2026-02-18T20:34:46.283Z" },
+    { url = "https://files.pythonhosted.org/packages/79/34/a752063a9de4cf08c1b200d212b49ee74e84169ce0bcab9f2e9a2f9d2f23/bonsai-1.5.5-cp312-cp312-macosx_15_0_x86_64.whl", hash = "sha256:b9a6385e21c549b4ff75fa8e946bd5b08c8891e8cdf6b1c5a72baf47a3e1338b", size = 2679620, upload-time = "2026-02-18T20:34:48.761Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/1d/1bb05940c6fa3c18bf34e192a59474af0fd62c8d8452be8f1581d55eced1/bonsai-1.5.5-cp312-cp312-win32.whl", hash = "sha256:fb9a1fcf149fb3fdabfc33a24aad0c1485a88bf619e5a36b7f0898d11b7cd03e", size = 81911, upload-time = "2026-02-18T20:34:50.799Z" },
+    { url = "https://files.pythonhosted.org/packages/ff/25/879240de216efdeec5f4bf43698ce214e90c474f4bc27e5998e65b60015b/bonsai-1.5.5-cp312-cp312-win_amd64.whl", hash = "sha256:5c941199b8349761c207366013e4481df52d99c83e6c10ed1372de890ea230f3", size = 87582, upload-time = "2026-02-18T20:34:52.45Z" },
+    { url = "https://files.pythonhosted.org/packages/f9/3a/af631be0af15e05eeab7bbd83ec0b0f6efc64bd268d8e778aa7b68d2565a/bonsai-1.5.5-cp313-cp313-macosx_14_0_arm64.whl", hash = "sha256:850933a9cf5d918b14b9b2bfa4d28e8f39f55140f861a0163c8c7f7d7142d641", size = 2903454, upload-time = "2026-02-18T20:34:55.161Z" },
+    { url = "https://files.pythonhosted.org/packages/37/c2/a51eb5cfded2e5481f2ce131f0e55d798c02f7f78eb589102791ee1d6b05/bonsai-1.5.5-cp313-cp313-macosx_15_0_x86_64.whl", hash = "sha256:e3ea37384e6af87517b7fb467acca8001580afa47644b572c2a881206524c52b", size = 2679567, upload-time = "2026-02-18T20:34:57.767Z" },
+    { url = "https://files.pythonhosted.org/packages/d9/45/2dce7b3189139e75f3679a1849bdb3f8c5836a429ffc201d10d4601f8d8b/bonsai-1.5.5-cp313-cp313-win32.whl", hash = "sha256:ca619376ac52c97cbe785e4ccfabda2a3a9d3c3f55da8cd304753de0eb356be0", size = 81904, upload-time = "2026-02-18T20:34:59.567Z" },
+    { url = "https://files.pythonhosted.org/packages/32/1b/1d1a6b2bf8009afb6df9bf4b9318da5503e36364e83d7d826bd77002fb6c/bonsai-1.5.5-cp313-cp313-win_amd64.whl", hash = "sha256:8d0d41db8b6cf9e3f78122ae92c98f0785a8c87cf6e5929b59b36836df666b44", size = 87573, upload-time = "2026-02-18T20:35:01.303Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/b5/46f4b7b14a546ed6d1ba6b0653101a27253338d22f603c1a07c866f49dcd/bonsai-1.5.5-cp314-cp314-macosx_14_0_arm64.whl", hash = "sha256:7da307dcf0d796ab6594aabe7dc2248a58146e60e1513f0349cc5d8c7102ee55", size = 2903451, upload-time = "2026-02-18T20:35:03.466Z" },
+    { url = "https://files.pythonhosted.org/packages/24/5c/03e14ba11d1f8ff226b957f00d69cddf349a13ba1c0228bb51eb965f9f82/bonsai-1.5.5-cp314-cp314-macosx_15_0_x86_64.whl", hash = "sha256:e822a8e0a02a10ee2dc2276a43538d67ab1fa4974a33f34cb763b246db6d52f7", size = 2679708, upload-time = "2026-02-18T20:35:05.886Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/21/7092fa42ee0323bae7731ceff384fe909ea4ee333fe478b1e19528aebb67/bonsai-1.5.5-cp314-cp314-win32.whl", hash = "sha256:2517590867ef77cdaaa1ceee2411703f5f1b14e1938786d7855d0a45ec835d3d", size = 82939, upload-time = "2026-02-18T20:35:07.223Z" },
+    { url = "https://files.pythonhosted.org/packages/43/e5/bc67ee45881e0fcd64542669ef90d5a49ffabae17b408a068857e2577659/bonsai-1.5.5-cp314-cp314-win_amd64.whl", hash = "sha256:8b8df73b61c74d819a06cacd9df8a61e1a13e84a9fca091fd1661bb2ca7aaa4f", size = 88796, upload-time = "2026-02-18T20:35:09.318Z" },
+]
+
+[[package]]
 name = "boto3"
 version = "1.34.129"
 source = { registry = "https://pypi.org/simple" }
@@ -1429,6 +1449,11 @@ dependencies = [
     { name = "whenever" },
 ]
 
+[package.optional-dependencies]
+enterprise = [
+    { name = "bonsai" },
+]
+
 [package.dev-dependencies]
 dev = [
     { name = "coverage" },
@@ -1472,6 +1497,7 @@ requires-dist = [
     { name = "asgi-correlation-id", specifier = "==4.2.0" },
     { name = "authlib", specifier = "==1.6.12" },
     { name = "bcrypt", specifier = ">=4.1,<4.2" },
+    { name = "bonsai", marker = "extra == 'enterprise'", specifier = ">=1.5.5" },
     { name = "boto3", specifier = "==1.34.129" },
     { name = "cachetools-async", specifier = "==0.0.5" },
     { name = "click", specifier = "==8.1.7" },
@@ -1516,6 +1542,7 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32,<0.33" },
     { name = "whenever", specifier = "==0.9.3" },
 ]
+provides-extras = ["enterprise"]
 
 [package.metadata.requires-dev]
 dev = [

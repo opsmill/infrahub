@@ -262,6 +262,84 @@
                 ]
             }
         },
+        "/api/auth/ldap/login": {
+            "post": {
+                "summary": "Login Ldap",
+                "operationId": "login_ldap_api_auth_ldap_login_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LDAPCredentials"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserToken"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication failed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Enterprise runtime not active.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EnterpriseRequiredResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Username collides with an existing local-only account.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPCollisionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "LDAP directory unavailable.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/diff/files": {
             "get": {
                 "summary": "Get Diff Files",
@@ -4466,6 +4544,9 @@
                     "sso": {
                         "$ref": "#/components/schemas/SSOInfo"
                     },
+                    "ldap": {
+                        "$ref": "#/components/schemas/LDAPInfo"
+                    },
                     "installation_type": {
                         "type": "string",
                         "title": "Installation Type"
@@ -4481,6 +4562,7 @@
                     "analytics",
                     "experimental_features",
                     "sso",
+                    "ldap",
                     "installation_type",
                     "policy"
                 ],
@@ -4557,6 +4639,35 @@
                     "name"
                 ],
                 "title": "DropdownChoice"
+            },
+            "EnterpriseRequiredResponse": {
+                "properties": {
+                    "error_code": {
+                        "type": "string",
+                        "title": "Error Code",
+                        "default": "ENTERPRISE_REQUIRED"
+                    },
+                    "feature": {
+                        "type": "string",
+                        "title": "Feature"
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "feature"
+                ],
+                "title": "EnterpriseRequiredResponse"
             },
             "ExperimentalFeaturesSettings": {
                 "properties": {
@@ -5064,6 +5175,104 @@
                     "type"
                 ],
                 "title": "JSONSchema"
+            },
+            "LDAPAuthErrorResponse": {
+                "properties": {
+                    "error_code": {
+                        "type": "string",
+                        "title": "Error Code"
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "error_code"
+                ],
+                "title": "LDAPAuthErrorResponse"
+            },
+            "LDAPCollisionResponse": {
+                "properties": {
+                    "error_code": {
+                        "type": "string",
+                        "title": "Error Code",
+                        "default": "LDAP_ACCOUNT_COLLISION"
+                    },
+                    "account_name": {
+                        "type": "string",
+                        "title": "Account Name"
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "account_name"
+                ],
+                "title": "LDAPCollisionResponse"
+            },
+            "LDAPCredentials": {
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "title": "Username"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Password"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "username",
+                    "password"
+                ],
+                "title": "LDAPCredentials"
+            },
+            "LDAPInfo": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "True when LDAP sign-in is available on this deployment, meaning it has been configured and the running edition supports it.",
+                        "default": false
+                    },
+                    "display_label": {
+                        "type": "string",
+                        "title": "Display Label",
+                        "description": "Text shown on the LDAP sign-in button on the login page.",
+                        "default": "Sign in with LDAP"
+                    },
+                    "icon": {
+                        "type": "string",
+                        "title": "Icon",
+                        "description": "Icon shown on the LDAP sign-in button on the login page.",
+                        "default": "mdi:account-key-outline"
+                    }
+                },
+                "type": "object",
+                "title": "LDAPInfo"
             },
             "ListAttributeParameters": {
                 "properties": {
