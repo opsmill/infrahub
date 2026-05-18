@@ -45,8 +45,11 @@ export function KindMultiSelect({
   return (
     <div className="space-y-1">
       {label && (
-        <span className="block font-medium text-gray-600 text-xs">
-          {label} {value.length > 0 && `(${value.length})`}
+        <span className="block font-medium text-gray-700 text-sm">
+          {label}
+          {value.length > 0 && (
+            <span className="ml-1 font-normal text-gray-400 text-xs">({value.length})</span>
+          )}
         </span>
       )}
 
