@@ -82,14 +82,39 @@ For credentials-style methods, wrap `<CredentialsForm>`:
 `frontend/app/src/entities/authentication/ui/ldap-credentials-form.tsx`:
 
 ```tsx
+import { Icon } from "@iconify-icon/react";
+
 import { CredentialsForm } from "@/entities/authentication/ui/credentials-form";
 import { useLoginWithLdap } from "@/entities/authentication/ui/queries/login-with-ldap.mutation";
 
-export const LdapCredentialsForm = ({ className }: { className?: string }) => {
+export interface LdapCredentialsFormProps {
+  displayLabel: string;
+  icon: string;
+  className?: string;
+}
+
+export const LdapCredentialsForm = ({
+  displayLabel,
+  icon,
+  className,
+}: LdapCredentialsFormProps) => {
   const { mutateAsync } = useLoginWithLdap();
-  return <CredentialsForm onSubmit={mutateAsync} className={className} />;
+  return (
+    <CredentialsForm
+      onSubmit={mutateAsync}
+      className={className}
+      submitLabel={
+        <>
+          <Icon icon={icon} />
+          <span className="ml-2">{displayLabel}</span>
+        </>
+      }
+    />
+  );
 };
 ```
+
+`displayLabel` and `icon` are threaded through from the server config via the registry entry's `resolve` (see Step 4) so the submit button reflects the deployment's branding.
 
 `<CredentialsForm>` already handles validation, error toasts, and `setToken` — do not re-implement them.
 
