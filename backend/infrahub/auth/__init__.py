@@ -1,8 +1,5 @@
 from infrahub.auth.auth import (
-    AccountSession,
     AuthResult,
-    AuthType,
-    ExternalAuthProtocol,
     ExternalIdentity,
     SSOStateCache,
     authenticate_with_password,
@@ -17,6 +14,8 @@ from infrahub.auth.auth import (
     validate_jwt_access_token,
     validate_jwt_refresh_token,
 )
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType, ExternalAuthProtocol
 
 __all__ = [
     "AccountSession",

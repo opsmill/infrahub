@@ -7,7 +7,8 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 from infrahub import __version__
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta

@@ -4,7 +4,7 @@ from infrahub_sdk.context import ContextAccount, RequestContext
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 
