@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from infrahub import config, lock, models
 from infrahub.auth.auth_groups import AutoCreatedGroupsService, ClaimFilter
 from infrahub.auth.session import AccountSession
-from infrahub.auth.types import AuthType, ExternalAuthProtocol
+from infrahub.auth.types import AuthType
 from infrahub.config import (
     SecurityOAuth2Google,
     SecurityOAuth2Settings,
@@ -25,6 +25,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole, CoreGenericAccount
 from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError, ProcessingError
+from infrahub.external_protocols import ExternalAuthProtocol  # noqa: TC001
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
