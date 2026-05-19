@@ -18,13 +18,15 @@ export const refreshAccessToken: RefreshAccessToken = async () => {
     throw new Error("Refresh token not found");
   }
 
+  let data;
   try {
-    const data = await refreshAccessTokenFromApi(refreshToken);
-    saveTokensInLocalStorage(data);
-    return data;
+    data = await refreshAccessTokenFromApi(refreshToken);
   } catch (error) {
     removeTokensInLocalStorage();
     window.location.reload();
     throw error;
   }
+
+  saveTokensInLocalStorage(data);
+  return data;
 };

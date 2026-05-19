@@ -90,6 +90,52 @@ describe("CredentialsForm", () => {
     expect(setToken).not.toHaveBeenCalled();
   });
 
+  test("shows account-collision toast on 409 error", async () => {
+    const onSubmit = vi.fn().mockRejectedValue({ status: 409 });
+
+    const component = await render(<CredentialsForm onSubmit={onSubmit} />);
+
+    await component.getByLabelText("Username").fill("alice");
+    await component.getByLabelText("Password").fill("secret");
+    await component.getByRole("button", { name: "Log in" }).click();
+
+    await expect.element(component.getByText(LOGIN_ERRORS.account_collision.message)).toBeVisible();
+    expect(setToken).not.toHaveBeenCalled();
+  });
+
+  test("shows enterprise-required toast on 403 error", async () => {
+    const onSubmit = vi.fn().mockRejectedValue({ status: 403 });
+
+    const component = await render(<CredentialsForm onSubmit={onSubmit} />);
+
+    await component.getByLabelText("Username").fill("alice");
+    await component.getByLabelText("Password").fill("secret");
+    await component.getByRole("button", { name: "Log in" }).click();
+
+    await expect
+      .element(component.getByText(LOGIN_ERRORS.enterprise_required.message))
+      .toBeVisible();
+    expect(setToken).not.toHaveBeenCalled();
+  });
+
+  test("prefers the server-provided message when the error body has one", async () => {
+    const onSubmit = vi.fn().mockRejectedValue({
+      status: 409,
+      body: { error_code: "LDAP_ACCOUNT_COLLISION", message: "Username 'alice' is already taken" },
+    });
+
+    const component = await render(<CredentialsForm onSubmit={onSubmit} />);
+
+    await component.getByLabelText("Username").fill("alice");
+    await component.getByLabelText("Password").fill("secret");
+    await component.getByRole("button", { name: "Log in" }).click();
+
+    await expect
+      .element(component.getByText("Username 'alice' is already taken"))
+      .toBeVisible();
+    expect(setToken).not.toHaveBeenCalled();
+  });
+
   test("shows server-error toast on 5xx error", async () => {
     const onSubmit = vi.fn().mockRejectedValue({ status: 503 });
 
