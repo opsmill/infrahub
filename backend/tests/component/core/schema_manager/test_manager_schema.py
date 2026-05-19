@@ -2776,7 +2776,18 @@ async def test_schema_branch_validate_check_missing(
         ],
         "enforce_update_support": True,
         "errors": [],
-        "migrations": [],
+        "migrations": [
+            {
+                "migration_name": "attribute.unique.update",
+                "path": {
+                    "field_name": "name",
+                    "path_type": SchemaPathType.ATTRIBUTE,
+                    "property_name": "unique",
+                    "schema_id": None,
+                    "schema_kind": "TestingCriticality",
+                },
+            },
+        ],
     }
 
 

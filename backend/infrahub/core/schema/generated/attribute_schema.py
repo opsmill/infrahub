@@ -84,7 +84,7 @@ class GeneratedAttributeSchema(HashableModel):
     unique: bool = Field(
         default=False,
         description="Indicate if the value of this attribute must be unique in the database for a given model.",
-        json_schema_extra={"update": "validate_constraint"},
+        json_schema_extra={"update": "migration_required"},
     )
     optional: bool = Field(
         default=False,
