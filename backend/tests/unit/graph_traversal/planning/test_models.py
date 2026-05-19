@@ -166,7 +166,7 @@ class TestPlan:
             )
 
     def test_accepts_empty_routes(self) -> None:
-        """Empty routes is the legitimate 'no viable path' signal (FR-004)."""
+        """Empty routes is the legitimate 'no viable path' signal."""
         plan = Plan(
             routes=(),
             source_kind="A",
@@ -178,12 +178,7 @@ class TestPlan:
 
 @dataclass(kw_only=True)
 class FakeGraphqlInput:
-    """Stand-in for the graphene InputObjectType instances passed at runtime.
-
-    GraphQL InputObjectType fields land on the resolver as attributes on a
-    namespace-like object; attribute access is what `from_graphql_input` relies
-    on, so a plain dataclass is sufficient. No mocking required.
-    """
+    """Stand-in for the graphene InputObjectType instances passed at runtime."""
 
     name: str
     kind_filter: list[str] | None = None

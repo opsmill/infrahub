@@ -14,10 +14,8 @@ if TYPE_CHECKING:
 class KindPermissionCache:
     """Per-request memoized view-permission decisions, keyed by kind name.
 
-    Constructed and owned by `SchemaPlanner.initialize()`; not part of the planner's
-    public surface. One `ObjectPermission` is built per distinct kind queried, then
-    delegated to the resolver. Subsequent lookups for the same kind hit the in-memory
-    dict.
+    One `ObjectPermission` is built per distinct kind queried, then delegated
+    to the resolver. Subsequent lookups for the same kind hit the in-memory dict.
     """
 
     __slots__ = ("_branch", "_decisions", "_resolver", "_schema_branch")
