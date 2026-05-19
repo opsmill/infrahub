@@ -108,12 +108,11 @@ async def test_diff_get_files_repository(
     db: InfrahubDatabase, repos_in_main: dict[str, Node], base_dataset_02: dict
 ) -> None:
     def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
-        model = GitDiffNamesOnlyResponse(
+        return GitDiffNamesOnlyResponse(
             files_changed=["readme.md", "mydir/myfile.py"],
             files_removed=["notthere.md"],
             files_added=["newandshiny.md"],
         )
-        return model
 
     service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with (
@@ -152,12 +151,11 @@ async def test_diff_get_files_repositories_for_branch_case01(
     """
 
     def execute_workflow_side_effect(workflow: WorkflowDefinition, parameters: dict[str, Any] | None):
-        model = GitDiffNamesOnlyResponse(
+        return GitDiffNamesOnlyResponse(
             files_changed=["readme.md", "mydir/myfile.py"],
             files_removed=[],
             files_added=[],
         )
-        return model
 
     service = await InfrahubServices.new(database=db, workflow=WorkflowLocalExecution())
     with (

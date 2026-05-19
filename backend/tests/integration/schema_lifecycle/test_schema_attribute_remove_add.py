@@ -85,7 +85,7 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
         await red.new(db=db, name="red", persons=[john])
         await red.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "renault": renault.id,
             "megane": megane.id,
@@ -93,7 +93,6 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
             "red": red.id,
         }
 
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_step01(

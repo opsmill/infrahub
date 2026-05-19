@@ -78,7 +78,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await red.new(db=db, name="red", persons=[john])
         await red.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "jane": jane.id,
             "honda": honda.id,
@@ -90,7 +90,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "red": red.id,
         }
 
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_01_person_name_regex_failure(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:

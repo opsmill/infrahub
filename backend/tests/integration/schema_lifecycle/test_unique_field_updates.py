@@ -66,7 +66,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         )
         await deleted_car.delete(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "deleted_bob": deleted_bob.id,
             "renault": renault.id,
@@ -74,7 +74,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             "clio": clio.id,
         }
 
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_generic_01(self) -> dict[str, Any]:

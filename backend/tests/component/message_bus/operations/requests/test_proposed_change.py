@@ -42,13 +42,12 @@ async def mock_schema_query_02(helper: TestHelper, httpx_mock: HTTPXMock) -> HTT
 
 @pytest.fixture
 def branch_diff_01() -> ProposedChangeBranchDiff:
-    diff = ProposedChangeBranchDiff(
+    return ProposedChangeBranchDiff(
         pipeline_id=uuid4(),
         repositories=[],
         subscribers=[],
     )
 
-    return diff
 
 
 @pytest.fixture

@@ -131,7 +131,7 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
         await blue.new(db=db, name="blue", cars=[accord, civic], persons=[jane])
         await blue.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "jane": jane.id,
             "richard": richard.id,
@@ -148,7 +148,6 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
             "green": green.id,
         }
 
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_person_tag(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:

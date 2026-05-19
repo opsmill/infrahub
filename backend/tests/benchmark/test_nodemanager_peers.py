@@ -29,11 +29,10 @@ async def relm(
     model = registry.schema.get(name="CoreAccount")
     rel_schema = model.get_relationship("member_of_groups")
 
-    relm = await RelationshipManager.init(
+    return await RelationshipManager.init(
         db=db, schema=rel_schema, branch=default_branch, at=Timestamp(), node=test_account
     )
 
-    return relm
 
 
 def test_nodemanager_querypeers(
