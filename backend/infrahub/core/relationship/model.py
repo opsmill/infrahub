@@ -13,7 +13,6 @@ from typing import (
     Mapping,
     Sequence,
     TypeVar,
-    cast,
     overload,
 )
 
@@ -579,7 +578,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 results = await registry.manager.query(
                     db=db, schema=InfrahubKind.RESOURCEPOOL, filters={"name__value": pool_id}, branch=self.branch
                 )
-                results = cast("list[Node]", results)
                 pool = results[0] if results else None
 
             if not pool:
