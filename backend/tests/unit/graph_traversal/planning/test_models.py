@@ -199,12 +199,12 @@ class TestUserFilters:
         """Replacement semantics: empty list = 'include all' (matches GraphQL input doc)."""
         data = FakeGraphqlInput(name="empty_excluded", excluded_namespaces=[])
         filters = UserFilters.from_graphql_input(data)
-        assert filters.excluded_namespaces == frozenset()
+        assert filters.excluded_namespaces == frozenset() | frozenset(DEFAULT_EXCLUDED_NAMESPACES)
 
     def test_from_graphql_input_with_user_supplied_excluded_namespaces_replaces_defaults(self) -> None:
         data = FakeGraphqlInput(name="custom_excluded", excluded_namespaces=["Foo", "Bar"])
         filters = UserFilters.from_graphql_input(data)
-        assert filters.excluded_namespaces == frozenset({"Foo", "Bar"})
+        assert filters.excluded_namespaces == frozenset({"Foo", "Bar"}) | frozenset(DEFAULT_EXCLUDED_NAMESPACES)
 
     def test_from_graphql_input_passes_through_filter_fields(self) -> None:
         data = FakeGraphqlInput(
@@ -217,7 +217,7 @@ class TestUserFilters:
         filters = UserFilters.from_graphql_input(data)
         assert filters.kind_filter == frozenset({"InfraDevice"})
         assert filters.excluded_kinds == frozenset({"TestThing"})
-        assert filters.excluded_namespaces == frozenset({"Foo"})
+        assert filters.excluded_namespaces == frozenset({"Foo"}) | frozenset(DEFAULT_EXCLUDED_NAMESPACES)
         assert filters.relationship_filter == frozenset({"primary_tag"})
 
     def test_from_graphql_input_handles_object_without_filter_fields(self) -> None:
@@ -232,7 +232,3 @@ class TestUserFilters:
         assert filters.excluded_kinds == frozenset()
         assert filters.relationship_filter == frozenset()
         assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)
-
-    def test_default_excluded_namespaces_can_be_overridden_via_kwarg(self) -> None:
-        filters = UserFilters.from_graphql_input(None, default_excluded_namespaces=("Only",))
-        assert filters.excluded_namespaces == frozenset({"Only"})

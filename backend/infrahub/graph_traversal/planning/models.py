@@ -90,18 +90,15 @@ class UserFilters:
     def from_graphql_input(
         cls,
         data: Any,
-        *,
-        default_excluded_namespaces: tuple[str, ...] = DEFAULT_EXCLUDED_NAMESPACES,
     ) -> UserFilters:
         kind_filter = frozenset(getattr(data, "kind_filter", None) or ())
         excluded_kinds = frozenset(getattr(data, "excluded_kinds", None) or ())
         relationship_filter = frozenset(getattr(data, "relationship_filter", None) or ())
 
+        excluded_namespaces = frozenset(DEFAULT_EXCLUDED_NAMESPACES)
         raw_excluded_namespaces = getattr(data, "excluded_namespaces", None)
-        if raw_excluded_namespaces is None:
-            excluded_namespaces = frozenset(default_excluded_namespaces)
-        else:
-            excluded_namespaces = frozenset(raw_excluded_namespaces)
+        if raw_excluded_namespaces:
+            excluded_namespaces |= frozenset(raw_excluded_namespaces)
 
         return cls(
             kind_filter=kind_filter,
