@@ -528,9 +528,7 @@ async def test_confusing_error_does_not_include_cascade_deleted_nodes(
         await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
 
     error_msg = str(exc.value)
-    assert "TestCar" not in error_msg, (
-        f"TestCar should NOT appear (cascade-deleted), but got: {error_msg}"
-    )
+    assert "TestCar" not in error_msg, f"TestCar should NOT appear (cascade-deleted), but got: {error_msg}"
 
 
 async def test_delete_cascade_artifacts(
