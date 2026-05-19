@@ -5,6 +5,7 @@ import { classNames } from "@/shared/utils/common";
 import {
   AUTH_METHODS,
   type AuthMethod,
+  getAuthMethodToggleLabel,
   renderAuthMethod,
 } from "@/entities/authentication/auth-methods";
 import { useAvailableAuthMethods } from "@/entities/authentication/ui/use-available-auth-methods";
@@ -39,7 +40,7 @@ export const LoginMethodPicker = () => {
             "data-hovered:bg-transparent data-hovered:underline"
           )}
         >
-          {AUTH_METHODS[m.kind].toggleLabel}
+          {getAuthMethodToggleLabel(m)}
         </Button>
       ))}
     </>

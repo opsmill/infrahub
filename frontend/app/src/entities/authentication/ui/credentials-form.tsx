@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { toast } from "react-toastify";
 
 import InputField from "@/shared/components/form/fields/input.field";
@@ -14,7 +15,7 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 export interface CredentialsFormProps {
   onSubmit: (values: { username: string; password: string }) => Promise<UserToken>;
   className?: string;
-  submitLabel?: string;
+  submitLabel?: ReactNode;
 }
 
 function getErrorStatus(error: unknown): number | undefined {
