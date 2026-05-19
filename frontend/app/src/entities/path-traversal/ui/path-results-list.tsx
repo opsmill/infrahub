@@ -1,6 +1,6 @@
 import { Command } from "cmdk";
-import { useState } from "react";
 
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
 import type { PathResult } from "../domain/path-traversal.types";
@@ -59,13 +59,7 @@ export function PathResultsList({
   ariaLabel = "Path results",
 }: PathResultsListProps) {
   const v = VARIANT_CLASSES[variant];
-  const [copyFeedback, setCopyFeedback] = useState("");
-
-  async function handleCopy(text: string) {
-    await navigator.clipboard.writeText(text);
-    setCopyFeedback("Copied!");
-    setTimeout(() => setCopyFeedback(""), 2000);
-  }
+  const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   return (
     <div className="border-gray-200 border-t p-4">
@@ -74,11 +68,11 @@ export function PathResultsList({
         {paths.length > 0 && copyAllText && (
           <button
             type="button"
-            onClick={() => handleCopy(copyAllText())}
+            onClick={() => copyToClipboard(copyAllText())}
             className="rounded px-2 py-0.5 text-blue-600 text-xs hover:bg-blue-50"
             title="Copy all to clipboard"
           >
-            {copyFeedback || "Copy all"}
+            {isCopied ? "Copied!" : "Copy all"}
           </button>
         )}
       </div>
@@ -125,7 +119,7 @@ export function PathResultsList({
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleCopy(copyItemText(index));
+                          copyToClipboard(copyItemText(index));
                         }}
                         className="shrink-0 rounded p-0.5 text-gray-300 opacity-0 transition-opacity hover:text-gray-500 focus-visible:opacity-100 group-hover:opacity-100"
                         title="Copy this entry"

@@ -13,6 +13,7 @@ import { type ReactNode, useState } from "react";
 import "@xyflow/react/dist/style.css";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 
 import type { PathResult } from "../domain/path-traversal.types";
 import { BottomToolbar, type LayoutDirection } from "./bottom-toolbar";
@@ -95,8 +96,10 @@ function NodeContextMenu({
   onClose: () => void;
   onExcludeKind?: (kind: string) => void;
 }) {
+  const { copyToClipboard } = useCopyToClipboard();
+
   function handleCopyId() {
-    navigator.clipboard.writeText(menu.nodeId);
+    copyToClipboard(menu.nodeId);
     onClose();
   }
 
