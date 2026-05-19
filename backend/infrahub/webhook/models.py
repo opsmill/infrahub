@@ -69,7 +69,7 @@ class WebhookTriggerDefinition(TriggerDefinition):
         if obj.node_kind.value and event_type in get_all_infrahub_node_kind_events():
             event_trigger.match = {"infrahub.node.kind": obj.node_kind.value}
 
-        definition = cls(
+        return cls(
             id=obj.id,
             name=obj.name.value,
             trigger=event_trigger,
@@ -93,7 +93,6 @@ class WebhookTriggerDefinition(TriggerDefinition):
             ],
         )
 
-        return definition
 
 
 class EventContext(BaseModel):
