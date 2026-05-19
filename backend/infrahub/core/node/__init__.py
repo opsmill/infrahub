@@ -275,9 +275,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)
 
-        raise ValueError(
-            f"Unable to retrieve value for unsupported schema path type {path!r} on {self.get_kind()!r}"
-        )
+        raise ValueError(f"Unable to retrieve value for unsupported schema path type {path!r} on {self.get_kind()!r}")
 
     def get_labels(self) -> list[str]:
         """Return the labels for this object, composed of the kind.

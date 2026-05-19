@@ -93,7 +93,6 @@ class TestTransforms(TestInfrahubApp):
             id=obj.id, name=git_repo_car_dealership.name, location=git_repo_car_dealership.path, client=client
         )
 
-
     async def test_transform_jinja(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository, base_dataset: None
     ) -> None:

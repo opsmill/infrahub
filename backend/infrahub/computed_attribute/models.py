@@ -207,7 +207,6 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         )
 
 
-
 class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
     type: TriggerType = TriggerType.COMPUTED_ATTR_PYTHON
     computed_attribute: PythonTransformComputedAttribute
@@ -272,7 +271,6 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
         )
 
 
-
 class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
     type: TriggerType = TriggerType.COMPUTED_ATTR_PYTHON_QUERY
 
@@ -331,7 +329,6 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                 ),
             ],
         )
-
 
 
 class ComputedAttrJinja2GraphQLResponse(BaseModel):

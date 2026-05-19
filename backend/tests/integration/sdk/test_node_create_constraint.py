@@ -174,7 +174,6 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
             "megane": megane.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_02_car_uniqueness_constraint(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:
         schema_car_base["uniqueness_constraints"] = [["owner", "color__value"]]

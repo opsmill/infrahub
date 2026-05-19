@@ -50,4 +50,3 @@ class Migration003(GraphMigration):
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
-

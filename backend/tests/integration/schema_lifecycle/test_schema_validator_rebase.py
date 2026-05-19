@@ -87,7 +87,6 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
             "red": red.id,
         }
 
-
     @pytest.fixture(scope="class")
     async def branch_2(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="branch_2")

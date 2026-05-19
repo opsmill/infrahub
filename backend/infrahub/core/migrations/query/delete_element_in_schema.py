@@ -49,7 +49,6 @@ class DeleteElementInSchemaQuery(Query):
             AND all(r IN relationships(path) WHERE ( %(filters)s ))
         """ % {"filters": filters}
 
-
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, direction: GraphRelDirection) -> str:
         subquery = [

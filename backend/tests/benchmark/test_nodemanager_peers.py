@@ -34,7 +34,6 @@ async def relm(
     )
 
 
-
 def test_nodemanager_querypeers(
     aio_benchmark: Callable[..., Any], db: InfrahubDatabase, default_branch: Branch, test_account: Node
 ) -> None:

@@ -162,7 +162,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "megane": megane.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,

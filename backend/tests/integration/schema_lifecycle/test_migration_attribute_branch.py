@@ -158,7 +158,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             "green": green.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_step02(
         self,

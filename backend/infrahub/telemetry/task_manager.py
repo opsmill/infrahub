@@ -74,4 +74,3 @@ async def gather_prefect_information() -> TelemetryPrefectData:
             events=await gather_prefect_events(client=client),
             automations=await gather_prefect_automations(client=client),
         )
-

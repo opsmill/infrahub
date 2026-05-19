@@ -135,7 +135,6 @@ class BranchMerger:
         diff_destination = initial_source_schema.diff(other=self.destination_schema)
         return diff_source + diff_destination
 
-
     async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
         diff_3way = await self.get_3ways_diff_schema()
         validation = SchemaUpdateValidationResult.init(diff=diff_3way, schema=target_schema)

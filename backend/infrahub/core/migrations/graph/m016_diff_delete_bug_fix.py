@@ -23,7 +23,6 @@ class Migration016(ArbitraryMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         db = migration_input.db
         default_branch = registry.get_branch_from_registry()

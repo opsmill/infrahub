@@ -90,7 +90,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "red": red.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_01_person_name_regex_failure(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         """Add regex to TestPerson.name that does not fit existing data."""

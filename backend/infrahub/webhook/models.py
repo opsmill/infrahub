@@ -94,7 +94,6 @@ class WebhookTriggerDefinition(TriggerDefinition):
         )
 
 
-
 class EventContext(BaseModel):
     id: str = Field(..., description="The internal id of the event")
     branch: str | None = Field(None, description="The branch associated with the event")

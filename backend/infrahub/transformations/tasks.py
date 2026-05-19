@@ -36,7 +36,6 @@ async def transform_python(message: TransformPythonData) -> Any:
     )  # type: ignore[call-overload]
 
 
-
 @flow(name="transform_render_jinja2_template", flow_run_name="Render transform Jinja2", persist_result=True)
 async def transform_render_jinja2_template(message: TransformJinjaTemplateData) -> str:
     await add_branch_tag(branch_name=message.branch)
@@ -54,4 +53,3 @@ async def transform_render_jinja2_template(message: TransformJinjaTemplateData) 
     return await repo.render_jinja2_template.with_options(timeout_seconds=message.timeout)(
         commit=message.commit, location=message.template_location, data={"data": message.data}
     )  # type: ignore[call-overload]
-

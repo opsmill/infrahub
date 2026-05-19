@@ -214,7 +214,6 @@ def query_05() -> str:
     """
 
 
-
 @pytest.fixture
 def query_06() -> str:
     """Simple query with variables."""

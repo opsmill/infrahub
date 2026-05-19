@@ -130,7 +130,6 @@ class TestInfrahubClient:
             client=client,
         )
 
-
     async def test_import_schema_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository
     ) -> None:

@@ -133,7 +133,6 @@ async def git_repo_01(
     )
 
 
-
 @pytest.fixture
 async def git_repo_01_read_only(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
@@ -147,7 +146,6 @@ async def git_repo_01_read_only(
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-
 
 
 @pytest.fixture
@@ -168,7 +166,6 @@ async def git_repo_02(git_upstream_repo_02: dict[str, str | Path], git_repos_dir
     )
 
 
-
 @pytest.fixture
 async def git_repo_03(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path
@@ -180,7 +177,6 @@ async def git_repo_03(
         location=str(git_upstream_repo_03["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-
 
 
 @pytest.fixture
@@ -725,7 +721,6 @@ async def check_definition_data_01() -> dict:
             "__typename": "Check",
         },
     }
-
 
 
 @pytest.fixture

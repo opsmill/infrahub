@@ -148,7 +148,6 @@ class TestSchemaLifecycleRelationshipBranch(TestSchemaLifecycleBase):
             "green": green.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_person_tag(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
         schema_person_base["relationships"] = [

@@ -178,7 +178,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "caprica": caprica.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_step_01(
         self,

@@ -49,7 +49,6 @@ def branch_diff_01() -> ProposedChangeBranchDiff:
     )
 
 
-
 @pytest.fixture
 def branch_diff_01_summary() -> list[NodeDiff]:
     return [

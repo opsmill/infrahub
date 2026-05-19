@@ -86,7 +86,6 @@ class TestSchemaLifecycleMain(TestSchemaLifecycleBase):
             "red": red.id,
         }
 
-
     async def test_step01_baseline_backend(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         persons = await registry.manager.query(db=db, schema=PERSON_KIND)
         assert len(persons) == 2

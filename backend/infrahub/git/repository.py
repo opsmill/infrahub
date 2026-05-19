@@ -209,7 +209,6 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         return await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
 
 
-
 class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
     """Repository with only read-only access to the remote repo."""
 

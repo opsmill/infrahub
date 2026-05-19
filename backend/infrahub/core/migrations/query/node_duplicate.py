@@ -65,7 +65,6 @@ class NodeDuplicateQuery(Query):
         WITH node WHERE already_migrated = FALSE
         """ % {"labels_str": labels_str}
 
-
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:
         subquery = [

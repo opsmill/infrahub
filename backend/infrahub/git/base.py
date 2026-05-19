@@ -998,7 +998,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         changed_files = git_status.splitlines()
         return [filename[3:] for filename in changed_files if filename.startswith("UU ")]
 
-
     async def find_files(
         self,
         extension: str | list[str],

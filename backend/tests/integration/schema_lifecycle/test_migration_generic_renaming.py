@@ -59,7 +59,6 @@ class TestSchemaLifecycleGenericRenaming(TestSchemaLifecycleBase):
 
         return {"first_device": first_device.id, "second_device": second_device.id}
 
-
     async def test_step01_baseline(self, db: InfrahubDatabase, initial_dataset: dict[str, str]) -> None:
         devices = await registry.manager.query(db=db, schema=DEVICE_KIND)
         assert len(devices) == 2

@@ -1395,7 +1395,6 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
     }
 
 
-
 @pytest.fixture
 async def person_tag_schema(
     db: InfrahubDatabase, default_branch: Branch, data_schema: None, register_core_models_schema: SchemaBranch

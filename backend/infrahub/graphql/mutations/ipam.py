@@ -137,9 +137,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         )
 
         reconciler = IpamReconciler(db=db, branch=branch)
-        return await reconciler.reconcile(
-            ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id()
-        )
+        return await reconciler.reconcile(ip_value=ip_address, namespace=namespace_id, node_uuid=address.get_id())
 
     @classmethod
     @retry_db_transaction(name="ipaddress_create")
@@ -178,9 +176,7 @@ class InfrahubIPAddressMutation(InfrahubMutationMixin, Mutation):
         address = await cls.mutate_update_object(db=db, info=info, data=data, branch=branch, obj=address)
         reconciler = IpamReconciler(db=db, branch=branch)
         ip_address = ipaddress.ip_interface(address.address.value)
-        return await reconciler.reconcile(
-            ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id
-        )
+        return await reconciler.reconcile(ip_value=ip_address, node_uuid=address.get_id(), namespace=namespace_id)
 
     @classmethod
     @retry_db_transaction(name="ipaddress_update")

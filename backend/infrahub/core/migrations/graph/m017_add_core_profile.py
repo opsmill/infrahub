@@ -24,7 +24,6 @@ class Migration017(InternalSchemaMigration):
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
 
-
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         """Load CoreProfile schema node in db."""
         db = migration_input.db

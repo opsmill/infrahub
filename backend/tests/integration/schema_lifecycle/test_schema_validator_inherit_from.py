@@ -141,7 +141,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "megane": megane.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_01_cylon_robot(self, schema_cylon_base: dict[str, Any]) -> dict[str, Any]:
         schema_cylon_base["inherit_from"] = ["TestingHumanoid", "TestingRobot"]

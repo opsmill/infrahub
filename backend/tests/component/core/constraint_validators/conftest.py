@@ -118,7 +118,6 @@ async def car_person_generics_data_simple(
     }
 
 
-
 @pytest.fixture
 async def car_person_schema_hfid(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     SCHEMA = {

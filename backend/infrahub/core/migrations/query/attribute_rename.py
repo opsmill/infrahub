@@ -53,7 +53,6 @@ class AttributeRenameQuery(Query):
         WITH node
         """ % {"node_kind": self.previous_attr.node_kind}
 
-
     @staticmethod
     def _render_sub_query_per_rel_type_update_active(rel_type: str, rel_def: FieldInfo) -> str:
         subquery = [

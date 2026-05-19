@@ -89,7 +89,6 @@ async def animal_person_schema_dict() -> dict:
     }
 
 
-
 @pytest.fixture
 def schema_all_in_one() -> dict[str, Any]:
     return {
@@ -236,7 +235,6 @@ def schema_all_in_one() -> dict[str, Any]:
             },
         ],
     }
-
 
 
 @pytest.fixture

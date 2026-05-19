@@ -42,7 +42,6 @@ class RelationshipDuplicateQuery(Query):
         WHERE source <> destination
         """ % {"src_peer": self.previous_rel.src_peer, "dst_peer": self.previous_rel.dst_peer}
 
-
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, direction: GraphRelDirection) -> str:
         subquery = [

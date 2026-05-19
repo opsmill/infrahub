@@ -93,7 +93,6 @@ class TestSchemaLifecycleAttributeRemoveAddMain(TestSchemaLifecycleBase):
             "red": red.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_step01(
         self,

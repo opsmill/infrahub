@@ -243,7 +243,6 @@ async def car_person_data_generic_diff(
     }
 
 
-
 @pytest.fixture
 async def car_person_data_artifact_diff(
     db: InfrahubDatabase, default_branch: Branch, car_person_data_generic_diff: dict[str, Any]
@@ -443,4 +442,3 @@ async def data_diff_attribute(
         "p2": persons["Jane"].id,
         "r1": repo01.id,
     }
-

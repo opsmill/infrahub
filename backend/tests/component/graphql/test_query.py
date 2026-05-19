@@ -60,7 +60,6 @@ async def execute_query(
     )
 
 
-
 async def test_execute_query(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:

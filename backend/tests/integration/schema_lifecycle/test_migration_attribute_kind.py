@@ -252,7 +252,6 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
             "template_thing": template_thing,
         }
 
-
     async def test_step01_baseline(
         self, db: InfrahubDatabase, initial_objects: dict[str, Node], branch: Branch
     ) -> None:

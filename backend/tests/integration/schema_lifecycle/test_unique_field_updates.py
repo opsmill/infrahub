@@ -74,7 +74,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             "clio": clio.id,
         }
 
-
     @pytest.fixture(scope="class")
     def schema_generic_01(self) -> dict[str, Any]:
         return {
