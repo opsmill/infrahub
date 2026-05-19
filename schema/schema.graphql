@@ -8149,6 +8149,15 @@ type FieldsMapping {
   mapping: GenericScalar!
 }
 
+"""
+GenericScalar with correct variable substitution in parse_literal.
+
+graphene's GenericScalar.parse_literal does not forward _variables to
+recursive calls, so $variable references inside a nested object or list
+resolve to None instead of their supplied values.
+"""
+scalar FixedGenericScalar
+
 type GeneratorDefinitionRequestRun {
   ok: Boolean
   task: TaskInfo
@@ -8223,7 +8232,7 @@ input IPAddressPoolGetResourceInput {
   """Kind of IP address to allocate"""
   address_type: String
   """Additional data to pass to the newly created IP address"""
-  data: GenericScalar
+  data: FixedGenericScalar
   """HFID of the pool to allocate from"""
   hfid: [String]
   """ID of the pool to allocate from"""
@@ -8320,7 +8329,7 @@ type IPPrefixPoolGetResource {
 
 input IPPrefixPoolGetResourceInput {
   """Additional data to pass to the newly created prefix"""
-  data: GenericScalar
+  data: FixedGenericScalar
   """HFID of the pool to allocate from"""
   hfid: [String]
   """ID of the pool to allocate from"""
