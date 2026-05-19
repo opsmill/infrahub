@@ -496,14 +496,18 @@ class TestUserFilters:
 class TestDeterminism:
     def test_two_invocations_produce_identical_plans(self, linear_a_b_c_schema: SchemaBranch) -> None:
         planner = make_planner(schema_branch=linear_a_b_c_schema)
-        kwargs = {
-            "source_kind": "TestingKindA",
-            "terminal_predicate": TerminalByKinds(kinds=frozenset({"TestingKindC"})),
-            "max_depth": 5,
-            "user_filters": _default_filters(),
-        }
-        plan_a = planner.plan(**kwargs)
-        plan_b = planner.plan(**kwargs)
+        plan_a = planner.plan(
+            source_kind="TestingKindA",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindC"})),
+            max_depth=5,
+            user_filters=_default_filters(),           
+        )
+        plan_b = planner.plan(
+            source_kind="TestingKindA",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindC"})),
+            max_depth=5,
+            user_filters=_default_filters(),           
+        )
         assert plan_a == plan_b
         assert plan_a.routes == plan_b.routes
 
