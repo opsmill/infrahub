@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
 
-import { useLoginWithLdap } from "@/entities/authentication/methods/ldap/login-with-ldap.mutation";
 import { CredentialsForm } from "@/entities/authentication/ui/credentials-form";
+import { useLoginWithLdap } from "@/entities/authentication/ui/queries/login-with-ldap.mutation";
 
 export interface LdapCredentialsFormProps {
   displayLabel: string;

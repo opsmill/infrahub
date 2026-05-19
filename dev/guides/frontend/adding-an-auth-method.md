@@ -40,7 +40,7 @@ TypeScript will now refuse to compile until `AUTH_METHODS` has an `ldap` entry.
 
 Skip this step for purely client-side methods or pure redirects.
 
-`frontend/app/src/entities/authentication/methods/ldap/login-with-ldap.ts`:
+`frontend/app/src/entities/authentication/domain/login-with-ldap.ts`:
 
 ```ts
 import { apiClient } from "@/shared/api/rest/client";
@@ -60,11 +60,11 @@ Rules:
 - Return the `UserToken`; do **not** call `saveTokensInLocalStorage`. Persistence is centralized in `useAuth.setToken`.
 - Throw on error. The form translates `error.status` / network failures into `LoginError`.
 
-`frontend/app/src/entities/authentication/methods/ldap/login-with-ldap.mutation.ts`:
+`frontend/app/src/entities/authentication/ui/queries/login-with-ldap.mutation.ts`:
 
 ```ts
 import { mutationOptions, useMutation } from "@tanstack/react-query";
-import { loginWithLdap } from "@/entities/authentication/methods/ldap/login-with-ldap";
+import { loginWithLdap } from "@/entities/authentication/domain/login-with-ldap";
 
 export function loginWithLdapMutationOptions() {
   return mutationOptions({ mutationKey: ["login-with-ldap"], mutationFn: loginWithLdap });
@@ -79,11 +79,11 @@ export function useLoginWithLdap() {
 
 For credentials-style methods, wrap `<CredentialsForm>`:
 
-`frontend/app/src/entities/authentication/methods/ldap/ldap-credentials-form.tsx`:
+`frontend/app/src/entities/authentication/ui/ldap-credentials-form.tsx`:
 
 ```tsx
 import { CredentialsForm } from "@/entities/authentication/ui/credentials-form";
-import { useLoginWithLdap } from "@/entities/authentication/methods/ldap/login-with-ldap.mutation";
+import { useLoginWithLdap } from "@/entities/authentication/ui/queries/login-with-ldap.mutation";
 
 export const LdapCredentialsForm = ({ className }: { className?: string }) => {
   const { mutateAsync } = useLoginWithLdap();

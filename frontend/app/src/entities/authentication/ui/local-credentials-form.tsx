@@ -1,5 +1,5 @@
-import { useLoginWithCredentials } from "@/entities/authentication/methods/local/login-with-credentials.mutation";
 import { CredentialsForm } from "@/entities/authentication/ui/credentials-form";
+import { useLoginWithCredentials } from "@/entities/authentication/ui/queries/login-with-credentials.mutation";
 
 export const LocalCredentialsForm = ({ className }: { className?: string }) => {
   const { mutateAsync } = useLoginWithCredentials();
