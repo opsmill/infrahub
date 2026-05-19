@@ -2104,8 +2104,18 @@ class SchemaBranch:
             ]
             if len(filtered_attributes) == len(node.attributes):
                 continue
+
+            deleted_names = {
+                attribute.name for attribute in node.attributes if attribute.state == HashableModelState.ABSENT
+            }
             updated_node = node.duplicate()
             updated_node.attributes = filtered_attributes
+            if deleted_names and updated_node.uniqueness_constraints:
+                updated_node.uniqueness_constraints = [
+                    paths
+                    for paths in updated_node.uniqueness_constraints
+                    if not any(path.split("__", maxsplit=1)[0] in deleted_names for path in paths)
+                ] or None
             self.set(name=name, schema=updated_node)
 
     def process_nodes_state(self) -> None:

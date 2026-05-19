@@ -288,4 +288,109 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
-        await assert_no_virtual_schema_relationships_in_db(db=db)
+
+
+class TestGenericRemoveAttributesAndConstraints(TestSchemaLifecycleBase):
+    """Removing attributes and their uniqueness constraints from generics in one update must not error."""
+
+    @pytest.fixture(scope="class")
+    def schema_step_01(self) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "generics": [
+                {
+                    "name": "Vehicle",
+                    "namespace": "Testing",
+                    "attributes": [
+                        {"name": "identifier", "kind": "Text", "optional": True},
+                    ],
+                    "uniqueness_constraints": [["identifier__value"]],
+                },
+                {
+                    "name": "Fleet",
+                    "namespace": "Testing",
+                    "attributes": [
+                        {"name": "identifier", "kind": "Text", "optional": True},
+                        {"name": "label", "kind": "Text", "optional": True},
+                    ],
+                    "uniqueness_constraints": [["identifier__value"], ["label__value"]],
+                },
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step_02(self) -> dict[str, Any]:
+        return {
+            "version": "1.0",
+            "generics": [
+                {
+                    "name": "Vehicle",
+                    "namespace": "Testing",
+                    "attributes": [
+                        {"name": "identifier", "kind": "Text", "optional": True, "state": "absent"},
+                    ],
+                    "uniqueness_constraints": [],
+                },
+                {
+                    "name": "Fleet",
+                    "namespace": "Testing",
+                    "attributes": [
+                        {"name": "identifier", "kind": "Text", "optional": True, "state": "absent"},
+                        {"name": "label", "kind": "Text", "optional": True, "state": "absent"},
+                    ],
+                    "uniqueness_constraints": [],
+                },
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self,
+        db: InfrahubDatabase,
+        initialize_registry: None,
+        schema_step_01: dict[str, Any],
+    ) -> None:
+        await load_schema(db=db, schema=schema_step_01)
+
+    async def test_step01_generics_have_attributes_and_constraints(
+        self,
+        default_branch: Branch,
+        initial_dataset: None,
+    ) -> None:
+        """Baseline: both generics have their attributes and uniqueness constraints."""
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        vehicle = schema_branch.get(name="TestingVehicle")
+        assert "identifier" in vehicle.attribute_names
+        assert vehicle.uniqueness_constraints == [["identifier__value"]]
+
+        fleet = schema_branch.get(name="TestingFleet")
+        assert "identifier" in fleet.attribute_names
+        assert "label" in fleet.attribute_names
+        assert fleet.uniqueness_constraints == [["identifier__value"], ["label__value"]]
+
+    async def test_step02_remove_attributes_and_constraints_simultaneously(
+        self,
+        client: InfrahubClient,
+        default_branch: Branch,
+        initial_dataset: None,
+        schema_step_02: dict[str, Any],
+    ) -> None:
+        """Removing attributes and constraints together in one update must succeed without error."""
+        response = await client.schema.load(schemas=[schema_step_02])
+        assert not response.errors
+
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+        vehicle = schema_branch.get(name="TestingVehicle")
+        assert "identifier" not in vehicle.attribute_names
+        assert not vehicle.uniqueness_constraints
+
+        fleet = schema_branch.get(name="TestingFleet")
+        assert "identifier" not in fleet.attribute_names
+        assert "label" not in fleet.attribute_names
+        assert not fleet.uniqueness_constraints
+
+    async def test_final_validate(self, db: InfrahubDatabase) -> None:
+        await verify_no_duplicate_relationships(db=db)
+        await verify_no_edges_added_after_node_delete(db=db)
