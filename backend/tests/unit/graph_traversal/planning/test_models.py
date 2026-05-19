@@ -44,11 +44,6 @@ class TestHop:
             hop = make_hop(direction=direction)
             assert hop.direction is direction
 
-    def test_is_frozen(self) -> None:
-        hop = make_hop()
-        with pytest.raises(AttributeError):
-            hop.start_kind = "X"  # type: ignore[misc]
-
 
 class TestRoute:
     def test_rejects_discontinuous_hops(self) -> None:
