@@ -131,7 +131,7 @@ The `tab` argument on each helper is a string-literal union (e.g. `BranchDetails
 | Debounced value | `useDebounce` | `shared/hooks/useDebounce.ts` |
 | Pagination state | `usePagination` | `shared/hooks/usePagination.ts` |
 | Local-storage state | `useLocalStorage` | `shared/hooks/useLocalStorage.ts` |
-| Copy to clipboard | `useCopyToClipboard` | `shared/hooks/useCopyToClipboard.ts` |
+| Copy to clipboard (incl. "Copied!" feedback) | `useCopyToClipboard` — never call `navigator.clipboard.*` directly | `shared/hooks/useCopyToClipboard.ts` |
 | Detect truncation | `useIsTruncated` | `shared/hooks/useIsTruncated.ts` |
 | Previous value | `usePrevious` | `shared/hooks/usePrevious.ts` |
 | Search input state | `useSearch` | `shared/hooks/useSearch.ts` |
