@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core.query.reachable import ReachableNodesQuery
+from infrahub.graph_traversal.reachable import ReachableNodesQuery
 
 
 class TestReachableNodesQueryValidation:

@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
-from infrahub.core.query.path import (
+from infrahub.graph_traversal.path import (
     DEFAULT_EXCLUDED_NAMESPACES,
     PathData,
     PathNodeData,

@@ -6,7 +6,7 @@ from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, Str
 from graphql import GraphQLError
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.reachable import ReachableNodesQuery
+from infrahub.graph_traversal.reachable import ReachableNodesQuery
 from infrahub.graphql.queries.path import (
     PathNodeType,
     PathResultType,

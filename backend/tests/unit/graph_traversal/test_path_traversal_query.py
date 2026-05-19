@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core.query.path import PathTraversalQuery
+from infrahub.graph_traversal.path import PathTraversalQuery
 
 
 class TestPathTraversalQueryValidation:

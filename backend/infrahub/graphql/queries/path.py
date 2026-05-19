@@ -7,8 +7,8 @@ from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, Str
 from graphql import GraphQLError
 
 from infrahub.core.manager import NodeManager
-from infrahub.core.query.path import PathData, PathTraversalQuery
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.graph_traversal.path import PathData, PathTraversalQuery
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
