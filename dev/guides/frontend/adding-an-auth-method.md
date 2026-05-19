@@ -14,7 +14,7 @@ The steps below use LDAP as the running example.
 ## Checklist
 
 - [ ] Add a variant to `AuthMethod` (in `auth-methods.tsx`)
-- [ ] Add a domain function + mutation (only for credentials-style methods that hit a backend)
+- [ ] Add an api transport + domain function + mutation (only for credentials-style methods that hit a backend)
 - [ ] Build a render component (`<LdapCredentialsForm>` or equivalent)
 - [ ] Register the method in `AUTH_METHODS`
 - [ ] Add tests for the new `resolve` branch and any new render logic
@@ -36,29 +36,53 @@ The discriminator (`kind`) is the only required field. Add carrier fields only i
 
 TypeScript will now refuse to compile until `AUTH_METHODS` has an `ldap` entry.
 
-## 2. Add the domain function and mutation
+## 2. Add the api transport, domain function, and mutation
 
 Skip this step for purely client-side methods or pure redirects.
+
+The entity follows `ui/ → domain/ → api/` layering. The transport lives in `api/`, the domain function delegates to it, and the mutation wraps the domain function. Never call `apiClient` from `domain/` or `ui/`.
+
+`frontend/app/src/entities/authentication/api/login-with-ldap-from-api.ts`:
+
+```ts
+import { apiClient } from "@/shared/api/rest/client";
+import type { components } from "@/shared/api/rest/types.generated";
+
+export type LoginWithLdapFromApiParams = { username: string; password: string };
+
+export async function loginWithLdapFromApi(
+  params: LoginWithLdapFromApiParams
+): Promise<components["schemas"]["UserToken"]> {
+  const { data, error, response } = await apiClient.POST("/api/auth/ldap/login", { body: params });
+
+  if (error)
+    throw Object.assign(new Error("LDAP login failed"), { status: response.status, body: error });
+
+  return data;
+}
+```
+
+The throw must carry `status` and `body` — `toLoginError` in `credentials-form.tsx` reads `error.status` to map HTTP codes (401, 403, 409, …) to a `LoginErrorCode`, and falls back to `error.body.message` for the server-provided message. A bare `throw error` drops the status and collapses every failure into the `unknown` branch.
 
 `frontend/app/src/entities/authentication/domain/login-with-ldap.ts`:
 
 ```ts
-import { apiClient } from "@/shared/api/rest/client";
+import {
+  type LoginWithLdapFromApiParams,
+  loginWithLdapFromApi,
+} from "@/entities/authentication/api/login-with-ldap-from-api";
 import type { UserToken } from "@/entities/authentication/types";
 
-export type LoginWithLdapParams = { username: string; password: string };
+export type LoginWithLdapParams = LoginWithLdapFromApiParams;
+export type LoginWithLdap = (params: LoginWithLdapParams) => Promise<UserToken>;
 
-export const loginWithLdap = async (params: LoginWithLdapParams): Promise<UserToken> => {
-  const { data, error } = await apiClient.POST("/api/auth/ldap/login", { body: params });
-  if (error) throw error;
-  return data;
-};
+export const loginWithLdap: LoginWithLdap = (params) => loginWithLdapFromApi(params);
 ```
 
 Rules:
 
+- Domain functions delegate to `api/` — they do not import `apiClient` directly.
 - Return the `UserToken`; do **not** call `saveTokensInLocalStorage`. Persistence is centralized in `useAuth.setToken`.
-- Throw on error. The form translates `error.status` / network failures into `LoginError`.
 
 `frontend/app/src/entities/authentication/ui/queries/login-with-ldap.mutation.ts`:
 
