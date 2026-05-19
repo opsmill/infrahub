@@ -130,9 +130,7 @@ describe("CredentialsForm", () => {
     await component.getByLabelText("Password").fill("secret");
     await component.getByRole("button", { name: "Log in" }).click();
 
-    await expect
-      .element(component.getByText("Username 'alice' is already taken"))
-      .toBeVisible();
+    await expect.element(component.getByText("Username 'alice' is already taken")).toBeVisible();
     expect(setToken).not.toHaveBeenCalled();
   });
 
