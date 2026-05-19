@@ -6,25 +6,26 @@ For every Prefect `@flow` / `@task`-decorated method on `InfrahubRepositoryInteg
 
 ```python
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
-    # PRIVATE plain async impl — unit-testable, no Prefect imports needed at call.
+    # PRIVATE plain async impl — unit-testable, no Prefect runtime needed.
+    # The signature mirrors the wrapper exactly (same parameter names, same
+    # types, same return type); the body is whatever lives inside the wrapper
+    # at integrator.py:513 today, moved verbatim.
     async def _import_schema_files_impl(
-        self, *, infrahub_branch_name: str, commit: str,
-    ) -> ImportResult:
-        # ── verbatim body of today's import_schema_files ──
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig,
+    ) -> None:
         ...
 
-    # PUBLIC decorated wrapper — same name, same signature, same decorator as today.
-    @task(
-        name="import-schema-files",
-        task_run_name="Import schema files for {self.name} on {infrahub_branch_name}",
-        retries=3,
-    )
+    # PUBLIC decorated wrapper. The decorator and signature below are exactly
+    # what integrator.py:513 ships today; the Story 5 split is body-only, so the
+    # decorator arguments (name, task_run_name, cache_policy) and the wrapper's
+    # signature MUST stay unchanged (FR-013, FR-014). Implementors: do NOT modify
+    # any of them during the split.
+    @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(
-        self, *, infrahub_branch_name: str, commit: str,
-    ) -> ImportResult:
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig,
+    ) -> None:
         return await self._import_schema_files_impl(
-            infrahub_branch_name=infrahub_branch_name,
-            commit=commit,
+            branch_name=branch_name, commit=commit, config_file=config_file,
         )
 ```
 

@@ -100,12 +100,16 @@ class FileImportHandler(Protocol):
 
 ### Composition
 
-The integrator's `__init__` (or Pydantic model `__init__`, depending on which lifecycle the SDK-client PR leaves usable) instantiates a `RepositoryFileImporter(repository=self)` and pre-registers the built-in handlers in deterministic order. The eight integrator methods named above become one-line delegates (FR-016):
+The integrator's `__init__` (or Pydantic model `__init__`, depending on which lifecycle the SDK-client PR leaves usable) instantiates a `RepositoryFileImporter(repository=self)` and pre-registers the built-in handlers in deterministic order. The eight integrator methods named above become one-line delegates (FR-016). The delegate keeps the integrator method's exact public signature (FR-013); the importer's `import_one` accepts the same arguments so the delegate body is one expression:
 
 ```python
-async def import_schema_files(self, *, infrahub_branch_name: str, commit: str) -> ...:
+# Signature mirrors integrator.py:513 exactly — FR-013 forbids any change.
+async def import_schema_files(
+    self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig,
+) -> None:
     return await self.file_importer.import_one(
-        handler_name="schema", infrahub_branch_name=infrahub_branch_name, commit=commit,
+        handler_name="schema",
+        branch_name=branch_name, commit=commit, config_file=config_file,
     )
 ```
 
@@ -177,18 +181,24 @@ Per FR-008 and FR-021, every Prefect-decorated method on `InfrahubRepositoryInte
 
 ```python
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
+    # The `_impl` signature mirrors the wrapper below exactly. The body is
+    # whatever lives inside the wrapper at integrator.py:513 today, moved
+    # verbatim (Story 5 is body-only — no signature or return-type change).
     async def _import_schema_files_impl(
-        self, *, infrahub_branch_name: str, commit: str,
-    ) -> ImportResult:
-        # plain async body — moved verbatim from the current decorated method
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig,
+    ) -> None:
         ...
 
-    @task(name="import-schema-files", task_run_name="...", retries=3)
+    # The decorator and signature below match integrator.py:513 verbatim.
+    # Story 5's split is body-only: the decorator arguments (name, task_run_name,
+    # cache_policy) and the wrapper's signature MUST stay exactly as they are
+    # today (FR-013, FR-014). Implementors: do NOT modify them during the split.
+    @task(name="import-schema-files", task_run_name="Import schema files", cache_policy=NONE)
     async def import_schema_files(
-        self, *, infrahub_branch_name: str, commit: str,
-    ) -> ImportResult:
+        self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig,
+    ) -> None:
         return await self._import_schema_files_impl(
-            infrahub_branch_name=infrahub_branch_name, commit=commit,
+            branch_name=branch_name, commit=commit, config_file=config_file,
         )
 ```
 

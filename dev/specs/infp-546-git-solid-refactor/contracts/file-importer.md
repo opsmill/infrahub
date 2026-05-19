@@ -4,6 +4,12 @@
 
 ## Collaborator
 
+The importer's `import_one` / `import_all` accept the same argument set as the
+integrator's per-type `import_*` methods today (`branch_name`, `commit`,
+`config_file: InfrahubRepositoryConfig`). This keeps the integrator delegate
+body to exactly one expression per FR-016 — no argument transformation is
+needed at the delegate site.
+
 ```python
 class RepositoryFileImporter:
     def __init__(self, repository: RepositoryProtocol) -> None:
@@ -16,26 +22,43 @@ class RepositoryFileImporter:
         self._handlers[handler.name] = handler
 
     async def import_one(
-        self, *, handler_name: str, infrahub_branch_name: str, commit: str,
+        self,
+        *,
+        handler_name: str,
+        branch_name: str,
+        commit: str,
+        config_file: InfrahubRepositoryConfig,
     ) -> None:
         handler = self._handlers[handler_name]
-        files = await handler.discover(self.repository, commit=commit)
+        files = await handler.discover(
+            self.repository, commit=commit, config_file=config_file,
+        )
         await handler.reconcile(
             self.repository,
             files=files,
-            infrahub_branch_name=infrahub_branch_name,
+            branch_name=branch_name,
             commit=commit,
+            config_file=config_file,
         )
 
-    async def import_all(self, *, infrahub_branch_name: str, commit: str) -> None:
+    async def import_all(
+        self,
+        *,
+        branch_name: str,
+        commit: str,
+        config_file: InfrahubRepositoryConfig,
+    ) -> None:
         # Deterministic iteration order from the registration order.
         for handler in self._handlers.values():
-            files = await handler.discover(self.repository, commit=commit)
+            files = await handler.discover(
+                self.repository, commit=commit, config_file=config_file,
+            )
             await handler.reconcile(
                 self.repository,
                 files=files,
-                infrahub_branch_name=infrahub_branch_name,
+                branch_name=branch_name,
                 commit=commit,
+                config_file=config_file,
             )
 ```
 
@@ -47,7 +70,11 @@ class FileImportHandler(Protocol):
     config_section: str   # key under .infrahub.yml the handler reads
 
     async def discover(
-        self, repository: RepositoryProtocol, *, commit: str,
+        self,
+        repository: RepositoryProtocol,
+        *,
+        commit: str,
+        config_file: InfrahubRepositoryConfig,
     ) -> Sequence[DiscoveredFile]: ...
 
     async def reconcile(
@@ -55,12 +82,15 @@ class FileImportHandler(Protocol):
         repository: RepositoryProtocol,
         *,
         files: Sequence[DiscoveredFile],
-        infrahub_branch_name: str,
+        branch_name: str,
         commit: str,
+        config_file: InfrahubRepositoryConfig,
     ) -> None: ...
 ```
 
 `DiscoveredFile` is a `frozen=True, slots=True` dataclass with at least `path: Path, contents_hash: str, raw: bytes | None`. Exact fields are finalized in Story 4 PR #1.
+
+**Naming note.** Today's `import_objects_from_files` flow (`@flow` at integrator.py:184) uses `infrahub_branch_name` as its parameter name, while the per-type `@task` methods like `import_schema_files` (integrator.py:513) use `branch_name`. The importer follows the per-type convention (`branch_name`) because that is the layer it replaces. The flow-level wrapper continues to call `infrahub_branch_name` at its public surface (FR-013); internally it passes the value through to the importer as `branch_name`.
 
 ## Built-in handler registration
 
@@ -81,16 +111,16 @@ Order matches today's invocation order in `import_objects_from_files` so behavio
 
 ## Integrator delegate shape (FR-016)
 
-Each of the eight integrator `import_*` methods becomes:
+Each of the eight integrator `import_*` methods becomes a one-expression delegate that mirrors the integrator method's exact public signature (FR-013):
 
 ```python
+# Signature taken verbatim from integrator.py:513; do NOT change it.
 async def import_schema_files(
-    self, *, infrahub_branch_name: str, commit: str,
-) -> ...:
+    self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig,
+) -> None:
     return await self.file_importer.import_one(
         handler_name="schema",
-        infrahub_branch_name=infrahub_branch_name,
-        commit=commit,
+        branch_name=branch_name, commit=commit, config_file=config_file,
     )
 ```
 

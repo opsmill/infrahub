@@ -14,7 +14,7 @@ The primary deliverables of this *plan* command are: this file, `research.md` (c
 ## Technical Context
 
 **Language/Version**: Python 3.12
-**Primary Dependencies**: Pydantic 2.10, GitPython (existing), Prefect (existing — workflow decorators), `infrahub_sdk` (existing client), pytest 9.0
+**Primary Dependencies**: Pydantic 2.12 (constraint `>=2.12,<2.13` in `pyproject.toml`), GitPython (existing), Prefect (existing — workflow decorators), `infrahub_sdk` (existing client), pytest 9.0
 **Storage**: N/A — no database schema or persisted-data change (FR-015). Module operates on a local checkout under `repositories/<id>/` and a remote Git server.
 **Testing**: pytest 9.0 with `pytest-asyncio`; existing `backend/tests/unit/git/` (3 files) and `backend/tests/integration/git/` (6 files incl. `conftest.py` Gogs fixture at lines 129-202). Story 1 adds one file per scenario family to the integration directory; Stories 2–5 add unit tests directly against extracted collaborators and `_impl` methods.
 **Target Platform**: Linux/macOS dev hosts; production runs in containers behind the existing Infrahub stack. No platform-specific code added.
