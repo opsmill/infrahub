@@ -500,13 +500,13 @@ class TestDeterminism:
             source_kind="TestingKindA",
             terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindC"})),
             max_depth=5,
-            user_filters=_default_filters(),           
+            user_filters=_default_filters(),
         )
         plan_b = planner.plan(
             source_kind="TestingKindA",
             terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindC"})),
             max_depth=5,
-            user_filters=_default_filters(),           
+            user_filters=_default_filters(),
         )
         assert plan_a == plan_b
         assert plan_a.routes == plan_b.routes
