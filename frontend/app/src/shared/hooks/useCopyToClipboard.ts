@@ -20,7 +20,7 @@ const COPIED_FEEDBACK_DURATION = 2000;
 export function useCopyToClipboard() {
   const [isCopied, setIsCopied] = React.useState(false);
 
-  const copyToClipboard = React.useCallback((value: string) => {
+  const copyToClipboard = React.useCallback(async (value: string) => {
     function confirmCopied() {
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), COPIED_FEEDBACK_DURATION);
@@ -32,13 +32,13 @@ export function useCopyToClipboard() {
       return;
     }
 
-    navigator.clipboard
-      .writeText(value)
-      .then(confirmCopied)
-      .catch(() => {
-        oldSchoolCopy(value);
-        confirmCopied();
-      });
+    try {
+      await navigator.clipboard.writeText(value);
+      confirmCopied();
+    } catch {
+      oldSchoolCopy(value);
+      confirmCopied();
+    }
   }, []);
 
   return { isCopied, copyToClipboard };
