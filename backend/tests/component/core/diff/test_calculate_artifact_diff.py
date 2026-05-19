@@ -367,29 +367,18 @@ async def test_calculate_artifact_diff_migrated_kind(
     artifact_diff_kind_migration_data: dict[str, Node | Branch],
 ) -> None:
     branch = artifact_diff_kind_migration_data["branch"]
+    art_main = artifact_diff_kind_migration_data["art_main"]
 
     artifact_diff_calculator = ArtifactDiffCalculator(db=db)
     artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
-
     assert artifact_diffs == []
-
-
-async def test_calculate_artifact_diff_migrated_kind_with_genuine_change(
-    db: InfrahubDatabase,
-    default_branch: Branch,
-    artifact_diff_kind_migration_data: dict[str, Node | Branch],
-) -> None:
-    branch = artifact_diff_kind_migration_data["branch"]
-    art_main = artifact_diff_kind_migration_data["art_main"]
 
     art_branch = await NodeManager.get_one(db=db, branch=branch, id=art_main.id)
     art_branch.checksum.value = "new_checksum_after_genuine_content_change"
     art_branch.storage_id.value = "bbbbbbbb-1111-4173-aa4b-f50e1309f03c"
     await art_branch.save(db=db)
 
-    artifact_diff_calculator = ArtifactDiffCalculator(db=db)
     artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
-
     assert len(artifact_diffs) == 1
     assert artifact_diffs[0].action == DiffAction.UPDATED
     assert artifact_diffs[0].item_new is not None
@@ -474,5 +463,16 @@ async def test_calculate_artifact_diff_main_side_migration(
 
     artifact_diff_calculator = ArtifactDiffCalculator(db=db)
     artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
-
     assert artifact_diffs == []
+
+    art_branch.checksum.value = "new_checksum_main_side_genuine_change"
+    art_branch.storage_id.value = "dddddddd-3333-4173-aa4b-f50e1309f03c"
+    await art_branch.save(db=db)
+
+    artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
+    assert len(artifact_diffs) == 1
+    assert artifact_diffs[0].action == DiffAction.UPDATED
+    assert artifact_diffs[0].item_new is not None
+    assert artifact_diffs[0].item_new.checksum == "new_checksum_main_side_genuine_change"
+    assert artifact_diffs[0].item_previous is not None
+    assert artifact_diffs[0].item_previous.checksum == "ccddee001122334455667788aabbccdd"
