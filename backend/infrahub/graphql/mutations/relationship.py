@@ -73,7 +73,7 @@ class RelationshipAdd(Mutation):
 
     @classmethod
     @retry_db_transaction(name="relationship_add")
-    async def mutate(  # noqa: PLR0915
+    async def mutate(
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
@@ -88,7 +88,6 @@ class RelationshipAdd(Mutation):
         await _validate_permissions(info=info, source_node=source, peers=nodes)
         await _validate_peer_types(info=info, data=data, source_node=source, peers=nodes)
         await _validate_peer_parents(info=info, data=data, source_node=source, peers=nodes)
-        await _validate_cardinality_add(info=info, data=data, source_node=source)
 
         # This has to be done after validating the permissions
         await apply_external_context(graphql_context=graphql_context, context_input=context)
@@ -100,6 +99,7 @@ class RelationshipAdd(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
+        _validate_cardinality_add(rel_schema=rel_schema, existing_peers=existing_peers)
 
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
@@ -226,7 +226,6 @@ class RelationshipRemove(Mutation):
         nodes = await _validate_peers(info=info, data=data)
         await _validate_permissions(info=info, source_node=source, peers=nodes)
         await _validate_peer_types(info=info, data=data, source_node=source, peers=nodes)
-        await _validate_optional_remove(info=info, data=data, source_node=source)
 
         # This has to be done after validating the permissions
         await apply_external_context(graphql_context=graphql_context, context_input=context)
@@ -238,6 +237,7 @@ class RelationshipRemove(Mutation):
         )
 
         existing_peers = await _collect_current_peers(info=info, data=data, source_node=source)
+        _validate_optional_remove(data=data, rel_schema=rel_schema, existing_peers=existing_peers)
         group_event_type = _get_group_event_type(
             node=source, relationship_schema=rel_schema, relationship_name=relationship_name
         )
@@ -490,27 +490,22 @@ async def _collect_current_peers(
     return {str(peer.peer_id): peer for peer in query.get_peers()}
 
 
-async def _validate_cardinality_add(info: GraphQLResolveInfo, data: RelationshipNodesInput, source_node: Node) -> None:
-    relationship_name = str(data.name)
-    rel_schema = source_node.get_schema().get_relationship(name=relationship_name)
-    if rel_schema.cardinality == RelationshipCardinality.ONE:
-        existing_peers = await _collect_current_peers(info=info, data=data, source_node=source_node)
-        if existing_peers:
-            raise ValidationError(
-                {"name": f"'{relationship_name}' is a cardinality-one relationship and already has a peer"}
-            )
+def _validate_cardinality_add(rel_schema: RelationshipSchema, existing_peers: dict[str, RelationshipPeerData]) -> None:
+    if rel_schema.cardinality == RelationshipCardinality.ONE and existing_peers:
+        raise ValidationError({"name": f"'{rel_schema.name}' is a cardinality-one relationship and already has a peer"})
 
 
-async def _validate_optional_remove(info: GraphQLResolveInfo, data: RelationshipNodesInput, source_node: Node) -> None:
-    relationship_name = str(data.name)
-    rel_schema = source_node.get_schema().get_relationship(name=relationship_name)
+def _validate_optional_remove(
+    data: RelationshipNodesInput,
+    rel_schema: RelationshipSchema,
+    existing_peers: dict[str, RelationshipPeerData],
+) -> None:
     if rel_schema.optional is False:
-        existing_peers = await _collect_current_peers(info=info, data=data, source_node=source_node)
         peers_to_remove = {node_data.get("id") for node_data in data.get("nodes") if node_data.get("id")}
         remaining = set(existing_peers.keys()) - peers_to_remove
         if not remaining:
             raise ValidationError(
-                {"name": f"'{relationship_name}' is a mandatory relationship and cannot be fully removed"}
+                {"name": f"'{rel_schema.name}' is a mandatory relationship and cannot be fully removed"}
             )
 
 

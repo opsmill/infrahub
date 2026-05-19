@@ -732,6 +732,13 @@ allow-dunder-method-names = [
     "PLR0915", # Too many statements
 ]
 
+"backend/infrahub/graphql/mutations/relationship.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
 "backend/infrahub/menu/generator.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
