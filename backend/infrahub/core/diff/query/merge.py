@@ -78,16 +78,18 @@ WHERE NOT EXISTS {
     WHERE migrated_out.from < $at AND migrated_out.to IS NULL
 }
 CALL (n) {
-    MATCH (n)-[e:IS_PART_OF]->(:Root)
+    // get add or delete IS_PART_OF edge if it exists
+    OPTIONAL MATCH (n)-[e:IS_PART_OF]->(:Root)
     WHERE e.branch IN [$target_branch, $global_branch]
     AND (
         // pre-fork edge, edge created by the merge, or edge closed by the merge
         (e.branch = $target_branch AND (e.from <= $branched_from OR e.from = $at OR e.to = $at))
         OR (e.branch = $global_branch AND e.from <= $at)
     )
-    RETURN e AS is_part_of_e
+    WITH e
     ORDER BY e.from DESC, e.status ASC
     LIMIT 1
+    RETURN e AS is_part_of_e
 }
 // --------------------
 // Node-level metadata refresh for added and deleted Node vertices
@@ -118,6 +120,10 @@ WHERE e.branch IN [$source_branch, $target_branch, $global_branch]
 AND (
     (e.branch = $target_branch AND (e.from <= $branched_from OR e.from = $at OR e.to = $at))
     OR (e.branch IN [$source_branch, $global_branch] AND e.from <= $at)
+    // include any fields updated as part of this merge to cover the case where
+    // a Node had its kind migrated on the default branch after the user branch forked
+    OR exists((field)-[{branch: $target_branch, from: $at}]-())
+    OR exists((field)-[{branch: $target_branch, to: $at}]-())
 )
 
 // --------------------
