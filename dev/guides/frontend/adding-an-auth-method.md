@@ -29,7 +29,7 @@ The steps below use LDAP as the running example.
 export type AuthMethod =
   | { kind: "local" }
   | { kind: "sso"; providers: Array<SSOProvider> }
-  | { kind: "ldap" };                              // NEW
+  | { kind: "ldap"; displayLabel: string; icon: string }; // NEW
 ```
 
 The discriminator (`kind`) is the only required field. Add carrier fields only if `render` needs runtime data that `resolve` derived from server config (e.g. SSO's `providers`).
@@ -40,7 +40,7 @@ TypeScript will now refuse to compile until `AUTH_METHODS` has an `ldap` entry.
 
 Skip this step for purely client-side methods or pure redirects.
 
-`frontend/app/src/entities/authentication/domain/login-with-ldap.ts`:
+`frontend/app/src/entities/authentication/methods/ldap/login-with-ldap.ts`:
 
 ```ts
 import { apiClient } from "@/shared/api/rest/client";
@@ -60,11 +60,11 @@ Rules:
 - Return the `UserToken`; do **not** call `saveTokensInLocalStorage`. Persistence is centralized in `useAuth.setToken`.
 - Throw on error. The form translates `error.status` / network failures into `LoginError`.
 
-`frontend/app/src/entities/authentication/ui/queries/login-with-ldap.mutation.ts`:
+`frontend/app/src/entities/authentication/methods/ldap/login-with-ldap.mutation.ts`:
 
 ```ts
 import { mutationOptions, useMutation } from "@tanstack/react-query";
-import { loginWithLdap } from "@/entities/authentication/domain/login-with-ldap";
+import { loginWithLdap } from "@/entities/authentication/methods/ldap/login-with-ldap";
 
 export function loginWithLdapMutationOptions() {
   return mutationOptions({ mutationKey: ["login-with-ldap"], mutationFn: loginWithLdap });
@@ -79,11 +79,11 @@ export function useLoginWithLdap() {
 
 For credentials-style methods, wrap `<CredentialsForm>`:
 
-`frontend/app/src/entities/authentication/ui/ldap-credentials-form.tsx`:
+`frontend/app/src/entities/authentication/methods/ldap/ldap-credentials-form.tsx`:
 
 ```tsx
 import { CredentialsForm } from "@/entities/authentication/ui/credentials-form";
-import { useLoginWithLdap } from "@/entities/authentication/ui/queries/login-with-ldap.mutation";
+import { useLoginWithLdap } from "@/entities/authentication/methods/ldap/login-with-ldap.mutation";
 
 export const LdapCredentialsForm = ({ className }: { className?: string }) => {
   const { mutateAsync } = useLoginWithLdap();
@@ -104,10 +104,15 @@ export const AUTH_METHODS: AuthMethodRegistry = {
   local: { /* unchanged */ },
   sso:   { /* unchanged */ },
   ldap: {
-    toggleLabel: "Log in with LDAP",
+    toggleLabel: ({ displayLabel }) => displayLabel,
     preferDefault: false,
-    resolve: (config) => (config.ldap?.enabled ? { kind: "ldap" } : null),
-    render: () => <LdapCredentialsForm className="fade-in animate-in" />,
+    resolve: (config) =>
+      config.ldap?.enabled
+        ? { kind: "ldap", displayLabel: config.ldap.display_label, icon: config.ldap.icon }
+        : null,
+    render: ({ displayLabel, icon }) => (
+      <LdapCredentialsForm displayLabel={displayLabel} icon={icon} className="fade-in animate-in" />
+    ),
   },
 };
 ```
@@ -116,7 +121,7 @@ Decisions to make per entry:
 
 | Field | Question |
 |---|---|
-| `toggleLabel` | What does the *inactive* toggle button say? Phrase it as an action: "Log in with X". |
+| `toggleLabel` | What does the *inactive* toggle button render? A function `(method) => ReactNode` — return a static "Log in with X" string, or thread per-deployment data (display label, icon) from the variant. |
 | `preferDefault` | Should this be the initial selection when no preference is stored? At most one method should be `true` for the typical install. |
 | `resolve` | Read whatever server config flags this method. Return `null` to filter it out entirely (e.g. backend feature disabled, no providers configured). |
 | `render` | The component that owns the per-method UI. Pass `fade-in animate-in` to match the existing transitions. |

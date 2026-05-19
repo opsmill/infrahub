@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
-import { LdapCredentialsForm } from "@/entities/authentication/ui/ldap-credentials-form";
-import { LocalCredentialsForm } from "@/entities/authentication/ui/local-credentials-form";
-import { LoginWithSSOButtons } from "@/entities/authentication/ui/login-sso-buttons";
+import { LdapCredentialsForm } from "@/entities/authentication/methods/ldap/ldap-credentials-form";
+import { LocalCredentialsForm } from "@/entities/authentication/methods/local/local-credentials-form";
+import { LoginWithSSOButtons } from "@/entities/authentication/methods/sso/login-sso-buttons";
 import type { ConfigAPI, SSOProvider } from "@/entities/config/types";
 
 // Runtime data for each auth method.
