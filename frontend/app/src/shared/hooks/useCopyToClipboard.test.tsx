@@ -1,4 +1,3 @@
-import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "vitest-browser-react";
 
@@ -7,7 +6,11 @@ import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 function CopyButton({ value }: { value: string }) {
   const { isCopied, copyToClipboard } = useCopyToClipboard();
   return (
-    <button data-testid="copy-btn" data-copied={String(isCopied)} onClick={() => copyToClipboard(value)}>
+    <button
+      data-testid="copy-btn"
+      data-copied={String(isCopied)}
+      onClick={() => copyToClipboard(value)}
+    >
       {isCopied ? "copied" : "copy"}
     </button>
   );
