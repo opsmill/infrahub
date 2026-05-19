@@ -399,6 +399,31 @@ class TestAllowSchemaRevisits:
             ),
         )
 
+    def test_self_loop_on_intermediate_kind_is_pruned_under_default(self) -> None:
+        """A self-relationship on a non-source kind must not be walked under
+        the default revisit-free policy: a hop into the same kind we already
+        occupy would put that kind into two consecutive path positions, which
+        is a revisit regardless of whether the second occurrence is an
+        intermediate or the terminal.
+        """
+        schema = build_schema_branch(
+            nodes=[
+                _node("Source", relationships=[_rel(name="rel_loop", peer="TestingLoop", identifier="src__loop")]),
+                _node("Loop", relationships=[_rel(name="rel_self", peer="TestingLoop", identifier="loop__loop")]),
+            ]
+        )
+        planner = make_planner(schema_branch=schema)
+        plan = planner.plan(
+            source_kind="TestingSource",
+            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingLoop"})),
+            max_depth=5,
+            user_filters=_default_filters(),
+        )
+        # Only the direct Source→Loop route survives. The Source→Loop→Loop
+        # extension (via the loop__loop self-relationship) is an immediate
+        # revisit and must be pruned
+        assert plan.routes == (_route_from_hops(_bidir_hop("TestingSource", "TestingLoop", "src__loop")),)
+
 
 class TestUserFilters:
     def test_default_excluded_namespaces_prune_routes_through_excluded_kinds(self) -> None:

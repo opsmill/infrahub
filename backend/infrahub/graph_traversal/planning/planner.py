@@ -49,10 +49,8 @@ def _invert_direction(direction: HopDirection) -> HopDirection:
 class _FrontierEntry:
     """One in-flight BFS branch during route enumeration.
 
-    ``visited_intermediates`` excludes the source position (always ``source_kind``)
-    and the current position (``current_kind``); it is the set of kinds that
-    would become repeats if we extended through them again. It is only
-    consulted when ``allow_schema_revisits`` is ``False``.
+    ``visited_intermediates`` contains every kind on this path except the
+    source.
     """
 
     current_kind: str
@@ -220,12 +218,13 @@ class SchemaPlanner:
     ) -> list[Route]:
         """Iterative BFS up to ``max_depth``.
 
-        Each frontier entry carries the set of intermediate kinds visited so
-        far (positions ``1..len(hops_so_far) - 1`` of the path). When
+        Each frontier entry carries the set of kinds already on its path
+        excluding the source (positions ``1..len(hops_so_far)`` of the path,
+        i.e. the current kind plus all preceding intermediates). When
         ``allow_schema_revisits`` is ``False``, a candidate peer kind that
-        appears in that visited set, or that equals the source kind without
-        also being a valid terminal, is dropped before any work is done; the
-        BFS therefore never explores cyclic branches in the first place.
+        appears in that set, or that equals the source kind without also
+        being a valid terminal, is dropped before any work is done; the BFS
+        therefore never explores cyclic branches in the first place.
 
         When ``allow_schema_revisits`` is ``True``, a kind may appear multiple
         times along a route — only the total hop count is bounded, so cyclic
@@ -237,7 +236,7 @@ class SchemaPlanner:
             _FrontierEntry(current_kind=source_kind, hops_so_far=(), visited_intermediates=frozenset())
         ]
         while frontiers:
-            next_frontier: list[_FrontierEntry] = []
+            next_frontiers: list[_FrontierEntry] = []
             for entry in frontiers:
                 for peer_kind, identifier, direction in self._relationships_for(entry.current_kind):
                     route, next_entry = self._step(
@@ -253,8 +252,8 @@ class SchemaPlanner:
                     if route is not None:
                         candidates.append(route)
                     if next_entry is not None:
-                        next_frontier.append(next_entry)
-            frontiers = next_frontier
+                        next_frontiers.append(next_entry)
+            frontiers = next_frontiers
         return candidates
 
     def _step(
@@ -277,7 +276,7 @@ class SchemaPlanner:
         rules permit). Either or both may be ``None``.
         """
         if not allow_schema_revisits and peer_kind in entry.visited_intermediates:
-            # Intermediate revisit — pruning here removes the entire downstream subtree.
+            # Revisit — pruning here removes the entire downstream subtree.
             return None, None
 
         new_hop = Hop(
@@ -299,18 +298,12 @@ class SchemaPlanner:
             # that would put the source kind in an intermediate position.
             return route, None
 
-        # ``entry.current_kind`` becomes an intermediate of the path we're
-        # extending — unless this is the initial frontier entry (current_kind
-        # is the source position, not an intermediate).
-        if entry.hops_so_far:
-            new_visited = entry.visited_intermediates | {entry.current_kind}
-        else:
-            new_visited = entry.visited_intermediates
-
+        # The peer becomes the new current; record it so any further revisit
+        # of the same kind (including a subsequent self-loop) is pruned.
         next_entry = _FrontierEntry(
             current_kind=peer_kind,
             hops_so_far=new_hops,
-            visited_intermediates=new_visited,
+            visited_intermediates=entry.visited_intermediates | {peer_kind},
         )
         return route, next_entry
 
