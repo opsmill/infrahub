@@ -6,7 +6,7 @@ import type {
   PathResult,
   PathTraversalResponse,
 } from "../domain/path-traversal.types";
-import { copyAllPathsAsText, formatPathAsText, getKindCounts, pathPreview } from "./format-paths";
+import { copyAllPathsAsText, formatPathAsText } from "./format-paths";
 
 const node = (id: string, kind: string, label: string): PathNode => ({
   id,
@@ -83,38 +83,5 @@ describe("copyAllPathsAsText", () => {
 
   test("returns empty string for zero paths", () => {
     expect(copyAllPathsAsText({ ...response, paths: [], count: 0 })).toBe("");
-  });
-});
-
-describe("pathPreview", () => {
-  test("returns the full chain when nodes fit under the limit", () => {
-    expect(pathPreview(path, 5)).toBe("router-1 -> Ethernet1 -> router-2");
-  });
-
-  test("returns first -> ... -> last when nodes exceed the limit", () => {
-    const longPath: PathResult = {
-      ...path,
-      hops: [
-        hop(a),
-        hop(b, rel("interfaces", "device")),
-        hop(c, rel("device", "interfaces")),
-        hop(node("d", "InfraDevice", "router-3"), rel("link", "link")),
-      ],
-    };
-    expect(pathPreview(longPath, 3)).toBe("router-1 -> ... -> router-3");
-  });
-
-  test("uses default limit of 3", () => {
-    expect(pathPreview(path)).toBe("router-1 -> Ethernet1 -> router-2");
-  });
-});
-
-describe("getKindCounts", () => {
-  test("counts and labels each kind on the path", () => {
-    expect(getKindCounts(path)).toBe("2x InfraDevice, 1x InfraInterface");
-  });
-
-  test("returns an empty string for a path with no hops", () => {
-    expect(getKindCounts({ ...path, hops: [] })).toBe("");
   });
 });

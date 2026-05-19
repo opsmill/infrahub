@@ -2,6 +2,12 @@ import type { UseFormReturn } from "react-hook-form";
 
 import { KindMultiSelect } from "@/shared/components/inputs/kind-multi-select";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/shared/components/ui/accordion";
+import {
   Form,
   FormField,
   FormInput,
@@ -64,34 +70,41 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
         )}
       />
 
-      <FormField
-        name="maxDepth"
-        rules={{
-          required: "Max depth is required",
-          min: { value: 1, message: "Must be ≥ 1" },
-          max: { value: 20, message: "Must be ≤ 20" },
-        }}
-        render={({ field }) => (
-          <div className="space-y-1">
-            <FormLabel>Max Depth</FormLabel>
-            <FormInput>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={(field.value as number) ?? ""}
-                onChange={(e) => {
-                  const value = e.target.valueAsNumber;
-                  field.onChange(isNaN(value) ? null : value);
-                }}
-              />
-            </FormInput>
-            <FormMessage />
-          </div>
-        )}
-      />
+      <Accordion type="single" collapsible>
+        <AccordionItem value="advanced">
+          <AccordionTrigger>Search options</AccordionTrigger>
+          <AccordionContent className="space-y-3">
+            <FormField
+              name="maxDepth"
+              rules={{
+                required: "Max depth is required",
+                min: { value: 1, message: "Must be ≥ 1" },
+                max: { value: 20, message: "Must be ≤ 20" },
+              }}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <FormLabel>Max Depth</FormLabel>
+                  <FormInput>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={(field.value as number) ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.valueAsNumber;
+                        field.onChange(isNaN(value) ? null : value);
+                      }}
+                    />
+                  </FormInput>
+                  <FormMessage />
+                </div>
+              )}
+            />
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
 
-      <FormSubmit isPending={isPending} className="w-full bg-amber-600 hover:bg-amber-700">
+      <FormSubmit isPending={isPending} className="w-full">
         Find Dependencies
       </FormSubmit>
     </Form>

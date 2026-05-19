@@ -74,7 +74,8 @@ Examples of helpers that should live in `utils.ts`:
 Move these out of the page component the moment you write them:
 
 - Pure formatters → `utils.ts`
-- Clipboard / `navigator.*` helpers → `utils.ts` (or a small hook if stateful)
+- Pure clipboard / text-formatting helpers (`copyAllAsText`, `formatAsText`) → `utils.ts`
+- Reading from / writing to the clipboard at runtime → reuse `useCopyToClipboard` (`shared/hooks/useCopyToClipboard.ts`); do **not** call `navigator.clipboard.*` directly or reinvent the "Copied!" feedback state
 - API mappers → `domain/`
 - React Query hooks → `ui/queries/`
 - Subtree-specific UI when modes diverge → separate component (`<PathMode />`, `<ImpactMode />`)
