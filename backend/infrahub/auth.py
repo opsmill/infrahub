@@ -234,7 +234,11 @@ async def signin_sso_account(  # noqa: PLR0915
 
     if identity_nodes:
         identity_node = identity_nodes[0]
-        account = await identity_node.account.get_peer(db=db)
+        # `identity_nodes` is `list[Node]` because schema is a kind-string; the runtime
+        # instance is an InternalExternalIdentity with `.account`. Typing it via protocol
+        # would cascade Optional and CoreNode-vs-Node mismatches through the rest of the
+        # function, so suppress just the attribute access here.
+        account = await identity_node.account.get_peer(db=db)  # type: ignore[attr-defined]
         if account.label.value != external_identity.display_name:
             account.label.value = external_identity.display_name
             await account.save(db=db)

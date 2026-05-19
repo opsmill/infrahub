@@ -102,7 +102,7 @@ class NodeManager:
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
         order: OrderModel | None = ...,
-    ) -> list[Any]: ...
+    ) -> list[Node]: ...
 
     @overload
     @classmethod
@@ -139,7 +139,7 @@ class NodeManager:
         partial_match: bool = False,
         branch_agnostic: bool = False,
         order: OrderModel | None = None,
-    ) -> list[Any]:
+    ) -> list[Node] | list[SchemaProtocol]:
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
