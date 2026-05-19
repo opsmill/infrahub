@@ -13,8 +13,8 @@ This research consolidates findings from a code exploration of the current path 
 **Findings**
 
 - Both classes inherit `Query` (`backend/infrahub/core/query/__init__.py`). The base provides `params: dict`, `query_lines: list[str]`, `return_labels: list[str]`, async `execute(db)`, and per-row `QueryResult` traversal.
-- `PathTraversalQuery` ([`backend/infrahub/core/query/path.py:79-214`](../../../../backend/infrahub/core/query/path.py)) emits a single variable-length Cypher pattern `MATCH path = (source)-[:IS_RELATED*2..N]-(target)` with where-clause filters for branch, namespace, kind, and relationship identifier, then validates each edge in a `CALL { ... }` subquery, then orders by `length(path)` and limits.
-- `ReachableNodesQuery` ([`backend/infrahub/core/query/reachable.py:25-141`](../../../../backend/infrahub/core/query/reachable.py)) follows the same shape but pivots the terminal predicate to `target:Node` whose `kind` is in `$target_kinds`.
+- `PathTraversalQuery` (`backend/infrahub/core/query/path.py:79-214`) emits a single variable-length Cypher pattern `MATCH path = (source)-[:IS_RELATED*2..N]-(target)` with where-clause filters for branch, namespace, kind, and relationship identifier, then validates each edge in a `CALL { ... }` subquery, then orders by `length(path)` and limits.
+- `ReachableNodesQuery` (`backend/infrahub/core/query/reachable.py:25-141`) follows the same shape but pivots the terminal predicate to `target:Node` whose `kind` is in `$target_kinds`.
 - Return data is exposed through `extract_path_data(neo4j.Path)` which already produces frozen dataclasses (`PathData`, `PathHopData`, `PathNodeData`). No record-leakage at the boundary.
 - Branch and temporal filtering is reused via `branch.get_query_filter_path(at=...)`; returns a `(clause: str, params: dict)` tuple suitable for interpolation into a `WHERE` slot.
 

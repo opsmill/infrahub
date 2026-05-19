@@ -31,7 +31,7 @@ def make_hop(
 
 class TestHop:
     def test_rejects_empty_relationship_identifier(self) -> None:
-        with pytest.raises(ValueError, match="Hop.relationship_identifier must be non-empty"):
+        with pytest.raises(ValueError, match=r"Hop\.relationship_identifier must be non-empty"):
             Hop(
                 start_kind="A",
                 end_kind="B",
@@ -86,7 +86,7 @@ class TestRoute:
 
 class TestTerminalByKinds:
     def test_rejects_empty_kinds(self) -> None:
-        with pytest.raises(ValueError, match="TerminalByKinds.kinds must be non-empty"):
+        with pytest.raises(ValueError, match=r"TerminalByKinds\.kinds must be non-empty"):
             TerminalByKinds(kinds=frozenset())
 
     def test_accepts_non_empty(self) -> None:
