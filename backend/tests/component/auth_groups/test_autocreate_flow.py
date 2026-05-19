@@ -499,20 +499,16 @@ class TestPerLoginCap:
         assert len(accounts) == 1
         account_id = accounts[0].id
 
-        for created_name in ("cap-test-new-a", "cap-test-new-b"):
-            groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": created_name})
-            assert len(groups) == 1, f"{created_name} must be created (within the cap of {cap})"
+        for expected_member_of in ("cap-test-preexisting", "cap-test-new-a", "cap-test-new-b"):
+            groups = await NodeManager.query(
+                db=db, schema=CoreAccountGroup, filters={"name__value": expected_member_of}
+            )
+            assert len(groups) == 1, f"{expected_member_of} must exist (preexisting or within cap of {cap})"
             refreshed = await NodeManager.get_one(db=db, id=groups[0].id, prefetch_relationships=True)
             members = await refreshed.get_relationship(name="members").get_peers(
                 db=db, branch_agnostic=True, peer_type=CoreAccount
             )
-            assert account_id in members, f"user must be a member of {created_name}"
+            assert account_id in members, f"user must be a member of {expected_member_of}"
 
         beyond = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "cap-test-new-c"})
         assert beyond == [], "the claim beyond the cap must be dropped"
-
-        refreshed = await NodeManager.get_one(db=db, id=preexisting.id, prefetch_relationships=True)
-        members = await refreshed.get_relationship(name="members").get_peers(
-            db=db, branch_agnostic=True, peer_type=CoreAccount
-        )
-        assert account_id in members, "user must be a member of the pre-existing group (uncapped)"

@@ -387,10 +387,10 @@ async def _assign_group_memberships(
             account=account,
             provider_name=external_identity.provider_name,
             lock_registry=lock.registry,
+            max_per_login=config.SETTINGS.security.auto_create_groups_max_per_login,
         ).assign(
             claims=sso_groups,
             claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),
-            max_per_login=config.SETTINGS.security.auto_create_groups_max_per_login,
         )
         if granted:
             return
