@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from infrahub.auth_groups.filter import ClaimFilter
+from infrahub.auth.auth_groups import ClaimFilter
 
 
 def _compile(*patterns: str) -> tuple[re.Pattern[str], ...]:

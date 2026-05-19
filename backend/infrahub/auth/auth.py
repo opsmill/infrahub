@@ -10,8 +10,7 @@ import jwt
 from pydantic import BaseModel, PrivateAttr
 
 from infrahub import config, lock, models
-from infrahub.auth_groups.filter import ClaimFilter
-from infrahub.auth_groups.service import AutoCreatedGroupsService
+from infrahub.auth.auth_groups import AutoCreatedGroupsService, ClaimFilter
 from infrahub.config import (
     SecurityOAuth2Google,
     SecurityOAuth2Settings,
