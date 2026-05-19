@@ -11,6 +11,9 @@ vi.mock("@/entities/config/ui/config-provider");
 const configWithSso = (sso: Partial<ConfigAPI["sso"]>): ConfigAPI =>
   ({ sso }) as unknown as ConfigAPI;
 
+const configWithLdap = (ldap: Partial<ConfigAPI["ldap"]>): ConfigAPI =>
+  ({ ldap }) as unknown as ConfigAPI;
+
 describe("useAvailableAuthMethods", () => {
   test("returns [local] when SSO is disabled", async () => {
     vi.mocked(useConfig).mockReturnValue(configWithSso({ enabled: false, providers: [] }));
@@ -52,5 +55,32 @@ describe("useAvailableAuthMethods", () => {
     const { result } = await renderHook(() => useAvailableAuthMethods());
 
     expect(result.current).toEqual([{ kind: "local" }]);
+  });
+
+  test("returns [local] when LDAP is disabled", async () => {
+    vi.mocked(useConfig).mockReturnValue(
+      configWithLdap({ enabled: false, display_label: "Sign in with LDAP", icon: "mdi:ldap" })
+    );
+
+    const { result } = await renderHook(() => useAvailableAuthMethods());
+
+    expect(result.current).toEqual([{ kind: "local" }]);
+  });
+
+  test("returns [local, ldap] when LDAP is enabled, threading display_label and icon", async () => {
+    vi.mocked(useConfig).mockReturnValue(
+      configWithLdap({
+        enabled: true,
+        display_label: "Sign in with Corp AD",
+        icon: "mdi:microsoft-windows",
+      })
+    );
+
+    const { result } = await renderHook(() => useAvailableAuthMethods());
+
+    expect(result.current).toEqual([
+      { kind: "local" },
+      { kind: "ldap", displayLabel: "Sign in with Corp AD", icon: "mdi:microsoft-windows" },
+    ]);
   });
 });
