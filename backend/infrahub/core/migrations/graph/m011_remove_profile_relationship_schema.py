@@ -43,6 +43,5 @@ class Migration011(GraphMigration):
     minimum_version: int = 10
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
+        return MigrationResult()
 
-        return result

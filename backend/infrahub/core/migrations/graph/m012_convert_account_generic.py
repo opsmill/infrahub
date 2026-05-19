@@ -60,7 +60,7 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
         super().__init__(new_attr=new_attr, previous_attr=previous_attr, branch=global_branch, **kwargs)
 
     def render_match(self) -> str:
-        query = """
+        return """
         // Find all the active nodes
         CALL () {
             MATCH (node:%(node_kind)s)
@@ -76,7 +76,6 @@ class Migration012RenameTypeAttributeData(AttributeRenameQuery):
         WITH node
         """ % {"node_kind": self.previous_attr.node_kind}
 
-        return query
 
 
 class Migration012AddLabelData(NodeDuplicateQuery):
@@ -118,13 +117,12 @@ class Migration012AddLabelData(NodeDuplicateQuery):
         super().__init__(new_node=new_node, previous_node=previous_node, branch=branch, **kwargs)
 
     def render_match(self) -> str:
-        query = f"""
+        return f"""
         // Find all the active nodes
         MATCH (node:{self.previous_node.kind})
         WHERE NOT "CoreGenericAccount" IN LABELS(node)
         """
 
-        return query
 
 
 class Migration012RenameTypeAttributeSchema(SchemaAttributeUpdateQuery):
@@ -341,6 +339,5 @@ class Migration012(GraphMigration):
     minimum_version: int = 11
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
+        return MigrationResult()
 
-        return result

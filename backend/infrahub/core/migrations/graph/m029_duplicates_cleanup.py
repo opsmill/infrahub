@@ -58,7 +58,7 @@ class CleanUpDuplicatedUuidVertices(Query):
             l_arrow = ""
             r_arrow = ">"
 
-        query = """
+        return """
     CALL (vertex_to_keep, edge_type, branch, peer, earliest_active_time, latest_deleted_time, all_edges_deleted, edge_to_copy) {
         // ------------
         // get or create the active %(edge_type)s edge
@@ -82,7 +82,6 @@ class CleanUpDuplicatedUuidVertices(Query):
             "l_arrow": l_arrow,
             "r_arrow": r_arrow,
         }
-        return query
 
     def _add_deleted_edge_subquery(
         self,
@@ -95,7 +94,7 @@ class CleanUpDuplicatedUuidVertices(Query):
         else:
             l_arrow = ""
             r_arrow = ">"
-        subquery = """
+        return """
     CALL (vertex_to_keep, edge_type, branch, peer, latest_deleted_time, edge_to_copy) {
         // ------------
         // create the deleted %(edge_type)s edge
@@ -112,7 +111,6 @@ class CleanUpDuplicatedUuidVertices(Query):
         SET deleted_edge.hierarchy = edge_to_copy.hierarchy
     }
         """ % {"edge_type": edge_type.value, "l_arrow": l_arrow, "r_arrow": r_arrow}
-        return subquery
 
     def _build_directed_edges_subquery(
         self,
@@ -139,7 +137,7 @@ class CleanUpDuplicatedUuidVertices(Query):
         active_edge_subqueries = "\n".join(active_subqueries)
         deleted_edge_subqueries = "\n".join(delete_subqueries)
 
-        edges_query = """
+        return """
 //------------
 // Get every %(direction)s branch, edge_type, peer element_id combinations touching vertices with this uuid/labels combination
 //------------
@@ -257,7 +255,6 @@ CALL (n_uuid, vertex_element_ids, element_id_to_keep) {
             "deleted_edge_subqueries": deleted_edge_subqueries,
             "vertex_label": self.vertex_label,
         }
-        return edges_query
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["limit"] = self.limit or 1000
@@ -572,9 +569,8 @@ class Migration029(ArbitraryMigration):
     limit: int = 100
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
+        return MigrationResult()
 
-        return result
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         migration_result = MigrationResult()

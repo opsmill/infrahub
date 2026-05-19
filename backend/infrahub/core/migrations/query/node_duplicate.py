@@ -44,7 +44,7 @@ class NodeDuplicateQuery(Query):
 
     def render_match(self) -> str:
         labels_str = ":".join(self.previous_node.labels)
-        query = """
+        return """
         // Find all the active nodes
         MATCH (node:%(labels_str)s)
         WITH DISTINCT node
@@ -65,7 +65,6 @@ class NodeDuplicateQuery(Query):
         WITH node WHERE already_migrated = FALSE
         """ % {"labels_str": labels_str}
 
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:

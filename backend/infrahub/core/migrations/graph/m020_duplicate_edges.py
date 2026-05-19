@@ -147,5 +147,4 @@ class Migration020(GraphMigration):
         return await self.do_execute(migration_input=migration_input)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

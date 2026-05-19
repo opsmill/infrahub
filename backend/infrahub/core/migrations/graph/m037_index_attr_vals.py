@@ -458,9 +458,8 @@ class Migration037(ArbitraryMigration):
     minimum_version: int = 36
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
+        return MigrationResult()
 
-        return result
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:  # noqa: PLR0915
         console = get_migration_console()
