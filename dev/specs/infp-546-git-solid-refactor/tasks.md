@@ -27,9 +27,9 @@ Single-project monorepo under `backend/`. New module-level code lands in `backen
 
 **Purpose**: Verify local pre-conditions and tooling before any structural change lands.
 
-- [ ] T001 Verify Gogs fixture starts cleanly: run `uv run pytest backend/tests/integration/git/test_delete_git_branch_gogs.py -v` and confirm Testcontainers can pull/start the Gogs image
-- [ ] T002 [P] Capture baseline type-checker suppression footprint by saving the current `pyproject.toml` mypy/ty override blocks (lines 358-374) plus a count of inline `# type: ignore` in `backend/infrahub/git/` to `dev/specs/infp-546-git-solid-refactor/baseline-suppressions.txt` — used by every PR to verify FR-018 union invariant
-- [ ] T003 [P] Capture public-symbol baseline by listing every name exported from `backend/infrahub/git/__init__.py`, `repository.py`, `base.py`, `integrator.py`, `tasks.py`, `models.py`, `utils.py` and saving to `dev/specs/infp-546-git-solid-refactor/baseline-symbols.txt` — used by every PR to verify FR-013 surface preservation
+- [X] T001 Verify Gogs fixture starts cleanly: run `uv run pytest backend/tests/integration/git/test_delete_git_branch_gogs.py -v` and confirm Testcontainers can pull/start the Gogs image
+- [X] T002 [P] Capture baseline type-checker suppression footprint by saving the current `pyproject.toml` mypy/ty override blocks (lines 358-374) plus a count of inline `# type: ignore` in `backend/infrahub/git/` to `dev/specs/infp-546-git-solid-refactor/baseline-suppressions.txt` — used by every PR to verify FR-018 union invariant
+- [X] T003 [P] Capture public-symbol baseline by listing every name exported from `backend/infrahub/git/__init__.py`, `repository.py`, `base.py`, `integrator.py`, `tasks.py`, `models.py`, `utils.py` and saving to `dev/specs/infp-546-git-solid-refactor/baseline-symbols.txt` — used by every PR to verify FR-013 surface preservation
 
 ---
 
