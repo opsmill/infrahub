@@ -55,6 +55,8 @@ class ArtifactDiffCalculator:
                     storage_id=target_storage_id,
                     checksum=target_checksum,
                 )
+            if new_storage and old_storage and new_storage == old_storage:
+                continue
             artifact_diffs.append(
                 BranchDiffArtifact(
                     branch=source_branch.name,
