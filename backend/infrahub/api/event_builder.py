@@ -10,7 +10,7 @@ from infrahub.events.models import EventMeta
 async def make_event_meta(account_session: AccountSession, branch: Branch) -> EventMeta:
     return EventMeta(
         branch=branch,
-        context=InfrahubContext.init(branch=branch, account=account_session),
+        context=InfrahubContext.init(branch=branch, account=account_session).to_event_context(),
         account_id=account_session.account_id,
     )
 

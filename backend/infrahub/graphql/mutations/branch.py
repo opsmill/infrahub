@@ -91,13 +91,17 @@ class BranchCreate(Mutation):
 
         if background_execution or not wait_until_completion:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
+                workflow=BRANCH_CREATE,
+                context=graphql_context.get_context(),
+                parameters={"model": model},
             )
             task = {"id": workflow.id}
             return cls(ok=True, task=task)
 
         await graphql_context.active_service.workflow.execute_workflow(
-            workflow=BRANCH_CREATE, context=graphql_context.get_context(), parameters={"model": model}
+            workflow=BRANCH_CREATE,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
         )
 
         # Retrieve created branch
@@ -244,14 +248,18 @@ class BranchRebase(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_REBASE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+                workflow=BRANCH_REBASE,
+                context=graphql_context.get_context(),
+                parameters={"branch": obj.name},
             )
 
             # Pull the latest information about the branch from the database directly
             obj = await Branch.get_by_name(db=graphql_context.db, name=str(data.name))
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_REBASE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+                workflow=BRANCH_REBASE,
+                context=graphql_context.get_context(),
+                parameters={"branch": obj.name},
             )
             task = {"id": workflow.id}
 
@@ -290,11 +298,15 @@ class BranchValidate(Mutation):
 
         if wait_until_completion:
             await graphql_context.active_service.workflow.execute_workflow(
-                workflow=BRANCH_VALIDATE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+                workflow=BRANCH_VALIDATE,
+                context=graphql_context.get_context(),
+                parameters={"branch": obj.name},
             )
         else:
             workflow = await graphql_context.active_service.workflow.submit_workflow(
-                workflow=BRANCH_VALIDATE, context=graphql_context.get_context(), parameters={"branch": obj.name}
+                workflow=BRANCH_VALIDATE,
+                context=graphql_context.get_context(),
+                parameters={"branch": obj.name},
             )
             task = {"id": workflow.id}
 

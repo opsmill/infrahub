@@ -39,3 +39,11 @@ class AccountSession(BaseModel):
         if self._original_account_id is None:
             self._original_account_id = self.account_id
         self.account_id = account_id
+
+
+class AnonymousSession(AccountSession):
+    """A session standing in for "no logged-in user"."""
+
+    account_id: str = ""
+    authenticated: bool = False
+    auth_type: AuthType = AuthType.NONE

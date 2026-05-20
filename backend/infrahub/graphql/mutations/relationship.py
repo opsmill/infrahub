@@ -146,7 +146,9 @@ class RelationshipAdd(Mutation):
                     kind=source.get_schema().kind,
                     members=peers,
                     ancestors=ancestors,
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(
+                        branch=graphql_context.branch, context=graphql_context.get_context().to_event_context()
+                    ),
                 )
                 graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
 
@@ -166,7 +168,9 @@ class RelationshipAdd(Mutation):
                             kind=node_kind,
                             ancestors=ancestors,
                             members=[EventNode(id=source.get_id(), kind=source.get_kind())],
-                            meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                            meta=EventMeta(
+                                branch=graphql_context.branch, context=graphql_context.get_context().to_event_context()
+                            ),
                         )
                         graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
 
@@ -176,7 +180,9 @@ class RelationshipAdd(Mutation):
                     node_id=source.id,
                     changelog=node_changelog,
                     fields=[relationship_name],
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(
+                        branch=graphql_context.branch, context=graphql_context.get_context().to_event_context()
+                    ),
                 )
                 relationship_changelogs = RelationshipChangelogGetter(
                     db=graphql_context.db, branch=graphql_context.branch
@@ -282,7 +288,9 @@ class RelationshipRemove(Mutation):
                     kind=source.get_schema().kind,
                     members=peers,
                     ancestors=ancestors,
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(
+                        branch=graphql_context.branch, context=graphql_context.get_context().to_event_context()
+                    ),
                 )
                 graphql_context.background.add_task(graphql_context.active_service.event.send, group_remove_event)
             elif group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
@@ -300,7 +308,9 @@ class RelationshipRemove(Mutation):
                             node_id=node_id,
                             kind=node_kind,
                             members=[EventNode(id=source.get_id(), kind=source.get_kind())],
-                            meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                            meta=EventMeta(
+                                branch=graphql_context.branch, context=graphql_context.get_context().to_event_context()
+                            ),
                         )
                         graphql_context.background.add_task(
                             graphql_context.active_service.event.send, group_remove_event
@@ -311,7 +321,9 @@ class RelationshipRemove(Mutation):
                     node_id=source.id,
                     changelog=node_changelog,
                     fields=[relationship_name],
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(
+                        branch=graphql_context.branch, context=graphql_context.get_context().to_event_context()
+                    ),
                 )
 
                 relationship_changelogs = RelationshipChangelogGetter(

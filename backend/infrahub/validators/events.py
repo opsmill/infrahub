@@ -13,7 +13,7 @@ async def send_failed_validator(
         node_id=validator.id,
         kind=validator.get_kind(),
         proposed_change_id=proposed_change_id,
-        meta=EventMeta.from_context(context=context),
+        meta=EventMeta.from_context(context=context.to_event_context()),
     )
     await event_service.send(event=event)
 
@@ -25,7 +25,7 @@ async def send_passed_validator(
         node_id=validator.id,
         kind=validator.get_kind(),
         proposed_change_id=proposed_change_id,
-        meta=EventMeta.from_context(context=context),
+        meta=EventMeta.from_context(context=context.to_event_context()),
     )
     await event_service.send(event=event)
 
@@ -37,6 +37,6 @@ async def send_start_validator(
         node_id=validator.id,
         kind=validator.get_kind(),
         proposed_change_id=proposed_change_id,
-        meta=EventMeta.from_context(context=context),
+        meta=EventMeta.from_context(context=context.to_event_context()),
     )
     await event_service.send(event=event)

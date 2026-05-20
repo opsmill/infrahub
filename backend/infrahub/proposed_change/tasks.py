@@ -268,7 +268,7 @@ async def merge_proposed_change(
                 proposed_change_state=proposed_change.state.value,
                 merged_by_account_id=current_user.id,
                 merged_by_account_name=current_user.name.value,
-                meta=EventMeta.from_context(context=context),
+                meta=EventMeta.from_context(context=context.to_event_context()),
             )
         )
 

@@ -70,7 +70,7 @@ async def emit_node_mutation_events(
         deleted_nodes=deleted_nodes or [],
         db=graphql_context.db,
         branch=graphql_context.branch,
-        context=graphql_context.get_context(),
+        context=graphql_context.get_context().to_event_context(),
         request_id=request_id,
         action=action,
         side_effect_nodes=side_effect_nodes or [],

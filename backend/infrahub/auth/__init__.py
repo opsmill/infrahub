@@ -14,12 +14,13 @@ from infrahub.auth.auth import (
     validate_jwt_access_token,
     validate_jwt_refresh_token,
 )
-from infrahub.auth.session import AccountSession
+from infrahub.auth.session import AccountSession, AnonymousSession
 from infrahub.auth.types import AuthType
 from infrahub.external_protocols import ExternalAuthProtocol
 
 __all__ = [
     "AccountSession",
+    "AnonymousSession",
     "AuthResult",
     "AuthType",
     "ExternalAuthProtocol",

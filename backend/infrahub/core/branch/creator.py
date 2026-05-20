@@ -77,7 +77,7 @@ class BranchCreator:
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=context.to_event_context(), branch=registry.get_global_branch()),
         )
         await self.event_service.send(event=event)
 
