@@ -4,7 +4,6 @@ import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import type { ConflictSelection } from "@/shared/api/graphql/generated/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Checkbox } from "@/shared/components/inputs/checkbox";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
@@ -14,6 +13,7 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { treeQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { useResolveConflictMutation } from "@/entities/diff/ui/queries/resolve-conflict.mutation";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { tasksQueryKeys } from "@/entities/tasks/ui/queries/tasks.query-keys";
 
 interface ConflictData {
   id: string;
@@ -37,9 +37,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
       {
         onSuccess: async () => {
           await queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
-          await graphqlClient.refetchQueries({
-            include: ["TASK_DETAILS_CHECK"],
-          });
+          await queryClient.invalidateQueries({ queryKey: tasksQueryKeys.check() });
 
           const message = newValue
             ? "Conflict marked as resolved"
