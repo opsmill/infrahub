@@ -3,8 +3,8 @@ import { gql } from "@apollo/client";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export interface GetObjectForEditingFromApiParams extends ContextParams {
   schema: NodeSchema | ProfileSchema;

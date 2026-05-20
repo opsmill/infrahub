@@ -1,4 +1,4 @@
-import { NetworkStatus } from "@apollo/client";
+import type { ApolloQueryResult } from "@apollo/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
@@ -22,9 +22,7 @@ describe("isTaskRunningOnBranch", () => {
           count: 1,
         },
       },
-      loading: false,
-      networkStatus: NetworkStatus.ready,
-    });
+    } as ApolloQueryResult<unknown>);
 
     // WHEN
     const result = await isTaskRunningOnBranch("main");
@@ -42,9 +40,7 @@ describe("isTaskRunningOnBranch", () => {
           count: 0,
         },
       },
-      loading: false,
-      networkStatus: NetworkStatus.ready,
-    });
+    } as ApolloQueryResult<unknown>);
 
     // WHEN
     const result = await isTaskRunningOnBranch("main");
@@ -60,9 +56,7 @@ describe("isTaskRunningOnBranch", () => {
       data: {
         InfrahubTaskBranchStatus: null,
       },
-      loading: false,
-      networkStatus: NetworkStatus.error,
-    });
+    } as ApolloQueryResult<unknown>);
 
     // WHEN
     const result = await isTaskRunningOnBranch("main");

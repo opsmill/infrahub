@@ -10,7 +10,12 @@ export const objectItemEditQueryKeys = {
   all: ["object-item-edit"] as const,
   allWithContext: ({ branchName, atDate }: ContextParams) =>
     [...objectItemEditQueryKeys.all, branchName, atDate] as const,
-  detail: ({ objectKind, objectId, extraRelationshipNames, ...context }: ObjectItemEditDetailParams) =>
+  detail: ({
+    objectKind,
+    objectId,
+    extraRelationshipNames,
+    ...context
+  }: ObjectItemEditDetailParams) =>
     [
       ...objectItemEditQueryKeys.allWithContext(context),
       objectKind,

@@ -31,11 +31,7 @@ export default function ObjectItemEditComponent(props: Props) {
     return <NoDataFound message={`Schema ${objectname} not found`} />;
   }
 
-  const {
-    isPending,
-    error,
-    data,
-  } = useGetObjectForEditing(
+  const { isPending, error, data } = useGetObjectForEditing(
     { schema, objectId, extraRelationshipNames },
     { enabled: !!schema }
   );

@@ -1,12 +1,12 @@
 import type { ContextParams } from "@/shared/api/types";
 
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
-import type { ProfileData } from "@/entities/nodes/profiles/types";
-import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import {
   type GetObjectForEditingFromApiParams,
   getObjectForEditingFromApi,
 } from "@/entities/nodes/object-item-edit/api/get-object-for-editing-from-api";
+import type { ProfileData } from "@/entities/nodes/profiles/types";
+import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 
 export interface GetObjectForEditingParams extends ContextParams {
   schema: NodeSchema | ProfileSchema;
@@ -34,7 +34,8 @@ export async function getObjectForEditing(
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profiles: ProfileData[] = objectDetails?.profiles?.edges?.map((edge: any) => edge?.node) ?? [];
+  const profiles: ProfileData[] =
+    objectDetails?.profiles?.edges?.map((edge: any) => edge?.node) ?? [];
 
   return { objectDetails, profiles };
 }

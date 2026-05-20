@@ -1,4 +1,4 @@
-import { NetworkStatus } from "@apollo/client";
+import type { ApolloQueryResult } from "@apollo/client";
 import { describe, expect, test, vi } from "vitest";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
@@ -22,9 +22,7 @@ describe("TaskStatus", () => {
     useCurrentBranchMock.mockReturnValue({ currentBranch: branch, setCurrentBranch: () => {} });
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: { InfrahubTaskBranchStatus: { count: 1 } },
-      loading: false,
-      networkStatus: NetworkStatus.ready,
-    });
+    } as ApolloQueryResult<unknown>);
 
     // WHEN
     const component = await render(<TaskStatus />);
@@ -54,9 +52,7 @@ describe("TaskStatus", () => {
     });
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: { InfrahubTaskBranchStatus: { count: 0 } },
-      loading: false,
-      networkStatus: NetworkStatus.ready,
-    });
+    } as ApolloQueryResult<unknown>);
 
     // WHEN
     const component = await render(<TaskStatus />);
@@ -81,9 +77,7 @@ describe("TaskStatus", () => {
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: null!,
       error: {} as any,
-      loading: false,
-      networkStatus: NetworkStatus.error,
-    });
+    } as ApolloQueryResult<unknown>);
 
     // WHEN
     const component = await render(<TaskStatus />);
