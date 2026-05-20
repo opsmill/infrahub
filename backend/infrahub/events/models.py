@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any, ClassVar, Self, final
 from uuid import UUID, uuid4
 
+from infrahub_sdk.context import ContextAccount, RequestContext
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 from infrahub import __version__
@@ -49,6 +50,9 @@ class EventContext(BaseModel):
 
     def to_event(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
+
+    def to_request_context(self) -> RequestContext:
+        return RequestContext(account=ContextAccount(id=self.account_id))
 
 
 class EventMeta(BaseModel):
