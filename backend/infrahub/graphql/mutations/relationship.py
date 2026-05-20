@@ -73,6 +73,17 @@ async def _emit_relationship_add_events(
     node_changelog: NodeChangelog,
     relationship_name: str,
 ) -> None:
+    """Schedule background events for an add-relationship mutation.
+
+    Dispatches a single event shape based on ``group_event_type``:
+    - ``MEMBERS``: one ``GroupMemberAddedEvent`` for the source group.
+    - ``MEMBER_OF_GROUPS``: one ``GroupMemberAddedEvent`` per peer group.
+    - otherwise: a ``NodeUpdatedEvent`` for the source plus one per
+      downstream relationship changelog.
+
+    No-op when the GraphQL context lacks background/service/account_session
+    or when ``node_changelog`` has no changes.
+    """
     if not (
         graphql_context.background
         and graphql_context.account_session
