@@ -2,7 +2,6 @@ import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps } from "@infrahub/ui";
 import React from "react";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import DynamicForm from "@/shared/components/form/dynamic-form";
 import { isRequired } from "@/shared/components/form/utils/validation";
@@ -16,9 +15,10 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 
-import { ENUM_ADD_MUTATION, ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
 import { useNamespace } from "@/entities/schema/ui/hooks/useNamespace";
+import { useAddEnumMutation } from "@/entities/schema/ui/queries/add-enum.mutation";
+import { useRemoveEnumMutation } from "@/entities/schema/ui/queries/remove-enum.mutation";
 
 export interface EnumDeleteButtonProps extends Omit<ButtonProps, "value"> {
   fieldSchema: AttributeSchema;
@@ -35,13 +35,11 @@ export const EnumDeleteButton = ({
   value,
 }: EnumDeleteButtonProps) => {
   const [showDeleteModal, setShowDeleteModal] = React.useState(false);
-  const [removeEnum, { loading }] = useMutation(ENUM_REMOVE_MUTATION, {
-    variables: { kind: schema?.kind, attribute: fieldSchema?.name, enum: value },
-  });
+  const { mutateAsync: removeEnum, isPending: loading } = useRemoveEnumMutation();
 
   const handleDelete = async () => {
     try {
-      await removeEnum();
+      await removeEnum({ kind: schema?.kind, attribute: fieldSchema?.name, enum: String(value) });
       onDelete(value);
     } catch (error) {
       console.error("Error deleting enum:", error);
@@ -87,7 +85,7 @@ interface EnumAddActionProps {
 export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) => {
   const namespace = useNamespace(schema?.namespace);
   const [open, setOpen] = React.useState(false);
-  const [addEnum] = useMutation(ENUM_ADD_MUTATION);
+  const { mutateAsync: addEnum } = useAddEnumMutation();
 
   if (!schema || !field) return null;
 
@@ -131,17 +129,13 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
           ]}
           onSubmit={async (formData) => {
             const newEnumValue = formData.enum.value;
-            const { data } = await addEnum({
-              variables: {
-                kind: schema.kind,
-                attribute: field.name,
-                enum: newEnumValue,
-              },
+            await addEnum({
+              kind: schema.kind,
+              attribute: field.name,
+              enum: String(newEnumValue),
             });
-            if (data?.SchemaEnumAdd?.ok) {
-              addOption(newEnumValue as string | number);
-              setOpen(false);
-            }
+            addOption(newEnumValue as string | number);
+            setOpen(false);
           }}
           onCancel={() => setOpen(false)}
           className="p-4"

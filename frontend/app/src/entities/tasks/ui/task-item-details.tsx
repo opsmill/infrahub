@@ -1,7 +1,6 @@
 import React from "react";
 import { useParams } from "react-router";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -11,11 +10,10 @@ import { List } from "@/shared/components/table/list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
-import { TASK_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
+import { useGetTaskDetails } from "@/entities/tasks/ui/queries/get-task-details.query";
 
 import { Logs, type tLog } from "./logs";
 
@@ -41,7 +39,7 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
   const { taskId } = useParams();
   const ids = taskId ? [taskId] : undefined;
 
-  const { loading, error, data = {}, refetch } = useQuery(TASK_DETAILS, { variables: { ids } });
+  const { isLoading, error, data, refetch } = useGetTaskDetails({ ids });
 
   // Provide refetch function to parent
   React.useImperativeHandle(ref, () => ({ refetch }));
@@ -50,13 +48,11 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingIndicator message="Loading task..." className="h-[400px]" />;
   }
 
-  const result = data ? (data[TASK_OBJECT] ?? {}) : {};
-
-  const { edges = [] } = result;
+  const edges = data ?? [];
 
   const columns = [
     {
@@ -85,7 +81,7 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
     },
   ];
 
-  const object = edges[0].node;
+  const object = edges[0];
 
   const row = {
     values: {
