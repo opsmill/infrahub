@@ -1,19 +1,14 @@
-import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { TASK_OBJECT } from "@/shared/config/constants";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
-import { BRANCH_VALIDATE } from "@/entities/branches/api/validateBranch";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
+import { useValidateBranch } from "@/entities/branches/ui/queries/validate-branch.mutation";
 import { BRANCH_VALIDATE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
 type BranchValidateButtonProps = {
@@ -22,39 +17,26 @@ type BranchValidateButtonProps = {
 
 export const BranchValidateButton = ({ branch }: BranchValidateButtonProps) => {
   const { isAuthenticated } = useAuth();
-  const date = useAtomValue(datetimeAtom);
 
-  const { loading, data } = useQuery(GET_BRANCH_ACTION_STATE, {
-    variables: {
-      branch: branch.name,
-      workflow: [BRANCH_VALIDATE_WORKFLOW],
-      state: TASK_ONGOING_STATES,
-    },
-    pollInterval: 5000,
+  const { isPending, data } = useGetBranchActionState({
+    branchName: branch.name,
+    workflow: [BRANCH_VALIDATE_WORKFLOW],
+    state: TASK_ONGOING_STATES,
   });
 
-  const taskData = data?.[TASK_OBJECT];
-  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
+  const validateMutation = useValidateBranch();
+
+  const hasOngoingTask = (data?.ongoingTaskCount ?? 0) > 0;
   const isDisabled =
     !isAuthenticated ||
-    loading ||
+    isPending ||
     !!branch.is_default ||
     branch.status === BranchStatus.MERGED ||
     hasOngoingTask;
 
   const handleSubmit = async () => {
     try {
-      await graphqlClient.mutate({
-        mutation: BRANCH_VALIDATE,
-        variables: {
-          name: branch.name,
-        },
-        context: {
-          branch: branch.name,
-          date,
-        },
-      });
-
+      await validateMutation.mutateAsync({ branchName: branch.name });
       toast(<Alert type={ALERT_TYPES.SUCCESS} message="Branch validation requested!" />, {
         toastId: "alert-success",
       });
