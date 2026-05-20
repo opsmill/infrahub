@@ -1,7 +1,5 @@
-import { gql } from "@apollo/client";
 import { useId, useState } from "react";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -15,9 +13,7 @@ import {
 import Label from "@/shared/components/ui/label";
 import { PROFILE_KIND, TEMPLATE_GENERIC_KIND } from "@/shared/config/constants";
 
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import type { PermissionData } from "@/entities/permission/types";
-import { getPermission } from "@/entities/permission/utils";
+import { useGetObjectPermissionsBySubKind } from "@/entities/permission/ui/queries/get-object-permissions-by-sub-kind.query";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
@@ -37,11 +33,9 @@ export const GenericSelector = ({
   const id = useId();
   const { schema } = useSchema(value);
   const [open, setOpen] = useState(false);
-  const { data, loading } = useQuery(gql(getObjectPermissionsQuery(currentKind)));
+  const { data: permissionsBySubKind, isPending } = useGetObjectPermissionsBySubKind(currentKind);
 
-  if (loading) return <LoadingIndicator className="p-4" />;
-
-  const permissionsData: Array<{ node: PermissionData }> = data?.[currentKind]?.permissions?.edges;
+  if (isPending) return <LoadingIndicator className="p-4" />;
 
   const items = kindInheritingFromGeneric
     .map((usedByKind) => {
@@ -87,9 +81,7 @@ export const GenericSelector = ({
             <ComboboxEmpty>No schema found.</ComboboxEmpty>
             {items.map((item) => {
               const itemValue = item?.value as string;
-              const permissionToCreate = getPermission(
-                permissionsData.filter(({ node }) => node.kind === itemValue)
-              ).create;
+              const permissionToCreate = permissionsBySubKind?.[itemValue]?.create;
 
               return (
                 <ComboboxItem
@@ -100,7 +92,7 @@ export const GenericSelector = ({
                     onChange(value === itemValue ? null : itemValue);
                     setOpen(false);
                   }}
-                  disabled={!permissionToCreate.isAllowed}
+                  disabled={permissionToCreate ? !permissionToCreate.isAllowed : false}
                 >
                   <SchemaItem label={item.label} badge={item.badge} />
                 </ComboboxItem>

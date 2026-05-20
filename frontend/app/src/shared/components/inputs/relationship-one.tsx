@@ -1,9 +1,7 @@
-import { gql } from "@apollo/client";
 import { Button, Spinner } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
-import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import type { PoolValue } from "@/shared/components/form/pool-selector";
 import { Badge } from "@/shared/components/ui/badge";
 import {
@@ -19,10 +17,10 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";
 
-import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
-import type { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
@@ -33,8 +31,6 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   parent?: { name?: string; value?: string };
   ref?: React.Ref<React.ComponentRef<typeof PopoverTrigger>>;
 }
-
-const PAGINATION = 20;
 
 export const RelationshipInput = ({
   className,
@@ -47,47 +43,22 @@ export const RelationshipInput = ({
   ...props
 }: RelationshipInputProps) => {
   const [open, setOpen] = React.useState(false);
-  const [count, setCount] = React.useState(0);
-  const [offset, setOffset] = React.useState(0);
-  const [results, setResults] = React.useState([]);
   const [search, setSearch] = React.useState("");
-  const [shouldAggregate, setShouldAggregate] = React.useState(true);
   const searchQuery = useDebounce(search, 500);
 
-  const [loadRelationshipList, { loading: isRelationshipListLoading, data: RelationshipListData }] =
-    useLazyQuery(
-      gql(
-        generateRelationshipListQuery({
-          peer,
-          parent,
-          limit: PAGINATION,
-          offset,
-          search: searchQuery,
-        })
-      )
-    );
+  const filterQuery =
+    parent?.name && parent?.value ? { [`${parent.name}__ids`]: [parent.value] } : undefined;
 
-  React.useEffect(() => {
-    const newResults =
-      RelationshipListData &&
-      (RelationshipListData[peer] as RelationshipManyType).edges.map((edge) => edge.node);
+  const {
+    isPending: isRelationshipListLoading,
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useRelationships({ peer, search: searchQuery, filterQuery }, { enabled: open });
 
-    const dataCount =
-      RelationshipListData && (RelationshipListData[peer] as RelationshipManyType).count;
-
-    setCount(dataCount);
-
-    if (!shouldAggregate) {
-      setResults(newResults);
-      return;
-    }
-
-    if (!newResults) {
-      return;
-    }
-
-    setResults([...results, ...newResults]);
-  }, [RelationshipListData]);
+  const results = data?.pages.flat() ?? [];
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
@@ -110,24 +81,16 @@ export const RelationshipInput = ({
         {isRelationshipListLoading && <Spinner className="ml-auto" />}
       </ComboboxTrigger>
 
-      <ComboboxContent
-        onOpenAutoFocus={() => {
-          setOffset(0);
-          setShouldAggregate(false);
-          loadRelationshipList();
-        }}
-      >
+      <ComboboxContent>
         <ComboboxList
           shouldFilter={false}
           onValueChange={(newValue) => {
-            setOffset(0);
-            setShouldAggregate(false);
             setSearch(newValue);
           }}
         >
-          {!isRelationshipListLoading && <ComboboxEmpty>No results found</ComboboxEmpty>}
+          {!isRelationshipListLoading && !error && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
-          {results?.map((relationship) => {
+          {results.map((relationship) => {
             return (
               <ComboboxItem
                 key={relationship.id}
@@ -163,17 +126,15 @@ export const RelationshipInput = ({
 
           {isRelationshipListLoading && <Spinner className="m-2 flex justify-center" />}
 
-          {results?.length < count && (
+          {hasNextPage && (
             <div className="pt-2">
               <Button
                 variant={"ghost"}
                 className="w-full border-custom-blue-500/10 font-normal text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-500/10"
-                onPress={() => {
-                  setOffset(offset + PAGINATION);
-                  setShouldAggregate(true);
-                }}
+                onPress={() => fetchNextPage()}
+                isDisabled={isFetchingNextPage}
               >
-                Load more
+                {isFetchingNextPage ? "Loading more..." : "Load more"}
               </Button>
             </div>
           )}
