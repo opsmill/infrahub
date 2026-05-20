@@ -4,79 +4,11 @@ import pytest
 
 from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES
 from infrahub.graph_traversal.planning.models import (
-    Hop,
-    HopDirection,
     Plan,
-    Route,
     TerminalById,
     TerminalByKinds,
     UserFilters,
 )
-
-
-def make_hop(
-    *,
-    start_kind: str = "A",
-    end_kind: str = "B",
-    relationship_identifier: str = "rel",
-    direction: HopDirection = HopDirection.OUTBOUND,
-) -> Hop:
-    return Hop(
-        start_kind=start_kind,
-        end_kind=end_kind,
-        relationship_identifier=relationship_identifier,
-        direction=direction,
-    )
-
-
-class TestHop:
-    def test_rejects_empty_relationship_identifier(self) -> None:
-        with pytest.raises(ValueError, match=r"Hop\.relationship_identifier must be non-empty"):
-            Hop(
-                start_kind="A",
-                end_kind="B",
-                relationship_identifier="",
-                direction=HopDirection.OUTBOUND,
-            )
-
-    def test_accepts_each_direction(self) -> None:
-        for direction in (HopDirection.OUTBOUND, HopDirection.INBOUND, HopDirection.BIDIR):
-            hop = make_hop(direction=direction)
-            assert hop.direction is direction
-
-
-class TestRoute:
-    def test_rejects_discontinuous_hops(self) -> None:
-        hop_ab = make_hop(start_kind="A", end_kind="B")
-        hop_cd = make_hop(start_kind="C", end_kind="D")
-        with pytest.raises(ValueError, match=r"discontinuous at index 1"):
-            Route(hops=(hop_ab, hop_cd), source_kind="A", terminal_kind="D")
-
-    def test_rejects_source_kind_mismatch(self) -> None:
-        hop = make_hop(start_kind="A", end_kind="B")
-        with pytest.raises(ValueError, match=r"Route.source_kind"):
-            Route(hops=(hop,), source_kind="X", terminal_kind="B")
-
-    def test_rejects_terminal_kind_mismatch(self) -> None:
-        hop = make_hop(start_kind="A", end_kind="B")
-        with pytest.raises(ValueError, match=r"Route.terminal_kind"):
-            Route(hops=(hop,), source_kind="A", terminal_kind="X")
-
-    def test_rejects_empty_hops(self) -> None:
-        with pytest.raises(ValueError, match=r"Route.hops length must be in \[1, 20\]"):
-            Route(hops=(), source_kind="A", terminal_kind="A")
-
-    def test_rejects_too_many_hops(self) -> None:
-        hops = tuple(make_hop(start_kind="A", end_kind="A") for _ in range(21))
-        with pytest.raises(ValueError, match=r"Route.hops length must be in \[1, 20\]"):
-            Route(hops=hops, source_kind="A", terminal_kind="A")
-
-    def test_length_and_kinds_properties(self) -> None:
-        hop_ab = make_hop(start_kind="A", end_kind="B")
-        hop_bc = make_hop(start_kind="B", end_kind="C")
-        route = Route(hops=(hop_ab, hop_bc), source_kind="A", terminal_kind="C")
-        assert route.length == 2
-        assert route.kinds == ("A", "B", "C")
 
 
 class TestTerminalByKinds:
@@ -97,24 +29,21 @@ class TestTerminalById:
 
 
 class TestPlan:
-    def _make_route(self, *, source: str = "A", terminal: str = "B") -> Route:
-        hop = make_hop(start_kind=source, end_kind=terminal)
-        return Route(hops=(hop,), source_kind=source, terminal_kind=terminal)
-
-    def test_constructs_with_only_routes(self) -> None:
-        route = self._make_route()
+    def test_constructs_with_adjacency(self) -> None:
+        adjacency = {"A": {"rel_ab": frozenset({"B"})}}
         plan = Plan(
-            routes=(route,),
+            adjacency=adjacency,
             source_kind="A",
             terminal_predicate=TerminalById(node_id="uuid", kind="B"),
             max_depth=5,
         )
-        assert plan.routes == (route,)
+        assert plan.adjacency == adjacency
+        assert plan.is_empty is False
 
     def test_rejects_max_depth_below_minimum(self) -> None:
         with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
             Plan(
-                routes=(),
+                adjacency={},
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
                 max_depth=0,
@@ -123,21 +52,21 @@ class TestPlan:
     def test_rejects_max_depth_above_maximum(self) -> None:
         with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
             Plan(
-                routes=(),
+                adjacency={},
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
                 max_depth=21,
             )
 
-    def test_accepts_empty_routes(self) -> None:
-        """Empty routes is the legitimate 'no viable path' signal."""
+    def test_empty_adjacency_signals_no_viable_path(self) -> None:
+        """Empty adjacency is the legitimate 'no viable path' signal."""
         plan = Plan(
-            routes=(),
+            adjacency={},
             source_kind="A",
             terminal_predicate=TerminalById(node_id="uuid", kind="B"),
             max_depth=5,
         )
-        assert plan.routes == ()
+        assert plan.is_empty is True
 
 
 @dataclass(kw_only=True)

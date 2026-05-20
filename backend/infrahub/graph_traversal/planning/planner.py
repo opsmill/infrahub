@@ -1,15 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING
 
-from infrahub.core.constants import RelationshipDirection
 from infrahub.graph_traversal.planning.constants import MAX_DEPTH, MIN_DEPTH
 from infrahub.graph_traversal.planning.models import (
-    Hop,
-    HopDirection,
     Plan,
-    Route,
     TerminalById,
     TerminalPredicate,
     UserFilters,
@@ -17,48 +12,18 @@ from infrahub.graph_traversal.planning.models import (
 from infrahub.graph_traversal.planning.permissions import KindPermissionCache
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from infrahub.core.branch import Branch
     from infrahub.core.schema import RelationshipSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.permissions.resolver import PermissionResolver
 
 
-def _hop_direction_from_schema(direction: RelationshipDirection) -> HopDirection:
-    match direction:
-        case RelationshipDirection.OUTBOUND:
-            return HopDirection.OUTBOUND
-        case RelationshipDirection.INBOUND:
-            return HopDirection.INBOUND
-        case RelationshipDirection.BIDIR:
-            return HopDirection.BIDIR
-        case _:
-            assert_never(direction)
-
-
-def _invert_direction(direction: HopDirection) -> HopDirection:
-    """Flip a Hop's direction for reverse traversal."""
-    match direction:
-        case HopDirection.OUTBOUND:
-            return HopDirection.INBOUND
-        case HopDirection.INBOUND:
-            return HopDirection.OUTBOUND
-        case HopDirection.BIDIR:
-            return HopDirection.BIDIR
-        case _:
-            assert_never(direction)
-
-
-@dataclass(frozen=True, slots=True)
-class _FrontierEntry:
-    """One in-flight BFS branch during route enumeration."""
-
-    current_kind: str
-    hops_so_far: tuple[Hop, ...]
-
-
 class SchemaPlanner:
-    """Enumerates schema-derived routes between kinds and prunes them by
-    user-supplied filters and the requester's view permissions.
+    """Builds the per-hop adjacency map of legal ``(start_kind, rel_name, end_kind)``
+    triples for a single source/terminal/depth query, pruned by user filters and
+    the requester's view permissions.
 
     Synchronous and stateless from the outside: every public dependency
     (schema view, branch, permission resolver) is injected at construction
@@ -80,7 +45,7 @@ class SchemaPlanner:
             schema_branch=schema_branch,
         )
 
-        self._relationships_cache: dict[str, tuple[tuple[str, str, HopDirection], ...]] = {}
+        self._relationships_cache: dict[str, tuple[tuple[str, str], ...]] = {}
         self._concrete_cache: dict[str, tuple[str, ...]] = {}
         self._namespace_cache: dict[str, str] = {}
         self._inverse_index: dict[str, list[tuple[str, RelationshipSchema]]] | None = None
@@ -132,8 +97,8 @@ class SchemaPlanner:
                     self._inverse_index.setdefault(concrete_peer, []).append((owner_kind, rel))
         return self._inverse_index
 
-    def _relationships_for(self, kind: str) -> tuple[tuple[str, str, HopDirection], ...]:
-        """Return every ``(peer_kind, identifier, direction)`` reachable from ``kind``.
+    def _relationships_for(self, kind: str) -> tuple[tuple[str, str], ...]:
+        """Return every ``(peer_kind, identifier)`` reachable from ``kind``.
 
         Combines forward traversal (``kind``'s outgoing relationships) with
         reverse traversal (other kinds that have ``kind`` as a peer, sourced
@@ -145,20 +110,18 @@ class SchemaPlanner:
         if cached is not None:
             return cached
 
-        entries: set[tuple[str, str, HopDirection]] = set()
+        entries: set[tuple[str, str]] = set()
 
         if kind in self._schema_branch.nodes:
             schema = self._schema_branch.get_node(name=kind, duplicate=False)
             for rel in schema.relationships:
-                direction = _hop_direction_from_schema(rel.direction)
                 entries.update(
-                    (concrete_peer, rel.get_identifier(), direction)
-                    for concrete_peer in self._concrete_kinds_for(rel.peer)
+                    (concrete_peer, rel.get_identifier()) for concrete_peer in self._concrete_kinds_for(rel.peer)
                 )
 
-        for owner_kind, rel in self._get_inverse_index().get(kind, []):
-            direction = _invert_direction(_hop_direction_from_schema(rel.direction))
-            entries.add((owner_kind, rel.get_identifier(), direction))
+        entries.update(
+            (owner_kind, rel.get_identifier()) for owner_kind, rel in self._get_inverse_index().get(kind, [])
+        )
 
         self._relationships_cache[kind] = tuple(sorted(entries))
         return self._relationships_cache[kind]
@@ -183,139 +146,131 @@ class SchemaPlanner:
                 if not self._kind_exists(k):
                     raise ValueError(f"terminal kind {k!r} not in schema")
 
+        adjacency: Mapping[str, Mapping[str, frozenset[str]]]
         if not self._permission_cache.can_view(source_kind):
-            candidates: list[Route] = []
+            adjacency = {}
         else:
-            candidates = self._enumerate_routes(
+            adjacency = self._build_adjacency(
                 source_kind=source_kind,
                 terminal_predicate=terminal_predicate,
                 max_depth=max_depth,
                 user_filters=user_filters,
             )
 
-        sorted_routes = tuple(sorted(candidates, key=_route_sort_key))
-
         return Plan(
-            routes=sorted_routes,
+            adjacency=adjacency,
             source_kind=source_kind,
             terminal_predicate=terminal_predicate,
             max_depth=max_depth,
         )
 
-    def _enumerate_routes(
+    def _build_adjacency(
         self,
         *,
         source_kind: str,
         terminal_predicate: TerminalPredicate,
         max_depth: int,
         user_filters: UserFilters,
-    ) -> list[Route]:
-        """Iterative BFS up to ``max_depth``.
+    ) -> Mapping[str, Mapping[str, frozenset[str]]]:
+        """Two-pass kind-level BFS that emits the per-hop adjacency directly.
 
-        ``user_filters`` is consulted inside ``_step`` so excluded peers
-        prune the entire downstream subtree. Cyclic schemas are bounded only
-        by ``max_depth`` — kinds may appear multiple times along a route.
+        Pass 1 (``_forward_bfs``): BFS from ``source_kind``, recording every
+        legal ``(start, rel, end)`` hop and the minimum hops from the source
+        to each kind. Filters and permissions are applied at the hop level.
+
+        Pass 2 (``_min_depth_to_terminal``): from terminal-matching ``end_kind``s,
+        BFS backward through the forward adjacency to compute, for every kind
+        that can still reach a terminal, the minimum hops to do so.
+
+        Pass 3 (``_combine_with_depth_bound``): keep only edges ``(s, r, e)``
+        whose total path length ``d_from_source[s] + 1 + d_to_terminal[e]`` is
+        ≤ ``max_depth``, and sort the surviving adjacency for determinism.
         """
-        candidates: list[Route] = []
-        frontiers: list[_FrontierEntry] = [_FrontierEntry(current_kind=source_kind, hops_so_far=())]
-        while frontiers:
-            next_frontiers: list[_FrontierEntry] = []
-            for entry in frontiers:
-                for peer_kind, identifier, direction in self._relationships_for(entry.current_kind):
-                    route, next_entry = self._step(
-                        entry=entry,
-                        peer_kind=peer_kind,
+        forward, min_depth_from_source = self._forward_bfs(
+            source_kind=source_kind,
+            terminal_predicate=terminal_predicate,
+            max_depth=max_depth,
+            user_filters=user_filters,
+        )
+        min_depth_to_terminal = _min_depth_to_terminal(forward=forward, terminal_predicate=terminal_predicate)
+        if not min_depth_to_terminal:
+            return {}
+        return _combine_with_depth_bound(
+            forward=forward,
+            min_depth_from_source=min_depth_from_source,
+            min_depth_to_terminal=min_depth_to_terminal,
+            max_depth=max_depth,
+        )
+
+    def _forward_bfs(
+        self,
+        *,
+        source_kind: str,
+        terminal_predicate: TerminalPredicate,
+        max_depth: int,
+        user_filters: UserFilters,
+    ) -> tuple[dict[str, dict[str, set[str]]], dict[str, int]]:
+        """Pass 1: forward BFS from ``source_kind``.
+
+        Returns ``(forward, min_depth_from_source)`` where ``forward`` is the
+        unfiltered ``{start: {rel: {end, ...}}}`` adjacency of every legal
+        hop reachable within ``max_depth``. The ``kind_filter`` terminal
+        exemption is preserved: a peer that matches the terminal predicate
+        is recorded even when not in the filter, but is not extended.
+        """
+        forward: dict[str, dict[str, set[str]]] = {}
+        min_depth_from_source: dict[str, int] = {source_kind: 0}
+        frontier: set[str] = {source_kind}
+        for current_depth in range(max_depth):
+            next_frontier: set[str] = set()
+            for kind in frontier:
+                for peer_kind, identifier in self._relationships_for(kind):
+                    extendable = self._record_hop_if_allowed(
+                        forward=forward,
+                        start=kind,
                         identifier=identifier,
-                        direction=direction,
-                        source_kind=source_kind,
+                        peer_kind=peer_kind,
                         terminal_predicate=terminal_predicate,
-                        max_depth=max_depth,
                         user_filters=user_filters,
                     )
-                    if route is not None:
-                        candidates.append(route)
-                    if next_entry is not None:
-                        next_frontiers.append(next_entry)
-            frontiers = next_frontiers
-        return candidates
+                    if extendable and peer_kind not in min_depth_from_source:
+                        min_depth_from_source[peer_kind] = current_depth + 1
+                        next_frontier.add(peer_kind)
+            frontier = next_frontier
+        return forward, min_depth_from_source
 
-    def _step(
+    def _record_hop_if_allowed(
         self,
         *,
-        entry: _FrontierEntry,
-        peer_kind: str,
+        forward: dict[str, dict[str, set[str]]],
+        start: str,
         identifier: str,
-        direction: HopDirection,
-        source_kind: str,
+        peer_kind: str,
         terminal_predicate: TerminalPredicate,
-        max_depth: int,
         user_filters: UserFilters,
-    ) -> tuple[Route | None, _FrontierEntry | None]:
-        """Process one ``(entry, candidate peer)`` pair during BFS enumeration.
+    ) -> bool:
+        """Apply per-hop filters; record the hop if it survives.
 
-        Returns ``(route_or_none, next_entry_or_none)``: a route emitted by
-        this step (if the peer matches the terminal predicate), and the
-        next-frontier entry to continue expanding from (if depth and filter
-        rules permit). Either or both may be ``None``.
-
-        Filter semantics applied here:
-
-        - **Permissions**: if the requester can't view the peer kind, drop
-          the subtree.
-        - ``excluded_namespaces``, ``excluded_kinds``, ``relationship_filter``:
-          no exemption. If the peer (or this hop's identifier) violates one
-          of these, the entire subtree is dropped.
-        - ``kind_filter``: source and terminal are exempt. If the peer is not
-          in ``kind_filter`` AND does not match the terminal predicate, drop
-          the subtree. If it does match the terminal, emit the route but do
-          not extend.
+        Returns ``True`` iff the peer is extendable (i.e. allowed as an
+        intermediate of a longer path). A peer admitted only via the
+        ``kind_filter`` terminal exemption is recorded but not extendable.
         """
-        is_pruned = False
-
-        # Permission prune. ``KindPermissionCache`` memoizes per kind, so
-        # repeated checks across BFS frontier entries are O(1) lookups.
         if not self._permission_cache.can_view(peer_kind):
-            is_pruned = True
-
-        # No-exemption filter prunes. Dropping a peer here also drops every
-        # route that would have continued through it, which is the whole
-        # point — schemas with large excluded namespaces fan out exponentially.
-        elif user_filters.excluded_kinds and peer_kind in user_filters.excluded_kinds:
-            is_pruned = True
-        elif user_filters.excluded_namespaces and self._namespace_for(peer_kind) in user_filters.excluded_namespaces:
-            is_pruned = True
-        elif user_filters.relationship_filter and identifier not in user_filters.relationship_filter:
-            is_pruned = True
+            return False
+        if user_filters.excluded_kinds and peer_kind in user_filters.excluded_kinds:
+            return False
+        if user_filters.excluded_namespaces and self._namespace_for(peer_kind) in user_filters.excluded_namespaces:
+            return False
+        if user_filters.relationship_filter and identifier not in user_filters.relationship_filter:
+            return False
 
         matches_terminal = _matches_terminal(peer_kind, terminal_predicate)
-        peer_allowed_as_intermediate = not user_filters.kind_filter or peer_kind in user_filters.kind_filter
-        if not peer_allowed_as_intermediate and not matches_terminal:
-            is_pruned = True
+        in_kind_filter = not user_filters.kind_filter or peer_kind in user_filters.kind_filter
+        if not in_kind_filter and not matches_terminal:
+            return False
 
-        if is_pruned:
-            return None, None
-
-        new_hop = Hop(
-            start_kind=entry.current_kind,
-            end_kind=peer_kind,
-            relationship_identifier=identifier,
-            direction=direction,
-        )
-        new_hops = (*entry.hops_so_far, new_hop)
-
-        route: Route | None = None
-        if matches_terminal:
-            route = Route(hops=new_hops, source_kind=source_kind, terminal_kind=peer_kind)
-
-        if len(new_hops) >= max_depth:
-            return route, None
-        if not peer_allowed_as_intermediate:
-            # Peer is only allowed via the terminal exemption; extending would
-            # turn it into an intermediate of a longer route.
-            return route, None
-
-        next_entry = _FrontierEntry(current_kind=peer_kind, hops_so_far=new_hops)
-        return route, next_entry
+        forward.setdefault(start, {}).setdefault(identifier, set()).add(peer_kind)
+        return in_kind_filter
 
 
 def _matches_terminal(kind: str, terminal_predicate: TerminalPredicate) -> bool:
@@ -324,11 +279,70 @@ def _matches_terminal(kind: str, terminal_predicate: TerminalPredicate) -> bool:
     return kind in terminal_predicate.kinds
 
 
-def _route_sort_key(route: Route) -> tuple[int, tuple[str, ...], tuple[str, ...], tuple[int, ...]]:
-    """Deterministic lexicographic sort key for surviving routes."""
-    return (
-        route.length,
-        route.kinds,
-        tuple(hop.relationship_identifier for hop in route.hops),
-        tuple(int(hop.direction) for hop in route.hops),
-    )
+def _min_depth_to_terminal(
+    *,
+    forward: dict[str, dict[str, set[str]]],
+    terminal_predicate: TerminalPredicate,
+) -> dict[str, int]:
+    """Pass 2: reverse BFS through ``forward`` from terminal-matching kinds.
+
+    Returns ``{kind: min hops to reach a terminal-matching end_kind}``. If no
+    edge ends at a terminal-matching kind, returns an empty dict, meaning no
+    paths exist.
+    """
+    terminal_kinds = {
+        end_kind
+        for rels in forward.values()
+        for ends in rels.values()
+        for end_kind in ends
+        if _matches_terminal(end_kind, terminal_predicate)
+    }
+    if not terminal_kinds:
+        return {}
+
+    reverse_edges: dict[str, set[str]] = {}
+    for start, rels in forward.items():
+        for ends in rels.values():
+            for end in ends:
+                reverse_edges.setdefault(end, set()).add(start)
+
+    min_depth: dict[str, int] = dict.fromkeys(terminal_kinds, 0)
+    frontier: set[str] = set(terminal_kinds)
+    while frontier:
+        next_frontier: set[str] = set()
+        for kind in frontier:
+            candidate_depth = min_depth[kind] + 1
+            for prev_kind in reverse_edges.get(kind, ()):
+                if prev_kind not in min_depth or candidate_depth < min_depth[prev_kind]:
+                    min_depth[prev_kind] = candidate_depth
+                    next_frontier.add(prev_kind)
+        frontier = next_frontier
+    return min_depth
+
+
+def _combine_with_depth_bound(
+    *,
+    forward: dict[str, dict[str, set[str]]],
+    min_depth_from_source: dict[str, int],
+    min_depth_to_terminal: dict[str, int],
+    max_depth: int,
+) -> Mapping[str, Mapping[str, frozenset[str]]]:
+    """Pass 3: keep only hops on some ≤``max_depth`` source→terminal path.
+
+    Sorted outer/inner mappings for FR-016 determinism.
+    """
+    adjacency: dict[str, Mapping[str, frozenset[str]]] = {}
+    for start in sorted(forward):
+        d_s = min_depth_from_source[start]
+        rels_out: dict[str, frozenset[str]] = {}
+        for identifier in sorted(forward[start]):
+            kept = frozenset(
+                end
+                for end in forward[start][identifier]
+                if end in min_depth_to_terminal and d_s + 1 + min_depth_to_terminal[end] <= max_depth
+            )
+            if kept:
+                rels_out[identifier] = kept
+        if rels_out:
+            adjacency[start] = rels_out
+    return adjacency

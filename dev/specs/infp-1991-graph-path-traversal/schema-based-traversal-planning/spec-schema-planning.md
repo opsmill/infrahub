@@ -90,30 +90,29 @@ As a developer debugging unexpected traversal results, I want the planner's surv
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST, on receiving a traversal request, derive from the active branch's schema the complete set of node-kind sequences (up to the configured maximum depth) that can connect the source object's kind to either the destination object's kind or any of the requested destination kinds.
-- **FR-002**: Each route in the plan MUST record, for every hop, the relationship identifier and the relationship direction (outbound from the previous kind or inbound to it) as defined in the schema.
-- **FR-003**: The planner MUST exclude any route containing a node kind on which the requesting user does not have read permission, evaluated against the requester's effective permissions for the requested branch.
-- **FR-004**: When the planner produces zero viable routes (whether because no schema route exists, all routes were pruned for permissions, or all routes were pruned by user-supplied filters), the system MUST return an empty result without executing a traversal against the data graph.
-- **FR-005**: The system MUST translate the planner output into a single Cypher query whose path expressions correspond exactly to the viable routes; no path outside the plan may be returned.
+- **FR-001**: The system MUST, on receiving a traversal request, derive from the active branch's schema the complete set of `(start_kind, relationship_identifier, end_kind)` triples (up to the configured maximum depth) that lie on some path from the source object's kind to either the destination object's kind or any of the requested destination kinds.
+- **FR-002**: The plan output MUST be a per-hop adjacency map `{start_kind: {relationship_identifier: frozenset(end_kind, ...)}}`. Schema-relationship direction (OUTBOUND/INBOUND/BIDIR) is **not** carried in the plan: the runtime Cypher uses undirected QPP arrows, so direction has no consumer downstream.
+- **FR-003**: The planner MUST exclude any hop whose `start_kind` or `end_kind` is a node kind on which the requesting user does not have read permission, evaluated against the requester's effective permissions for the requested branch.
+- **FR-004**: When the planner produces an empty adjacency (whether because no schema path exists, all hops were pruned for permissions, or all hops were pruned by user-supplied filters), the system MUST return an empty result without executing a traversal against the data graph.
+- **FR-005**: The system MUST translate the planner output into a single Cypher query whose path expressions correspond exactly to the per-hop adjacency map; no `(start_kind, rel_name, end_kind)` triple outside the adjacency may be matched.
 - **FR-006**: The generated query MUST support two terminal modes: (a) terminate at a specific destination node id, and (b) terminate at any node whose kind is in a configured set of destination kinds.
 - **FR-007**: The `InfrahubPathTraversal` GraphQL query MUST use the planner in mode (a) and continue to accept the same inputs and return the same output shape as defined in `path.py`.
 - **FR-008**: The `InfrahubReachableNodes` GraphQL query MUST use the planner in mode (b) and continue to accept the same inputs and return the same output shape as defined in `reachable.py`.
-- **FR-009**: User-supplied filters (`kind_filter`, `excluded_kinds`, `excluded_namespaces`, `relationship_filter`) MUST be applied to the plan prior to query generation, eliminating routes that conflict with them.
-- **FR-010**: The configured maximum traversal depth (default 5, max 20) MUST bound both the planner's route enumeration and the generated query's path lengths.
+- **FR-009**: User-supplied filters (`kind_filter`, `excluded_kinds`, `excluded_namespaces`, `relationship_filter`) MUST be applied during plan construction, eliminating hops that conflict with them.
+- **FR-010**: The configured maximum traversal depth (default 5, max 20) MUST bound both the planner's BFS and the generated query's path lengths.
 - **FR-011**: The configured maximum result count (paths or reachable nodes, as appropriate) MUST be enforced by the generated query.
-- **FR-012**: The planner MUST treat generic schemas in the schema as expansions to their concrete inheriting kinds for the purposes of enumerating viable routes, subject to per-kind permission filtering.
+- **FR-012**: The planner MUST treat generic schemas in the schema as expansions to their concrete inheriting kinds for the purposes of enumerating viable hops, subject to per-kind permission filtering.
 - **FR-013**: The planner and generated query MUST respect branch and point-in-time context — the same source/destination on different branches with different schemas MUST produce plans appropriate to each branch's schema.
-- **FR-014**: The system MUST emit, at a developer-facing diagnostic log level, a structured representation of the planner output for each request, including the surviving viable routes. Per-route pruning information is not surfaced — filter and permission violations are dropped during BFS expansion so no candidate `Route` is constructed for them.
+- **FR-014**: The system MUST emit, at a developer-facing diagnostic log level, a structured representation of the planner output for each request, including the adjacency size. Per-hop pruning information is not surfaced — filter and permission violations are dropped during BFS expansion so no candidate hop is recorded for them.
 - **FR-015**: The system MUST preserve current error semantics: missing source/destination object returns the same error message, identical source and destination returns the same error message, exceeding the maximum depth or paths is bounded the same way.
 - **FR-016**: Planner output for identical (schema-branch, source-kind, target-kind-set, depth, filter) tuples MUST be deterministic so that two adjacent requests produce the same plan, supporting cacheability.
-- **FR-017**: The planner MUST cap route enumeration at `max_depth` and MUST NOT prune routes solely because they revisit a schema kind. Rationale: the runtime QPP query enforces only per-hop legality against the planner's `(start_kind, rel_name, end_kind)` adjacency map and cannot enforce schema-uniqueness on the matched path, so any planner-side revisit filtering would be invisible to query results. Cycles are bounded by `max_depth` alone.
+- **FR-017**: The planner MUST cap BFS at `max_depth` and MUST NOT track per-path schema kind revisits. Rationale: the runtime QPP query enforces only per-hop legality against the adjacency map and cannot enforce schema-uniqueness on the matched path, so any planner-side revisit filtering would be invisible to query results. Cycles are bounded by `max_depth` alone.
 
 ### Key Entities
 
-- **Route**: A schema-derived sequence of node kinds and the relationship hops between them, including each hop's relationship identifier and direction. The atomic unit produced by the planner.
-- **Plan**: The complete set of routes from a source kind to one or more target kinds (or to a destination kind) under the active branch's schema, after permission and user-filter pruning. A plan may be empty.
-- **Hop**: A single edge in a route, described by (start kind, relationship identifier, direction, end kind).
-- **Permission Decision**: For a given requester and kind, a yes/no answer to "may this user read instances of this kind on this branch." Used by the planner to prune routes.
+- **Plan**: The per-hop adjacency map `{start_kind: {relationship_identifier: frozenset(end_kind, ...)}}` plus the source/terminal/depth context. The atomic unit produced by the planner. A plan may be empty (no viable adjacency).
+- **Adjacency hop**: A single `(start_kind, relationship_identifier, end_kind)` triple in the plan's adjacency map. Asserts that the schema permits this single-hop edge AND that it lies on some ≤`max_depth` path from source to a terminal-matching kind.
+- **Permission Decision**: For a given requester and kind, a yes/no answer to "may this user read instances of this kind on this branch." Used by the planner to prune hops.
 - **Terminal Predicate**: The condition that closes a path in the generated query — either "node id equals X" or "node kind is in {…}". Determines which traversal mode is run.
 
 ## Success Criteria *(mandatory)*

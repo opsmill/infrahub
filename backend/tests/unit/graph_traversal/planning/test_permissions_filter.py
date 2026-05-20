@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.schema import NodeSchema, RelationshipSchema
-from infrahub.graph_traversal.planning.models import Hop, HopDirection, Route, TerminalByKinds, UserFilters
+from infrahub.graph_traversal.planning.models import TerminalByKinds, UserFilters
 from tests.helpers.graph_traversal.builders import build_schema_branch, make_planner
 
 
@@ -28,12 +28,11 @@ def _rel(*, name: str, peer: str, identifier: str) -> RelationshipSchema:
     )
 
 
-def _bidir_hop(start: str, end: str, identifier: str) -> Hop:
-    return Hop(start_kind=start, end_kind=end, relationship_identifier=identifier, direction=HopDirection.BIDIR)
-
-
-def _route_from_hops(*hops: Hop) -> Route:
-    return Route(hops=hops, source_kind=hops[0].start_kind, terminal_kind=hops[-1].end_kind)
+def _adj(*triples: tuple[str, str, str]) -> dict[str, dict[str, frozenset[str]]]:
+    accumulator: dict[str, dict[str, set[str]]] = {}
+    for start, identifier, end in triples:
+        accumulator.setdefault(start, {}).setdefault(identifier, set()).add(end)
+    return {start: {rel: frozenset(ends) for rel, ends in rels.items()} for start, rels in accumulator.items()}
 
 
 def _default_filters() -> UserFilters:
@@ -41,10 +40,10 @@ def _default_filters() -> UserFilters:
 
 
 class TestPermissionPruning:
-    def test_route_excluded_when_intermediate_kind_is_forbidden(self) -> None:
-        """With ``TestingForbidden`` denied and the default revisit-free policy,
-        the only Source→Target route (through Forbidden) is pruned at the
-        forbidden peer; no routes survive."""
+    def test_path_excluded_when_intermediate_kind_is_forbidden(self) -> None:
+        """With ``TestingForbidden`` denied, the only Source→Target path runs
+        through Forbidden; BFS drops the hop at the forbidden peer, so no
+        adjacency is produced."""
         schema = build_schema_branch(
             nodes=[
                 _node("Source", relationships=[_rel(name="rel_f", peer="TestingForbidden", identifier="s__f")]),
@@ -59,12 +58,12 @@ class TestPermissionPruning:
             max_depth=5,
             user_filters=_default_filters(),
         )
-        assert plan.routes == ()
+        assert plan.adjacency == {}
 
-    def test_route_retained_when_alternate_route_avoids_forbidden_kind(self) -> None:
-        """Two structural routes exist (Source→Allowed→Target and
-        Source→Forbidden→Target). ``TestingForbidden`` is denied, so only the
-        Allowed route survives."""
+    def test_path_retained_when_alternate_path_avoids_forbidden_kind(self) -> None:
+        """Two structural paths exist (Source→Allowed→Target and
+        Source→Forbidden→Target). ``TestingForbidden`` is denied, so the
+        adjacency contains only the Allowed branch."""
         schema = build_schema_branch(
             nodes=[
                 _node(
@@ -86,15 +85,13 @@ class TestPermissionPruning:
             max_depth=3,
             user_filters=_default_filters(),
         )
-        assert plan.routes == (
-            _route_from_hops(
-                _bidir_hop("TestingSource", "TestingAllowed", "s__a"),
-                _bidir_hop("TestingAllowed", "TestingTarget", "a__t"),
-            ),
+        assert plan.adjacency == _adj(
+            ("TestingSource", "s__a", "TestingAllowed"),
+            ("TestingAllowed", "a__t", "TestingTarget"),
         )
 
-    def test_route_excluded_when_source_kind_is_forbidden(self) -> None:
-        """A forbidden source short-circuits the whole plan — every route
+    def test_path_excluded_when_source_kind_is_forbidden(self) -> None:
+        """A forbidden source short-circuits the whole plan — every path
         would have to start at the source, so BFS doesn't even run."""
         schema = build_schema_branch(
             nodes=[
@@ -109,7 +106,7 @@ class TestPermissionPruning:
             max_depth=2,
             user_filters=_default_filters(),
         )
-        assert plan.routes == ()
+        assert plan.adjacency == {}
 
     def test_terminal_kind_is_checked(self) -> None:
         """A forbidden terminal kind is pruned when BFS reaches it as a peer."""
@@ -126,4 +123,4 @@ class TestPermissionPruning:
             max_depth=2,
             user_filters=_default_filters(),
         )
-        assert plan.routes == ()
+        assert plan.adjacency == {}

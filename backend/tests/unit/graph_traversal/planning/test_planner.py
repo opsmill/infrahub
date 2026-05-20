@@ -13,9 +13,6 @@ from typing import TYPE_CHECKING
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.schema import GenericSchema, NodeSchema, RelationshipSchema
 from infrahub.graph_traversal.planning.models import (
-    Hop,
-    HopDirection,
-    Route,
     TerminalById,
     TerminalByKinds,
     UserFilters,
@@ -58,12 +55,12 @@ def _rel(
     )
 
 
-def _bidir_hop(start: str, end: str, identifier: str) -> Hop:
-    return Hop(start_kind=start, end_kind=end, relationship_identifier=identifier, direction=HopDirection.BIDIR)
-
-
-def _route_from_hops(*hops: Hop) -> Route:
-    return Route(hops=hops, source_kind=hops[0].start_kind, terminal_kind=hops[-1].end_kind)
+def _adj(*triples: tuple[str, str, str]) -> dict[str, dict[str, frozenset[str]]]:
+    """Build an adjacency map from ``(start, rel, end)`` triples."""
+    accumulator: dict[str, dict[str, set[str]]] = {}
+    for start, identifier, end in triples:
+        accumulator.setdefault(start, {}).setdefault(identifier, set()).add(end)
+    return {start: {rel: frozenset(ends) for rel, ends in rels.items()} for start, rels in accumulator.items()}
 
 
 def _default_filters() -> UserFilters:
@@ -79,11 +76,12 @@ class TestEmptyPlan:
             max_depth=5,
             user_filters=_default_filters(),
         )
-        assert plan.routes == ()
+        assert plan.adjacency == {}
+        assert plan.is_empty is True
 
 
-class TestRouteEnumeration:
-    def test_finds_single_hop_route(self, linear_a_b_c_schema: SchemaBranch) -> None:
+class TestAdjacencyEnumeration:
+    def test_finds_single_hop_adjacency(self, linear_a_b_c_schema: SchemaBranch) -> None:
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",
@@ -91,14 +89,18 @@ class TestRouteEnumeration:
             max_depth=1,
             user_filters=_default_filters(),
         )
-        expected = _route_from_hops(_bidir_hop("TestingKindA", "TestingKindB", "a__b"))
-        assert plan.routes == (expected,)
+        assert plan.adjacency == _adj(("TestingKindA", "a__b", "TestingKindB"))
 
-    def test_finds_multi_hop_route_through_intermediate(self, linear_a_b_c_schema: SchemaBranch) -> None:
-        """Over a BIDIR chain A↔B↔C with ``max_depth=5``, the planner emits
-        the direct A→B→C route plus the two length-4 revisit variants that
-        also terminate at C: A→B→A→B→C and A→B→C→B→C. Routes are bounded
-        only by ``max_depth`` — kinds may repeat along a route."""
+    def test_finds_multi_hop_adjacency_through_intermediate(self, linear_a_b_c_schema: SchemaBranch) -> None:
+        """Over a BIDIR chain A↔B↔C with ``max_depth=5`` and terminal=C, the
+        adjacency includes every (start, rel, end) hop that lies on some path
+        from A to C of length ≤ 5.
+
+        Forward BFS records all reachable hops; the back-pass keeps only
+        those reaching a terminal. The legal cycles from A to C are A→B→C,
+        A→B→A→B→C, A→B→C→B→C — so all four undirected hops appear: A↔B and
+        B↔C, in both directions.
+        """
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",
@@ -106,18 +108,14 @@ class TestRouteEnumeration:
             max_depth=5,
             user_filters=_default_filters(),
         )
-        a, b, c = "TestingKindA", "TestingKindB", "TestingKindC"
-        ab = _bidir_hop(a, b, "a__b")
-        ba = _bidir_hop(b, a, "a__b")
-        bc = _bidir_hop(b, c, "b__c")
-        cb = _bidir_hop(c, b, "b__c")
-        assert plan.routes == (
-            _route_from_hops(ab, bc),
-            _route_from_hops(ab, ba, ab, bc),
-            _route_from_hops(ab, bc, cb, bc),
+        assert plan.adjacency == _adj(
+            ("TestingKindA", "a__b", "TestingKindB"),
+            ("TestingKindB", "a__b", "TestingKindA"),
+            ("TestingKindB", "b__c", "TestingKindC"),
+            ("TestingKindC", "b__c", "TestingKindB"),
         )
 
-    def test_max_depth_caps_route_length(self) -> None:
+    def test_max_depth_caps_adjacency(self) -> None:
         schema = build_schema_branch(
             nodes=[
                 _node("Aaa", relationships=[_rel(name="rel_b", peer="TestingBbb", identifier="aaa__bbb")]),
@@ -135,7 +133,7 @@ class TestRouteEnumeration:
             max_depth=3,
             user_filters=_default_filters(),
         )
-        assert plan_shallow.routes == ()
+        assert plan_shallow.adjacency == {}
 
         plan_deep = planner.plan(
             source_kind="TestingAaa",
@@ -143,50 +141,18 @@ class TestRouteEnumeration:
             max_depth=5,
             user_filters=_default_filters(),
         )
-        # The shortest route is the direct A→B→C→D→E→F chain (length 5).
-        assert plan_deep.routes[0] == _route_from_hops(
-            _bidir_hop("TestingAaa", "TestingBbb", "aaa__bbb"),
-            _bidir_hop("TestingBbb", "TestingCcc", "bbb__ccc"),
-            _bidir_hop("TestingCcc", "TestingDdd", "ccc__ddd"),
-            _bidir_hop("TestingDdd", "TestingEee", "ddd__eee"),
-            _bidir_hop("TestingEee", "TestingFff", "eee__fff"),
-        )
-
-    def test_emits_revisit_routes_within_depth_cap(self, linear_a_b_c_schema: SchemaBranch) -> None:
-        """The planner walks each BIDIR schema edge in both directions during
-        enumeration. A route like A→B→A→B is valid: each hop traverses a
-        real schema edge, the same kind may appear multiple times along a
-        route, and only the total hop count is bounded by ``max_depth``.
-
-        With ``max_depth=5`` and terminal ``KindB``, this yields seven routes —
-        the direct one plus six revisits — sorted by length, then kinds, then
-        identifiers, then directions.
-        """
-        planner = make_planner(schema_branch=linear_a_b_c_schema)
-        plan = planner.plan(
-            source_kind="TestingKindA",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindB"})),
-            max_depth=5,
-            user_filters=_default_filters(),
-        )
-        a, b, c = "TestingKindA", "TestingKindB", "TestingKindC"
-        ab = _bidir_hop(a, b, "a__b")
-        ba = _bidir_hop(b, a, "a__b")
-        bc = _bidir_hop(b, c, "b__c")
-        cb = _bidir_hop(c, b, "b__c")
-        assert plan.routes == (
-            _route_from_hops(ab),
-            _route_from_hops(ab, ba, ab),
-            _route_from_hops(ab, bc, cb),
-            _route_from_hops(ab, ba, ab, ba, ab),
-            _route_from_hops(ab, ba, ab, bc, cb),
-            _route_from_hops(ab, bc, cb, ba, ab),
-            _route_from_hops(ab, bc, cb, bc, cb),
+        # The shortest route is A→B→C→D→E→F (length 5); each forward hop appears once.
+        assert plan_deep.adjacency == _adj(
+            ("TestingAaa", "aaa__bbb", "TestingBbb"),
+            ("TestingBbb", "bbb__ccc", "TestingCcc"),
+            ("TestingCcc", "ccc__ddd", "TestingDdd"),
+            ("TestingDdd", "ddd__eee", "TestingEee"),
+            ("TestingEee", "eee__fff", "TestingFff"),
         )
 
 
 class TestGenericExpansion:
-    def test_generic_peer_expands_to_one_route_per_concrete_inheritor(self) -> None:
+    def test_generic_peer_expands_to_concrete_end_kinds(self) -> None:
         schema = build_schema_branch(
             nodes=[
                 _node(
@@ -209,131 +175,18 @@ class TestGenericExpansion:
             max_depth=1,
             user_filters=_default_filters(),
         )
-        # One route per concrete inheritor of the generic peer; the generic kind
-        # itself never appears in a Hop. Both routes share the rel identifier
-        # because they walk the same schema edge declared on Device, only the
-        # concrete end-kind differs (alphabetical Ethernet first per sort).
-        assert plan.routes == (
-            _route_from_hops(_bidir_hop("TestingDevice", "TestingEthernetInterface", "device__interfaces")),
-            _route_from_hops(_bidir_hop("TestingDevice", "TestingVirtualInterface", "device__interfaces")),
-        )
-
-
-class TestDirectionPreservation:
-    def test_bidir_is_recorded_verbatim_and_not_split(self) -> None:
-        schema = build_schema_branch(
-            nodes=[
-                _node(
-                    "Owner",
-                    relationships=[
-                        _rel(
-                            name="rel_peer",
-                            peer="TestingPeer",
-                            identifier="owner__peer",
-                            direction=RelationshipDirection.BIDIR,
-                        ),
-                    ],
-                ),
-                _node("Peer"),
-            ]
-        )
-        planner = make_planner(schema_branch=schema)
-        plan = planner.plan(
-            source_kind="TestingOwner",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingPeer"})),
-            max_depth=1,
-            user_filters=_default_filters(),
-        )
-        # Single hop, direction recorded as BIDIR — not split into OUTBOUND+INBOUND routes.
-        assert plan.routes == (_route_from_hops(_bidir_hop("TestingOwner", "TestingPeer", "owner__peer")),)
-
-    def test_outbound_in_forward_walk_is_outbound(self) -> None:
-        schema = build_schema_branch(
-            nodes=[
-                _node(
-                    "Source",
-                    relationships=[
-                        _rel(
-                            name="rel_target",
-                            peer="TestingTarget",
-                            identifier="source__target",
-                            direction=RelationshipDirection.OUTBOUND,
-                        ),
-                    ],
-                ),
-                _node("Target"),
-            ]
-        )
-        planner = make_planner(schema_branch=schema)
-        plan = planner.plan(
-            source_kind="TestingSource",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingTarget"})),
-            max_depth=1,
-            user_filters=_default_filters(),
-        )
-        assert plan.routes == (
-            Route(
-                hops=(
-                    Hop(
-                        start_kind="TestingSource",
-                        end_kind="TestingTarget",
-                        relationship_identifier="source__target",
-                        direction=HopDirection.OUTBOUND,
-                    ),
-                ),
-                source_kind="TestingSource",
-                terminal_kind="TestingTarget",
-            ),
-        )
-
-    def test_outbound_in_reverse_walk_is_inbound(self) -> None:
-        """A schema rel declared on Source as OUTBOUND with peer=Target is also
-        walkable from Target back to Source — and the Hop must record that
-        reverse walk as INBOUND so the renderer emits the correct arrow shape.
-        """
-        schema = build_schema_branch(
-            nodes=[
-                _node(
-                    "Source",
-                    relationships=[
-                        _rel(
-                            name="rel_target",
-                            peer="TestingTarget",
-                            identifier="source__target",
-                            direction=RelationshipDirection.OUTBOUND,
-                        ),
-                    ],
-                ),
-                _node("Target"),
-            ]
-        )
-        planner = make_planner(schema_branch=schema)
-        plan = planner.plan(
-            source_kind="TestingTarget",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingSource"})),
-            max_depth=1,
-            user_filters=_default_filters(),
-        )
-        assert plan.routes == (
-            Route(
-                hops=(
-                    Hop(
-                        start_kind="TestingTarget",
-                        end_kind="TestingSource",
-                        relationship_identifier="source__target",
-                        direction=HopDirection.INBOUND,
-                    ),
-                ),
-                source_kind="TestingTarget",
-                terminal_kind="TestingSource",
-            ),
+        # The generic kind itself never appears as an end_kind. Both concrete
+        # inheritors are reached via the same `device__interfaces` identifier.
+        assert plan.adjacency == _adj(
+            ("TestingDevice", "device__interfaces", "TestingEthernetInterface"),
+            ("TestingDevice", "device__interfaces", "TestingVirtualInterface"),
         )
 
 
 class TestUserFilters:
-    def test_default_excluded_namespaces_prune_routes_through_excluded_kinds(self) -> None:
-        """A route that traverses a kind in a default-excluded namespace (``Internal``)
-        is pruned during BFS expansion, so it never appears in ``Plan.routes``."""
+    def test_default_excluded_namespaces_prune_hops_through_excluded_kinds(self) -> None:
+        """A hop through a kind in a default-excluded namespace (``Internal``) is
+        dropped during BFS, so the adjacency never includes any path through it."""
         schema = build_schema_branch(
             nodes=[
                 _node(
@@ -356,11 +209,10 @@ class TestUserFilters:
             max_depth=5,
             user_filters=UserFilters.from_graphql_input(None),
         )
-        assert plan.routes == ()
+        assert plan.adjacency == {}
 
-    def test_excluded_kinds_drops_routes_containing_that_kind(self, linear_a_b_c_schema: SchemaBranch) -> None:
-        """With ``excluded_kinds={"TestingKindB"}``, every A→C route requires
-        KindB as an intermediate and is pruned during BFS."""
+    def test_excluded_kinds_drops_paths_containing_that_kind(self, linear_a_b_c_schema: SchemaBranch) -> None:
+        """Every A→C path requires KindB as an intermediate, which is excluded."""
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",
@@ -368,11 +220,10 @@ class TestUserFilters:
             max_depth=5,
             user_filters=UserFilters(excluded_kinds=frozenset({"TestingKindB"})),
         )
-        assert plan.routes == ()
+        assert plan.adjacency == {}
 
     def test_relationship_filter_requires_every_hop_match(self, linear_a_b_c_schema: SchemaBranch) -> None:
-        """Every A→C route requires at least one ``b__c`` hop, which the
-        relationship filter excludes — BFS prunes at that hop."""
+        """Every A→C path requires the ``b__c`` identifier, which the filter excludes."""
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",
@@ -380,7 +231,7 @@ class TestUserFilters:
             max_depth=5,
             user_filters=UserFilters(relationship_filter=frozenset({"a__b"})),
         )
-        assert plan.routes == ()
+        assert plan.adjacency == {}
 
 
 class TestDeterminism:
@@ -399,7 +250,7 @@ class TestDeterminism:
             user_filters=_default_filters(),
         )
         assert plan_a == plan_b
-        assert plan_a.routes == plan_b.routes
+        assert plan_a.adjacency == plan_b.adjacency
 
 
 class TestTerminalById:
@@ -424,7 +275,8 @@ class TestTerminalById:
             max_depth=1,
             user_filters=_default_filters(),
         )
-        assert plan.routes == (_route_from_hops(_bidir_hop("TestingStart", "TestingEndA", "start__a")),)
+        # Only the EndA edge is kept; the EndB edge is on a non-terminal path.
+        assert plan.adjacency == _adj(("TestingStart", "start__a", "TestingEndA"))
 
 
 class TestKindFilter:
@@ -443,12 +295,9 @@ class TestKindFilter:
             max_depth=2,
             user_filters=UserFilters(kind_filter=frozenset({"TestingMid"})),
         )
-        # Start (source) and End (terminal) are exempt from kind_filter; the
-        # intermediate Mid is in the filter, so the direct route survives.
-        assert (
-            _route_from_hops(
-                _bidir_hop("TestingStart", "TestingMid", "s__m"),
-                _bidir_hop("TestingMid", "TestingEnd", "m__e"),
-            )
-            in plan.routes
+        # Start (source) and End (terminal) are exempt from kind_filter; Mid is
+        # in the filter as an intermediate. The two-hop path survives.
+        assert plan.adjacency == _adj(
+            ("TestingStart", "s__m", "TestingMid"),
+            ("TestingMid", "m__e", "TestingEnd"),
         )

@@ -1,67 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import IntEnum
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 from infrahub.graph_traversal.planning.constants import (
     DEFAULT_EXCLUDED_NAMESPACES,
     MAX_DEPTH,
     MIN_DEPTH,
 )
-
-
-class HopDirection(IntEnum):
-    OUTBOUND = 0
-    INBOUND = 1
-    BIDIR = 2
-
-
-@dataclass(frozen=True, slots=True)
-class Hop:
-    start_kind: str
-    end_kind: str
-    relationship_identifier: str
-    direction: HopDirection
-
-    def __post_init__(self) -> None:
-        if not self.relationship_identifier:
-            raise ValueError("Hop.relationship_identifier must be non-empty")
-
-
-@dataclass(frozen=True, slots=True)
-class Route:
-    hops: tuple[Hop, ...]
-    source_kind: str
-    terminal_kind: str
-
-    def __post_init__(self) -> None:
-        if not MIN_DEPTH <= len(self.hops) <= MAX_DEPTH:
-            raise ValueError(f"Route.hops length must be in [{MIN_DEPTH}, {MAX_DEPTH}], got {len(self.hops)}")
-        if self.hops[0].start_kind != self.source_kind:
-            raise ValueError(
-                f"Route.source_kind ({self.source_kind!r}) must equal hops[0].start_kind ({self.hops[0].start_kind!r})"
-            )
-        if self.hops[-1].end_kind != self.terminal_kind:
-            raise ValueError(
-                f"Route.terminal_kind ({self.terminal_kind!r}) must equal "
-                f"hops[-1].end_kind ({self.hops[-1].end_kind!r})"
-            )
-        for i in range(1, len(self.hops)):
-            if self.hops[i].start_kind != self.hops[i - 1].end_kind:
-                raise ValueError(
-                    f"Route hops are discontinuous at index {i}: "
-                    f"hops[{i - 1}].end_kind={self.hops[i - 1].end_kind!r} but "
-                    f"hops[{i}].start_kind={self.hops[i].start_kind!r}"
-                )
-
-    @property
-    def length(self) -> int:
-        return len(self.hops)
-
-    @property
-    def kinds(self) -> tuple[str, ...]:
-        return (self.source_kind, *(hop.end_kind for hop in self.hops))
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,7 +62,15 @@ class UserFilters:
 
 @dataclass(frozen=True, slots=True)
 class Plan:
-    routes: tuple[Route, ...]
+    """Schema-derived per-hop adjacency map plus the source/terminal/depth context.
+
+    ``adjacency`` is ``{start_kind: {rel_name: frozenset(end_kind, ...)}}``: the
+    set of ``(start_kind, rel_name, end_kind)`` triples that may appear on any
+    ≤``max_depth`` path from ``source_kind`` to a kind matching
+    ``terminal_predicate``.
+    """
+
+    adjacency: Mapping[str, Mapping[str, frozenset[str]]]
     source_kind: str
     terminal_predicate: TerminalPredicate
     max_depth: int
@@ -121,3 +78,7 @@ class Plan:
     def __post_init__(self) -> None:
         if not MIN_DEPTH <= self.max_depth <= MAX_DEPTH:
             raise ValueError(f"Plan.max_depth must be in [{MIN_DEPTH}, {MAX_DEPTH}], got {self.max_depth}")
+
+    @property
+    def is_empty(self) -> bool:
+        return not self.adjacency

@@ -60,34 +60,37 @@ The planner MAY memoize results of these lookups on the instance. The cache is b
 |---|---|---|
 | `source_kind` | Starting kind. | Must exist in the schema view; otherwise raise `ValueError("source kind not in schema")`. |
 | `terminal_predicate` | `TerminalById` or `TerminalByKinds`. | `TerminalById.node_id` is a UUID string; `TerminalByKinds.kinds` is non-empty and every kind exists in the schema view. |
-| `max_depth` | Cap on route length. | `1 ≤ max_depth ≤ 20`. Raise `ValueError` otherwise. |
+| `max_depth` | Cap on path length. | `1 ≤ max_depth ≤ 20`. Raise `ValueError` otherwise. |
 | `user_filters` | Plan-level filtering. | See [data-model-schema-planning.md §UserFilters](../data-model-schema-planning.md#userfilters). |
 
 ## Output
 
-A `Plan` as defined in the data model. Always returned (never raises for "no path found" — empty `routes` is the legitimate signal).
+A `Plan` as defined in the data model. Always returned (never raises for "no path found" — `plan.is_empty` is the legitimate signal).
 
 ## Behavior — required
 
-1. **Source permission gate**: validate `max_depth`, `source_kind`, and (for both terminal-predicate variants) terminal kinds exist in `schema_branch`. Then check `permission_cache.can_view(source_kind)` — if denied, return a `Plan` with empty `routes` without running BFS. Every viable route would start at the source, so a forbidden source has no possible plan.
-2. **BFS with inline pruning**: iteratively expand from `source_kind` hop-by-hop up to `max_depth`. Kinds may repeat along a route (no revisit pruning) — cycles are bounded by `max_depth`. The rendered Cypher's QPP only enforces per-hop legality from the planner's adjacency map and cannot enforce schema-uniqueness on the matched path, so planner-side revisit pruning would be invisible to query results. For each candidate peer, `_step` evaluates the following filters in order and drops the entire downstream subtree (no route emitted, no frontier extension) on the first violation:
+1. **Source permission gate**: validate `max_depth`, `source_kind`, and (for both terminal-predicate variants) terminal kinds exist in `schema_branch`. Then check `permission_cache.can_view(source_kind)` — if denied, return a `Plan` with empty `adjacency` without running BFS. Every viable path would start at the source, so a forbidden source has no possible plan.
+2. **Forward BFS with inline pruning**: iteratively expand from `source_kind` kind-by-kind up to `max_depth`. For each candidate hop `(current_kind, identifier, peer_kind)` the planner evaluates the following filters in order and drops the hop (no entry in the forward adjacency, no frontier extension) on the first violation:
    - **Permission**: `permission_cache.can_view(peer_kind)` must be `True`. The cache memoizes per kind, so repeated checks are O(1).
    - **`excluded_kinds`**: peer must not be in the set. No exemption.
    - **`excluded_namespaces`**: `schema_branch.get(peer_kind).namespace` must not be in the set. No exemption.
    - **`relationship_filter`**: when non-empty, the hop's `relationship_identifier` must be in the set. No exemption.
-   - **`kind_filter`**: when non-empty, the peer must be in the set OR match the terminal predicate. A peer that matches the terminal predicate but is not in the filter is *emitted as a route* (terminal exemption) but is not extended (it would become an intermediate of any longer route, which the filter forbids).
-3. **Schema walking**:
-   - For each candidate `end_kind`, enumerate all `RelationshipSchema` on the current kind whose `peer` matches the candidate, expanding generic peers to concrete inheritors.
-   - The `HopDirection` is copied verbatim from `RelationshipSchema.direction` (`OUTBOUND`, `INBOUND`, or `BIDIR`); the planner does **not** split a `BIDIR` relationship into two routes. Each direction corresponds to a distinct two-edge storage pattern; see [../data-model-schema-planning.md §HopDirection](../data-model-schema-planning.md#hopdirection).
-   - Schema-walking is bidirectional regardless of the recorded `direction`: a `RelationshipSchema` declared on kind A with peer B is considered traversable from A→B *and* from B→A during enumeration. The recorded `direction` is preserved on each `Hop` (inverted for reverse walks) so the query builder emits the correct two-edge Cypher pattern.
-4. **Generic expansion**: A `RelationshipSchema` whose `peer` is a generic is expanded to one route per concrete implementor before filter/permission checks. The generic kind itself never appears in a `Hop`.
-5. **Terminal acceptance**:
-   - For `TerminalById`: a route's `terminal_kind` must equal `TerminalById.kind`. The caller resolves the destination's kind once via `NodeManager.get_one(...).get_kind()` and passes it on the predicate so the planner does not need to load the destination node.
-   - For `TerminalByKinds`: a route's `terminal_kind` must be in `kinds`.
-6. **Determinism (FR-016)**: after BFS, sort `routes` lexicographically by `(length, kinds, tuple(hop.relationship_identifier for hop in hops), tuple(int(hop.direction) for hop in hops))`. Cache builds iterate `schema_branch.nodes` in sorted order so the inverse-relationship index is deterministic.
-7. **Diagnostic logging**: emit one `traversal_plan_computed` INFO event and zero or more `traversal_plan_route` DEBUG events per call. Fields per spec FR-014.
+   - **`kind_filter`**: when non-empty, the peer must be in the set OR match the terminal predicate. A peer that matches the terminal predicate but is not in the filter is *recorded as a hop* (terminal exemption) but is not extended (it would become an intermediate of any longer path, which the filter forbids).
 
-**No pruned-route accounting**: the planner does not record what was dropped. Because filter and permission checks run during BFS expansion, an excluded subtree's would-be routes are never constructed in the first place — there's nothing to report. The `Plan` carries only the surviving `routes` plus the input echo (`source_kind`, `terminal_predicate`, `max_depth`).
+   Cycles are bounded by `max_depth` alone; kinds may repeat in the adjacency. The rendered Cypher's QPP only enforces per-hop legality from the adjacency map and cannot enforce schema-uniqueness on the matched path, so planner-side revisit pruning would be invisible to query results.
+
+3. **Schema walking**:
+   - For each candidate `peer_kind`, enumerate all `RelationshipSchema` on the current kind whose `peer` matches the candidate, expanding generic peers to concrete inheritors.
+   - Direction (`OUTBOUND`/`INBOUND`/`BIDIR`) is not tracked in the plan output: the Cypher renderer uses undirected QPP arrows, so direction has no downstream consumer.
+   - Schema-walking is bidirectional: a `RelationshipSchema` declared on kind A with peer B is considered traversable from A→B *and* from B→A during enumeration (the reverse walk is sourced from the inverse index).
+4. **Generic expansion**: A `RelationshipSchema` whose `peer` is a generic is expanded to one `(start, identifier, concrete_peer)` hop per concrete implementor before filter/permission checks. The generic kind itself never appears as an `end_kind` in the adjacency.
+5. **Terminal back-pass and depth bound**: after forward BFS, walk the forward adjacency backwards from terminal-matching `end_kind`s to compute `min_depth_to_terminal` for every reachable kind. Then keep only edges `(s, r, e)` where `min_depth_from_source[s] + 1 + min_depth_to_terminal[e] ≤ max_depth`. This is the tightening pass that matches the route-based planner's output exactly: only hops on some viable ≤`max_depth` source→terminal path appear in the final adjacency.
+   - For `TerminalById`: an `end_kind` matches the terminal iff it equals `TerminalById.kind`. The caller resolves the destination's kind once via `NodeManager.get_one(...).get_kind()` and passes it on the predicate so the planner does not need to load the destination node.
+   - For `TerminalByKinds`: an `end_kind` matches the terminal iff it is in `kinds`.
+6. **Determinism (FR-016)**: when assembling the final adjacency, iterate `start_kind`s in sorted order and `relationship_identifier`s in sorted order; each inner `frozenset[str]` of `end_kind`s is converted to a sorted list at Cypher render time. Cache builds iterate `schema_branch.nodes` in sorted order so the inverse-relationship index is deterministic.
+7. **Diagnostic logging**: emit one `traversal_plan_computed` INFO event per call recording the adjacency size; emit `traversal_plan_hop` DEBUG events per `(start_kind, rel, end_kind)` triple if and only if DEBUG is enabled. Fields per spec FR-014.
+
+**No pruned-hop accounting**: the planner does not record what was dropped. Because filter and permission checks run during BFS expansion, an excluded subtree's would-be hops are never constructed in the first place — there's nothing to report. The `Plan` carries only the surviving `adjacency` plus the input echo (`source_kind`, `terminal_predicate`, `max_depth`).
 
 ## Behavior — forbidden
 
@@ -145,7 +148,7 @@ async def path_traversal_resolver(root, info, data):
     )
 
     # 3. Short-circuit at the caller level. No pointless Query.execute().
-    if not plan.routes:
+    if plan.is_empty:
         return _empty_result(source=source, destination=destination)
 
     # 4. Construct and execute the Query with the plan
@@ -170,7 +173,7 @@ from infrahub.graph_traversal.planning import Plan, TerminalById
 
 class PathTraversalQuery(Query):
     def __init__(self, *, plan: Plan, source_id: str, branch: Branch, at: Timestamp, max_paths: int):
-        if not plan.routes:
+        if plan.is_empty:
             raise ValueError("PathTraversalQuery requires a non-empty plan; caller must short-circuit upstream")
         self.plan = plan
         self.source_id = source_id
@@ -197,10 +200,10 @@ Responsibilities:
 
 1. **GraphQL resolver** resolves source/destination objects and their kinds via `NodeManager.get_one(...)`. Same existence-error handling as today.
 2. **GraphQL resolver** builds the `PermissionResolver` (`PermissionLoader.load(...)` → `PermissionResolver(...)`), constructs the `SchemaPlanner` with it, and calls `plan()`. It then constructs `TerminalById(node_id=destination_id, kind=destination_kind)` so the planner can match terminal kind without re-loading the destination node.
-3. **GraphQL resolver** is responsible for the empty-plan short-circuit (FR-004): if `plan.routes` is empty, return an empty GraphQL result without instantiating or executing the Query class. No pointless Cypher reaches the database.
-4. **GraphQL resolver** authorizes the source object via `NodeManager.get_one` (existing behavior). The planner does its own `can_view` pass over every kind in the route — including the source — and the cache makes the duplication trivially cheap.
+3. **GraphQL resolver** is responsible for the empty-plan short-circuit (FR-004): if `plan.is_empty`, return an empty GraphQL result without instantiating or executing the Query class. No pointless Cypher reaches the database.
+4. **GraphQL resolver** authorizes the source object via `NodeManager.get_one` (existing behavior). The planner does its own `can_view` pass over every kind in the adjacency — including the source — and the cache makes the duplication trivially cheap.
 5. **Query class** takes a non-empty `Plan` in `__init__` and emits Cypher in `query_init` via `render_plan_to_cypher`. It does not call the planner. It does not contain a short-circuit path. Module-top imports only — no in-function imports.
-6. **Planner package** must not import or call anything from `graph_traversal/_cypher.py`; **Query class** must not import or call anything from `graph_traversal/planning/`'s planner (the data models are fine to import — `Plan`, `Route`, `Hop`, `TerminalPredicate`).
+6. **Planner package** must not import or call anything from `graph_traversal/_cypher.py`; **Query class** must not import or call anything from `graph_traversal/planning/`'s planner (the data models are fine to import — `Plan`, `TerminalPredicate`).
 
 ## Errors
 
@@ -209,23 +212,22 @@ Responsibilities:
 | `source_kind` not in schema | Raise `ValueError`; caller surfaces as `GraphQLError`. |
 | `max_depth` out of bounds | Raise `ValueError`. |
 | Terminal kind not in schema (for `TerminalByKinds` or `TerminalById`) | Raise `ValueError`. |
-| No viable routes after all pruning | Return `Plan` with empty `routes`. Not an error. |
+| No viable hops after all pruning | Return `Plan` with empty `adjacency`. Not an error. |
 | Permission resolver fails to load (in the caller, before construction) | Caller's exception; planner never reached. |
 
 ## Tests required
 
 - `test_planner.py`
-  - Empty plan when source and target kinds are disconnected at the schema level.
-  - Generic expansion produces one route per concrete inheritor.
-  - `BIDIR` schema relationships are recorded on the produced `Hop` with `direction=BIDIR` (no expansion into two routes).
-  - `max_depth` cap respected (no routes longer than cap).
+  - Empty adjacency when source and target kinds are disconnected at the schema level.
+  - Generic expansion produces one `(start, identifier, concrete_inheritor)` hop per concrete kind.
+  - `max_depth` cap respected (no hop appears in the adjacency that can't be on a ≤`max_depth` source→terminal path).
   - `excluded_namespaces` defaults applied when input is `None`.
-  - Routes are deterministic across two invocations with identical inputs.
+  - Adjacency is deterministic across two invocations with identical inputs.
 - `test_permissions_filter.py`
-  - Route excluded when an intermediate kind has `can_view=False`.
-  - Route retained when alternate routes avoid the forbidden kind.
-  - A forbidden source kind short-circuits the whole plan (empty `Plan.routes`).
-  - A forbidden terminal kind drops the only route through it.
+  - Hops through a forbidden intermediate are excluded.
+  - Adjacency retained when alternate hops avoid the forbidden kind.
+  - A forbidden source kind short-circuits the whole plan (empty `Plan.adjacency`).
+  - A forbidden terminal kind drops the only paths through it.
 - All tests use schema fixtures only; no DB required.
 
-The planner doesn't expose what was pruned — filter and permission checks happen during BFS expansion (see [Behavior — required](#behavior--required)), so dropped subtrees are never enumerated. Tests assert on `plan.routes` only.
+The planner doesn't expose what was pruned — filter and permission checks happen during BFS expansion (see [Behavior — required](#behavior--required)), so dropped subtrees are never enumerated. Tests assert on `plan.adjacency` only.
