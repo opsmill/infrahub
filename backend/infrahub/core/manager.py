@@ -829,7 +829,7 @@ class NodeManager:
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def get_one_by_id_or_default_filter(
@@ -843,7 +843,7 @@ class NodeManager:
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 

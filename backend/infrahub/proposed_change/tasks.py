@@ -45,7 +45,7 @@ from infrahub.core.diff.model.diff import DiffElementType, SchemaConflict
 from infrahub.core.diff.model.path import NodeDiffFieldSummary
 from infrahub.core.integrity.object_conflict.conflict_recorder import ObjectConflictValidatorRecorder
 from infrahub.core.manager import NodeManager
-from infrahub.core.protocols import CoreDataCheck, CoreValidator
+from infrahub.core.protocols import CoreDataCheck, CoreGenericAccount, CoreValidator
 from infrahub.core.protocols import CoreProposedChange as InternalCoreProposedChange
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.validators.checks_runner import run_checks_and_update_validator
@@ -258,7 +258,7 @@ async def merge_proposed_change(
         )
 
         current_user = await NodeManager.get_one_by_id_or_default_filter(
-            id=context.account.account_id, kind=InfrahubKind.GENERICACCOUNT, db=db
+            id=context.account.account_id, kind=CoreGenericAccount, db=db
         )
         event_service = await get_event_service()
         await event_service.send(
