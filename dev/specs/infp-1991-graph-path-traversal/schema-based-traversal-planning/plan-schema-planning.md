@@ -98,7 +98,7 @@ backend/infrahub/graphql/queries/
 backend/tests/unit/graph_traversal/      # NEW (replaces backend/tests/unit/core/test_*_query.py)
 ├── test_path_traversal_query.py         # Moved + extended for plan-driven behavior (constructor validation, plan-empty short-circuit)
 ├── test_reachable_nodes_query.py        # Moved + extended for plan-driven behavior
-├── test_cypher.py                       # Structural assertions on output of render_plan_to_cypher (param-binding completeness, kind-label regex, UNION ALL count = route count, direction-specific arrow patterns). Does NOT snapshot the full Cypher text.
+├── test_cypher.py                       # Contract tests on render_plan_to_cypher: module boundary (planning/ doesn't expose the renderer), empty-plan ValueError, max_results bounds. End-to-end correctness lives in component tests.
 └── planning/
     ├── test_planner.py                  # Pure schema-driven planner tests
     └── test_permissions_filter.py       # Plan pruning by permission resolver

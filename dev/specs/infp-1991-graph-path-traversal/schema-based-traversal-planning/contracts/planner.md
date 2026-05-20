@@ -225,5 +225,8 @@ Responsibilities:
 - `test_permissions_filter.py`
   - Route excluded when an intermediate kind has `can_view=False`.
   - Route retained when alternate routes avoid the forbidden kind.
-  - `pruned_for_permission` records the exact dropped routes.
+  - A forbidden source kind short-circuits the whole plan (empty `Plan.routes`).
+  - A forbidden terminal kind drops the only route through it.
 - All tests use schema fixtures only; no DB required.
+
+The planner doesn't expose what was pruned — filter and permission checks happen during BFS expansion (see [Behavior — required](#behavior--required)), so dropped subtrees are never enumerated. Tests assert on `plan.routes` only.

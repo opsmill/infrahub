@@ -59,16 +59,18 @@ As a maintainer of the traversal subsystem, I want the schema-based planner to p
 
 ### User Story 4 - Plan Inspection for Debugging (Priority: P3)
 
-As a developer debugging unexpected traversal results, I want the planner output (the set of viable kind-sequences with their relationship identifiers and directions, and any sequences pruned for permission reasons) to be observable via structured logs or a developer-facing diagnostic field, so I can verify that the plan matches my mental model of the schema.
+As a developer debugging unexpected traversal results, I want the planner's surviving routes (the set of viable kind-sequences with their relationship identifiers and directions) to be observable via structured logs, so I can verify that the plan matches my mental model of the schema.
 
 **Why this priority**: Operational quality-of-life. Useful for troubleshooting and future development, but not required for the feature to deliver value.
 
-**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable kind-sequence, the relationship identifier and direction for each hop, and which sequences (if any) were pruned by permission filtering.
+**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable kind-sequence and the relationship identifier and direction for each hop.
 
 **Acceptance Scenarios**:
 
-1. **Given** a traversal request executed with diagnostics enabled, **When** the request completes, **Then** logs include the full set of viable kind-sequences considered.
-2. **Given** the same request, **When** the planner pruned routes for permission reasons, **Then** the diagnostic output identifies which routes were pruned and on which kind the user lacked permission.
+1. **Given** a traversal request executed with diagnostics enabled, **When** the request completes, **Then** logs include each viable kind-sequence the planner produced.
+2. **Given** a request that produced no routes, **When** the request completes, **Then** the diagnostic event records `route_count=0` so the developer can distinguish "nothing matched" from "the planner failed to run."
+
+> **Note on pruned-route visibility**: An earlier design exposed per-route accounting for "routes pruned by permission" and "routes pruned by user filters." The implementation evolved to prune routes *during* BFS expansion (so excluded subtrees are never enumerated), making per-route pruning information unavailable at log time. Developers diagnosing "why is this route missing?" should reproduce the planner call against a representative schema with the filters relaxed to see what the unrestricted plan would have looked like.
 
 ---
 
@@ -101,7 +103,7 @@ As a developer debugging unexpected traversal results, I want the planner output
 - **FR-011**: The configured maximum result count (paths or reachable nodes, as appropriate) MUST be enforced by the generated query.
 - **FR-012**: The planner MUST treat generic schemas in the schema as expansions to their concrete inheriting kinds for the purposes of enumerating viable routes, subject to per-kind permission filtering.
 - **FR-013**: The planner and generated query MUST respect branch and point-in-time context — the same source/destination on different branches with different schemas MUST produce plans appropriate to each branch's schema.
-- **FR-014**: The system MUST emit, at a developer-facing diagnostic log level, a structured representation of the planner output for each request, including viable routes, routes pruned by permission, and routes pruned by user filters.
+- **FR-014**: The system MUST emit, at a developer-facing diagnostic log level, a structured representation of the planner output for each request, including the surviving viable routes. Per-route pruning information is not surfaced — filter and permission violations are dropped during BFS expansion so no candidate `Route` is constructed for them.
 - **FR-015**: The system MUST preserve current error semantics: missing source/destination object returns the same error message, identical source and destination returns the same error message, exceeding the maximum depth or paths is bounded the same way.
 - **FR-016**: Planner output for identical (schema-branch, source-kind, target-kind-set, depth, filter) tuples MUST be deterministic so that two adjacent requests produce the same plan, supporting cacheability.
 - **FR-017**: The system MUST, by default, exclude routes that revisit the same schema kind. A route revisits the schema iff any kind appears more than once in `route.kinds`, with one exception: when the source kind equals the terminal kind (the user is asking for paths between two objects of the same kind), the route may end at that kind, but the intermediate kinds MUST still be distinct and MUST NOT equal the source/terminal kind. Users MAY opt into permissive enumeration via a new `allow_schema_revisits: bool` input (default `False`), which restores the "any kind may appear multiple times, bounded only by `max_depth`" behavior. The setting is part of the plan-level filter set and is exposed through both GraphQL queries.
@@ -122,7 +124,7 @@ As a developer debugging unexpected traversal results, I want the planner output
 - **SC-002**: For source/destination pairs that share a route, query latency at p95 is at least as fast as the existing implementation on the same graph and schema, and on graphs of 100,000 nodes is reduced by a meaningful margin (target ≥ 30%) compared to the existing implementation.
 - **SC-003**: Zero paths returned by either GraphQL query include nodes whose kind the requester lacks read permission on, verified by automated test against representative permission configurations.
 - **SC-004**: Existing automated tests covering `InfrahubPathTraversal` and `InfrahubReachableNodes` continue to pass without modification to assertions on input/output shape or error messages.
-- **SC-005**: A developer with no prior context can, from diagnostic logs alone, reconstruct which routes the planner considered and which were pruned for which reason, validated by a peer review exercise on two sample requests.
+- **SC-005**: A developer with no prior context can, from diagnostic logs alone, reconstruct the set of routes the planner produced for a given request (kind sequence and relationship identifiers per route), validated by a peer review exercise on two sample requests.
 - **SC-006**: Both GraphQL queries share a single plan-to-query construction routine, verified by the test referenced in User Story 3 — there is no Cypher query template duplicated between the two query handlers.
 
 ## Assumptions
