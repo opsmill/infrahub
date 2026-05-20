@@ -80,8 +80,6 @@ class TestEmptyPlan:
             user_filters=_default_filters(),
         )
         assert plan.routes == ()
-        assert plan.pruned_for_user_filters == ()
-        assert plan.pruned_for_permission == ()
 
 
 class TestRouteEnumeration:
@@ -428,7 +426,7 @@ class TestAllowSchemaRevisits:
 class TestUserFilters:
     def test_default_excluded_namespaces_prune_routes_through_excluded_kinds(self) -> None:
         """A route that traverses a kind in a default-excluded namespace (``Internal``)
-        must be pruned to ``Plan.pruned_for_user_filters``."""
+        is pruned during BFS expansion, so it never appears in ``Plan.routes``."""
         schema = build_schema_branch(
             nodes=[
                 _node(
@@ -452,18 +450,11 @@ class TestUserFilters:
             user_filters=UserFilters.from_graphql_input(None),
         )
         assert plan.routes == ()
-        # The only Item→Other route under the default revisit-free policy
-        # passes through InternalThing, which is in the default excluded set.
-        assert plan.pruned_for_user_filters == (
-            _route_from_hops(
-                _bidir_hop("TestingItem", "InternalThing", "test__int"),
-                _bidir_hop("InternalThing", "TestingOther", "int__other"),
-            ),
-        )
 
     def test_excluded_kinds_drops_routes_containing_that_kind(self, linear_a_b_c_schema: SchemaBranch) -> None:
         """With ``excluded_kinds={"TestingKindB"}`` and the default revisit-free
-        policy, the only A→C route (which passes through KindB) is pruned."""
+        policy, the only A→C route requires KindB as an intermediate and is
+        pruned during BFS."""
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",
@@ -472,25 +463,18 @@ class TestUserFilters:
             user_filters=UserFilters(excluded_kinds=frozenset({"TestingKindB"})),
         )
         assert plan.routes == ()
-        assert plan.pruned_for_user_filters == (
-            _route_from_hops(
-                _bidir_hop("TestingKindA", "TestingKindB", "a__b"),
-                _bidir_hop("TestingKindB", "TestingKindC", "b__c"),
-            ),
-        )
 
     def test_relationship_filter_requires_every_hop_match(self, linear_a_b_c_schema: SchemaBranch) -> None:
+        """Every A→C route requires at least one ``b__c`` hop, which the
+        relationship filter excludes — BFS prunes at that hop."""
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",
             terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindC"})),
             max_depth=5,
-            user_filters=UserFilters(relationship_filter=frozenset({"a__b"})),  # excludes b__c
+            user_filters=UserFilters(relationship_filter=frozenset({"a__b"})),
         )
-        # Every A→C route requires at least one b__c hop, which violates the filter.
         assert plan.routes == ()
-        for pruned in plan.pruned_for_user_filters:
-            assert any(hop.relationship_identifier == "b__c" for hop in pruned.hops)
 
 
 class TestDeterminism:

@@ -4,8 +4,11 @@ from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Any
 
-from infrahub.graph_traversal.path import DEFAULT_EXCLUDED_NAMESPACES
-from infrahub.graph_traversal.planning.constants import MAX_DEPTH, MIN_DEPTH
+from infrahub.graph_traversal.planning.constants import (
+    DEFAULT_EXCLUDED_NAMESPACES,
+    MAX_DEPTH,
+    MIN_DEPTH,
+)
 
 
 class HopDirection(IntEnum):
@@ -121,16 +124,7 @@ class Plan:
     source_kind: str
     terminal_predicate: TerminalPredicate
     max_depth: int
-    pruned_for_permission: tuple[Route, ...] = ()
-    pruned_for_user_filters: tuple[Route, ...] = ()
 
     def __post_init__(self) -> None:
         if not MIN_DEPTH <= self.max_depth <= MAX_DEPTH:
             raise ValueError(f"Plan.max_depth must be in [{MIN_DEPTH}, {MAX_DEPTH}], got {self.max_depth}")
-        overlap_a = set(self.routes) & set(self.pruned_for_permission)
-        overlap_b = set(self.routes) & set(self.pruned_for_user_filters)
-        overlap_c = set(self.pruned_for_permission) & set(self.pruned_for_user_filters)
-        if overlap_a or overlap_b or overlap_c:
-            raise ValueError(
-                "Plan.routes, pruned_for_permission, and pruned_for_user_filters must be mutually exclusive"
-            )

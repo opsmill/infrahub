@@ -69,20 +69,26 @@ A `Plan` as defined in the data model. Always returned (never raises for "no pat
 
 ## Behavior — required
 
-1. **Enumeration**:
-   - Iteratively expand from `source_kind` hop-by-hop up to `max_depth`.
+1. **Source permission gate**: validate `max_depth`, `source_kind`, and (for both terminal-predicate variants) terminal kinds exist in `schema_branch`. Then check `permission_cache.can_view(source_kind)` — if denied, return a `Plan` with empty `routes` without running BFS. Every viable route would start at the source, so a forbidden source has no possible plan.
+2. **BFS with inline pruning**: iteratively expand from `source_kind` hop-by-hop up to `max_depth`. For each candidate peer, `_step` evaluates the following filters in order and drops the entire downstream subtree (no route emitted, no frontier extension) on the first violation:
+   - **Revisit rule**: when `UserFilters.allow_schema_revisits` is `False`, prune peers already in the path's intermediate set. The single boundary case `peer == source_kind` is emitted as a route (same-kind source/terminal queries) but not extended further.
+   - **Permission**: `permission_cache.can_view(peer_kind)` must be `True`. The cache memoizes per kind, so repeated checks are O(1).
+   - **`excluded_kinds`**: peer must not be in the set. No exemption.
+   - **`excluded_namespaces`**: `schema_branch.get(peer_kind).namespace` must not be in the set. No exemption.
+   - **`relationship_filter`**: when non-empty, the hop's `relationship_identifier` must be in the set. No exemption.
+   - **`kind_filter`**: when non-empty, the peer must be in the set OR match the terminal predicate. A peer that matches the terminal predicate but is not in the filter is *emitted as a route* (terminal exemption) but is not extended (it would become an intermediate of any longer route, which the filter forbids).
+3. **Schema walking**:
    - For each candidate `end_kind`, enumerate all `RelationshipSchema` on the current kind whose `peer` matches the candidate, expanding generic peers to concrete inheritors.
    - The `HopDirection` is copied verbatim from `RelationshipSchema.direction` (`OUTBOUND`, `INBOUND`, or `BIDIR`); the planner does **not** split a `BIDIR` relationship into two routes. Each direction corresponds to a distinct two-edge storage pattern; see [../data-model-schema-planning.md §HopDirection](../data-model-schema-planning.md#hopdirection).
-   - Schema-walking is bidirectional regardless of the recorded `direction`: a `RelationshipSchema` declared on kind A with peer B is considered traversable from A→B *and* from B→A during enumeration. The recorded `direction` value is preserved on each `Hop` so the query builder emits the correct two-edge Cypher pattern.
-   - Terminal acceptance:
-     - For `TerminalById`: a route's `terminal_kind` must match the kind of the destination object. Caller resolves the destination's kind once and passes it via `terminal_predicate` (i.e., `TerminalById.node_id` carries the uuid; the caller MAY also need to communicate the kind — see Caller Contract below).
-     - For `TerminalByKinds`: a route's `terminal_kind` must be in `kinds`.
-2. **Generic expansion**: A `RelationshipSchema` whose `peer` is a generic is expanded to one route per concrete implementor, subject to permission/filter pruning downstream. The generic kind itself never appears in a `Hop`.
-3. **Cycle handling**: When `UserFilters.allow_schema_revisits` is `False` (the default) the planner prunes any candidate route in which a kind appears more than once, except for the single boundary case `route.kinds[0] == route.kinds[-1]` (source kind equals terminal kind). When the setting is `True`, a kind may appear multiple times bounded only by `max_depth`. Routes pruned by the revisit rule go to `pruned_for_user_filters`; the planner does not enumerate further along branches that would already revisit, so the pruning is also a BFS-time efficiency win.
-4. **User-filter pruning**: Apply `UserFilters` before permission pruning. Routes that violate any filter (including the revisit rule) go to `pruned_for_user_filters`.
-5. **Permission pruning**: For each surviving route, query `permission_cache.can_view(kind)` for every kind in `route.kinds`. The cache memoizes per kind, so re-querying the source kind across routes is effectively free. Drop routes with any forbidden kind; record in `pruned_for_permission`.
-6. **Determinism (FR-016)**: After all filtering, sort `routes` lexicographically by `(length, kinds, tuple(hop.relationship_identifier for hop in hops), tuple(hop.direction for hop in hops))`.
-7. **Diagnostic logging**: Emit one `traversal_plan_computed` INFO event and zero or more `traversal_plan_route` DEBUG events per call. Fields per spec FR-014.
+   - Schema-walking is bidirectional regardless of the recorded `direction`: a `RelationshipSchema` declared on kind A with peer B is considered traversable from A→B *and* from B→A during enumeration. The recorded `direction` is preserved on each `Hop` (inverted for reverse walks) so the query builder emits the correct two-edge Cypher pattern.
+4. **Generic expansion**: A `RelationshipSchema` whose `peer` is a generic is expanded to one route per concrete implementor before filter/permission checks. The generic kind itself never appears in a `Hop`.
+5. **Terminal acceptance**:
+   - For `TerminalById`: a route's `terminal_kind` must equal `TerminalById.kind`. The caller resolves the destination's kind once via `NodeManager.get_one(...).get_kind()` and passes it on the predicate so the planner does not need to load the destination node.
+   - For `TerminalByKinds`: a route's `terminal_kind` must be in `kinds`.
+6. **Determinism (FR-016)**: after BFS, sort `routes` lexicographically by `(length, kinds, tuple(hop.relationship_identifier for hop in hops), tuple(int(hop.direction) for hop in hops))`. Cache builds iterate `schema_branch.nodes` in sorted order so the inverse-relationship index is deterministic.
+7. **Diagnostic logging**: emit one `traversal_plan_computed` INFO event and zero or more `traversal_plan_route` DEBUG events per call. Fields per spec FR-014.
+
+**No pruned-route accounting**: the planner does not record what was dropped. Because filter and permission checks run during BFS expansion, an excluded subtree's would-be routes are never constructed in the first place — there's nothing to report. The `Plan` carries only the surviving `routes` plus the input echo (`source_kind`, `terminal_predicate`, `max_depth`).
 
 ## Behavior — forbidden
 

@@ -185,27 +185,23 @@ class SchemaPlanner:
                 if not self._kind_exists(k):
                     raise ValueError(f"terminal kind {k!r} not in schema")
 
-        candidates = self._enumerate_routes(
-            source_kind=source_kind,
-            terminal_predicate=terminal_predicate,
-            max_depth=max_depth,
-            allow_schema_revisits=user_filters.allow_schema_revisits,
-        )
+        if not self._permission_cache.can_view(source_kind):
+            candidates: list[Route] = []
+        else:
+            candidates = self._enumerate_routes(
+                source_kind=source_kind,
+                terminal_predicate=terminal_predicate,
+                max_depth=max_depth,
+                user_filters=user_filters,
+            )
 
-        # User filters first: cheaper than permission checks, reduces the
-        # workload of the permission pass.
-        kept_after_user, pruned_for_user = self._apply_user_filters(candidates, user_filters)
-        kept_after_perm, pruned_for_perm = self._apply_permission_pruning(kept_after_user)
-
-        sorted_routes = tuple(sorted(kept_after_perm, key=_route_sort_key))
+        sorted_routes = tuple(sorted(candidates, key=_route_sort_key))
 
         return Plan(
             routes=sorted_routes,
             source_kind=source_kind,
             terminal_predicate=terminal_predicate,
             max_depth=max_depth,
-            pruned_for_permission=tuple(pruned_for_perm),
-            pruned_for_user_filters=tuple(pruned_for_user),
         )
 
     def _enumerate_routes(
@@ -214,7 +210,7 @@ class SchemaPlanner:
         source_kind: str,
         terminal_predicate: TerminalPredicate,
         max_depth: int,
-        allow_schema_revisits: bool,
+        user_filters: UserFilters,
     ) -> list[Route]:
         """Iterative BFS up to ``max_depth``.
 
@@ -230,6 +226,9 @@ class SchemaPlanner:
         times along a route — only the total hop count is bounded, so cyclic
         schemas produce multiple routes that revisit the same kinds within
         the depth cap.
+
+        ``user_filters`` is consulted inside ``_step`` so excluded peers
+        prune the entire downstream subtree.
         """
         candidates: list[Route] = []
         frontiers: list[_FrontierEntry] = [
@@ -247,7 +246,7 @@ class SchemaPlanner:
                         source_kind=source_kind,
                         terminal_predicate=terminal_predicate,
                         max_depth=max_depth,
-                        allow_schema_revisits=allow_schema_revisits,
+                        user_filters=user_filters,
                     )
                     if route is not None:
                         candidates.append(route)
@@ -266,17 +265,55 @@ class SchemaPlanner:
         source_kind: str,
         terminal_predicate: TerminalPredicate,
         max_depth: int,
-        allow_schema_revisits: bool,
+        user_filters: UserFilters,
     ) -> tuple[Route | None, _FrontierEntry | None]:
         """Process one ``(entry, candidate peer)`` pair during BFS enumeration.
 
         Returns ``(route_or_none, next_entry_or_none)``: a route emitted by
         this step (if the peer matches the terminal predicate), and the
-        next-frontier entry to continue expanding from (if depth and revisit
-        rules permit). Either or both may be ``None``.
+        next-frontier entry to continue expanding from (if depth, revisit,
+        and filter rules permit). Either or both may be ``None``.
+
+        Filter semantics applied here:
+
+        - **Permissions**: if the requester can't view the peer kind, drop
+          the subtree.
+        - ``excluded_namespaces``, ``excluded_kinds``, ``relationship_filter``:
+          no exemption. If the peer (or this hop's identifier) violates one
+          of these, the entire subtree is dropped.
+        - ``kind_filter``: source and terminal are exempt. If the peer is not
+          in ``kind_filter`` AND does not match the terminal predicate, drop
+          the subtree. If it does match the terminal, emit the route but do
+          not extend.
         """
+        allow_schema_revisits = user_filters.allow_schema_revisits
+        is_pruned = False
+
         if not allow_schema_revisits and peer_kind in entry.visited_intermediates:
-            # Revisit — pruning here removes the entire downstream subtree.
+            # Intermediate revisit — pruning here removes the entire downstream subtree.
+            is_pruned = True
+
+        # Permission prune. ``KindPermissionCache`` memoizes per kind, so
+        # repeated checks across BFS frontier entries are O(1) lookups.
+        elif not self._permission_cache.can_view(peer_kind):
+            is_pruned = True
+
+        # No-exemption filter prunes. Dropping a peer here also drops every
+        # route that would have continued through it, which is the whole
+        # point — schemas with large excluded namespaces fan out exponentially.
+        elif user_filters.excluded_kinds and peer_kind in user_filters.excluded_kinds:
+            is_pruned = True
+        elif user_filters.excluded_namespaces and self._namespace_for(peer_kind) in user_filters.excluded_namespaces:
+            is_pruned = True
+        elif user_filters.relationship_filter and identifier not in user_filters.relationship_filter:
+            is_pruned = True
+
+        matches_terminal = _matches_terminal(peer_kind, terminal_predicate)
+        peer_allowed_as_intermediate = not user_filters.kind_filter or peer_kind in user_filters.kind_filter
+        if not peer_allowed_as_intermediate and not matches_terminal:
+            is_pruned = True
+
+        if is_pruned:
             return None, None
 
         new_hop = Hop(
@@ -288,7 +325,7 @@ class SchemaPlanner:
         new_hops = (*entry.hops_so_far, new_hop)
 
         route: Route | None = None
-        if _matches_terminal(peer_kind, terminal_predicate):
+        if matches_terminal:
             route = Route(hops=new_hops, source_kind=source_kind, terminal_kind=peer_kind)
 
         if len(new_hops) >= max_depth:
@@ -296,6 +333,10 @@ class SchemaPlanner:
         if not allow_schema_revisits and peer_kind == source_kind:
             # Source kind at terminal position is allowed above; prevent paths
             # that would put the source kind in an intermediate position.
+            return route, None
+        if not peer_allowed_as_intermediate:
+            # Peer is only allowed via the terminal exemption; extending would
+            # turn it into an intermediate of a longer route.
             return route, None
 
         # The peer becomes the new current; record it so any further revisit
@@ -306,58 +347,6 @@ class SchemaPlanner:
             visited_intermediates=entry.visited_intermediates | {peer_kind},
         )
         return route, next_entry
-
-    def _apply_user_filters(
-        self,
-        candidates: list[Route],
-        filters: UserFilters,
-    ) -> tuple[list[Route], list[Route]]:
-        kept: list[Route] = []
-        pruned: list[Route] = []
-        for route in candidates:
-            if self._route_violates_filters(route, filters):
-                pruned.append(route)
-            else:
-                kept.append(route)
-        return kept, pruned
-
-    def _route_violates_filters(self, route: Route, filters: UserFilters) -> bool:
-        if filters.kind_filter:
-            # Source and terminal are exempt; only intermediate kinds must be in the set.
-            intermediate_kinds = route.kinds[1:-1]
-            for kind in intermediate_kinds:
-                if kind not in filters.kind_filter:
-                    return True
-
-        if filters.excluded_kinds:
-            for kind in route.kinds:
-                if kind in filters.excluded_kinds:
-                    return True
-
-        if filters.excluded_namespaces:
-            for kind in route.kinds:
-                if self._namespace_for(kind) in filters.excluded_namespaces:
-                    return True
-
-        if filters.relationship_filter:
-            for hop in route.hops:
-                if hop.relationship_identifier not in filters.relationship_filter:
-                    return True
-
-        return False
-
-    def _apply_permission_pruning(
-        self,
-        candidates: list[Route],
-    ) -> tuple[list[Route], list[Route]]:
-        kept: list[Route] = []
-        pruned: list[Route] = []
-        for route in candidates:
-            if any(not self._permission_cache.can_view(kind) for kind in route.kinds):
-                pruned.append(route)
-            else:
-                kept.append(route)
-        return kept, pruned
 
 
 def _matches_terminal(kind: str, terminal_predicate: TerminalPredicate) -> bool:

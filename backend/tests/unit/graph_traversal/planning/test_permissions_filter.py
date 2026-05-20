@@ -43,8 +43,8 @@ def _default_filters() -> UserFilters:
 class TestPermissionPruning:
     def test_route_excluded_when_intermediate_kind_is_forbidden(self) -> None:
         """With ``TestingForbidden`` denied and the default revisit-free policy,
-        the only Source→Target route (through Forbidden) is pruned. No routes
-        survive."""
+        the only Source→Target route (through Forbidden) is pruned at the
+        forbidden peer; no routes survive."""
         schema = build_schema_branch(
             nodes=[
                 _node("Source", relationships=[_rel(name="rel_f", peer="TestingForbidden", identifier="s__f")]),
@@ -60,18 +60,11 @@ class TestPermissionPruning:
             user_filters=_default_filters(),
         )
         assert plan.routes == ()
-        assert plan.pruned_for_permission == (
-            _route_from_hops(
-                _bidir_hop("TestingSource", "TestingForbidden", "s__f"),
-                _bidir_hop("TestingForbidden", "TestingTarget", "f__t"),
-            ),
-        )
 
     def test_route_retained_when_alternate_route_avoids_forbidden_kind(self) -> None:
         """Two structural routes exist (Source→Allowed→Target and
         Source→Forbidden→Target). ``TestingForbidden`` is denied, so only the
-        Allowed route survives — and the Forbidden route is recorded in
-        ``pruned_for_permission`` verbatim."""
+        Allowed route survives."""
         schema = build_schema_branch(
             nodes=[
                 _node(
@@ -99,40 +92,10 @@ class TestPermissionPruning:
                 _bidir_hop("TestingAllowed", "TestingTarget", "a__t"),
             ),
         )
-        assert plan.pruned_for_permission == (
-            _route_from_hops(
-                _bidir_hop("TestingSource", "TestingForbidden", "s__f"),
-                _bidir_hop("TestingForbidden", "TestingTarget", "f__t"),
-            ),
-        )
-
-    def test_pruned_for_permission_records_dropped_routes_exactly(self) -> None:
-        """``pruned_for_permission`` carries the full Route object — kinds,
-        identifiers, and directions — for each dropped route, not just a count."""
-        schema = build_schema_branch(
-            nodes=[
-                _node("Aaa", relationships=[_rel(name="rel_b", peer="TestingBbb", identifier="a__b")]),
-                _node("Bbb", relationships=[_rel(name="rel_c", peer="TestingCcc", identifier="b__c")]),
-                _node("Ccc"),
-            ]
-        )
-        planner = make_planner(schema_branch=schema, denied_kinds={"TestingCcc"})
-        plan = planner.plan(
-            source_kind="TestingAaa",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingCcc"})),
-            max_depth=2,
-            user_filters=_default_filters(),
-        )
-        assert plan.routes == ()
-        assert plan.pruned_for_permission == (
-            _route_from_hops(
-                _bidir_hop("TestingAaa", "TestingBbb", "a__b"),
-                _bidir_hop("TestingBbb", "TestingCcc", "b__c"),
-            ),
-        )
 
     def test_route_excluded_when_source_kind_is_forbidden(self) -> None:
-        """Permission pruning applies to every kind in the route, including the source position."""
+        """A forbidden source short-circuits the whole plan — every route
+        would have to start at the source, so BFS doesn't even run."""
         schema = build_schema_branch(
             nodes=[
                 _node("Source", relationships=[_rel(name="rel_t", peer="TestingTarget", identifier="s__t")]),
@@ -147,9 +110,9 @@ class TestPermissionPruning:
             user_filters=_default_filters(),
         )
         assert plan.routes == ()
-        assert plan.pruned_for_permission == (_route_from_hops(_bidir_hop("TestingSource", "TestingTarget", "s__t")),)
 
     def test_terminal_kind_is_checked(self) -> None:
+        """A forbidden terminal kind is pruned when BFS reaches it as a peer."""
         schema = build_schema_branch(
             nodes=[
                 _node("Source", relationships=[_rel(name="rel_t", peer="TestingTarget", identifier="s__t")]),
@@ -164,4 +127,3 @@ class TestPermissionPruning:
             user_filters=_default_filters(),
         )
         assert plan.routes == ()
-        assert plan.pruned_for_permission == (_route_from_hops(_bidir_hop("TestingSource", "TestingTarget", "s__t")),)

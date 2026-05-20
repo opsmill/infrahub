@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from infrahub.graph_traversal.path import DEFAULT_EXCLUDED_NAMESPACES
+from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES
 from infrahub.graph_traversal.planning.models import (
     Hop,
     HopDirection,
@@ -110,42 +110,6 @@ class TestPlan:
             max_depth=5,
         )
         assert plan.routes == (route,)
-        assert plan.pruned_for_permission == ()
-        assert plan.pruned_for_user_filters == ()
-
-    def test_rejects_route_appearing_in_routes_and_pruned_for_permission(self) -> None:
-        route = self._make_route()
-        with pytest.raises(ValueError, match="mutually exclusive"):
-            Plan(
-                routes=(route,),
-                source_kind="A",
-                terminal_predicate=TerminalById(node_id="uuid", kind="B"),
-                max_depth=5,
-                pruned_for_permission=(route,),
-            )
-
-    def test_rejects_route_appearing_in_routes_and_pruned_for_user_filters(self) -> None:
-        route = self._make_route()
-        with pytest.raises(ValueError, match="mutually exclusive"):
-            Plan(
-                routes=(route,),
-                source_kind="A",
-                terminal_predicate=TerminalById(node_id="uuid", kind="B"),
-                max_depth=5,
-                pruned_for_user_filters=(route,),
-            )
-
-    def test_rejects_route_appearing_in_both_pruned_buckets(self) -> None:
-        route = self._make_route()
-        with pytest.raises(ValueError, match="mutually exclusive"):
-            Plan(
-                routes=(),
-                source_kind="A",
-                terminal_predicate=TerminalById(node_id="uuid", kind="B"),
-                max_depth=5,
-                pruned_for_permission=(route,),
-                pruned_for_user_filters=(route,),
-            )
 
     def test_rejects_max_depth_below_minimum(self) -> None:
         with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
