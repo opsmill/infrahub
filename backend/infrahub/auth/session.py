@@ -1,10 +1,3 @@
-"""In-memory representation of an authenticated session.
-
-Leaf module — only depends on `infrahub.auth.types`. Other layers (notably
-`infrahub.events.models`) import `AccountSession` from here and must be able to do so without
-triggering the auth-package load cycle.
-"""
-
 from __future__ import annotations
 
 from pydantic import BaseModel, PrivateAttr
@@ -42,8 +35,6 @@ class AccountSession(BaseModel):
 
 
 class AnonymousSession(AccountSession):
-    """A session standing in for "no logged-in user"."""
-
     account_id: str = ""
     authenticated: bool = False
     auth_type: AuthType = AuthType.NONE
