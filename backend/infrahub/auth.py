@@ -118,6 +118,7 @@ async def fetch_account_groups_and_roles(
 class ExternalAuthProtocol(StrEnum):
     OAUTH2 = "oauth2"
     OIDC = "oidc"
+    LDAP = "ldap"
 
 
 class ExternalIdentity(BaseModel):
