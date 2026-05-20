@@ -126,12 +126,12 @@ A typed view of the GraphQL inputs the planner uses for plan-level filtering.
 | `excluded_kinds` | `frozenset[str]` | No kind reached during BFS expansion may be in this set; no exemption. | empty |
 | `excluded_namespaces` | `frozenset[str]` | No kind whose namespace is in this set may appear; no exemption. The default set (`Core`, `Internal`, `Builtin`, `Lineage`, `Profile`, `Template`) is defined in `planning/constants.py` and applied by `UserFilters.from_graphql_input` when the caller omits the field. | empty constructor default; `from_graphql_input` always applies the default set, optionally unioned with caller-supplied entries |
 | `relationship_filter` | `frozenset[str]` | If non-empty, every `Hop.relationship_identifier` MUST be in this set; no exemption. | empty |
-| `allow_schema_revisits` | `bool` | If `False` (the default), routes in which a schema kind appears more than once are pruned — with the explicit exception that the source kind may also appear at the terminal position (same-kind source/terminal queries). If `True`, the planner enumerates all routes bounded only by `max_depth`, allowing kinds to repeat anywhere. | `False` |
 
 **Notes**:
 - `UserFilters` is constructed by the GraphQL resolver from `PathTraversalInput` / `ReachableNodesInput` and passed to the planner. The planner does not consult GraphQL types directly (Constitution III — boundary typing).
-- All five fields are consulted *during* BFS expansion in `SchemaPlanner._step`, not after. Excluded peers cause the entire downstream subtree to be skipped — critical for schemas where the unfiltered fan-out is exponential.
+- All four fields are consulted *during* BFS expansion in `SchemaPlanner._step`, not after. Excluded peers cause the entire downstream subtree to be skipped — critical for schemas where the unfiltered fan-out is exponential.
 - `kind_filter` is the only filter with an exemption: a peer that matches `terminal_predicate` is emitted as a route even when not in the filter, but expansion past it is forbidden (it would otherwise become an intermediate of a longer route).
+- The planner does not prune routes that revisit schema kinds. The runtime Cypher uses the planner's `(start_kind, rel_name, end_kind)` adjacency map as a per-hop legality gate and cannot enforce schema-uniqueness on the matched path, so any planner-side revisit pruning would be invisible to query results. Cycles are bounded by `max_depth` alone.
 
 ---
 
@@ -188,7 +188,7 @@ These map to FRs in the spec and are enforced at construction or in tests:
 `Plan` is immutable; there are no state transitions on instances. The transitions worth documenting are the planner's *internal* phases (informational, not part of the data model):
 
 1. **Source permission gate**: if `permission_cache.can_view(source_kind) == False`, skip BFS entirely and return a `Plan` with empty `routes`. Every viable route would start at the source, so a forbidden source has no possible plan.
-2. **BFS with inline pruning**: iterative expansion up to `max_depth` from `source_kind`. For each candidate peer, `_step` consults — in order — the revisit rule, `permission_cache.can_view`, `excluded_kinds`, `excluded_namespaces`, `relationship_filter`, and `kind_filter`. Any violation drops the entire downstream subtree; no candidate `Route` is constructed. Generics are expanded to concrete kinds before the checks run.
+2. **BFS with inline pruning**: iterative expansion up to `max_depth` from `source_kind`. For each candidate peer, `_step` consults — in order — `permission_cache.can_view`, `excluded_kinds`, `excluded_namespaces`, `relationship_filter`, and `kind_filter`. Any violation drops the entire downstream subtree; no candidate `Route` is constructed. Generics are expanded to concrete kinds before the checks run. Kinds may repeat along a route (no revisit pruning) — see the `UserFilters` notes above.
 3. **Sort & freeze**: lexicographic sort of surviving routes; wrap in `Plan`.
 
 The inline pruning is essential: full Infrahub schemas have enough relationships that a naive enumeration-then-filter approach goes exponential at `max_depth ≥ 3` (Core, Internal, Builtin, Profile kinds dominate the fan-out).

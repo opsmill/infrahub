@@ -95,9 +95,10 @@ class TestRouteEnumeration:
         assert plan.routes == (expected,)
 
     def test_finds_multi_hop_route_through_intermediate(self, linear_a_b_c_schema: SchemaBranch) -> None:
-        """With the default ``allow_schema_revisits=False`` filter, A→C over a
-        BIDIR chain returns exactly the direct route — the length-4 BIDIR
-        revisits that would otherwise appear are pruned at BFS time."""
+        """Over a BIDIR chain A↔B↔C with ``max_depth=5``, the planner emits
+        the direct A→B→C route plus the two length-4 revisit variants that
+        also terminate at C: A→B→A→B→C and A→B→C→B→C. Routes are bounded
+        only by ``max_depth`` — kinds may repeat along a route."""
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",
@@ -105,11 +106,15 @@ class TestRouteEnumeration:
             max_depth=5,
             user_filters=_default_filters(),
         )
+        a, b, c = "TestingKindA", "TestingKindB", "TestingKindC"
+        ab = _bidir_hop(a, b, "a__b")
+        ba = _bidir_hop(b, a, "a__b")
+        bc = _bidir_hop(b, c, "b__c")
+        cb = _bidir_hop(c, b, "b__c")
         assert plan.routes == (
-            _route_from_hops(
-                _bidir_hop("TestingKindA", "TestingKindB", "a__b"),
-                _bidir_hop("TestingKindB", "TestingKindC", "b__c"),
-            ),
+            _route_from_hops(ab, bc),
+            _route_from_hops(ab, ba, ab, bc),
+            _route_from_hops(ab, bc, cb, bc),
         )
 
     def test_max_depth_caps_route_length(self) -> None:
@@ -147,14 +152,11 @@ class TestRouteEnumeration:
             _bidir_hop("TestingEee", "TestingFff", "eee__fff"),
         )
 
-    def test_allow_schema_revisits_emits_routes_that_revisit_kinds_within_depth_cap(
-        self, linear_a_b_c_schema: SchemaBranch
-    ) -> None:
-        """With ``allow_schema_revisits=True``, the planner walks each BIDIR
-        schema edge in both directions during enumeration. A route like
-        A→B→A→B is therefore valid: each hop traverses a real schema edge,
-        the same kind may appear multiple times along a route, and only the
-        total hop count is bounded by ``max_depth``.
+    def test_emits_revisit_routes_within_depth_cap(self, linear_a_b_c_schema: SchemaBranch) -> None:
+        """The planner walks each BIDIR schema edge in both directions during
+        enumeration. A route like A→B→A→B is valid: each hop traverses a
+        real schema edge, the same kind may appear multiple times along a
+        route, and only the total hop count is bounded by ``max_depth``.
 
         With ``max_depth=5`` and terminal ``KindB``, this yields seven routes —
         the direct one plus six revisits — sorted by length, then kinds, then
@@ -165,7 +167,7 @@ class TestRouteEnumeration:
             source_kind="TestingKindA",
             terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindB"})),
             max_depth=5,
-            user_filters=UserFilters(allow_schema_revisits=True),
+            user_filters=_default_filters(),
         )
         a, b, c = "TestingKindA", "TestingKindB", "TestingKindC"
         ab = _bidir_hop(a, b, "a__b")
@@ -328,101 +330,6 @@ class TestDirectionPreservation:
         )
 
 
-class TestAllowSchemaRevisits:
-    def test_default_revisit_free_collapses_bidir_cycles_to_direct_route(
-        self, linear_a_b_c_schema: SchemaBranch
-    ) -> None:
-        """With the default ``allow_schema_revisits=False``, the BIDIR chain
-        A↔B↔C produces only the direct A→B route from A toward kind B — the
-        six cyclic variants the planner would otherwise emit are pruned at
-        BFS time."""
-        planner = make_planner(schema_branch=linear_a_b_c_schema)
-        plan = planner.plan(
-            source_kind="TestingKindA",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingKindB"})),
-            max_depth=5,
-            user_filters=_default_filters(),
-        )
-        assert plan.routes == (_route_from_hops(_bidir_hop("TestingKindA", "TestingKindB", "a__b")),)
-
-    def test_same_kind_source_and_terminal_is_allowed_under_default(self) -> None:
-        """The single boundary-case exception: a route may begin and end at
-        the same kind (supporting same-kind source/target queries) — the
-        intermediates still must be distinct and not equal the boundary kind."""
-        schema = build_schema_branch(
-            nodes=[
-                _node(
-                    "Friend",
-                    relationships=[
-                        _rel(name="rel_other", peer="TestingFriend", identifier="friend__friend"),
-                    ],
-                ),
-            ]
-        )
-        planner = make_planner(schema_branch=schema)
-        # Direct Friend→Friend (1-hop self-relationship — terminal kind == source kind).
-        plan = planner.plan(
-            source_kind="TestingFriend",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingFriend"})),
-            max_depth=2,
-            user_filters=_default_filters(),
-        )
-        # The single direct route survives; revisits within the same path are still pruned.
-        assert plan.routes == (_route_from_hops(_bidir_hop("TestingFriend", "TestingFriend", "friend__friend")),)
-
-    def test_same_kind_endpoints_via_intermediate_works_under_default(self) -> None:
-        """A→B→A is allowed under the default revisit-free policy when the
-        terminal kind matches the source kind. The intermediate (B) is
-        distinct from the boundary kind (A), so the route is not a revisit."""
-        schema = build_schema_branch(
-            nodes=[
-                _node("Aaa", relationships=[_rel(name="rel_b", peer="TestingBbb", identifier="a__b")]),
-                _node("Bbb"),
-            ]
-        )
-        planner = make_planner(schema_branch=schema)
-        plan = planner.plan(
-            source_kind="TestingAaa",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingAaa"})),
-            max_depth=2,
-            user_filters=_default_filters(),
-        )
-        # The A→B→A route survives — A appears at source and terminal positions,
-        # B is a distinct intermediate. Further A→B→A→B→A would put A as an
-        # intermediate (forbidden), so no length-4 routes are emitted.
-        assert plan.routes == (
-            _route_from_hops(
-                _bidir_hop("TestingAaa", "TestingBbb", "a__b"),
-                _bidir_hop("TestingBbb", "TestingAaa", "a__b"),
-            ),
-        )
-
-    def test_self_loop_on_intermediate_kind_is_pruned_under_default(self) -> None:
-        """A self-relationship on a non-source kind must not be walked under
-        the default revisit-free policy: a hop into the same kind we already
-        occupy would put that kind into two consecutive path positions, which
-        is a revisit regardless of whether the second occurrence is an
-        intermediate or the terminal.
-        """
-        schema = build_schema_branch(
-            nodes=[
-                _node("Source", relationships=[_rel(name="rel_loop", peer="TestingLoop", identifier="src__loop")]),
-                _node("Loop", relationships=[_rel(name="rel_self", peer="TestingLoop", identifier="loop__loop")]),
-            ]
-        )
-        planner = make_planner(schema_branch=schema)
-        plan = planner.plan(
-            source_kind="TestingSource",
-            terminal_predicate=TerminalByKinds(kinds=frozenset({"TestingLoop"})),
-            max_depth=5,
-            user_filters=_default_filters(),
-        )
-        # Only the direct Source→Loop route survives. The Source→Loop→Loop
-        # extension (via the loop__loop self-relationship) is an immediate
-        # revisit and must be pruned
-        assert plan.routes == (_route_from_hops(_bidir_hop("TestingSource", "TestingLoop", "src__loop")),)
-
-
 class TestUserFilters:
     def test_default_excluded_namespaces_prune_routes_through_excluded_kinds(self) -> None:
         """A route that traverses a kind in a default-excluded namespace (``Internal``)
@@ -452,9 +359,8 @@ class TestUserFilters:
         assert plan.routes == ()
 
     def test_excluded_kinds_drops_routes_containing_that_kind(self, linear_a_b_c_schema: SchemaBranch) -> None:
-        """With ``excluded_kinds={"TestingKindB"}`` and the default revisit-free
-        policy, the only A→C route requires KindB as an intermediate and is
-        pruned during BFS."""
+        """With ``excluded_kinds={"TestingKindB"}``, every A→C route requires
+        KindB as an intermediate and is pruned during BFS."""
         planner = make_planner(schema_branch=linear_a_b_c_schema)
         plan = planner.plan(
             source_kind="TestingKindA",

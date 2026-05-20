@@ -70,8 +70,7 @@ A `Plan` as defined in the data model. Always returned (never raises for "no pat
 ## Behavior — required
 
 1. **Source permission gate**: validate `max_depth`, `source_kind`, and (for both terminal-predicate variants) terminal kinds exist in `schema_branch`. Then check `permission_cache.can_view(source_kind)` — if denied, return a `Plan` with empty `routes` without running BFS. Every viable route would start at the source, so a forbidden source has no possible plan.
-2. **BFS with inline pruning**: iteratively expand from `source_kind` hop-by-hop up to `max_depth`. For each candidate peer, `_step` evaluates the following filters in order and drops the entire downstream subtree (no route emitted, no frontier extension) on the first violation:
-   - **Revisit rule**: when `UserFilters.allow_schema_revisits` is `False`, prune peers already in the path's intermediate set. The single boundary case `peer == source_kind` is emitted as a route (same-kind source/terminal queries) but not extended further.
+2. **BFS with inline pruning**: iteratively expand from `source_kind` hop-by-hop up to `max_depth`. Kinds may repeat along a route (no revisit pruning) — cycles are bounded by `max_depth`. The rendered Cypher's QPP only enforces per-hop legality from the planner's adjacency map and cannot enforce schema-uniqueness on the matched path, so planner-side revisit pruning would be invisible to query results. For each candidate peer, `_step` evaluates the following filters in order and drops the entire downstream subtree (no route emitted, no frontier extension) on the first violation:
    - **Permission**: `permission_cache.can_view(peer_kind)` must be `True`. The cache memoizes per kind, so repeated checks are O(1).
    - **`excluded_kinds`**: peer must not be in the set. No exemption.
    - **`excluded_namespaces`**: `schema_branch.get(peer_kind).namespace` must not be in the set. No exemption.
