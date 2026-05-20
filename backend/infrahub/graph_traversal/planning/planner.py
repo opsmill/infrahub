@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
 from infrahub.core.constants import RelationshipDirection
 from infrahub.graph_traversal.planning.constants import MAX_DEPTH, MIN_DEPTH
@@ -23,26 +23,29 @@ if TYPE_CHECKING:
     from infrahub.permissions.resolver import PermissionResolver
 
 
-_DIRECTION_FROM_SCHEMA = {
-    RelationshipDirection.OUTBOUND: HopDirection.OUTBOUND,
-    RelationshipDirection.INBOUND: HopDirection.INBOUND,
-    RelationshipDirection.BIDIR: HopDirection.BIDIR,
-}
-
-_DIRECTION_INVERTED = {
-    HopDirection.OUTBOUND: HopDirection.INBOUND,
-    HopDirection.INBOUND: HopDirection.OUTBOUND,
-    HopDirection.BIDIR: HopDirection.BIDIR,
-}
-
-
 def _hop_direction_from_schema(direction: RelationshipDirection) -> HopDirection:
-    return _DIRECTION_FROM_SCHEMA[direction]
+    match direction:
+        case RelationshipDirection.OUTBOUND:
+            return HopDirection.OUTBOUND
+        case RelationshipDirection.INBOUND:
+            return HopDirection.INBOUND
+        case RelationshipDirection.BIDIR:
+            return HopDirection.BIDIR
+        case _:
+            assert_never(direction)
 
 
 def _invert_direction(direction: HopDirection) -> HopDirection:
     """Flip a Hop's direction for reverse traversal."""
-    return _DIRECTION_INVERTED[direction]
+    match direction:
+        case HopDirection.OUTBOUND:
+            return HopDirection.INBOUND
+        case HopDirection.INBOUND:
+            return HopDirection.OUTBOUND
+        case HopDirection.BIDIR:
+            return HopDirection.BIDIR
+        case _:
+            assert_never(direction)
 
 
 @dataclass(frozen=True, slots=True)
