@@ -8,10 +8,15 @@ the injected lock registry so exactly one row is produced per name. On creation,
 provider name is written verbatim to the new group's `origin` attribute; on reuse, `origin` is
 left untouched. Names that fail the local-name invariants (empty / whitespace-only) are logged
 and skipped; the login completes.
+
+A per-login cap bounds how many new groups one login can spawn. Memberships to already-existing
+groups do NOT consume cap budget. Once the cap is reached, every subsequent matching claim that
+would have required a fresh creation is dropped and the login still completes.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterable
 
 from infrahub.core.constants import InfrahubKind
@@ -29,6 +34,19 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+@dataclass(frozen=True, slots=True)
+class FindOrCreateResult:
+    """Outcome of `AutoCreatedGroupsService._find_or_create`.
+
+    - `group is None`: a non-`CoreAccountGroup` row already holds the name; the claim is skipped.
+    - `group is not None, was_created is False`: an existing reusable group was found.
+    - `group is not None, was_created is True`: a new group was inserted by this call.
+    """
+
+    group: CoreAccountGroup | Node | None
+    was_created: bool
+
+
 class AutoCreatedGroupsService:
     """Find-or-create CoreAccountGroup rows from external claims and assign membership."""
 
@@ -39,25 +57,41 @@ class AutoCreatedGroupsService:
         account: Node,
         provider_name: str,
         lock_registry: InfrahubLockRegistry,
+        max_per_login: int,
         node_manager: type[NodeManager] = NodeManager,
     ) -> None:
         self._db = db
         self._account = account
         self._provider_name = provider_name
         self._lock_registry = lock_registry
+        self._max_per_login = max_per_login
         self._node_manager = node_manager
 
-    async def assign(self, claims: Iterable[str], claim_filter: ClaimFilter) -> tuple[str, ...]:
+    async def assign(
+        self,
+        claims: Iterable[str],
+        claim_filter: ClaimFilter,
+    ) -> tuple[str, ...]:
         """Find-or-create groups for `claims` under `claim_filter` and add the account as member.
 
+        New-creation work is bounded by the per-login cap configured at construction. When the
+        budget is exhausted, claims that would require a brand-new group are silently dropped.
+        Existing-group reuse continues uncapped.
+
         Returns the effective names that resulted in a successful membership, in matching order.
-        An empty tuple means no claim matched the filter or every matched claim was skipped.
+        An empty tuple means auto-creation produced no memberships.
         """
         if not claim_filter.is_active:
             return ()
 
         granted: list[str] = []
-        for name in claim_filter.names_for(claims):
+        new_creations = 0
+        seen: set[str] = set()
+
+        for claim in claims:
+            name = claim_filter.name_for(claim)
+            if name is None:
+                continue
             if not name or name.isspace():
                 log.info(
                     "auth_groups.skip_invalid_effective_name",
@@ -65,37 +99,57 @@ class AutoCreatedGroupsService:
                     effective_name=name,
                 )
                 continue
-
-            group = await self._find_or_create(name)
-            if group is None:
+            if name in seen:
                 continue
+            seen.add(name)
+
+            if new_creations < self._max_per_login:
+                result = await self._find_or_create(name)
+                group = result.group
+                if group is None:
+                    continue
+                if result.was_created:
+                    new_creations += 1
+            else:
+                # Cap exhausted: only allow reuse of an existing row. A claim that would
+                # require a fresh creation is dropped.
+                existing = await self._lookup_by_name(name)
+                if existing is None:
+                    log.info(
+                        "auth_groups.skip_claim_over_per_login_cap",
+                        provider_name=self._provider_name,
+                        effective_name=name,
+                        max_per_login=self._max_per_login,
+                    )
+                    continue
+                group = self._reuse_or_skip(name, existing)
+                if group is None:
+                    continue
 
             await self._add_member(group)
             granted.append(name)
 
         return tuple(granted)
 
-    async def _find_or_create(self, name: str) -> CoreAccountGroup | Node | None:
+    async def _find_or_create(self, name: str) -> FindOrCreateResult:
         """Find a `CoreAccountGroup` named `name`, or create one with `origin = provider_name`.
 
         Serialized through the distributed lock registry under the `auto-create-group` namespace.
-        Returns `None` when a non-`CoreAccountGroup` `CoreGroup`-derived row already exists under
-        that name.
         """
         existing = await self._lookup_by_name(name)
         if existing is not None:
-            return self._reuse_or_skip(name, existing)
+            return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
         lock_key = f"auto-create-group:{name}"
         async with self._lock_registry.get(name=lock_key, namespace="auto-create-group"):
             existing = await self._lookup_by_name(name)
             if existing is not None:
-                return self._reuse_or_skip(name, existing)
+                return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
             group = await Node.init(db=self._db, schema=InfrahubKind.ACCOUNTGROUP)
             await group.new(db=self._db, name=name, origin=self._provider_name)
             await group.save(db=self._db)
-            return group
+            return FindOrCreateResult(group=group, was_created=True)
 
     async def _lookup_by_name(self, name: str) -> Node | None:
         """Return any `CoreGroup`-derived row named `name`, or None."""
