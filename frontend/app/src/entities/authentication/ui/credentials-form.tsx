@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { toast } from "react-toastify";
 
 import InputField from "@/shared/components/form/fields/input.field";
@@ -14,7 +15,7 @@ import { useAuth } from "@/entities/authentication/ui/useAuth";
 export interface CredentialsFormProps {
   onSubmit: (values: { username: string; password: string }) => Promise<UserToken>;
   className?: string;
-  submitLabel?: string;
+  submitLabel?: ReactNode;
 }
 
 function getErrorStatus(error: unknown): number | undefined {
@@ -25,11 +26,30 @@ function getErrorStatus(error: unknown): number | undefined {
   return;
 }
 
+function readBodyMessage(error: unknown): string | undefined {
+  if (!error || typeof error !== "object" || !("body" in error)) return;
+  const { body } = error;
+  if (!body || typeof body !== "object" || !("message" in body)) return;
+  const { message } = body;
+  return typeof message === "string" && message.length > 0 ? message : undefined;
+}
+
+function withServerMessage(template: LoginError, error: unknown): LoginError {
+  const serverMessage = readBodyMessage(error);
+  return serverMessage ? { ...template, message: serverMessage } : template;
+}
+
 function toLoginError(error: unknown): LoginError {
   const status = getErrorStatus(error);
 
   if (status === 401 || status === 404) {
     return LOGIN_ERRORS.invalid_credentials;
+  }
+  if (status === 403) {
+    return withServerMessage(LOGIN_ERRORS.enterprise_required, error);
+  }
+  if (status === 409) {
+    return withServerMessage(LOGIN_ERRORS.account_collision, error);
   }
   if (status !== undefined && status >= 500) {
     return LOGIN_ERRORS.server;

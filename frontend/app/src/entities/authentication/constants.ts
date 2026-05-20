@@ -9,6 +9,14 @@ export const LOGIN_ERRORS: Record<LoginErrorCode, LoginError> = {
     code: "invalid_credentials",
     message: "Invalid username or password",
   },
+  account_collision: {
+    code: "account_collision",
+    message: "An account with this username already exists",
+  },
+  enterprise_required: {
+    code: "enterprise_required",
+    message: "This authentication method requires the enterprise edition",
+  },
   server: {
     code: "server",
     message: "Authentication service unavailable",

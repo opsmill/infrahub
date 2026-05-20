@@ -21,6 +21,20 @@ const ssoProvider: SSOProvider = {
 const configWithSso = (sso: Partial<ConfigAPI["sso"]>): ConfigAPI =>
   ({ sso }) as unknown as ConfigAPI;
 
+const configWith = ({
+  sso,
+  ldap,
+}: {
+  sso?: Partial<ConfigAPI["sso"]>;
+  ldap?: Partial<ConfigAPI["ldap"]>;
+}): ConfigAPI => ({ sso, ldap }) as unknown as ConfigAPI;
+
+const ldapConfig = {
+  enabled: true,
+  display_label: "Sign in with Corp AD",
+  icon: "mdi:microsoft-windows",
+};
+
 beforeEach(() => {
   localStorage.clear();
 });
@@ -90,5 +104,111 @@ describe("LoginMethodPicker", () => {
     const component = await render(<LoginMethodPicker />);
 
     await expect.element(component.getByLabelText("Username")).toBeVisible();
+  });
+
+  test("renders local form and an LDAP toggle showing the custom display label when LDAP is enabled", async () => {
+    vi.mocked(useConfig).mockReturnValue(configWith({ ldap: ldapConfig }));
+
+    const component = await render(<LoginMethodPicker />);
+
+    // Local is the default when no SSO is configured (no method has preferDefault).
+    await expect.element(component.getByLabelText("Username")).toBeVisible();
+    await expect.element(component.getByLabelText("Password")).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Sign in with Corp AD" }))
+      .toBeVisible();
+    expect(component.getByRole("button", { name: /Log in with SSO/ }).elements().length).toBe(0);
+  });
+
+  test("switching to LDAP shows the LDAP form with the custom submit label and a local toggle", async () => {
+    vi.mocked(useConfig).mockReturnValue(configWith({ ldap: ldapConfig }));
+
+    const component = await render(<LoginMethodPicker />);
+
+    await component.getByRole("button", { name: "Sign in with Corp AD" }).click();
+
+    await expect.element(component.getByLabelText("Username")).toBeVisible();
+    await expect.element(component.getByLabelText("Password")).toBeVisible();
+    // The submit button in the LDAP form uses the configured display_label.
+    await expect
+      .element(component.getByRole("button", { name: "Sign in with Corp AD" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Log in with your credentials" }))
+      .toBeVisible();
+  });
+
+  test("with SSO and LDAP both enabled, SSO is the default and local + LDAP appear as toggles", async () => {
+    vi.mocked(useConfig).mockReturnValue(
+      configWith({ sso: { enabled: true, providers: [ssoProvider] }, ldap: ldapConfig })
+    );
+
+    const component = await render(<LoginMethodPicker />);
+
+    await expect
+      .element(component.getByRole("link", { name: "Continue with Google" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Log in with your credentials" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Sign in with Corp AD" }))
+      .toBeVisible();
+  });
+
+  test("switching from SSO to LDAP renders the LDAP form and offers SSO and local toggles", async () => {
+    vi.mocked(useConfig).mockReturnValue(
+      configWith({ sso: { enabled: true, providers: [ssoProvider] }, ldap: ldapConfig })
+    );
+
+    const component = await render(<LoginMethodPicker />);
+
+    await component.getByRole("button", { name: "Sign in with Corp AD" }).click();
+
+    await expect.element(component.getByLabelText("Username")).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Log in with SSO" })).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Log in with your credentials" }))
+      .toBeVisible();
+  });
+
+  test("restores LDAP from localStorage when it is configured", async () => {
+    localStorage.setItem(LAST_USED_METHOD_KEY, "ldap");
+    vi.mocked(useConfig).mockReturnValue(
+      configWith({ sso: { enabled: true, providers: [ssoProvider] }, ldap: ldapConfig })
+    );
+
+    const component = await render(<LoginMethodPicker />);
+
+    // The active method is LDAP — its form is rendered, with the SSO link absent.
+    await expect.element(component.getByLabelText("Username")).toBeVisible();
+    await expect
+      .element(component.getByRole("button", { name: "Sign in with Corp AD" }))
+      .toBeVisible();
+    expect(component.getByRole("link", { name: "Continue with Google" }).elements().length).toBe(0);
+    await expect.element(component.getByRole("button", { name: "Log in with SSO" })).toBeVisible();
+  });
+
+  test("renders multiple SSO provider buttons when several providers are configured", async () => {
+    const githubProvider: SSOProvider = {
+      name: "github",
+      display_label: "GitHub",
+      icon: "mdi:github",
+      protocol: "oauth2",
+      authorize_path: "/api/oauth2/github/authorize",
+      token_path: "/api/oauth2/github/token",
+    };
+    vi.mocked(useConfig).mockReturnValue(
+      configWithSso({ enabled: true, providers: [ssoProvider, githubProvider] })
+    );
+
+    const component = await render(<LoginMethodPicker />);
+
+    await expect
+      .element(component.getByRole("link", { name: "Continue with Google" }))
+      .toBeVisible();
+    await expect
+      .element(component.getByRole("link", { name: "Continue with GitHub" }))
+      .toBeVisible();
   });
 });

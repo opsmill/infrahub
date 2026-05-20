@@ -2,7 +2,44 @@
 
 Location: `frontend/app/src/entities/authentication/`
 
-How the login UI supports multiple authentication methods (local credentials, SSO, and future methods like LDAP) through a single registry.
+How the login UI supports multiple authentication methods (local credentials, SSO, LDAP) through a single registry.
+
+## Folder layout
+
+The entity follows the standard `api/` → `domain/` → `ui/` layering. Operations (`login-with-credentials`, `login-with-ldap`, `logout`, `refresh-access-token`) sit as siblings within each layer; the `auth-methods.tsx` registry is the index of which operations are exposed as login methods.
+
+```text
+authentication/
+├── auth-methods.tsx              # registry: AUTH_METHODS, AuthMethod union, helpers
+├── constants.ts / types.ts / utils.ts
+├── api/
+│   ├── login-with-credentials-from-api.ts
+│   ├── login-with-ldap-from-api.ts
+│   ├── logout-from-api.ts
+│   └── refresh-access-token-from-api.ts
+├── domain/
+│   ├── login-with-credentials.ts
+│   ├── login-with-ldap.ts
+│   ├── logout.ts
+│   └── refresh-access-token.ts
+└── ui/
+    ├── credentials-form.tsx              # shared base
+    ├── ldap-credentials-form.tsx         # ldap UI
+    ├── local-credentials-form.tsx        # local UI
+    ├── login-method-picker.tsx
+    ├── login-sso-buttons.tsx             # sso UI
+    ├── require-auth.tsx
+    ├── useAuth.tsx
+    ├── use-available-auth-methods.ts
+    ├── use-last-used-method.ts
+    └── queries/
+        ├── login-with-credentials.mutation.ts
+        ├── login-with-ldap.mutation.ts
+        ├── logout.mutation.ts
+        └── refresh-access-token.query.ts
+```
+
+Import direction is the entity rule: `ui/ → domain/ → api/`. SSO has no api/domain/queries (it's a redirect link list, not a fetch).
 
 ## The registry
 
@@ -10,7 +47,7 @@ A single `AUTH_METHODS` object in `auth-methods.tsx` is the source of truth for 
 
 ```ts
 type AuthMethodDefinition<TMethod extends AuthMethod> = {
-  toggleLabel: string;                       // "Log in with SSO"
+  toggleLabel: (method: TMethod) => ReactNode; // shown in the picker switch button
   preferDefault: boolean;                    // initial selection when nothing is stored
   resolve: (config: ConfigAPI) => TMethod | null; // null = unavailable for this server
   render: (method: TMethod) => ReactNode;    // the UI for this method
@@ -21,8 +58,9 @@ type AuthMethodDefinition<TMethod extends AuthMethod> = {
 
 ```ts
 export const AUTH_METHODS: AuthMethodRegistry = {
-  local: { toggleLabel: "Log in with your credentials", preferDefault: false, resolve: () => ({ kind: "local" }), render: () => <LocalCredentialsForm /> },
-  sso:   { toggleLabel: "Log in with SSO",              preferDefault: true,  resolve: (c) => c.sso?.enabled && c.sso.providers?.length ? { kind: "sso", providers: c.sso.providers } : null, render: ({ providers }) => <LoginWithSSOButtons providers={providers} /> },
+  local: { toggleLabel: () => "Log in with your credentials", preferDefault: false, resolve: () => ({ kind: "local" }), render: () => <LocalCredentialsForm /> },
+  sso:   { toggleLabel: () => "Log in with SSO",              preferDefault: true,  resolve: (c) => c.sso?.enabled && c.sso.providers?.length ? { kind: "sso", providers: c.sso.providers } : null, render: ({ providers }) => <LoginWithSSOButtons providers={providers} /> },
+  ldap:  { toggleLabel: ({ displayLabel }) => displayLabel,   preferDefault: false, resolve: (c) => c.ldap?.enabled ? { kind: "ldap", displayLabel: c.ldap.display_label, icon: c.ldap.icon } : null, render: ({ displayLabel, icon }) => <LdapCredentialsForm displayLabel={displayLabel} icon={icon} /> },
 };
 ```
 
@@ -64,10 +102,18 @@ useConfig() ─► resolveAvailableAuthMethods(config) ─► AuthMethod[]
 | `ui/credentials-form.tsx` | Endpoint-agnostic username/password form. Takes `onSubmit: (values) => Promise<UserToken>`. Maps thrown errors to `LoginError` and toasts. Calls `useAuth().setToken` on success. |
 | `ui/local-credentials-form.tsx` | Wires `CredentialsForm` to `useLoginWithCredentials()`. |
 | `ui/login-sso-buttons.tsx` | Renders one redirect link per SSO provider. |
+| `ui/ldap-credentials-form.tsx` | Wires `CredentialsForm` to `useLoginWithLdap()`, with the configured `display_label` + `icon` as the submit button. |
 | `ui/useAuth.tsx` | `AuthContext`. `setToken` is the **only** writer of access/refresh tokens to localStorage during interactive login. |
-| `domain/login-with-credentials.ts` | Domain function. Returns `UserToken`; does **not** persist. |
+| `domain/login-with-credentials.ts` | Domain function for local credentials. Returns `UserToken`; does **not** persist. |
+| `api/login-with-credentials-from-api.ts` | Transport. `POST /api/auth/login`, throws on error with `{ status, body }`. |
+| `domain/login-with-ldap.ts` | Domain function for LDAP. Returns `UserToken`. |
+| `api/login-with-ldap-from-api.ts` | Transport. `POST /api/auth/ldap/login`, throws on error with `{ status, body }`. |
+| `domain/logout.ts` | Reads access token, calls api transport, clears localStorage tokens. |
+| `api/logout-from-api.ts` | Transport. `POST /api/auth/logout`. |
 | `domain/refresh-access-token.ts` | Background refresh from API interceptor. Writes localStorage directly (runs outside React). |
-| `ui/queries/login-with-credentials.mutation.ts` | TanStack mutation wrapping the domain function. |
+| `api/refresh-access-token-from-api.ts` | Transport. `POST /api/auth/refresh`. |
+| `ui/queries/login-with-credentials.mutation.ts` | TanStack mutation wrapping the local domain function. |
+| `ui/queries/login-with-ldap.mutation.ts` | TanStack mutation wrapping the LDAP domain function. |
 
 ## Contracts that make adding a method mechanical
 

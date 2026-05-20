@@ -6,7 +6,13 @@ export type User = {
 
 export type UserToken = components["schemas"]["UserToken"];
 
-export type LoginErrorCode = "invalid_credentials" | "network" | "server" | "unknown";
+export type LoginErrorCode =
+  | "invalid_credentials"
+  | "account_collision"
+  | "enterprise_required"
+  | "network"
+  | "server"
+  | "unknown";
 
 export type LoginError = {
   code: LoginErrorCode;
