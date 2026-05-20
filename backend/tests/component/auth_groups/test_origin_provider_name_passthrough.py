@@ -56,9 +56,7 @@ async def test_two_providers_produce_two_groups_with_distinct_origin_values(
     register_core_models_schema: SchemaBranch,
     autocreate_filter_enabled: None,
 ) -> None:
-    """Two distinct providers triggering two separate logins produce two groups whose `origin`
-    values match the configured names verbatim.
-    """
+    """Two providers triggering two logins produce two groups whose `origin` values match the configured names verbatim."""
     azure_identity = ExternalIdentity(
         sub="sub-passthrough-azure",
         provider_name="AzureAD-corp",

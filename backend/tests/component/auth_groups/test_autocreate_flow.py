@@ -106,9 +106,9 @@ class TestAutoCreationWhenFilterEnabled:
         register_core_models_schema: SchemaBranch,
         autocreate_filter_enabled: None,
     ) -> None:
-        """A first-time login with a matching claim creates a local group named from the captured
-        `name` group, with `origin` set to the configured provider name and the user added as a
-        member.
+        """First-time login with a matching claim creates a local group from the captured name.
+
+        `origin` is set to the configured provider name and the user is added as a member.
         """
         identity = _make_identity(sub="sub-autocreate-001", provider_name="AzureAD-corp")
 
@@ -136,9 +136,7 @@ class TestAutoCreationWhenFilterEnabled:
         register_core_models_schema: SchemaBranch,
         autocreate_filter_enabled: None,
     ) -> None:
-        """A second user's login carrying the same external claim reuses the existing group (no
-        duplicate creation) and `origin` is not re-written.
-        """
+        """Second user's login on the same claim reuses the existing group without re-writing `origin`."""
         identity_a = _make_identity(
             sub="sub-autocreate-shared-1", provider_name="AzureAD-corp", display_name="Carol Auto"
         )
@@ -171,9 +169,7 @@ class TestAutoCreationWhenFilterEnabled:
         register_core_models_schema: SchemaBranch,
         autocreate_filter_no_named_capture: None,
     ) -> None:
-        """A pattern without a `name` named capture group uses the full claim string as the local
-        group name.
-        """
+        """A pattern without a `name` named capture group uses the full claim string as the local group name."""
         identity = _make_identity(sub="sub-autocreate-fullclaim", display_name="Eve Auto")
         await signin_sso_account(db=db, external_identity=identity, sso_groups=["network-eng-c"])
 
@@ -188,9 +184,7 @@ class TestAutoCreationWhenFilterEnabled:
         register_core_models_schema: SchemaBranch,
         autocreate_filter_enabled: None,
     ) -> None:
-        """Two claims that resolve to the same effective name within one login produce one
-        membership operation and one group.
-        """
+        """Two claims resolving to the same effective name within one login produce one group and one membership."""
         identity = _make_identity(sub="sub-autocreate-dedup-001", display_name="Frank Auto")
 
         # Both claims match the filter and resolve to the same captured name `dedup-target-1`.
@@ -210,9 +204,7 @@ class TestAutoCreationWhenFilterEnabled:
         register_core_models_schema: SchemaBranch,
         autocreate_filter_enabled: None,
     ) -> None:
-        """Claims that do not match the filter are silently skipped; only matching claims drive
-        group creation.
-        """
+        """Non-matching claims are silently skipped; only matching claims drive group creation."""
         identity = _make_identity(sub="sub-non-matching-001", display_name="Hugo Auto")
 
         await signin_sso_account(
@@ -240,9 +232,10 @@ class TestAutoCreationWhenFilterDisabled:
         register_core_models_schema: SchemaBranch,
         autocreate_filter_disabled: None,
     ) -> None:
-        """When the filter is unset, the auto-creation flow does NOT run and the legacy
-        exact-name-lookup-and-add path is used. Verifies that no group is auto-created from a claim
-        that has no matching pre-existing group.
+        """When the filter is unset, the auto-creation flow does NOT run.
+
+        The legacy exact-name-lookup-and-add path is used instead; no group is auto-created
+        from a claim that has no matching pre-existing group.
         """
         identity = _make_identity(sub="sub-legacy-noop-001", display_name="Greta Legacy")
 
@@ -271,9 +264,9 @@ class TestDefaultGroupFallback:
         autocreate_filter_enabled: None,
         sso_user_default_group_configured: str,
     ) -> None:
-        """Filter active + non-empty claims + zero matches + default configured: user lands in
-        the default group. The non-matching original claims must NOT have become groups
-        (silently-skipped).
+        """Filter active + non-empty claims + zero matches + default configured: user lands in the default group.
+
+        The non-matching original claims must NOT have become groups (silently-skipped).
         """
         default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await default_group.new(db=db, name=sso_user_default_group_configured)
@@ -332,9 +325,9 @@ class TestDefaultGroupFallback:
         autocreate_filter_enabled: None,
         sso_user_default_group_unset: None,
     ) -> None:
-        """Filter active + non-empty claims + zero matches + no default configured: the login
-        completes but the user gets no group membership. This locks down that "no default" is
-        not treated as an error.
+        """Filter active + non-empty claims + zero matches + no default configured: login completes with no membership.
+
+        Locks down that "no default" is not treated as an error.
         """
         identity = _make_identity(sub="sub-no-fallback-1", display_name="Kai NoDefault")
 
@@ -351,9 +344,7 @@ class TestDefaultGroupFallback:
         autocreate_filter_enabled: None,
         sso_user_default_group_configured: str,
     ) -> None:
-        """When at least one claim matches the filter, the auto-created (or reused) group wins
-        and the default group is NOT stacked on top.
-        """
+        """A matched claim wins; the default group is NOT stacked on top of the auto-created group."""
         default_group = await Node.init(db=db, schema=InfrahubKind.ACCOUNTGROUP)
         await default_group.new(db=db, name=sso_user_default_group_configured)
         await default_group.save(db=db)
@@ -426,9 +417,7 @@ class TestPerLoginCap:
         register_core_models_schema: SchemaBranch,
         autocreate_filter_with_low_cap: int,
     ) -> None:
-        """A login carrying more matching claims than the cap creates exactly `cap` groups,
-        completes successfully, and silently drops the surplus.
-        """
+        """A login over the cap creates exactly `cap` groups, completes, and silently drops the surplus."""
         cap = autocreate_filter_with_low_cap  # 2
         identity = _make_identity(sub="sub-cap-001", display_name="Nora Cap")
 

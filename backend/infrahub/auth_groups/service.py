@@ -1,8 +1,7 @@
-"""`AutoCreatedGroupsService` — find-or-create local `CoreAccountGroup` rows for one external
-login's matched claims and add the logging-in account as a member.
+"""Find-or-create local account groups for one external login's matched claims.
 
-For each effective name yielded by the configured `ClaimFilter`, the corresponding
-`CoreAccountGroup` is either looked up or created atomically, and the logging-in account is
+For each effective name yielded by the configured claim filter, the corresponding
+account group is either looked up or created atomically, and the logging-in account is
 added as a member. Concurrent first-logins for the same brand-new claim are serialized through
 the injected lock registry so exactly one row is produced per name. On creation, the configured
 provider name is written verbatim to the new group's `origin` attribute; on reuse, `origin` is

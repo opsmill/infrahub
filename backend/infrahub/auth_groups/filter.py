@@ -1,5 +1,4 @@
-"""A `ClaimFilter` decides which external IdP group claims become local groups, and how to
-name them.
+"""Decide which external IdP group claims become local groups, and how to name them.
 
 Patterns are tried in declared order. The first match per claim wins; subsequent patterns are
 not consulted for that claim. A pattern with a named capture group `(?P<name>...)` yields the
