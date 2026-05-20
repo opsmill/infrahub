@@ -189,7 +189,7 @@ class TestComputedAttribute(TestInfrahubApp):
             branch_name=default_branch.name,
             node_kind="TestingColor",
             object_id=color_obj.id,
-            context=context,
+            context=context.to_event_context(),
         )
 
         tshirt_altered_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)
