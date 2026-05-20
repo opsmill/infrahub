@@ -33,8 +33,7 @@ class EventContext(BaseModel):
     """The slim context carried on every event.
 
     Captures only what events need: which branch the event came from, the account ID of
-    the triggering user, and the current event lineage entry for chain propagation. Built
-    from an `InfrahubContext` at the emission boundary via `InfrahubContext.to_event_context()`.
+    the triggering user, and the current event lineage entry for chain propagation.
     """
 
     branch: EventBranchContext
