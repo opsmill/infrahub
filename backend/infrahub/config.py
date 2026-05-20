@@ -774,6 +774,13 @@ class SecuritySettings(BaseSettings):
         "Use a named capture group `(?P<name>...)` to set the group name; otherwise the "
         "full claim is used. Leave empty to disable auto-creation.",
     )
+    auto_create_groups_max_per_login: int = Field(
+        default=50,
+        ge=1,
+        description="Maximum number of groups that can be auto-created during a single login. "
+        "Once reached, further new groups are skipped (with a warning) but the login "
+        "still succeeds. Adding the user to groups that already exist is not limited.",
+    )
     _auto_create_groups_filter_patterns: tuple[re.Pattern[str], ...] = PrivateAttr(default_factory=tuple)
 
     @field_validator("auto_create_groups_filter", mode="after")
