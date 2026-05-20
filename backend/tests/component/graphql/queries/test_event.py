@@ -18,7 +18,7 @@ from infrahub.events.group_action import GroupMemberAddedEvent
 from infrahub.events.models import EventMeta, EventNode, InfrahubEvent
 from infrahub.events.node_action import NodeCreatedEvent, NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
-from tests.helpers.events import send_events
+from tests.helpers.events import dummy_event_meta, send_events
 from tests.helpers.graphql import graphql
 
 QUERY_EVENT = """
@@ -237,29 +237,29 @@ async def events_data(
             branch_name=BRANCH1_NAME,
             branch_id=str(branch1_id),
             sync_with_git=True,
-            meta=EventMeta.with_dummy_context(branch=branch1),
+            meta=dummy_event_meta(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
             branch_name=BRANCH1_NAME,
             branch_id=str(branch1_id),
-            meta=EventMeta.with_dummy_context(branch=branch1),
+            meta=dummy_event_meta(branch=branch1),
         ),
         "branch2_created": BranchCreatedEvent(
             branch_name=BRANCH2_NAME,
             branch_id=str(branch2_id),
             sync_with_git=False,
-            meta=EventMeta.with_dummy_context(branch=branch2),
+            meta=dummy_event_meta(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
             branch_name=BRANCH2_NAME,
             branch_id=str(branch2_id),
-            meta=EventMeta.with_dummy_context(branch=branch2),
+            meta=dummy_event_meta(branch=branch2),
         ),
         "branch3_created": BranchCreatedEvent(
             branch_name=BRANCH3_NAME,
             branch_id=str(branch3_id),
             sync_with_git=True,
-            meta=EventMeta.with_dummy_context(branch=branch3),
+            meta=dummy_event_meta(branch=branch3),
         ),
         "branch1_mutated1": NodeCreatedEvent(
             kind="BuiltinTag",
