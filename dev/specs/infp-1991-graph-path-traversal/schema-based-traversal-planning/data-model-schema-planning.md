@@ -67,25 +67,24 @@ An ordered sequence of `Hop`s connecting a `source_kind` to a `terminal_kind`.
 
 ### `Plan`
 
-The complete set of `Route`s the planner produced for a request, plus accounting for routes that were pruned (used for diagnostics).
+The set of `Route`s the planner produced for a request.
 
 | Field | Type | Description | Constraint |
 |---|---|---|---|
-| `routes` | `tuple[Route, ...]` | Viable routes that survived all pruning. | Possibly empty. Sorted ascending by `route.length`. |
+| `routes` | `tuple[Route, ...]` | Viable routes that survived all pruning. | Possibly empty. Sorted lexicographically (see Determinism below). |
 | `source_kind` | `str` | Echoed for traceability. | Matches `source_kind` of every route. |
 | `terminal_predicate` | `TerminalPredicate` | What closes a path (specific id vs kind set). | See below. |
 | `max_depth` | `int` | The depth cap used during enumeration. | ∈ [1, 20]. |
-| `pruned_for_permission` | `tuple[Route, ...]` | Routes dropped because some kind on the route was unreadable to the requester. | Possibly empty. For diagnostic logging only. |
-| `pruned_for_user_filters` | `tuple[Route, ...]` | Routes dropped by `kind_filter`, `excluded_kinds`, `excluded_namespaces`, or `relationship_filter`. | Possibly empty. For diagnostic logging only. |
 
 **Invariants**:
 - If `routes` is empty, the query builder MUST short-circuit and the caller MUST return an empty result without executing Cypher (FR-004).
-- The three lists are mutually exclusive in any given request: a route appears in at most one of `routes`, `pruned_for_permission`, `pruned_for_user_filters`.
 - A `Plan` is **immutable** after construction.
+
+**No pruned-route accounting**: the planner does not surface what was pruned. Filters and permission checks are applied *during* BFS expansion (see [contracts/planner.md §Behavior — required](contracts/planner.md#behavior--required)), so pruned subtrees are never enumerated and there are no candidate `Route` objects to record. Diagnostic logging (FR-014) reports route counts only.
 
 **Determinism**: For identical inputs (schema-branch, source_kind, terminal_predicate, max_depth, filters, requester permissions) the `Plan` is byte-identical (FR-016). The planner enforces this by:
 - Iterating `schema_branch` items in alphabetical order by kind name.
-- Sorting routes by `(length, kinds, relationship_identifiers)` lexicographically before constructing the `Plan`.
+- Sorting routes by `(length, kinds, relationship_identifiers, directions)` lexicographically before constructing the `Plan`.
 
 ### `TerminalPredicate` (tagged union)
 
@@ -107,7 +106,7 @@ Per-request, in-memory yes/no answers for "can the requester view kind X." **Int
 
 | Field | Type | Description |
 |---|---|---|
-| `_resolver` | `PermissionResolver` | Loaded by `SchemaPlanner.initialize()` via `PermissionManager.load_for_account(...)`. |
+| `_resolver` | `PermissionResolver` | Injected into `SchemaPlanner.__init__` by the caller. The caller builds it via `PermissionLoader.load(...)` + `PermissionResolver(...)` before constructing the planner. |
 | `_branch` | `Branch` | The branch the request is bound to. |
 | `_schema_branch` | `SchemaBranch` | Used by `can_view` to resolve `kind → namespace` when constructing `ObjectPermission`. |
 | `_decisions` | `dict[str, bool]` | Memoized `kind → can_view` map. Mutated only by the cache itself. |
@@ -115,7 +114,7 @@ Per-request, in-memory yes/no answers for "can the requester view kind X." **Int
 **Public API**:
 - `can_view(kind: str) -> bool` — memoized; constructs an `ObjectPermission(namespace, name, action="view", ...)` from `schema_branch.get(kind).namespace` and `kind`, then defers to the resolver.
 
-**Lifecycle**: Constructed inside `SchemaPlanner.initialize()`; discarded when the planner instance is garbage-collected.
+**Lifecycle**: Constructed eagerly inside `SchemaPlanner.__init__` from the injected `PermissionResolver`; discarded when the planner instance is garbage-collected.
 
 ### `UserFilters`
 
@@ -124,28 +123,31 @@ A typed view of the GraphQL inputs the planner uses for plan-level filtering.
 | Field | Type | Description | Default |
 |---|---|---|---|
 | `kind_filter` | `frozenset[str]` | If non-empty, every intermediate kind in a route MUST be in this set. Source and terminal kinds are exempt. | empty (no constraint) |
-| `excluded_kinds` | `frozenset[str]` | No kind in a route may be in this set. | empty |
-| `excluded_namespaces` | `frozenset[str]` | No kind whose namespace is in this set may appear (with default Core/Internal/Builtin/Lineage/Profile/Template exclusions applied if the input is `None`). | spec-defined defaults |
-| `relationship_filter` | `frozenset[str]` | If non-empty, every `Hop.relationship_identifier` MUST be in this set. | empty |
+| `excluded_kinds` | `frozenset[str]` | No kind reached during BFS expansion may be in this set; no exemption. | empty |
+| `excluded_namespaces` | `frozenset[str]` | No kind whose namespace is in this set may appear; no exemption. The default set (`Core`, `Internal`, `Builtin`, `Lineage`, `Profile`, `Template`) is defined in `planning/constants.py` and applied by `UserFilters.from_graphql_input` when the caller omits the field. | empty constructor default; `from_graphql_input` always applies the default set, optionally unioned with caller-supplied entries |
+| `relationship_filter` | `frozenset[str]` | If non-empty, every `Hop.relationship_identifier` MUST be in this set; no exemption. | empty |
+| `allow_schema_revisits` | `bool` | If `False` (the default), routes in which a schema kind appears more than once are pruned — with the explicit exception that the source kind may also appear at the terminal position (same-kind source/terminal queries). If `True`, the planner enumerates all routes bounded only by `max_depth`, allowing kinds to repeat anywhere. | `False` |
 
 **Notes**:
 - `UserFilters` is constructed by the GraphQL resolver from `PathTraversalInput` / `ReachableNodesInput` and passed to the planner. The planner does not consult GraphQL types directly (Constitution III — boundary typing).
-- The "default namespace exclusion" semantics already exist; this dataclass codifies them as data, not as inline conditionals in the planner.
+- All five fields are consulted *during* BFS expansion in `SchemaPlanner._step`, not after. Excluded peers cause the entire downstream subtree to be skipped — critical for schemas where the unfiltered fan-out is exponential.
+- `kind_filter` is the only filter with an exemption: a peer that matches `terminal_predicate` is emitted as a route even when not in the filter, but expansion past it is forbidden (it would otherwise become an intermediate of a longer route).
 
 ---
 
 ## Entity Relationships
 
-The `SchemaPlanner` lifecycle is **sync `__init__` + explicit async `initialize()` + sync `plan()`**. The async I/O for permission loading is encapsulated inside `initialize()` so callers never touch `KindPermissionCache` directly; calling `plan()` before `initialize()` raises `RuntimeError`. See [contracts/planner.md §Surface](contracts/planner.md#surface).
+The `SchemaPlanner` is fully synchronous from the outside: every dependency (schema view, branch, permission resolver) is injected at construction time. The caller does the one `await` for permission loading itself, before building the planner. Callers never touch `KindPermissionCache` directly; it is constructed by `__init__` from the injected resolver. See [contracts/planner.md §Surface](contracts/planner.md#surface).
 ```text
 GraphQL resolver (backend/infrahub/graphql/queries/{path,reachable}.py):
 
     1. Resolve source/destination objects via NodeManager.get_one(...)
-    2. planner = SchemaPlanner(schema_branch, branch, account_session)
-       await planner.initialize(db=db)
+    2. permissions = await PermissionLoader(account_session=...).load(db=db, branch=branch)
+       resolver = PermissionResolver(permissions=permissions, default_branch_name=registry.default_branch)
+    3. planner = SchemaPlanner(schema_branch=..., branch=..., permission_resolver=resolver)
        plan = planner.plan(source_kind, terminal_predicate, max_depth, user_filters)
-    3. if not plan.routes: return empty result  ← short-circuit (FR-004)
-    4. query = PathTraversalQuery(plan=plan, source_id=..., ...)
+    4. if not plan.routes: return empty result  ← short-circuit (FR-004)
+    5. query = PathTraversalQuery(plan=plan, source_id=..., ...)
        await query.execute(db=db)
 
 Query class (backend/infrahub/graph_traversal/{path,reachable}.py):
@@ -172,12 +174,12 @@ These map to FRs in the spec and are enforced at construction or in tests:
 
 | Rule | Where enforced | Spec ref |
 |---|---|---|
-| `max_depth` ∈ [1, 20] | `SchemaPlanner.plan` validates before enumeration. | FR-010 |
-| `Plan.routes` empty ⇒ no Cypher executed | Caller (Query class) checks `plan.routes` and short-circuits. | FR-004 |
+| `max_depth` ∈ [1, 20] | `SchemaPlanner.plan` validates before enumeration; `Plan.__post_init__` validates the field. | FR-010 |
+| `Plan.routes` empty ⇒ no Cypher executed | Caller (GraphQL resolver) checks `plan.routes` and short-circuits before instantiating the Query class. | FR-004 |
 | Generated Cypher must reflect *only* `plan.routes` | `render_plan_to_cypher` (in `graph_traversal/_cypher.py`) consumes only `plan.routes`; no fallback. | FR-005 |
-| Every kind in every route is `view`-permitted | `SchemaPlanner` filters via `KindPermissionCache` before constructing `Plan.routes`. | FR-003 |
-| User filters applied at plan time | `SchemaPlanner` consumes `UserFilters` before final route assembly. | FR-009 |
-| Plans deterministic for identical inputs | Planner sorts everything; `Plan` is frozen. | FR-016 |
+| Every kind in every route is `view`-permitted | `SchemaPlanner` consults `KindPermissionCache.can_view` for the source upfront and for every peer during BFS expansion. | FR-003 |
+| User filters applied at plan time | `SchemaPlanner._step` consults `UserFilters` during BFS expansion. | FR-009 |
+| Plans deterministic for identical inputs | Planner walks the inverse index in sorted order and sorts the final route tuple; `Plan` is frozen. | FR-016 |
 
 ---
 
@@ -185,9 +187,8 @@ These map to FRs in the spec and are enforced at construction or in tests:
 
 `Plan` is immutable; there are no state transitions on instances. The transitions worth documenting are the planner's *internal* phases (informational, not part of the data model):
 
-1. **Enumerate**: BFS up to `max_depth` from `source_kind`, expanding generics, producing candidate routes whose terminal matches `terminal_predicate`.
-2. **Filter (user)**: drop routes that violate `UserFilters`; record dropped routes in `pruned_for_user_filters`.
-3. **Filter (permission)**: drop routes containing any kind for which `permission_cache.can_view(kind) == False`; record in `pruned_for_permission`.
-4. **Sort & freeze**: lexicographic sort of surviving routes; wrap in `Plan`.
+1. **Source permission gate**: if `permission_cache.can_view(source_kind) == False`, skip BFS entirely and return a `Plan` with empty `routes`. Every viable route would start at the source, so a forbidden source has no possible plan.
+2. **BFS with inline pruning**: iterative expansion up to `max_depth` from `source_kind`. For each candidate peer, `_step` consults — in order — the revisit rule, `permission_cache.can_view`, `excluded_kinds`, `excluded_namespaces`, `relationship_filter`, and `kind_filter`. Any violation drops the entire downstream subtree; no candidate `Route` is constructed. Generics are expanded to concrete kinds before the checks run.
+3. **Sort & freeze**: lexicographic sort of surviving routes; wrap in `Plan`.
 
-These phases are sequential because user-filter pruning is cheaper than permission lookups, so doing user filtering first reduces the permission-check workload.
+The inline pruning is essential: full Infrahub schemas have enough relationships that a naive enumeration-then-filter approach goes exponential at `max_depth ≥ 3` (Core, Internal, Builtin, Profile kinds dominate the fan-out).
