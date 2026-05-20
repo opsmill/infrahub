@@ -1,4 +1,3 @@
-import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { use, useState } from "react";
@@ -9,8 +8,8 @@ import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
 import SlideOver from "@/shared/components/display/slide-over";
 
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
+import { useGetDiffThread } from "@/entities/diff/ui/queries/get-diff-thread.query";
 import { getPermission } from "@/entities/permission/utils";
-import { GET_OBJECT_THREADS } from "@/entities/proposed-changes/api/getProposedChangesObjectThreads";
 
 import { DiffContext } from ".";
 import { DiffComments } from "./comments";
@@ -24,16 +23,16 @@ export const DiffThread = ({ path }: tDiffThread) => {
   const { node, currentBranch } = use(DiffContext);
   const [showThread, setShowThread] = useState(false);
 
-  const { loading, error, data, refetch } = useQuery(GET_OBJECT_THREADS, {
-    variables: { changeIds: [proposedChangeId!], objectPath: path },
-    skip: !proposedChangeId,
-  });
+  const { isPending, error, data, refetch } = useGetDiffThread(
+    { proposedChangeId: proposedChangeId ?? "", objectPath: path },
+    { enabled: !!proposedChangeId }
+  );
 
-  const thread = data?.CoreObjectThread?.edges?.[0]?.node;
+  const thread = data?.thread;
 
-  const permission = data && getPermission(data?.CoreObjectThread?.permissions?.edges);
+  const permission = data && getPermission(data?.permissions?.edges);
 
-  if (loading || error) {
+  if (isPending || error) {
     return null;
   }
 

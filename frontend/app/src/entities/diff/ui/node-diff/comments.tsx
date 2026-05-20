@@ -1,4 +1,3 @@
-import { useQuery } from "@apollo/client";
 import { use } from "react";
 import { useParams } from "react-router";
 
@@ -8,9 +7,9 @@ import {
 } from "@/shared/config/constants";
 
 import { getThreadLabel } from "@/entities/diff/ui/diff-utils";
+import { useGetDiffComments } from "@/entities/diff/ui/queries/get-diff-comments.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import { GET_OBJECT_THREAD_COMMENTS } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 
@@ -29,10 +28,10 @@ export const DiffComments = (props: tDiffComments) => {
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
 
-  const { loading, error, data, refetch } = useQuery(GET_OBJECT_THREAD_COMMENTS, {
-    variables: { changeIds: [proposedChangeId!], objectPath: path },
-    skip: !proposedChangeId,
-  });
+  const { isPending, error, data, refetch } = useGetDiffComments(
+    { proposedChangeId: proposedChangeId ?? "", objectPath: path },
+    { enabled: !!proposedChangeId }
+  );
 
   const handleRefetch = () => {
     refetch();
@@ -112,9 +111,9 @@ export const DiffComments = (props: tDiffComments) => {
     );
   };
 
-  const thread = data?.CoreObjectThread?.edges?.[0]?.node;
+  const thread = data?.thread;
 
-  if (loading || error) {
+  if (isPending || error) {
     return null;
   }
 

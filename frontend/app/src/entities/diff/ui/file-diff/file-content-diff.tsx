@@ -1,4 +1,3 @@
-import { useQuery } from "@apollo/client";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
@@ -13,7 +12,7 @@ import {
 
 import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
 import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
-import { GET_FILE_THREADS } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
+import { useGetFileContentDiff } from "@/entities/diff/ui/queries/get-file-content-diff.query";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 import "react-diff-view/style/index.css";
@@ -135,12 +134,17 @@ export function FileContentDiff({
     commit: commitTo,
   });
 
-  const { loading, error, data, refetch } = useQuery(GET_FILE_THREADS, {
-    variables: { changeIds: [proposedChangeId!] },
-    skip: !proposedChangeId,
-  });
+  const {
+    isPending: isThreadsPending,
+    error,
+    data,
+    refetch,
+  } = useGetFileContentDiff(
+    { proposedChangeId: proposedChangeId ?? "" },
+    { enabled: !!proposedChangeId }
+  );
 
-  const threads = data?.CoreFileThread?.edges?.map((edge) => edge.node) ?? [];
+  const threads = data?.threads ?? [];
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
@@ -301,7 +305,7 @@ export function FileContentDiff({
     );
   };
 
-  if (loading || isPendingPreviousFile || isPendingNewFile) {
+  if (isThreadsPending || isPendingPreviousFile || isPendingNewFile) {
     return <LoadingIndicator className="p-4" />;
   }
 
