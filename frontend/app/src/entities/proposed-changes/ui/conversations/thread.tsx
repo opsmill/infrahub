@@ -1,4 +1,3 @@
-import { gql, useQuery } from "@apollo/client";
 import { Button } from "@infrahub/ui";
 import { Card } from "@infrahub/ui/card";
 import { useState } from "react";
@@ -15,8 +14,7 @@ import { classNames } from "@/shared/utils/common";
 import { getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import { getPermission } from "@/entities/permission/utils";
+import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 
 import { AddComment } from "./add-comment";
 import { Comment } from "./comment";
@@ -37,12 +35,9 @@ export const Thread = (props: tThread) => {
   const createObject = useCreateObjectMutation();
   const updateObject = useUpdateObjectMutation();
 
-  const { loading, data } = useQuery(
-    gql(getObjectPermissionsQuery(PROPOSED_CHANGES_THREAD_COMMENT_OBJECT))
+  const { isPending, data: permission } = useGetObjectPermissions(
+    PROPOSED_CHANGES_THREAD_COMMENT_OBJECT
   );
-
-  const permission =
-    data && getPermission(data?.[PROPOSED_CHANGES_THREAD_COMMENT_OBJECT]?.permissions?.edges);
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
     setIsLoading(true);
@@ -200,7 +195,7 @@ export const Thread = (props: tThread) => {
           <Button
             variant={"outline"}
             onPress={() => setDisplayAddComment(true)}
-            isDisabled={loading || !permission?.create?.isAllowed}
+            isDisabled={isPending || !permission?.create?.isAllowed}
           >
             Reply
           </Button>
