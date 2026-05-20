@@ -3,7 +3,6 @@ import { Button, type ButtonProps } from "@infrahub/ui";
 import { useMutationState } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
@@ -28,9 +27,6 @@ export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonPro
     updateDiffMutation.mutate(branchName, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
-        graphqlClient.refetchQueries({
-          include: ["GET_PROPOSED_CHANGES_DIFF_SUMMARY"],
-        });
         toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
       },
       onError: (error) => {

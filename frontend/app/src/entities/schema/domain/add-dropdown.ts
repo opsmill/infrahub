@@ -5,14 +5,14 @@ import {
 
 export type AddDropdownParams = AddDropdownFromApiParams;
 
-export interface AddDropdownResult {
+export interface AddDropdownOutcome {
   value: string;
   label: string | null;
   color: string | null;
   description: string | null;
 }
 
-export async function addDropdown(params: AddDropdownParams): Promise<AddDropdownResult> {
+export async function addDropdown(params: AddDropdownParams): Promise<AddDropdownOutcome> {
   const { data, errors } = await addDropdownFromApi(params);
 
   if (errors) {
