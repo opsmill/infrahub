@@ -229,16 +229,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             raise error
 
         infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
+        event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
                 commit=commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
-                meta=EventMeta(
-                    branch=infrahub_branch,
-                    context=InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context(),
-                ),
+                meta=EventMeta(branch=infrahub_branch, context=event_context),
             )
         )
 
@@ -1514,6 +1512,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await artifact.save(request_context=message.context.to_request_context())
 
         event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
+        event_context = message.context.to_event_context()
 
         event = event_class(
             node_id=artifact.id,
@@ -1521,7 +1520,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             target_kind=message.target_kind,
             artifact_definition_id=message.artifact_definition,
             artifact_definition_name=message.artifact_definition_name,
-            meta=EventMeta.from_context(context=message.context.to_event_context(), branch=branch),
+            meta=EventMeta.from_context(context=event_context, branch=branch),
             checksum=checksum,
             checksum_previous=previous_checksum,
             storage_id=storage_id,

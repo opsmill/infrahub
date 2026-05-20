@@ -73,11 +73,12 @@ class BranchCreator:
                 registry.branch[obj.name] = obj
                 await self.component.refresh_schema_hash(branches=[obj.name])
 
+        event_context = context.to_event_context()
         event = BranchCreatedEvent(
             branch_name=obj.name,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=context.to_event_context(), branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=event_context, branch=registry.get_global_branch()),
         )
         await self.event_service.send(event=event)
 
