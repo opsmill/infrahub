@@ -710,6 +710,7 @@ class SchemaBranch:
 
         self.validate_names()
         self.validate_python_keywords()
+        self.validate_no_double_underscores_in_names()
         self.validate_kinds()
         self.validate_restricted_namespaces_from_generic()
         self.validate_computed_attributes()
@@ -1272,6 +1273,35 @@ class SchemaBranch:
                         raise ValueError(
                             f"Python keyword '{relationship.name}' cannot be used as a relationship name on '{node.kind}' when using strict mode"
                         )
+
+    def validate_no_double_underscores_in_names(self) -> None:
+        """Validate that attribute and relationship names do not contain '__'.
+
+        '__' is reserved as the schema path separator (e.g. ``name__value``,
+        ``rel__attr__property``); a name containing it cannot be addressed by
+        the path-splitting logic and must be rejected at load time.
+
+        Raises:
+            ValueError: When an attribute or relationship name contains '__'.
+        """
+        for name in self.all_names:
+            node = self.get(name=name, duplicate=False)
+
+            if node.kind in INTERNAL_SCHEMA_NODE_KINDS:
+                continue
+
+            for attribute in node.attributes:
+                if "__" in attribute.name:
+                    raise ValueError(
+                        f"{node.kind}: '{attribute.name}' cannot be used as an attribute name because"
+                        " it contains '__', which is reserved as the schema path separator."
+                    )
+            for relationship in node.relationships:
+                if "__" in relationship.name:
+                    raise ValueError(
+                        f"{node.kind}: '{relationship.name}' cannot be used as a relationship name"
+                        " because it contains '__', which is reserved as the schema path separator."
+                    )
 
     def _validate_common_parent(self, node: NodeSchema, rel: RelationshipSchema) -> None:
         if not rel.common_parent:
