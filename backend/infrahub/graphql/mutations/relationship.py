@@ -92,7 +92,7 @@ async def _emit_relationship_add_events(
     ):
         return
 
-    event_context = graphql_context.get_context().to_event_context()
+    event_context = graphql_context.to_event_context()
 
     if group_event_type == GroupUpdateType.MEMBERS:
         ancestors = await collect_ancestors(
@@ -302,7 +302,7 @@ class RelationshipRemove(Mutation):
             and graphql_context.service
             and node_changelog.has_changes
         ):
-            event_context = graphql_context.get_context().to_event_context()
+            event_context = graphql_context.to_event_context()
             if group_event_type == GroupUpdateType.MEMBERS:
                 ancestors = await collect_ancestors(
                     db=graphql_context.db,

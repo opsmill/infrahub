@@ -104,7 +104,7 @@ class UpdateDisplayLabel(Mutation):
                 changelog=target_node.node_changelog,
                 fields=["display_label"],
                 meta=EventMeta(
-                    context=graphql_context.get_context().to_event_context(),
+                    context=graphql_context.to_event_context(),
                     initiator_id=WORKER_IDENTITY,
                     request_id=request_id,
                     account_id=graphql_context.active_account_session.account_id,
