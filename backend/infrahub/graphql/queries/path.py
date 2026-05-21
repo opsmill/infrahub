@@ -280,6 +280,7 @@ async def path_traversal_resolver(
             at=graphql_context.at,
             plan=plan,
             source_id=source_id,
+            default_branch_name=registry.default_branch,
             max_paths=max_paths,
         )
         await query.execute(db=graphql_context.db)

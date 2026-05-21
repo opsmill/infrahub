@@ -25,6 +25,7 @@ class PathTraversalQuery(Query):
         *,
         plan: Plan,
         source_id: str,
+        default_branch_name: str,
         max_paths: int = 10,
         **kwargs: Any,
     ) -> None:
@@ -33,6 +34,7 @@ class PathTraversalQuery(Query):
 
         self.plan = plan
         self.source_id = source_id
+        self.default_branch_name = default_branch_name
         self.max_paths = max_paths
 
         super().__init__(**kwargs)
@@ -42,6 +44,7 @@ class PathTraversalQuery(Query):
             plan=self.plan,
             source_id=self.source_id,
             branch=self.branch,
+            default_branch_name=self.default_branch_name,
             at=self.at,
             max_results=self.max_paths,
         )

@@ -19,7 +19,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core import registry
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.graph_traversal.planning.models import Plan, TerminalById
 
@@ -128,6 +127,7 @@ def render_plan_to_cypher(
     plan: Plan,
     source_id: str,
     branch: Branch,
+    default_branch_name: str,
     at: Timestamp,
     max_results: int,
 ) -> RenderedCypher:
@@ -151,10 +151,10 @@ def render_plan_to_cypher(
     end_kinds = sorted({ek for rels in allowed_path_maps.values() for eks in rels.values() for ek in eks})
 
     if branch.is_default:
-        valid_branches = [registry.default_branch, GLOBAL_BRANCH_NAME]
+        valid_branches = [default_branch_name, GLOBAL_BRANCH_NAME]
         qpp_deletion_filter = ""
     else:
-        valid_branches = [registry.default_branch, GLOBAL_BRANCH_NAME, branch.name]
+        valid_branches = [default_branch_name, GLOBAL_BRANCH_NAME, branch.name]
         qpp_deletion_filter = _USER_BRANCH_QPP_DELETION_FILTER
 
     params: dict[str, Any] = {

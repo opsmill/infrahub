@@ -61,6 +61,7 @@ async def test_returns_direct_peer_path_on_default_branch(
         branch=default_branch,
         plan=plan,
         source_id=person.id,
+        default_branch_name=default_branch.name,
     )
     await query.execute(db=db)
     paths = query.get_paths()
@@ -88,6 +89,7 @@ async def test_returns_direct_peer_path_on_non_default_branch(
         branch=feature_branch,
         plan=plan,
         source_id=person.id,
+        default_branch_name=default_branch.name,
     )
     await query.execute(db=db)
     paths = query.get_paths()
