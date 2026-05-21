@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
-import { use, useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router";
 
 import { Tooltip } from "@/shared/components/aria/tooltip";
@@ -11,7 +11,6 @@ import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
 import { useGetDiffThread } from "@/entities/diff/ui/queries/get-diff-thread.query";
 import { getPermission } from "@/entities/permission/utils";
 
-import { DiffContext } from ".";
 import { DiffComments } from "./comments";
 
 type tDiffThread = {
@@ -20,10 +19,9 @@ type tDiffThread = {
 
 export const DiffThread = ({ path }: tDiffThread) => {
   const { proposedChangeId } = useParams();
-  const { node, currentBranch } = use(DiffContext);
   const [showThread, setShowThread] = useState(false);
 
-  const { isPending, error, data, refetch } = useGetDiffThread(
+  const { isLoading, error, data, refetch } = useGetDiffThread(
     { proposedChangeId: proposedChangeId ?? "", objectPath: path },
     { enabled: !!proposedChangeId }
   );
@@ -32,13 +30,13 @@ export const DiffThread = ({ path }: tDiffThread) => {
 
   const permission = data && getPermission(data?.permissions?.edges);
 
-  if (isPending || error) {
+  if (!proposedChangeId || isLoading || error) {
     return null;
   }
 
   const title = (
     <SidePanelTitle title="Conversation" hideBranch>
-      {getThreadTitle(thread, getThreadLabel(node, currentBranch, path))}
+      {getThreadTitle(thread, getThreadLabel(path))}
     </SidePanelTitle>
   );
 

@@ -12,7 +12,7 @@ function extractNodeId(path: string) {
   return match?.[1] ?? null;
 }
 
-function extractNodeProperty(path: string) {
+function extractNodeProperty(path?: string) {
   // Split and drop empty parts to support "/data/..." and "data/..."
   const parts = path?.split("/").filter(Boolean) ?? [];
   // Find "data" segment and drop "data/<id>"
@@ -24,17 +24,8 @@ function extractNodeProperty(path: string) {
   return label;
 }
 
-export const getThreadLabel = (node?: any, currentBranch?: string, path?: string) => {
-  // Get main object name
-  const objectName = node?.display_label && currentBranch && node?.display_label[currentBranch];
-
-  const nodeLabel = extractNodeProperty(path);
-
-  if (objectName) {
-    return `${objectName} > ${nodeLabel}`;
-  }
-
-  return nodeLabel;
+export const getThreadLabel = (path?: string) => {
+  return extractNodeProperty(path);
 };
 
 // Get thread title from the thread or a defined label
