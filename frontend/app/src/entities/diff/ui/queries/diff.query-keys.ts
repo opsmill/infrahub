@@ -46,3 +46,43 @@ export const fileKeys = {
   detail: ({ repositoryId, filePath, commit }: FileKeyParams) =>
     [...fileKeys.all, repositoryId, filePath, commit] as const,
 };
+
+type DiffCommentsKeyParams = {
+  proposedChangeId: string;
+  objectPath: string;
+};
+
+export const diffCommentsKeys = {
+  all: ["diff-comments"] as const,
+  detail: (params: DiffCommentsKeyParams) => [...diffCommentsKeys.all, "detail", params] as const,
+};
+
+type DiffThreadKeyParams = {
+  proposedChangeId: string;
+  objectPath: string;
+};
+
+export const diffThreadKeys = {
+  all: ["diff-thread"] as const,
+  detail: (params: DiffThreadKeyParams) => [...diffThreadKeys.all, "detail", params] as const,
+};
+
+type ArtifactContentDiffKeyParams = {
+  proposedChangeId: string;
+};
+
+export const artifactContentDiffKeys = {
+  all: ["artifact-content-diff"] as const,
+  detail: (params: ArtifactContentDiffKeyParams) =>
+    [...artifactContentDiffKeys.all, "detail", params] as const,
+};
+
+type FileContentDiffKeyParams = {
+  proposedChangeId: string;
+};
+
+export const fileContentDiffKeys = {
+  all: ["file-content-diff"] as const,
+  detail: (params: FileContentDiffKeyParams) =>
+    [...fileContentDiffKeys.all, "detail", params] as const,
+};

@@ -1,6 +1,8 @@
 import { graphql } from "gql.tada";
 
-export const GET_FILE_THREADS = graphql(`
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+const GET_FILE_THREADS = graphql(`
   query GET_FILE_THREADS($changeIds: [ID!]) {
     CoreFileThread(change__ids: $changeIds) {
       count
@@ -47,3 +49,17 @@ export const GET_FILE_THREADS = graphql(`
     }
   }
 `);
+
+export interface GetFileContentDiffFromApiParams {
+  proposedChangeId: string;
+}
+
+export function getFileContentDiffFromApi(params: GetFileContentDiffFromApiParams) {
+  return graphqlClient.query({
+    query: GET_FILE_THREADS,
+    variables: {
+      changeIds: [params.proposedChangeId],
+    },
+    fetchPolicy: "no-cache",
+  });
+}

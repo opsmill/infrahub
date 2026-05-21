@@ -33,7 +33,6 @@ interface ProposedChangeDetailsProps
 export const ProposedChangeDetails = ({
   proposedChangeData,
   metadata,
-  tasksCount,
   className,
   ...props
 }: ProposedChangeDetailsProps) => {

@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { Spinner } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import type { ConflictSelection } from "@/shared/api/graphql/generated/types";
@@ -13,7 +12,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { treeQueryKeys } from "@/entities/diff/ui/queries/diff.query-keys";
 import { useResolveConflictMutation } from "@/entities/diff/ui/queries/resolve-conflict.mutation";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 
 interface ConflictData {
   id: string;
@@ -21,7 +20,7 @@ interface ConflictData {
 }
 
 export const Conflict = ({ id, selectedBranch }: ConflictData) => {
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChange = useProposedChange();
   const { mutate, isPending } = useResolveConflictMutation();
 
   const { isAuthenticated } = useAuth();
@@ -74,7 +73,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
           >
             <Badge variant="green">
               <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.destination_branch?.value ?? "Base Branch"}
+              {proposedChange.destination_branch?.value ?? "Base Branch"}
             </Badge>
           </label>
         </div>
@@ -92,7 +91,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
           >
             <Badge variant="blue">
               <Icon icon="mdi:layers-triple" className="mr-1" />
-              {proposedChangesDetails.source_branch?.value ?? "Diff Branch"}
+              {proposedChange.source_branch?.value ?? "Diff Branch"}
             </Badge>
           </label>
         </div>

@@ -1,6 +1,8 @@
 import { graphql } from "gql.tada";
 
-export const GET_OBJECT_THREADS = graphql(`
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+const GET_OBJECT_THREADS = graphql(`
   query GET_OBJECT_THREADS($changeIds: [ID!], $objectPath: String) {
     CoreObjectThread(change__ids: $changeIds, object_path__value: $objectPath) {
       count
@@ -27,3 +29,19 @@ export const GET_OBJECT_THREADS = graphql(`
     }
   }
 `);
+
+export interface GetDiffThreadFromApiParams {
+  proposedChangeId: string;
+  objectPath: string;
+}
+
+export function getDiffThreadFromApi(params: GetDiffThreadFromApiParams) {
+  return graphqlClient.query({
+    query: GET_OBJECT_THREADS,
+    variables: {
+      changeIds: [params.proposedChangeId],
+      objectPath: params.objectPath,
+    },
+    fetchPolicy: "no-cache",
+  });
+}

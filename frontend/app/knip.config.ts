@@ -13,7 +13,6 @@ const config: KnipConfig = {
     "@betterer/typescript", // for betterer typescript regressions
     "monaco-graphql", // for graphiql,
     "ts-node", // for graphql autocompletion in Jetbrains IDE
-    "vitest-browser-react", // for vitest browser mode
   ],
 
   ignoreExportsUsedInFile: true,
