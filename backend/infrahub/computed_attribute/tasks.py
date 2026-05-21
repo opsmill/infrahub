@@ -8,10 +8,10 @@ from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
@@ -65,7 +65,7 @@ async def process_transform(
     object_id: str,
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
-    context: InfrahubContext,
+    context: EventContext,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[object_id])
@@ -132,7 +132,7 @@ async def process_transform(
                 "kind": node_kind,
                 "attribute": attribute_name,
                 "value": transformed_data,
-                "context_account_id": context.account.account_id,
+                "context_account_id": context.account_id,
             },
             branch_name=branch_name,
         )
@@ -146,7 +146,7 @@ async def trigger_update_python_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 
@@ -177,7 +177,7 @@ async def computed_attribute_jinja2_update_value(
     node_kind: str,
     attribute_name: str,
     template: InfrahubJinja2Template,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -197,7 +197,7 @@ async def computed_attribute_jinja2_update_value(
                 "kind": node_kind,
                 "attribute": attribute_name,
                 "value": value,
-                "context_account_id": context.account.account_id,
+                "context_account_id": context.account_id,
             },
             branch_name=branch_name,
         )
@@ -218,7 +218,7 @@ async def process_jinja2(
     object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
     updated_fields: list[str] | None = None,
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
@@ -305,7 +305,7 @@ async def trigger_update_jinja2_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 
@@ -331,7 +331,7 @@ async def trigger_update_jinja2_computed_attributes(
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup_jinja2(
-    context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
+    context: EventContext, branch_name: str | None = None, event_name: str | None = None
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
@@ -398,7 +398,7 @@ async def computed_attribute_setup_jinja2(
     flow_run_name="Setup computed attributes for Python transforms in task-manager",
 )
 async def computed_attribute_setup_python(
-    context: InfrahubContext,
+    context: EventContext,
     branch_name: str | None = None,
     event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
@@ -467,7 +467,7 @@ async def query_transform_targets(
     branch_name: str,
     node_kind: str,  # noqa: ARG001
     object_id: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)

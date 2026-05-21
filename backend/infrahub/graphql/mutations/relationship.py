@@ -64,6 +64,100 @@ class RelationshipNodesInput(InputObjectType):
     )
 
 
+async def _emit_relationship_add_events(
+    *,
+    graphql_context: GraphqlContext,
+    group_event_type: GroupUpdateType,
+    source: Node,
+    peers: list[EventNode],
+    node_changelog: NodeChangelog,
+    relationship_name: str,
+) -> None:
+    """Schedule background events for an add-relationship mutation.
+
+    Dispatches a single event shape based on ``group_event_type``:
+    - ``MEMBERS``: one ``GroupMemberAddedEvent`` for the source group.
+    - ``MEMBER_OF_GROUPS``: one ``GroupMemberAddedEvent`` per peer group.
+    - otherwise: a ``NodeUpdatedEvent`` for the source plus one per
+      downstream relationship changelog.
+
+    No-op when the GraphQL context lacks background/service/account_session
+    or when ``node_changelog`` has no changes.
+    """
+    if not (
+        graphql_context.background
+        and graphql_context.account_session
+        and graphql_context.service
+        and node_changelog.has_changes
+    ):
+        return
+
+    event_context = graphql_context.to_event_context()
+
+    if group_event_type == GroupUpdateType.MEMBERS:
+        ancestors = await collect_ancestors(
+            db=graphql_context.db,
+            branch=graphql_context.branch,
+            node_kind=source.get_schema().kind,
+            node_id=source.id,
+        )
+        group_add_event = GroupMemberAddedEvent(
+            node_id=source.id,
+            kind=source.get_schema().kind,
+            members=peers,
+            ancestors=ancestors,
+            meta=EventMeta(branch=graphql_context.branch, context=event_context),
+        )
+        graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
+        return
+
+    if group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
+        group_ids = [node.id for node in peers]
+        async with graphql_context.db.start_session() as db:
+            node_kind_query = await NodeGetKindQuery.init(db=db, branch=graphql_context.branch, ids=group_ids)
+            await node_kind_query.execute(db=db)
+            node_kind_map = await node_kind_query.get_node_kind_map()
+
+            for node_id, node_kind in node_kind_map.items():
+                ancestors = await collect_ancestors(
+                    db=graphql_context.db, branch=graphql_context.branch, node_kind=node_kind, node_id=node_id
+                )
+                group_add_event = GroupMemberAddedEvent(
+                    node_id=node_id,
+                    kind=node_kind,
+                    ancestors=ancestors,
+                    members=[EventNode(id=source.get_id(), kind=source.get_kind())],
+                    meta=EventMeta(branch=graphql_context.branch, context=event_context),
+                )
+                graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
+        return
+
+    main_event = NodeUpdatedEvent(
+        kind=source.get_schema().kind,
+        node_id=source.id,
+        changelog=node_changelog,
+        fields=[relationship_name],
+        meta=EventMeta(branch=graphql_context.branch, context=event_context),
+    )
+    relationship_changelogs = RelationshipChangelogGetter(db=graphql_context.db, branch=graphql_context.branch)
+    node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
+
+    events: list[NodeUpdatedEvent] = [main_event]
+    for downstream_changelog in node_changelogs:
+        events.append(
+            NodeUpdatedEvent(
+                kind=downstream_changelog.node_kind,
+                node_id=downstream_changelog.node_id,
+                changelog=downstream_changelog,
+                fields=downstream_changelog.updated_fields,
+                meta=EventMeta.from_parent(parent=main_event),
+            )
+        )
+
+    for event in events:
+        graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+
+
 class RelationshipAdd(Mutation):
     class Arguments:
         data = RelationshipNodesInput(required=True)
@@ -128,76 +222,14 @@ class RelationshipAdd(Mutation):
                 for node in nodes.values():
                     await _apply_profiles(node=node, db=db, branch=graphql_context.branch)
 
-        if (
-            graphql_context.background
-            and graphql_context.account_session
-            and graphql_context.service
-            and node_changelog.has_changes
-        ):
-            if group_event_type == GroupUpdateType.MEMBERS:
-                ancestors = await collect_ancestors(
-                    db=graphql_context.db,
-                    branch=graphql_context.branch,
-                    node_kind=source.get_schema().kind,
-                    node_id=source.id,
-                )
-                group_add_event = GroupMemberAddedEvent(
-                    node_id=source.id,
-                    kind=source.get_schema().kind,
-                    members=peers,
-                    ancestors=ancestors,
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-                )
-                graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
-
-            elif group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
-                group_ids = [node.id for node in peers]
-                async with graphql_context.db.start_session() as db:
-                    node_kind_query = await NodeGetKindQuery.init(db=db, branch=graphql_context.branch, ids=group_ids)
-                    await node_kind_query.execute(db=db)
-                    node_kind_map = await node_kind_query.get_node_kind_map()
-
-                    for node_id, node_kind in node_kind_map.items():
-                        ancestors = await collect_ancestors(
-                            db=graphql_context.db, branch=graphql_context.branch, node_kind=node_kind, node_id=node_id
-                        )
-                        group_add_event = GroupMemberAddedEvent(
-                            node_id=node_id,
-                            kind=node_kind,
-                            ancestors=ancestors,
-                            members=[EventNode(id=source.get_id(), kind=source.get_kind())],
-                            meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-                        )
-                        graphql_context.background.add_task(graphql_context.active_service.event.send, group_add_event)
-
-            else:
-                main_event = NodeUpdatedEvent(
-                    kind=source.get_schema().kind,
-                    node_id=source.id,
-                    changelog=node_changelog,
-                    fields=[relationship_name],
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
-                )
-                relationship_changelogs = RelationshipChangelogGetter(
-                    db=graphql_context.db, branch=graphql_context.branch
-                )
-                node_changelogs = await relationship_changelogs.get_changelogs(primary_changelog=node_changelog)
-
-                events = [main_event]
-
-                for node_changelog in node_changelogs:
-                    meta = EventMeta.from_parent(parent=main_event)
-                    event = NodeUpdatedEvent(
-                        kind=node_changelog.node_kind,
-                        node_id=node_changelog.node_id,
-                        changelog=node_changelog,
-                        fields=node_changelog.updated_fields,
-                        meta=meta,
-                    )
-                    events.append(event)
-
-                for event in events:
-                    graphql_context.background.add_task(graphql_context.active_service.event.send, event)
+        await _emit_relationship_add_events(
+            graphql_context=graphql_context,
+            group_event_type=group_event_type,
+            source=source,
+            peers=peers,
+            node_changelog=node_changelog,
+            relationship_name=relationship_name,
+        )
 
         return cls(ok=True)
 
@@ -270,6 +302,7 @@ class RelationshipRemove(Mutation):
             and graphql_context.service
             and node_changelog.has_changes
         ):
+            event_context = graphql_context.to_event_context()
             if group_event_type == GroupUpdateType.MEMBERS:
                 ancestors = await collect_ancestors(
                     db=graphql_context.db,
@@ -282,7 +315,7 @@ class RelationshipRemove(Mutation):
                     kind=source.get_schema().kind,
                     members=peers,
                     ancestors=ancestors,
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(branch=graphql_context.branch, context=event_context),
                 )
                 graphql_context.background.add_task(graphql_context.active_service.event.send, group_remove_event)
             elif group_event_type == GroupUpdateType.MEMBER_OF_GROUPS:
@@ -300,7 +333,7 @@ class RelationshipRemove(Mutation):
                             node_id=node_id,
                             kind=node_kind,
                             members=[EventNode(id=source.get_id(), kind=source.get_kind())],
-                            meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                            meta=EventMeta(branch=graphql_context.branch, context=event_context),
                         )
                         graphql_context.background.add_task(
                             graphql_context.active_service.event.send, group_remove_event
@@ -311,7 +344,7 @@ class RelationshipRemove(Mutation):
                     node_id=source.id,
                     changelog=node_changelog,
                     fields=[relationship_name],
-                    meta=EventMeta(branch=graphql_context.branch, context=graphql_context.get_context()),
+                    meta=EventMeta(branch=graphql_context.branch, context=event_context),
                 )
 
                 relationship_changelogs = RelationshipChangelogGetter(

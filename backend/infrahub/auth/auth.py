@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from enum import StrEnum
 from typing import TYPE_CHECKING, Any, cast
 
 import bcrypt
 import jwt
-from pydantic import BaseModel, PrivateAttr
+from pydantic import BaseModel
 
 from infrahub import config, lock, models
-from infrahub.auth_groups.filter import ClaimFilter
-from infrahub.auth_groups.service import AutoCreatedGroupsService
+from infrahub.auth.auth_groups import AutoCreatedGroupsService, ClaimFilter
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.config import (
     SecurityOAuth2Google,
     SecurityOAuth2Settings,
@@ -25,6 +25,7 @@ from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole, CoreGenericAccount
 from infrahub.core.registry import registry
 from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError, ProcessingError
+from infrahub.external_protocols import ExternalAuthProtocol  # noqa: TC001
 from infrahub.log import get_logger
 
 if TYPE_CHECKING:
@@ -49,41 +50,6 @@ class AuthResult(BaseModel):
     session_id: uuid.UUID
     groups: list[dict[str, str]]
     roles: list[dict[str, str]]
-
-
-class AuthType(StrEnum):
-    NONE = "none"
-    JWT = "jwt"
-    API = "api"
-
-
-class AccountSession(BaseModel):
-    authenticated: bool = True
-    account_id: str
-    session_id: str | None = None
-    auth_type: AuthType
-
-    _original_account_id: str | None = PrivateAttr(default=None)
-
-    @property
-    def authenticated_by_jwt(self) -> bool:
-        return self.auth_type == AuthType.JWT
-
-    @property
-    def authenticating_account_id(self) -> str:
-        """ID of the account that originally authenticated this session.
-
-        Falls back to `account_id` until `override_account` is called; once a context
-        swap occurs `account_id` reflects the impersonated account, so this is the only
-        stable reference back to the real caller.
-        """
-        return self._original_account_id if self._original_account_id is not None else self.account_id
-
-    def override_account(self, account_id: str) -> None:
-        """Switch the active account, preserving the original on first call."""
-        if self._original_account_id is None:
-            self._original_account_id = self.account_id
-        self.account_id = account_id
 
 
 class SSOStateCache(BaseModel):
@@ -115,12 +81,6 @@ async def fetch_account_groups_and_roles(
         role_names.extend({r.get_id(): r.name.value} for r in roles.values())
 
     return group_names, role_names
-
-
-class ExternalAuthProtocol(StrEnum):
-    OAUTH2 = "oauth2"
-    OIDC = "oidc"
-    LDAP = "ldap"
 
 
 class ExternalIdentity(BaseModel):

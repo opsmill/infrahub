@@ -7,8 +7,8 @@ from infrahub_sdk.graphql import Mutation, Query
 from infrahub_sdk.types import Order
 from prefect import flow
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import InfrahubKind
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.generators.models import (
     GeneratorDefinitionModel,
     RequestGeneratorRun,
@@ -118,7 +118,7 @@ async def add_node_to_group(
     branch_name: str,
     node_id: str,
     group_id: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: EventContext,  # noqa: ARG001
     service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[node_id, group_id])
@@ -140,7 +140,7 @@ async def remove_node_from_group(
     branch_name: str,
     node_id: str,
     group_id: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: EventContext,  # noqa: ARG001
     service: InfrahubServices,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[node_id, group_id])
@@ -162,7 +162,7 @@ async def run_generator(
     branch_name: str,
     node_ids: list[str],
     generator_definition_id: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
 
@@ -185,7 +185,7 @@ async def run_generator_group_event(
     branch_name: str,
     members: list[EventGroupMember],
     generator_definition_id: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     node_ids = [node.id for node in members]
     await add_tags(branches=[branch_name], nodes=node_ids + [generator_definition_id])
@@ -242,7 +242,7 @@ async def _run_generators(
     node_ids: list[str],
     generator_definition_id: str,
     client: InfrahubClient,
-    context: InfrahubContext | None = None,
+    context: EventContext | None = None,
 ) -> None:
     """Fetch generator metadata and submit per-target runs.
 

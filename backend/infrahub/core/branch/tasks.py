@@ -106,10 +106,13 @@ async def migrate_branch(branch: str, context: InfrahubContext, send_events: boo
         await obj.save(db=db)
 
     if send_events:
+        event_context = context.to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             BranchMigratedEvent(
-                branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+                branch_name=obj.name,
+                branch_id=str(obj.uuid),
+                meta=EventMeta(branch=obj, context=event_context),
             )
         )
 
@@ -248,8 +251,9 @@ async def rebase_branch(branch: str, context: InfrahubContext, send_events: bool
     # -------------------------------------------------------------
     # Generate an event to indicate that a branch has been rebased
     # -------------------------------------------------------------
+    event_context = context.to_event_context()
     rebase_event = BranchRebasedEvent(
-        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=context)
+        branch_name=obj.name, branch_id=str(obj.uuid), meta=EventMeta(branch=obj, context=event_context)
     )
     events: list[InfrahubEvent] = [rebase_event]
     changelog_collector = DiffChangelogCollector(
@@ -281,11 +285,12 @@ async def merge_branch(branch: str, context: InfrahubContext, proposed_change_id
 
         obj = await Branch.get_by_name(db=db, name=branch)
         default_branch = await registry.get_branch(db=db, branch=registry.default_branch)
+        event_context = context.to_event_context()
         merge_event = BranchMergedEvent(
             branch_name=obj.name,
             branch_id=str(obj.get_uuid()),
             proposed_change_id=proposed_change_id,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=event_context, branch=registry.get_global_branch()),
         )
 
         merge_locker = MergeLocker()
@@ -518,11 +523,12 @@ async def delete_branch(
 
         await obj.delete(db=db)
 
+        event_context = context.to_event_context()
         event = BranchDeletedEvent(
             branch_name=branch,
             branch_id=str(obj.uuid),
             sync_with_git=obj.sync_with_git,
-            meta=EventMeta.from_context(context=context, branch=registry.get_global_branch()),
+            meta=EventMeta.from_context(context=event_context, branch=registry.get_global_branch()),
             proposed_change_id=proposed_change_id,
         )
 
