@@ -37,11 +37,9 @@ steps:
         exit 1
       }
 
-      ISSUE_JSON=$(gh api "repos/$REPO/issues/$ISSUE_NUMBER")
-      IS_PR=$(echo "$ISSUE_JSON" | jq -r 'if .pull_request then "true" else "false" end')
-
-      if [ "$IS_PR" = "true" ]; then
-        PR_BODY=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" | jq -r '.body // ""')
+      PR_JSON=$(gh api "repos/$REPO/pulls/$ISSUE_NUMBER" 2>/dev/null || echo "")
+      if [ -n "$PR_JSON" ] && [ "$(echo "$PR_JSON" | jq -r '.number // empty')" != "" ]; then
+        PR_BODY=$(echo "$PR_JSON" | jq -r '.body // ""')
 
         if [[ "$PR_BODY" != *"AGENT_TEST_COMPLETE"* ]]; then
           fail "Cannot run /bug-tdd here: PR has no AGENT_TEST_COMPLETE marker."
