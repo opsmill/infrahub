@@ -39,14 +39,14 @@ class EventContext(BaseModel):
 
     branch: EventBranchContext
     account_id: str
-    event: ParentEvent | None = Field(default=None)
+    parent_event: ParentEvent | None = Field(default=None)
 
-    def set_event(self, name: str, id: str) -> None:
-        if self.event:
-            self.event.name = name
-            self.event.id = id
+    def set_parent_event(self, name: str, id: str) -> None:
+        if self.parent_event:
+            self.parent_event.name = name
+            self.parent_event.id = id
         else:
-            self.event = ParentEvent(name=name, id=id)
+            self.parent_event = ParentEvent(name=name, id=id)
 
     def to_event(self) -> dict[str, Any]:
         return self.model_dump(mode="json")
@@ -216,5 +216,5 @@ class InfrahubEvent(BaseModel):
     def update_context(self) -> Self:
         """Update the context object using this event provided that the meta data was created with a context."""
         if self.meta._created_with_context:
-            self.meta.context.set_event(self.event_name, id=self.get_id())
+            self.meta.context.set_parent_event(self.event_name, id=self.get_id())
         return self
