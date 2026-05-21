@@ -6,15 +6,23 @@ from typing import TYPE_CHECKING, Any
 from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
+from infrahub.core import registry
+from infrahub.core.account import ObjectPermission
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
-from infrahub.graph_traversal.path import PathData, PathTraversalQuery
+from infrahub.graph_traversal.path import PathTraversalQuery
+from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES
+from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
+from infrahub.graph_traversal.planning.planner import SchemaPlanner
+from infrahub.permissions.constants import PermissionDecisionFlag
+from infrahub.permissions.resolver import PermissionResolver
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.node import Node
     from infrahub.core.schema import MainSchemaTypes
+    from infrahub.graph_traversal.results import PathData
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -238,25 +246,44 @@ async def path_traversal_resolver(
     if not destination_node:
         raise GraphQLError(f"Destination node not found: {destination_id}")
 
+    user_filters = UserFilters(
+        kind_filter=frozenset(kind_filter),
+        excluded_kinds=frozenset(excluded_kinds),
+        excluded_namespaces=frozenset(
+            excluded_namespaces if excluded_namespaces is not None else DEFAULT_EXCLUDED_NAMESPACES
+        ),
+        relationship_filter=frozenset(relationship_filter),
+    )
     try:
+        planner = SchemaPlanner(
+            schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
+            branch=graphql_context.branch,
+            permission_resolver=_wildcard_allow_resolver(),
+        )
+        plan = planner.plan(
+            source_kind=source_node.get_kind(),
+            terminal_predicate=TerminalById(node_id=destination_id, kind=destination_node.get_kind()),
+            max_depth=int(max_depth),
+            user_filters=user_filters,
+        )
+    except ValueError as exc:
+        raise GraphQLError(str(exc)) from exc
+
+    if plan.is_empty:
+        # No schema route survives planning — return an empty result without
+        # executing any Cypher (FR-004).
+        path_data_list: list[PathData] = []
+    else:
         query = await PathTraversalQuery.init(
             db=graphql_context.db,
             branch=graphql_context.branch,
             at=graphql_context.at,
+            plan=plan,
             source_id=source_id,
-            destination_id=destination_id,
-            max_depth=max_depth,
             max_paths=max_paths,
-            kind_filter=kind_filter,
-            relationship_filter=relationship_filter,
-            excluded_namespaces=excluded_namespaces,
-            excluded_kinds=excluded_kinds,
         )
         await query.execute(db=graphql_context.db)
-    except ValueError as exc:
-        raise GraphQLError(str(exc)) from exc
-
-    path_data_list = query.get_paths()
+        path_data_list = query.get_paths()
 
     all_node_ids: set[str] = {source_id, destination_id}
     for path_data in path_data_list:
@@ -277,6 +304,29 @@ async def path_traversal_resolver(
         "destination": destination_info,
         "count": len(path_data_list),
     }
+
+
+def _wildcard_allow_resolver() -> PermissionResolver:
+    """Build a permissive ``PermissionResolver`` that allows view on any kind.
+
+    Transitional: matches the pre-refactor query's "no permission check"
+    behavior. Phase 3's resolver refactor replaces this with a real
+    ``PermissionLoader.load(...)`` flow scoped to the requester's session.
+    """
+    return PermissionResolver(
+        permissions={
+            "global_permissions": [],
+            "object_permissions": [
+                ObjectPermission(
+                    namespace="*",
+                    name="*",
+                    action="view",
+                    decision=PermissionDecisionFlag.ALLOW_ALL.value,
+                ),
+            ],
+        },
+        default_branch_name=registry.default_branch,
+    )
 
 
 InfrahubPathTraversal = Field(
