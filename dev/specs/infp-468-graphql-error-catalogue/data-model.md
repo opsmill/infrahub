@@ -152,7 +152,7 @@ class BranchNotFoundData(BaseModel):
 ```
 
 - Raised by adopted exception: `BranchNotFoundError`.
-- HTTP status: 404.
+- HTTP status: 400 (mirrors existing `BranchNotFoundError.HTTP_CODE`; semantic 404 is tracked as a follow-up to avoid a REST-side breaking change in v1).
 - Stability: stable.
 
 ### `SCHEMA_NOT_FOUND`
@@ -163,7 +163,7 @@ class SchemaNotFoundData(BaseModel):
 ```
 
 - Raised by adopted exception: `SchemaNotFoundError`.
-- HTTP status: 404.
+- HTTP status: 422 (mirrors existing `SchemaNotFoundError.HTTP_CODE`; semantic 404 is tracked as a follow-up to avoid a REST-side breaking change in v1).
 - Stability: stable.
 
 ### `UNDEFINED_ERROR` (always present fallback)

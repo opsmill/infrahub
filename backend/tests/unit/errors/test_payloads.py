@@ -73,9 +73,9 @@ def test_permission_denied_payload_exposes_only_action_and_resource_kind() -> No
     assert set(schema.get("properties", {})) == expected_fields
 
     with pytest.raises(PydanticValidationError, match=r"identifier"):
-        PermissionDeniedData(action="update", resource_kind="BuiltinTag", identifier="x")  # type: ignore[call-arg]  # ty: ignore[unknown-argument]
+        PermissionDeniedData.model_validate({"action": "update", "resource_kind": "BuiltinTag", "identifier": "x"})
     with pytest.raises(PydanticValidationError, match=r"resource_id"):
-        PermissionDeniedData(action="update", resource_kind="BuiltinTag", resource_id="x")  # type: ignore[call-arg]  # ty: ignore[unknown-argument]
+        PermissionDeniedData.model_validate({"action": "update", "resource_kind": "BuiltinTag", "resource_id": "x"})
 
 
 def test_every_catalogue_entry_has_matching_payload_model() -> None:

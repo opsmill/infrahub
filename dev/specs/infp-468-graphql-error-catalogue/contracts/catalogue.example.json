@@ -110,7 +110,7 @@
     "BRANCH_NOT_FOUND": {
       "description": "The requested branch does not exist.",
       "stability": "stable",
-      "http_status": 404,
+      "http_status": 400,
       "data_schema": {
         "type": "object",
         "title": "BranchNotFoundData",
@@ -124,7 +124,7 @@
     "SCHEMA_NOT_FOUND": {
       "description": "The requested schema kind is not registered in the active schema.",
       "stability": "stable",
-      "http_status": 404,
+      "http_status": 422,
       "data_schema": {
         "type": "object",
         "title": "SchemaNotFoundData",

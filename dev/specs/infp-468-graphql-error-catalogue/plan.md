@@ -14,7 +14,7 @@ v1 ships the nine codes agreed in spec FR-005: `NODE_NOT_FOUND`, `AUTHENTICATION
 
 **Language/Version**: Python 3.12 (backend, SDK), TypeScript 5.9 (frontend)
 **Primary Dependencies**:
-- Backend: FastAPI 0.121, Graphene + graphql-core (custom `format_error`), Pydantic 2.10 (catalogue payload models + JSON Schema export), structlog (FR-018 telemetry).
+- Backend: FastAPI 0.131, Graphene + graphql-core (custom `format_error`), Pydantic 2.12 (catalogue payload models + JSON Schema export), structlog (FR-018 telemetry).
 - Frontend: React 19.2, Apollo Client (already wired via `graphqlClientApollo.tsx`), `json-schema-to-typescript` (new dev dep, ~ small) for binding generation.
 - Tooling: Invoke 2.2 (new tasks `backend.export-error-catalogue`, `frontend.regenerate-error-bindings`, `frontend.check-error-bindings`).
 **Storage**: N/A — no database schema, no migration. The catalogue is in-process Python data exported to a build artefact.
