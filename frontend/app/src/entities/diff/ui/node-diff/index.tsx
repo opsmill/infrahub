@@ -28,7 +28,13 @@ import { MERGE_STATE } from "@/entities/proposed-changes/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
-export const DiffContext = createContext({});
+export interface DiffContextValue {
+  node?: { display_label?: Record<string, string> };
+  currentBranch?: string;
+  refetch?: () => void;
+}
+
+export const DiffContext = createContext<DiffContextValue>({});
 
 type NodeDiffProps = GetDiffSummaryParams;
 
