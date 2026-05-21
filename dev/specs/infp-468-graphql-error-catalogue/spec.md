@@ -1,6 +1,6 @@
 # Feature Specification: Enriched GraphQL Error Catalogue
 
-**Feature Branch**: `graphql-error-catalogue-infp-468`
+**Feature Branch**: `pog-infp-468-initial-error-conversion`
 **Created**: 2026-05-13
 **Last updated**: 2026-05-19
 **Status**: Ready for planning

@@ -1,6 +1,6 @@
 # Implementation Plan: Enriched GraphQL Error Catalogue
 
-**Branch**: `graphql-error-catalogue-infp-468` | **Date**: 2026-05-19 | **Spec**: [spec.md](./spec.md)
+**Branch**: `pog-infp-468-initial-error-conversion` | **Date**: 2026-05-19 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `specs/infp-468-graphql-error-catalogue/spec.md`
 **Companion**: [discovery.md](./discovery.md), [research.md](./research.md), [data-model.md](./data-model.md), [contracts/](./contracts/), [quickstart.md](./quickstart.md)
 
@@ -16,7 +16,7 @@ v1 ships the nine codes agreed in spec FR-005: `NODE_NOT_FOUND`, `AUTHENTICATION
 **Primary Dependencies**:
 - Backend: FastAPI 0.121, Graphene + graphql-core (custom `format_error`), Pydantic 2.10 (catalogue payload models + JSON Schema export), structlog (FR-018 telemetry).
 - Frontend: React 19.2, Apollo Client (already wired via `graphqlClientApollo.tsx`), `json-schema-to-typescript` (new dev dep, ~ small) for binding generation.
-- Tooling: Invoke 2.2 (new tasks `backend.export-error-catalogue`, `frontend.generate-error-bindings`, `frontend.check-error-bindings`).
+- Tooling: Invoke 2.2 (new tasks `backend.export-error-catalogue`, `frontend.regenerate-error-bindings`, `frontend.check-error-bindings`).
 **Storage**: N/A — no database schema, no migration. The catalogue is in-process Python data exported to a build artefact.
 **Testing**: pytest (unit + functional), Vitest (frontend unit), Playwright (E2E for US2 multi-field form + permission routing).
 **Target Platform**: Linux server (backend), evergreen browsers (frontend), Python 3.10+ (SDK consumers).
@@ -131,7 +131,7 @@ frontend/
 
 tasks/
 ├── backend.py                               # Existing — add `export-error-catalogue` task
-├── frontend.py                              # Existing — add `generate-error-bindings`, `check-error-bindings` tasks
+├── frontend.py                              # NEW — host `regenerate-error-bindings` and `check-error-bindings` Invoke tasks
 └── docs.py                                  # Existing — add catalogue docs render step
 
 docs/
@@ -143,7 +143,7 @@ schema/                                       # Existing — committed build art
 └── error-catalogue.json                      # NEW — committed machine-readable schema (FR-006, FR-012)
 
 changelog/
-└── +graphql-error-catalogue.feature.md       # NEW — towncrier fragment, calls out the breaking change
+└── +graphql-error-catalogue.changed.md       # NEW — towncrier fragment (changed section per pyproject.toml), calls out the breaking change
 ```
 
 **Structure Decision**: Web application (Option 2). The backend gets a new `backend/infrahub/errors/` package; the frontend gets a generated bindings file under the existing `shared/api/` convention; tooling is added as Invoke tasks alongside existing ones. The Python SDK lives in the `python_sdk/` submodule and is out of scope for this repo's changes — its bindings are generated and tested in the SDK repository, consuming `schema/error-catalogue.json` as the cross-repo contract.

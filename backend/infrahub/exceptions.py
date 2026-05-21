@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 
 class Error(Exception):
@@ -203,6 +203,7 @@ class TransformNotFoundError(TransformError):
 
 class BranchNotFoundError(Error):
     HTTP_CODE: int = 400
+    CATALOGUE_CODE: ClassVar[str] = "BRANCH_NOT_FOUND"
 
     def __init__(self, identifier: str, message: str | None = None) -> None:
         self.identifier = identifier
@@ -212,6 +213,7 @@ class BranchNotFoundError(Error):
 
 class NodeNotFoundError(Error):
     HTTP_CODE: int = 404
+    CATALOGUE_CODE: ClassVar[str] = "NODE_NOT_FOUND"
 
     def __init__(
         self, node_type: str, identifier: str, branch_name: str | None = None, message: str | None = None
@@ -240,6 +242,7 @@ class ResourceNotFoundError(Error):
 class AuthorizationError(Error):
     HTTP_CODE: int = 401
     message: str = "Access to the requested resource was denied"
+    CATALOGUE_CODE: ClassVar[str | None] = None
 
     def __init__(self, message: str | None = None) -> None:
         self.message = message or self.message
@@ -254,6 +257,7 @@ class ForwardableError(Error):
 
 class PermissionDeniedError(ForwardableError):
     HTTP_CODE: int = 403
+    CATALOGUE_CODE: ClassVar[str] = "PERMISSION_DENIED"
     message: str = "The requested operation was not authorized"
 
     def __init__(self, message: str | None = None) -> None:
@@ -281,6 +285,7 @@ class PoolExhaustedError(Error):
 
 class SchemaNotFoundError(Error):
     HTTP_CODE: int = 422
+    CATALOGUE_CODE: ClassVar[str] = "SCHEMA_NOT_FOUND"
 
     def __init__(self, branch_name: str, identifier: str, message: str | None = None) -> None:
         self.branch_name = branch_name

@@ -193,7 +193,7 @@ Defined formally in [contracts/graphql-error-envelope.md](./contracts/graphql-er
 }
 ```
 
-The `data` object's keys are exactly the fields declared by the corresponding `PayloadModel` (no extras; Pydantic's default config forbids extra fields). Pydantic v2 `model_dump(mode="json")` produces JSON-safe values.
+The `data` object's keys are exactly the fields declared by the corresponding `PayloadModel` (no extras). All payload models MUST set `model_config = {"extra": "forbid"}`; Pydantic v2's default is `ignore`, which would silently drop undocumented fields rather than catch them. Pydantic v2 `model_dump(mode="json")` produces JSON-safe values.
 
 ---
 

@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "infrahub_catalogue_version": "1",
+  "generated_at": "2026-05-21T08:38:32Z",
+  "codes": {
+    "NODE_NOT_FOUND": {
+      "description": "The requested node does not exist in the database.",
+      "stability": "stable",
+      "http_status": 404,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "node_kind": {
+            "title": "Node Kind",
+            "type": "string"
+          },
+          "identifier": {
+            "title": "Identifier",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_kind",
+          "identifier"
+        ],
+        "title": "NodeNotFoundData",
+        "type": "object"
+      }
+    },
+    "AUTHENTICATION_REQUIRED": {
+      "description": "The request requires authentication and none was provided or it was invalid.",
+      "stability": "stable",
+      "http_status": 401,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "AuthenticationRequiredData",
+        "type": "object",
+        "required": []
+      }
+    },
+    "TOKEN_EXPIRED": {
+      "description": "The authentication token has expired and a silent refresh is required.",
+      "stability": "stable",
+      "http_status": 401,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "expired_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Expired At"
+          }
+        },
+        "title": "TokenExpiredData",
+        "type": "object",
+        "required": []
+      }
+    },
+    "PERMISSION_DENIED": {
+      "description": "The authenticated user is not permitted to perform the requested action.",
+      "stability": "stable",
+      "http_status": 403,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Action"
+          },
+          "resource_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Resource Kind"
+          }
+        },
+        "title": "PermissionDeniedData",
+        "type": "object",
+        "required": []
+      }
+    },
+    "ATTRIBUTE_REQUIRED": {
+      "description": "A mandatory node attribute was not provided.",
+      "stability": "stable",
+      "http_status": 422,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "node_kind": {
+            "title": "Node Kind",
+            "type": "string"
+          },
+          "field_name": {
+            "title": "Field Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_kind",
+          "field_name"
+        ],
+        "title": "AttributeRequiredData",
+        "type": "object"
+      }
+    },
+    "ATTRIBUTE_INVALID_TYPE": {
+      "description": "A node attribute received a value that does not match its declared type.",
+      "stability": "stable",
+      "http_status": 422,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "node_kind": {
+            "title": "Node Kind",
+            "type": "string"
+          },
+          "field_name": {
+            "title": "Field Name",
+            "type": "string"
+          },
+          "expected_type": {
+            "title": "Expected Type",
+            "type": "string"
+          },
+          "received_type": {
+            "title": "Received Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_kind",
+          "field_name",
+          "expected_type",
+          "received_type"
+        ],
+        "title": "AttributeInvalidTypeData",
+        "type": "object"
+      }
+    },
+    "ATTRIBUTE_CONSTRAINT_VIOLATION": {
+      "description": "A node attribute value failed a schema-defined constraint (e.g. regex, length, range).",
+      "stability": "evolving",
+      "http_status": 422,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "node_kind": {
+            "title": "Node Kind",
+            "type": "string"
+          },
+          "field_name": {
+            "title": "Field Name",
+            "type": "string"
+          },
+          "constraint": {
+            "title": "Constraint",
+            "type": "string"
+          },
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Detail"
+          }
+        },
+        "required": [
+          "node_kind",
+          "field_name",
+          "constraint"
+        ],
+        "title": "AttributeConstraintViolationData",
+        "type": "object"
+      }
+    },
+    "BRANCH_NOT_FOUND": {
+      "description": "The requested branch does not exist.",
+      "stability": "stable",
+      "http_status": 404,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "branch_name": {
+            "title": "Branch Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "branch_name"
+        ],
+        "title": "BranchNotFoundData",
+        "type": "object"
+      }
+    },
+    "SCHEMA_NOT_FOUND": {
+      "description": "The requested schema kind is not registered in the active schema.",
+      "stability": "stable",
+      "http_status": 404,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SchemaNotFoundData",
+        "type": "object"
+      }
+    },
+    "UNDEFINED_ERROR": {
+      "description": "An error not yet covered by the catalogue. Its occurrence indicates a catalogue gap and should be triaged.",
+      "stability": "stable",
+      "http_status": 500,
+      "data_schema": {
+        "additionalProperties": false,
+        "properties": {},
+        "title": "UndefinedErrorData",
+        "type": "object",
+        "required": []
+      }
+    }
+  }
+}
