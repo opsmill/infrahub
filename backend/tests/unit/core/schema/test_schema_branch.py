@@ -4,54 +4,20 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.core.schema.schema_branch import SchemaBranch
 
 
-class TestDeriveHumanFriendlyIdWithRelationshipOnlyConstraint:
-    """A single-element relationship-only uniqueness_constraint must not crash HFID derivation."""
+def test_single_relationship_uniqueness_constraint(car_person_schema_root: SchemaRoot) -> None:
+    """The HFID derivation must resolve a parent-only constraint without crashing."""
+    car_schema = next(n for n in car_person_schema_root.nodes if n.name == "Car")
+    car_schema.uniqueness_constraints = [["owner"]]
+    for attribute_schema in car_schema.attributes:
+        attribute_schema.unique = False
 
-    @pytest.fixture
-    def processed_branch(self) -> SchemaBranch:
-        schema_root = SchemaRoot(
-            generics=[
-                GenericSchema(
-                    name="Location",
-                    namespace="Testing",
-                    hierarchical=True,
-                    attributes=[
-                        AttributeSchema(name="name", kind="Text"),
-                    ],
-                ),
-            ],
-            nodes=[
-                NodeSchema(
-                    name="Country",
-                    namespace="Testing",
-                    inherit_from=["TestingLocation"],
-                    parent="",
-                    children="TestingSite",
-                ),
-                NodeSchema(
-                    name="Site",
-                    namespace="Testing",
-                    inherit_from=["TestingLocation"],
-                    parent="TestingCountry",
-                    children="",
-                    uniqueness_constraints=[["parent"]],
-                ),
-            ],
-        )
-        branch = SchemaBranch(cache={}, name="test")
-        branch.load_schema(schema=schema_root)
-        branch.process_inheritance()
-        branch.process_hierarchy()
-        branch.add_hierarchy_generic()
-        branch.add_hierarchy_node()
-        return branch
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=car_person_schema_root)
+    schema_branch.process()
 
-    def test_process_human_friendly_id_does_not_raise(self, processed_branch: SchemaBranch) -> None:
-        """The HFID derivation must resolve a parent-only constraint without crashing."""
-        processed_branch.process_human_friendly_id(raise_parsing_errors=True)
-
-        site = processed_branch.get(name="TestingSite", duplicate=False)
-        assert site.human_friendly_id is None
+    processed_car_schema = schema_branch.get(name="TestCar", duplicate=False)
+    assert processed_car_schema.uniqueness_constraints == [["owner"]]
+    assert processed_car_schema.human_friendly_id is None
 
 
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
