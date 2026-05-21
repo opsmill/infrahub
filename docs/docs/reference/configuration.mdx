@@ -202,6 +202,8 @@ Configuration settings for the message bus.
 | `INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS` | None | object | Check nested parameters |
 | `INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS` | Indicates if untrusted Jinja2 filters should be disallowed for computed attributes | boolean | True |
 | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group to which users authenticated via SSO will belong if not provided by identity provider | None | None |
+| `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER` | Regex(es) that decide which external identity-provider group claims become Infrahub groups. Accepts one regex or a list; the first matching pattern wins. Use a named capture group `(?P<name>...)` to set the group name; otherwise the full claim is used. Leave empty to disable auto-creation. | None | None |
+| `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_MAX_PER_LOGIN` | Maximum number of groups that can be auto-created during a single login. Once reached, further new groups are skipped (with a warning) but the login still succeeds. Adding the user to groups that already exist is not limited. | integer | 50 |
 
 ### INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
 
