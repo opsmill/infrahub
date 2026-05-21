@@ -24,6 +24,10 @@ PR synced           ──► reviewer auto-runs → FIX_APPROVED | FIX_CHANGES_
 
 The pipeline uses a single PR throughout: `/bug-tdd` opens it, `/bug-fix` adds the fix to the same branch. To revise a rejected step, re-run the same command on that PR — `/bug-tdd` after `TEST_CHANGES_REQUESTED`, `/bug-fix` after `FIX_CHANGES_REQUESTED`.
 
+### Running the pipeline on community-reported issues
+
+Issues from outside contributors must be approved by an OpsMill maintainer before the pipeline can run on them. A maintainer applies the `state/ai-pipeline-ready` label after reviewing the report; once labeled, anyone can post `/bug-analyze`. The label must stay on for the duration of the pipeline. Maintainer-authored issues skip this step.
+
 ### `/bug-analyze`
 
 - **Where to invoke:** comment on the bug **issue**.
