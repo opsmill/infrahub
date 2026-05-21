@@ -22,6 +22,13 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from infrahub.core.schema import GenericSchema, NodeSchema
+    from infrahub.database import InfrahubDatabase
+
+
+def identifier_of(*, db: InfrahubDatabase, branch: Branch, kind: str, relationship: str) -> str:
+    """Look up a schema relationship's identifier on the live branch view."""
+    schema_branch = db.schema.get_schema_branch(name=branch.name)
+    return schema_branch.get_node(name=kind, duplicate=False).get_relationship(name=relationship).get_identifier()
 
 
 def build_schema_branch(

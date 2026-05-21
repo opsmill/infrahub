@@ -11850,7 +11850,9 @@ input PathTraversalInput {
   destination_id: String!
   """Specific node kinds to exclude from traversal paths."""
   excluded_kinds: [String!]
-  """Namespaces to exclude from traversal. Pass empty list to include all."""
+  """
+  Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input.
+  """
   excluded_namespaces: [String!]
   """Filter to only traverse through nodes of these kinds"""
   kind_filter: [String!]

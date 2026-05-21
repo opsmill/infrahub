@@ -5,7 +5,11 @@ from typing import TYPE_CHECKING, Any
 from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, String
 from graphql import GraphQLError
 
+from infrahub.core import registry
 from infrahub.core.manager import NodeManager
+from infrahub.exceptions import SchemaNotFoundError
+from infrahub.graph_traversal.planning.models import TerminalByKinds, UserFilters
+from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from infrahub.graph_traversal.reachable import ReachableNodesQuery
 from infrahub.graphql.queries.path import (
     PathNodeType,
@@ -19,6 +23,7 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
     from infrahub.core.node import Node
+    from infrahub.graph_traversal.reachable import ReachableNodeData
     from infrahub.graphql.initialization import GraphqlContext
 
 
@@ -57,6 +62,9 @@ async def reachable_nodes_resolver(
     max_depth = data.max_depth or 5
     max_results = data.max_results or 50
 
+    if not target_kinds:
+        raise GraphQLError("At least one target kind is required")
+
     source_node: Node | None = await NodeManager.get_one(
         db=graphql_context.db,
         branch=graphql_context.branch,
@@ -66,21 +74,42 @@ async def reachable_nodes_resolver(
     if not source_node:
         raise GraphQLError(f"Source node not found: {source_id}")
 
+    schema_branch = graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name)
+    for kind in target_kinds:
+        try:
+            schema_branch.get(name=kind, duplicate=False)
+        except SchemaNotFoundError as exc:
+            raise GraphQLError(f"Unknown target kind: {kind}") from exc
+
+    user_filters = UserFilters.from_graphql_input(data)
     try:
+        planner = SchemaPlanner(
+            schema_branch=schema_branch,
+            branch=graphql_context.branch,
+            permission_resolver=graphql_context.active_permissions.resolver,
+        )
+        plan = planner.plan(
+            source_kind=source_node.get_kind(),
+            terminal_predicate=TerminalByKinds(kinds=frozenset(target_kinds)),
+            max_depth=int(max_depth),
+            user_filters=user_filters,
+        )
+    except ValueError as exc:
+        raise GraphQLError(str(exc)) from exc
+
+    reachable_data: list[ReachableNodeData] = []
+    if not plan.is_empty:
         query = await ReachableNodesQuery.init(
             db=graphql_context.db,
             branch=graphql_context.branch,
             at=graphql_context.at,
+            plan=plan,
             source_id=source_id,
-            target_kinds=target_kinds,
-            max_depth=max_depth,
+            default_branch_name=registry.default_branch,
             max_results=max_results,
         )
         await query.execute(db=graphql_context.db)
-    except ValueError as exc:
-        raise GraphQLError(str(exc)) from exc
-
-    reachable_data = query.get_reachable_nodes()
+        reachable_data = query.get_reachable_nodes()
 
     all_ids: set[str] = {source_id}
     for n in reachable_data:
@@ -91,15 +120,14 @@ async def reachable_nodes_resolver(
 
     source_info = _node_payload(node_id=source_node.id, kind=source_node.get_kind(), labels_map=labels_map)
 
-    dependencies = []
-    for n in reachable_data:
-        dependencies.append(
-            {
-                "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),
-                "depth": n.depth,
-                "path": _path_data_to_result(n.path, labels_map, graphql_context),
-            }
-        )
+    dependencies = [
+        {
+            "node": _node_payload(node_id=n.node.uuid, kind=n.node.kind, labels_map=labels_map),
+            "depth": n.depth,
+            "path": _path_data_to_result(n.path, labels_map, graphql_context),
+        }
+        for n in reachable_data
+    ]
 
     return {
         "source": source_info,

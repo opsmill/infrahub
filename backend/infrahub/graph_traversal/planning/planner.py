@@ -6,6 +6,7 @@ from infrahub.graph_traversal.planning.constants import MAX_DEPTH, MIN_DEPTH
 from infrahub.graph_traversal.planning.models import (
     Plan,
     TerminalById,
+    TerminalByKinds,
     TerminalPredicate,
     UserFilters,
 )
@@ -146,6 +147,15 @@ class SchemaPlanner:
             for k in terminal_predicate.kinds:
                 if not self._kind_exists(k):
                     raise ValueError(f"terminal kind {k!r} not in schema")
+        for k in user_filters.kind_filter:
+            if not self._kind_exists(k):
+                raise ValueError(f"kind_filter kind {k!r} not in schema")
+        for k in user_filters.excluded_kinds:
+            if not self._kind_exists(k):
+                raise ValueError(f"excluded_kinds kind {k!r} not in schema")
+
+        terminal_predicate = self._expand_generic_kinds_in_terminal(terminal_predicate)
+        user_filters = self._expand_generic_kinds_in_filters(user_filters)
 
         adjacency: Mapping[str, Mapping[str, frozenset[str]]]
         if not self._permission_cache.can_view(source_kind):
@@ -163,6 +173,37 @@ class SchemaPlanner:
             source_kind=source_kind,
             terminal_predicate=terminal_predicate,
             max_depth=max_depth,
+        )
+
+    def _expand_to_concretes(self, kinds: frozenset[str]) -> frozenset[str]:
+        """Replace each generic in ``kinds`` with its concrete implementors."""
+        return frozenset(concrete for k in kinds for concrete in self._concrete_kinds_for(k))
+
+    def _expand_generic_kinds_in_terminal(self, terminal_predicate: TerminalPredicate) -> TerminalPredicate:
+        if isinstance(terminal_predicate, TerminalByKinds):
+            expanded = self._expand_to_concretes(terminal_predicate.kinds)
+            if expanded != terminal_predicate.kinds:
+                return TerminalByKinds(kinds=expanded)
+        return terminal_predicate
+
+    def _expand_generic_kinds_in_filters(self, user_filters: UserFilters) -> UserFilters:
+        expanded_kind_filter = (
+            self._expand_to_concretes(user_filters.kind_filter)
+            if user_filters.kind_filter
+            else user_filters.kind_filter
+        )
+        expanded_excluded_kinds = (
+            self._expand_to_concretes(user_filters.excluded_kinds)
+            if user_filters.excluded_kinds
+            else user_filters.excluded_kinds
+        )
+        if expanded_kind_filter == user_filters.kind_filter and expanded_excluded_kinds == user_filters.excluded_kinds:
+            return user_filters
+        return UserFilters(
+            kind_filter=expanded_kind_filter,
+            excluded_kinds=expanded_excluded_kinds,
+            excluded_namespaces=user_filters.excluded_namespaces,
+            relationship_filter=user_filters.relationship_filter,
         )
 
     def _build_adjacency(

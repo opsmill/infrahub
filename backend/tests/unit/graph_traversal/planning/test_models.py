@@ -88,13 +88,14 @@ class TestUserFilters:
         assert filters.relationship_filter == frozenset()
         assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)
 
-    def test_from_graphql_input_with_empty_excluded_namespaces_replaces_defaults(self) -> None:
-        """Replacement semantics: empty list = 'include all' (matches GraphQL input doc)."""
+    def test_from_graphql_input_with_empty_excluded_namespaces_keeps_defaults(self) -> None:
+        # Additive: an empty list contributes nothing, defaults still apply.
         data = FakeGraphqlInput(name="empty_excluded", excluded_namespaces=[])
         filters = UserFilters.from_graphql_input(data)
-        assert filters.excluded_namespaces == frozenset() | frozenset(DEFAULT_EXCLUDED_NAMESPACES)
+        assert filters.excluded_namespaces == frozenset(DEFAULT_EXCLUDED_NAMESPACES)
 
-    def test_from_graphql_input_with_user_supplied_excluded_namespaces_replaces_defaults(self) -> None:
+    def test_from_graphql_input_with_user_supplied_excluded_namespaces_unions_with_defaults(self) -> None:
+        # Additive: caller entries are unioned with the default set.
         data = FakeGraphqlInput(name="custom_excluded", excluded_namespaces=["Foo", "Bar"])
         filters = UserFilters.from_graphql_input(data)
         assert filters.excluded_namespaces == frozenset({"Foo", "Bar"}) | frozenset(DEFAULT_EXCLUDED_NAMESPACES)
