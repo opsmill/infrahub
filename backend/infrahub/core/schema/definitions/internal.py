@@ -580,7 +580,7 @@ attribute_schema = SchemaNode(
             description="Indicate if the value of this attribute must be unique in the database for a given model.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="optional",

@@ -53,6 +53,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
     def car_dealership_copy(self) -> Generator[tuple[Path, str]]:
         """Copies car-dealership local repository to a temporary folder, with a new name.
+
         This is needed for this test as using car-dealership folder leads to issues most probably
         related to https://github.com/opsmill/infrahub/issues/4296 as some other tests use this same repository.
         """
@@ -438,7 +439,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
                 assert "Failed to merge branch 'failing_branch'" in exc.value.message
 
     async def test_connectivity(self, db: InfrahubDatabase, initial_dataset: str, client: InfrahubClient) -> None:
-        """Validate that the request to check connectivity to the remote repository is successful"""
+        """Validate that the request to check connectivity to the remote repository is successful."""
         query = """
         mutation InfrahubRepositoryConnectivity($id: String!) {
             InfrahubRepositoryConnectivity(data: {id: $id}) {

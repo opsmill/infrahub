@@ -16,6 +16,7 @@ generic_menu_item = GenericSchema(
     human_friendly_id=["namespace__value", "name__value"],
     display_label="label__value",
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(
             name="namespace",

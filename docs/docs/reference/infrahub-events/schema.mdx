@@ -2,17 +2,12 @@
 title: Schema events
 ---
 
-<!-- vale off -->
 ## Schema Updated Event
-<!-- vale on -->
 
 **Type**: infrahub.schema.updated
 **Description**: Event generated when the schema within a branch has been updated.
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `false`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -27,4 +22,3 @@ title: Schema events
 | **meta.ancestors** | Any event used to trigger this event |
 | **branch_name** | The name of the branch |
 | **schema_hash** | Schema hash after the update |
-<!-- vale on -->

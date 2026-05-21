@@ -102,7 +102,7 @@ class NodeManager:
         partial_match: bool = ...,
         branch_agnostic: bool = ...,
         order: OrderModel | None = ...,
-    ) -> list[Any]: ...
+    ) -> list[Node]: ...
 
     @overload
     @classmethod
@@ -139,7 +139,7 @@ class NodeManager:
         partial_match: bool = False,
         branch_agnostic: bool = False,
         order: OrderModel | None = None,
-    ) -> list[Any]:
+    ) -> list[Node] | list[SchemaProtocol]:
         """Query one or multiple nodes of a given type based on filter arguments.
 
         Args:
@@ -213,7 +213,7 @@ class NodeManager:
         partial_match: bool = False,
         branch_agnostic: bool = False,
     ) -> int:
-        """Return the total number of nodes using a given filter
+        """Return the total number of nodes using a given filter.
 
         Args:
             schema (NodeSchema): Infrahub Schema or Name of a schema present in the registry.
@@ -829,7 +829,7 @@ class NodeManager:
         include_metadata: MetadataQueryOptions | MetadataOptions = ...,
         prefetch_relationships: bool = ...,
         branch_agnostic: bool = ...,
-    ) -> Any: ...
+    ) -> Node: ...
 
     @classmethod
     async def get_one_by_id_or_default_filter(
@@ -843,7 +843,7 @@ class NodeManager:
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
         prefetch_relationships: bool = False,
         branch_agnostic: bool = False,
-    ) -> Any:
+    ) -> Node | SchemaProtocol:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
 
@@ -1350,7 +1350,7 @@ class NodeManager:
         cascade_delete: bool = True,
         user_id: str = SYSTEM_USER_ID,
     ) -> list[Node]:
-        """Returns list of deleted nodes because of cascading deletes"""
+        """Returns list of deleted nodes because of cascading deletes."""
         branch = await registry.get_branch(branch=branch, db=db)
         nodes_to_delete = copy(nodes)
         if cascade_delete:

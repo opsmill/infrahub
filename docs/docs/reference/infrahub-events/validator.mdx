@@ -2,17 +2,12 @@
 title: Validator events
 ---
 
-<!-- vale off -->
 ## Validator Failed Event
-<!-- vale on -->
 
 **Type**: infrahub.validator.failed
 **Description**: Event generated when an validator within a pipeline has completed successfully.
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `true`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -28,19 +23,13 @@ title: Validator events
 | **node_id** | The ID of the validator |
 | **kind** | The kind of the validator |
 | **proposed_change_id** | The ID of the proposed change |
-<!-- vale on -->
 
-<!-- vale off -->
 ## Validator Passed Event
-<!-- vale on -->
 
 **Type**: infrahub.validator.passed
 **Description**: Event generated when an validator within a pipeline has completed successfully.
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `true`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -56,19 +45,13 @@ title: Validator events
 | **node_id** | The ID of the validator |
 | **kind** | The kind of the validator |
 | **proposed_change_id** | The ID of the proposed change |
-<!-- vale on -->
 
-<!-- vale off -->
 ## Validator Started Event
-<!-- vale on -->
 
 **Type**: infrahub.validator.started
 **Description**: Event generated when an validator within a pipeline has started.
-<!-- vale off -->
 **Uses node_kind filter for webhooks**: `true`
-<!-- vale on -->
 
-<!-- vale off -->
 | Key | Description |
 |-----|-------------|
 | **meta.branch** | The branch on which originate this event |
@@ -84,4 +67,3 @@ title: Validator events
 | **node_id** | The ID of the validator |
 | **kind** | The kind of the validator |
 | **proposed_change_id** | The ID of the proposed change |
-<!-- vale on -->

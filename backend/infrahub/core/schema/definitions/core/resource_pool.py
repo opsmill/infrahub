@@ -27,6 +27,7 @@ core_resource_pool = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="name", kind="Text", order_weight=1000, unique=True),
         Attr(name="description", kind="Text", optional=True, order_weight=2000),
@@ -61,6 +62,7 @@ core_ip_pool = GenericSchema(
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
+    restricted_namespaces=["Core"],
 )
 
 core_ip_prefix_pool = NodeSchema(

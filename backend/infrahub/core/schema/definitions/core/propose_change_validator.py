@@ -28,6 +28,7 @@ core_propose_change_validator = GenericSchema(
     order_by=["started_at__value"],
     display_label="label__value",
     branch=BranchSupportType.AGNOSTIC,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="label", kind="Text", optional=True),
         Attr(

@@ -126,7 +126,7 @@ class GraphQLSchemaRegistry:
         self._registered_paginated_types[reference_hash] = reference
 
     def purge_inactive(self, active_branches: list[str]) -> set[str]:
-        """Return inactive branches that were purged"""
+        """Return inactive branches that were purged."""
         inactive_branches: set[str] = set()
         for schema_hash in list(self._branch_name_by_hash.keys()):
             branches = list(self._branch_name_by_hash[schema_hash])

@@ -109,8 +109,9 @@ class NodeMetadataDefaultBranchQuery(Query):
     type = QueryType.READ
     insert_return = False
 
-    def __init__(self, node_uuids: list[str], **kwargs: Any) -> None:
+    def __init__(self, node_uuids: list[str], allowed_kinds: list[str] | None = None, **kwargs: Any) -> None:
         self.node_uuids = node_uuids
+        self.allowed_kinds = allowed_kinds
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
@@ -118,6 +119,7 @@ class NodeMetadataDefaultBranchQuery(Query):
             raise ValueError("NodeMetadataQuery only runs on the default branch")
 
         self.params["node_uuids"] = self.node_uuids
+        self.params["allowed_kinds"] = self.allowed_kinds
         self.params["branch"] = self.branch.name
 
         # Query nodes with their metadata and deletion status
@@ -130,6 +132,7 @@ UNWIND $node_uuids AS node_uuid
 CALL (node_uuid) {
     MATCH (n:Node {uuid: node_uuid})-[r_ipo:IS_PART_OF]->(root:Root)
     WHERE r_ipo.branch = $branch
+    AND ($allowed_kinds is NULL OR any(l in labels(n) WHERE l IN $allowed_kinds))
     RETURN n, r_ipo
     ORDER BY r_ipo.from DESC
     LIMIT 1

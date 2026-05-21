@@ -1,21 +1,16 @@
-import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { TASK_OBJECT } from "@/shared/config/constants";
-import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
-import { BRANCH_MERGE } from "@/entities/branches/api/mergeBranch";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
 import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-navigate-after-branch-removal";
+import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
+import { useMergeBranch } from "@/entities/branches/ui/queries/merge-branch.mutation";
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { BRANCH_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
@@ -25,26 +20,22 @@ type BranchMergeButtonProps = {
 
 export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   const { isAuthenticated } = useAuth();
-  const date = useAtomValue(datetimeAtom);
   const config = useConfig();
   const { navigateToPage } = useNavigateAfterBranchRemoval();
   const [isMergeRequested, setIsMergeRequested] = useState(false);
 
-  const { loading, data, refetch } = useQuery(GET_BRANCH_ACTION_STATE, {
-    variables: {
-      branch: branch.name,
-      workflow: [BRANCH_MERGE_WORKFLOW],
-      state: TASK_ONGOING_STATES,
-    },
-    pollInterval: 5000,
+  const { isPending, data, refetch } = useGetBranchActionState({
+    branchName: branch.name,
+    workflow: [BRANCH_MERGE_WORKFLOW],
+    state: TASK_ONGOING_STATES,
   });
 
-  const taskData = data?.[TASK_OBJECT];
-  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
+  const mergeMutation = useMergeBranch();
 
+  const hasOngoingTask = (data?.ongoingTaskCount ?? 0) > 0;
   const isDisabled =
     !isAuthenticated ||
-    loading ||
+    isPending ||
     !!branch.is_default ||
     branch.status === BranchStatus.MERGED ||
     isMergeRequested ||
@@ -54,11 +45,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
     setIsMergeRequested(true);
 
     try {
-      await graphqlClient.mutate({
-        mutation: BRANCH_MERGE,
-        variables: { name: branch.name },
-        context: { branch: branch.name, date },
-      });
+      await mergeMutation.mutateAsync({ branchName: branch.name });
 
       const deleteBranchAfterMerge = config.main.delete_branch_after_merge;
 

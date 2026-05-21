@@ -113,7 +113,7 @@ class EventMeta(BaseModel):
 
     @classmethod
     def from_parent(cls, parent: InfrahubEvent, branch: Branch | None = None) -> EventMeta:
-        """Create the metadata from an existing event
+        """Create the metadata from an existing event.
 
         Note that this action will modify the existing event to indicate that children might be attached to the event
         """
@@ -179,7 +179,7 @@ class InfrahubEvent(BaseModel):
 
     @final
     def get_event_payload(self) -> dict[str, Any]:
-        """This method should be used when emitting the event to the event broker"""
+        """This method should be used when emitting the event to the event broker."""
         event_payload = {"data": self.get_payload(), "context": self.meta.context.to_event()}
         return event_payload
 

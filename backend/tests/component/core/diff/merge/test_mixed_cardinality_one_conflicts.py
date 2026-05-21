@@ -26,9 +26,10 @@ from .conftest import get_diff_coordinator, get_diff_merger
 
 
 async def _set_parent_and_source(db: InfrahubDatabase, child: Node, parent: Node, source: Node) -> None:
-    """Set the child's parent peer to `parent` and HAS_SOURCE on that rel to `source`. Used
-    by tests that require an initial HAS_SOURCE state to exist before branching so that one
-    side can later record the prop as REMOVED.
+    """Set the child's parent peer to `parent` and HAS_SOURCE on that rel to `source`.
+
+    Used by tests that require an initial HAS_SOURCE state to exist before branching so that
+    one side can later record the prop as REMOVED.
     """
     fresh = await NodeManager.get_one(db=db, id=child.id)
     await fresh.get_relationship("parent").update(db=db, data={"id": parent.id, "_relation__source": source.id})
@@ -62,8 +63,9 @@ async def test_mixed_cardinality_one_element_and_property_conflicts(
     diff_repository: DiffRepository,
     hierarchical_location_schema_simple: SchemaRoot,
 ) -> None:
-    """Both branches re-parent paris to a different Region AND set a different HAS_SOURCE on
-    the new parent. Resolve element to DIFF (asia), HAS_SOURCE to BASE (paris-r2).
+    """Both branches re-parent paris to a different Region AND set a different HAS_SOURCE on the new parent.
+
+    Resolve element to DIFF (asia), HAS_SOURCE to BASE (paris-r2).
     """
     initial = await _build_hierarchical_location_data(db=db, branch=default_branch)
     paris = initial["paris"]
@@ -124,9 +126,10 @@ async def test_mixed_cardinality_one_element_base_property_diff(
     diff_repository: DiffRepository,
     hierarchical_location_schema_simple: SchemaRoot,
 ) -> None:
-    """Inverse of the prior test: BASE element wins (north-america kept), DIFF property wins
-    (source wants paris-r1 as HAS_SOURCE). The expected outcome is parent=north-america +
-    HAS_SOURCE=paris-r1 — the user's chosen property value is applied to the kept rel-vertex.
+    """BASE element wins (north-america kept), DIFF property wins (source wants paris-r1 as HAS_SOURCE).
+
+    The expected outcome is parent=north-america + HAS_SOURCE=paris-r1 — the user's chosen
+    property value is applied to the kept rel-vertex.
     """
     initial = await _build_hierarchical_location_data(db=db, branch=default_branch)
     paris = initial["paris"]
@@ -189,9 +192,11 @@ async def test_mixed_cardinality_one_element_diff_property_base_removed(
     diff_repository: DiffRepository,
     hierarchical_location_schema_simple: SchemaRoot,
 ) -> None:
-    """DIFF element wins, BASE prop wins where base's prop was REMOVED. Both branches change
-    the parent peer; on top of that base REMOVED HAS_SOURCE while source UPDATED it. The
-    BASE resolution on the property selects "removed", leaving no HAS_SOURCE on the kept rel.
+    """DIFF element wins, BASE prop wins where base's prop was REMOVED.
+
+    Both branches change the parent peer; on top of that base REMOVED HAS_SOURCE while
+    source UPDATED it. The BASE resolution on the property selects "removed", leaving no
+    HAS_SOURCE on the kept rel.
     """
     initial = await _build_hierarchical_location_data(db=db, branch=default_branch)
     paris = initial["paris"]
@@ -258,10 +263,11 @@ async def test_mixed_cardinality_one_element_base_property_diff_removed(
     diff_repository: DiffRepository,
     hierarchical_location_schema_simple: SchemaRoot,
 ) -> None:
-    """BASE element wins, DIFF prop wins where source's prop was REMOVED. Both branches
-    change the parent peer; on top of that base UPDATED HAS_SOURCE while source REMOVED it.
-    The DIFF resolution on the property selects "removed" — base's HAS_SOURCE on the kept
-    rel must be closed.
+    """BASE element wins, DIFF prop wins where source's prop was REMOVED.
+
+    Both branches change the parent peer; on top of that base UPDATED HAS_SOURCE while
+    source REMOVED it. The DIFF resolution on the property selects "removed" — base's
+    HAS_SOURCE on the kept rel must be closed.
     """
     initial = await _build_hierarchical_location_data(db=db, branch=default_branch)
     paris = initial["paris"]

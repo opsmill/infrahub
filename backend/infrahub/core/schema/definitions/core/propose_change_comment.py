@@ -21,6 +21,7 @@ core_propose_change_comment = GenericSchema(
     display_label="text__value",
     include_in_menu=False,
     branch=BranchSupportType.AGNOSTIC,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="text", kind="TextArea", description="Content of the comment", unique=False, optional=False),
     ],
@@ -34,6 +35,7 @@ core_thread = GenericSchema(
     label="Thread",
     branch=BranchSupportType.AGNOSTIC,
     include_in_menu=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="label", kind="Text", optional=True),
         Attr(

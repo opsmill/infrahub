@@ -55,6 +55,7 @@ class EnterpriseFeatures(StrEnum):
     PROPOSED_CHANGE_REQUIRE_APPROVAL = "proposed_change_require_approval"
     REVOKE_PROPOSED_CHANGE_APPROVALS = "revoke_proposed_change_approvals"
     LOG_FORWARDING = "log_forwarding"
+    LDAP = "ldap"
 
 
 class UserInfoMethod(StrEnum):
@@ -347,7 +348,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class DevelopmentSettings(BaseSettings):
-    """The development settings are only relevant for local development"""
+    """The development settings are only relevant for local development."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_DEV_")
 
@@ -593,7 +594,7 @@ def _default_scopes() -> list[str]:
 
 
 class SecurityOIDCBaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     display_label: str = Field(default="Single Sign on")
@@ -611,7 +612,7 @@ class SecurityOIDCSettings(SecurityOIDCBaseSettings):
 
 
 class SecurityOIDCGoogle(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_GOOGLE_")
 
@@ -629,13 +630,13 @@ class SecurityOIDCGoogle(SecurityOIDCSettings):
 
 
 class SecurityOIDCProvider1(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER1_")
 
 
 class SecurityOIDCProvider2(SecurityOIDCSettings):
-    """Settings for the custom OIDC provider"""
+    """Settings for the custom OIDC provider."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OIDC_PROVIDER2_")
 
@@ -649,7 +650,7 @@ class SecurityOIDCProviderSettings(BaseModel):
 
 
 class SecurityOAuth2BaseSettings(BaseSettings):
-    """Baseclass for typing"""
+    """Baseclass for typing."""
 
     icon: str = Field(default="mdi:account-key")
     userinfo_method: UserInfoMethod = Field(default=UserInfoMethod.GET)
@@ -659,7 +660,7 @@ class SecurityOAuth2BaseSettings(BaseSettings):
 
 
 class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     client_id: str = Field(..., description="Client ID of the application created in the auth provider")
     client_secret: str | None = Field(default=None, description="Client secret as defined in auth provider")
@@ -671,13 +672,13 @@ class SecurityOAuth2Settings(SecurityOAuth2BaseSettings):
 
 
 class SecurityOAuth2Provider1(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER1_")
 
 
 class SecurityOAuth2Provider2(SecurityOAuth2Settings):
-    """Common base for Oauth2 providers"""
+    """Common base for Oauth2 providers."""
 
     model_config = SettingsConfigDict(env_prefix="INFRAHUB_OAUTH2_PROVIDER2_")
 
@@ -941,8 +942,10 @@ _DESTINATION_NAME_RE = re.compile(r"^[a-z0-9_]+$")
 
 
 def _load_destination_from_env(name: str) -> LogForwardingDestination:
-    """Build a LogForwardingDestination by scanning os.environ for keys matching
+    """Build a LogForwardingDestination by scanning os.environ for keys matching.
+
     INFRAHUB_LOG_FORWARDING_DESTINATION_{NAME_UPPER}_{FIELD_UPPER}.
+
     """
     prefix = f"INFRAHUB_LOG_FORWARDING_DESTINATION_{name.upper()}_"
     valid_field_names = set(LogForwardingDestination.model_fields.keys()) - {"name"}
@@ -1051,6 +1054,308 @@ class PolicySettings(BaseSettings):
         return features
 
 
+LDAP_DEFAULT_DISPLAY_LABEL = "Sign in with LDAP"
+LDAP_DEFAULT_ICON = "mdi:account-key-outline"
+
+
+class LDAPGroupResolutionStrategy(StrEnum):
+    BFS = "bfs"
+    AD_IN_CHAIN = "ad_in_chain"
+
+
+class LDAPTLSMinimumVersion(StrEnum):
+    TLS_1_2 = "TLSv1.2"
+    TLS_1_3 = "TLSv1.3"
+
+
+class LDAPInfo(BaseModel):
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "True when LDAP sign-in is available on this deployment, meaning "
+            "it has been configured and the running edition supports it."
+        ),
+    )
+    display_label: str = Field(
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
+        description="Text shown on the LDAP sign-in button on the login page.",
+    )
+    icon: str = Field(
+        default=LDAP_DEFAULT_ICON,
+        description="Icon shown on the LDAP sign-in button on the login page.",
+    )
+
+
+class LDAPSettings(BaseSettings):
+    """LDAP authentication configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_LDAP_")
+
+    enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable LDAP authentication on this deployment. When turned off, "
+            "new LDAP sign-ins are refused; existing sessions are unaffected."
+        ),
+    )
+    servers: Annotated[list[str], NoDecode] = Field(
+        default_factory=list,
+        description=(
+            "Comma-separated list of LDAP server URIs (e.g. "
+            "`ldaps://dc1.example.com:636,ldaps://dc2.example.com:636`). Each "
+            "entry is tried in declaration order, falling through to the next "
+            "when one is unreachable, so list a primary first and any standby "
+            "replicas after it for high availability. URIs must use the `ldap` "
+            "or `ldaps` scheme."
+        ),
+    )
+
+    service_account_dn: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory account used to look up users before verifying their credentials."
+        ),
+    )
+    service_account_password: str | None = Field(
+        default=None,
+        description="Password for the service account used during the user lookup. ",
+    )
+
+    user_search_base: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory subtree where user entries "
+            "are stored, e.g. `OU=Users,DC=corp,DC=example,DC=com`."
+        ),
+    )
+    user_search_filter: str | None = Field(
+        default=None,
+        description=(
+            "LDAP filter used to locate a user entry by their sign-in name. "
+            "The `{username}` placeholder is substituted at sign-in time with "
+            "the user-supplied login name and is safely escaped to prevent "
+            "filter injection. If left empty, a default is generated from "
+            "the configured username attribute (`attribute_username`), so "
+            "changing the username attribute keeps the filter aligned "
+            "automatically."
+        ),
+    )
+
+    attribute_username: str = Field(
+        default="sAMAccountName",
+        description=(
+            "Name of the LDAP attribute that holds a user's sign-in name. "
+            "Defaults to `sAMAccountName` (typical on Active Directory); "
+            "`uid` is typical on OpenLDAP."
+        ),
+    )
+    attribute_email: str = Field(
+        default="mail",
+        description="Name of the LDAP attribute that holds a user's email address.",
+    )
+    attribute_display_name: str = Field(
+        default="displayName",
+        description="Name of the LDAP attribute that holds a user's human-readable display name.",
+    )
+    attribute_disabled: str | None = Field(
+        default="userAccountControl",
+        description=(
+            "Name of an LDAP attribute that signals whether an account is "
+            "disabled. Defaults to `userAccountControl` (Active Directory's "
+            "mechanism). Leave empty for directories that do not expose an "
+            "equivalent attribute; the disabled-account check is then skipped."
+        ),
+    )
+    attribute_disabled_bitmask: int = Field(
+        default=0x2,
+        ge=1,
+        description=(
+            "When `attribute_disabled` is set, the integer value of that "
+            "attribute is treated as a bitmask; the account is considered "
+            "disabled if any of these bits are set. Default `0x2` matches "
+            "Active Directory's standard 'account disabled' flag."
+        ),
+    )
+
+    group_enabled: bool = Field(
+        default=False,
+        description=(
+            "Enable directory group resolution. When turned off, users sign "
+            "in successfully but receive no permissions until they are "
+            "assigned to local groups manually. When turned on, "
+            "`group_base_dn` must be set."
+        ),
+    )
+    group_base_dn: str | None = Field(
+        default=None,
+        description=(
+            "Distinguished name of the directory subtree where group entries "
+            "are stored, e.g. `OU=Groups,DC=corp,DC=example,DC=com`. Required "
+            "when `group_enabled` is true."
+        ),
+    )
+    group_filter: str = Field(
+        default="(member={user_dn})",
+        description=(
+            "LDAP filter used to look up the groups a user belongs to. The "
+            "`{user_dn}` placeholder is substituted with the user's "
+            "distinguished name at sign-in time and is safely escaped to "
+            "prevent filter injection."
+        ),
+    )
+    group_name_attribute: str = Field(
+        default="cn",
+        description=(
+            "Name of the LDAP attribute on group entries that is read as the "
+            "group's name. The value is matched against local group names to "
+            "grant the user the matching permissions."
+        ),
+    )
+    group_strategy: LDAPGroupResolutionStrategy = Field(
+        default=LDAPGroupResolutionStrategy.BFS,
+        description=(
+            "How nested-group memberships are resolved. `ad_in_chain` uses "
+            "Active Directory's transitive-membership search to retrieve all "
+            "nested groups in a single query; it is the fastest option "
+            "against AD. `bfs` walks group memberships level by level and "
+            "works against any LDAP-compatible directory."
+        ),
+    )
+    group_bfs_max_depth: int = Field(
+        default=16,
+        ge=10,
+        description=(
+            "Maximum number of nesting levels to traverse when "
+            "`group_strategy` is `bfs`. Has no effect for other strategies. "
+            "Cycles in the group structure are detected automatically. "
+            "Minimum value is 10."
+        ),
+    )
+
+    tls_enabled: bool = Field(
+        default=False,
+        description=(
+            "Use an encrypted connection to the LDAP server. Pair with "
+            "`ldaps://` server URIs, or set `tls_starttls = true` to upgrade "
+            "plain `ldap://` connections."
+        ),
+    )
+    tls_starttls: bool = Field(
+        default=False,
+        description="Upgrade a plain `ldap://` connection to TLS using STARTTLS instead of connecting via `ldaps://`.",
+    )
+    tls_ca_bundle: str | None = Field(
+        default=None,
+        description=(
+            "PEM-encoded certificate authority bundle used to verify the LDAP "
+            "server's TLS certificate. May be a path to a file or the PEM "
+            "contents directly. Checked at startup."
+        ),
+    )
+    tls_insecure: bool = Field(
+        default=False,
+        description=(
+            "Skip TLS certificate validation. Test and development environments only; never enable in production."
+        ),
+    )
+    tls_minimum_version: LDAPTLSMinimumVersion = Field(
+        default=LDAPTLSMinimumVersion.TLS_1_2,
+        description="Minimum TLS protocol version accepted when connecting to an LDAP server.",
+    )
+
+    per_server_timeout: float = Field(
+        default=10.0,
+        gt=0.0,
+        description=(
+            "Maximum time, in seconds, to wait for an LDAP server to respond "
+            "before treating it as unreachable and trying the next configured "
+            "server."
+        ),
+    )
+
+    display_label: str = Field(
+        default=LDAP_DEFAULT_DISPLAY_LABEL,
+        description="Text shown on the LDAP sign-in button on the login page.",
+    )
+    icon: str = Field(
+        default=LDAP_DEFAULT_ICON,
+        description="Icon shown on the LDAP sign-in button on the login page.",
+    )
+
+    @field_validator("servers", mode="before")
+    @classmethod
+    def _split_servers(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return [s.strip() for s in v.split(",") if s.strip()]
+        return v
+
+    @field_validator("servers")
+    @classmethod
+    def _validate_server_uris(cls, v: list[str]) -> list[str]:
+        for uri in v:
+            if not uri.startswith(("ldap://", "ldaps://")):
+                raise ValueError(f"LDAP URI scheme must be 'ldap' or 'ldaps', got: {uri!r}")
+            rest = uri.split("://", 1)[1]
+            host = rest.split("/", 1)[0].split(":", 1)[0]
+            if not host:
+                raise ValueError("LDAP URI must include a hostname")
+        return v
+
+    @property
+    def admin_enabled(self) -> bool:
+        return self.enabled and bool(self.servers)
+
+    @model_validator(mode="after")
+    def derive_default_user_search_filter(self) -> Self:
+        # Tie the filter to the configured username attribute so the two
+        # cannot drift. Operators who set their own filter are unaffected.
+        if self.user_search_filter is None:
+            self.user_search_filter = f"({self.attribute_username}={{username}})"
+        return self
+
+    @model_validator(mode="after")
+    def validate_tls_configuration(self) -> Self:
+        if not self.tls_enabled:
+            return self
+        if self.tls_insecure and self.tls_ca_bundle is not None:
+            raise ValueError("ldap.tls_insecure cannot be combined with ldap.tls_ca_bundle; pick one.")
+        try:
+            TlsContextBuilder.build(
+                insecure=self.tls_insecure, ca_bundle=self.tls_ca_bundle, force_verify=bool(self.tls_ca_bundle)
+            )
+        except ssl.SSLError as exc:
+            raise ValueError(f"Unable to load LDAP CA bundle from {self.tls_ca_bundle}: {exc}") from exc
+        return self
+
+    @model_validator(mode="after")
+    def check_complete_when_enabled(self) -> Self:
+        if not self.enabled:
+            return self
+        problems: list[str] = []
+        if not self.servers:
+            problems.append("ldap.servers must be non-empty")
+        if not self.service_account_dn:
+            problems.append("ldap.service_account_dn is required")
+        if not self.service_account_password:
+            problems.append("ldap.service_account_password is required")
+        if not self.user_search_base:
+            problems.append("ldap.user_search_base is required")
+        if self.group_enabled and not self.group_base_dn:
+            problems.append("ldap.group_base_dn is required when ldap.group_enabled is true")
+        if self.tls_starttls and any(uri.startswith("ldaps://") for uri in self.servers):
+            problems.append("ldap.tls_starttls cannot be combined with an ldaps:// server URI")
+        if problems:
+            raise ValueError("Invalid LDAP configuration: " + "; ".join(problems))
+        return self
+
+    @property
+    def enterprise_features(self) -> list[EnterpriseFeatures]:
+        """Returns enterprise features enabled by LDAP configuration."""
+        if self.enabled:
+            return [EnterpriseFeatures.LDAP]
+        return []
+
+
 @dataclass
 class Override:
     message_bus: InfrahubMessageBus | None = None
@@ -1151,6 +1456,10 @@ class ConfiguredSettings:
         return self.active_settings.security
 
     @property
+    def ldap(self) -> LDAPSettings:
+        return self.active_settings.ldap
+
+    @property
     def storage(self) -> StorageSettings:
         return self.active_settings.storage
 
@@ -1186,6 +1495,7 @@ class Settings(BaseSettings):
     initial: InitialSettings = InitialSettings()
     policy: PolicySettings = PolicySettings()
     security: SecuritySettings = SecuritySettings()
+    ldap: LDAPSettings = LDAPSettings()
     storage: StorageSettings = StorageSettings()
     trace: TraceSettings = TraceSettings()
     experimental_features: ExperimentalFeaturesSettings = ExperimentalFeaturesSettings()
@@ -1200,7 +1510,7 @@ class Settings(BaseSettings):
     @property
     def enterprise_features(self) -> list[EnterpriseFeatures]:
         """Returns a list of enterprise features that are enabled based on the settings."""
-        return self.policy.enterprise_features + self.log_forwarding.enterprise_features
+        return self.policy.enterprise_features + self.log_forwarding.enterprise_features + self.ldap.enterprise_features
 
 
 def load(config_file_name: Path | str = "infrahub.toml", config_data: dict[str, Any] | None = None) -> Settings:

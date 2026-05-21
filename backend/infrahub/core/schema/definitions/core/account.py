@@ -113,6 +113,7 @@ core_credential = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"]],
     documentation="/topics/auth",
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="name", kind="Text", unique=True, order_weight=1000),
         Attr(name="label", kind="Text", optional=True, order_weight=2000),
@@ -134,6 +135,7 @@ core_generic_account = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     documentation="/topics/auth",
     uniqueness_constraints=[["name__value"]],
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(name="name", kind="Text", unique=True),
         Attr(name="password", kind="HashedPassword", unique=False),

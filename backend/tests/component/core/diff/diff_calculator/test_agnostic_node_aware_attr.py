@@ -27,9 +27,12 @@ if TYPE_CHECKING:
 async def test_diff_aware_attribute_update_on_agnostic_node(
     db: InfrahubDatabase, default_branch: Branch, repo_mirror_main: Node
 ) -> None:
-    """Update an AWARE attribute on an AGNOSTIC node on a branch, then verify
+    """Update an AWARE attribute on an AGNOSTIC node on a branch, then verify.
+
     that the diff captures both the previous (default) and new (branch) values
-    for that attribute."""
+    for that attribute.
+
+    """
     branch = await create_branch(db=db, branch_name="repo_mirror_branch")
     from_time = Timestamp(branch.created_at)
 

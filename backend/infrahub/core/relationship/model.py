@@ -13,7 +13,6 @@ from typing import (
     Mapping,
     Sequence,
     TypeVar,
-    cast,
     overload,
 )
 
@@ -185,8 +184,9 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         raise ValueError("Cannot get ID for relationship node")
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Returns:
             Branch:
@@ -578,7 +578,6 @@ class Relationship(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
                 results = await registry.manager.query(
                     db=db, schema=InfrahubKind.RESOURCEPOOL, filters={"name__value": pool_id}, branch=self.branch
                 )
-                results = cast("list[Node]", results)
                 pool = results[0] if results else None
 
             if not pool:
@@ -1069,8 +1068,9 @@ class RelationshipManager[RelationshipManagerPeerType]:
         return nodes
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Note that if this relationship is Aware and source node is Agnostic, it will return -global- branch.
 
@@ -1106,9 +1106,11 @@ class RelationshipManager[RelationshipManagerPeerType]:
         force_refresh: bool = True,
     ) -> RelationshipUpdateDetails:
         """Fetch the latest relationships from the database and returns :
+
         - the list of nodes present on both sides
         - the list of nodes present only locally
-        - the list of nodes present only in the database
+        - the list of nodes present only in the database.
+
         """
         if not force_refresh and self._relationship_id_details is not None:
             return self._relationship_id_details

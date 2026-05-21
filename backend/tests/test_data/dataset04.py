@@ -55,9 +55,11 @@ async def load_data(
     nbr_query: int = 1000,
     batch_size: int = 5,
 ) -> None:
-    """Generate a large number of GraphQLQuery associated with some Tags and some Repositories
+    """Generate a large number of GraphQLQuery associated with some Tags and some Repositories.
+
     All the Tags and the repositories will be created at once but the GraphQLQuery will be created in batch.
-    The size of the batch and the number of concurrent session can be controlled with "batch_size" and "concurrent_execution"
+
+    The size of the batch and the number of concurrent session can be controlled with "batch_size" and "concurrent_execution".
     """
     default_branch = await registry.get_branch(db=db)
 

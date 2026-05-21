@@ -26,9 +26,11 @@ async def test_rollback_query_with_empty_node_uuids(
     default_branch: Branch,
     car_person_schema: SchemaBranch,
 ) -> None:
-    """RollbackQuery called with the default empty node_uuids list clears every edge created
+    """RollbackQuery called with the default empty node_uuids list clears every edge created.
+
     at the given timestamp on the branch and orphan-deletes the affected vertices, while
     leaving nodes and edges from other timestamps untouched.
+
     """
     at_kept = Timestamp()
     kept = await Node.init(db=db, schema="TestPerson", branch=default_branch)

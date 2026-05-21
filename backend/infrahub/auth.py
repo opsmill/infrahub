@@ -118,6 +118,7 @@ async def fetch_account_groups_and_roles(
 class ExternalAuthProtocol(StrEnum):
     OAUTH2 = "oauth2"
     OIDC = "oidc"
+    LDAP = "ldap"
 
 
 class ExternalIdentity(BaseModel):
@@ -234,7 +235,11 @@ async def signin_sso_account(  # noqa: PLR0915
 
     if identity_nodes:
         identity_node = identity_nodes[0]
-        account = await identity_node.account.get_peer(db=db)
+        # `identity_nodes` is `list[Node]` because schema is a kind-string; the runtime
+        # instance is an InternalExternalIdentity with `.account`. Typing it via protocol
+        # would cascade Optional and CoreNode-vs-Node mismatches through the rest of the
+        # function, so suppress just the attribute access here.
+        account = await identity_node.account.get_peer(db=db)  # type: ignore[attr-defined]
         if account.label.value != external_identity.display_name:
             account.label.value = external_identity.display_name
             await account.save(db=db)
@@ -455,7 +460,9 @@ async def get_groups_from_provider(
 
 
 def safe_get_response_body(response: httpx.Response, raise_error_on_empty_body: bool = True) -> str | dict[str, Any]:
-    """Safely extract response body from HTTP response. If the response body cannot be JSON parsed or is empty,
+    """Safely extract response body from HTTP response.
+
+    If the response body cannot be JSON parsed or is empty,
     it raises a GatewayError.
 
     Args:

@@ -28,6 +28,7 @@ async def test_base_delete_with_added_branch_attr_source(
     car_accord_main: Node,
 ) -> None:
     """Branch sets an attribute source (HAS_SOURCE) pointing to a Node that main deletes.
+
     After merge, no orphan active HAS_SOURCE should point to the deleted Node.
     """
     branch2 = await create_branch(db=db, branch_name="branch2")
@@ -251,9 +252,10 @@ async def test_base_delete_with_added_branch_attribute(
     person_john_main: Node,
     car_accord_main: Node,
 ) -> None:
-    """Branch modifies an attribute value while main deletes the node. Conflict is resolved
-    by reverting the branch change; after merge the node stays deleted and no orphan
-    HAS_VALUE / HAS_ATTRIBUTE edges point to the deleted node on main.
+    """Branch modifies an attribute value while main deletes the node.
+
+    Conflict is resolved by reverting the branch change; after merge the node stays deleted
+    and no orphan HAS_VALUE / HAS_ATTRIBUTE edges point to the deleted node on main.
     """
     car_created_at = car_accord_main._get_created_at()
     original_color = car_accord_main.color.value

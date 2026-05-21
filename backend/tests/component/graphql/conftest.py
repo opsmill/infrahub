@@ -55,7 +55,7 @@ def permissions_helper() -> PermissionsHelper:
 
 @pytest.fixture
 def query_01() -> str:
-    """Simple query with one document"""
+    """Simple query with one document."""
     query = """
     query {
         TestPerson {
@@ -129,7 +129,7 @@ def query_02() -> str:
 
 @pytest.fixture
 def query_03() -> str:
-    """Advanced Query with 2 documents"""
+    """Advanced Query with 2 documents."""
     query = """
     query FirstQuery {
         TestPerson {
@@ -169,7 +169,7 @@ def query_03() -> str:
 
 @pytest.fixture
 def query_04() -> str:
-    """Simple query with variables"""
+    """Simple query with variables."""
     query = """
     query ($person: String!){
         TestPerson(name__value: $person) {
@@ -222,7 +222,7 @@ def query_05() -> str:
 
 @pytest.fixture
 def query_06() -> str:
-    """Simple query with variables"""
+    """Simple query with variables."""
     query = """
     query (
         $str1: String,

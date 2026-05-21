@@ -116,7 +116,9 @@ async def validate_deleted_node(db: InfrahubDatabase, branch: Branch, ctx: Delet
     with pytest.raises(NodeNotFoundError):
         await NodeManager.get_one(db=db, branch=branch, id=ctx.node_id, raise_on_error=True)
 
-    node_metadata_query = await NodeMetadataDefaultBranchQuery.init(db=db, branch=branch, node_uuids=[ctx.node_id])
+    node_metadata_query = await NodeMetadataDefaultBranchQuery.init(
+        db=db, branch=branch, node_uuids=[ctx.node_id], allowed_kinds=[ctx.expected_kind]
+    )
     await node_metadata_query.execute(db=db)
     metadatas = node_metadata_query.get_metadatas()
     assert len(metadatas) == 1

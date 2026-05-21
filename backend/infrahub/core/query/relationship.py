@@ -1238,8 +1238,11 @@ class RelationshipDeleteAllQueryResult:
 
 
 class RelationshipDeleteAllQuery(Query):
-    """Delete all relationships linked to a given node on a given branch at a given time. For every IS_RELATED edge:
+    """Delete all relationships linked to a given node on a given branch at a given time.
+
+    For every IS_RELATED edge:
     - Set `to` time if an active edge exist on the same branch.
+
     - Create `deleted` edge.
     - Apply above to every edges linked to any connected Relationship node.
     This query returns node uuids/kinds and corresponding relationship identifiers of deleted nodes,

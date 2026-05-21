@@ -543,8 +543,10 @@ class TestDiffCoordinator:
         person_john_main: Node,
         pc_state: ProposedChangeState,
     ) -> None:
-        """When update_branch_diff is called without proposed_change_id but an OPEN or MERGING
+        """When update_branch_diff is called without proposed_change_id but an OPEN or MERGING.
+
         CoreProposedChange exists for the branch, the diff should be linked to it.
+
         """
         branch = await create_branch(db=db, branch_name="branch")
 
@@ -622,7 +624,7 @@ class TestDiffCoordinator:
         default_branch: Branch,
         hierarchical_location_schema_simple: SchemaRoot,
     ) -> None:
-        """Test reassigning a child to a new parent and deleting the old parent"""
+        """Test reassigning a child to a new parent and deleting the old parent."""
         branch = await create_branch(db=db, branch_name="branch_parent_reassign")
         component_registry = get_component_registry()
         diff_coordinator = await component_registry.get_component(DiffCoordinator, db=db, branch=branch)

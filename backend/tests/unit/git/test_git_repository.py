@@ -15,8 +15,10 @@ async def test_has_conflicting_changes_no_false_positive(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """has_conflicting_changes() should not report false positives when
+    """has_conflicting_changes() should not report false positives when.
+
     file content contains conflict marker characters like '======='.
+
     """
     repos_dir = tmp_path / "repositories"
     repos_dir.mkdir()

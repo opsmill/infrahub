@@ -90,7 +90,7 @@ _REL_METADATA_CASES = [
 
 
 class TestGetManyPrefetchRelationshipMetadataFiltering:
-    """`include_metadata` selectively populates relationship metadata under prefetch"""
+    """`include_metadata` selectively populates relationship metadata under prefetch."""
 
     @pytest.fixture(scope="class", autouse=True)
     async def _schema(self, db: InfrahubDatabase, default_branch_scope_class: Branch) -> SchemaBranch:

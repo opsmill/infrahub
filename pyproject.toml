@@ -1,6 +1,6 @@
 [project]
 name = "infrahub-server"
-version = "1.9.4"
+version = "1.9.5"
 description = "Infrahub is taking a new approach to Infrastructure Management by providing a new generation of datastore to organize and control all the data that defines how an infrastructure should run."
 authors = [{ name = "OpsMill", email = "info@opsmill.com" }]
 requires-python = ">=3.12,<3.15"
@@ -68,6 +68,9 @@ dependencies = [
     "netutils==1.12.0",
     "ariadne-codegen==0.15.3",
 ]
+
+[project.optional-dependencies]
+enterprise = ["bonsai>=1.5.5"]
 
 [project.urls]
 Homepage = "https://opsmill.com"
@@ -516,17 +519,10 @@ ignore = [
     "D105",     # undocumented-magic-method
     "D106",     # undocumented-public-nested-class
     "D107",     # undocumented-public-init
-    "D200",     # unnecessary-multiline-docstring
-    "D202",     # blank-line-after-function
-    "D205",     # missing-blank-line-after-summary
-    "D209",     # new-line-after-last-paragraph
-    "D212",     # multi-line-summary-first-line
     "D301",     # escape-sequence-in-docstring
     "D400",     # missing-trailing-period
     "D401",     # non-imperative-mood
-    "D403",     # first-word-uncapitalized
     "D404",     # docstring-starts-with-this
-    "D413",     # missing-blank-line-after-last-section
     "D415",     # missing-terminal-punctuation
     "D417",     # undocumented-param
     # pydoclint (DOC)
