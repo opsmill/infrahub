@@ -44,7 +44,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
 
   // When branch prop is provided, we're in branch diff view - use only the branch prop
   // When no branch prop, we're in proposed change view - use source_branch from proposedChangesDetails
-  const branchName: string = branch || proposedChangesDetails?.source_branch?.value;
+  const branchName: string = branch || proposedChangesDetails?.source_branch?.value || "";
   const isMerged = proposedChangesDetails?.state?.value === MERGE_STATE;
   const branchExists = useBranchExists(branchName);
 
@@ -84,7 +84,9 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     return (
       <DiffComputing
         sourceBranch={branchName}
-        destinationBranch={proposedChangesDetails.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
+        destinationBranch={
+          proposedChangesDetails?.destination_branch?.value ?? DEFAULT_BRANCH_NAME
+        }
         hideActions={isMerged}
       />
     );

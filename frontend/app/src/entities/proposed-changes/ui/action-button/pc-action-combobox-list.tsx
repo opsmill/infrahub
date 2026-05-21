@@ -1,10 +1,9 @@
-import { useAtomValue } from "jotai";
 import type React from "react";
 
 import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 interface ActionItem {
@@ -22,7 +21,7 @@ export interface ActionComboboxListProps {
 
 export const ActionComboboxList = ({ ref, value, onSelect }: ActionComboboxListProps) => {
   const { setDraft, unsetDraft, close, merge } = usePcActionsContext();
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChangesDetails = useProposedChange();
 
   const actionsList: Record<string, ActionItem> = {
     merge: {

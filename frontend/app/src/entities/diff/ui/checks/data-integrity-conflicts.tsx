@@ -16,12 +16,12 @@ export const DataIntegrityConflicts = ({ conflicts }: Pick<CoreDataCheck, "confl
       <div className="grid grid-cols-3">
         <Badge variant="green" className="col-start-2 col-end-3 bg-transparent">
           <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
-          {proposedChangesDetails.destination_branch?.value}
+          {proposedChangesDetails?.destination_branch?.value}
         </Badge>
 
         <Badge variant="blue" className="bg-transparent">
           <Icon icon="mdi:layers-triple" className="mr-1" />{" "}
-          {proposedChangesDetails.source_branch?.value}
+          {proposedChangesDetails?.source_branch?.value}
         </Badge>
       </div>
 

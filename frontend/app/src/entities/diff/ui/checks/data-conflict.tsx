@@ -33,7 +33,9 @@ export const DataConflict = ({ id, changes, kind, name }: DataConflictProps) => 
     return null;
   }
 
-  const url = `${getProposedChangeDetailsUrl(proposedChangesDetails.id, "data")}#${id}`;
+  const url = proposedChangesDetails
+    ? `${getProposedChangeDetailsUrl(proposedChangesDetails.id, "data")}#${id}`
+    : `#${id}`;
 
   const mainChange = changes.find((change) => {
     return change.branch === "main";

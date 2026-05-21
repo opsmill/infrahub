@@ -27,7 +27,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 export function Component() {
   const { proposedChangeId } = useRequiredParams("proposedChangeId");
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { throwIfNotFound: true });
-  const [, setProposedChange] = useAtom(proposedChangedState);
+  const [storedProposedChange, setProposedChange] = useAtom(proposedChangedState);
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
   const proposedChangeData = data?.proposedChangeData;
@@ -40,6 +40,12 @@ export function Component() {
       setProposedChange(proposedChangeData as ProposedChangeDetail);
     }
   }, [proposedChangeData, setProposedChange]);
+
+  useEffect(() => {
+    return () => setProposedChange(null);
+  }, [setProposedChange]);
+
+  const atomIsHydrated = storedProposedChange?.id === proposedChangeData?.id;
 
   if (isPending) {
     return <LoadingIndicator className="h-full" />;
@@ -83,6 +89,10 @@ export function Component() {
         <NoDataFound message="Proposed change is missing a source or destination branch." />
       </Content.Card>
     );
+  }
+
+  if (!atomIsHydrated) {
+    return <LoadingIndicator className="h-full" />;
   }
 
   const sourceBranchValue = pc.source_branch.value;

@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -12,7 +11,7 @@ import { useNavigateAfterBranchRemoval } from "@/entities/branches/ui/hooks/use-
 import { useConfig } from "@/entities/config/ui/config-provider";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { MERGE_STATE } from "@/entities/proposed-changes/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 import type { ProposedChangeActionButtonProps } from "./types";
@@ -20,7 +19,7 @@ import type { ProposedChangeActionButtonProps } from "./types";
 export const MergeButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const { merge } = usePcActionsContext();
 
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChangesDetails = useProposedChange();
   const config = useConfig();
   const { clearBranchIfCurrent } = useNavigateAfterBranchRemoval();
 
