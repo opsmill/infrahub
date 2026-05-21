@@ -92,7 +92,7 @@ export const GenericSelector = ({
                     onChange(value === itemValue ? null : itemValue);
                     setOpen(false);
                   }}
-                  disabled={permissionToCreate ? !permissionToCreate.isAllowed : false}
+                  disabled={!permissionToCreate?.isAllowed}
                 >
                   <SchemaItem label={item.label} badge={item.badge} />
                 </ComboboxItem>
