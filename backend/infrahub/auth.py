@@ -261,8 +261,8 @@ async def _account_from_existing_identity(
 async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_identity: ExternalIdentity) -> Node:
     """Resolve or create the account for a never-before-seen external identity.
 
-    Serialized through the `sso-account` lock so concurrent first-logins for the same identity
-    cannot produce duplicate rows. Three outcomes:
+    Serialized through the `external-identity-account` lock so concurrent first-logins for the
+    same identity cannot produce duplicate rows. Three outcomes:
 
     - An account with that `display_name` already exists and has **no** linked identity →
       link this identity to it (unclaimed-account transition).
@@ -272,7 +272,7 @@ async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_ide
     - No account by that name → create a new account with `display_name` as its `name`.
     """
     lock_key = f"{external_identity.protocol}:{external_identity.provider_name}:{external_identity.sub}"
-    async with lock.registry.get(name=lock_key, namespace="sso-account"):
+    async with lock.registry.get(name=lock_key, namespace="external-identity-account"):
         account_by_name = await NodeManager.get_one_by_default_filter(
             db=db, id=external_identity.display_name, kind=InfrahubKind.ACCOUNT
         )
