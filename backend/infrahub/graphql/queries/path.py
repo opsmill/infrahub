@@ -191,18 +191,19 @@ def _resolve_relationship(
 def _path_data_to_result(
     path_data: PathData, labels_map: dict[str, dict[str, Any]], graphql_context: GraphqlContext
 ) -> dict[str, Any]:
-    hops: list[dict[str, Any]] = []
-    previous_kind: str | None = None
+    start_node_payload = _node_payload(
+        node_id=path_data.start_node.uuid, kind=path_data.start_node.kind, labels_map=labels_map
+    )
+    hops: list[dict[str, Any]] = [{"node": start_node_payload, "relationship": None}]
+    previous_kind = path_data.start_node.kind
     for hop in path_data.hops:
         node_payload = _node_payload(node_id=hop.node.uuid, kind=hop.node.kind, labels_map=labels_map)
-        relationship_payload: dict[str, str] | None = None
-        if hop.relationship_identifier is not None and previous_kind is not None:
-            relationship_payload = _resolve_relationship(
-                graphql_context=graphql_context,
-                identifier=hop.relationship_identifier,
-                from_kind=previous_kind,
-                to_kind=hop.node.kind,
-            )
+        relationship_payload = _resolve_relationship(
+            graphql_context=graphql_context,
+            identifier=hop.relationship_identifier,
+            from_kind=previous_kind,
+            to_kind=hop.node.kind,
+        )
         hops.append({"node": node_payload, "relationship": relationship_payload})
         previous_kind = hop.node.kind
 
@@ -270,8 +271,7 @@ async def path_traversal_resolver(
         raise GraphQLError(str(exc)) from exc
 
     if plan.is_empty:
-        # No schema route survives planning — return an empty result without
-        # executing any Cypher (FR-004).
+        # No schema route survives planning, return an empty result
         path_data_list: list[PathData] = []
     else:
         query = await PathTraversalQuery.init(
@@ -287,6 +287,7 @@ async def path_traversal_resolver(
 
     all_node_ids: set[str] = {source_id, destination_id}
     for path_data in path_data_list:
+        all_node_ids.add(path_data.start_node.uuid)
         all_node_ids.update(hop.node.uuid for hop in path_data.hops)
 
     labels_map = await _get_node_labels(graphql_context=graphql_context, node_ids=all_node_ids)

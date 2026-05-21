@@ -249,6 +249,24 @@ class QueryResult:
 
         return return_type(item)
 
+    def get_as_list_of_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> list[RETURN_TYPE]:
+        """Return a label whose value is a Cypher-projected list of maps.
+
+        Each map is constructed into ``return_type`` via keyword arguments,
+        so ``return_type`` is typically a ``TypedDict`` (or a dataclass)
+        describing the projection's field shape:
+
+            .get_as_list_of_type(label="hops", return_type=HopRow)
+
+        Raises:
+            ValueError: when the label's value is not a list.
+
+        """
+        entry = self._get(label=label)
+        if not isinstance(entry, list):
+            raise ValueError(f"{label} is not a list")
+        return [return_type(**item) for item in entry]
+
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
         if isinstance(entry, list):

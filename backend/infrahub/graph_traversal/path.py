@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
 from infrahub.graph_traversal._cypher import render_plan_to_cypher
-from infrahub.graph_traversal.results import PathData, PathHopData, PathNodeData
+from infrahub.graph_traversal._extract import extract_path_from_result
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.graph_traversal.planning.models import Plan
+    from infrahub.graph_traversal.results import PathData
 
 
 class PathTraversalQuery(Query):
@@ -51,32 +52,7 @@ class PathTraversalQuery(Query):
     def get_paths(self) -> list[PathData]:
         paths: list[PathData] = []
         for result in self.get_results():
-            # ``Query.get`` is typed for node/relationship returns; the QPP
-            # projects a list[dict] (per the ``path_data`` projection in
-            # ``_cypher.py``), so cast at the boundary.
-            raw = cast("list[dict[str, Any]]", result.get(label="path_data"))
-            if not raw:
-                continue
-            paths.append(self._extract_path_data(raw))
+            path = extract_path_from_result(result)
+            if path is not None:
+                paths.append(path)
         return paths
-
-    @staticmethod
-    def _extract_path_data(path_data: list[dict[str, Any]]) -> PathData:
-        """Build a ``PathData`` from the QPP's ``path_data`` projection.
-
-        The projection alternates: even indices are ``:Node`` vertices
-        (``uuid``/``kind`` populated), odd indices are ``:Relationship``
-        vertices (``name`` populated). Mirrors the two-edge-per-hop shape of
-        the QPP body in ``_cypher.py``.
-        """
-        hops: list[PathHopData] = []
-        pending_identifier: str | None = None
-        for i, vertex in enumerate(path_data):
-            if i % 2 == 0:
-                node = PathNodeData(uuid=vertex.get("uuid") or "", kind=vertex.get("kind") or "")
-                hops.append(PathHopData(node=node, relationship_identifier=pending_identifier))
-                pending_identifier = None
-            else:
-                pending_identifier = vertex.get("name") or ""
-        depth = len(hops) - 1 if len(hops) > 1 else 0
-        return PathData(hops=hops, depth=depth)

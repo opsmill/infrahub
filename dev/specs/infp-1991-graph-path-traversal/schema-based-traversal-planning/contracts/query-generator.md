@@ -43,7 +43,7 @@ A `RenderedCypher` with:
 
 - `text` — a single Cypher statement (one MATCH chain plus a QPP MATCH).
 - `params` — bound values for the source/target UUIDs, branch+time filter inputs, the planner-derived `allowed_path_maps` / `all_rel_names`, and `max_results`. **Kind names appear as Neo4j labels in `text`** (not bound parameters) so the label index drives the match.
-- `return_labels` — always `("path_data", "depth")`.
+- `return_labels` — always `("start_node_uuid", "start_node_kind", "hops", "depth")`.
 
 ## Generated Cypher shape
 
@@ -90,10 +90,18 @@ MATCH path = (source) (
 WITH path, length(path) / 2 AS depth
 ORDER BY depth ASC, path
 LIMIT $max_results
-RETURN [n IN nodes(path) | {uuid: n.uuid, kind: n.kind, name: n.name}] AS path_data, depth
+RETURN
+    head(nodes(path)).uuid AS start_node_uuid,
+    head(nodes(path)).kind AS start_node_kind,
+    [i IN range(0, depth - 1) | {
+        relationship_identifier: nodes(path)[i*2 + 1].name,
+        uuid: nodes(path)[i*2 + 2].uuid,
+        kind: nodes(path)[i*2 + 2].kind
+    }] AS hops,
+    depth
 ```
 
-`<target_pattern>` is `(target)` for `TerminalById` (the variable is pre-bound by the by-uuid match) and `(target:$any($terminal_kinds))` for `TerminalByKinds` (Cypher 5 dynamic-label syntax on the path's final node). The query projects `path_data` — a list of `{uuid, kind, name}` dicts, one per `nodes(path)` entry — rather than the full Neo4j `Path` object, so only the three properties the Query class reads cross the driver.
+`<target_pattern>` is `(target)` for `TerminalById` (the variable is pre-bound by the by-uuid match) and `(target:$any($terminal_kinds))` for `TerminalByKinds` (Cypher 5 dynamic-label syntax on the path's final node). The projection avoids returning the full Neo4j `Path`: `start_node_uuid` / `start_node_kind` carry the source's two properties; `hops` is a list of one entry per traversed edge, each carrying the schema relationship identifier (from the intermediate `:Relationship` vertex's `name`) plus the destination node's `uuid` and `kind`. `nodes(path)` alternates Node, Relationship, Node, Relationship, …, so for hop `i` the relationship vertex is at `i*2 + 1` and the destination node is at `i*2 + 2`.
 
 The branch differences reduce to two pieces:
 
@@ -167,7 +175,7 @@ The QPP quantifier bound `plan.max_depth` is **interpolated as a literal integer
    - `TerminalById`: bind `$target_id`, use the upfront by-uuid `MATCH (target:Node {uuid: $target_id})...LIMIT 1` template; the outer path-MATCH's final node is `(target)` (variable already bound).
    - `TerminalByKinds`: bind `$terminal_kinds` (sorted), emit no upfront target match; the outer path-MATCH's final node is `(target:$any($terminal_kinds))`.
 7. **Interpolate the source match, target match, QPP body, target pattern, and `plan.max_depth`** into the outer `_QUERY` template.
-8. **Return** `RenderedCypher(text=text, params=params, return_labels=("path_data", "depth"))`.
+8. **Return** `RenderedCypher(text=text, params=params, return_labels=("start_node_uuid", "start_node_kind", "hops", "depth"))`.
 
 ## Behavior — forbidden
 
@@ -197,7 +205,7 @@ class PathTraversalQuery(Query):
         self.return_labels = list(rendered.return_labels)
 ```
 
-`PathTraversalQuery._extract_path_data` (private static method on the Query class) consumes the returned `path_data` list and produces `PathData` from `infrahub.graph_traversal.results`. The renderer's return labels are `("path_data", "depth")`.
+The Query class's `get_paths()` iterates `self.get_results()` and delegates to `extract_path_from_result` in `backend/infrahub/graph_traversal/_extract.py` (a sibling private module to `_cypher.py`), which reads the four return labels and produces a `PathData` from `infrahub.graph_traversal.results`. The renderer's return labels are `("start_node_uuid", "start_node_kind", "hops", "depth")`. `_extract.py` owns the `_HopRow` `TypedDict` describing the per-hop projection, and uses `QueryResult.get_as_list_of_type(label="hops", return_type=_HopRow)` to recover typed hop rows without a `cast` at the call site. The same extractor is intended to serve `ReachableNodesQuery` once it migrates to this Cypher shape.
 
 ## Tests
 
@@ -207,7 +215,7 @@ Snapshot tests on the full Cypher text are explicitly **out of scope** — they 
 
 The current implementation uses the unified QPP shape for both branches. An alternative shape — one `UNION ALL` branch per route, each in its own `CALL { ... }` subquery, with direction-specific arrows per hop — is preserved here as a documented fallback in case benchmark evidence (SC-002) shows the QPP form regresses on the default branch.
 
-> The Cypher snippet below predates the structured `path_data` projection. If adopted, the alternative shape would also project `[n IN nodes(path) | {uuid, kind, name}] AS path_data` instead of returning the full `Path` object, and the planner would no longer need direction information on each hop since the unified shape carries the same `(start_kind, rel_name, end_kind)` adjacency for both. The fan-out shape is preserved for reference only.
+> The Cypher snippet below predates the structured `start_node_*` / `hops` / `depth` projection. If adopted, the alternative shape would also project the same four labels (`head(nodes(path)).uuid AS start_node_uuid`, `head(nodes(path)).kind AS start_node_kind`, the indexed-iteration `hops` list, and `depth`) instead of returning the full `Path` object, and the planner would no longer need direction information on each hop since the unified shape carries the same `(start_kind, rel_name, end_kind)` adjacency for both. The fan-out shape is preserved for reference only.
 
 The fan-out shape would look like:
 

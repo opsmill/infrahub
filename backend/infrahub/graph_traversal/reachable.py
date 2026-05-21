@@ -112,11 +112,14 @@ class ReachableNodesQuery(Query):
         results: list[ReachableNodeData] = []
         for result in self.get_results():
             path_obj = result.get_path(label="path")
-            path_data = self._extract_path_data(path_obj) if path_obj else PathData(hops=[], depth=0)
-
             node = PathNodeData(
                 uuid=result.get_as_str(label="target_uuid") or "",
                 kind=result.get_as_str(label="target_kind") or "",
+            )
+            path_data = (
+                self._extract_path_data(path_obj)
+                if path_obj
+                else PathData(start_node=PathNodeData(uuid=self.source_id, kind=""), hops=[], depth=0)
             )
 
             results.append(
@@ -132,19 +135,22 @@ class ReachableNodesQuery(Query):
     def _extract_path_data(path_obj: Neo4jPath) -> PathData:
         """Convert a Neo4j Path object into PathData.
 
-        Reachable still emits a Path-returning Cypher template (will be
-        replaced when this Query is refactored onto the planner shape).
-        Vertices alternate Node/Relationship, mirroring the ``IS_RELATED*N``
-        edge expansion.
+        Vertices alternate Node, Relationship, Node, Relationship, ...
+        mirroring the ``IS_RELATED*N`` edge expansion. The first vertex is the
+        ``start_node``; each subsequent Node vertex is a hop, paired with the
+        preceding Relationship vertex's ``name`` as its identifier.
         """
+        vertices = list(path_obj.nodes)
+        if not vertices:
+            return PathData(start_node=PathNodeData(uuid="", kind=""), hops=[], depth=0)
+
+        start_node = PathNodeData(uuid=vertices[0].get("uuid", ""), kind=vertices[0].get("kind", ""))
         hops: list[PathHopData] = []
-        pending_identifier: str | None = None
-        for i, vertex in enumerate(path_obj.nodes):
-            if i % 2 == 0:
+        pending_identifier = ""
+        for i, vertex in enumerate(vertices[1:], start=1):
+            if i % 2 == 1:
+                pending_identifier = vertex.get("name", "")
+            else:
                 node = PathNodeData(uuid=vertex.get("uuid", ""), kind=vertex.get("kind", ""))
                 hops.append(PathHopData(node=node, relationship_identifier=pending_identifier))
-                pending_identifier = None
-            else:
-                pending_identifier = vertex.get("name", "")
-        depth = len(hops) - 1 if len(hops) > 1 else 0
-        return PathData(hops=hops, depth=depth)
+        return PathData(start_node=start_node, hops=hops, depth=len(hops))

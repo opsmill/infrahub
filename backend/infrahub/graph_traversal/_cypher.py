@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
 
 
-_RETURN_LABELS: tuple[str, ...] = ("path_data", "depth")
+_RETURN_LABELS: tuple[str, ...] = ("start_node_uuid", "start_node_kind", "hops", "depth")
 
 _MIN_RESULTS = 1
 _MAX_RESULTS = 200
@@ -39,11 +39,6 @@ class RenderedCypher:
     text: str
     params: dict[str, Any]
     return_labels: tuple[str, ...]
-
-
-# ============================================================================
-# Cypher templates
-# ============================================================================
 
 
 _QPP_BODY = """
@@ -102,8 +97,12 @@ LIMIT 1
 """
 
 # Outer envelope. Sadly, the QPP min and max length must be literal integers and cannot
-# be parameters. ``path_data`` projects only the ``uuid``/``kind``/``name``
-# properties the caller reads — the heavy Neo4j Path object is not returned.
+# be parameters. The projection avoids returning the heavy Neo4j Path object:
+# ``start_node_uuid``/``start_node_kind`` are the source's properties; ``hops``
+# is one entry per traversed edge with the schema relationship identifier and
+# the destination node's ``{uuid, kind}``. ``nodes(path)`` alternates Node,
+# Relationship, Node, Relationship, ... so for hop ``i`` the relationship
+# vertex is at ``i*2 + 1`` and the destination node is at ``i*2 + 2``.
 _QUERY = """
 %(source_match)s%(target_match)s
 MATCH path = (source) (
@@ -113,14 +112,15 @@ WITH path, length(path) / 2 AS depth
 ORDER BY depth ASC, path
 LIMIT $max_results
 RETURN
-    [n IN nodes(path) | {uuid: n.uuid, kind: n.kind, name: n.name}] AS path_data,
+    head(nodes(path)).uuid AS start_node_uuid,
+    head(nodes(path)).kind AS start_node_kind,
+    [i IN range(0, depth - 1) | {
+        relationship_identifier: nodes(path)[i*2 + 1].name,
+        uuid: nodes(path)[i*2 + 2].uuid,
+        kind: nodes(path)[i*2 + 2].kind
+    }] AS hops,
     depth
 """
-
-
-# ============================================================================
-# Assembly
-# ============================================================================
 
 
 def render_plan_to_cypher(

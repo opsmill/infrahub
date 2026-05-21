@@ -15,11 +15,12 @@ class PathNodeData:
 class PathHopData:
     node: PathNodeData
     # Schema relationship identifier (e.g. "device_interfaces") of the edge
-    # traversed to reach this node from the previous hop. None on the first hop.
-    relationship_identifier: str | None
+    # traversed to reach this node from the previous hop.
+    relationship_identifier: str
 
 
 @dataclass(frozen=True)
 class PathData:
+    start_node: PathNodeData
     hops: list[PathHopData]
     depth: int
