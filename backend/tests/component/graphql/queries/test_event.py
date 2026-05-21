@@ -352,7 +352,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch2,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch2_mutated3": NodeCreatedEvent(
@@ -362,7 +362,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch2,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch3_mutated1": NodeCreatedEvent(
@@ -372,7 +372,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch3,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
         "branch3_mutated2": NodeCreatedEvent(
@@ -382,7 +382,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch3,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
     }
