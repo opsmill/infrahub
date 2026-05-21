@@ -125,8 +125,8 @@ class AutoCreatedGroupsService:
                 if group is None:
                     continue
 
-            await self._add_member(group)
-            granted.append(name)
+            if await self._add_member(group):
+                granted.append(name)
 
         return tuple(granted)
 
@@ -172,15 +172,21 @@ class AutoCreatedGroupsService:
         )
         return None
 
-    async def _add_member(self, group: CoreAccountGroup | Node) -> None:
-        """Add the logging-in account to `group` as a member, idempotently."""
+    async def _add_member(self, group: CoreAccountGroup | Node) -> bool:
+        """Add the logging-in account to `group` as a member, idempotently.
+
+        Returns `True` if the account is a member of `group` after this call (whether added
+        here or already present), `False` if the group disappeared before membership could
+        be established.
+        """
         refreshed = await self._node_manager.get_one(db=self._db, id=group.id, prefetch_relationships=True)
         if refreshed is None:
             log.warning("auth_groups.group_disappeared_after_create", group_id=group.id)
-            return
+            return False
         members_rel = refreshed.get_relationship(name="members")
         members = await members_rel.get_peers(db=self._db, branch_agnostic=True, peer_type=CoreAccount)
         if self._account.id in members:
-            return
+            return True
         await members_rel.add(db=self._db, data=self._account)
         await members_rel.save(db=self._db)
+        return True
