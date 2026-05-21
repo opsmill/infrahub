@@ -26,6 +26,7 @@ safe-outputs:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
+  report-failure-as-issue: false
   add-comment:
     max: 3
     discussions: false
