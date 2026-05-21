@@ -31,7 +31,7 @@ Importable only from other modules in `graph_traversal/`. The `_` prefix on the 
 
 | Parameter | Purpose | Validation |
 |---|---|---|
-| `plan` | The planner's output. | If `plan.routes` is empty, raise `ValueError("plan has no routes; caller must short-circuit")`. |
+| `plan` | The planner's output. | If `plan.is_empty`, raise `ValueError("plan has no adjacency")`. |
 | `source_id` | UUID of the starting object. | Must be a string; embedded only as a parameter, never interpolated. |
 | `branch` | Provides `branch.is_default` (dispatch flag) and `branch.name` (user-branch deletion filter). | Reused as-is. |
 | `at` | Point-in-time. Serialized via `at.to_string()` and bound as `$at`. | Same. |
@@ -43,17 +43,19 @@ A `RenderedCypher` with:
 
 - `text` — a single Cypher statement (one MATCH chain plus a QPP MATCH).
 - `params` — bound values for the source/target UUIDs, branch+time filter inputs, the planner-derived `allowed_path_maps` / `all_rel_names`, and `max_results`. **Kind names appear as Neo4j labels in `text`** (not bound parameters) so the label index drives the match.
-- `return_labels` — always `("path", "depth")`.
+- `return_labels` — always `("start_node_uuid", "start_node_kind", "hops", "depth")`.
 
 ## Generated Cypher shape
 
-A schema-level hop materializes as **two** `IS_RELATED` edges meeting at an intermediate `:Relationship` vertex whose `name` property holds the relationship identifier. The two arrows' orientations encode the schema's `RelationshipDirection`:
+A schema-level hop materializes as **two** `IS_RELATED` edges meeting at an intermediate `:Relationship` vertex whose `name` property holds the relationship identifier. The schema's `RelationshipDirection` (`OUTBOUND` / `INBOUND` / `BIDIR`) controls how the two arrows are oriented in storage:
 
-| `Hop.direction` | Storage orientation (start → end) |
+| Schema direction | Storage orientation (start → end) |
 |---|---|
 | `OUTBOUND` | `(:start_kind)-[:IS_RELATED]->(:Relationship {name})-[:IS_RELATED]->(:end_kind)` |
 | `INBOUND`  | `(:start_kind)<-[:IS_RELATED]-(:Relationship {name})<-[:IS_RELATED]-(:end_kind)` |
 | `BIDIR`    | `(:start_kind)-[:IS_RELATED]->(:Relationship {name})<-[:IS_RELATED]-(:end_kind)` |
+
+The planner does **not** track direction on its output (the per-hop adjacency map is direction-free), and the renderer emits **undirected** `-[:IS_RELATED]-` arrows in the QPP so a single pattern matches all three storage orientations. The table above documents how data is laid out on disk, not how the QPP pattern reads it.
 
 Concrete and generic kind names appear as **Neo4j labels** on `:Node` vertices (concrete kinds also appear as `{kind: $kind}` property predicates).
 
@@ -61,7 +63,7 @@ Concrete and generic kind names appear as **Neo4j labels** on `:Node` vertices (
 
 A single quantified-path-pattern MATCH covers both default-branch and user-branch requests. The planner-derived `$allowed_path_maps` (a nested `{start_kind: {rel_name: [end_kind, ...]}}` map) enforces the structural `(start_kind, rel_name, end_kind)` constraint per QPP iteration.
 
-The QPP body uses **undirected** `-[:IS_RELATED]-` arrows because storage orientation depends on each hop's `HopDirection` — a single quantified pattern can't encode all three with directed arrows. `$allowed_path_maps` does the structural work that directed arrows would otherwise have done.
+The QPP body uses **undirected** `-[:IS_RELATED]-` arrows because storage orientation depends on the schema relationship's `RelationshipDirection` — a single quantified pattern can't encode all three (`OUTBOUND`/`INBOUND`/`BIDIR`) with directed arrows. `$allowed_path_maps` does the structural work that directed arrows would otherwise have done.
 
 ```cypher
 MATCH (source:Node {uuid: $source_id})-[source_active:IS_PART_OF]->(:Root)
@@ -84,12 +86,22 @@ MATCH path = (source) (
     <user-branch deletion filter — see below>
     AND rel.name IN keys($allowed_path_maps[a.kind])
     AND b.kind IN $allowed_path_maps[a.kind][rel.name]
-){1, <plan.max_depth as literal int>} (target)
+){1, <plan.max_depth as literal int>} <target_pattern>
 WITH path, length(path) / 2 AS depth
 ORDER BY depth ASC, path
 LIMIT $max_results
-RETURN path, depth
+RETURN
+    head(nodes(path)).uuid AS start_node_uuid,
+    head(nodes(path)).kind AS start_node_kind,
+    [i IN range(0, depth - 1) | {
+        relationship_identifier: nodes(path)[i*2 + 1].name,
+        uuid: nodes(path)[i*2 + 2].uuid,
+        kind: nodes(path)[i*2 + 2].kind
+    }] AS hops,
+    depth
 ```
+
+`<target_pattern>` is `(target)` for `TerminalById` (the variable is pre-bound by the by-uuid match) and `(target:$any($terminal_kinds))` for `TerminalByKinds` (Cypher 5 dynamic-label syntax on the path's final node). The projection avoids returning the full Neo4j `Path`: `start_node_uuid` / `start_node_kind` carry the source's two properties; `hops` is a list of one entry per traversed edge, each carrying the schema relationship identifier (from the intermediate `:Relationship` vertex's `name`) plus the destination node's `uuid` and `kind`. `nodes(path)` alternates Node, Relationship, Node, Relationship, …, so for hop `i` the relationship vertex is at `i*2 + 1` and the destination node is at `i*2 + 2`.
 
 The branch differences reduce to two pieces:
 
@@ -126,13 +138,13 @@ The target match for `TerminalById` follows the same shape, carrying `source` fo
 
 ### Target match for `TerminalByKinds`
 
-When the terminal predicate is a kind set rather than a specific UUID, the target match uses Cypher 5's dynamic-label syntax to pre-filter at MATCH time:
+When the terminal predicate is a kind set rather than a specific UUID, there is no upfront target `MATCH`. The label constraint is inlined into the outer path-MATCH's final node with Cypher 5's dynamic-label syntax:
 
 ```cypher
-MATCH (target:$any($terminal_kinds))
+MATCH path = (source) ( ... ){1, <max>} (target:$any($terminal_kinds))
 ```
 
-A label-union `(target:KindX|KindY|...)` is *not* used because the union of terminal kinds may overlap with intermediate kinds; binding the constraint only on the QPP's final node via `$any($terminal_kinds)` keeps the semantics correct.
+Putting the constraint on the path's final node (instead of pre-binding every candidate via `MATCH (target:$any($terminal_kinds))` upstream) lets Neo4j drive target selection from the path search rather than first materializing a potentially huge candidate set. A label-union `(target:KindX|KindY|...)` is *not* used because the union of terminal kinds may overlap with intermediate kinds; `$any($terminal_kinds)` binds only on the path's final node so it doesn't conflict with intermediates that share a label.
 
 ## Parameters
 
@@ -144,26 +156,26 @@ A label-union `(target:KindX|KindY|...)` is *not* used because the union of term
 | `$at` | str | yes | `at.to_string()` |
 | `$valid_branches` | list[str] | yes | `[default, global]` (default branch) or `[default, global, user]` (user branch) |
 | `$user_branch` | str | user branch only | `branch.name` |
-| `$all_rel_names` | sorted list[str] | yes | sorted union of every `relationship_identifier` in `plan.routes` |
-| `$allowed_path_maps` | dict[str, dict[str, list[str]]] | yes | derived from `plan.routes`; inner lists sorted |
+| `$all_rel_names` | sorted list[str] | yes | sorted union of every `rel_name` key in `plan.adjacency` |
+| `$allowed_path_maps` | dict[str, dict[str, list[str]]] | yes | `plan.adjacency` with inner `frozenset` end-kind sets converted to sorted lists |
 | `$max_results` | int | yes | renderer arg |
 
 The QPP quantifier bound `plan.max_depth` is **interpolated as a literal integer**, not parameter-bound, because Cypher's QPP `{m, n}` syntax rejects parameters in that position. The value is server-validated to `[1, 20]` and never user-supplied raw, so direct interpolation is safe.
 
 ## Behavior — required
 
-1. **Validate inputs**: raise `ValueError` when `plan.routes` is empty or `max_results` is out of range.
-2. **Derive `$allowed_path_maps`** from `plan.routes`: iterate every `Hop` in every `Route` and accumulate `allowed_path_maps[hop.start_kind].setdefault(hop.relationship_identifier, set()).add(hop.end_kind)`. Convert inner sets to sorted lists.
+1. **Validate inputs**: raise `ValueError` when `plan.is_empty` is `True` or `max_results` is out of `[1, 200]`.
+2. **Derive `$allowed_path_maps`** from `plan.adjacency`: convert every inner `frozenset[str]` end-kind set to a sorted `list[str]`. No accumulation pass is needed — the planner already emits the adjacency in the required shape.
 3. **Derive label unions**: `start_kinds = sorted(keys(allowed_path_maps))`; `end_kinds = sorted(union of every end_kind in the map)`.
-4. **Derive `$all_rel_names`**: sorted union of every `relationship_identifier` in `plan.routes`.
+4. **Derive `$all_rel_names`**: sorted union of every `rel_name` key in `plan.adjacency`.
 5. **Dispatch on `branch.is_default`** only for two things:
    - `$valid_branches`: 2-element on default branch, 3-element on user branch.
    - Inject the user-branch deletion filter into the QPP body when `branch.is_default` is `False`.
-6. **Pick the target template**:
-   - `TerminalById`: bind `$target_id`, use the `MATCH (target:Node {uuid: $target_id})` template with the active-IS_PART_OF filter and `LIMIT 1`.
-   - `TerminalByKinds`: bind `$terminal_kinds` (sorted), use the `MATCH (target:$any($terminal_kinds))` template.
-7. **Interpolate the source match, target match, QPP body, and `plan.max_depth`** into the outer `_QUERY` template.
-8. **Return** `RenderedCypher(text=text, params=params, return_labels=("path", "depth"))`.
+6. **Pick the target binding**:
+   - `TerminalById`: bind `$target_id`, use the upfront by-uuid `MATCH (target:Node {uuid: $target_id})...LIMIT 1` template; the outer path-MATCH's final node is `(target)` (variable already bound).
+   - `TerminalByKinds`: bind `$terminal_kinds` (sorted), emit no upfront target match; the outer path-MATCH's final node is `(target:$any($terminal_kinds))`.
+7. **Interpolate the source match, target match, QPP body, target pattern, and `plan.max_depth`** into the outer `_QUERY` template.
+8. **Return** `RenderedCypher(text=text, params=params, return_labels=("start_node_uuid", "start_node_kind", "hops", "depth"))`.
 
 ## Behavior — forbidden
 
@@ -193,22 +205,17 @@ class PathTraversalQuery(Query):
         self.return_labels = list(rendered.return_labels)
 ```
 
-Existing `extract_path_data(neo4j.Path)` consumes the returned `path` and `depth` columns.
+The Query class's `get_paths()` iterates `self.get_results()` and delegates to `extract_path_from_result` in `backend/infrahub/graph_traversal/_extract.py` (a sibling private module to `_cypher.py`), which reads the four return labels and produces a `PathData` from `infrahub.graph_traversal.results`. The renderer's return labels are `("start_node_uuid", "start_node_kind", "hops", "depth")`. `_extract.py` owns the `_HopRow` `TypedDict` describing the per-hop projection, and uses `QueryResult.get_as_list_of_type(label="hops", return_type=_HopRow)` to recover typed hop rows without a `cast` at the call site. The same extractor is intended to serve `ReachableNodesQuery` once it migrates to this Cypher shape.
 
 ## Tests
 
-Snapshot tests on the full Cypher text are explicitly **out of scope** — they are brittle, drift with every formatting change, and don't actually verify correctness. End-to-end correctness lives in `backend/tests/component/graph_traversal/test_path_traversal_query.py`: those tests run the rendered Cypher against a real Neo4j and verify the returned paths.
-
-The unit tests in `backend/tests/unit/graph_traversal/test_cypher.py` cover the renderer's API contract only:
-
-- **Module boundary**: `from infrahub.graph_traversal.planning import *` does NOT expose `render_plan_to_cypher` (proves the planning package contains no Cypher).
-- **Defensive validation**: empty `plan.routes` raises `ValueError` (default- and user-branch paths). `max_results` out of `[1, 200]` raises `ValueError`.
-
-Anything beyond those — strategy-dispatch substring checks, label-union exact content, parameter-binding completeness — would re-implement the renderer in the test and lock the code shape against future cleanups. The component tests are the source of truth for "does this query return the right paths."
+Snapshot tests on the full Cypher text are explicitly **out of scope** — they are brittle, drift with every formatting change, and don't actually verify correctness. End-to-end correctness lives in `backend/tests/component/graph_traversal/test_path_traversal_query.py`: those tests run the rendered Cypher against a real Neo4j and verify the returned paths. The renderer's defensive validation (empty plan, out-of-range `max_results`) is exercised transitively through the Query-class tests; there is no standalone `test_cypher.py`.
 
 ## Alternative: per-route UNION ALL for default branch
 
 The current implementation uses the unified QPP shape for both branches. An alternative shape — one `UNION ALL` branch per route, each in its own `CALL { ... }` subquery, with direction-specific arrows per hop — is preserved here as a documented fallback in case benchmark evidence (SC-002) shows the QPP form regresses on the default branch.
+
+> The Cypher snippet below predates the structured `start_node_*` / `hops` / `depth` projection. If adopted, the alternative shape would also project the same four labels (`head(nodes(path)).uuid AS start_node_uuid`, `head(nodes(path)).kind AS start_node_kind`, the indexed-iteration `hops` list, and `depth`) instead of returning the full `Path` object, and the planner would no longer need direction information on each hop since the unified shape carries the same `(start_kind, rel_name, end_kind)` adjacency for both. The fan-out shape is preserved for reference only.
 
 The fan-out shape would look like:
 

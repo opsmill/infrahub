@@ -21,8 +21,9 @@ if TYPE_CHECKING:
 
 
 class SchemaPlanner:
-    """Builds the per-hop adjacency map of legal ``(start_kind, rel_name, end_kind)``
-    triples for a single source/terminal/depth query, pruned by user filters and
+    """Builds the per-hop adjacency map of legal ``(start_kind, rel_name, end_kind)`` triples.
+
+    Triples are produced for a single source/terminal/depth query, pruned by user filters and
     the requester's view permissions.
 
     Synchronous and stateless from the outside: every public dependency

@@ -36,7 +36,7 @@ Replace the blind variable-length Cypher traversal in `PathTraversalQuery` and `
 |---|---|---|
 | I. Schema-Driven Integrity | ✅ | Feature *consumes* the schema as primary input. No schema changes. No generated-file edits. |
 | II. Branch-Safe by Default | ✅ | Planner takes `branch` + `at` and reads `schema_branch` accordingly. Generated Cypher reuses existing `branch.get_query_filter_path()` patterns so branch/temporal filtering on edges is unchanged. |
-| III. Type Safety & Explicit Contracts | ✅ | New module uses frozen `@dataclass` for `Hop`, `Route`, `Plan`, `TerminalPredicate`, `UserFilters`. All public APIs typed. No `Optional[T]` — use `T \| None`. |
+| III. Type Safety & Explicit Contracts | ✅ | New module uses frozen `@dataclass` for `Plan`, `TerminalPredicate`, `UserFilters`, and the `results.py` shapes (`PathData`, `PathHopData`, `PathNodeData`). All public APIs typed. No `Optional[T]` — use `T \| None`. |
 | IV. Test Discipline | ✅ | Unit tests for planner (schema-only, no DB) covering edge cases from spec §Edge Cases. Component tests covering integration with `Query.execute()`. Benchmark test under `tests/query_benchmark/` for SC-001/SC-002 validation. No functional-test tier is required: this refactor preserves the existing GraphQL→backend→DB layering; new behavior (planner + Cypher renderer) is covered at the unit level, and end-to-end correctness is verified by the existing component tests at the GraphQL boundary. |
 | V. Query Performance & Efficiency | ✅ | This refactor *is* the performance improvement. Generated Cypher returns only fields needed. Parameter-bound. Benchmark gates included. No N+1 (single Cypher per request). |
 | VI. Security & Input Boundaries | ✅ | Plan-time permission pruning is defense-in-depth; existing API authentication is unchanged. All Cypher parameterized. User-supplied kind/relationship lists pass through Pydantic-validated GraphQL inputs (already enforced). |
@@ -77,14 +77,17 @@ dev/specs/infp-1991-graph-path-traversal/
 
 ```text
 backend/infrahub/graph_traversal/        # NEW top-level package
-├── __init__.py                          # Re-exports PathTraversalQuery, ReachableNodesQuery, and the planner surface
-├── path.py                              # PathTraversalQuery — moved from backend/infrahub/core/query/path.py. Accepts a non-empty Plan in __init__ (raises ValueError on empty); query_init renders Cypher via _cypher.py. Does NOT call the planner.
-├── reachable.py                         # ReachableNodesQuery — moved from backend/infrahub/core/query/reachable.py. Accepts a non-empty Plan in __init__ (raises ValueError on empty); query_init renders Cypher via _cypher.py. Does NOT call the planner.
-├── _cypher.py                           # Private helper: Plan→Cypher rendering. Dispatches on branch.is_default to (a) a default-branch fast path that inlines four-predicate edge validity (branch, status, from <= $at, to IS NULL OR to >= $at) per IS_RELATED edge, or (b) a user-branch QPP that collapses routes into one MATCH parameterized by a planner-derived $allowed_path_maps. Both strategies bind $at for point-in-time queries. Used by path.py and reachable.py only (two callers — Constitution VII).
+├── __init__.py                          # Empty — callers import from concrete submodules
+├── path.py                              # PathTraversalQuery — moved from backend/infrahub/core/query/path.py. Accepts a non-empty Plan in __init__ (raises ValueError on empty); query_init renders Cypher via _cypher.py. get_paths() delegates to extract_path_from_result in _extract.py. Does NOT call the planner.
+├── reachable.py                         # ReachableNodesQuery — moved from backend/infrahub/core/query/reachable.py. Currently still consumes a Neo4j Path until it migrates onto the planner shape; once migrated it will also delegate to _extract.py. Does NOT call the planner.
+├── results.py                           # Public dataclasses returned by the Query classes: PathData, PathHopData, PathNodeData. PathData carries a required start_node: PathNodeData plus hops: list[PathHopData] (hops excludes the start). PathHopData.relationship_identifier is a required str — every hop is reached via an edge. PathNodeData carries just uuid + kind — the resolver loads display metadata separately via NodeManager and merges it at response time.
+├── _cypher.py                           # Private helper: Plan→Cypher rendering. Single QPP MATCH for both default- and user-branch requests, parameterized by a planner-derived $allowed_path_maps. User-branch query adds two NOT EXISTS deletion-supersedes filters and extends $valid_branches. Projects start_node_uuid / start_node_kind / hops (list of {relationship_identifier, uuid, kind}) / depth rather than returning the full Neo4j Path. Used by path.py and reachable.py (two callers — Constitution VII).
+├── _extract.py                          # Private helper: QueryResult → PathData. Owns the _HopRow TypedDict describing the per-hop projection and exposes extract_path_from_result(result) -> PathData | None for the Query classes to call. Returns None when the row has no start node or no hops so callers can skip degenerate rows. Used by path.py (and reachable.py once migrated).
 └── planning/                            # NEW internal package — planner ONLY, no Cypher generation
-    ├── __init__.py                      # Exports: SchemaPlanner, Plan, Route, Hop, TerminalPredicate, UserFilters
-    ├── planner.py                       # SchemaPlanner (route enumeration + pruning)
-    ├── models.py                        # Plan / Route / Hop / TerminalPredicate / UserFilters dataclasses
+    ├── __init__.py                      # Empty — callers import from concrete submodules
+    ├── planner.py                       # SchemaPlanner (two-pass kind-BFS that builds an adjacency map)
+    ├── models.py                        # Plan / TerminalPredicate / UserFilters dataclasses
+    ├── constants.py                     # MIN_DEPTH / MAX_DEPTH / DEFAULT_EXCLUDED_NAMESPACES
     └── permissions.py                   # Per-request KindPermissionCache used by planner
 
 backend/infrahub/core/query/
@@ -92,13 +95,12 @@ backend/infrahub/core/query/
 └── reachable.py                         # DELETED after move — no compatibility shim
 
 backend/infrahub/graphql/queries/
-├── path.py                              # Resolver now orchestrates: resolves source/dest kinds, builds plan via SchemaPlanner, short-circuits on empty plan, only then instantiates PathTraversalQuery(plan=plan, ...). Imports updated to `from infrahub.graph_traversal.path import PathTraversalQuery, PathData` and `from infrahub.graph_traversal.planning import SchemaPlanner, TerminalById, UserFilters`.
+├── path.py                              # Resolver now orchestrates: resolves source/dest kinds, builds plan via SchemaPlanner, short-circuits on empty plan, only then instantiates PathTraversalQuery(plan=plan, ...). Imports updated to `from infrahub.graph_traversal.path import PathTraversalQuery`, `from infrahub.graph_traversal.results import PathData`, and `from infrahub.graph_traversal.planning.{models,planner,constants} import ...`.
 └── reachable.py                         # Resolver orchestrates the equivalent flow with TerminalByKinds. Imports updated to `from infrahub.graph_traversal.reachable import ReachableNodesQuery` and `from infrahub.graph_traversal.planning import SchemaPlanner, TerminalByKinds, UserFilters`.
 
 backend/tests/unit/graph_traversal/      # NEW (replaces backend/tests/unit/core/test_*_query.py)
-├── test_path_traversal_query.py         # Moved + extended for plan-driven behavior (constructor validation, plan-empty short-circuit)
+├── test_path_traversal_query.py         # Moved + extended for plan-driven behavior (constructor validation, plan-empty short-circuit). Also exercises render_plan_to_cypher end-to-end.
 ├── test_reachable_nodes_query.py        # Moved + extended for plan-driven behavior
-├── test_cypher.py                       # Contract tests on render_plan_to_cypher: module boundary (planning/ doesn't expose the renderer), empty-plan ValueError, max_results bounds. End-to-end correctness lives in component tests.
 └── planning/
     ├── test_planner.py                  # Pure schema-driven planner tests
     └── test_permissions_filter.py       # Plan pruning by permission resolver
@@ -130,7 +132,7 @@ See [research-schema-planning.md](research-schema-planning.md).
 | Concern raised in Phase 1 | Verdict |
 |---|---|
 | Permission lookups per kind could be N+1 if naive. | Mitigated by per-request `KindPermissionCache` (see [contracts/planner.md](contracts/planner.md)). One `PermissionManager.load_for_account` call per request; in-memory lookups thereafter. Constitution V satisfied. |
-| Plan enumeration could explode on cyclic schemas. | Capped by `max_depth` (≤ 20). Route enumeration uses iterative deepening, not DFS-without-bound. Memory bounded; documented in research. |
+| Plan enumeration could explode on cyclic schemas. | Capped by `max_depth` (≤ 20). The planner emits a per-hop adjacency map via two-pass kind-BFS (forward from source, reverse from terminal-matching kinds) — working set is bounded by `reachable_kinds × relationships_per_kind`, not by the number of routes. Memory bounded; documented in research. |
 | Generated Cypher must remain parameterized. | `_cypher.py`'s `render_plan_to_cypher` interpolates kind names as Neo4j labels (validated `^[A-Za-z][A-Za-z0-9]*$`) and parameter-binds relationship identifiers, UUIDs, and limits. User-supplied filter strings never enter the generated Cypher. Constitution VI satisfied. |
 | Diagnostic logging risks leaking sensitive data. | Plan logs include kind names and relationship identifiers (already public via schema); they do NOT include object UUIDs or attribute values. Constitution VI satisfied. |
 

@@ -1,76 +1,48 @@
+"""Constructor-validation tests for PathTraversalQuery."""
+
+from __future__ import annotations
+
 import pytest
 
 from infrahub.graph_traversal.path import PathTraversalQuery
+from infrahub.graph_traversal.planning.models import (
+    Plan,
+    TerminalById,
+    TerminalByKinds,
+)
+
+
+def _plan_with_one_hop() -> Plan:
+    return Plan(
+        adjacency={"KindA": {"a__b": frozenset({"KindB"})}},
+        source_kind="KindA",
+        terminal_predicate=TerminalById(node_id="dest-uuid", kind="KindB"),
+        max_depth=5,
+    )
+
+
+def _empty_plan() -> Plan:
+    return Plan(
+        adjacency={},
+        source_kind="KindA",
+        terminal_predicate=TerminalByKinds(kinds=frozenset({"KindB"})),
+        max_depth=5,
+    )
 
 
 class TestPathTraversalQueryValidation:
-    def test_rejects_same_source_and_destination(self) -> None:
-        with pytest.raises(ValueError, match="Source and destination nodes must be different"):
-            PathTraversalQuery(
-                source_id="uuid-1",
-                destination_id="uuid-1",
-            )
-
-    def test_rejects_max_depth_below_minimum(self) -> None:
-        with pytest.raises(ValueError, match="max_depth must be between 1 and 20"):
-            PathTraversalQuery(
-                source_id="uuid-1",
-                destination_id="uuid-2",
-                max_depth=0,
-            )
-
-    def test_rejects_max_depth_above_maximum(self) -> None:
-        with pytest.raises(ValueError, match="max_depth must be between 1 and 20"):
-            PathTraversalQuery(
-                source_id="uuid-1",
-                destination_id="uuid-2",
-                max_depth=21,
-            )
-
-    def test_rejects_max_paths_below_minimum(self) -> None:
-        with pytest.raises(ValueError, match="max_paths must be between 1 and 100"):
-            PathTraversalQuery(
-                source_id="uuid-1",
-                destination_id="uuid-2",
-                max_paths=0,
-            )
-
-    def test_rejects_max_paths_above_maximum(self) -> None:
-        with pytest.raises(ValueError, match="max_paths must be between 1 and 100"):
-            PathTraversalQuery(
-                source_id="uuid-1",
-                destination_id="uuid-2",
-                max_paths=101,
-            )
+    def test_rejects_empty_plan(self) -> None:
+        with pytest.raises(ValueError, match=r"non-empty plan"):
+            PathTraversalQuery(plan=_empty_plan(), source_id="src-uuid", default_branch_name="main")
 
     def test_accepts_valid_parameters(self) -> None:
-        query = PathTraversalQuery(
-            source_id="uuid-1",
-            destination_id="uuid-2",
-            max_depth=10,
-            max_paths=5,
-        )
-        assert query.source_id == "uuid-1"
-        assert query.destination_id == "uuid-2"
-        assert query.max_depth == 10
+        plan = _plan_with_one_hop()
+        query = PathTraversalQuery(plan=plan, source_id="src-uuid", default_branch_name="main", max_paths=5)
+        assert query.plan is plan
+        assert query.source_id == "src-uuid"
+        assert query.default_branch_name == "main"
         assert query.max_paths == 5
 
-    def test_default_parameters(self) -> None:
-        query = PathTraversalQuery(
-            source_id="uuid-1",
-            destination_id="uuid-2",
-        )
-        assert query.max_depth == 5
+    def test_default_max_paths(self) -> None:
+        query = PathTraversalQuery(plan=_plan_with_one_hop(), source_id="src-uuid", default_branch_name="main")
         assert query.max_paths == 10
-        assert query.kind_filter == []
-        assert query.relationship_filter == []
-
-    def test_accepts_filters(self) -> None:
-        query = PathTraversalQuery(
-            source_id="uuid-1",
-            destination_id="uuid-2",
-            kind_filter=["InfraDevice"],
-            relationship_filter=["interfaces"],
-        )
-        assert query.kind_filter == ["InfraDevice"]
-        assert query.relationship_filter == ["interfaces"]

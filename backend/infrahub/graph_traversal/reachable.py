@@ -4,14 +4,12 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
-from infrahub.graph_traversal.path import (
-    DEFAULT_EXCLUDED_NAMESPACES,
-    PathData,
-    PathNodeData,
-    extract_path_data,
-)
+from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES
+from infrahub.graph_traversal.results import PathData, PathHopData, PathNodeData
 
 if TYPE_CHECKING:
+    from neo4j.graph import Path as Neo4jPath
+
     from infrahub.database import InfrahubDatabase
 
 
@@ -95,7 +93,6 @@ class ReachableNodesQuery(Query):
         ORDER BY depth ASC, target.uuid ASC
         RETURN target.uuid AS target_uuid,
                target.kind AS target_kind,
-               coalesce(target.display_label, target.kind) AS target_display_label,
                path,
                depth
         LIMIT %(max_results)s
@@ -107,7 +104,6 @@ class ReachableNodesQuery(Query):
         self.return_labels = [
             "target_uuid",
             "target_kind",
-            "target_display_label",
             "path",
             "depth",
         ]
@@ -116,18 +112,14 @@ class ReachableNodesQuery(Query):
         results: list[ReachableNodeData] = []
         for result in self.get_results():
             path_obj = result.get_path(label="path")
-            path_data = extract_path_data(path_obj) if path_obj else PathData(hops=[], depth=0)
-
-            target_uuid = result.get_as_str(label="target_uuid") or ""
-            target_kind = result.get_as_str(label="target_kind") or ""
-            target_display_label = result.get_as_str(label="target_display_label") or ""
-
             node = PathNodeData(
-                uuid=target_uuid,
-                kind=target_kind,
-                label="",
-                display_label=target_display_label,
-                hfid=[],
+                uuid=result.get_as_str(label="target_uuid") or "",
+                kind=result.get_as_str(label="target_kind") or "",
+            )
+            path_data = (
+                self._extract_path_data(path_obj)
+                if path_obj
+                else PathData(start_node=PathNodeData(uuid=self.source_id, kind=""), hops=[], depth=0)
             )
 
             results.append(
@@ -138,3 +130,27 @@ class ReachableNodesQuery(Query):
                 )
             )
         return results
+
+    @staticmethod
+    def _extract_path_data(path_obj: Neo4jPath) -> PathData:
+        """Convert a Neo4j Path object into PathData.
+
+        Vertices alternate Node, Relationship, Node, Relationship, ...
+        mirroring the ``IS_RELATED*N`` edge expansion. The first vertex is the
+        ``start_node``; each subsequent Node vertex is a hop, paired with the
+        preceding Relationship vertex's ``name`` as its identifier.
+        """
+        vertices = list(path_obj.nodes)
+        if not vertices:
+            return PathData(start_node=PathNodeData(uuid="", kind=""), hops=[], depth=0)
+
+        start_node = PathNodeData(uuid=vertices[0].get("uuid", ""), kind=vertices[0].get("kind", ""))
+        hops: list[PathHopData] = []
+        pending_identifier = ""
+        for i, vertex in enumerate(vertices[1:], start=1):
+            if i % 2 == 1:
+                pending_identifier = vertex.get("name", "")
+            else:
+                node = PathNodeData(uuid=vertex.get("uuid", ""), kind=vertex.get("kind", ""))
+                hops.append(PathHopData(node=node, relationship_identifier=pending_identifier))
+        return PathData(start_node=start_node, hops=hops, depth=len(hops))
