@@ -9,6 +9,7 @@ from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
+from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
 from infrahub.core.query.ipam import IPPrefixUtilization
 from infrahub.core.query.resource_manager import (
     IPAddressPoolGetIdentifiers,
@@ -308,7 +309,7 @@ async def resolve_number_pool_utilization(
 
     The utilization is calculated as the percentage of the total number of values in the pool that are not excluded for the corresponding attribute.
     """
-    core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind="CoreNumberPool")
+    core_number_pool = await registry.manager.get_one_by_id_or_default_filter(db=db, id=pool.id, kind=CoreNumberPool)
     number_pool = NumberUtilizationGetter(db=db, pool=core_number_pool, at=at, branch=branch)
     await number_pool.load_data()
 

@@ -135,7 +135,7 @@ export function FileContentDiff({
   });
 
   const {
-    isPending: isThreadsPending,
+    isLoading: isThreadsLoading,
     error,
     data,
     refetch,
@@ -305,7 +305,7 @@ export function FileContentDiff({
     );
   };
 
-  if (isThreadsPending || isPendingPreviousFile || isPendingNewFile) {
+  if (isThreadsLoading || isPendingPreviousFile || isPendingNewFile) {
     return <LoadingIndicator className="p-4" />;
   }
 

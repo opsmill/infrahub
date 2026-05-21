@@ -35,10 +35,8 @@ export async function getArtifactContentDiff(
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const threads =
-    (data?.CoreArtifactThread?.edges
-      ?.map((edge) => edge?.node)
-      .filter(Boolean) as ArtifactThread[]) ?? [];
+  const threads = (data?.CoreArtifactThread?.edges?.map((edge) => edge?.node).filter(Boolean) ??
+    []) as ArtifactThread[];
 
   return { threads };
 }

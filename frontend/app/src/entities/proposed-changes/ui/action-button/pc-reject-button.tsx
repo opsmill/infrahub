@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -9,8 +8,8 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { CANCEL_REJECT_DECISION, REJECT_DECISION } from "@/entities/proposed-changes/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/ui/queries/update-review.mutation";
 import { hasUserRejectedProposedChange } from "@/entities/proposed-changes/utils/has-user-rejected-proposed-change";
@@ -18,7 +17,7 @@ import { hasUserRejectedProposedChange } from "@/entities/proposed-changes/utils
 export const RejectButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
   const { reject, cancelReject } = usePcActionsContext();
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChangesDetails = useProposedChange();
 
   const hasRejected = auth.user && hasUserRejectedProposedChange(proposedChangesDetails, auth.user);
 

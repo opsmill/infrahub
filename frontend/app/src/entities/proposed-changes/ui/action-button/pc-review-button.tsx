@@ -1,4 +1,3 @@
-import { useAtomValue } from "jotai";
 import { type ReactElement, useState } from "react";
 
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
@@ -8,12 +7,12 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
 import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
 import { RejectButton } from "@/entities/proposed-changes/ui/action-button/pc-reject-button";
 import { ReviewComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-review-combobox-list";
 import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { PcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/ui/queries/get-proposed-change-available-actions.query";
 
@@ -28,7 +27,7 @@ const actionsListMapping: Record<Review, ReviewButtonComponent> = {
 
 export const PcReviewButton = () => {
   const auth = useAuth();
-  const proposedChange = useAtomValue(proposedChangedState);
+  const proposedChange = useProposedChange();
 
   const { data, isPending } = useGetProposedChangeAvailableActions({
     proposedChangeId: proposedChange.id,

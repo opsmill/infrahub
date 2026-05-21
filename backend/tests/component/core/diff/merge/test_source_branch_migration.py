@@ -83,11 +83,12 @@ async def test_source_branch_migration(
         car_tagged=car_tagged_main,
         added_node_kind="Test2NewCar",
     )
-    # Post-merge, every car kind on main becomes Test2NewCar.
+    # Post-merge, active TestCars on main becomes Test2NewCars
     assert contexts.added_node
     contexts.added_node.expected_kind = "Test2NewCar"
+    # Test2NewCars deleted on the source, cause the corresponding TestCar to be deleted on main
     assert contexts.deleted_node
-    contexts.deleted_node.expected_kind = "Test2NewCar"
+    contexts.deleted_node.expected_kind = "TestCar"
 
     coordinator = await get_diff_coordinator(db=db, branch=branch)
     enriched_diff = await coordinator.update_branch_diff(base_branch=default_branch, diff_branch=branch)
