@@ -45,14 +45,9 @@ exports[`fix ts error`] = {
       [354, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
       [356, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
-    "src/entities/diff/ui/node-diff/comments.tsx:530760162": [
-      [26, 10, 7, "tsc: Property \'refetch\' does not exist on type \'{}\'.", "1381115054"],
-      [26, 35, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
-      [26, 41, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
-    ],
-    "src/entities/diff/ui/node-diff/index.tsx:4178895949": [
-      [90, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
-      [116, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
+    "src/entities/diff/ui/node-diff/index.tsx:1814076512": [
+      [96, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
+      [122, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
     "src/entities/diff/ui/node-diff/node-property.tsx:3639994513": [
       [27, 22, 17, "tsc: Property \'base_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'base_branch_value\'?", "1959743778"],
@@ -65,10 +60,6 @@ exports[`fix ts error`] = {
       [101, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
       [137, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [141, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
-    ],
-    "src/entities/diff/ui/node-diff/thread.tsx:770694981": [
-      [22, 10, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
-      [22, 16, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
     ],
     "src/entities/diff/utils/build-diff-tree-items.ts:3247801260": [
       [73, 66, 24, "tsc: Not all code paths return a value.", "3673565821"]
