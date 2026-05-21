@@ -256,7 +256,7 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Design & Integrate',
+      label: 'Automation & Outputs',
       collapsible: false,
       collapsed: false,
       link: { type: 'generated-index', slug: 'automation-and-outputs' },
