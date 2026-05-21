@@ -39,15 +39,12 @@ export function Component() {
     if (proposedChangeData) {
       setProposedChange(proposedChangeData as ProposedChangeDetail);
     }
-  }, [proposedChangeData, setProposedChange]);
-
-  useEffect(() => {
     return () => setProposedChange(null);
-  }, [setProposedChange]);
+  }, [proposedChangeData, setProposedChange]);
 
   const atomIsHydrated = storedProposedChange?.id === proposedChangeData?.id;
 
-  if (isPending) {
+  if (isPending || !atomIsHydrated) {
     return <LoadingIndicator className="h-full" />;
   }
 
@@ -89,10 +86,6 @@ export function Component() {
         <NoDataFound message="Proposed change is missing a source or destination branch." />
       </Content.Card>
     );
-  }
-
-  if (!atomIsHydrated) {
-    return <LoadingIndicator className="h-full" />;
   }
 
   const sourceBranchValue = pc.source_branch.value;
