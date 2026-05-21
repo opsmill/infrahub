@@ -114,7 +114,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
   );
 
   const {
-    isPending: isThreadsPending,
+    isLoading: isThreadsLoading,
     error,
     data,
     refetch,
@@ -123,7 +123,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     { enabled: !!proposedChangeId }
   );
 
-  if (isThreadsPending || isPreviousLoading || isNewLoading) {
+  if (isThreadsLoading || isPreviousLoading || isNewLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 
