@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, Request, Response
 from pydantic import BaseModel, Field
 
 from infrahub import config, models
@@ -50,10 +50,12 @@ class LDAPAuthErrorResponse(BaseModel):
     },
 )
 async def login_ldap(
-    credentials: LDAPCredentials, response: Response, db: InfrahubDatabase = Depends(get_db)
+    credentials: LDAPCredentials, request: Request, response: Response, db: InfrahubDatabase = Depends(get_db)
 ) -> models.UserToken:
     ldap_service: LDAPAuthService = get_ldap_auth_service()
-    auth_result = await ldap_service.authenticate(db=db, username=credentials.username, password=credentials.password)
+    auth_result = await ldap_service.authenticate(
+        db=db, request=request, username=credentials.username, password=credentials.password
+    )
     response.set_cookie(
         "access_token",
         auth_result.token.access_token,
