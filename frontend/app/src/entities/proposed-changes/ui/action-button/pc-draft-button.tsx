@@ -8,7 +8,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { useProposedChange } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 import type { ProposedChangeActionButtonProps } from "./types";

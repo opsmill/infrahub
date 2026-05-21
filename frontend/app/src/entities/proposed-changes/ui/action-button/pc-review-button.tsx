@@ -7,12 +7,12 @@ import { inputStyle } from "@/shared/components/ui/style";
 import { classNames } from "@/shared/utils/common";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { useProposedChange } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { ApproveButton } from "@/entities/proposed-changes/ui/action-button/pc-approve-button";
 import { PcPlaceholderButton } from "@/entities/proposed-changes/ui/action-button/pc-placeholder-button";
 import { RejectButton } from "@/entities/proposed-changes/ui/action-button/pc-reject-button";
 import { ReviewComboboxList } from "@/entities/proposed-changes/ui/action-button/pc-review-combobox-list";
 import type { ProposedChangeActionButtonProps } from "@/entities/proposed-changes/ui/action-button/types";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { PcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { useGetProposedChangeAvailableActions } from "@/entities/proposed-changes/ui/queries/get-proposed-change-available-actions.query";
 

@@ -3,7 +3,7 @@ import type React from "react";
 import { ComboboxItem, ComboboxList } from "@/shared/components/ui/combobox";
 import { Tooltip } from "@/shared/components/ui/tooltip";
 
-import { useProposedChange } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 interface ActionItem {
