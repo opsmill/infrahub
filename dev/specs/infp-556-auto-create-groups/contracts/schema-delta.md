@@ -9,7 +9,7 @@
 ```python
 SchemaAttribute(
     name="origin",
-    kind=AttributeKind.Text,    # Free-form string (FR-012, clarification 2026-05-13)
+    kind="Text",                # Free-form string (FR-012, clarification 2026-05-13)
     optional=True,              # Nullable — only the auto-creation path writes a value
     read_only=True,             # Read-only from every external write path (FR-021)
     branch=BranchSupportType.AGNOSTIC,
