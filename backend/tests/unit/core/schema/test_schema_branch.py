@@ -4,6 +4,56 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.core.schema.schema_branch import SchemaBranch
 
 
+class TestDeriveHumanFriendlyIdWithRelationshipOnlyConstraint:
+    """A single-element relationship-only uniqueness_constraint must not crash HFID derivation."""
+
+    @pytest.fixture
+    def processed_branch(self) -> SchemaBranch:
+        schema_root = SchemaRoot(
+            generics=[
+                GenericSchema(
+                    name="Location",
+                    namespace="Testing",
+                    hierarchical=True,
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text"),
+                    ],
+                ),
+            ],
+            nodes=[
+                NodeSchema(
+                    name="Country",
+                    namespace="Testing",
+                    inherit_from=["TestingLocation"],
+                    parent="",
+                    children="TestingSite",
+                ),
+                NodeSchema(
+                    name="Site",
+                    namespace="Testing",
+                    inherit_from=["TestingLocation"],
+                    parent="TestingCountry",
+                    children="",
+                    uniqueness_constraints=[["parent"]],
+                ),
+            ],
+        )
+        branch = SchemaBranch(cache={}, name="test")
+        branch.load_schema(schema=schema_root)
+        branch.process_inheritance()
+        branch.process_hierarchy()
+        branch.add_hierarchy_generic()
+        branch.add_hierarchy_node()
+        return branch
+
+    def test_process_human_friendly_id_does_not_raise(self, processed_branch: SchemaBranch) -> None:
+        """The HFID derivation must resolve a parent-only constraint without crashing."""
+        processed_branch.process_human_friendly_id(raise_parsing_errors=True)
+
+        site = processed_branch.get(name="TestingSite", duplicate=False)
+        assert site.human_friendly_id is None
+
+
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
     """Proves that schema processing produces the peer/hierarchical values in an expected manner."""
 

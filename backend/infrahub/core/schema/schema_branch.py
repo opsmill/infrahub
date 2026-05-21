@@ -1748,7 +1748,7 @@ class SchemaBranch:
                 continue
             constraint_path = constraint_paths[0]
             try:
-                schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                schema_path = node.parse_schema_path(path=constraint_path, schema=self)
             except AttributePathParsingError:
                 if raise_parsing_errors:
                     raise
