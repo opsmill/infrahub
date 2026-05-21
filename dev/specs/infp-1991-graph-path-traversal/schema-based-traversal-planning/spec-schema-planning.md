@@ -59,18 +59,18 @@ As a maintainer of the traversal subsystem, I want the schema-based planner to p
 
 ### User Story 4 - Plan Inspection for Debugging (Priority: P3)
 
-As a developer debugging unexpected traversal results, I want the planner's surviving routes (the set of viable kind-sequences with their relationship identifiers and directions) to be observable via structured logs, so I can verify that the plan matches my mental model of the schema.
+As a developer debugging unexpected traversal results, I want the planner's surviving adjacency (the set of viable `(start_kind, relationship_identifier, end_kind)` triples) to be observable via structured logs, so I can verify that the plan matches my mental model of the schema.
 
 **Why this priority**: Operational quality-of-life. Useful for troubleshooting and future development, but not required for the feature to deliver value.
 
-**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable kind-sequence and the relationship identifier and direction for each hop.
+**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable `(start_kind, relationship_identifier, end_kind)` triple in the adjacency. Direction is intentionally absent — see FR-002 — because the runtime Cypher uses undirected QPP arrows and has no consumer for direction.
 
 **Acceptance Scenarios**:
 
-1. **Given** a traversal request executed with diagnostics enabled, **When** the request completes, **Then** logs include each viable kind-sequence the planner produced.
-2. **Given** a request that produced no routes, **When** the request completes, **Then** the diagnostic event records `route_count=0` so the developer can distinguish "nothing matched" from "the planner failed to run."
+1. **Given** a traversal request executed with diagnostics enabled, **When** the request completes, **Then** logs include each viable `(start_kind, rel_name, end_kind)` triple the planner produced.
+2. **Given** a request that produced an empty adjacency, **When** the request completes, **Then** the diagnostic event records `adjacency_size=0` so the developer can distinguish "nothing matched" from "the planner failed to run."
 
-> **Note on pruned-route visibility**: An earlier design exposed per-route accounting for "routes pruned by permission" and "routes pruned by user filters." The implementation evolved to prune routes *during* BFS expansion (so excluded subtrees are never enumerated), making per-route pruning information unavailable at log time. Developers diagnosing "why is this route missing?" should reproduce the planner call against a representative schema with the filters relaxed to see what the unrestricted plan would have looked like.
+> **Note on pruned-hop visibility**: An earlier design exposed per-route accounting for "routes pruned by permission" and "routes pruned by user filters." The implementation evolved to prune hops *during* BFS expansion (so excluded subtrees are never enumerated), making per-hop pruning information unavailable at log time. Developers diagnosing "why is this hop missing?" should reproduce the planner call against a representative schema with the filters relaxed to see what the unrestricted adjacency would have looked like.
 
 ---
 
