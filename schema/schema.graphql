@@ -794,6 +794,10 @@ type CoreAccountGroup implements CoreGroup & LineageOwner & LineageSource {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  """
+  Identity provider name that auto-created this group; null on manual / bootstrap / pre-upgrade groups.
+  """
+  origin: TextAttribute
   parent: NestedEdgedCoreGroup!
   roles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountRole!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
@@ -869,7 +873,7 @@ input CoreAccountGroupUpsertInput {
 """A role defines a set of permissions to grant to a group of accounts"""
 type CoreAccountRole implements CoreNode {
   display_label: String
-  groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountGroup!
+  groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String]): NestedPaginatedCoreAccountGroup!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -13411,6 +13415,12 @@ type Query {
     node_metadata__updated_by__ids: [ID]
     offset: Int
     order: OrderInput
+    origin__is_protected: Boolean
+    origin__isnull: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
     parent__description__is_protected: Boolean
     parent__description__owner__id: ID
     parent__description__source__id: ID
@@ -13484,6 +13494,11 @@ type Query {
     groups__name__source__id: ID
     groups__name__value: String
     groups__name__values: [String]
+    groups__origin__is_protected: Boolean
+    groups__origin__owner__id: ID
+    groups__origin__source__id: ID
+    groups__origin__value: String
+    groups__origin__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int

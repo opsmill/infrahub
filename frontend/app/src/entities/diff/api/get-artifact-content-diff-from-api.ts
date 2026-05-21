@@ -1,6 +1,8 @@
 import { graphql } from "gql.tada";
 
-export const GET_ARTIFACT_THREADS = graphql(`
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+const GET_ARTIFACT_THREADS = graphql(`
   query GET_ARTIFACT_THREADS($changeIds: [ID!]) {
     CoreArtifactThread(change__ids: $changeIds) {
       count
@@ -39,3 +41,17 @@ export const GET_ARTIFACT_THREADS = graphql(`
     }
   }
 `);
+
+export interface GetArtifactContentDiffFromApiParams {
+  proposedChangeId: string;
+}
+
+export function getArtifactContentDiffFromApi(params: GetArtifactContentDiffFromApiParams) {
+  return graphqlClient.query({
+    query: GET_ARTIFACT_THREADS,
+    variables: {
+      changeIds: [params.proposedChangeId],
+    },
+    fetchPolicy: "no-cache",
+  });
+}

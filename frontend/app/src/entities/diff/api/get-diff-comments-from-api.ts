@@ -1,6 +1,8 @@
 import { graphql } from "gql.tada";
 
-export const GET_OBJECT_THREAD_COMMENTS = graphql(`
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+
+const GET_OBJECT_THREAD_COMMENTS = graphql(`
   query GET_OBJECT_THREAD_COMMENTS($changeIds: [ID!], $objectPath: String) {
     CoreObjectThread(change__ids: $changeIds, object_path__value: $objectPath) {
       count
@@ -35,3 +37,19 @@ export const GET_OBJECT_THREAD_COMMENTS = graphql(`
     }
   }
 `);
+
+export interface GetDiffCommentsFromApiParams {
+  proposedChangeId: string;
+  objectPath: string;
+}
+
+export function getDiffCommentsFromApi(params: GetDiffCommentsFromApiParams) {
+  return graphqlClient.query({
+    query: GET_OBJECT_THREAD_COMMENTS,
+    variables: {
+      changeIds: [params.proposedChangeId],
+      objectPath: params.objectPath,
+    },
+    fetchPolicy: "no-cache",
+  });
+}

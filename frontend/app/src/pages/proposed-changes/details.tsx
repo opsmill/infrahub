@@ -27,7 +27,7 @@ import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 export function Component() {
   const { proposedChangeId } = useRequiredParams("proposedChangeId");
   const { schema } = useSchema(PROPOSED_CHANGES_OBJECT, { throwIfNotFound: true });
-  const [, setProposedChange] = useAtom(proposedChangedState);
+  const [storedProposedChange, setProposedChange] = useAtom(proposedChangedState);
 
   const { isPending, error, data } = useGetProposedChangeDetails({ proposedChangeId });
   const proposedChangeData = data?.proposedChangeData;
@@ -39,9 +39,12 @@ export function Component() {
     if (proposedChangeData) {
       setProposedChange(proposedChangeData as ProposedChangeDetail);
     }
+    return () => setProposedChange(null);
   }, [proposedChangeData, setProposedChange]);
 
-  if (isPending) {
+  const atomIsHydrated = storedProposedChange?.id === proposedChangeData?.id;
+
+  if (isPending || !atomIsHydrated) {
     return <LoadingIndicator className="h-full" />;
   }
 
