@@ -92,8 +92,9 @@ class TestAdjacencyEnumeration:
         assert plan.adjacency == _adj(("TestingKindA", "a__b", "TestingKindB"))
 
     def test_finds_multi_hop_adjacency_through_intermediate(self, linear_a_b_c_schema: SchemaBranch) -> None:
-        """Over a BIDIR chain A↔B↔C with ``max_depth=5`` and terminal=C, the
-        adjacency includes every (start, rel, end) hop that lies on some path
+        """Over a BIDIR chain A↔B↔C with ``max_depth=5`` and terminal=C, every reachable hop appears.
+
+        The adjacency includes every (start, rel, end) hop that lies on some path
         from A to C of length ≤ 5.
 
         Forward BFS records all reachable hops; the back-pass keeps only
@@ -185,8 +186,10 @@ class TestGenericExpansion:
 
 class TestUserFilters:
     def test_default_excluded_namespaces_prune_hops_through_excluded_kinds(self) -> None:
-        """A hop through a kind in a default-excluded namespace (``Internal``) is
-        dropped during BFS, so the adjacency never includes any path through it."""
+        """A hop through a kind in a default-excluded namespace (``Internal``) is dropped during BFS.
+
+        The adjacency never includes any path through it.
+        """
         schema = build_schema_branch(
             nodes=[
                 _node(

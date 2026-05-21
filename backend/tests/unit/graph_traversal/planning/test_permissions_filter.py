@@ -41,9 +41,10 @@ def _default_filters() -> UserFilters:
 
 class TestPermissionPruning:
     def test_path_excluded_when_intermediate_kind_is_forbidden(self) -> None:
-        """With ``TestingForbidden`` denied, the only Source→Target path runs
-        through Forbidden; BFS drops the hop at the forbidden peer, so no
-        adjacency is produced."""
+        """With ``TestingForbidden`` denied, the only Source→Target path runs through Forbidden.
+
+        BFS drops the hop at the forbidden peer, so no adjacency is produced.
+        """
         schema = build_schema_branch(
             nodes=[
                 _node("Source", relationships=[_rel(name="rel_f", peer="TestingForbidden", identifier="s__f")]),
@@ -61,9 +62,10 @@ class TestPermissionPruning:
         assert plan.adjacency == {}
 
     def test_path_retained_when_alternate_path_avoids_forbidden_kind(self) -> None:
-        """Two structural paths exist (Source→Allowed→Target and
-        Source→Forbidden→Target). ``TestingForbidden`` is denied, so the
-        adjacency contains only the Allowed branch."""
+        """Two structural paths exist (Source→Allowed→Target and Source→Forbidden→Target).
+
+        ``TestingForbidden`` is denied, so the adjacency contains only the Allowed branch.
+        """
         schema = build_schema_branch(
             nodes=[
                 _node(
@@ -91,8 +93,10 @@ class TestPermissionPruning:
         )
 
     def test_path_excluded_when_source_kind_is_forbidden(self) -> None:
-        """A forbidden source short-circuits the whole plan — every path
-        would have to start at the source, so BFS doesn't even run."""
+        """A forbidden source short-circuits the whole plan.
+
+        Every path would have to start at the source, so BFS doesn't even run.
+        """
         schema = build_schema_branch(
             nodes=[
                 _node("Source", relationships=[_rel(name="rel_t", peer="TestingTarget", identifier="s__t")]),

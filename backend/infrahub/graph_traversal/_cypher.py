@@ -135,6 +135,7 @@ def render_plan_to_cypher(
 
     Raises:
         ValueError: when ``plan`` is empty or ``max_results`` is out of range.
+
     """
     if plan.is_empty:
         raise ValueError("plan has no adjacency")
