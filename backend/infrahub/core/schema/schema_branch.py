@@ -1283,6 +1283,7 @@ class SchemaBranch:
 
         Raises:
             ValueError: When an attribute or relationship name contains '__'.
+
         """
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
