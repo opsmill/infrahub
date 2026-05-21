@@ -59,23 +59,25 @@ As a maintainer of the traversal subsystem, I want the schema-based planner to p
 
 ### User Story 4 - Plan Inspection for Debugging (Priority: P3)
 
-As a developer debugging unexpected traversal results, I want the planner output (the set of viable kind-sequences with their relationship identifiers and directions, and any sequences pruned for permission reasons) to be observable via structured logs or a developer-facing diagnostic field, so I can verify that the plan matches my mental model of the schema.
+As a developer debugging unexpected traversal results, I want the planner's surviving adjacency (the set of viable `(start_kind, relationship_identifier, end_kind)` triples) to be observable via structured logs, so I can verify that the plan matches my mental model of the schema.
 
 **Why this priority**: Operational quality-of-life. Useful for troubleshooting and future development, but not required for the feature to deliver value.
 
-**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable kind-sequence, the relationship identifier and direction for each hop, and which sequences (if any) were pruned by permission filtering.
+**Independent Test**: With a debug flag or log level enabled, execute a traversal query and verify the plan is emitted in a structured, readable form that lists each viable `(start_kind, relationship_identifier, end_kind)` triple in the adjacency. Direction is intentionally absent — see FR-002 — because the runtime Cypher uses undirected QPP arrows and has no consumer for direction.
 
 **Acceptance Scenarios**:
 
-1. **Given** a traversal request executed with diagnostics enabled, **When** the request completes, **Then** logs include the full set of viable kind-sequences considered.
-2. **Given** the same request, **When** the planner pruned routes for permission reasons, **Then** the diagnostic output identifies which routes were pruned and on which kind the user lacked permission.
+1. **Given** a traversal request executed with diagnostics enabled, **When** the request completes, **Then** logs include each viable `(start_kind, rel_name, end_kind)` triple the planner produced.
+2. **Given** a request that produced an empty adjacency, **When** the request completes, **Then** the diagnostic event records `adjacency_size=0` so the developer can distinguish "nothing matched" from "the planner failed to run."
+
+> **Note on pruned-hop visibility**: An earlier design exposed per-route accounting for "routes pruned by permission" and "routes pruned by user filters." The implementation evolved to prune hops *during* BFS expansion (so excluded subtrees are never enumerated), making per-hop pruning information unavailable at log time. Developers diagnosing "why is this hop missing?" should reproduce the planner call against a representative schema with the filters relaxed to see what the unrestricted adjacency would have looked like.
 
 ---
 
 ### Edge Cases
 
 - **Same kind at source and destination, no schema route**: If the source object and destination object share a kind but the schema offers no self-referential route within the configured depth, the planner returns no routes and the query is short-circuited to an empty result.
-- **Cyclic schema routes**: If the schema permits cycles (kind A → kind B → kind A), the planner avoids infinite recursion two ways. (1) By default it forbids schema-level revisits: any candidate route in which a kind appears more than once is pruned, with the explicit exception that the source kind may appear as the terminal kind (supporting same-kind source/terminal queries). (2) Even when `allow_schema_revisits=True` is set, the configured maximum traversal depth caps enumeration, allowing each kind to appear multiple times only within that cap.
+- **Cyclic schema routes**: If the schema permits cycles (kind A → kind B → kind A), the planner avoids infinite recursion by capping enumeration at the configured maximum traversal depth — each kind may appear multiple times along a route, bounded only by that depth cap. Revisits aren't pruned at planning time because the runtime QPP query only enforces per-hop legality from the planner's adjacency map (it cannot enforce schema-uniqueness on the matched path), so pruning revisit-shaped routes would not change query results.
 - **User has permission on source and destination kinds but not on every intermediate kind on every route**: The planner must keep routes whose intermediate kinds are all permitted and drop routes that include any forbidden intermediate. If the result is no viable routes, the query is short-circuited.
 - **Generic / parent kinds in routes**: When a schema relationship is defined against a generic, the planner enumerates the generic and treats any concrete kind that inherits from it as a valid stand-in for that hop, subject to per-kind permission filtering.
 - **Asymmetric relationship directionality**: The planner records the direction of each relationship as defined in the schema and emits direction-aware Cypher; reversing endpoints in the schema must result in a different (or empty) plan.
@@ -88,30 +90,29 @@ As a developer debugging unexpected traversal results, I want the planner output
 
 ### Functional Requirements
 
-- **FR-001**: The system MUST, on receiving a traversal request, derive from the active branch's schema the complete set of node-kind sequences (up to the configured maximum depth) that can connect the source object's kind to either the destination object's kind or any of the requested destination kinds.
-- **FR-002**: Each route in the plan MUST record, for every hop, the relationship identifier and the relationship direction (outbound from the previous kind or inbound to it) as defined in the schema.
-- **FR-003**: The planner MUST exclude any route containing a node kind on which the requesting user does not have read permission, evaluated against the requester's effective permissions for the requested branch.
-- **FR-004**: When the planner produces zero viable routes (whether because no schema route exists, all routes were pruned for permissions, or all routes were pruned by user-supplied filters), the system MUST return an empty result without executing a traversal against the data graph.
-- **FR-005**: The system MUST translate the planner output into a single Cypher query whose path expressions correspond exactly to the viable routes; no path outside the plan may be returned.
+- **FR-001**: The system MUST, on receiving a traversal request, derive from the active branch's schema the complete set of `(start_kind, relationship_identifier, end_kind)` triples (up to the configured maximum depth) that lie on some path from the source object's kind to either the destination object's kind or any of the requested destination kinds.
+- **FR-002**: The plan output MUST be a per-hop adjacency map `{start_kind: {relationship_identifier: frozenset(end_kind, ...)}}`. Schema-relationship direction (OUTBOUND/INBOUND/BIDIR) is **not** carried in the plan: the runtime Cypher uses undirected QPP arrows, so direction has no consumer downstream.
+- **FR-003**: The planner MUST exclude any hop whose `start_kind` or `end_kind` is a node kind on which the requesting user does not have read permission, evaluated against the requester's effective permissions for the requested branch.
+- **FR-004**: When the planner produces an empty adjacency (whether because no schema path exists, all hops were pruned for permissions, or all hops were pruned by user-supplied filters), the system MUST return an empty result without executing a traversal against the data graph.
+- **FR-005**: The system MUST translate the planner output into a single Cypher query whose path expressions correspond exactly to the per-hop adjacency map; no `(start_kind, rel_name, end_kind)` triple outside the adjacency may be matched.
 - **FR-006**: The generated query MUST support two terminal modes: (a) terminate at a specific destination node id, and (b) terminate at any node whose kind is in a configured set of destination kinds.
 - **FR-007**: The `InfrahubPathTraversal` GraphQL query MUST use the planner in mode (a) and continue to accept the same inputs and return the same output shape as defined in `path.py`.
 - **FR-008**: The `InfrahubReachableNodes` GraphQL query MUST use the planner in mode (b) and continue to accept the same inputs and return the same output shape as defined in `reachable.py`.
-- **FR-009**: User-supplied filters (`kind_filter`, `excluded_kinds`, `excluded_namespaces`, `relationship_filter`) MUST be applied to the plan prior to query generation, eliminating routes that conflict with them.
-- **FR-010**: The configured maximum traversal depth (default 5, max 20) MUST bound both the planner's route enumeration and the generated query's path lengths.
+- **FR-009**: User-supplied filters (`kind_filter`, `excluded_kinds`, `excluded_namespaces`, `relationship_filter`) MUST be applied during plan construction, eliminating hops that conflict with them.
+- **FR-010**: The configured maximum traversal depth (default 5, max 20) MUST bound both the planner's BFS and the generated query's path lengths.
 - **FR-011**: The configured maximum result count (paths or reachable nodes, as appropriate) MUST be enforced by the generated query.
-- **FR-012**: The planner MUST treat generic schemas in the schema as expansions to their concrete inheriting kinds for the purposes of enumerating viable routes, subject to per-kind permission filtering.
+- **FR-012**: The planner MUST treat generic schemas in the schema as expansions to their concrete inheriting kinds for the purposes of enumerating viable hops, subject to per-kind permission filtering.
 - **FR-013**: The planner and generated query MUST respect branch and point-in-time context — the same source/destination on different branches with different schemas MUST produce plans appropriate to each branch's schema.
-- **FR-014**: The system MUST emit, at a developer-facing diagnostic log level, a structured representation of the planner output for each request, including viable routes, routes pruned by permission, and routes pruned by user filters.
+- **FR-014**: The system MUST emit, at a developer-facing diagnostic log level, a structured representation of the planner output for each request, including the adjacency size. Per-hop pruning information is not surfaced — filter and permission violations are dropped during BFS expansion so no candidate hop is recorded for them.
 - **FR-015**: The system MUST preserve current error semantics: missing source/destination object returns the same error message, identical source and destination returns the same error message, exceeding the maximum depth or paths is bounded the same way.
 - **FR-016**: Planner output for identical (schema-branch, source-kind, target-kind-set, depth, filter) tuples MUST be deterministic so that two adjacent requests produce the same plan, supporting cacheability.
-- **FR-017**: The system MUST, by default, exclude routes that revisit the same schema kind. A route revisits the schema iff any kind appears more than once in `route.kinds`, with one exception: when the source kind equals the terminal kind (the user is asking for paths between two objects of the same kind), the route may end at that kind, but the intermediate kinds MUST still be distinct and MUST NOT equal the source/terminal kind. Users MAY opt into permissive enumeration via a new `allow_schema_revisits: bool` input (default `False`), which restores the "any kind may appear multiple times, bounded only by `max_depth`" behavior. The setting is part of the plan-level filter set and is exposed through both GraphQL queries.
+- **FR-017**: The planner MUST cap BFS at `max_depth` and MUST NOT track per-path schema kind revisits. Rationale: the runtime QPP query enforces only per-hop legality against the adjacency map and cannot enforce schema-uniqueness on the matched path, so any planner-side revisit filtering would be invisible to query results. Cycles are bounded by `max_depth` alone.
 
 ### Key Entities
 
-- **Route**: A schema-derived sequence of node kinds and the relationship hops between them, including each hop's relationship identifier and direction. The atomic unit produced by the planner.
-- **Plan**: The complete set of routes from a source kind to one or more target kinds (or to a destination kind) under the active branch's schema, after permission and user-filter pruning. A plan may be empty.
-- **Hop**: A single edge in a route, described by (start kind, relationship identifier, direction, end kind).
-- **Permission Decision**: For a given requester and kind, a yes/no answer to "may this user read instances of this kind on this branch." Used by the planner to prune routes.
+- **Plan**: The per-hop adjacency map `{start_kind: {relationship_identifier: frozenset(end_kind, ...)}}` plus the source/terminal/depth context. The atomic unit produced by the planner. A plan may be empty (no viable adjacency).
+- **Adjacency hop**: A single `(start_kind, relationship_identifier, end_kind)` triple in the plan's adjacency map. Asserts that the schema permits this single-hop edge AND that it lies on some ≤`max_depth` path from source to a terminal-matching kind.
+- **Permission Decision**: For a given requester and kind, a yes/no answer to "may this user read instances of this kind on this branch." Used by the planner to prune hops.
 - **Terminal Predicate**: The condition that closes a path in the generated query — either "node id equals X" or "node kind is in {…}". Determines which traversal mode is run.
 
 ## Success Criteria *(mandatory)*
@@ -122,7 +123,7 @@ As a developer debugging unexpected traversal results, I want the planner output
 - **SC-002**: For source/destination pairs that share a route, query latency at p95 is at least as fast as the existing implementation on the same graph and schema, and on graphs of 100,000 nodes is reduced by a meaningful margin (target ≥ 30%) compared to the existing implementation.
 - **SC-003**: Zero paths returned by either GraphQL query include nodes whose kind the requester lacks read permission on, verified by automated test against representative permission configurations.
 - **SC-004**: Existing automated tests covering `InfrahubPathTraversal` and `InfrahubReachableNodes` continue to pass without modification to assertions on input/output shape or error messages.
-- **SC-005**: A developer with no prior context can, from diagnostic logs alone, reconstruct which routes the planner considered and which were pruned for which reason, validated by a peer review exercise on two sample requests.
+- **SC-005**: A developer with no prior context can, from diagnostic logs alone, reconstruct the set of routes the planner produced for a given request (kind sequence and relationship identifiers per route), validated by a peer review exercise on two sample requests.
 - **SC-006**: Both GraphQL queries share a single plan-to-query construction routine, verified by the test referenced in User Story 3 — there is no Cypher query template duplicated between the two query handlers.
 
 ## Assumptions
