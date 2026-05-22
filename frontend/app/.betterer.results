@@ -129,10 +129,6 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/object-relationship-list.tsx:1515591506": [
       [39, 54, 5, "tsc: Property \'items\' does not exist on type \'NodeObject[]\'.", "179721187"]
     ],
-    "src/entities/nodes/object/ui/queries/delete-objects.mutation.ts:1568596081": [
-      [7, 14, 19, "tsc: Module \'\\"@/entities/nodes/object/api/delete-objects-from-api\\"\' has no exported member \'DeleteObjectsParams\'.", "479076294"],
-      [27, 8, 7, "tsc: Type \'DefaultContext | undefined\' is not assignable to type \'Record<string, any>\'.\\n  Type \'undefined\' is not assignable to type \'Record<string, any>\'.", "3716929786"]
-    ],
     "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:3411425629": [
       [18, 34, 2, "tsc: Property \'id\' does not exist on type \'NodeCore | NodeCore[] | { from_pool: { id: string; }; }\'.\\n  Property \'id\' does not exist on type \'NodeCore[]\'.", "5861160"]
     ],
