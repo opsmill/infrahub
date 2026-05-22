@@ -49,8 +49,8 @@ oidc_providers = ["provider1", "provider2"]
 
 Infrahub can automatically assign users to groups based on information from your identity provider.
 
-:::warning
-Infrahub won't automatically create groups based on identity provider data. You must create the corresponding groups in Infrahub first.
+:::info
+By default, groups must exist in Infrahub before they can be assigned. Infrahub can also auto-create groups from provider claims when [auto-creation](#auto-create-groups-from-identity-provider-claims) is enabled.
 :::
 
 ### Step 1: Configure group claims in your identity provider
@@ -123,6 +123,67 @@ sso_user_default_group = "default-group"
 :::success
 Now that group mapping is configured, manage user permissions in Infrahub by [assigning permissions and roles](../permissions-roles/manage-accounts-and-permissions.mdx) to these groups.
 :::
+
+## Auto-create groups from identity provider claims
+
+Infrahub can create local groups on demand from the claims your identity provider sends, so administrators do not have to mirror every provider group by hand. The feature is **opt-in**: it activates only when a regular-expression filter is configured.
+
+### How it works
+
+On every SSO login, each provider-supplied claim is matched against the configured filter. The first matching pattern derives an **effective name** — either from a `(?P<name>...)` named capture group or, when the pattern has no named capture, from the full matched claim. Infrahub then finds-or-creates a `CoreAccountGroup` with that name and adds the logging-in account as a member.
+
+Auto-creation runs **before** the default-group fallback ([step 3](#step-3-configure-default-group-assignment-optional)). If the filter matches at least one claim, the default group is not applied.
+
+### Configure the filter
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Capture everything after `LDAP/group/` as the local group name
+export INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER='^LDAP/group/(?P<name>.+)$'
+
+# Cap how many new groups one login may create (existing-group reuse is uncapped)
+export INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_MAX_PER_LOGIN=50
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[security]
+auto_create_groups_filter = "^LDAP/group/(?P<name>.+)$"
+auto_create_groups_max_per_login = 50
+```
+
+</TabItem>
+</Tabs>
+
+With the example above, a claim `LDAP/group/network-engineering` produces a local group named `network-engineering`. A claim that does not match the filter is ignored.
+
+:::warning
+Anchor your regex (`^...$`) and scope it tightly. A permissive pattern can create unintended groups on first login.
+:::
+
+### Per-login cap
+
+`auto_create_groups_max_per_login` bounds how many **new** groups a single login can create. Reuse of already-existing groups is uncapped. When the cap is hit, surplus claims that would have required a fresh creation are dropped — the login still completes. Each cap breach emits a `GroupAutoCreateCapBreachEvent` carrying the cap value and the verbatim dropped claims.
+
+### Provenance: the `origin` attribute
+
+Every auto-created `CoreAccountGroup` row stores the configured **provider name** (e.g., `"AzureAD-corp"`) on its `origin` attribute. The value is written verbatim at creation time and is never overwritten on subsequent logins, so the audit trail of which IdP first provisioned a group is preserved.
+
+`origin` is read-only and hidden from the default UI; toggle the **Show extra attributes** view to inspect it, or query it via the GraphQL API.
+
+### Audit events
+
+Three event types are emitted on the standard event bus — useful for compliance pipelines and operational dashboards:
+
+- `GroupAutoCreatedEvent` — a new group was created from a claim
+- `GroupAutoCreateRejectedClaimEvent` — a claim matched but produced an invalid effective name (empty, whitespace-only)
+- `GroupAutoCreateCapBreachEvent` — the per-login cap was reached and surplus claims were dropped
+
+See the [group events reference](../../../reference/infrahub-events/group.mdx) for full payload shapes.
 
 ## Related resources
 
