@@ -41,7 +41,7 @@ INFRAHUB_USE_NATS: bool = str_to_bool(os.getenv("INFRAHUB_USE_NATS", "false"))
 
 DATABASE_DOCKER_IMAGE = os.getenv("DATABASE_DOCKER_IMAGE", None)
 MEMGRAPH_DOCKER_IMAGE = os.getenv("MEMGRAPH_DOCKER_IMAGE", "memgraph/memgraph-mage:1.19-memgraph-2.19-no-ml")
-NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2025.10.1-enterprise")
+NEO4J_DOCKER_IMAGE = os.getenv("NEO4J_DOCKER_IMAGE", "neo4j:2026.04.0-enterprise")
 MESSAGE_QUEUE_DOCKER_IMAGE = os.getenv(
     "MESSAGE_QUEUE_DOCKER_IMAGE",
     "rabbitmq:4.2.1-management" if not INFRAHUB_USE_NATS else "nats:2.10.14-alpine",

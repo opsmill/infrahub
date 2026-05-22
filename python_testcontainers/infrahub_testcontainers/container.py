@@ -152,7 +152,7 @@ class InfrahubDockerCompose(DockerCompose):
                     "INFRAHUB_TESTING_DOCKER_ENTRYPOINT": f"gunicorn --config community/backend/infrahub/serve/gunicorn_config.py -w {os.environ.get('INFRAHUB_TESTING_WEB_CONCURRENCY', '4')} --logger-class infrahub.serve.log.GunicornLogger infrahub_enterprise.server:app",
                     "INFRAHUB_TESTING_WORKFLOW_DEFAULT_WORKER_TYPE": "infrahubentasync",
                     "INFRAHUB_TESTING_PREFECT_UI_ENABLED": "false",
-                    "NEO4J_DOCKER_IMAGE": "neo4j:2025.10.1-enterprise",
+                    "NEO4J_DOCKER_IMAGE": "neo4j:2026.04.0-enterprise",
                 }
             )
         if os.environ.get("INFRAHUB_TESTING_TASKMGR_SCALEOUT"):

@@ -39,7 +39,7 @@ jobs:
         include:
           - name: From 1.8.0
             source_version: 1.8.0
-            neo4j_image: "neo4j:2025.10.1-enterprise"
+            neo4j_image: "neo4j:2026.04.0-enterprise"
             redis_image: "redis:8.4.0"
             rabbitmq_image: "rabbitmq:4.2.1-management"
             postgres_image: "postgres:18-alpine"
