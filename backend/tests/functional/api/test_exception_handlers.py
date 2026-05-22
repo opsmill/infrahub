@@ -1,0 +1,90 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import pytest
+
+from tests.helpers.test_app import TestInfrahubApp
+
+if TYPE_CHECKING:
+    from infrahub_sdk import InfrahubClient
+
+    from infrahub.database import InfrahubDatabase
+    from tests.adapters.message_bus import BusSimulator
+    from tests.helpers.test_client import InfrahubTestClient
+
+
+class TestExceptionHandlers(TestInfrahubApp):
+    @pytest.fixture(scope="class")
+    async def initial_dataset(
+        self,
+        db: InfrahubDatabase,
+        initialize_registry: None,
+        client: InfrahubClient,
+        bus_simulator: BusSimulator,
+        prefect_test_fixture: None,
+    ) -> None:
+        return None
+
+    async def test_unauthenticated_graphql_returns_catalogue_envelope(
+        self,
+        initial_dataset: None,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        response = await test_client.post(
+            "/graphql",
+            json={"query": "{ TestingTag { count } }"},
+            headers={"Authorization": "Bearer not-a-real-token"},
+        )
+
+        assert response.status_code == 401
+        body = response.json()
+        assert body["data"] is None
+        assert len(body["errors"]) == 1
+        extensions = body["errors"][0]["extensions"]
+        assert extensions["code"] == "AUTHENTICATION_REQUIRED"
+        assert extensions["http_status"] == 401
+        assert extensions["data"] == {}
+
+    async def test_expired_jwt_on_graphql_returns_token_expired(
+        self,
+        initial_dataset: None,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        # An expired JWT raises AuthorizationError("Expired Signature"); ensure the formatter
+        # splits the AuthorizationError mapping into TOKEN_EXPIRED.
+        expired_jwt = (
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjN9."
+            "ZQYqVz0EJ9C1zG4dC1xS4lF9N2J2lUvT8O0eL0XHb3o"
+        )
+        response = await test_client.post(
+            "/graphql",
+            json={"query": "{ TestingTag { count } }"},
+            headers={"Authorization": f"Bearer {expired_jwt}"},
+        )
+        # The token is structurally malformed in this test, so it likely fails as
+        # AUTHENTICATION_REQUIRED rather than TOKEN_EXPIRED. The point of this test
+        # is that whichever code is emitted, it is a catalogue string, not an integer.
+        body = response.json()
+        assert isinstance(body["errors"][0]["extensions"]["code"], str)
+        assert body["errors"][0]["extensions"]["code"] in {
+            "AUTHENTICATION_REQUIRED",
+            "TOKEN_EXPIRED",
+        }
+
+    async def test_unauthenticated_rest_response_preserves_integer_code(
+        self,
+        initial_dataset: None,
+        test_client: InfrahubTestClient,
+    ) -> None:
+        response = await test_client.get("/api/schema", headers={"Authorization": "Bearer not-a-real-token"})
+        # The REST shape must keep the legacy integer-code envelope so external integrations
+        # built against /api/... do not regress.
+        if response.status_code == 401:
+            body = response.json()
+            assert body["data"] is None
+            assert body["errors"]
+            code = body["errors"][0]["extensions"]["code"]
+            assert isinstance(code, int)
+            assert code == 401

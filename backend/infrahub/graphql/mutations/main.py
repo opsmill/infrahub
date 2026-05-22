@@ -21,8 +21,9 @@ from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.errors.validation import raise_classified_from_validation_error
 from infrahub.events.generator import generate_node_mutation_events
-from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
+from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
@@ -150,7 +151,7 @@ class InfrahubMutationMixin:
         return True
 
     @classmethod
-    async def mutate(
+    async def mutate(  # noqa: PLR0915
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,
@@ -171,46 +172,61 @@ class InfrahubMutationMixin:
         deleted_nodes: list[Node] = []
         mutation_succeeded = False
         try:
-            if "Create" in cls.__name__:
-                file_stored = await cls._process_file(file_processor=file_processor, data=data)
-                obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data)
-                action = MutationAction.CREATED
-            elif "Update" in cls.__name__:
-                file_stored = await cls._process_file(file_processor=file_processor, data=data)
-                obj, mutation = await cls.mutate_update(info=info, branch=graphql_context.branch, data=data, **kwargs)
-                action = MutationAction.UPDATED
-            elif "Upsert" in cls.__name__:
-                node_manager = NodeManager()
-                node_getter_default_filter = MutationNodeGetterByDefaultFilter(
-                    db=graphql_context.db, node_manager=node_manager
-                )
-                upsert_result = await cls.mutate_upsert(
-                    info=info,
-                    branch=graphql_context.branch,
-                    data=data,
-                    node_getter_default_filter=node_getter_default_filter,
-                    file_processor=file_processor,
-                    **kwargs,
-                )
-                obj = upsert_result.node
-                mutation = upsert_result.mutation
-                file_stored = upsert_result.file_stored
-                if upsert_result.created:
+            try:
+                if "Create" in cls.__name__:
+                    file_stored = await cls._process_file(file_processor=file_processor, data=data)
+                    obj, mutation = await cls.mutate_create(info=info, branch=graphql_context.branch, data=data)
                     action = MutationAction.CREATED
-                else:
+                elif "Update" in cls.__name__:
+                    file_stored = await cls._process_file(file_processor=file_processor, data=data)
+                    obj, mutation = await cls.mutate_update(
+                        info=info, branch=graphql_context.branch, data=data, **kwargs
+                    )
                     action = MutationAction.UPDATED
-            elif "Delete" in cls.__name__:
-                delete_result = await cls.mutate_delete(info=info, branch=graphql_context.branch, data=data, **kwargs)
-                obj = delete_result.node
-                mutation = delete_result.mutation
-                deleted_nodes = delete_result.deleted_nodes
+                elif "Upsert" in cls.__name__:
+                    node_manager = NodeManager()
+                    node_getter_default_filter = MutationNodeGetterByDefaultFilter(
+                        db=graphql_context.db, node_manager=node_manager
+                    )
+                    upsert_result = await cls.mutate_upsert(
+                        info=info,
+                        branch=graphql_context.branch,
+                        data=data,
+                        node_getter_default_filter=node_getter_default_filter,
+                        file_processor=file_processor,
+                        **kwargs,
+                    )
+                    obj = upsert_result.node
+                    mutation = upsert_result.mutation
+                    file_stored = upsert_result.file_stored
+                    if upsert_result.created:
+                        action = MutationAction.CREATED
+                    else:
+                        action = MutationAction.UPDATED
+                elif "Delete" in cls.__name__:
+                    delete_result = await cls.mutate_delete(
+                        info=info, branch=graphql_context.branch, data=data, **kwargs
+                    )
+                    obj = delete_result.node
+                    mutation = delete_result.mutation
+                    deleted_nodes = delete_result.deleted_nodes
 
-                action = MutationAction.DELETED
-            else:
-                raise ValueError(
-                    f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
-                )
-            mutation_succeeded = True
+                    action = MutationAction.DELETED
+                else:
+                    raise ValueError(
+                        f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
+                    )
+                mutation_succeeded = True
+            except ValidationError as exc:
+                # The new catalogued subclasses (AttributeRequiredError, AttributeInvalidTypeError,
+                # AttributeConstraintViolationError) are already classified — let them propagate
+                # unchanged so the formatter can read their typed attributes directly.
+                if exc.__class__ is ValidationError:
+                    info_path = list(info.path.as_list()) if info.path is not None else []
+                    raise_classified_from_validation_error(
+                        exc, node_kind=cls._meta.active_schema.kind, path=[*info_path, "data"]
+                    )
+                raise
         finally:
             if file_processor and file_stored and not mutation_succeeded:
                 file_processor.delete_file()

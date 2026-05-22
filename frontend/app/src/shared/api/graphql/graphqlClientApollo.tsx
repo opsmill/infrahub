@@ -62,53 +62,52 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
         )}, Path: ${graphQLError.path}`
       );
 
-      switch (graphQLError.extensions?.code) {
-        case 401: {
-          return new Observable((observer) => {
-            // Modify the operation context with a new token
-            const oldHeaders = operation.getContext().headers;
+      const code = graphQLError.extensions?.code;
+      if (code === "AUTHENTICATION_REQUIRED" || code === "TOKEN_EXPIRED") {
+        return new Observable((observer) => {
+          // Modify the operation context with a new token
+          const oldHeaders = operation.getContext().headers;
 
-            queryClient
-              .fetchQuery(refreshAccessTokenQueryOptions())
-              .then((newToken) => {
-                if (newToken?.access_token) {
-                  operation.setContext({
-                    headers: {
-                      ...oldHeaders,
-                      authorization: newToken?.access_token,
-                    },
-                  });
+          queryClient
+            .fetchQuery(refreshAccessTokenQueryOptions())
+            .then((newToken) => {
+              if (newToken?.access_token) {
+                operation.setContext({
+                  headers: {
+                    ...oldHeaders,
+                    authorization: newToken?.access_token,
+                  },
+                });
 
-                  // Retry the failed request
-                  const subscriber = {
-                    next: observer.next.bind(observer),
-                    error: observer.error.bind(observer),
-                    complete: observer.complete.bind(observer),
-                  };
+                // Retry the failed request
+                const subscriber = {
+                  next: observer.next.bind(observer),
+                  error: observer.error.bind(observer),
+                  complete: observer.complete.bind(observer),
+                };
 
-                  forward(operation).subscribe(subscriber);
-                }
-              })
-              .catch((err) => observer.error(err));
+                forward(operation).subscribe(subscriber);
+              }
+            })
+            .catch((err) => observer.error(err));
 
-            forward(operation);
-          });
-        }
-        case 403: {
-          // Do not display alert on unauthorized errors
-          return;
-        }
-        default: {
-          const { processErrorMessage } = operation.getContext();
+          forward(operation);
+        });
+      }
 
-          if (graphQLError.message && processErrorMessage) {
-            processErrorMessage(graphQLError.message);
-          } else if (graphQLError.message) {
-            toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
-              toastId: "alert-error",
-            });
-          }
-        }
+      if (code === "PERMISSION_DENIED") {
+        // Do not display alert on unauthorized errors
+        return;
+      }
+
+      const { processErrorMessage } = operation.getContext();
+
+      if (graphQLError.message && processErrorMessage) {
+        processErrorMessage(graphQLError.message);
+      } else if (graphQLError.message) {
+        toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
+          toastId: "alert-error",
+        });
       }
     }
   }

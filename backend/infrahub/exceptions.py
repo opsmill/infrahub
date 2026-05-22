@@ -336,6 +336,7 @@ class ValidationError(Error):
     HTTP_CODE = 422
 
     def __init__(self, input_value: str | dict | list) -> None:
+        self.input_value = input_value
         self.message = ""
 
         if isinstance(input_value, str):
