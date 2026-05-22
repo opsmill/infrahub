@@ -91,10 +91,10 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
     values: {
       id: object.id,
       title: object.title,
-      state: getStateBadge[object.state],
+      state: object.state ? getStateBadge[object.state] : null,
       related_nodes: (
         <InlineDisplay
-          items={object.related_nodes}
+          items={(object.related_nodes ?? []).filter((node) => !!node)}
           render={(item) => {
             if (typeof item === "string") return null;
 
@@ -104,13 +104,13 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
               <Link
                 key={item.id}
                 to={getObjectDetailsUrl(item.kind, item.id, [
-                  { name: QSP.BRANCH, value: object.branch },
+                  { name: QSP.BRANCH, value: object.branch ?? undefined },
                 ])}
               >
                 <Id
                   id={item.id}
                   kind={item.kind}
-                  branch={object.branch}
+                  branch={object.branch ?? undefined}
                   date={new Date(object.updated_at)}
                   preventCopy
                 />
@@ -124,7 +124,7 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
     },
   };
 
-  const logs = object.logs.edges
+  const logs = (object.logs?.edges ?? [])
     .map((edge: any) => edge.node)
     .filter((log: tLog) => {
       if (!search) return true;

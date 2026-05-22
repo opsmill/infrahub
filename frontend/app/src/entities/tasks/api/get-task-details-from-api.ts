@@ -20,6 +20,7 @@ const GET_TASK_DETAILS = graphql(`
         node {
           id
           title
+          branch
           related_node
           related_nodes {
             id
