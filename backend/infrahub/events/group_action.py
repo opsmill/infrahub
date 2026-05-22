@@ -145,6 +145,8 @@ class GroupAutoCreatedEvent(GroupAutoCreateEvent):
         resource["infrahub.node.id"] = str(self.group_id)
         resource["infrahub.node.kind"] = InfrahubKind.ACCOUNTGROUP
         resource["infrahub.group.name"] = self.group_name
+        resource["infrahub.security.source_pattern"] = self.source_pattern
+        resource["infrahub.security.origin_value"] = self.origin_value
         return resource
 
 
@@ -155,6 +157,11 @@ class GroupAutoCreateRejectedClaimEvent(GroupAutoCreateEvent):
 
     rejected_claim_value: str = Field(..., description="Verbatim, length-truncated rejected claim value")
 
+    def get_resource(self) -> dict[str, str]:
+        resource = super().get_resource()
+        resource["infrahub.security.rejected_claim_value"] = self.rejected_claim_value
+        return resource
+
 
 class GroupAutoCreateCapBreachEvent(GroupAutoCreateEvent):
     """Emitted at most once per login when the per-login cap on new-group creation is reached."""
@@ -164,3 +171,21 @@ class GroupAutoCreateCapBreachEvent(GroupAutoCreateEvent):
     cap_value: int = Field(..., description="Configured per-login cap value")
     dropped_claims: list[str] = Field(..., description="Verbatim, per-entry length-truncated dropped claims")
     dropped_count: int = Field(..., description="Total count of dropped claims for this login")
+
+    def get_resource(self) -> dict[str, str]:
+        resource = super().get_resource()
+        resource["infrahub.security.cap_value"] = str(self.cap_value)
+        resource["infrahub.security.dropped_count"] = str(self.dropped_count)
+        return resource
+
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        for idx, claim in enumerate(self.dropped_claims):
+            related.append(
+                {
+                    "prefect.resource.id": f"infrahub.security.dropped_claim.{idx}",
+                    "prefect.resource.role": "infrahub.security.dropped_claim",
+                    "infrahub.security.dropped_claim.value": claim,
+                }
+            )
+        return related
