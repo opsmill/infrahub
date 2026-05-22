@@ -1017,6 +1017,15 @@ TanStack hooks. Read-only paths; no behavioural change."
 
 ## Group 3 — Shared Form Inputs
 
+> **Note (post-implementation):** The initial file list below was stale by the time this group was executed — `id.tsx`, `generic-selector.tsx`, and `relationship-one.tsx` had already been migrated in earlier work. The actual remaining wrapper consumers folded into this PR are:
+> - `src/shared/components/inputs/dropdown.tsx` (+ `src/entities/schema/{api,domain,ui/queries}/add-dropdown`, `remove-dropdown`)
+> - `src/shared/components/inputs/enum.tsx` (+ `src/entities/schema/{api,domain,ui/queries}/add-enum`, `remove-enum`)
+> - `src/entities/tasks/ui/task-display.tsx`, `task-item-details.tsx`, `src/pages/tasks/task-details.tsx` (+ `src/entities/tasks/{api,domain,ui/queries}/get-task-details`, `get-task-details-title`)
+> - `src/entities/diff/ui/checks/validator-details.tsx` (+ `src/entities/diff/{api,domain,ui/queries}/get-validator-details`)
+> - `src/entities/user-profile/ui/tab-update-password.tsx` (+ `src/entities/user-profile/{api,domain,ui/queries}/update-account-password`)
+>
+> After these migrations, `src/shared/api/graphql/useQuery` has no remaining consumers and Group 7 can delete it.
+
 Three components in `shared/` use Apollo hooks. They are imported across many pages, so this group goes after the buttons + diffs prove the pattern.
 
 - `src/shared/components/ui/id.tsx`
