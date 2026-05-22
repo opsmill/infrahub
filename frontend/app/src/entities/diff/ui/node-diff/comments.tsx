@@ -1,4 +1,3 @@
-import { use } from "react";
 import { useParams } from "react-router";
 
 import {
@@ -13,8 +12,6 @@ import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/dele
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
 
-import { DiffContext } from ".";
-
 type tDiffComments = {
   path: string;
   refetch?: Function;
@@ -24,11 +21,10 @@ export const DiffComments = (props: tDiffComments) => {
   const { path, refetch: parentRefetch } = props;
 
   const { proposedChangeId } = useParams();
-  const { refetch: contextRefetch, node, currentBranch } = use(DiffContext);
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
 
-  const { isPending, error, data, refetch } = useGetDiffComments(
+  const { isLoading, error, data, refetch } = useGetDiffComments(
     { proposedChangeId: proposedChangeId ?? "", objectPath: path },
     { enabled: !!proposedChangeId }
   );
@@ -39,10 +35,6 @@ export const DiffComments = (props: tDiffComments) => {
     if (parentRefetch) {
       parentRefetch();
     }
-
-    if (contextRefetch) {
-      contextRefetch();
-    }
   };
 
   const handleSubmit = async ({ comment }: { comment: string }) => {
@@ -50,7 +42,7 @@ export const DiffComments = (props: tDiffComments) => {
       return;
     }
 
-    const label = getThreadLabel(node, currentBranch, path);
+    const label = getThreadLabel(path);
 
     const newThread = {
       change: {
@@ -113,7 +105,7 @@ export const DiffComments = (props: tDiffComments) => {
 
   const thread = data?.thread;
 
-  if (isPending || error) {
+  if (!proposedChangeId || isLoading || error) {
     return null;
   }
 

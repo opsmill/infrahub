@@ -154,9 +154,6 @@ async def token(
         body={"user_name": user_info.get("name"), "groups": sso_groups},
     )
 
-    if not sso_groups and config.SETTINGS.security.sso_user_default_group:
-        sso_groups = [config.SETTINGS.security.sso_user_default_group]
-
     sub = user_info.get("sub")
     if not sub:
         raise ProcessingError(

@@ -20,15 +20,13 @@ export async function getObjectPermissionsBySubKind({
 
   const edges: Array<{ node: PermissionData }> = data[kind]?.permissions?.edges ?? [];
 
-  const grouped = new Map<string, Array<{ node: PermissionData }>>();
+  const grouped: Record<string, Array<{ node: PermissionData }>> = {};
   for (const edge of edges) {
-    const subKind = edge.node.kind;
-    if (!grouped.has(subKind)) grouped.set(subKind, []);
-    grouped.get(subKind)!.push(edge);
+    (grouped[edge.node.kind] ??= []).push(edge);
   }
 
   const result: ObjectPermissionsBySubKind = {};
-  for (const [subKind, subKindEdges] of grouped) {
+  for (const [subKind, subKindEdges] of Object.entries(grouped)) {
     result[subKind] = getPermission(subKindEdges, { branch });
   }
   return result;

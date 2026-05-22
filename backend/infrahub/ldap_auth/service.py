@@ -6,6 +6,8 @@ from typing import TYPE_CHECKING
 from infrahub.exceptions import EnterpriseRequiredError
 
 if TYPE_CHECKING:
+    from fastapi import Request
+
     from infrahub.auth import AuthResult
     from infrahub.database import InfrahubDatabase
 
@@ -17,12 +19,22 @@ class LDAPAuthService(ABC):
     """Abstract base for LDAP authentication."""
 
     @abstractmethod
-    async def authenticate(self, db: InfrahubDatabase, username: str, password: str) -> AuthResult:
+    async def authenticate(
+        self,
+        *,
+        db: InfrahubDatabase,
+        request: Request,
+        username: str,
+        password: str,
+    ) -> AuthResult:
         """Authenticate `username`/`password` against the configured directory.
 
         Returns an `AuthResult` on success - same shape as the local-login and
         OAuth2/OIDC flows so downstream consumers cannot distinguish the
         authentication method from the session alone.
+
+        The ``request`` argument lets concrete implementations attribute the
+        successful login event with the originating client's IP and user-agent.
 
         Raises:
             EnterpriseRequiredError: when invoked on a community deployment.
@@ -36,7 +48,9 @@ class LDAPAuthService(ABC):
 class LDAPAuthServiceCommunity(LDAPAuthService):
     async def authenticate(
         self,
+        *,
         db: InfrahubDatabase,  # noqa: ARG002
+        request: Request,  # noqa: ARG002
         username: str,  # noqa: ARG002
         password: str,  # noqa: ARG002
     ) -> AuthResult:

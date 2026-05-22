@@ -50,7 +50,7 @@ export const RelationshipInput = ({
     parent?.name && parent?.value ? { [`${parent.name}__ids`]: [parent.value] } : undefined;
 
   const {
-    isPending: isRelationshipListLoading,
+    isFetching: isRelationshipListLoading,
     data,
     error,
     fetchNextPage,
@@ -97,7 +97,7 @@ export const RelationshipInput = ({
                 value={relationship.id}
                 selectedValue={value?.id}
                 onSelect={() => {
-                  onChange(relationship.id === value?.id ? null : relationship);
+                  onChange(relationship.id === value?.id ? null : (relationship as Node));
                   setOpen(false);
                 }}
               >
