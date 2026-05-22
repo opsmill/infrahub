@@ -158,6 +158,23 @@ class InfrahubEventFilter(EventFilter):
             if branches:
                 self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
 
+        if group_auto_create := event_type_filter.get("group_auto_create"):
+            auto_create_event_names = [
+                f"{EVENT_NAMESPACE}.group.auto_create.created",
+                f"{EVENT_NAMESPACE}.group.auto_create.rejected_claim",
+                f"{EVENT_NAMESPACE}.group.auto_create.cap_breach",
+            ]
+            if not any(name in event_type for name in auto_create_event_names):
+                event_type.extend(auto_create_event_names)
+
+            resource_labels: dict[str, list[str] | str] = {}
+            if idps := (group_auto_create.get("idp") or []):
+                resource_labels["infrahub.security.idp"] = idps
+            if protocols := (group_auto_create.get("protocol") or []):
+                resource_labels["infrahub.security.protocol"] = protocols
+            if resource_labels:
+                self.resource = EventResourceFilter(labels=ResourceSpecification(resource_labels))
+
         if event_type:
             self.event = EventNameFilter(name=event_type)
         elif not event_type and exclude_prefixes:
