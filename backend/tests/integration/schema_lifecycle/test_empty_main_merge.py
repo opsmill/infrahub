@@ -267,8 +267,7 @@ class TestProposedChangeOnEmptyMain(TestInfrahubApp):
                 "destination_branch": default_branch.name,
             },
         )
-        proposed_change_id = result["CoreProposedChangeCreate"]["object"]["id"]
-        return proposed_change_id
+        return result["CoreProposedChangeCreate"]["object"]["id"]
 
     def _get_diff_node_attribute_values(self, diff_node: dict[str, Any]) -> dict[str, Any]:
         diff_attribute_values_by_name = {}

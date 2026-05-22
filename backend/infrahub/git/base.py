@@ -996,9 +996,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 repo.git.merge("--abort")
 
         changed_files = git_status.splitlines()
-        conflict_files = [filename[3:] for filename in changed_files if filename.startswith("UU ")]
-
-        return conflict_files
+        return [filename[3:] for filename in changed_files if filename.startswith("UU ")]
 
     async def find_files(
         self,

@@ -1376,15 +1376,13 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
     await c3.new(db=db, name="nolt", nbr_seats=4, mpg=25, owner=p2)
     await c3.save(db=db)
 
-    nodes = {
+    return {
         "p1": p1,
         "p2": p2,
         "c1": c1,
         "c2": c2,
         "c3": c3,
     }
-
-    return nodes
 
 
 @pytest.fixture
@@ -2583,8 +2581,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: S
 
 @pytest.fixture
 async def session_admin(db: InfrahubDatabase, create_test_admin: Node) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
-    return session
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
 
 
 @pytest.fixture
@@ -2611,8 +2608,7 @@ async def first_account(
 
 @pytest.fixture
 async def session_first_account(db: InfrahubDatabase, first_account: Node) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
-    return session
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
 
 
 @pytest.fixture
@@ -2627,8 +2623,7 @@ async def second_account(
 
 @pytest.fixture
 async def session_second_account(db: InfrahubDatabase, second_account: Node) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
-    return session
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
 
 
 @pytest.fixture
@@ -2772,7 +2767,7 @@ async def ip_dataset_01(
     await net242.new(db=db, prefix="10.10.4.0/27", parent=net240, ip_namespace=ns2)
     await net242.save(db=db)
 
-    data = {
+    return {
         "ns1": ns1,
         "ns2": ns2,
         "net161": net161,
@@ -2789,7 +2784,6 @@ async def ip_dataset_01(
         "net241": net241,
         "net242": net242,
     }
-    return data
 
 
 @pytest.fixture
@@ -2852,7 +2846,7 @@ async def ip_dataset_prefix_v4(
     await ip2_net147.new(db=db, address="10.200.0.2/30", ip_prefix=net147, ip_namespace=ns1)
     await ip2_net147.save(db=db)
 
-    data = {
+    return {
         "ns1": ns1,
         "net140": net140,
         "net141": net141,
@@ -2863,7 +2857,6 @@ async def ip_dataset_prefix_v4(
         "net146": net146,
         "net147": net147,
     }
-    return data
 
 
 @pytest.fixture

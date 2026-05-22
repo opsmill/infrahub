@@ -69,10 +69,8 @@ async def gather_prefect_automations(client: PrefectClient) -> dict[str, Any]:
 @task(name="telemetry-gather-prefect-information", task_run_name="Gather Prefect Information", cache_policy=NONE)
 async def gather_prefect_information() -> TelemetryPrefectData:
     async with get_client(sync_client=False) as client:
-        data = TelemetryPrefectData(
+        return TelemetryPrefectData(
             work_pools=await gather_prefect_work_pools(client=client),
             events=await gather_prefect_events(client=client),
             automations=await gather_prefect_automations(client=client),
         )
-
-        return data

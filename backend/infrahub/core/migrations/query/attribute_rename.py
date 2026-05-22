@@ -36,7 +36,7 @@ class AttributeRenameQuery(Query):
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
-        query = """
+        return """
         // Find all the active nodes
         CALL () {
             MATCH (node:%(node_kind)s)
@@ -53,8 +53,6 @@ class AttributeRenameQuery(Query):
         }
         WITH node
         """ % {"node_kind": self.previous_attr.node_kind}
-
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type_update_active(rel_type: str, rel_def: FieldInfo) -> str:
