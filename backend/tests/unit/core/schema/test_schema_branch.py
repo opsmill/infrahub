@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-
 import pytest
 
 from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
@@ -22,22 +20,10 @@ def test_single_relationship_uniqueness_constraint(car_person_schema_root: Schem
     assert processed_car_schema.human_friendly_id is None
 
 
-@dataclass
-class DoubleUnderscoreNameCase:
-    name: str
-    """Descriptive name for the test scenario."""
-
-    schema_root: SchemaRoot
-    """Schema whose validation must reject a name containing the schema-path separator."""
-
-    offending_name: str
-    """The attribute or relationship name that contains '__' and should be rejected."""
-
-
-DOUBLE_UNDERSCORE_NAME_CASES: list[DoubleUnderscoreNameCase] = [
-    DoubleUnderscoreNameCase(
-        name="attribute_name_with_double_underscore_is_rejected",
-        schema_root=SchemaRoot(
+def test_validate_names_rejects_double_underscore_in_attribute_name() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
             nodes=[
                 NodeSchema(
                     name="Underscore",
@@ -49,44 +35,37 @@ DOUBLE_UNDERSCORE_NAME_CASES: list[DoubleUnderscoreNameCase] = [
                 ),
             ],
         ),
-        offending_name="name__asc",
-    ),
-    DoubleUnderscoreNameCase(
-        name="relationship_name_with_double_underscore_is_rejected",
-        schema_root=SchemaRoot(
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"TestingUnderscore: 'name__asc' cannot be used as an attribute name",
+    ):
+        schema.validate_names()
+
+
+def test_validate_names_rejects_double_underscore_in_relationship_name() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
             nodes=[
                 NodeSchema(
                     name="Underscore",
                     namespace="Testing",
-                    attributes=[
-                        AttributeSchema(name="name", kind="Text"),
-                    ],
+                    attributes=[AttributeSchema(name="name", kind="Text")],
                     relationships=[
                         RelationshipSchema(name="peer__link", peer="TestingUnderscore", optional=True),
                     ],
                 ),
             ],
         ),
-        offending_name="peer__link",
-    ),
-]
+    )
 
-
-@pytest.mark.parametrize(
-    "test_case",
-    [pytest.param(tc, id=tc.name) for tc in DOUBLE_UNDERSCORE_NAME_CASES],
-)
-def test_double_underscores_in_names_are_rejected(test_case: DoubleUnderscoreNameCase) -> None:
-    """Schema validation must reject attribute/relationship names containing '__'.
-
-    '__' is the schema path separator (e.g. ``name__value``), so any name that
-    contains it collides with the path-splitting logic and cannot be referenced.
-    """
-    schema = SchemaBranch(cache={}, name="test")
-    schema.load_schema(schema=test_case.schema_root)
-
-    with pytest.raises(ValueError, match=test_case.offending_name):
-        schema.process_validate()
+    with pytest.raises(
+        ValueError,
+        match=r"TestingUnderscore: 'peer__link' cannot be used as a relationship name",
+    ):
+        schema.validate_names()
 
 
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
