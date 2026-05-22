@@ -384,7 +384,7 @@ exports[`fix ts error`] = {
     "src/shared/components/inputs/peer.tsx:841312452": [
       [59, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node\'.\\n  Types of property \'display_label\' are incompatible.\\n    Type \'null | string | undefined\' is not assignable to type \'string\'.\\n      Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
     ],
-    "src/shared/components/inputs/relationship-one.tsx:521599003": [
+    "src/shared/components/inputs/relationship-one.tsx:3286424152": [
       [97, 38, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [99, 54, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [146, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node | PoolValue | null\'.\\n  Type \'NodeCore\' is not assignable to type \'Node\'.\\n    Types of property \'display_label\' are incompatible.\\n      Type \'null | string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
