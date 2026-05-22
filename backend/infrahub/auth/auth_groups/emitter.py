@@ -54,8 +54,7 @@ class AutoCreateEventEmitter:
 
     Construct directly with `(account, provider_name, deps)` when emission is
     wired up. Use `AutoCreateEventEmitter.disabled()` when no event service is
-    available — the returned no-op instance lets callers omit null-checks
-    before each emit.
+    available.
     """
 
     def __init__(self, *, account: CoreAccount, provider_name: str, deps: EmissionDeps) -> None:

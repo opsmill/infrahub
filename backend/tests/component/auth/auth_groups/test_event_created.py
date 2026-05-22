@@ -2,29 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.auth import ExternalIdentity, signin_sso_account
+from infrahub.auth import signin_sso_account
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup
 from infrahub.events.group_action import GroupAutoCreatedEvent
 from infrahub.external_protocols import ExternalAuthProtocol
 from tests.adapters.event import MemoryInfrahubEvent
+from tests.helpers.identities import make_identity
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.database import InfrahubDatabase
-
-
-def _make_identity(
-    sub: str, *, provider_name: str = "AzureAD-corp", display_name: str = "Alice Auto"
-) -> ExternalIdentity:
-    return ExternalIdentity(
-        sub=sub,
-        provider_name=provider_name,
-        protocol=ExternalAuthProtocol.OIDC,
-        display_name=display_name,
-        email=f"{display_name.lower().replace(' ', '.')}@example.com",
-    )
 
 
 async def test_event_emitted_once_on_successful_auto_creation(
@@ -39,7 +28,7 @@ async def test_event_emitted_once_on_successful_auto_creation(
     and the triggering user identity.
     """
     recorder = MemoryInfrahubEvent()
-    identity = _make_identity(sub="sub-event-created-001", provider_name="AzureAD-corp")
+    identity = make_identity(sub="sub-event-created-001", provider_name="AzureAD-corp")
 
     await signin_sso_account(
         db=db,
@@ -81,8 +70,8 @@ async def test_no_event_emitted_when_existing_group_is_reused(
     first_recorder = MemoryInfrahubEvent()
     second_recorder = MemoryInfrahubEvent()
 
-    identity_first = _make_identity(sub="sub-event-reuse-1", display_name="Carla Auto")
-    identity_second = _make_identity(sub="sub-event-reuse-2", display_name="Dimi Auto")
+    identity_first = make_identity(sub="sub-event-reuse-1", display_name="Carla Auto")
+    identity_second = make_identity(sub="sub-event-reuse-2", display_name="Dimi Auto")
 
     await signin_sso_account(
         db=db,

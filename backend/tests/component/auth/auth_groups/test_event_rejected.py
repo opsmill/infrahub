@@ -5,13 +5,14 @@ from typing import TYPE_CHECKING, Iterator
 import pytest
 
 from infrahub import config
-from infrahub.auth import ExternalIdentity, signin_sso_account
+from infrahub.auth import signin_sso_account
 from infrahub.auth.auth_groups.emitter import MAX_CLAIM_VALUE_LENGTH
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup
 from infrahub.events.group_action import GroupAutoCreatedEvent, GroupAutoCreateRejectedClaimEvent
 from infrahub.external_protocols import ExternalAuthProtocol
 from tests.adapters.event import MemoryInfrahubEvent
+from tests.helpers.identities import make_identity
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -35,16 +36,6 @@ def autocreate_filter_allows_empty_name() -> Iterator[None]:
         config.SETTINGS.security._auto_create_groups_filter_patterns = original_compiled
 
 
-def _make_identity(sub: str, *, display_name: str = "Reject Auto") -> ExternalIdentity:
-    return ExternalIdentity(
-        sub=sub,
-        provider_name="AzureAD-corp",
-        protocol=ExternalAuthProtocol.OIDC,
-        display_name=display_name,
-        email=f"{display_name.lower().replace(' ', '.')}@example.com",
-    )
-
-
 async def test_rejected_claim_event_emitted_for_empty_effective_name(
     db: InfrahubDatabase,
     default_branch: Branch,
@@ -57,7 +48,7 @@ async def test_rejected_claim_event_emitted_for_empty_effective_name(
     emitted with the original claim stored verbatim.
     """
     recorder = MemoryInfrahubEvent()
-    identity = _make_identity(sub="sub-reject-empty", display_name="Eli Auto")
+    identity = make_identity(sub="sub-reject-empty", display_name="Eli Auto")
 
     await signin_sso_account(
         db=db,
@@ -95,7 +86,7 @@ async def test_rejected_claim_event_truncates_long_claim_verbatim(
     recorder = MemoryInfrahubEvent()
     long_whitespace = " " * 2048
     claim = "LDAP/group/" + long_whitespace
-    identity = _make_identity(sub="sub-reject-long", display_name="Lena Auto")
+    identity = make_identity(sub="sub-reject-long", display_name="Lena Auto")
 
     await signin_sso_account(
         db=db,

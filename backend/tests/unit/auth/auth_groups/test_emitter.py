@@ -1,11 +1,3 @@
-"""Unit tests for helpers in `infrahub.auth.auth_groups.emitter`.
-
-Locks in the boundary semantics of `_truncate` around `MAX_CLAIM_VALUE_LENGTH`:
-inputs at or below the limit pass through unchanged; inputs above are sliced to
-exactly the limit. Guards against an accidental `<` vs `<=` flip in the
-truncation guard.
-"""
-
 from __future__ import annotations
 
 from dataclasses import dataclass
