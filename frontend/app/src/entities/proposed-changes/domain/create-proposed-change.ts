@@ -8,7 +8,6 @@ export type CreateProposedChangeParams = CreateProposedChangeFromApiParams;
 export interface CreateProposedChangeOutcome {
   id: string;
   displayLabel: string;
-  ok: boolean;
 }
 
 export async function createProposedChange(
@@ -22,13 +21,12 @@ export async function createProposedChange(
 
   const result = data?.CoreProposedChangeCreate;
 
-  if (!result) {
-    throw new Error("No data returned from CoreProposedChangeCreate mutation");
+  if (!result?.ok || !result.object) {
+    throw new Error("Failed to create proposed change");
   }
 
   return {
-    id: result.object?.id ?? "",
-    displayLabel: result.object?.display_label ?? "",
-    ok: result.ok ?? false,
+    id: result.object.id,
+    displayLabel: result.object.display_label ?? "",
   };
 }

@@ -36,7 +36,7 @@ export async function getDiffComments(params: GetDiffCommentsParams): Promise<Di
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const thread = data?.CoreObjectThread?.edges?.[0]?.node ?? null;
+  const thread = (data?.CoreObjectThread?.edges?.[0]?.node as DiffThread | undefined) ?? null;
 
-  return { thread: thread as DiffThread | null };
+  return { thread };
 }

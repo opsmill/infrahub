@@ -4,11 +4,10 @@ from copy import deepcopy
 from typing import Any, ClassVar, Self, final
 from uuid import UUID, uuid4
 
+from infrahub_sdk.context import ContextAccount, RequestContext
 from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 from infrahub import __version__
-from infrahub.auth import AccountSession, AuthType
-from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch  # noqa: TC001
 from infrahub.message_bus import InfrahubMessage, Meta
 from infrahub.worker import WORKER_IDENTITY
@@ -21,9 +20,39 @@ class EventNode(BaseModel):
     kind: str
 
 
+class EventBranchContext(BaseModel):
+    name: str
+    id: str | None = None
+
+
 class ParentEvent(BaseModel):
     id: str
     name: str
+
+
+class EventContext(BaseModel):
+    """The slim context carried on every event.
+
+    Captures only what events need: which branch the event came from, the account ID of
+    the triggering user, and the current event lineage entry for chain propagation.
+    """
+
+    branch: EventBranchContext
+    account_id: str
+    parent_event: ParentEvent | None = Field(default=None)
+
+    def set_parent_event(self, name: str, id: str) -> None:
+        if self.parent_event:
+            self.parent_event.name = name
+            self.parent_event.id = id
+        else:
+            self.parent_event = ParentEvent(name=name, id=id)
+
+    def to_event(self) -> dict[str, Any]:
+        return self.model_dump(mode="json")
+
+    def to_request_context(self) -> RequestContext:
+        return RequestContext(account=ContextAccount(id=self.account_id))
 
 
 class EventMeta(BaseModel):
@@ -33,7 +62,7 @@ class EventMeta(BaseModel):
     initiator_id: str = Field(
         default=WORKER_IDENTITY, description="The worker identity of the initial sender of this message"
     )
-    context: InfrahubContext = Field(..., description="The context used when originating this event")
+    context: EventContext = Field(..., description="The context used when originating this event")
     level: int = Field(default=0)
     has_children: bool = Field(
         default=False, description="Indicates if this event might potentially have child events under it."
@@ -70,9 +99,9 @@ class EventMeta(BaseModel):
                 "infrahub.event.level": str(self.level),
             },
             {
-                "prefect.resource.id": f"infrahub.account.{self.context.account.account_id}",
+                "prefect.resource.id": f"infrahub.account.{self.context.account_id}",
                 "prefect.resource.role": "infrahub.account",
-                "infrahub.resource.id": self.context.account.account_id,
+                "infrahub.resource.id": self.context.account_id,
             },
             {
                 "prefect.resource.id": f"infrahub.branch.{self.get_branch_id()}",
@@ -103,15 +132,6 @@ class EventMeta(BaseModel):
         return related
 
     @classmethod
-    def with_dummy_context(cls, branch: Branch) -> EventMeta:
-        return cls(
-            branch=branch,
-            context=InfrahubContext.init(
-                branch=branch, account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id="")
-            ),
-        )
-
-    @classmethod
     def from_parent(cls, parent: InfrahubEvent, branch: Branch | None = None) -> EventMeta:
         """Create the metadata from an existing event.
 
@@ -135,7 +155,7 @@ class EventMeta(BaseModel):
         )
 
     @classmethod
-    def from_context(cls, context: InfrahubContext, branch: Branch | None = None) -> EventMeta:
+    def from_context(cls, context: EventContext, branch: Branch | None = None) -> EventMeta:
         # Create a copy of the context so local changes aren't brought back to a parent object
         meta = cls(context=deepcopy(context))
         meta._created_with_context = True
@@ -196,5 +216,5 @@ class InfrahubEvent(BaseModel):
     def update_context(self) -> Self:
         """Update the context object using this event provided that the meta data was created with a context."""
         if self.meta._created_with_context:
-            self.meta.context.set_event(self.event_name, id=self.get_id())
+            self.meta.context.set_parent_event(self.event_name, id=self.get_id())
         return self

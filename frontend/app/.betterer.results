@@ -21,12 +21,12 @@ exports[`fix ts error`] = {
       [131, 16, 6, "tsc: Type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is missing 6 properties from type \'Branch\'", "1513838097"],
       [132, 51, 6, "tsc: Argument of type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is not assignable to parameter of type \'Branch\'.\\n  Type \'null | null | null | null | undefined; created_at: string | undefined; has_schema_changes: boolean | undefined; is_default: boolean | undefined; } | { id: string; name: string; status: BranchStatus; sync_with_git: boolean\' is missing 6 properties from type \'Branch\'", "1513838097"]
     ],
-    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:2250610657": [
-      [8, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
-      [30, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
-      [325, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [327, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [329, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
+    "src/entities/diff/ui/artifact-diff/artifact-content-diff.tsx:2275808763": [
+      [7, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
+      [29, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
+      [329, 17, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [331, 20, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [333, 30, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
     "src/entities/diff/ui/checks/check.tsx:3151251472": [
       [103, 4, 9, "tsc: Property \'conflicts\' does not exist on type \'null; artifact_id: { value: string | null; commit: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conclusion: { value: string | null; conflicts: { value: unknown; } | null; conflicts: { value: unknown; } | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; created_at: { value: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; display_label: string | null; files: { value: unknown; } | null; keep_branch: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; kind: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; message: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; name: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; origin: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; severity: { value: string | null; storage_id: { value: string | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | null; } | { __typename: \\"CoreArtifactCheck\\"; id: string | { __typename: \\"CoreDataCheck\\"; id: string | { __typename: \\"CoreFileCheck\\"; id: string | { __typename: \\"CoreGeneratorCheck\\"; id: string | { __typename: \\"CoreSchemaCheck\\"; id: string | { __typename: \\"CoreStandardCheck\\"; id: string\'.", "1029368512"],
@@ -35,24 +35,16 @@ exports[`fix ts error`] = {
       [172, 63, 6, "tsc: Property \'length\' does not exist on type \'{}\'.", "1433765721"],
       [173, 34, 9, "tsc: Type \'{ value: unknown; }\' is not assignable to type \'Maybe<JsonAttribute>\'.\\n  Type \'{ value: unknown; }\' is missing 3 properties from type \'AttributeInterface\'", "1029368512"]
     ],
-    "src/entities/diff/ui/diff-utils.tsx:2277927857": [
-      [30, 40, 4, "tsc: Argument of type \'string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "2088095368"]
+    "src/entities/diff/ui/file-diff/file-content-diff.tsx:3014644075": [
+      [23, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
+      [42, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
+      [352, 19, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [354, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
+      [356, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
     ],
-    "src/entities/diff/ui/file-diff/file-content-diff.tsx:477325029": [
-      [24, 39, 9, "tsc: Could not find a declaration file for module \'unidiff\'. \'../../../../../node_modules/.pnpm/unidiff@1.0.4/node_modules/unidiff/index.js\' implicitly has an \'any\' type.\\n  Try \`npm i --save-dev @types/unidiff\` if it exists or add a new declaration (.d.ts) file containing \`declare module \'unidiff\';\`", "1870574010"],
-      [43, 13, 23, "tsc: No overload matches this call.\\n  Overload 1 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsStringOptions | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'Buffer<ArrayBufferLike> | string\'.\\n  Overload 2 of 3, \'(message: Buffer<ArrayBufferLike> | string, options?: Sha1AsBytesOptions | undefined): Uint8Array<ArrayBufferLike>\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.\\n  Overload 3 of 3, \'(message: string | Buffer<ArrayBufferLike>, options?: Sha1Options | Uint8Array<ArrayBufferLike> | undefined): string\', gave the following error.\\n    Argument of type \'number\' is not assignable to parameter of type \'string | Buffer<ArrayBufferLike>\'.", "1877915893"],
-      [348, 19, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [350, 22, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"],
-      [352, 32, 11, "tsc: \'fileContent\' is possibly \'undefined\'.", "1561581386"]
-    ],
-    "src/entities/diff/ui/node-diff/comments.tsx:306539627": [
-      [27, 10, 7, "tsc: Property \'refetch\' does not exist on type \'{}\'.", "1381115054"],
-      [27, 35, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
-      [27, 41, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
-    ],
-    "src/entities/diff/ui/node-diff/index.tsx:4178895949": [
-      [90, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
-      [116, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
+    "src/entities/diff/ui/node-diff/index.tsx:3336968364": [
+      [88, 8, 15, "tsc: Type \'unknown\' is not assignable to type \'Date\'.", "140489382"],
+      [114, 31, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
     "src/entities/diff/ui/node-diff/node-property.tsx:3639994513": [
       [27, 22, 17, "tsc: Property \'base_branch_label\' does not exist on type \'DiffConflict\'. Did you mean \'base_branch_value\'?", "1959743778"],
@@ -65,10 +57,6 @@ exports[`fix ts error`] = {
       [101, 20, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"],
       [137, 22, 13, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "1656119487"],
       [141, 22, 8, "tsc: Type \'Element | null | string\' is not assignable to type \'string | undefined\'.\\n  Type \'null\' is not assignable to type \'string | undefined\'.", "288015442"]
-    ],
-    "src/entities/diff/ui/node-diff/thread.tsx:2571693792": [
-      [23, 10, 4, "tsc: Property \'node\' does not exist on type \'{}\'.", "2087865285"],
-      [23, 16, 13, "tsc: Property \'currentBranch\' does not exist on type \'{}\'.", "170507416"]
     ],
     "src/entities/diff/utils/build-diff-tree-items.ts:3247801260": [
       [73, 66, 24, "tsc: Not all code paths return a value.", "3673565821"]
@@ -141,10 +129,6 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/object-relationship-list.tsx:1515591506": [
       [39, 54, 5, "tsc: Property \'items\' does not exist on type \'NodeObject[]\'.", "179721187"]
     ],
-    "src/entities/nodes/object/ui/queries/delete-objects.mutation.ts:1568596081": [
-      [7, 14, 19, "tsc: Module \'\\"@/entities/nodes/object/api/delete-objects-from-api\\"\' has no exported member \'DeleteObjectsParams\'.", "479076294"],
-      [27, 8, 7, "tsc: Type \'DefaultContext | undefined\' is not assignable to type \'Record<string, any>\'.\\n  Type \'undefined\' is not assignable to type \'Record<string, any>\'.", "3716929786"]
-    ],
     "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:3411425629": [
       [18, 34, 2, "tsc: Property \'id\' does not exist on type \'NodeCore | NodeCore[] | { from_pool: { id: string; }; }\'.\\n  Property \'id\' does not exist on type \'NodeCore[]\'.", "5861160"]
     ],
@@ -156,14 +140,13 @@ exports[`fix ts error`] = {
       [156, 61, 10, "tsc: No overload matches this call.\\n  Overload 1 of 2, \'(predicate: (value: NodeCore, index: number, array: NodeCore[]) => value is NodeCore, thisArg?: any): NodeCore[]\', gave the following error.\\n    Argument of type \'(relationshipNode: RelationshipNode) => boolean\' is not assignable to parameter of type \'(value: NodeCore, index: number, array: NodeCore[]) => value is NodeCore\'.\\n      Types of parameters \'relationshipNode\' and \'value\' are incompatible.\\n        Type \'NodeCore\' is not assignable to type \'RelationshipNode\'.\\n          Types of property \'display_label\' are incompatible.\\n            Type \'null | string | undefined\' is not assignable to type \'string\'.\\n              Type \'undefined\' is not assignable to type \'string\'.\\n  Overload 2 of 2, \'(predicate: (value: NodeCore, index: number, array: NodeCore[]) => unknown, thisArg?: any): NodeCore[]\', gave the following error.\\n    Argument of type \'(relationshipNode: RelationshipNode) => boolean\' is not assignable to parameter of type \'(value: NodeCore, index: number, array: NodeCore[]) => unknown\'.\\n      Types of parameters \'relationshipNode\' and \'value\' are incompatible.\\n        Type \'NodeCore\' is not assignable to type \'RelationshipNode\'.\\n          Types of property \'display_label\' are incompatible.\\n            Type \'null | string | undefined\' is not assignable to type \'string\'.\\n              Type \'undefined\' is not assignable to type \'string\'.", "2021508816"],
       [165, 49, 4, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'RelationshipNode\'.\\n  Types of property \'display_label\' are incompatible.\\n    Type \'null | string | undefined\' is not assignable to type \'string\'.\\n      Type \'undefined\' is not assignable to type \'string\'.", "2087865285"]
     ],
-    "src/entities/proposed-changes/ui/action-button/pc-action-button.tsx:3529577009": [
-      [42, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
+    "src/entities/proposed-changes/ui/action-button/pc-action-button.tsx:949526290": [
+      [41, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
-    "src/entities/proposed-changes/ui/action-button/pc-review-button.tsx:2748295683": [
-      [40, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
+    "src/entities/proposed-changes/ui/action-button/pc-review-button.tsx:2712035776": [
+      [39, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
-    "src/entities/proposed-changes/ui/proposed-change-details.tsx:559525905": [
-      [35, 2, 10, "tsc: Property \'tasksCount\' does not exist on type \'ProposedChangeDetailsProps\'.", "3126552024"],
+    "src/entities/proposed-changes/ui/proposed-change-details.tsx:180721791": [
       [68, 59, 5, "tsc: Argument of type \'null | string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "195031250"],
       [200, 18, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
@@ -234,21 +217,14 @@ exports[`fix ts error`] = {
     "src/entities/schema/ui/computed-attribute-display.tsx:1618543609": [
       [37, 14, 8, "tsc: Type \'{ title: string; fileName: string; data: string; }\' is not assignable to type \'IntrinsicAttributes & DataViewerProps\'.\\n  Property \'fileName\' does not exist on type \'IntrinsicAttributes & DataViewerProps\'.", "3193632964"]
     ],
-    "src/entities/tasks/domain/is-task-running-on-branch/is-task-running-on-branch.test.ts:298753925": [
-      [60, 8, 24, "tsc: Type \'null\' is not assignable to type \'{ count: number; }\'.", "1753184293"]
-    ],
     "src/entities/tasks/ui/logs.tsx:3377694090": [
       [49, 31, 4, "tsc: Type \'{ values: { severity: any; timestamp: Element; id: string; message: string; }; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: { severity: any; timestamp: JSX.Element; id: string; message: string; }; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'{ severity: any; timestamp: JSX.Element; id: string; message: string; }\' is not assignable to type \'Record<string, number | string | tRowValue>\'.\\n        Property \'timestamp\' is incompatible with index signature.\\n          Type \'Element\' is not assignable to type \'string | number | tRowValue\'.", "2088305148"]
     ],
-    "src/entities/tasks/ui/task-display.tsx:2107536188": [
-      [45, 16, 4, "tsc: Binding element \'task\' implicitly has an \'any\' type.", "2087951912"],
-      [52, 10, 22, "tsc: Element implicitly has an \'any\' type because expression of type \'any\' can\'t be used to index type \'{ SCHEDULED: string; PENDING: string; RUNNING: string; PAUSED: string; CANCELLING: string; COMPLETED: string; CANCELLED: string; FAILED: string; CRASHED: string; }\'.", "1950518905"],
-      [67, 39, 4, "tsc: Parameter \'edge\' implicitly has an \'any\' type.", "2087414470"],
-      [67, 45, 5, "tsc: Parameter \'index\' implicitly has an \'any\' type.", "178792571"],
-      [102, 16, 4, "tsc: \'data\' is possibly \'undefined\'.", "2087377941"]
-    ],
-    "src/entities/tasks/ui/task-item-details.tsx:2706751782": [
-      [56, 25, 17, "tsc: Element implicitly has an \'any\' type because expression of type \'\\"InfrahubTask\\"\' can\'t be used to index type \'{}\'.\\n  Property \'InfrahubTask\' does not exist on type \'{}\'.", "1025837332"]
+    "src/entities/tasks/ui/task-display.tsx:2213803868": [
+      [43, 16, 4, "tsc: Binding element \'task\' implicitly has an \'any\' type.", "2087951912"],
+      [50, 10, 22, "tsc: Element implicitly has an \'any\' type because expression of type \'any\' can\'t be used to index type \'{ SCHEDULED: string; PENDING: string; RUNNING: string; PAUSED: string; CANCELLING: string; COMPLETED: string; CANCELLED: string; FAILED: string; CRASHED: string; }\'.", "1950518905"],
+      [65, 39, 4, "tsc: Parameter \'edge\' implicitly has an \'any\' type.", "2087414470"],
+      [65, 45, 5, "tsc: Parameter \'index\' implicitly has an \'any\' type.", "178792571"]
     ],
     "src/entities/tasks/ui/task-items.tsx:2642355725": [
       [179, 35, 4, "tsc: Type \'null; }; state: { display: any; }; related_nodes: { display: Element; }; progress: { display: number | null; }; updated_at: { display: Element; }; }; }[] | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow[]\'.\\n  Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; }; } | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; } | null; }; workflow: { display: string | { title: { display: string; }; branch: { display: string\' is not assignable to type \'Record<string, number | string | tRowValue>\'.\\n        Property \'title\' is incompatible with index signature.\\n          Type \'{ display: string; }\' is not assignable to type \'string | number | tRowValue\'.\\n            Property \'value\' is missing in type \'{ display: string; }\' but required in type \'tRowValue\'.", "2088305148"]
@@ -294,10 +270,6 @@ exports[`fix ts error`] = {
     ],
     "src/pages/ipam/ipam-layout.tsx:1869906965": [
       [39, 71, 5, "tsc: \'error\' is of type \'unknown\'.", "165548477"]
-    ],
-    "src/pages/proposed-changes/new.tsx:2133627752": [
-      [25, 28, 10, "tsc: Property \'statusCode\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'statusCode\' does not exist on type \'Error\'.", "3382497788"],
-      [26, 46, 6, "tsc: Property \'result\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'result\' does not exist on type \'Error\'.", "2123807084"]
     ],
     "src/pages/resource-manager/resource-allocation-details.tsx:2550256922": [
       [79, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
@@ -389,10 +361,10 @@ exports[`fix ts error`] = {
       [45, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"],
       [68, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"]
     ],
-    "src/shared/components/inputs/dropdown.tsx:997444087": [
-      [206, 26, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
+    "src/shared/components/inputs/dropdown.tsx:1690186097": [
+      [205, 24, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
     ],
-    "src/shared/components/inputs/enum.tsx:3738970578": [
+    "src/shared/components/inputs/enum.tsx:3817540666": [
       [132, 33, 13, "tsc: \'formData.enum\' is possibly \'undefined\'.", "1980161662"]
     ],
     "src/shared/components/inputs/list.test.tsx:3096980043": [
@@ -401,15 +373,10 @@ exports[`fix ts error`] = {
     "src/shared/components/inputs/peer.tsx:841312452": [
       [59, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node\'.\\n  Types of property \'display_label\' are incompatible.\\n    Type \'null | string | undefined\' is not assignable to type \'string\'.\\n      Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
     ],
-    "src/shared/components/inputs/relationship-one.tsx:524030782": [
-      [61, 10, 6, "tsc: Type \'undefined | undefined; value?: string | undefined; } | { name?: string\' is not assignable to type \'undefined | { name: string; value: string; }\'.\\n  Type \'undefined; value?: string | undefined; } | { name?: string\' is not assignable to type \'{ name: string; value: string; }\'.\\n    Types of property \'name\' are incompatible.\\n      Type \'string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "1898500505"],
-      [88, 15, 27, "tsc: Argument of type \'any[]\' is not assignable to parameter of type \'SetStateAction<never[]>\'.\\n  Type \'any[]\' is not assignable to type \'never[]\'.\\n    Type \'any\' is not assignable to type \'never\'.", "1423891603"],
-      [132, 34, 2, "tsc: Property \'id\' does not exist on type \'never\'.", "5861160"],
-      [133, 36, 2, "tsc: Property \'id\' does not exist on type \'never\'.", "5861160"],
-      [134, 38, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
-      [136, 40, 2, "tsc: Property \'id\' does not exist on type \'never\'.", "5861160"],
-      [136, 54, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
-      [185, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node | PoolValue | null\'.\\n  Type \'NodeCore\' is not assignable to type \'Node\'.\\n    Types of property \'display_label\' are incompatible.\\n      Type \'null | string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
+    "src/shared/components/inputs/relationship-one.tsx:3286424152": [
+      [97, 38, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
+      [99, 54, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
+      [146, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node | PoolValue | null\'.\\n  Type \'NodeCore\' is not assignable to type \'Node\'.\\n    Types of property \'display_label\' are incompatible.\\n      Type \'null | string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
     ],
     "src/shared/components/table/table.tsx:2590261269": [
       [80, 40, 23, "tsc: Argument of type \'number | string | tRowValue | undefined\' is not assignable to parameter of type \'number | string | tRowValue\'.\\n  Type \'undefined\' is not assignable to type \'number | string | tRowValue\'.", "1426455104"],

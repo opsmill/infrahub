@@ -1,5 +1,6 @@
 import { graphql } from "gql.tada";
 
+import type { StateType } from "@/shared/api/graphql/generated/types";
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
 const GET_BRANCH_ACTION_STATE = graphql(`
@@ -13,7 +14,7 @@ const GET_BRANCH_ACTION_STATE = graphql(`
 export interface GetBranchActionStateFromApiParams {
   branchName: string;
   workflow: ReadonlyArray<string>;
-  state: ReadonlyArray<string>;
+  state: ReadonlyArray<StateType>;
 }
 
 export function getBranchActionStateFromApi(params: GetBranchActionStateFromApiParams) {

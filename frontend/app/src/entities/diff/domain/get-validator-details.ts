@@ -6,9 +6,11 @@ import {
 export type GetValidatorDetailsParams = GetValidatorDetailsFromApiParams;
 
 export async function getValidatorDetails(params: GetValidatorDetailsParams) {
-  const { data, error } = await getValidatorDetailsFromApi(params);
+  const { data, errors } = await getValidatorDetailsFromApi(params);
 
-  if (error) throw error;
+  if (errors?.length) {
+    throw new Error(errors.map((e) => e.message).join("; "));
+  }
 
   return data?.CoreValidator?.edges?.[0]?.node ?? null;
 }

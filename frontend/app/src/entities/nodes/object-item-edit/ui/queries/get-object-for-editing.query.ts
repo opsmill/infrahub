@@ -12,10 +12,15 @@ import {
 import { objectItemEditQueryKeys } from "@/entities/nodes/object-item-edit/ui/queries/object-item-edit.query-keys";
 
 export function getObjectForEditingQueryOptions(params: GetObjectForEditingParams) {
+  const { objectKind, objectId, extraRelationshipNames, branchName, atDate } = params;
+
   return queryOptions({
     queryKey: objectItemEditQueryKeys.detail({
-      ...params,
-      objectKind: params.schema.kind!,
+      objectKind,
+      objectId,
+      extraRelationshipNames,
+      branchName,
+      atDate,
     }),
     queryFn: () => getObjectForEditing(params),
   });

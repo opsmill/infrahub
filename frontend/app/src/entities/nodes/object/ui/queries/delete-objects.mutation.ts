@@ -1,15 +1,15 @@
 import { useMutation } from "@tanstack/react-query";
 
+import { queryClient } from "@/shared/api/rest/client";
+
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import type {
+  DeleteObjectsContext,
   DeleteObjectsFromApiParams,
   ObjectParam,
 } from "@/entities/nodes/object/api/delete-objects-from-api";
 import { deleteObjects } from "@/entities/nodes/object/domain/delete-objects";
-
-export interface DeleteObjectsContext {
-  processErrorMessage?: (message: string) => void;
-}
+import { objectQueryKeys } from "@/entities/nodes/object/ui/queries/object.query-keys";
 
 interface DeleteObjectsProps {
   context?: DeleteObjectsContext;
@@ -33,7 +33,10 @@ export function useDeleteObjects({ context, onSuccess, onError, onSettled }: Del
 
       return { objects };
     },
-    onSuccess,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
+      onSuccess?.();
+    },
     onError,
     onSettled,
   });

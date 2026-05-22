@@ -2,6 +2,7 @@ import {
   type GetDiffThreadFromApiParams,
   getDiffThreadFromApi,
 } from "@/entities/diff/api/get-diff-thread-from-api";
+import type { PermissionData } from "@/entities/permission/types";
 
 export type GetDiffThreadParams = GetDiffThreadFromApiParams;
 
@@ -11,15 +12,7 @@ export interface DiffThreadNode {
 }
 
 export interface DiffThreadPermissions {
-  edges?: Array<{
-    node?: {
-      kind?: string | null;
-      view?: boolean | null;
-      create?: boolean | null;
-      update?: boolean | null;
-      delete?: boolean | null;
-    } | null;
-  } | null> | null;
+  edges: Array<{ node: PermissionData }>;
 }
 
 export interface DiffThreadData {
@@ -38,7 +31,7 @@ export async function getDiffThread(params: GetDiffThreadParams): Promise<DiffTh
   const permissions = data?.CoreObjectThread?.permissions ?? null;
 
   return {
-    thread: thread as DiffThreadNode | null,
-    permissions: permissions as DiffThreadPermissions | null,
+    thread,
+    permissions,
   };
 }

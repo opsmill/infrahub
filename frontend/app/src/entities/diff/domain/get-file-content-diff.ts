@@ -37,8 +37,8 @@ export async function getFileContentDiff(
     throw new Error(errors.map((e) => e.message).join("; "));
   }
 
-  const threads =
-    (data?.CoreFileThread?.edges?.map((edge) => edge?.node).filter(Boolean) as FileThread[]) ?? [];
+  const threads = (data?.CoreFileThread?.edges?.map((edge) => edge?.node).filter(Boolean) ??
+    []) as FileThread[];
 
   return { threads };
 }

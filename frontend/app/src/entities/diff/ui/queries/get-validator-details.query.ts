@@ -8,11 +8,11 @@ import { validatorDetailsKeys } from "@/entities/diff/ui/queries/diff.query-keys
 
 export function getValidatorDetailsQueryOptions(params: GetValidatorDetailsParams) {
   return queryOptions({
-    queryKey: validatorDetailsKeys.detail(
-      params.ids?.[0] ?? "",
-      params.checksOffset ?? undefined,
-      params.checksLimit ?? undefined
-    ),
+    queryKey: validatorDetailsKeys.detail({
+      validatorId: params.ids?.[0] ?? "",
+      checksOffset: params.checksOffset ?? undefined,
+      checksLimit: params.checksLimit ?? undefined,
+    }),
     queryFn: () => getValidatorDetails(params),
   });
 }

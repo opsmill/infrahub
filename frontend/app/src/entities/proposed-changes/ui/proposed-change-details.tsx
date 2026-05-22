@@ -31,7 +31,6 @@ interface ProposedChangeDetailsProps
 export const ProposedChangeDetails = ({
   proposedChangeData,
   metadata,
-  tasksCount,
   className,
   ...props
 }: ProposedChangeDetailsProps) => {
@@ -171,7 +170,7 @@ export const ProposedChangeDetails = ({
 
   return (
     <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
-      {!loadingCheck && checkCount !== undefined && !!checkCount && (
+      {!loadingCheck && !!checkCount && (
         <Card>
           <CardContent>
             <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>

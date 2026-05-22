@@ -1,4 +1,3 @@
-import type { ApolloQueryResult } from "@apollo/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
@@ -22,7 +21,7 @@ describe("isTaskRunningOnBranch", () => {
           count: 1,
         },
       },
-    } as ApolloQueryResult<unknown>);
+    } as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
 
     // WHEN
     const result = await isTaskRunningOnBranch("main");
@@ -40,7 +39,7 @@ describe("isTaskRunningOnBranch", () => {
           count: 0,
         },
       },
-    } as ApolloQueryResult<unknown>);
+    } as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
 
     // WHEN
     const result = await isTaskRunningOnBranch("main");
@@ -56,7 +55,7 @@ describe("isTaskRunningOnBranch", () => {
       data: {
         InfrahubTaskBranchStatus: null,
       },
-    } as ApolloQueryResult<unknown>);
+    } as unknown as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
 
     // WHEN
     const result = await isTaskRunningOnBranch("main");

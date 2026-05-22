@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
-import { useAtomValue } from "jotai";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
@@ -9,7 +8,7 @@ import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "@/entities/proposed-changes/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/ui/queries/update-review.mutation";
 import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
@@ -20,7 +19,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
   const { approve, cancelApprove } = usePcActionsContext();
 
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChangesDetails = useProposedChange();
 
   const hasApproved = auth.user && hasUserApprovedProposedChange(proposedChangesDetails, auth.user);
 

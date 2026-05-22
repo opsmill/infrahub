@@ -9,8 +9,8 @@ export const tasksQueryKeys = {
   list: (filters?: GetTaskListParams) => [...tasksQueryKeys.all, filters],
   count: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "count"],
   homepage: (filters?: GetTaskListParams) => [...tasksQueryKeys.list(filters), "homepage"],
-  check: (params?: CheckTaskDetailsParams) => [...tasksQueryKeys.all, "check", params] as const,
   details: (params?: GetTaskDetailsParams) => [...tasksQueryKeys.all, "details", params] as const,
   detailsTitle: (params: GetTaskDetailsTitleParams) =>
-    [...tasksQueryKeys.all, "detailsTitle", params] as const,
+    [...tasksQueryKeys.all, "details-title", params] as const,
+  check: (params?: CheckTaskDetailsParams) => [...tasksQueryKeys.all, "check", params] as const,
 };
