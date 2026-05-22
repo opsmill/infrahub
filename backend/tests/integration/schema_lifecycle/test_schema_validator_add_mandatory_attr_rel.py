@@ -169,7 +169,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await deleted_cylon.save(db=db)
         await deleted_cylon.delete(db=db)
 
-        objs = {
+        return {
             "starbuck": starbuck.id,
             "president": president.id,
             "gaius": gaius.id,
@@ -177,8 +177,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "athena": athena.id,
             "caprica": caprica.id,
         }
-
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_step_01(

@@ -96,5 +96,4 @@ class Migration033(GraphMigration):
     queries: Sequence[type[Query]] = [DeduplicateRelationshipVerticesQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

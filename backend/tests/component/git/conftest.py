@@ -66,7 +66,7 @@ async def git_repo_01_read_only(
     client: InfrahubClient, git_upstream_repo_01: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubReadOnlyRepository:
     """Git Repository with git_upstream_repo_01 as remote"""
-    repo = await InfrahubReadOnlyRepository.new(
+    return await InfrahubReadOnlyRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_01["name"],
         location=str(git_upstream_repo_01["path"]),
@@ -74,8 +74,6 @@ async def git_repo_01_read_only(
         infrahub_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-
-    return repo
 
 
 @pytest.fixture
@@ -88,14 +86,12 @@ async def git_repo_01_w_client(git_repo_01: InfrahubRepository, client: Infrahub
 @pytest.fixture
 async def git_repo_02(git_upstream_repo_02: dict[str, str | Path], git_repos_dir: Path) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_02 as remote"""
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-
-    return repo
 
 
 @pytest.fixture
@@ -103,14 +99,12 @@ async def git_repo_03(
     client: InfrahubClient, git_upstream_repo_03: dict[str, str | Path], git_repos_dir: Path
 ) -> InfrahubRepository:
     """Git Repository with git_upstream_repo_03 as remote"""
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_03["name"],
         location=str(git_upstream_repo_03["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-
-    return repo
 
 
 @pytest.fixture
@@ -332,13 +326,12 @@ async def git_repo_checks(
 
     upstream.index.commit("Add 2 checks files")
 
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-    return repo
 
 
 @pytest.fixture
@@ -362,13 +355,12 @@ async def git_repo_transforms(
 
     upstream.index.commit("Add 2 Transforms files")
 
-    repo = await InfrahubRepository.new(
+    return await InfrahubRepository.new(
         id=UUIDT.new(),
         name=git_upstream_repo_02["name"],
         location=str(git_upstream_repo_02["path"]),
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-    return repo
 
 
 @pytest.fixture
@@ -494,7 +486,7 @@ async def mock_gql_query_my_query(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def gql_query_data_01() -> dict:
-    data = {
+    return {
         "node": {
             "id": "rrrrrrrr-rrrr-rrrr-rrrr-rrrrrrrrrrrr",
             "display_label": "MyQuery",
@@ -508,12 +500,11 @@ async def gql_query_data_01() -> dict:
             },
         }
     }
-    return data
 
 
 @pytest.fixture
 async def gql_query_data_02() -> dict:
-    data = {
+    return {
         "node": {
             "id": "mmmmmmmm-nnnn-bbbb-vvvv-cccccccccccc",
             "display_label": "MyOtherQuery",
@@ -527,7 +518,6 @@ async def gql_query_data_02() -> dict:
             },
         }
     }
-    return data
 
 
 @pytest.fixture
@@ -568,7 +558,7 @@ async def mock_check_create(helper: TestHelper, httpx_mock: HTTPXMock) -> HTTPXM
 
 @pytest.fixture
 async def check_definition_data_01() -> dict:
-    data = {
+    return {
         "node": {
             "id": "d32f30f8-1d1e-4dfb-96d9-91234a9ffbe1",
             "display_label": "Check01",
@@ -655,8 +645,6 @@ async def check_definition_data_01() -> dict:
         },
     }
 
-    return data
-
 
 @pytest.fixture
 async def gql_query_data_03() -> dict[str, Any]:
@@ -684,7 +672,7 @@ async def gql_query_data_03() -> dict[str, Any]:
     }
     """
 
-    data = {
+    return {
         "id": "42665742-002b-4f98-b2e0-1ae716c1efbe",
         "type": InfrahubKind.GRAPHQLQUERY,
         "name": {
@@ -713,7 +701,6 @@ async def gql_query_data_03() -> dict[str, Any]:
         "__typename": InfrahubKind.GRAPHQLQUERY,
         "display_label": "query01",
     }
-    return data
 
 
 @pytest.fixture
@@ -727,8 +714,7 @@ async def schema_02(client: InfrahubClient, helper: TestHelper, car_data_01: dic
 async def gql_query_node_03(client: InfrahubClient, gql_query_data_03: dict[str, Any]) -> InfrahubNode:
     backend_schema = [model for model in SchemaRoot(**core_models).nodes if model.kind == InfrahubKind.GRAPHQLQUERY][0]
     schema = NodeSchemaAPI(**backend_schema.model_dump())
-    node = InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=gql_query_data_03)
 
 
 @pytest.fixture
@@ -760,7 +746,7 @@ async def mock_upload_content(httpx_mock: HTTPXMock) -> HTTPXMock:
 
 @pytest.fixture
 async def artifact_definition_data_01() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
         "name": {
@@ -790,7 +776,6 @@ async def artifact_definition_data_01() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACTDEFINITION,
         "display_label": "artifactdef01",
     }
-    return data
 
 
 @pytest.fixture
@@ -798,13 +783,12 @@ async def artifact_definition_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_01: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_definition_data_01)
 
 
 @pytest.fixture
 async def artifact_definition_data_02() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACTDEFINITION,
         "name": {
@@ -834,7 +818,6 @@ async def artifact_definition_data_02() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACTDEFINITION,
         "display_label": "artifactdef02",
     }
-    return data
 
 
 @pytest.fixture
@@ -842,13 +825,12 @@ async def artifact_definition_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_definition_data_02: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACTDEFINITION][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_definition_data_02)
 
 
 @pytest.fixture
 async def artifact_data_01() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": "CoreArtifact",
         "name": {
@@ -869,7 +851,6 @@ async def artifact_data_01() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACT,
         "display_label": "artifact01",
     }
-    return data
 
 
 @pytest.fixture
@@ -877,13 +858,12 @@ async def artifact_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_01: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_data_01)
 
 
 @pytest.fixture
 async def artifact_data_02() -> dict[str, Any]:
-    data = {
+    return {
         "id": "c4908d78-7b24-45e2-9252-96d0fb3e2c78",
         "type": InfrahubKind.ARTIFACT,
         "name": {
@@ -906,7 +886,6 @@ async def artifact_data_02() -> dict[str, Any]:
         "__typename": InfrahubKind.ARTIFACT,
         "display_label": "artifact01",
     }
-    return data
 
 
 @pytest.fixture
@@ -914,13 +893,12 @@ async def artifact_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, artifact_data_02: dict[str, Any]
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.ARTIFACT][0]
-    node = InfrahubNode(client=client, schema=schema, data=artifact_data_02)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=artifact_data_02)
 
 
 @pytest.fixture
 async def transformation_data_01() -> dict:
-    data = {
+    return {
         "id": "a0d4c22a-5f60-4bf9-a53f-f9a335420492",
         "type": "CoreTransformPython",
         "file_path": {
@@ -989,7 +967,6 @@ async def transformation_data_01() -> dict:
         "__typename": "CoreTransformPython",
         "display_label": "transform01",
     }
-    return data
 
 
 @pytest.fixture
@@ -997,13 +974,12 @@ async def transformation_node_01(
     client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_01: dict
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == "CoreTransformPython"][0]
-    node = InfrahubNode(client=client, schema=schema, data=transformation_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=transformation_data_01)
 
 
 @pytest.fixture
 async def transformation_data_02() -> dict:
-    data = {
+    return {
         "id": "70a58c98-6185-4004-b4bf-713baccfdc87",
         "display_label": "device_startup",
         "template_path": {"value": "template01.tpl.j2", "__typename": "TextAttribute"},
@@ -1029,7 +1005,6 @@ async def transformation_data_02() -> dict:
         },
         "__typename": InfrahubKind.TRANSFORMJINJA2,
     }
-    return data
 
 
 @pytest.fixture
@@ -1037,13 +1012,12 @@ async def transformation_node_02(
     client: InfrahubClient, schema_02: ClientSchemaRoot, transformation_data_02: dict
 ) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.kind == InfrahubKind.TRANSFORMJINJA2][0]
-    node = InfrahubNode(client=client, schema=schema, data=transformation_data_02)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=transformation_data_02)
 
 
 @pytest.fixture
 async def car_data_01() -> dict:
-    data = {
+    return {
         "id": "b663d7a4-5f95-48dd-b04d-e03169e7fcf3",
         "type": "TestElectricCar",
         "nbr_engine": {
@@ -1081,14 +1055,12 @@ async def car_data_01() -> dict:
         "__typename": "TestElectricCar",
         "display_label": "TestElectricCar(ID: b663d7a4-5f95-48dd-b04d-e03169e7fcf3)",
     }
-    return data
 
 
 @pytest.fixture
 async def car_node_01(client: InfrahubClient, schema_02: ClientSchemaRoot, car_data_01: dict) -> InfrahubNode:
     schema = [model for model in schema_02.nodes if model.name == "ElectricCar"][0]
-    node = InfrahubNode(client=client, schema=schema, data=car_data_01)
-    return node
+    return InfrahubNode(client=client, schema=schema, data=car_data_01)
 
 
 @pytest.fixture

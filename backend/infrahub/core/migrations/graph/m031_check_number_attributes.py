@@ -101,5 +101,4 @@ class Migration031(InternalSchemaMigration):
         return MigrationResult(errors=[error_str] + errors_messages)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

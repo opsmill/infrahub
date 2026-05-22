@@ -2,13 +2,17 @@ from uuid import uuid4
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.branch.models import Branch
-from infrahub.core.constants import DiffAction, InfrahubKind
+from infrahub.core.constants import DiffAction, InfrahubKind, SchemaPathType
 from infrahub.core.diff.artifacts.calculator import ArtifactDiffCalculator
 from infrahub.core.diff.model.diff import ArtifactTarget, BranchDiffArtifact, BranchDiffArtifactStorage
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
+from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
+from infrahub.core.path import SchemaPath
 from infrahub.database import InfrahubDatabase
 
 
@@ -289,3 +293,186 @@ async def test_calculate_artifact_diff(
     assert diffs_by_id[art2_branch.id] == expected_artifact_diff_2
     assert diffs_by_id[art3_branch.id] == expected_artifact_diff_3
     assert diffs_by_id[art6_branch.id] == expected_artifact_diff_6
+
+
+@pytest.fixture
+async def artifact_diff_kind_migration_data(
+    db: InfrahubDatabase, default_branch: Branch, car_person_data_generic: dict[str, Node]
+) -> dict[str, Node | Branch]:
+    """One artifact on main for a TestElectricCar node; a branch where only a kind migration ran."""
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await g1.new(db=db, name="group_migration", members=[car_person_data_generic["c1"]])
+    await g1.save(db=db)
+
+    t1 = await Node.init(db=db, schema="CoreTransformPython")
+    await t1.new(
+        db=db,
+        name="transform_migration",
+        query=car_person_data_generic["q1"].id,
+        repository=car_person_data_generic["r1"].id,
+        file_path="transform_migration.py",
+        class_name="TransformMigration",
+    )
+    await t1.save(db=db)
+
+    ad1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+    await ad1.new(
+        db=db,
+        name="artifactdef_migration",
+        targets=g1,
+        transformation=t1,
+        content_type="application/json",
+        artifact_name="migration_artifact",
+        parameters={"value": {"name": "name__value"}},
+    )
+    await ad1.save(db=db)
+
+    art_main = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+    await art_main.new(
+        db=db,
+        name="art_migration_main",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic["c1"],
+        storage_id="aaaaaaaa-0000-4173-aa4b-f50e1309f03c",
+        checksum="aabbccdd11223344556677889900aabb",
+        content_type="application/json",
+    )
+    await art_main.save(db=db)
+
+    branch = await create_branch(branch_name="branch-kind-migration", db=db)
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    new_ecar_schema = schema_branch.get(name="TestElectricCar")
+    new_ecar_schema.name = "ElectricCarV2"
+    registry.schema.set(name="TestElectricCarV2", schema=new_ecar_schema, branch=branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="TestElectricCar"),
+        new_node_schema=new_ecar_schema,
+        schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestElectricCarV2", field_name="name"),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=branch)
+    assert not execution_result.errors
+
+    return {
+        "branch": branch,
+        "art_main": art_main,
+        "c1": car_person_data_generic["c1"],
+    }
+
+
+async def test_calculate_artifact_diff_migrated_kind(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    artifact_diff_kind_migration_data: dict[str, Node | Branch],
+) -> None:
+    branch = artifact_diff_kind_migration_data["branch"]
+    art_main = artifact_diff_kind_migration_data["art_main"]
+
+    artifact_diff_calculator = ArtifactDiffCalculator(db=db)
+    artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
+    assert artifact_diffs == []
+
+    art_branch = await NodeManager.get_one(db=db, branch=branch, id=art_main.id)
+    art_branch.checksum.value = "new_checksum_after_genuine_content_change"
+    art_branch.storage_id.value = "bbbbbbbb-1111-4173-aa4b-f50e1309f03c"
+    await art_branch.save(db=db)
+
+    artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
+    assert len(artifact_diffs) == 1
+    assert artifact_diffs[0].action == DiffAction.UPDATED
+    assert artifact_diffs[0].item_new is not None
+    assert artifact_diffs[0].item_new.checksum == "new_checksum_after_genuine_content_change"
+    assert artifact_diffs[0].item_previous is not None
+    assert artifact_diffs[0].item_previous.checksum == "aabbccdd11223344556677889900aabb"
+
+
+async def test_calculate_artifact_diff_main_side_migration(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_data_generic: dict[str, Node],
+) -> None:
+    g1 = await Node.init(db=db, schema=InfrahubKind.STANDARDGROUP)
+    await g1.new(db=db, name="group_main_migration", members=[car_person_data_generic["c1"]])
+    await g1.save(db=db)
+
+    t1 = await Node.init(db=db, schema="CoreTransformPython")
+    await t1.new(
+        db=db,
+        name="transform_main_migration",
+        query=car_person_data_generic["q1"].id,
+        repository=car_person_data_generic["r1"].id,
+        file_path="transform_main_migration.py",
+        class_name="TransformMainMigration",
+    )
+    await t1.save(db=db)
+
+    ad1 = await Node.init(db=db, schema=InfrahubKind.ARTIFACTDEFINITION)
+    await ad1.new(
+        db=db,
+        name="artifactdef_main_migration",
+        targets=g1,
+        transformation=t1,
+        content_type="application/json",
+        artifact_name="main_migration_artifact",
+        parameters={"value": {"name": "name__value"}},
+    )
+    await ad1.save(db=db)
+
+    art_main = await Node.init(db=db, schema=InfrahubKind.ARTIFACT)
+    await art_main.new(
+        db=db,
+        name="art_main_migration_main",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic["c1"],
+        storage_id="cccccccc-2222-4173-aa4b-f50e1309f03c",
+        checksum="ccddee001122334455667788aabbccdd",
+        content_type="application/json",
+    )
+    await art_main.save(db=db)
+
+    branch = await create_branch(branch_name="branch-pre-main-migration", db=db)
+
+    art_branch = await Node.init(db=db, schema=InfrahubKind.ARTIFACT, branch=branch)
+    await art_branch.new(
+        db=db,
+        name="art_main_migration_branch",
+        definition=ad1,
+        status="Ready",
+        object=car_person_data_generic["c1"],
+        storage_id="cccccccc-2222-4173-aa4b-f50e1309f03c",
+        checksum="ccddee001122334455667788aabbccdd",
+        content_type="application/json",
+    )
+    await art_branch.save(db=db)
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    new_ecar_schema = schema_branch.get(name="TestElectricCar")
+    new_ecar_schema.name = "ElectricCarMainV2"
+    registry.schema.set(name="TestElectricCarMainV2", schema=new_ecar_schema, branch=default_branch.name)
+    migration = NodeKindUpdateMigration(
+        previous_node_schema=schema_branch.get(name="TestElectricCar"),
+        new_node_schema=new_ecar_schema,
+        schema_path=SchemaPath(
+            path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestElectricCarMainV2", field_name="name"
+        ),
+    )
+    execution_result = await migration.execute(migration_input=MigrationInput(db=db), branch=default_branch)
+    assert not execution_result.errors
+
+    artifact_diff_calculator = ArtifactDiffCalculator(db=db)
+    artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
+    assert artifact_diffs == []
+
+    art_branch.checksum.value = "new_checksum_main_side_genuine_change"
+    art_branch.storage_id.value = "dddddddd-3333-4173-aa4b-f50e1309f03c"
+    await art_branch.save(db=db)
+
+    artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=default_branch)
+    assert len(artifact_diffs) == 1
+    assert artifact_diffs[0].action == DiffAction.UPDATED
+    assert artifact_diffs[0].item_new is not None
+    assert artifact_diffs[0].item_new.checksum == "new_checksum_main_side_genuine_change"
+    assert artifact_diffs[0].item_previous is not None
+    assert artifact_diffs[0].item_previous.checksum == "ccddee001122334455667788aabbccdd"

@@ -35,7 +35,6 @@ def get_next_available_prefix(
             return cidr
 
         if cidr.prefixlen <= prefix_length:
-            next_available = ipaddress.ip_network(f"{cidr.network}/{prefix_length}")
-            return next_available
+            return ipaddress.ip_network(f"{cidr.network}/{prefix_length}")
 
     raise ValueError("No available subnets in pool")

@@ -208,7 +208,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         await deleted_specific_three.save(db=db)
         await deleted_specific_three.delete(db=db)
 
-        objs = {
+        return {
             "thing_one": thing_one,
             "thing_two": thing_two,
             "thing_three": thing_three,
@@ -216,7 +216,6 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             "specific_two": specific_two,
             "specific_three": specific_three,
         }
-        return objs
 
     @pytest.fixture(scope="class")
     async def initial_dataset(
