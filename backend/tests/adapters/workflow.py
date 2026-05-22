@@ -9,6 +9,7 @@ from infrahub.workflows.models import WorkflowDefinition, WorkflowInfo
 
 if TYPE_CHECKING:
     from infrahub.context import InfrahubContext
+    from infrahub.events.models import EventContext
 
 
 class WorkflowRecorder(InfrahubWorkflow):
@@ -22,7 +23,7 @@ class WorkflowRecorder(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: type | None = None,
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
@@ -34,7 +35,7 @@ class WorkflowRecorder(InfrahubWorkflow):
     async def submit_workflow(
         self,
         workflow: WorkflowDefinition,
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:

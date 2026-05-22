@@ -260,6 +260,7 @@ async def merge_proposed_change(
         current_user = await NodeManager.get_one_by_id_or_default_filter(
             id=context.account.account_id, kind=CoreGenericAccount, db=db
         )
+        event_context = context.to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             event=ProposedChangeMergedEvent(
@@ -268,7 +269,7 @@ async def merge_proposed_change(
                 proposed_change_state=proposed_change.state.value,
                 merged_by_account_id=current_user.id,
                 merged_by_account_name=current_user.name.value,
-                meta=EventMeta.from_context(context=context),
+                meta=EventMeta.from_context(context=event_context),
             )
         )
 

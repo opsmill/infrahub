@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from prefect.client.schemas.objects import FlowRun
 
     from infrahub.context import InfrahubContext
+    from infrahub.events.models import EventContext
     from infrahub.tls.registry import TlsContextRegistry
     from infrahub.workflows.models import WorkflowDefinition
 
@@ -43,7 +44,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: type[Return],
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
     ) -> Return: ...
@@ -53,7 +54,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: None = ...,
-        context: InfrahubContext | None = ...,
+        context: InfrahubContext | EventContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
     ) -> Any: ...
@@ -63,7 +64,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         self,
         workflow: WorkflowDefinition,
         expected_return: type[Return] | None = None,  # noqa: ARG002
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> Any:
@@ -85,7 +86,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
     async def submit_workflow(
         self,
         workflow: WorkflowDefinition,
-        context: InfrahubContext | None = None,
+        context: InfrahubContext | EventContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
     ) -> WorkflowInfo:
