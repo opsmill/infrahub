@@ -26,7 +26,6 @@ In `backend/infrahub/errors/catalogue.py`, add to the `CATALOGUE` `OrderedDict`:
 
 ```python
 CATALOGUE["REPOSITORY_UNREACHABLE"] = CatalogueEntry(
-    code="REPOSITORY_UNREACHABLE",
     description="The remote Git repository is unreachable.",
     stability="evolving",      # promote to "stable" after one release of observation
     http_status=503,
@@ -34,6 +33,8 @@ CATALOGUE["REPOSITORY_UNREACHABLE"] = CatalogueEntry(
     exception_class=RepositoryUnreachableError,   # or None if raised directly
 )
 ```
+
+The OrderedDict key (`"REPOSITORY_UNREACHABLE"`) is the single source of truth for the code string; the exception class is reachable from the formatter via the `EXCEPTION_TO_CODE` reverse-lookup map, which is rebuilt automatically from the registry.
 
 ### c. Regenerate artefacts and commit
 

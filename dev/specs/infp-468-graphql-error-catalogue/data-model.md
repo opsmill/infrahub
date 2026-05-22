@@ -11,7 +11,7 @@ This file pins the concrete entity shapes used by the implementation. The spec d
 ```text
 ┌──────────────────────┐
 │   ErrorCatalogue     │  1 instance, in-process, ordered registry
-│   (registry)         │
+│   (registry)         │  code (str) → CatalogueEntry
 └──────────┬───────────┘
            │ 1..N
            ▼
@@ -23,8 +23,8 @@ This file pins the concrete entity shapes used by the implementation. The spec d
            │ optional 1..1
            ▼
 ┌──────────────────────┐
-│   Adopted exception  │  Existing class from backend/infrahub/exceptions.py
-│   class              │  annotated with CATALOGUE_CODE
+│   Adopted exception  │  Existing class from backend/infrahub/exceptions.py;
+│   class              │  reverse-mapped to its code via EXCEPTION_TO_CODE
 └──────────────────────┘
 ```
 
@@ -35,11 +35,9 @@ This file pins the concrete entity shapes used by the implementation. The spec d
 Lives in `backend/infrahub/errors/catalogue.py`. Not exported on the wire; the wire contract is in `contracts/`.
 
 ```python
-from typing import ClassVar
 from pydantic import BaseModel
 
 class CatalogueEntry(BaseModel):
-    code: str                          # uppercase snake_case, e.g. "NODE_NOT_FOUND"
     description: str                   # human-readable, used for docs page (FR-010, FR-012)
     stability: Literal["stable", "evolving"]
     http_status: int                   # 400/401/403/404/422/500 etc.
@@ -49,7 +47,7 @@ class CatalogueEntry(BaseModel):
     model_config = {"frozen": True}
 ```
 
-The registry is an `OrderedDict[str, CatalogueEntry]` keyed by `code`. Insertion order is the docs order.
+The registry is an `OrderedDict[str, CatalogueEntry]` keyed by the uppercase snake_case code string (e.g. `"NODE_NOT_FOUND"`). The OrderedDict key is the single source of truth for the code; it is **not** duplicated onto `CatalogueEntry` (which would invite drift) nor onto each adopted exception class (whose mapping is recovered by the reverse-lookup `EXCEPTION_TO_CODE` built at module load). Insertion order is the docs order.
 
 ---
 
@@ -226,7 +224,6 @@ from collections import OrderedDict
 
 CATALOGUE: OrderedDict[str, CatalogueEntry] = OrderedDict([
     ("NODE_NOT_FOUND", CatalogueEntry(
-        code="NODE_NOT_FOUND",
         description="The requested node does not exist in the database.",
         stability="stable",
         http_status=404,
@@ -235,7 +232,6 @@ CATALOGUE: OrderedDict[str, CatalogueEntry] = OrderedDict([
     )),
     # ... 8 more entries ...
     ("UNDEFINED_ERROR", CatalogueEntry(
-        code="UNDEFINED_ERROR",
         description="An error not yet covered by the catalogue. Its occurrence indicates a catalogue gap.",
         stability="stable",
         http_status=500,
@@ -243,6 +239,16 @@ CATALOGUE: OrderedDict[str, CatalogueEntry] = OrderedDict([
         exception_class=None,
     )),
 ])
+
+# Reverse lookup so the formatter can map an exception class back to its code without
+# scanning the catalogue per error. AuthorizationError is intentionally excluded — it
+# routes to two codes (AUTHENTICATION_REQUIRED vs TOKEN_EXPIRED) at the formatter, not
+# via class identity.
+EXCEPTION_TO_CODE: dict[type[Exception], str] = {
+    entry.exception_class: code
+    for code, entry in CATALOGUE.items()
+    if entry.exception_class is not None and entry.exception_class is not AuthorizationError
+}
 ```
 
 The export step (`backend/infrahub/errors/export.py`) walks this registry and produces `schema/error-catalogue.json`.

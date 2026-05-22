@@ -31,7 +31,6 @@ from .payloads import (
 
 
 class CatalogueEntry(BaseModel):
-    code: str
     description: str
     stability: Literal["stable", "evolving"]
     http_status: int
@@ -46,7 +45,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "NODE_NOT_FOUND",
             CatalogueEntry(
-                code="NODE_NOT_FOUND",
                 description="The requested node does not exist in the database.",
                 stability="stable",
                 http_status=404,
@@ -57,7 +55,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "AUTHENTICATION_REQUIRED",
             CatalogueEntry(
-                code="AUTHENTICATION_REQUIRED",
                 description="The request requires authentication and none was provided or it was invalid.",
                 stability="stable",
                 http_status=401,
@@ -68,7 +65,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "TOKEN_EXPIRED",
             CatalogueEntry(
-                code="TOKEN_EXPIRED",
                 description="The authentication token has expired and a silent refresh is required.",
                 stability="stable",
                 http_status=401,
@@ -79,7 +75,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "PERMISSION_DENIED",
             CatalogueEntry(
-                code="PERMISSION_DENIED",
                 description="The authenticated user is not permitted to perform the requested action.",
                 stability="stable",
                 http_status=403,
@@ -90,7 +85,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "ATTRIBUTE_REQUIRED",
             CatalogueEntry(
-                code="ATTRIBUTE_REQUIRED",
                 description="A mandatory node attribute was not provided.",
                 stability="stable",
                 http_status=422,
@@ -101,7 +95,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "ATTRIBUTE_INVALID_TYPE",
             CatalogueEntry(
-                code="ATTRIBUTE_INVALID_TYPE",
                 description="A node attribute received a value that does not match its declared type.",
                 stability="stable",
                 http_status=422,
@@ -112,7 +105,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "ATTRIBUTE_CONSTRAINT_VIOLATION",
             CatalogueEntry(
-                code="ATTRIBUTE_CONSTRAINT_VIOLATION",
                 description="A node attribute value failed a schema-defined constraint (e.g. regex, length, range).",
                 stability="evolving",
                 http_status=422,
@@ -123,7 +115,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "BRANCH_NOT_FOUND",
             CatalogueEntry(
-                code="BRANCH_NOT_FOUND",
                 description="The requested branch does not exist.",
                 stability="stable",
                 http_status=400,
@@ -134,7 +125,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "SCHEMA_NOT_FOUND",
             CatalogueEntry(
-                code="SCHEMA_NOT_FOUND",
                 description="The requested schema kind is not registered in the active schema.",
                 stability="stable",
                 http_status=422,
@@ -145,7 +135,6 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         (
             "UNDEFINED_ERROR",
             CatalogueEntry(
-                code="UNDEFINED_ERROR",
                 description=(
                     "An error not yet covered by the catalogue. "
                     "Its occurrence indicates a catalogue gap and should be triaged."
@@ -158,3 +147,13 @@ CATALOGUE: "OrderedDict[str, CatalogueEntry]" = OrderedDict(
         ),
     ]
 )
+
+
+# Reverse map: exception class → catalogue code. AuthorizationError is intentionally excluded
+# because it routes to two codes (AUTHENTICATION_REQUIRED vs TOKEN_EXPIRED) at the formatter,
+# not via class identity.
+EXCEPTION_TO_CODE: dict[type[Exception], str] = {
+    entry.exception_class: code
+    for code, entry in CATALOGUE.items()
+    if entry.exception_class is not None and entry.exception_class is not AuthorizationError
+}

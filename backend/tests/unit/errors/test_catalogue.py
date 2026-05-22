@@ -1,8 +1,6 @@
-import pytest
 from pydantic import BaseModel
-from pydantic import ValidationError as PydanticValidationError
 
-from infrahub.errors.catalogue import CATALOGUE, CatalogueEntry
+from infrahub.errors.catalogue import CATALOGUE, EXCEPTION_TO_CODE
 
 
 def test_catalogue_is_not_empty() -> None:
@@ -27,25 +25,13 @@ def test_undefined_error_is_present_with_empty_payload_and_no_exception() -> Non
     assert entry.payload_model.model_fields == {}
 
 
-def test_adopted_exception_classes_carry_catalogue_code() -> None:
+def test_exception_to_code_reverse_map_covers_every_class_routed_exception() -> None:
+    # Every entry with a single exception_class (i.e. excluding AuthorizationError's split routing
+    # and UNDEFINED_ERROR's None) should be reachable via the reverse map.
     for code, entry in CATALOGUE.items():
-        exception_class = entry.exception_class
-        if exception_class is None:
+        if entry.exception_class is None:
             continue
         if code in {"AUTHENTICATION_REQUIRED", "TOKEN_EXPIRED"}:
-            # Split at the formatter; the exception itself has no single code.
+            assert entry.exception_class not in EXCEPTION_TO_CODE, code
             continue
-        catalogue_code = getattr(exception_class, "CATALOGUE_CODE", None)
-        assert catalogue_code == code, (code, catalogue_code)
-
-
-def test_catalogue_codes_match_entry_codes() -> None:
-    for code, entry in CATALOGUE.items():
-        assert entry.code == code
-
-
-def test_catalogue_entry_is_frozen() -> None:
-    entry = CATALOGUE["NODE_NOT_FOUND"]
-    assert isinstance(entry, CatalogueEntry)
-    with pytest.raises(PydanticValidationError, match=r"frozen"):
-        entry.code = "X"
+        assert EXCEPTION_TO_CODE[entry.exception_class] == code

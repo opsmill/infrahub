@@ -11,7 +11,7 @@ This file resolves the open implementation questions surfaced by [discovery.md](
 **Decision**: New package `backend/infrahub/errors/`, with:
 - `catalogue.py` — the registry data (an ordered mapping of `code → CatalogueEntry`).
 - `payloads.py` — one Pydantic `BaseModel` per code, defining the `data` shape.
-- `exceptions.py` — a small layer that annotates the existing `backend/infrahub/exceptions.py` classes with their catalogue `code` (either via a class attribute `CATALOGUE_CODE: ClassVar[str]` added to the adopted classes, or via a `code_of(exc) -> str | None` mapper if we avoid touching `exceptions.py`).
+- `exceptions.py` — new `ValidationError` subclasses (`AttributeRequiredError`, `AttributeInvalidTypeError`, `AttributeConstraintViolationError`) that carry typed payload attributes. The catalogue routing for adopted classes lives in `catalogue.py` as a reverse-lookup map (`EXCEPTION_TO_CODE`) built at module load — chosen over a `CATALOGUE_CODE: ClassVar[str]` class attribute approach so the OrderedDict key stays the single source of truth and `backend/infrahub/exceptions.py` is not modified at all.
 - `export.py` — renders the catalogue into the machine-readable JSON Schema file.
 
 **Rationale**: Keeps the registry separate from the existing 50+ exception classes in `backend/infrahub/exceptions.py`, which is already large and mixes infrastructure concerns. A dedicated package makes the generator's input trivial to discover and import (`from infrahub.errors.catalogue import CATALOGUE`). Pydantic payload models live with the registry so they are versioned together and cannot drift.

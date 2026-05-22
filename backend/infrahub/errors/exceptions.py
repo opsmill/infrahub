@@ -1,11 +1,7 @@
-from typing import ClassVar
-
 from infrahub.exceptions import ValidationError
 
 
 class AttributeRequiredError(ValidationError):
-    CATALOGUE_CODE: ClassVar[str] = "ATTRIBUTE_REQUIRED"
-
     def __init__(self, node_kind: str, field_name: str, message: str | None = None) -> None:
         self.node_kind = node_kind
         self.field_name = field_name
@@ -14,8 +10,6 @@ class AttributeRequiredError(ValidationError):
 
 
 class AttributeInvalidTypeError(ValidationError):
-    CATALOGUE_CODE: ClassVar[str] = "ATTRIBUTE_INVALID_TYPE"
-
     def __init__(
         self,
         node_kind: str,
@@ -35,8 +29,6 @@ class AttributeInvalidTypeError(ValidationError):
 
 
 class AttributeConstraintViolationError(ValidationError):
-    CATALOGUE_CODE: ClassVar[str] = "ATTRIBUTE_CONSTRAINT_VIOLATION"
-
     def __init__(
         self,
         node_kind: str,
