@@ -5,8 +5,6 @@ import {
 
 export type GetTaskDetailsParams = GetTaskDetailsFromApiParams;
 
-export type TaskDetailsNode = Awaited<ReturnType<typeof getTaskDetails>>[0];
-
 export async function getTaskDetails(params?: GetTaskDetailsParams) {
   const { data, errors } = await getTaskDetailsFromApi(params);
 
