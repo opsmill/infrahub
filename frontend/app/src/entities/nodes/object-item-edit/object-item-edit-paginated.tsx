@@ -31,14 +31,12 @@ export default function ObjectItemEditComponent(props: Props) {
     return <NoDataFound message={`Schema ${objectname} not found`} />;
   }
 
-  const {
-    isPending,
-    error,
-    data,
-  } = useGetObjectForEditing(
-    { schema, objectId, extraRelationshipNames },
-    { enabled: !!schema }
-  );
+  const { isLoading, error, data } = useGetObjectForEditing({
+    schema,
+    objectKind: objectname,
+    objectId,
+    extraRelationshipNames,
+  });
 
   const updateObject = useUpdateObjectMutation();
 
@@ -46,7 +44,7 @@ export default function ObjectItemEditComponent(props: Props) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
-  if (isPending || !schema) {
+  if (isLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 

@@ -1,6 +1,6 @@
 import type { ContextParams } from "@/shared/api/types";
 
-import type { NodeFieldsWithMetadata } from "@/entities/nodes/types";
+import type { NodeObjectWithMetadata } from "@/entities/nodes/types";
 import type { ProfileData } from "@/entities/nodes/profiles/types";
 import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import {
@@ -10,13 +10,23 @@ import {
 
 export interface GetObjectForEditingParams extends ContextParams {
   schema: NodeSchema | ProfileSchema;
+  objectKind: string;
   objectId: string;
   extraRelationshipNames?: string[];
 }
 
+export type ObjectForEditingNode = NodeObjectWithMetadata & {
+  profiles?: { edges: Array<{ node: ProfileData } | null> };
+};
+
+interface ObjectForEditingResponse {
+  [kind: string]: {
+    edges: Array<{ node: ObjectForEditingNode }>;
+  };
+}
+
 export interface ObjectForEditing {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  objectDetails: NodeFieldsWithMetadata & Record<string, any>;
+  objectDetails: ObjectForEditingNode;
   profiles: ProfileData[];
 }
 
@@ -25,16 +35,17 @@ export async function getObjectForEditing(
 ): Promise<ObjectForEditing> {
   const result = await getObjectForEditingFromApi(params as GetObjectForEditingFromApiParams);
 
-  const schemaKind = params.schema.kind as string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const objectDetails = (result.data as any)?.[schemaKind]?.edges[0]?.node ?? null;
+  const data = result.data as ObjectForEditingResponse | null;
+  const objectDetails = data?.[params.objectKind]?.edges?.[0]?.node ?? null;
 
   if (!objectDetails) {
     throw new Error("No object details found.");
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const profiles: ProfileData[] = objectDetails?.profiles?.edges?.map((edge: any) => edge?.node) ?? [];
+  const profiles: ProfileData[] =
+    objectDetails.profiles?.edges
+      ?.map((edge) => edge?.node)
+      .filter((node): node is ProfileData => node != null) ?? [];
 
   return { objectDetails, profiles };
 }
