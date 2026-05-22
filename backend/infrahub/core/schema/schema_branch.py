@@ -1158,7 +1158,8 @@ class SchemaBranch:
         dependency_map: dict[str, set[str]] = defaultdict(set)
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
-            assert isinstance(node_schema, NodeSchema | GenericSchema)
+            if not isinstance(node_schema, NodeSchema | GenericSchema):
+                continue
 
             parent_relationships: list[RelationshipSchema] = []
             component_relationships: list[RelationshipSchema] = []
@@ -2466,7 +2467,8 @@ class SchemaBranch:
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
-            assert isinstance(node, NodeSchema | GenericSchema)
+            if not isinstance(node_schema, NodeSchema | GenericSchema):
+                continue
             if (
                 (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
                 or not node.generate_profile
