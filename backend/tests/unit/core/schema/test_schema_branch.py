@@ -4,6 +4,22 @@ from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, Sch
 from infrahub.core.schema.schema_branch import SchemaBranch
 
 
+def test_single_relationship_uniqueness_constraint(car_person_schema_root: SchemaRoot) -> None:
+    """The HFID derivation must resolve a parent-only constraint without crashing."""
+    car_schema = next(n for n in car_person_schema_root.nodes if n.name == "Car")
+    car_schema.uniqueness_constraints = [["owner"]]
+    for attribute_schema in car_schema.attributes:
+        attribute_schema.unique = False
+
+    schema_branch = SchemaBranch(cache={}, name="test")
+    schema_branch.load_schema(schema=car_person_schema_root)
+    schema_branch.process()
+
+    processed_car_schema = schema_branch.get(name="TestCar", duplicate=False)
+    assert processed_car_schema.uniqueness_constraints == [["owner"]]
+    assert processed_car_schema.human_friendly_id is None
+
+
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
     """Proves that schema processing produces the peer/hierarchical values in an expected manner."""
 
