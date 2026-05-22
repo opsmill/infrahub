@@ -8172,6 +8172,8 @@ input EventTypeFilter {
   branch_merged: BranchEventTypeFilter = null
   """Filters specific to infrahub.branch.rebased events"""
   branch_rebased: BranchEventTypeFilter = null
+  """Filters specific to infrahub.group.auto_create.* events"""
+  group_auto_create: GroupAutoCreateEventTypeFilter = null
 }
 
 type Events {
@@ -8253,6 +8255,15 @@ type GroupAutoCreateCapBreachEventType implements EventNodeInterface {
   triggering_user_id: String!
   """Login identifier of the triggering account"""
   triggering_user_name: String!
+}
+
+input GroupAutoCreateEventTypeFilter {
+  """
+  Filter by the configured identity-provider name (matches the event's `idp` field)
+  """
+  idp: [String!]
+  """Filter by authentication protocol (oauth2, oidc, ldap)"""
+  protocol: [String!]
 }
 
 type GroupAutoCreateRejectedClaimEventType implements EventNodeInterface {
