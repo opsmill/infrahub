@@ -909,3 +909,169 @@ async def test_event_query_group_auto_create(
     assert cap_node["cap_value"] == cap_event.cap_value
     assert cap_node["dropped_count"] == cap_event.dropped_count
     assert sorted(cap_node["dropped_claims"]) == sorted(cap_event.dropped_claims)
+
+
+QUERY_GROUP_AUTO_CREATE_BY_FILTER = """
+query($event_type_filter: EventTypeFilter) {
+  InfrahubEvent(event_type_filter: $event_type_filter, limit: 50) {
+    count
+    edges {
+      node {
+        id
+        event
+        ... on GroupAutoCreatedEventType {
+          idp
+          protocol
+        }
+        ... on GroupAutoCreateRejectedClaimEventType {
+          idp
+          protocol
+        }
+        ... on GroupAutoCreateCapBreachEventType {
+          idp
+          protocol
+        }
+      }
+    }
+  }
+}
+"""
+
+
+@pytest.fixture
+async def group_auto_create_events_mixed_idps(
+    default_branch: Branch,
+    prefect_client: PrefectClient,
+) -> dict[str, InfrahubEvent]:
+    triggering_user_id = uuid.uuid4()
+    idp_a = f"provider-a-{_TEST_ID}"
+    idp_b = f"provider-b-{_TEST_ID}"
+
+    items: dict[str, InfrahubEvent] = {
+        "a_oidc_created": GroupAutoCreatedEvent(
+            idp=idp_a,
+            triggering_user_id=triggering_user_id,
+            triggering_user_name=f"alice-{_TEST_ID}",
+            protocol=ExternalAuthProtocol.OIDC,
+            group_id=uuid.uuid4(),
+            group_name=f"a-oidc-{_TEST_ID}",
+            source_pattern=r"^(?P<name>.*)$",
+            origin_value=idp_a,
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+        "a_oauth2_rejected": GroupAutoCreateRejectedClaimEvent(
+            idp=idp_a,
+            triggering_user_id=triggering_user_id,
+            triggering_user_name=f"alice-{_TEST_ID}",
+            protocol=ExternalAuthProtocol.OAUTH2,
+            rejected_claim_value=f"bad-{_TEST_ID}",
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+        "b_oidc_created": GroupAutoCreatedEvent(
+            idp=idp_b,
+            triggering_user_id=triggering_user_id,
+            triggering_user_name=f"bob-{_TEST_ID}",
+            protocol=ExternalAuthProtocol.OIDC,
+            group_id=uuid.uuid4(),
+            group_name=f"b-oidc-{_TEST_ID}",
+            source_pattern=r"^(?P<name>.*)$",
+            origin_value=idp_b,
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+        "b_oauth2_cap_breach": GroupAutoCreateCapBreachEvent(
+            idp=idp_b,
+            triggering_user_id=triggering_user_id,
+            triggering_user_name=f"bob-{_TEST_ID}",
+            protocol=ExternalAuthProtocol.OAUTH2,
+            cap_value=1,
+            dropped_claims=[f"dropped-{_TEST_ID}"],
+            dropped_count=1,
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+    }
+    await send_events(client=prefect_client, events=list(items.values()))
+    return items
+
+
+async def test_event_query_group_auto_create_filter_by_idp(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    group_auto_create_events_mixed_idps: dict[str, InfrahubEvent],
+    session_admin: AccountSession,
+) -> None:
+    in_scope_ids = {str(event.meta.id) for event in group_auto_create_events_mixed_idps.values()}
+    idp_a = group_auto_create_events_mixed_idps["a_oidc_created"].idp
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_GROUP_AUTO_CREATE_BY_FILTER,
+        variables={"event_type_filter": {"group_auto_create": {"idp": [idp_a]}}},
+        account_session=session_admin,
+    )
+    assert result.errors is None
+    assert result.data
+
+    edges = [edge for edge in result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
+    returned_ids = {edge["node"]["id"] for edge in edges}
+    assert returned_ids == {
+        str(group_auto_create_events_mixed_idps["a_oidc_created"].meta.id),
+        str(group_auto_create_events_mixed_idps["a_oauth2_rejected"].meta.id),
+    }
+    for edge in edges:
+        assert edge["node"]["idp"] == idp_a
+
+
+async def test_event_query_group_auto_create_filter_by_protocol(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    group_auto_create_events_mixed_idps: dict[str, InfrahubEvent],
+    session_admin: AccountSession,
+) -> None:
+    in_scope_ids = {str(event.meta.id) for event in group_auto_create_events_mixed_idps.values()}
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_GROUP_AUTO_CREATE_BY_FILTER,
+        variables={"event_type_filter": {"group_auto_create": {"protocol": ["oidc"]}}},
+        account_session=session_admin,
+    )
+    assert result.errors is None
+    assert result.data
+
+    edges = [edge for edge in result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
+    returned_ids = {edge["node"]["id"] for edge in edges}
+    assert returned_ids == {
+        str(group_auto_create_events_mixed_idps["a_oidc_created"].meta.id),
+        str(group_auto_create_events_mixed_idps["b_oidc_created"].meta.id),
+    }
+    for edge in edges:
+        assert edge["node"]["protocol"] == "oidc"
+
+
+async def test_event_query_group_auto_create_filter_idp_and_protocol(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    group_auto_create_events_mixed_idps: dict[str, InfrahubEvent],
+    session_admin: AccountSession,
+) -> None:
+    in_scope_ids = {str(event.meta.id) for event in group_auto_create_events_mixed_idps.values()}
+    idp_a = group_auto_create_events_mixed_idps["a_oidc_created"].idp
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_GROUP_AUTO_CREATE_BY_FILTER,
+        variables={"event_type_filter": {"group_auto_create": {"idp": [idp_a], "protocol": ["oidc"]}}},
+        account_session=session_admin,
+    )
+    assert result.errors is None
+    assert result.data
+
+    edges = [edge for edge in result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
+    returned_ids = {edge["node"]["id"] for edge in edges}
+    assert returned_ids == {str(group_auto_create_events_mixed_idps["a_oidc_created"].meta.id)}
