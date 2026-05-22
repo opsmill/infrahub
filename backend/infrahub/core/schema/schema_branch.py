@@ -1145,6 +1145,7 @@ class SchemaBranch:
         dependency_map: dict[str, set[str]] = defaultdict(set)
         for name in self.generic_names_without_templates + self.node_names:
             node_schema = self.get(name=name, duplicate=False)
+            assert isinstance(node_schema, NodeSchema | GenericSchema)
 
             parent_relationships: list[RelationshipSchema] = []
             component_relationships: list[RelationshipSchema] = []
@@ -1549,7 +1550,7 @@ class SchemaBranch:
 
     def validate_inherited_relationships_fields(self) -> None:
         for name in self.node_names:
-            node_schema = self.get(name=name, duplicate=False)
+            node_schema = self.get_node(name=name, duplicate=False)
             if not node_schema.inherit_from:
                 continue
 
@@ -2452,6 +2453,7 @@ class SchemaBranch:
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
+            assert isinstance(node, NodeSchema | GenericSchema)
             if (
                 (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
                 or not node.generate_profile
@@ -2537,7 +2539,7 @@ class SchemaBranch:
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
 
-    def generate_profile_from_node(self, node: NodeSchema) -> ProfileSchema:
+    def generate_profile_from_node(self, node: NodeSchema | GenericSchema) -> ProfileSchema:
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
         core_name_attr = core_profile_schema.get_attribute(name="profile_name")
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
@@ -2951,7 +2953,7 @@ class SchemaBranch:
                 ):
                     for used_by in peer_schema.used_by:
                         identified |= self.identify_required_object_templates(
-                            node_schema=self.get(name=used_by, duplicate=False), identified=identified
+                            node_schema=self.get_node(name=used_by, duplicate=False), identified=identified
                         )
 
             identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
@@ -2963,7 +2965,7 @@ class SchemaBranch:
         template_schema_kinds: set[str] = set()
 
         for node_name in self.node_names:
-            node = self.get(name=node_name, duplicate=False)
+            node = self.get_node(name=node_name, duplicate=False)
 
             # Delete old object templates if schemas were removed
             if (
@@ -2973,7 +2975,7 @@ class SchemaBranch:
             ):
                 try:
                     if any(r.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME for r in node.relationships):
-                        node = self.get(name=node_name, duplicate=True)
+                        node = self.get_node(name=node_name, duplicate=True)
                         node.relationships = [
                             r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME
                         ]
