@@ -45,13 +45,12 @@ class TestGetRepositoryConfig:
             cloned_repo.index.remove([".infrahub.yml"])
             cloned_repo.index.commit("Remove .infrahub.yml config file for testing")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     @pytest.fixture
     async def repo_with_invalid_yaml(
@@ -85,13 +84,12 @@ schemas:
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add invalid YAML config file")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     @pytest.fixture
     async def repo_with_invalid_format(
@@ -123,13 +121,12 @@ schemas: "should be a list, not a string"
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add invalid format config file")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     @pytest.fixture
     async def repo_with_valid_config(
@@ -161,13 +158,12 @@ schemas: []
         cloned_repo.index.add([".infrahub.yml"])
         cloned_repo.index.commit("Add valid .infrahub.yml config file")
 
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=UUIDT.new(),
             name=git_upstream_repo_01["name"],
             location=str(clone_path),
             client=InfrahubClient(config=Config(requester=dummy_async_request)),
         )
-        return repo
 
     async def test_missing_config_file_raises_error(
         self, repo_without_config: InfrahubRepository, prefect_test_fixture: None

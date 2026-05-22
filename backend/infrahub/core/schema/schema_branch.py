@@ -1218,11 +1218,21 @@ class SchemaBranch:
                     isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
+                if "__" in attr.name:
+                    raise ValueError(
+                        f"{node.kind}: '{attr.name}' cannot be used as an attribute name because"
+                        " it contains '__', which is reserved as the schema path separator."
+                    )
             for rel in node.relationships:
                 if rel.name in RESERVED_ATTR_REL_NAMES or (
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+                if "__" in rel.name:
+                    raise ValueError(
+                        f"{node.kind}: '{rel.name}' cannot be used as a relationship name"
+                        " because it contains '__', which is reserved as the schema path separator."
+                    )
 
     def validate_restricted_namespaces_from_generic(self) -> None:
         """Ensure that every node which inherit from a generic node containing restricted namespaces are following on.
@@ -1748,7 +1758,7 @@ class SchemaBranch:
                 continue
             constraint_path = constraint_paths[0]
             try:
-                schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                schema_path = node.parse_schema_path(path=constraint_path, schema=self)
             except AttributePathParsingError:
                 if raise_parsing_errors:
                     raise

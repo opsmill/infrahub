@@ -139,7 +139,7 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
         await blue.new(db=db, name="blue", cars=[accord, civic], persons=[jane])
         await blue.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "deleted_bob": deleted_bob.id,
             "jane": jane.id,
@@ -157,8 +157,6 @@ class TestSchemaLifecycleAttributeBranch(TestSchemaLifecycleBase):
             "red": red.id,
             "green": green.id,
         }
-
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_step02(

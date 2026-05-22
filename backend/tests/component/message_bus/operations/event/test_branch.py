@@ -30,8 +30,7 @@ async def init_service() -> InfrahubServices:
     recorder = BusRecorder()
     database = MagicMock()
     workflow = WorkflowLocalExecution()
-    service = await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
-    return service
+    return await InfrahubServices.new(message_bus=recorder, database=database, workflow=workflow)
 
 
 @pytest.fixture

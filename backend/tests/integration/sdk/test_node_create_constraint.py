@@ -164,7 +164,7 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
         )
         await megane.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "jane": jane.id,
             "honda": honda.id,
@@ -173,8 +173,6 @@ class TestSDKNodeCreateConstraints(TestInfrahubApp):
             "civic": civic.id,
             "megane": megane.id,
         }
-
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_02_car_uniqueness_constraint(self, schema_car_base: dict[str, Any]) -> dict[str, Any]:

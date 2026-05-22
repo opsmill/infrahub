@@ -180,8 +180,7 @@ class InfrahubEvent(BaseModel):
     @final
     def get_event_payload(self) -> dict[str, Any]:
         """This method should be used when emitting the event to the event broker."""
-        event_payload = {"data": self.get_payload(), "context": self.meta.context.to_event()}
-        return event_payload
+        return {"data": self.get_payload(), "context": self.meta.context.to_event()}
 
     def get_message_meta(self) -> Meta:
         meta = Meta()

@@ -714,10 +714,7 @@ async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffName
     else:
         files_added = await repo.list_all_files(commit=model.first_commit)
 
-    response = GitDiffNamesOnlyResponse(
-        files_added=files_added, files_changed=files_changed, files_removed=files_removed
-    )
-    return response
+    return GitDiffNamesOnlyResponse(files_added=files_added, files_changed=files_changed, files_removed=files_removed)
 
 
 @flow(

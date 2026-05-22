@@ -354,8 +354,7 @@ def generate_access_token(account_id: str, session_id: uuid.UUID) -> str:
         "type": "access",
         "session_id": str(session_id),
     }
-    access_token = jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
-    return access_token
+    return jwt.encode(access_data, config.SETTINGS.security.secret_key, algorithm="HS256")
 
 
 def generate_refresh_token(account_id: str, session_id: uuid.UUID, expiration: datetime) -> str:
@@ -370,8 +369,7 @@ def generate_refresh_token(account_id: str, session_id: uuid.UUID, expiration: d
         "type": "refresh",
         "session_id": str(session_id),
     }
-    refresh_token = jwt.encode(refresh_data, config.SETTINGS.security.secret_key, algorithm="HS256")
-    return refresh_token
+    return jwt.encode(refresh_data, config.SETTINGS.security.secret_key, algorithm="HS256")
 
 
 async def authentication_token(
