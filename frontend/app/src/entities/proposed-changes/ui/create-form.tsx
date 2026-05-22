@@ -8,7 +8,6 @@ import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
 import { BranchStatus } from "@/shared/api/graphql/generated/types";
-import { useMutation } from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
@@ -29,8 +28,8 @@ import { QSP } from "@/shared/config/qsp";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
 import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
+import { useCreateProposedChange } from "@/entities/proposed-changes/ui/queries/create-proposed-change.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { PcStateButton } from "./action-button/pc-state-button";
@@ -47,7 +46,7 @@ export const ProposedChangeCreateForm = () => {
 
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
-  const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
+  const { mutateAsync: createProposedChange, error } = useCreateProposedChange();
 
   if (branches.length === 0 || !proposedChangeSchema) {
     return <Spinner className="flex justify-center" />;
@@ -56,22 +55,20 @@ export const ProposedChangeCreateForm = () => {
   return (
     <Form
       onSubmit={async ({ source_branch, destination_branch, name, description, reviewers }) => {
-        const { data } = await createProposedChange({
-          variables: {
-            source_branch,
-            destination_branch,
-            name,
-            description,
-            isDraft: state === DRAFT_STATE,
-            reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
-          },
+        const result = await createProposedChange({
+          source_branch,
+          destination_branch,
+          name,
+          description,
+          isDraft: state === DRAFT_STATE,
+          reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
         });
 
         toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change created" />, {
           toastId: "alert-success-CoreProposedChange-created",
         });
 
-        const url = constructPath(`/proposed-changes/${data.CoreProposedChangeCreate.object.id}`);
+        const url = constructPath(`/proposed-changes/${result.id}`);
         navigate(url);
       }}
     >
