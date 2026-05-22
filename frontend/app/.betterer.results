@@ -129,7 +129,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/object-relationship-list.tsx:1515591506": [
       [39, 54, 5, "tsc: Property \'items\' does not exist on type \'NodeObject[]\'.", "179721187"]
     ],
-    "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:3411425629": [
+    "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:2275135453": [
       [18, 34, 2, "tsc: Property \'id\' does not exist on type \'NodeCore | NodeCore[] | { from_pool: { id: string; }; }\'.\\n  Property \'id\' does not exist on type \'NodeCore[]\'.", "5861160"]
     ],
     "src/entities/nodes/relationships/ui/relationship-combobox-list.tsx:3488344273": [
@@ -277,8 +277,8 @@ exports[`fix ts error`] = {
     "src/pages/resource-manager/resource-pool-details.tsx:2798533623": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/shared/api/graphql/graphqlClientApollo.tsx:4179510492": [
-      [56, 33, 44, "tsc: Not all code paths return a value.", "2633054574"]
+    "src/shared/api/graphql/graphqlClientApollo.tsx:2901762482": [
+      [55, 33, 44, "tsc: Not all code paths return a value.", "2633054574"]
     ],
     "src/shared/components/display/badge-circle.tsx:698452183": [
       [6, 12, 18, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "460855417"]
