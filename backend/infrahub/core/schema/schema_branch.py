@@ -101,14 +101,14 @@ class SchemaBranch:
     def __init__(
         self,
         cache: dict,
-        name: str | None = None,
+        name: str,
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
         hfids: HFIDs | None = None,
     ) -> None:
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
-        self.name: str | None = name
+        self.name: str = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
@@ -188,8 +188,9 @@ class SchemaBranch:
     def to_dict(self) -> dict[str, Any]:
         return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles, "templates": self.templates}
 
-    def to_dict_schema_object(self, duplicate: bool = False) -> dict[str, dict[str, MainSchemaTypes]]:
+    def to_dict_schema_object(self, duplicate: bool = False) -> dict[str, Any]:
         return {
+            "name": self.name,
             "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
             "profiles": {name: self.get(name, duplicate=duplicate) for name in self.profiles},
             "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
@@ -224,7 +225,7 @@ class SchemaBranch:
 
                 cache[node_hash] = node
 
-        return cls(cache=cache, data=nodes)
+        return cls(cache=cache, data=nodes, name=data.get("name", "Unknown"))
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
@@ -320,7 +321,7 @@ class SchemaBranch:
     def duplicate(self, name: str | None = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(
-            name=name,
+            name=name if name is not None else self.name,
             data=copy.deepcopy(self.to_dict()),
             cache=self._cache,
             computed_attributes=self.computed_attributes.duplicate(),
