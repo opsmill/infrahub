@@ -38,8 +38,9 @@ export const EnumDeleteButton = ({
   const { mutateAsync: removeEnum, isPending: loading } = useRemoveEnumMutation();
 
   const handleDelete = async () => {
+    if (!schema?.kind || !fieldSchema?.name) return;
     try {
-      await removeEnum({ kind: schema?.kind, attribute: fieldSchema?.name, enum: String(value) });
+      await removeEnum({ kind: schema.kind, attribute: fieldSchema.name, enum: String(value) });
       onDelete(value);
     } catch (error) {
       console.error("Error deleting enum:", error);
@@ -128,6 +129,7 @@ export const EnumAddAction = ({ schema, field, addOption }: EnumAddActionProps) 
             },
           ]}
           onSubmit={async (formData) => {
+            if (!schema.kind) return;
             const newEnumValue = formData.enum.value;
             await addEnum({
               kind: schema.kind,

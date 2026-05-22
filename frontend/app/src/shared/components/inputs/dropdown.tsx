@@ -118,6 +118,7 @@ export const DropdownItem = ({
             isOpen={showDeleteModal}
             onOpenChange={setShowDeleteModal}
             onDelete={async () => {
+              if (!schema.kind) return;
               try {
                 await removeDropdownOption({
                   kind: schema.kind,
@@ -198,6 +199,7 @@ export const DropdownAddAction = ({ schema, field, addOption }: DropdownAddActio
             },
           ]}
           onSubmit={async (formData) => {
+            if (!schema.kind) return;
             const result = await addDropdownItem({
               kind: schema.kind,
               attribute: field.name,
