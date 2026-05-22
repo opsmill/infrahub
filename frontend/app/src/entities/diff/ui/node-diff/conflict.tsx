@@ -36,7 +36,7 @@ export const Conflict = ({ id, selectedBranch }: ConflictData) => {
       {
         onSuccess: async () => {
           await queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
-          await queryClient.invalidateQueries({ queryKey: tasksQueryKeys.check() });
+          await queryClient.invalidateQueries({ queryKey: [...tasksQueryKeys.all, "check"] });
 
           const message = newValue
             ? "Conflict marked as resolved"
