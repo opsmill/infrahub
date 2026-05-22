@@ -7,15 +7,11 @@ from graphene import Field, InputObjectType, Int, List, NonNull, ObjectType, Str
 from graphql import GraphQLError
 
 from infrahub.core import registry
-from infrahub.core.account import ObjectPermission
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
 from infrahub.graph_traversal.path import PathTraversalQuery
-from infrahub.graph_traversal.planning.constants import DEFAULT_EXCLUDED_NAMESPACES
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.permissions.constants import PermissionDecisionFlag
-from infrahub.permissions.resolver import PermissionResolver
 
 if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
@@ -83,7 +79,11 @@ class PathTraversalInput(InputObjectType):
     excluded_namespaces = List(
         of_type=NonNull(String),
         required=False,
-        description="Namespaces to exclude from traversal. Pass empty list to include all.",
+        description=(
+            "Additional namespaces to exclude from traversal. Unioned with the default "
+            "excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the "
+            "defaults cannot be opted out of from this input."
+        ),
     )
     excluded_kinds = List(
         of_type=NonNull(String),
@@ -221,10 +221,6 @@ async def path_traversal_resolver(
     destination_id = data.destination_id
     max_depth = data.max_depth or 5
     max_paths = data.max_paths or 10
-    kind_filter = list(data.kind_filter) if data.kind_filter else []
-    relationship_filter = list(data.relationship_filter) if data.relationship_filter else []
-    excluded_namespaces = list(data.excluded_namespaces) if data.excluded_namespaces is not None else None
-    excluded_kinds = list(data.excluded_kinds) if data.excluded_kinds else []
 
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
@@ -247,19 +243,12 @@ async def path_traversal_resolver(
     if not destination_node:
         raise GraphQLError(f"Destination node not found: {destination_id}")
 
-    user_filters = UserFilters(
-        kind_filter=frozenset(kind_filter),
-        excluded_kinds=frozenset(excluded_kinds),
-        excluded_namespaces=frozenset(
-            excluded_namespaces if excluded_namespaces is not None else DEFAULT_EXCLUDED_NAMESPACES
-        ),
-        relationship_filter=frozenset(relationship_filter),
-    )
+    user_filters = UserFilters.from_graphql_input(data)
     try:
         planner = SchemaPlanner(
             schema_branch=graphql_context.db.schema.get_schema_branch(name=graphql_context.branch.name),
             branch=graphql_context.branch,
-            permission_resolver=_wildcard_allow_resolver(),
+            permission_resolver=graphql_context.active_permissions.resolver,
         )
         plan = planner.plan(
             source_kind=source_node.get_kind(),
@@ -306,29 +295,6 @@ async def path_traversal_resolver(
         "destination": destination_info,
         "count": len(path_data_list),
     }
-
-
-def _wildcard_allow_resolver() -> PermissionResolver:
-    """Build a permissive ``PermissionResolver`` that allows view on any kind.
-
-    Transitional: matches the pre-refactor query's "no permission check"
-    behavior. Phase 3's resolver refactor replaces this with a real
-    ``PermissionLoader.load(...)`` flow scoped to the requester's session.
-    """
-    return PermissionResolver(
-        permissions={
-            "global_permissions": [],
-            "object_permissions": [
-                ObjectPermission(
-                    namespace="*",
-                    name="*",
-                    action="view",
-                    decision=PermissionDecisionFlag.ALLOW_ALL.value,
-                ),
-            ],
-        },
-        default_branch_name=registry.default_branch,
-    )
 
 
 InfrahubPathTraversal = Field(

@@ -48,7 +48,7 @@ class PathTraversalQuery(Query):
             at=self.at,
             max_results=self.max_paths,
         )
-        self.query_lines = [rendered.text]
+        self.add_to_query(rendered.text)
         self.params.update(rendered.params)
         self.return_labels = list(rendered.return_labels)
 
