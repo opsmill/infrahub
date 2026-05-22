@@ -2467,7 +2467,7 @@ class SchemaBranch:
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names_without_templates:
             node = self.get(name=node_name, duplicate=False)
-            if not isinstance(node_schema, NodeSchema | GenericSchema):
+            if not isinstance(node, NodeSchema | GenericSchema):
                 continue
             if (
                 (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
