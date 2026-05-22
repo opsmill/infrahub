@@ -199,6 +199,9 @@ services:
       NEO4J_AUTH: ${INFRAHUB_DB_USERNAME:-neo4j}/${INFRAHUB_DB_PASSWORD:-admin}
       NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
       NEO4J_dbms_security_auth__minimum__password__length: 4
+      NEO4J_server_memory_pagecache_size: ${INFRAHUB_DB_PAGECACHE_SIZE:-}
+      NEO4J_server_memory_pagecache_async: ${INFRAHUB_DB_PAGECACHE_ASYNC:-false}
+      NEO4J_server_memory_pagecache_directio: ${INFRAHUB_DB_PAGECACHE_DIRECTIO:-false}
     volumes:
       - "database_data:/data"
       - "database_logs:/logs"

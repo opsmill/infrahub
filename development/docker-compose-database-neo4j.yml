@@ -13,6 +13,9 @@ services:
       - "NEO4J_metrics_prometheus_enabled=true"
       - "NEO4J_metrics_enabled=true"
       - "NEO4J_metrics_prometheus_endpoint=0.0.0.0:2004"
+      - "NEO4J_server_memory_pagecache_size=${INFRAHUB_DB_PAGECACHE_SIZE:-}"
+      - "NEO4J_server_memory_pagecache_async=${INFRAHUB_DB_PAGECACHE_ASYNC:-false}"
+      - "NEO4J_server_memory_pagecache_directio=${INFRAHUB_DB_PAGECACHE_DIRECTIO:-false}"
     volumes:
       - "./plugins:/plugins"
       - "database_data:/data"

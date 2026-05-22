@@ -18,6 +18,8 @@ x-neo4j-config-common: &neo4j-config-common
   NEO4J_server_memory_heap_initial__size: ${INFRAHUB_TESTING_DB_HEAP_INITIAL_SIZE}
   NEO4J_server_memory_heap_max__size: ${INFRAHUB_TESTING_DB_HEAP_MAX_SIZE}
   NEO4J_server_memory_pagecache_size: ${INFRAHUB_TESTING_DB_PAGECACHE_SIZE}
+  NEO4J_server_memory_pagecache_async: ${INFRAHUB_TESTING_DB_PAGECACHE_ASYNC:-false}
+  NEO4J_server_memory_pagecache_directio: ${INFRAHUB_TESTING_DB_PAGECACHE_DIRECTIO:-false}
 
 
 services:
