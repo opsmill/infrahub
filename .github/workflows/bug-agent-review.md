@@ -55,8 +55,8 @@ steps:
         SKIP_MSG="Skipping reviewer: test already TEST_APPROVED, waiting for fix."
       fi
 
-      COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" --paginate --slurp \
-        --jq "[.[][] | select((.user.login == \"infrahub-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
+      COUNT=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments?per_page=100" \
+        --jq "[.[] | select((.user.login == \"infrahub-bug-pipeline[bot]\" or .user.login == \"github-actions[bot]\" or .user.login == \"claude[bot]\")
           and (.body | contains(\"$MARKER\")))] | length")
 
       if [ "$COUNT" -gt 0 ]; then
