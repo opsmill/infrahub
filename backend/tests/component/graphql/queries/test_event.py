@@ -14,9 +14,15 @@ from infrahub.core.node import Node
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
-from infrahub.events.group_action import GroupMemberAddedEvent
+from infrahub.events.group_action import (
+    GroupAutoCreateCapBreachEvent,
+    GroupAutoCreatedEvent,
+    GroupAutoCreateRejectedClaimEvent,
+    GroupMemberAddedEvent,
+)
 from infrahub.events.models import EventMeta, EventNode, InfrahubEvent
 from infrahub.events.node_action import NodeCreatedEvent, NodeUpdatedEvent
+from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.events import dummy_event_meta, send_events
 from tests.helpers.graphql import graphql
@@ -110,6 +116,51 @@ query($branch: [String!]) {
   }
 }
 """
+
+QUERY_GROUP_AUTO_CREATE_EVENTS = """
+query($event_type: [String!]) {
+  InfrahubEvent(event_type: $event_type, limit: 50) {
+    count
+    edges {
+      node {
+        id
+        event
+        __typename
+        ... on GroupAutoCreatedEventType {
+          idp
+          triggering_user_id
+          triggering_user_name
+          protocol
+          group_id
+          group_name
+          source_pattern
+          origin_value
+          payload
+        }
+        ... on GroupAutoCreateRejectedClaimEventType {
+          idp
+          triggering_user_id
+          triggering_user_name
+          protocol
+          rejected_claim_value
+          payload
+        }
+        ... on GroupAutoCreateCapBreachEventType {
+          idp
+          triggering_user_id
+          triggering_user_name
+          protocol
+          cap_value
+          dropped_claims
+          dropped_count
+          payload
+        }
+      }
+    }
+  }
+}
+"""
+
 
 QUERY_MUTATED_NODES = """
 query MutatedNodes($id: [String!]) {
@@ -732,3 +783,129 @@ async def test_event_query_prefect(
         "action": "ADDED",
         "peer": {"id": events_data["branch3_mutated2"].node_id, "kind": "TestPerson"},
     } in event["relationships"]
+
+
+@pytest.fixture
+async def group_auto_create_events(
+    default_branch: Branch,
+    prefect_client: PrefectClient,
+) -> dict[str, InfrahubEvent]:
+    triggering_user_id = uuid.uuid4()
+    triggering_user_name = f"alice-{_TEST_ID}"
+    group_id = uuid.uuid4()
+    idp_name = f"provider-{_TEST_ID}"
+
+    items: dict[str, InfrahubEvent] = {
+        "auto_created": GroupAutoCreatedEvent(
+            idp=idp_name,
+            triggering_user_id=triggering_user_id,
+            triggering_user_name=triggering_user_name,
+            protocol=ExternalAuthProtocol.OIDC,
+            group_id=group_id,
+            group_name=f"ops-admins-{_TEST_ID}",
+            source_pattern=r"^(?P<name>ops-.*)$",
+            origin_value=idp_name,
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+        "rejected_claim": GroupAutoCreateRejectedClaimEvent(
+            idp=idp_name,
+            triggering_user_id=triggering_user_id,
+            triggering_user_name=triggering_user_name,
+            protocol=ExternalAuthProtocol.OIDC,
+            rejected_claim_value="!!invalid-claim!!",
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+        "cap_breach": GroupAutoCreateCapBreachEvent(
+            idp=idp_name,
+            triggering_user_id=triggering_user_id,
+            triggering_user_name=triggering_user_name,
+            protocol=ExternalAuthProtocol.OAUTH2,
+            cap_value=5,
+            dropped_claims=["ops-extra-a", "ops-extra-b", "ops-extra-c"],
+            dropped_count=3,
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+    }
+    await send_events(client=prefect_client, events=list(items.values()))
+    return items
+
+
+async def test_event_query_group_auto_create(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    group_auto_create_events: dict[str, InfrahubEvent],
+    session_admin: AccountSession,
+) -> None:
+    in_scope_ids = [str(event.meta.id) for event in group_auto_create_events.values()]
+
+    created_event = group_auto_create_events["auto_created"]
+    assert isinstance(created_event, GroupAutoCreatedEvent)
+    rejected_event = group_auto_create_events["rejected_claim"]
+    assert isinstance(rejected_event, GroupAutoCreateRejectedClaimEvent)
+    cap_event = group_auto_create_events["cap_breach"]
+    assert isinstance(cap_event, GroupAutoCreateCapBreachEvent)
+
+    created_result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_GROUP_AUTO_CREATE_EVENTS,
+        variables={"event_type": ["infrahub.group.auto_create.created"]},
+        account_session=session_admin,
+    )
+    assert created_result.errors is None
+    assert created_result.data
+    created_edges = [
+        edge for edge in created_result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids
+    ]
+    assert len(created_edges) == 1
+    created_node = created_edges[0]["node"]
+    assert created_node["event"] == "infrahub.group.auto_create.created"
+    assert created_node["idp"] == created_event.idp
+    assert created_node["triggering_user_id"] == str(created_event.triggering_user_id)
+    assert created_node["triggering_user_name"] == created_event.triggering_user_name
+    assert created_node["protocol"] == created_event.protocol.value
+    assert created_node["group_id"] == str(created_event.group_id)
+    assert created_node["group_name"] == created_event.group_name
+    assert created_node["source_pattern"] == created_event.source_pattern
+    assert created_node["origin_value"] == created_event.origin_value
+    assert created_node["payload"]["data"]["group_name"] == created_event.group_name
+
+    rejected_result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_GROUP_AUTO_CREATE_EVENTS,
+        variables={"event_type": ["infrahub.group.auto_create.rejected_claim"]},
+        account_session=session_admin,
+    )
+    assert rejected_result.errors is None
+    assert rejected_result.data
+    rejected_edges = [
+        edge for edge in rejected_result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids
+    ]
+    assert len(rejected_edges) == 1
+    rejected_node = rejected_edges[0]["node"]
+    assert rejected_node["event"] == "infrahub.group.auto_create.rejected_claim"
+    assert rejected_node["idp"] == rejected_event.idp
+    assert rejected_node["triggering_user_name"] == rejected_event.triggering_user_name
+    assert rejected_node["protocol"] == rejected_event.protocol.value
+    assert rejected_node["rejected_claim_value"] == rejected_event.rejected_claim_value
+
+    cap_result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_GROUP_AUTO_CREATE_EVENTS,
+        variables={"event_type": ["infrahub.group.auto_create.cap_breach"]},
+        account_session=session_admin,
+    )
+    assert cap_result.errors is None
+    assert cap_result.data
+    cap_edges = [edge for edge in cap_result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
+    assert len(cap_edges) == 1
+    cap_node = cap_edges[0]["node"]
+    assert cap_node["event"] == "infrahub.group.auto_create.cap_breach"
+    assert cap_node["idp"] == cap_event.idp
+    assert cap_node["protocol"] == cap_event.protocol.value
+    assert cap_node["cap_value"] == cap_event.cap_value
+    assert cap_node["dropped_count"] == cap_event.dropped_count
+    assert sorted(cap_node["dropped_claims"]) == sorted(cap_event.dropped_claims)
