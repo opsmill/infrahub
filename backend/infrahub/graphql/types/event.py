@@ -68,12 +68,30 @@ class BranchEventTypeFilter(InputObjectType):
     branches = List(NonNull(String), required=True, description="Name of impacted branches")
 
 
+class GroupAutoCreateEventTypeFilter(InputObjectType):
+    idp = List(
+        NonNull(String),
+        required=False,
+        description="Filter by the configured identity-provider name (matches the event's `idp` field)",
+    )
+    protocol = List(
+        NonNull(String),
+        required=False,
+        description="Filter by authentication protocol (oauth2, oidc, ldap)",
+    )
+
+
 class EventTypeFilter(InputObjectType):
     branch_merged = Field(
         BranchEventTypeFilter, required=False, description="Filters specific to infrahub.branch.merged events"
     )
     branch_rebased = Field(
         BranchEventTypeFilter, required=False, description="Filters specific to infrahub.branch.rebased events"
+    )
+    group_auto_create = Field(
+        GroupAutoCreateEventTypeFilter,
+        required=False,
+        description="Filters specific to infrahub.group.auto_create.* events",
     )
 
 
