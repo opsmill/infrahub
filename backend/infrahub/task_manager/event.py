@@ -250,6 +250,47 @@ class PrefectEventData(PrefectEventModel):
             "groups": groups,
         }
 
+    def _return_group_auto_create_common(self) -> dict[str, Any]:
+        return {
+            "idp": self.resource.get("infrahub.security.idp"),
+            "triggering_user_id": self.resource.get("infrahub.account.account_id"),
+            "triggering_user_name": self.resource.get("infrahub.account.account_name"),
+            "protocol": self.resource.get("infrahub.security.protocol"),
+        }
+
+    def _return_group_auto_created(self) -> dict[str, Any]:
+        return {
+            **self._return_group_auto_create_common(),
+            "group_id": self.resource.get("infrahub.node.id"),
+            "group_name": self.resource.get("infrahub.group.name"),
+            "source_pattern": self.resource.get("infrahub.security.source_pattern"),
+            "origin_value": self.resource.get("infrahub.security.origin_value"),
+        }
+
+    def _return_group_auto_create_rejected_claim(self) -> dict[str, Any]:
+        return {
+            **self._return_group_auto_create_common(),
+            "rejected_claim_value": self.resource.get("infrahub.security.rejected_claim_value"),
+        }
+
+    def _return_group_auto_create_cap_breach(self) -> dict[str, Any]:
+        dropped_claims: list[str] = []
+        for resource in self.related:
+            if resource.role != "infrahub.security.dropped_claim":
+                continue
+            value = resource.get("infrahub.security.dropped_claim.value")
+            if value is not None:
+                dropped_claims.append(value)
+
+        cap_value_raw = self.resource.get("infrahub.security.cap_value")
+        dropped_count_raw = self.resource.get("infrahub.security.dropped_count")
+        return {
+            **self._return_group_auto_create_common(),
+            "cap_value": int(cap_value_raw) if cap_value_raw is not None else 0,
+            "dropped_claims": dropped_claims,
+            "dropped_count": int(dropped_count_raw) if dropped_count_raw is not None else 0,
+        }
+
     def _return_account_logged_out(self) -> dict[str, Any]:
         return {
             "kind": self.resource.get("infrahub.account.kind"),
@@ -283,6 +324,12 @@ class PrefectEventData(PrefectEventModel):
                 event_specifics = self._return_branch_rebased()
             case "infrahub.group.member_added" | "infrahub.group.member_removed":
                 event_specifics = self._return_group_event()
+            case "infrahub.group.auto_create.created":
+                event_specifics = self._return_group_auto_created()
+            case "infrahub.group.auto_create.rejected_claim":
+                event_specifics = self._return_group_auto_create_rejected_claim()
+            case "infrahub.group.auto_create.cap_breach":
+                event_specifics = self._return_group_auto_create_cap_breach()
             case "infrahub.proposed_change.approved" | "infrahub.proposed_change.rejected":
                 event_specifics = {
                     **self._return_proposed_change_event(),
