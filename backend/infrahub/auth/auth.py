@@ -9,7 +9,7 @@ import jwt
 from pydantic import BaseModel
 
 from infrahub import config, lock, models
-from infrahub.auth.auth_groups import AutoCreatedGroupsService, ClaimFilter, EmissionDeps
+from infrahub.auth.auth_groups import AutoCreatedGroupsService, AutoCreateEventEmitter, ClaimFilter, EmissionDeps
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.config import (
@@ -361,8 +361,12 @@ async def _assign_group_memberships(
     """
     effective_groups = sso_groups
     if config.SETTINGS.security.auto_create_groups_enabled:
-        emission_deps = await _build_auto_create_emission_deps(
-            db=db, account=account, event_service=event_service, protocol=external_identity.protocol
+        emitter = await _build_auto_create_event_emitter(
+            db=db,
+            account=account,
+            event_service=event_service,
+            protocol=external_identity.protocol,
+            provider_name=external_identity.provider_name,
         )
         granted = await AutoCreatedGroupsService(
             db=db,
@@ -370,7 +374,7 @@ async def _assign_group_memberships(
             provider_name=external_identity.provider_name,
             lock_registry=lock.registry,
             max_per_login=config.SETTINGS.security.auto_create_groups_max_per_login,
-            emission_deps=emission_deps,
+            emitter=emitter,
         ).assign(
             claims=sso_groups,
             claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),
@@ -402,19 +406,20 @@ async def _assign_group_memberships(
             await members_rel.save(db=db)
 
 
-async def _build_auto_create_emission_deps(
+async def _build_auto_create_event_emitter(
     *,
     db: InfrahubDatabase,
     account: CoreAccount,
     event_service: InfrahubEventService | None,
     protocol: ExternalAuthProtocol,
-) -> EmissionDeps | None:
-    """Build the `EmissionDeps` bundle the auto-create service uses to emit audit events.
+    provider_name: str,
+) -> AutoCreateEventEmitter:
+    """Build the emitter the auto-create service uses to emit audit events.
 
-    Returns `None` when no event service is supplied — emission is then skipped entirely.
+    Returns the disabled no-op variant when no event service is supplied.
     """
     if event_service is None:
-        return None
+        return AutoCreateEventEmitter.disabled()
 
     branch = await registry.get_branch(db=db)
     account_session = AccountSession(
@@ -427,7 +432,8 @@ async def _build_auto_create_emission_deps(
     def factory() -> EventMeta:
         return EventMeta(branch=branch, context=event_context, account_id=account_session.account_id)
 
-    return EmissionDeps(event_service=event_service, event_meta_factory=factory, protocol=protocol)
+    deps = EmissionDeps(event_service=event_service, event_meta_factory=factory, protocol=protocol)
+    return AutoCreateEventEmitter(account=account, provider_name=provider_name, deps=deps)
 
 
 async def _build_signin_result(*, db: InfrahubDatabase, account: CoreAccount) -> AuthResult:
