@@ -2373,29 +2373,33 @@ class SchemaBranch:
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
             parent_peer = node.parent or node.hierarchy
-            if "parent" not in node.relationship_names:
-                node.relationships.append(
-                    self._get_hierarchy_parent_rel(
-                        peer=parent_peer,
-                        hierarchical=node.hierarchy,
-                        read_only=read_only,
-                        optional=parent_peer in [node_name] + self.generic_names,
+            if parent_peer is not None:
+                if "parent" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_parent_rel(
+                            peer=parent_peer,
+                            hierarchical=node.hierarchy,
+                            read_only=read_only,
+                            optional=parent_peer in [node_name] + self.generic_names,
+                        )
                     )
-                )
-            else:
-                parent_rel = node.get_relationship(name="parent")
-                if parent_rel.peer != parent_peer:
-                    parent_rel.peer = parent_peer
+                else:
+                    parent_rel = node.get_relationship(name="parent")
+                    if parent_rel.peer != parent_peer:
+                        parent_rel.peer = parent_peer
 
             children_peer = node.children or node.hierarchy
-            if "children" not in node.relationship_names:
-                node.relationships.append(
-                    self._get_hierarchy_child_rel(peer=children_peer, hierarchical=node.hierarchy, read_only=read_only)
-                )
-            else:
-                children_rel = node.get_relationship(name="children")
-                if children_rel.peer != children_peer:
-                    children_rel.peer = children_peer
+            if children_peer is not None:
+                if "children" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_child_rel(
+                            peer=children_peer, hierarchical=node.hierarchy, read_only=read_only
+                        )
+                    )
+                else:
+                    children_rel = node.get_relationship(name="children")
+                    if children_rel.peer != children_peer:
+                        children_rel.peer = children_peer
 
             self.set(name=node_name, schema=node)
 
