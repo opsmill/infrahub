@@ -51,25 +51,6 @@ async def car_with_owner_and_driver(
     return car, owner, driver
 
 
-@pytest.fixture
-async def two_cars_one_owner(
-    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
-) -> tuple[Node, Node, Node]:
-    person = await Node.init(db=db, schema="TestPerson", branch=default_branch)
-    await person.new(db=db, name="Alice", height=170)
-    await person.save(db=db)
-
-    car_a = await Node.init(db=db, schema="TestCar", branch=default_branch)
-    await car_a.new(db=db, name="Roadster", is_electric=True, nbr_seats=2, color="#ff0000", owner=person)
-    await car_a.save(db=db)
-
-    car_b = await Node.init(db=db, schema="TestCar", branch=default_branch)
-    await car_b.new(db=db, name="Sedan", is_electric=False, nbr_seats=4, color="#0000ff", owner=person)
-    await car_b.save(db=db)
-
-    return car_a, car_b, person
-
-
 async def _run_resolver(
     *,
     db: InfrahubDatabase,
