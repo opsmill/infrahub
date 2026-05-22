@@ -1075,3 +1075,58 @@ async def test_event_query_group_auto_create_filter_idp_and_protocol(
     edges = [edge for edge in result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
     returned_ids = {edge["node"]["id"] for edge in edges}
     assert returned_ids == {str(group_auto_create_events_mixed_idps["a_oidc_created"].meta.id)}
+
+
+@pytest.fixture
+async def auto_create_and_branch_events(
+    default_branch: Branch,
+    prefect_client: PrefectClient,
+) -> dict[str, InfrahubEvent]:
+    branch_for_event = Branch(uuid=uuid.uuid4(), name=f"empty-filter-{_TEST_ID}")
+    items: dict[str, InfrahubEvent] = {
+        "auto_created": GroupAutoCreatedEvent(
+            idp=f"provider-empty-{_TEST_ID}",
+            triggering_user_id=uuid.uuid4(),
+            triggering_user_name=f"alice-{_TEST_ID}",
+            protocol=ExternalAuthProtocol.OIDC,
+            group_id=uuid.uuid4(),
+            group_name=f"empty-{_TEST_ID}",
+            source_pattern=r"^(?P<name>.*)$",
+            origin_value=f"provider-empty-{_TEST_ID}",
+            meta=dummy_event_meta(branch=default_branch),
+        ),
+        "branch_created": BranchCreatedEvent(
+            branch_name=branch_for_event.name,
+            branch_id=str(branch_for_event.get_uuid()),
+            sync_with_git=True,
+            meta=dummy_event_meta(branch=branch_for_event),
+        ),
+    }
+    await send_events(client=prefect_client, events=list(items.values()))
+    return items
+
+
+async def test_event_query_group_auto_create_empty_filter_restricts_to_auto_create_events(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: None,
+    auto_create_and_branch_events: dict[str, InfrahubEvent],
+    session_admin: AccountSession,
+) -> None:
+    in_scope_ids = {str(event.meta.id) for event in auto_create_and_branch_events.values()}
+
+    result = await run_query(
+        db=db,
+        branch=default_branch,
+        query=QUERY_GROUP_AUTO_CREATE_BY_FILTER,
+        variables={"event_type_filter": {"group_auto_create": {}}},
+        account_session=session_admin,
+    )
+    assert result.errors is None
+    assert result.data
+
+    edges = [edge for edge in result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
+    returned_ids = {edge["node"]["id"] for edge in edges}
+    assert returned_ids == {str(auto_create_and_branch_events["auto_created"].meta.id)}
+    for edge in edges:
+        assert edge["node"]["event"].startswith("infrahub.group.auto_create.")
