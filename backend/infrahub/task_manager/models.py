@@ -158,7 +158,7 @@ class InfrahubEventFilter(EventFilter):
             if branches:
                 self.resource = EventResourceFilter(labels=ResourceSpecification({"infrahub.branch.name": branches}))
 
-        if group_auto_create := event_type_filter.get("group_auto_create"):
+        if (group_auto_create := event_type_filter.get("group_auto_create")) is not None:
             auto_create_event_names = [
                 f"{EVENT_NAMESPACE}.group.auto_create.created",
                 f"{EVENT_NAMESPACE}.group.auto_create.rejected_claim",
