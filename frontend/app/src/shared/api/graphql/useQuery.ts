@@ -1,6 +1,5 @@
 import {
   type OperationVariables,
-  useLazyQuery as useApolloLazyQuery,
   useMutation as useApolloMutation,
   useQuery as useApolloQuery,
 } from "@apollo/client";
@@ -33,21 +32,6 @@ const useQuery: typeof useApolloQuery = (QUERY, options?: Options) => {
       uri: CONFIG.GRAPHQL_URL(options?.branch || currentBranch.name, date),
       ...options?.context,
     },
-  });
-};
-
-export const useLazyQuery: typeof useApolloLazyQuery = (
-  QUERY: any,
-  options?: OperationVariables
-) => {
-  const { currentBranch } = useCurrentBranch();
-  const date = useAtomValue(datetimeAtom);
-
-  return useApolloLazyQuery(QUERY, {
-    context: {
-      uri: CONFIG.GRAPHQL_URL(currentBranch.name, date),
-    },
-    ...options,
   });
 };
 

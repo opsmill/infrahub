@@ -10,11 +10,21 @@ type tId = {
   id: string;
   kind?: string;
   branch?: string | null;
+  date?: Date | null;
   preventCopy?: boolean;
 };
 
-export const Id = ({ id, kind = NODE_OBJECT, preventCopy, branch }: tId) => {
-  const { isPending, error, data: object } = useNodeLabel({ objectId: id, kind, branch });
+export const Id = ({ id, kind = NODE_OBJECT, preventCopy, branch, date }: tId) => {
+  const {
+    isPending,
+    error,
+    data: object,
+  } = useNodeLabel({
+    objectId: id,
+    kind,
+    branch,
+    atDate: date,
+  });
 
   if (isPending) {
     return <LoadingIndicator />;

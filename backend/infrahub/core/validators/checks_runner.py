@@ -22,6 +22,8 @@ async def run_checks_and_update_validator(
     Tasks are retrieved by completion order so as soon as we detect a failing check,
     we set validator conclusion to failure.
     """
+    event_context = context.to_event_context()
+
     # First set validator to in progress, then wait for results
     validator.state.value = ValidatorState.IN_PROGRESS.value
     validator.started_at.value = Timestamp().to_string()
@@ -37,7 +39,10 @@ async def run_checks_and_update_validator(
             failed_early = True
             await validator.save()
             await send_failed_validator(
-                event_service=event_service, validator=validator, proposed_change_id=proposed_change_id, context=context
+                event_service=event_service,
+                validator=validator,
+                proposed_change_id=proposed_change_id,
+                context=event_context,
             )
             # Continue to iterate to wait for the end of all checks
 
@@ -51,9 +56,15 @@ async def run_checks_and_update_validator(
     if not failed_early:
         if validator.conclusion.value == ValidatorConclusion.SUCCESS.value:
             await send_passed_validator(
-                event_service=event_service, validator=validator, proposed_change_id=proposed_change_id, context=context
+                event_service=event_service,
+                validator=validator,
+                proposed_change_id=proposed_change_id,
+                context=event_context,
             )
         else:
             await send_failed_validator(
-                event_service=event_service, validator=validator, proposed_change_id=proposed_change_id, context=context
+                event_service=event_service,
+                validator=validator,
+                proposed_change_id=proposed_change_id,
+                context=event_context,
             )

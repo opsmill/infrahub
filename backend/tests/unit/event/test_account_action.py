@@ -22,7 +22,7 @@ def _make_meta(account_id: str = "test-account-id") -> EventMeta:
         context=InfrahubContext.init(
             branch=branch,
             account=AccountSession(auth_type=AuthType.JWT, authenticated=True, account_id=account_id),
-        ),
+        ).to_event_context(),
         account_id=account_id,
     )
 

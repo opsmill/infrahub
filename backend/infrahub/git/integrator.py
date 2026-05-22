@@ -46,6 +46,8 @@ from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
 from infrahub import config
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import InfrahubContext
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -227,13 +229,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             raise error
 
         infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
+        event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
                 commit=commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
-                meta=EventMeta.with_dummy_context(branch=infrahub_branch),
+                meta=EventMeta(branch=infrahub_branch, context=event_context),
             )
         )
 
@@ -1509,6 +1512,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await artifact.save(request_context=message.context.to_request_context())
 
         event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
+        event_context = message.context.to_event_context()
 
         event = event_class(
             node_id=artifact.id,
@@ -1516,7 +1520,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             target_kind=message.target_kind,
             artifact_definition_id=message.artifact_definition,
             artifact_definition_name=message.artifact_definition_name,
-            meta=EventMeta.from_context(context=message.context, branch=branch),
+            meta=EventMeta.from_context(context=event_context, branch=branch),
             checksum=checksum,
             checksum_previous=previous_checksum,
             storage_id=storage_id,

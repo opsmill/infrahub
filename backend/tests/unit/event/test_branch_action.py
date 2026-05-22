@@ -17,7 +17,7 @@ def _make_meta() -> EventMeta:
         context=InfrahubContext.init(
             branch=branch,
             account=AccountSession(auth_type=AuthType.NONE, authenticated=False, account_id=""),
-        ),
+        ).to_event_context(),
     )
 
 

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from prefect import Flow
 
 from infrahub.context import InfrahubContext
+from infrahub.events.models import EventContext
 
 if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
@@ -33,16 +34,32 @@ def inject_service_parameter(func: Flow, parameters: dict[str, Any], service: In
         return
 
 
-def inject_context_parameter(func: Flow, parameters: dict[str, Any], context: InfrahubContext | None = None) -> None:
-    service_parameter_name = get_parameter_name(func=func, types=[InfrahubContext.__name__, InfrahubContext])
-    if service_parameter_name and context:
-        parameters[service_parameter_name] = context
+def inject_context_parameter(
+    func: Flow,
+    parameters: dict[str, Any],
+    context: InfrahubContext | EventContext | None = None,
+) -> None:
+    """Inject the workflow context into ``parameters`` if the flow declares one.
+
+    Raises:
+        ValueError: When the flow declares a context parameter but ``context`` is None.
+
+    """
+    infrahub_param = get_parameter_name(func=func, types=[InfrahubContext.__name__, InfrahubContext])
+    event_param = get_parameter_name(func=func, types=[EventContext.__name__, EventContext])
+    target_param = infrahub_param or event_param
+
+    if target_param is None:
         return
 
-    if service_parameter_name and not context:
-        raise ValueError(
-            f"{func.name} has a {service_parameter_name} parameter of type InfrahubContext, while context is not provided"
-        )
+    if context is None:
+        raise ValueError(f"{func.name} has a {target_param} parameter, while context is not provided")
+
+    if event_param and not infrahub_param and isinstance(context, InfrahubContext):
+        parameters[event_param] = context.to_event_context()
+        return
+
+    parameters[target_param] = context
 
 
 def load_flow_function(module_path: str, flow_name: str) -> Flow:

@@ -86,9 +86,3 @@ export const fileContentDiffKeys = {
   detail: (params: FileContentDiffKeyParams) =>
     [...fileContentDiffKeys.all, "detail", params] as const,
 };
-
-export const validatorDetailsKeys = {
-  all: ["validator-details"] as const,
-  detail: (validatorId: string, checksOffset?: number, checksLimit?: number) =>
-    [...validatorDetailsKeys.all, validatorId, checksOffset, checksLimit] as const,
-};

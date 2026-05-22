@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
-import { createContext, useEffect } from "react";
+import { useEffect } from "react";
 
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
@@ -28,8 +28,6 @@ import { MERGE_STATE } from "@/entities/proposed-changes/constants";
 import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
 import { DiffFilter } from "@/entities/proposed-changes/ui/diff-filter";
 
-export const DiffContext = createContext({});
-
 type NodeDiffProps = GetDiffSummaryParams;
 
 export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
@@ -38,7 +36,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
 
   // When branch prop is provided, we're in branch diff view - use only the branch prop
   // When no branch prop, we're in proposed change view - use source_branch from proposedChangesDetails
-  const branchName: string = branch || proposedChangesDetails?.source_branch?.value;
+  const branchName: string = branch || proposedChangesDetails?.source_branch?.value || "";
   const isMerged = proposedChangesDetails?.state?.value === MERGE_STATE;
   const branchExists = useBranchExists(branchName);
 
@@ -78,7 +76,7 @@ export const NodeDiff = ({ branch, filters }: NodeDiffProps) => {
     return (
       <DiffComputing
         sourceBranch={branchName}
-        destinationBranch={proposedChangesDetails.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
+        destinationBranch={proposedChangesDetails?.destination_branch?.value ?? DEFAULT_BRANCH_NAME}
         hideActions={isMerged}
       />
     );

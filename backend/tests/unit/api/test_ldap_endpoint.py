@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import pytest
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 from starlette.responses import Response
 
@@ -44,7 +44,12 @@ async def test_community_login_handler_raises_enterprise_required(
     Mapping to the HTTP envelope is the framework's job, not the route's.
     """
     with pytest.raises(EnterpriseRequiredError) as exc_info:
-        await login_ldap(credentials=credentials, response=fastapi_response, db=UnusableDatabase())
+        await login_ldap(
+            credentials=credentials,
+            request=Request(scope={"type": "http"}),
+            response=fastapi_response,
+            db=UnusableDatabase(),
+        )
     assert exc_info.value.feature == "ldap_auth"
 
 

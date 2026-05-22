@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
 
 
@@ -85,6 +86,9 @@ class GraphqlContext:
 
     def get_context(self) -> InfrahubContext:
         return InfrahubContext.init(branch=self.branch, account=self.active_account_session)
+
+    def to_event_context(self) -> EventContext:
+        return self.get_context().to_event_context()
 
     @property
     def assigned_user_id(self) -> str:

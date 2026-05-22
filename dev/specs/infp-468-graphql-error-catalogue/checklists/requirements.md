@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-05-13
-**Last reviewed**: 2026-05-15
+**Last reviewed**: 2026-05-19
 **Feature**: [spec.md](../spec.md)
 **Companion**: [discovery.md](../discovery.md)
 **Code-reference baseline (spec + discovery)**: `76395fd1c` (`stable` branch tip, 2026-05-13).
@@ -20,43 +20,25 @@
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
-- [ ] All acceptance scenarios are defined — *US1 scenario 4 still needs to specify that each failing field carries its own sub-code (`ATTRIBUTE_REQUIRED` / `ATTRIBUTE_INVALID_TYPE` / `ATTRIBUTE_CONSTRAINT_VIOLATION`). Pending Q-D1.*
+- [x] All acceptance scenarios are defined — *US1 scenario 4 tightened (2026-05-19) to require per-field sub-codes (`ATTRIBUTE_REQUIRED` / `ATTRIBUTE_INVALID_TYPE` / `ATTRIBUTE_CONSTRAINT_VIOLATION`).*
 - [x] Edge cases are identified
 - [x] Scope is clearly bounded — *Transport scope reaffirmed as GraphQL-only on the wire (2026-05-15). REST keeps current shape; OpenAPI long-term direction captured in the new Future Direction section. CI scope further narrowed (2026-05-15) to frontend bindings only — SDK lives in the `python_sdk/` submodule and its binding sync is enforced by the SDK repository's own CI.*
-- [ ] Dependencies and assumptions identified — *Assumptions now reflect: GraphQL-only wire-format scope; shared Python catalogue; CI covers frontend bindings only (SDK external); cross-repo workflow uses the catalogue's machine-readable schema (FR-012) as the contract that crosses the repo boundary. Still missing FRs from discovery §9 (per-error explosion, `path` requirement, telemetry/logging, `data` evolution rules) — pending Q-D5.*
+- [x] Dependencies and assumptions identified — *Assumptions reflect: GraphQL-only wire-format scope; shared Python catalogue; CI covers frontend bindings only (SDK external); cross-repo workflow uses the catalogue's machine-readable schema (FR-012) as the contract that crosses the repo boundary. Four FRs from discovery §9 added as FR-016 through FR-019 (2026-05-19).*
 
 ## Feature Readiness
 
-- [ ] All functional requirements have clear acceptance criteria — *Current FRs are clear, including the new FR-015 `UNDEFINED_ERROR` requirement. Four additional FRs proposed in discovery §9 are pending Q-D5.*
+- [x] All functional requirements have clear acceptance criteria — *FR-001 through FR-019 are clear and testable, including FR-015 (`UNDEFINED_ERROR`) and the four new FRs added 2026-05-19 (per-error explosion, `path` requirement, telemetry/logging, `data` evolution rules).*
 - [x] User scenarios cover primary flows
 - [x] Feature meets measurable outcomes defined in Success Criteria — *SC-008 added (2026-05-15) for `extensions.code` always-present invariant on GraphQL responses.*
 - [x] No implementation details leak into specification
 
-## Pending decisions (block final sign-off)
+## Decisions (all resolved)
 
-These remain open in discovery §10:
-
-- **Q-D1** — adopt the v1 catalogue (9 codes incl. auth split and validation split)?
-- **Q-D4** — adopt the worked example shapes in §8 as canonical?
-- **Q-D5** — promote the four "Belongs in the spec" items from discovery §9?
-
-Resolved:
-
+- **Q-D1** *(resolved 2026-05-19)*: Adopt the 9-code v1 catalogue with both proposed splits (auth split: `AUTHENTICATION_REQUIRED` + `TOKEN_EXPIRED`; validation split: `ATTRIBUTE_REQUIRED` / `ATTRIBUTE_INVALID_TYPE` / `ATTRIBUTE_CONSTRAINT_VIOLATION`). Applied to FR-005 and US1 scenarios 3 + 4.
 - **Q-D2** *(resolved 2026-05-15)*: REST keeps current wire format; the catalogue is GraphQL-only on the wire, with the Python catalogue shared across transports and OpenAPI as the long-term REST documentation surface.
-- **Q-D3** *(partially applied 2026-05-15)*: Breaking Changes reframe, Transport assumption, `UNDEFINED_ERROR` (FR-015 + Edge Cases), SC-008, the new Future Direction section, and the CI-scope narrowing (FR-009/US4/SC-005/CI-scope assumption — frontend-only) are applied. Outstanding pieces gated on Q-D1 and Q-D5.
-
-## Pending spec amendments (gated on remaining decisions)
-
-Once Q-D1, Q-D4, and Q-D5 are answered:
-
-1. **FR-005**: replace the analysis-driven phrasing with the agreed v1 list.
-2. **US1 acceptance scenario 4**: tighten to require per-field sub-codes.
-3. **Add new FRs** (Q-D5 default = all four):
-   - Per-error explosion for bundled validation errors.
-   - GraphQL `path` MUST point at the failing field for catalogued field-level errors.
-   - Structured logs and telemetry include the catalogue `code`.
-   - `data` schema evolution rules (additive non-breaking; remove/rename follows deprecation policy).
-4. **Worked examples**: confirm the §8 shapes as canonical so generators target them (Q-D4).
+- **Q-D3** *(resolved 2026-05-19)*: All listed spec updates applied — Breaking Changes reframe, Transport assumption, `UNDEFINED_ERROR` (FR-015 + Edge Cases), SC-008, Future Direction section, CI-scope narrowing (FR-009/US4/SC-005), FR-005 final list, US1 sub-code tightening, and the four FRs from Q-D5.
+- **Q-D4** *(resolved 2026-05-19)*: Adopt the discovery §8 worked-example shapes as canonical reference (`NODE_NOT_FOUND`: `{node_kind, identifier}`; `ATTRIBUTE_REQUIRED`: `{node_kind, field_name}`; `ATTRIBUTE_INVALID_TYPE`: `{node_kind, field_name, expected_type, received_type}`). Field names may still be refined during planning.
+- **Q-D5** *(resolved 2026-05-19)*: All four "Belongs in the spec" items promoted from discovery §9 — added to spec.md as FR-016 (per-error explosion), FR-017 (`path` requirement), FR-018 (telemetry/logging), FR-019 (`data` evolution rules).
 
 ## Notes
 

@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, cast
 
-from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipChangelogGetter
 from infrahub.core.constants import InfrahubKind, MutationAction
@@ -19,7 +18,7 @@ from infrahub.events.node_action import (
 from infrahub.groups.parsers import GroupNodeMutationParser
 from infrahub.worker import WORKER_IDENTITY
 
-from .models import EventMeta, InfrahubEvent
+from .models import EventContext, EventMeta, InfrahubEvent
 from .proposed_change_action import ProposedChangeThreadCreatedEvent, ProposedChangeThreadUpdatedEvent
 
 
@@ -28,13 +27,13 @@ async def generate_node_mutation_events(
     deleted_nodes: list[Node],
     db: InfrahubDatabase,
     branch: Branch,
-    context: InfrahubContext,
+    context: EventContext,
     request_id: str,
     action: MutationAction,
     side_effect_nodes: list[Node] | None = None,
 ) -> list[InfrahubEvent]:
     meta = EventMeta(
-        account_id=context.account.account_id,
+        account_id=context.account_id,
         initiator_id=WORKER_IDENTITY,
         request_id=request_id,
         branch=branch,
