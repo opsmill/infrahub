@@ -494,7 +494,7 @@ async def test_delete_branch_aware_node_with_agnostic_relationship(
     )
 
 
-async def test_confusing_error_does_not_include_cascade_deleted_nodes(
+async def test_error_only_includes_violation_node_during_cascade_delete(
     db: InfrahubDatabase,
     default_branch: Branch,
     car_person_schema: SchemaBranch,
@@ -528,7 +528,11 @@ async def test_confusing_error_does_not_include_cascade_deleted_nodes(
         await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
 
     error_msg = str(exc.value)
-    assert "TestCar" not in error_msg, f"TestCar should NOT appear (cascade-deleted), but got: {error_msg}"
+    expected_msg = (
+        f"Cannot delete TestPerson '{person_jane_main.id}'. "
+        f"It is linked to mandatory relationship manager on node TestPerson '{person_albert_main.id}' at TestPerson.manager"
+    )
+    assert error_msg == expected_msg
 
 
 async def test_delete_cascade_artifacts(
