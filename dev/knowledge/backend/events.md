@@ -33,7 +33,7 @@ Events are organized by domain in `backend/infrahub/events/`:
 |--------|--------|------|
 | Node | `NodeCreatedEvent`, `NodeUpdatedEvent`, `NodeDeletedEvent` | `node_action.py` |
 | Branch | `BranchCreatedEvent`, `BranchDeletedEvent`, `BranchMergedEvent`, `BranchRebasedEvent` | `branch_action.py` |
-| Group | `GroupMemberAddedEvent`, `GroupMemberRemovedEvent` | `group_action.py` |
+| Group | `GroupMemberAddedEvent`, `GroupMemberRemovedEvent`, `GroupAutoCreatedEvent`, `GroupAutoCreateRejectedClaimEvent`, `GroupAutoCreateCapBreachEvent` | `group_action.py` |
 | Schema | `SchemaUpdatedEvent` | `schema_action.py` |
 | Artifact | `ArtifactCreatedEvent`, `ArtifactUpdatedEvent` | `artifact_action.py` |
 | Validator | `ValidatorStartedEvent`, `ValidatorPassedEvent`, `ValidatorFailedEvent` | `validator_action.py` |
