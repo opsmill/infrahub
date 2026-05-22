@@ -206,9 +206,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
         """
-        response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
-
-        return response
+        return await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
 
 
 class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):

@@ -36,8 +36,7 @@ class CoreNumberPool(Node):
         for start_range, end_range in excluded_ranges:
             sum_excluded_values += end_range - start_range + 1
 
-        res = len(attribute.parameters.get_excluded_single_values()) + sum_excluded_values
-        return res
+        return len(attribute.parameters.get_excluded_single_values()) + sum_excluded_values
 
     async def get_used(
         self,

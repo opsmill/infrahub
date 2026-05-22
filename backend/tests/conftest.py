@@ -754,7 +754,7 @@ async def car_person_schema(
 
 @pytest.fixture
 async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
-    schema = SchemaRoot(
+    return SchemaRoot(
         nodes=[
             NodeSchema(
                 name="Car",
@@ -799,7 +799,6 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
             ),
         ],
     )
-    return schema
 
 
 @pytest.fixture

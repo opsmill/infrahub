@@ -119,13 +119,12 @@ class TestKindUpdateMigration(TestSchemaLifecycleBase):
         await deleted_specific_one.save(db=db)
         await deleted_specific_one.delete(db=db)
 
-        objs = {
+        return {
             "thing_one": thing_one,
             "thing_two": thing_two,
             "thing_three": thing_three,
             "specific_one": specific_one,
         }
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_specific_one_new_kind(self) -> dict[str, Any]:

@@ -16,7 +16,7 @@ def _get_schema_by_kind(full_schema: dict[str, Any], kind: str) -> dict[str, Any
 
 @pytest.fixture
 async def animal_person_schema_dict() -> dict:
-    FULL_SCHEMA = {
+    return {
         "generics": [
             {
                 "name": "Animal",
@@ -88,12 +88,10 @@ async def animal_person_schema_dict() -> dict:
         ],
     }
 
-    return FULL_SCHEMA
-
 
 @pytest.fixture
 def schema_all_in_one() -> dict[str, Any]:
-    FULL_SCHEMA = {
+    return {
         "nodes": [
             {
                 "name": "Criticality",
@@ -238,12 +236,10 @@ def schema_all_in_one() -> dict[str, Any]:
         ],
     }
 
-    return FULL_SCHEMA
-
 
 @pytest.fixture
 def schema_criticality_tag() -> dict[str, Any]:
-    FULL_SCHEMA = {
+    return {
         "nodes": [
             {
                 "name": "Criticality",
@@ -286,12 +282,11 @@ def schema_criticality_tag() -> dict[str, Any]:
             },
         ]
     }
-    return FULL_SCHEMA
 
 
 @pytest.fixture
 def schema_parent_component() -> dict:
-    FULL_SCHEMA = {
+    return {
         "generics": [
             {
                 "name": "ComponentGenericOne",
@@ -351,13 +346,12 @@ def schema_parent_component() -> dict:
             },
         ],
     }
-    return FULL_SCHEMA
 
 
 @pytest.fixture
 def schema_diff_attr_inheritance_types() -> dict[str, Any]:
     """Two generics with the same attribute but different types and a single node implementation."""
-    FULL_SCHEMA = {
+    return {
         "generics": [
             {
                 "name": "Adapter",
@@ -387,4 +381,3 @@ def schema_diff_attr_inheritance_types() -> dict[str, Any]:
             }
         ],
     }
-    return FULL_SCHEMA

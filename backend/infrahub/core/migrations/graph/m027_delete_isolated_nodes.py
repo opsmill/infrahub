@@ -47,5 +47,4 @@ class Migration027(GraphMigration):
     queries: Sequence[type[Query]] = [DeleteIsolatedNodesQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

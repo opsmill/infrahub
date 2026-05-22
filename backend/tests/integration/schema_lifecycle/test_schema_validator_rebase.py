@@ -75,7 +75,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         await red.new(db=db, name="red", persons=[john])
         await red.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "jane": jane.id,
             "honda": honda.id,
@@ -86,8 +86,6 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
             "blue": blue.id,
             "red": red.id,
         }
-
-        return objs
 
     @pytest.fixture(scope="class")
     async def branch_2(self, db: InfrahubDatabase) -> Branch:

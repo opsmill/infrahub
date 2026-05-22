@@ -245,14 +245,12 @@ RETURN n.kind AS kind, n.uuid AS uuid, attr.name AS attr_name, "AttributeValueIn
         )
         await template_thing.save(db=db)
 
-        objs = {
+        return {
             "thing_one": thing_one,
             "thing_two": thing_two,
             "profile_thing": profile_thing,
             "template_thing": template_thing,
         }
-
-        return objs
 
     async def test_step01_baseline(
         self, db: InfrahubDatabase, initial_objects: dict[str, Node], branch: Branch

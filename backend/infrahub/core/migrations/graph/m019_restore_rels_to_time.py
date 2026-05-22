@@ -232,5 +232,4 @@ class Migration019(GraphMigration):
     queries: Sequence[type[Query]] = [FixBranchAwareEdgesQuery, SetMissingToTimeQuery, DeleteNodesRelsQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

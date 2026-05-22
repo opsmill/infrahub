@@ -36,13 +36,11 @@ class RelationshipDuplicateQuery(Query):
         super().__init__(**kwargs)
 
     def render_match(self) -> str:
-        query = """
+        return """
         // Find all the active nodes
         MATCH (source:%(src_peer)s)-[:IS_RELATED]-(rel:Relationship { name: $previous_rel.name })-[:IS_RELATED]-(destination:%(dst_peer)s)
         WHERE source <> destination
         """ % {"src_peer": self.previous_rel.src_peer, "dst_peer": self.previous_rel.dst_peer}
-
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, direction: GraphRelDirection) -> str:

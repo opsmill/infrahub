@@ -44,8 +44,7 @@ async def account_resolver(
             order=OrderModel(disable=True),
         )
         if results:
-            account_profile = await results[0].to_graphql(db=db, fields=fields)
-            return account_profile
+            return await results[0].to_graphql(db=db, fields=fields)
 
         raise NodeNotFoundError(
             node_type=InfrahubKind.GENERICACCOUNT, identifier=graphql_context.account_session.account_id

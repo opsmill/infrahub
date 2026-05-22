@@ -92,5 +92,4 @@ class Migration023(GraphMigration):
     queries: Sequence[type[Query]] = [DedupCardinalityOneRelsQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

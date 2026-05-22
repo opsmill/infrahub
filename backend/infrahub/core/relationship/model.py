@@ -1030,8 +1030,7 @@ class RelationshipManager:
         if not rels and raise_on_error:
             raise LookupError("Unable to find the peer")
 
-        peer = await rels[0].get_peer(db=db)
-        return peer
+        return await rels[0].get_peer(db=db)
 
     @overload
     async def get_peers(
@@ -1060,14 +1059,13 @@ class RelationshipManager:
     ) -> Mapping[str, Node | PeerType]:
         rels = await self.get_relationships(db=db, branch_agnostic=branch_agnostic)
         peer_ids = [rel.peer_id for rel in rels if rel.peer_id]
-        nodes = await registry.manager.get_many(
+        return await registry.manager.get_many(
             db=db,
             ids=peer_ids,
             branch=self.branch,
             branch_agnostic=branch_agnostic,
             include_metadata=include_metadata,
         )
-        return nodes
 
     def get_branch_based_on_support_type(self) -> Branch:
         """If the attribute is branch aware, return the Branch object associated with this attribute.
