@@ -246,9 +246,7 @@ class SchemaBranch:
 
         # Process of the one that have been updated to identify the list of impacted fields
         for key in present_both:
-            local_node = self.get(name=key, duplicate=False)
-            other_node = other.get(name=key, duplicate=False)
-            diff_node = other_node.diff(other=local_node)
+            diff_node = self._diff_node_or_generic(other_schema_branch=other, local_key=key, other_key=key)
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
 
@@ -256,15 +254,30 @@ class SchemaBranch:
         reversed_map_other: dict[str | None, str] = {v: k for k, v in other_kind_id_map.items()}
 
         for shared_id in shared_ids:
-            local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
-            other_node = other.get(name=reversed_map_other[shared_id], duplicate=False)
-            diff_node = other_node.diff(other=local_node)
-            if other_node.state == HashableModelState.ABSENT:
-                schema_diff.removed[reversed_map_other[shared_id]] = None
+            local_key = reversed_map_local[shared_id]
+            other_key = reversed_map_other[shared_id]
+            diff_node = self._diff_node_or_generic(other_schema_branch=other, local_key=local_key, other_key=other_key)
+            if other.get(name=other_key, duplicate=False).state == HashableModelState.ABSENT:
+                schema_diff.removed[other_key] = None
             elif diff_node.has_diff:
-                schema_diff.changed[reversed_map_other[shared_id]] = diff_node
+                schema_diff.changed[other_key] = diff_node
 
         return schema_diff
+
+    def _diff_node_or_generic(
+        self, other_schema_branch: SchemaBranch, local_key: str, other_key: str
+    ) -> HashableModelDiff:
+        """Diff two schemas across branches, dispatching to the matching concrete subclass.
+
+        Callers must ensure both keys reference either nodes or generics (not profiles or templates).
+        """
+        if local_key in self.nodes:
+            local_node = self.get_node(name=local_key, duplicate=False)
+            other_node = other_schema_branch.get_node(name=other_key, duplicate=False)
+            return other_node.diff(other=local_node)
+        local_generic = self.get_generic(name=local_key, duplicate=False)
+        other_generic = other_schema_branch.get_generic(name=other_key, duplicate=False)
+        return other_generic.diff(other=local_generic)
 
     def update(self, schema: SchemaBranch) -> None:
         """Update another SchemaBranch into this one."""
