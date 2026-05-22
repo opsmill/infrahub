@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, SchemaRoot
+from infrahub.core.schema import AttributeSchema, GenericSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 
 
@@ -18,6 +18,54 @@ def test_single_relationship_uniqueness_constraint(car_person_schema_root: Schem
     processed_car_schema = schema_branch.get(name="TestCar", duplicate=False)
     assert processed_car_schema.uniqueness_constraints == [["owner"]]
     assert processed_car_schema.human_friendly_id is None
+
+
+def test_validate_names_rejects_double_underscore_in_attribute_name() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Underscore",
+                    namespace="Testing",
+                    attributes=[
+                        AttributeSchema(name="name", kind="Text"),
+                        AttributeSchema(name="name__asc", kind="Text"),
+                    ],
+                ),
+            ],
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"TestingUnderscore: 'name__asc' cannot be used as an attribute name",
+    ):
+        schema.validate_names()
+
+
+def test_validate_names_rejects_double_underscore_in_relationship_name() -> None:
+    schema = SchemaBranch(cache={}, name="test")
+    schema.load_schema(
+        schema=SchemaRoot(
+            nodes=[
+                NodeSchema(
+                    name="Underscore",
+                    namespace="Testing",
+                    attributes=[AttributeSchema(name="name", kind="Text")],
+                    relationships=[
+                        RelationshipSchema(name="peer__link", peer="TestingUnderscore", optional=True),
+                    ],
+                ),
+            ],
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=r"TestingUnderscore: 'peer__link' cannot be used as a relationship name",
+    ):
+        schema.validate_names()
 
 
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
