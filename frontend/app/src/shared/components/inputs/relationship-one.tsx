@@ -50,7 +50,7 @@ export const RelationshipInput = ({
     parent?.name && parent?.value ? { [`${parent.name}__ids`]: [parent.value] } : undefined;
 
   const {
-    isPending: isRelationshipListLoading,
+    isFetching: isRelationshipListLoading,
     data,
     error,
     fetchNextPage,
