@@ -15,7 +15,13 @@ const TaskDetailsPage = () => {
   useTitle("Task Details");
   const { taskId } = useRequiredParams("taskId");
 
-  const { isLoading, error, data: taskData, refetch } = useGetTaskDetailsTitle({ ids: [taskId] });
+  const {
+    isLoading,
+    isFetching,
+    error,
+    data: taskData,
+    refetch,
+  } = useGetTaskDetailsTitle({ ids: [taskId] });
 
   if (error) {
     return <ErrorScreen message="An error occurred while fetching task details." />;
@@ -43,7 +49,7 @@ const TaskDetailsPage = () => {
 
   return (
     <Content.Card>
-      <Content.CardTitle title={title} isReloadLoading={isLoading} reload={() => refetch()} />
+      <Content.CardTitle title={title} isReloadLoading={isFetching} reload={() => refetch()} />
 
       <TaskItemDetails />
     </Content.Card>
