@@ -63,22 +63,4 @@ class ObjectNodeMeta(BaseNodeMeta):
         class InterObjectNode:
             pass
 
-        base_cls = super().__new__(mcs, name_, (InterObjectNode,) + bases, namespace, **options)
-        # if base_cls._meta:
-        #     fields = [
-        #         (
-        #             key,
-        #             "typing.Any",
-        #             field(
-        #                 default=field_value.default_value
-        #                 if isinstance(field_value, Field)
-        #                 else None
-        #             ),
-        #         )
-        #         for key, field_value in base_cls._meta.fields.items()
-        #     ]
-        #     dataclass = make_dataclass(name_, fields, bases=())
-        #     InterObjectType.__init__ = dataclass.__init__
-        #     InterObjectType.__eq__ = dataclass.__eq__
-        #     InterObjectType.__repr__ = dataclass.__repr__
-        return base_cls
+        return super().__new__(mcs, name_, (InterObjectNode,) + bases, namespace, **options)

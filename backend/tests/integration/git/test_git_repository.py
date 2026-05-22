@@ -123,14 +123,12 @@ class TestInfrahubClient:
         await obj.save(db=db)
 
         # Initialize the repository on the file system
-        repo = await InfrahubRepository.new(
+        return await InfrahubRepository.new(
             id=obj.id,
             name=git_repo_infrahub_demo_edge_integration.name,
             location=git_repo_infrahub_demo_edge_integration.path,
             client=client,
         )
-
-        return repo
 
     async def test_import_schema_files(
         self, db: InfrahubDatabase, client: InfrahubClient, repo: InfrahubRepository

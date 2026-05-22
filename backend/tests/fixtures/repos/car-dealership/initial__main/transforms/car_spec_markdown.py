@@ -8,11 +8,10 @@ class CarSpecMarkdown(InfrahubTransform):
     timeout = 10
 
     async def transform(self, data: dict[str, Any]) -> str:
-        markdown = """
+        return """
         ## Car Specification
 
         **blue** Sedan
         Make: **Toyota**
         Model: **Camry**
         """
-        return markdown

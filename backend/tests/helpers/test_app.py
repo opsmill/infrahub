@@ -233,8 +233,7 @@ class TestInfrahubAppBase(TestInfrahub):
             schema_converge_timeout=5,
         )
 
-        sdk_client = InfrahubClient(config=config)
-        return sdk_client
+        return InfrahubClient(config=config)
 
     @pytest.fixture(scope="class")
     async def admin_account(

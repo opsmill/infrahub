@@ -109,15 +109,13 @@ async def car_person_generics_data_simple(
     await c3.new(db=db, name="nolt", nbr_seats=4, mpg=25, owner=p2)
     await c3.save(db=db)
 
-    nodes = {
+    return {
         "p1": p1,
         "p2": p2,
         "c1": c1,
         "c2": c2,
         "c3": c3,
     }
-
-    return nodes
 
 
 @pytest.fixture
