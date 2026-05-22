@@ -11,6 +11,7 @@ import { areObjectArraysEqualById } from "@/shared/utils/array";
 import type { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { useGetObjectForEditing } from "@/entities/nodes/object-item-edit/ui/queries/get-object-for-editing.query";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface Props {
@@ -23,14 +24,27 @@ interface Props {
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const { objectname, objectId, closeDrawer, onUpdateComplete, extraRelationshipNames } = props;
-
-  const { schema } = useSchema(objectname);
+  const { schema } = useSchema(props.objectname);
 
   if (!schema) {
-    return <NoDataFound message={`Schema ${objectname} not found`} />;
+    return <NoDataFound message={`Schema ${props.objectname} not found`} />;
   }
 
+  return <ObjectItemEditForm {...props} schema={schema} />;
+}
+
+interface ObjectItemEditFormProps extends Props {
+  schema: NodeSchema | ProfileSchema;
+}
+
+function ObjectItemEditForm({
+  schema,
+  objectname,
+  objectId,
+  closeDrawer,
+  onUpdateComplete,
+  extraRelationshipNames,
+}: ObjectItemEditFormProps) {
   const { isLoading, error, data } = useGetObjectForEditing({
     schema,
     objectKind: objectname,
