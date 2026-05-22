@@ -83,6 +83,10 @@ export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
 
   const object = edges[0];
 
+  if (!object) {
+    return <ErrorScreen message="Task not found." />;
+  }
+
   const row = {
     values: {
       id: object.id,
