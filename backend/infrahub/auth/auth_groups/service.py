@@ -12,9 +12,8 @@ A per-login cap bounds how many new groups one login can spawn. Memberships to a
 groups do NOT consume cap budget. Once the cap is reached, every subsequent matching claim that
 would have required a fresh creation is dropped and the login still completes.
 
-Auto-create audit events are emitted via an injected emitter: one per successful new
-creation, one per claim whose effective name fails identifier validation, and one per
-login that breaches the per-login cap. Pass the disabled emitter to suppress emission.
+Auto-group audit events are emitted via an injected emitter; pass the disabled emitter
+to suppress emission.
 """
 
 from __future__ import annotations

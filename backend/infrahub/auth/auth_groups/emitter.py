@@ -1,10 +1,7 @@
-"""Emit the auto-create audit events for one external login.
+"""Emit the auto-group audit events for one external login.
 
-Three event shapes are emitted — one per newly created group, one per claim
-whose effective name fails identifier validation, and one per login that
-breaches the per-login cap. Emission is defensive so a broker failure cannot
-abort the SSO login, and a Null Object variant lets callers skip emission
-without null-checking.
+Emission is defensive so a broker failure cannot abort the SSO login, and a
+Null Object variant lets callers skip emission without null-checking.
 """
 
 from __future__ import annotations
@@ -38,7 +35,7 @@ def _truncate(value: str) -> str:
 
 
 class AutoCreateEventEmitter(ABC):
-    """Interface for emitting the three auto-create audit events for one login."""
+    """Interface for emitting the auto-group audit events for one login."""
 
     @abstractmethod
     async def created(self, *, group: CoreAccountGroup, source_pattern: str) -> None: ...
@@ -51,7 +48,7 @@ class AutoCreateEventEmitter(ABC):
 
 
 class LiveAutoCreateEventEmitter(AutoCreateEventEmitter):
-    """Sends the three auto-create audit events through the configured event service."""
+    """Sends the auto-group audit events through the configured event service."""
 
     def __init__(
         self,
