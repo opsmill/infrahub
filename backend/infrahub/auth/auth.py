@@ -13,6 +13,7 @@ from infrahub.auth.auth_groups import (
     AutoCreatedGroupsService,
     AutoCreateEventEmitter,
     ClaimFilter,
+    DisabledAutoCreateEventEmitter,
     LiveAutoCreateEventEmitter,
 )
 from infrahub.auth.session import AccountSession
@@ -424,7 +425,7 @@ async def _build_auto_create_event_emitter(
     Returns the disabled no-op variant when no event service is supplied.
     """
     if event_service is None:
-        return AutoCreateEventEmitter.disabled()
+        return DisabledAutoCreateEventEmitter()
 
     branch = await registry.get_branch(db=db)
     account_session = AccountSession(

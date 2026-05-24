@@ -14,7 +14,7 @@ would have required a fresh creation is dropped and the login still completes.
 
 Auto-create audit events are emitted via an injected `AutoCreateEventEmitter`: one per
 successful new creation, one per claim whose effective name fails identifier validation, and
-one per login that breaches the per-login cap. Pass `AutoCreateEventEmitter.disabled()` to
+one per login that breaches the per-login cap. Pass a `DisabledAutoCreateEventEmitter` to
 suppress emission.
 """
 

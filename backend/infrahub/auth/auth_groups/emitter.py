@@ -1,11 +1,11 @@
 """Emit the auto-create audit events for one external login.
 
-Defines the `AutoCreateEventEmitter` interface and two implementations:
+Defines the `AutoCreateEventEmitter` interface and two peer implementations:
 `LiveAutoCreateEventEmitter` sends the three event shapes (`created`,
 `claim_rejected`, `cap_breached`) defensively so a broker failure cannot
-abort the SSO login; `_NoopAutoCreateEventEmitter` is the Null Object
-returned by `AutoCreateEventEmitter.disabled()` when no event service is
-wired in, so callers do not need to null-check before each emit.
+abort the SSO login; `DisabledAutoCreateEventEmitter` is the Null Object
+used when no event service is wired in, so callers do not need to null-check
+before each emit.
 """
 
 from __future__ import annotations
@@ -49,10 +49,6 @@ class AutoCreateEventEmitter(ABC):
 
     @abstractmethod
     async def cap_breached(self, *, cap_value: int, dropped_claims: list[str]) -> None: ...
-
-    @classmethod
-    def disabled(cls) -> AutoCreateEventEmitter:
-        return _NoopAutoCreateEventEmitter()
 
 
 class LiveAutoCreateEventEmitter(AutoCreateEventEmitter):
@@ -122,8 +118,8 @@ class LiveAutoCreateEventEmitter(AutoCreateEventEmitter):
             log.exception("auth_groups.event_emission_failed", event_name=event.event_name)
 
 
-class _NoopAutoCreateEventEmitter(AutoCreateEventEmitter):
-    """No-op variant returned by `AutoCreateEventEmitter.disabled()`."""
+class DisabledAutoCreateEventEmitter(AutoCreateEventEmitter):
+    """Null Object emitter used when no event service is wired in."""
 
     async def created(self, *, group: CoreAccountGroup, source_pattern: str) -> None:  # noqa: ARG002
         return
