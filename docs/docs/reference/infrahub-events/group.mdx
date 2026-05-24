@@ -2,9 +2,9 @@
 title: Group events
 ---
 
-## Group Auto Create Cap Breach Event
+## Group Auto Create Capped Event
 
-**Type**: infrahub.group.auto_create.cap_breach
+**Type**: infrahub.group.auto_create_capped
 **Description**: Emitted at most once per login when the per-login cap on new-group creation is reached.
 **Uses node_kind filter for webhooks**: `false`
 
@@ -28,9 +28,9 @@ title: Group events
 | **dropped_claims** | Verbatim, per-entry length-truncated dropped claims |
 | **dropped_count** | Total count of dropped claims for this login |
 
-## Group Auto Create Rejected Claim Event
+## Group Auto Create Rejected Event
 
-**Type**: infrahub.group.auto_create.rejected_claim
+**Type**: infrahub.group.auto_create_rejected
 **Description**: Emitted when a matched claim's effective name fails identifier validation.
 **Uses node_kind filter for webhooks**: `false`
 
@@ -54,7 +54,7 @@ title: Group events
 
 ## Group Auto Created Event
 
-**Type**: infrahub.group.auto_create.created
+**Type**: infrahub.group.auto_created
 **Description**: Emitted exactly once per successful auto-creation of a new `CoreAccountGroup`.
 **Uses node_kind filter for webhooks**: `false`
 
