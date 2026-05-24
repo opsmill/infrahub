@@ -1,11 +1,10 @@
 """Emit the auto-create audit events for one external login.
 
-Defines the `AutoCreateEventEmitter` interface and two peer implementations:
-`LiveAutoCreateEventEmitter` sends the three event shapes (`created`,
-`claim_rejected`, `cap_breached`) defensively so a broker failure cannot
-abort the SSO login; `DisabledAutoCreateEventEmitter` is the Null Object
-used when no event service is wired in, so callers do not need to null-check
-before each emit.
+Three event shapes are emitted — one per newly created group, one per claim
+whose effective name fails identifier validation, and one per login that
+breaches the per-login cap. Emission is defensive so a broker failure cannot
+abort the SSO login, and a Null Object variant lets callers skip emission
+without null-checking.
 """
 
 from __future__ import annotations
@@ -52,7 +51,7 @@ class AutoCreateEventEmitter(ABC):
 
 
 class LiveAutoCreateEventEmitter(AutoCreateEventEmitter):
-    """Sends the three auto-create audit events through an `InfrahubEventService`."""
+    """Sends the three auto-create audit events through the configured event service."""
 
     def __init__(
         self,
