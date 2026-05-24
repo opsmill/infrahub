@@ -17,9 +17,9 @@ from typing import TYPE_CHECKING, Callable
 from uuid import UUID
 
 from infrahub.events.group_action import (
-    GroupAutoCreateCapBreachEvent,
+    GroupAutoCreateCappedEvent,
     GroupAutoCreatedEvent,
-    GroupAutoCreateRejectedClaimEvent,
+    GroupAutoCreateRejectedEvent,
 )
 from infrahub.log import get_logger
 
@@ -83,7 +83,7 @@ class AutoCreateEventEmitter:
 
     async def claim_rejected(self, *, claim: str) -> None:
         await self._send(
-            GroupAutoCreateRejectedClaimEvent(
+            GroupAutoCreateRejectedEvent(
                 meta=self._deps.event_meta_factory(),
                 idp=self._provider_name,
                 triggering_user_id=UUID(self._account.id),
@@ -95,7 +95,7 @@ class AutoCreateEventEmitter:
 
     async def cap_breached(self, *, cap_value: int, dropped_claims: list[str]) -> None:
         await self._send(
-            GroupAutoCreateCapBreachEvent(
+            GroupAutoCreateCappedEvent(
                 meta=self._deps.event_meta_factory(),
                 idp=self._provider_name,
                 triggering_user_id=UUID(self._account.id),

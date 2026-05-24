@@ -133,7 +133,7 @@ class GroupAutoCreateEvent(InfrahubEvent):
 class GroupAutoCreatedEvent(GroupAutoCreateEvent):
     """Emitted exactly once per successful auto-creation of a new `CoreAccountGroup`."""
 
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create.created"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_created"
 
     group_id: UUID = Field(..., description="UUID of the newly created group")
     group_name: str = Field(..., description="Local name of the new group")
@@ -150,10 +150,10 @@ class GroupAutoCreatedEvent(GroupAutoCreateEvent):
         return resource
 
 
-class GroupAutoCreateRejectedClaimEvent(GroupAutoCreateEvent):
+class GroupAutoCreateRejectedEvent(GroupAutoCreateEvent):
     """Emitted when a matched claim's effective name fails identifier validation."""
 
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create.rejected_claim"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create_rejected"
 
     rejected_claim_value: str = Field(..., description="Verbatim, length-truncated rejected claim value")
 
@@ -163,10 +163,10 @@ class GroupAutoCreateRejectedClaimEvent(GroupAutoCreateEvent):
         return resource
 
 
-class GroupAutoCreateCapBreachEvent(GroupAutoCreateEvent):
+class GroupAutoCreateCappedEvent(GroupAutoCreateEvent):
     """Emitted at most once per login when the per-login cap on new-group creation is reached."""
 
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create.cap_breach"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create_capped"
 
     cap_value: int = Field(..., description="Configured per-login cap value")
     dropped_claims: list[str] = Field(..., description="Verbatim, per-entry length-truncated dropped claims")

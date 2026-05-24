@@ -10,6 +10,11 @@ from prefect.exceptions import PrefectHTTPStatusError
 from pydantic import BaseModel, Field, TypeAdapter
 
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, InfrahubKind
+from infrahub.events.group_action import (
+    GroupAutoCreateCappedEvent,
+    GroupAutoCreatedEvent,
+    GroupAutoCreateRejectedEvent,
+)
 from infrahub.exceptions import ServiceUnavailableError
 from infrahub.log import get_logger
 from infrahub.utils import get_nested_dict
@@ -267,13 +272,13 @@ class PrefectEventData(PrefectEventModel):
             "origin_value": self.resource.get("infrahub.security.origin_value"),
         }
 
-    def _return_group_auto_create_rejected_claim(self) -> dict[str, Any]:
+    def _return_group_auto_create_rejected(self) -> dict[str, Any]:
         return {
             **self._return_group_auto_create_common(),
             "rejected_claim_value": self.resource.get("infrahub.security.rejected_claim_value"),
         }
 
-    def _return_group_auto_create_cap_breach(self) -> dict[str, Any]:
+    def _return_group_auto_create_capped(self) -> dict[str, Any]:
         dropped_claims: list[str] = []
         for resource in self.related:
             if resource.role != "infrahub.security.dropped_claim":
@@ -324,12 +329,12 @@ class PrefectEventData(PrefectEventModel):
                 event_specifics = self._return_branch_rebased()
             case "infrahub.group.member_added" | "infrahub.group.member_removed":
                 event_specifics = self._return_group_event()
-            case "infrahub.group.auto_create.created":
+            case GroupAutoCreatedEvent.event_name:
                 event_specifics = self._return_group_auto_created()
-            case "infrahub.group.auto_create.rejected_claim":
-                event_specifics = self._return_group_auto_create_rejected_claim()
-            case "infrahub.group.auto_create.cap_breach":
-                event_specifics = self._return_group_auto_create_cap_breach()
+            case GroupAutoCreateRejectedEvent.event_name:
+                event_specifics = self._return_group_auto_create_rejected()
+            case GroupAutoCreateCappedEvent.event_name:
+                event_specifics = self._return_group_auto_create_capped()
             case "infrahub.proposed_change.approved" | "infrahub.proposed_change.rejected":
                 event_specifics = {
                     **self._return_proposed_change_event(),

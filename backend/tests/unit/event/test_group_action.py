@@ -9,9 +9,9 @@ from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.events.group_action import (
-    GroupAutoCreateCapBreachEvent,
+    GroupAutoCreateCappedEvent,
     GroupAutoCreatedEvent,
-    GroupAutoCreateRejectedClaimEvent,
+    GroupAutoCreateRejectedEvent,
 )
 from infrahub.events.models import EventMeta
 from infrahub.external_protocols import ExternalAuthProtocol
@@ -59,9 +59,9 @@ def test_group_auto_created_get_resource_pins_wire_format() -> None:
     }
 
 
-def test_group_auto_create_rejected_claim_get_resource_pins_wire_format() -> None:
+def test_group_auto_create_rejected_get_resource_pins_wire_format() -> None:
     triggering_user_id = uuid4()
-    event = GroupAutoCreateRejectedClaimEvent(
+    event = GroupAutoCreateRejectedEvent(
         meta=_make_meta(),
         idp="provider1",
         triggering_user_id=triggering_user_id,
@@ -81,9 +81,9 @@ def test_group_auto_create_rejected_claim_get_resource_pins_wire_format() -> Non
     }
 
 
-def test_group_auto_create_cap_breach_get_resource_pins_wire_format() -> None:
+def test_group_auto_create_capped_get_resource_pins_wire_format() -> None:
     triggering_user_id = uuid4()
-    event = GroupAutoCreateCapBreachEvent(
+    event = GroupAutoCreateCappedEvent(
         meta=_make_meta(),
         idp="provider1",
         triggering_user_id=triggering_user_id,
@@ -107,10 +107,10 @@ def test_group_auto_create_cap_breach_get_resource_pins_wire_format() -> None:
 
 
 @pytest.mark.parametrize("dropped_claims", [[], ["only-one"], ["alpha", "beta", "gamma"]])
-def test_group_auto_create_cap_breach_get_related_pins_dropped_claim_shape(
+def test_group_auto_create_capped_get_related_pins_dropped_claim_shape(
     dropped_claims: list[str],
 ) -> None:
-    event = GroupAutoCreateCapBreachEvent(
+    event = GroupAutoCreateCappedEvent(
         meta=_make_meta(),
         idp="provider1",
         triggering_user_id=uuid4(),

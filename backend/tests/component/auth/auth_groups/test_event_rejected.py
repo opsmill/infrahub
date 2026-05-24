@@ -9,7 +9,7 @@ from infrahub.auth import signin_sso_account
 from infrahub.auth.auth_groups.emitter import MAX_CLAIM_VALUE_LENGTH
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup
-from infrahub.events.group_action import GroupAutoCreatedEvent, GroupAutoCreateRejectedClaimEvent
+from infrahub.events.group_action import GroupAutoCreatedEvent, GroupAutoCreateRejectedEvent
 from infrahub.external_protocols import ExternalAuthProtocol
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.identities import make_identity
@@ -44,7 +44,7 @@ async def test_rejected_claim_event_emitted_for_empty_effective_name(
 ) -> None:
     """A claim whose captured `name` is the empty string fails identifier validation.
 
-    The login completes, no group is created, and a `GroupAutoCreateRejectedClaimEvent` is
+    The login completes, no group is created, and a `GroupAutoCreateRejectedEvent` is
     emitted with the original claim stored verbatim.
     """
     recorder = MemoryInfrahubEvent()
@@ -57,10 +57,10 @@ async def test_rejected_claim_event_emitted_for_empty_effective_name(
         event_service=recorder,
     )
 
-    rejected_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateRejectedClaimEvent)]
+    rejected_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateRejectedEvent)]
     created_events = [event for event in recorder.events if isinstance(event, GroupAutoCreatedEvent)]
 
-    assert len(rejected_events) == 1, "exactly one GroupAutoCreateRejectedClaimEvent must be emitted"
+    assert len(rejected_events) == 1, "exactly one GroupAutoCreateRejectedEvent must be emitted"
     assert created_events == [], "no group must be created for an invalid effective name"
 
     event = rejected_events[0]
@@ -95,7 +95,7 @@ async def test_rejected_claim_event_truncates_long_claim_verbatim(
         event_service=recorder,
     )
 
-    rejected_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateRejectedClaimEvent)]
+    rejected_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateRejectedEvent)]
     assert len(rejected_events) == 1
     truncated = rejected_events[0].rejected_claim_value
     assert claim.startswith(truncated), "truncated value must be a verbatim prefix of the original claim"

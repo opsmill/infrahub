@@ -72,12 +72,12 @@ class GroupAutoCreateEventTypeFilter(InputObjectType):
     idp = List(
         NonNull(String),
         required=False,
-        description="Filter by the configured identity-provider name (matches the event's `idp` field)",
+        description="Filter by the configured identity-provider name",
     )
     protocol = List(
         NonNull(String),
         required=False,
-        description="Filter by authentication protocol (oauth2, oidc, ldap)",
+        description="Filter by authentication protocol",
     )
 
 
@@ -91,7 +91,7 @@ class EventTypeFilter(InputObjectType):
     group_auto_create = Field(
         GroupAutoCreateEventTypeFilter,
         required=False,
-        description="Filters specific to infrahub.group.auto_create.* events",
+        description="Filters specific to \"infrahub.group.auto_create[...]\" events",
     )
 
 
@@ -275,7 +275,7 @@ class GroupAutoCreatedEventType(ObjectType):
     payload = Field(GenericScalar, required=True)
 
 
-class GroupAutoCreateRejectedClaimEventType(ObjectType):
+class GroupAutoCreateRejectedEventType(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
@@ -287,7 +287,7 @@ class GroupAutoCreateRejectedClaimEventType(ObjectType):
     payload = Field(GenericScalar, required=True)
 
 
-class GroupAutoCreateCapBreachEventType(ObjectType):
+class GroupAutoCreateCappedEventType(ObjectType):
     class Meta:
         interfaces = (EventNodeInterface,)
 
@@ -325,8 +325,8 @@ EVENT_TYPES: dict[str, type[ObjectType]] = {
     events.GroupMemberAddedEvent.event_name: GroupEvent,
     events.GroupMemberRemovedEvent.event_name: GroupEvent,
     events.GroupAutoCreatedEvent.event_name: GroupAutoCreatedEventType,
-    events.GroupAutoCreateRejectedClaimEvent.event_name: GroupAutoCreateRejectedClaimEventType,
-    events.GroupAutoCreateCapBreachEvent.event_name: GroupAutoCreateCapBreachEventType,
+    events.GroupAutoCreateRejectedEvent.event_name: GroupAutoCreateRejectedEventType,
+    events.GroupAutoCreateCappedEvent.event_name: GroupAutoCreateCappedEventType,
     events.ProposedChangeApprovedEvent.event_name: ProposedChangeReviewEvent,
     events.ProposedChangeApprovalRevokedEvent.event_name: ProposedChangeReviewRevokedEvent,
     events.ProposedChangeRejectedEvent.event_name: ProposedChangeReviewEvent,

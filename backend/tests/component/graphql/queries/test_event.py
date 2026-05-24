@@ -15,9 +15,9 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
 from infrahub.events.group_action import (
-    GroupAutoCreateCapBreachEvent,
+    GroupAutoCreateCappedEvent,
     GroupAutoCreatedEvent,
-    GroupAutoCreateRejectedClaimEvent,
+    GroupAutoCreateRejectedEvent,
     GroupMemberAddedEvent,
 )
 from infrahub.events.models import EventMeta, EventNode, InfrahubEvent
@@ -137,7 +137,7 @@ query($event_type: [String!]) {
           origin_value
           payload
         }
-        ... on GroupAutoCreateRejectedClaimEventType {
+        ... on GroupAutoCreateRejectedEventType {
           idp
           triggering_user_id
           triggering_user_name
@@ -145,7 +145,7 @@ query($event_type: [String!]) {
           rejected_claim_value
           payload
         }
-        ... on GroupAutoCreateCapBreachEventType {
+        ... on GroupAutoCreateCappedEventType {
           idp
           triggering_user_id
           triggering_user_name
@@ -807,7 +807,7 @@ async def group_auto_create_events(
             origin_value=idp_name,
             meta=dummy_event_meta(branch=default_branch),
         ),
-        "rejected_claim": GroupAutoCreateRejectedClaimEvent(
+        "rejected_claim": GroupAutoCreateRejectedEvent(
             idp=idp_name,
             triggering_user_id=triggering_user_id,
             triggering_user_name=triggering_user_name,
@@ -815,7 +815,7 @@ async def group_auto_create_events(
             rejected_claim_value="!!invalid-claim!!",
             meta=dummy_event_meta(branch=default_branch),
         ),
-        "cap_breach": GroupAutoCreateCapBreachEvent(
+        "cap_breach": GroupAutoCreateCappedEvent(
             idp=idp_name,
             triggering_user_id=triggering_user_id,
             triggering_user_name=triggering_user_name,
@@ -842,15 +842,15 @@ async def test_event_query_group_auto_create(
     created_event = group_auto_create_events["auto_created"]
     assert isinstance(created_event, GroupAutoCreatedEvent)
     rejected_event = group_auto_create_events["rejected_claim"]
-    assert isinstance(rejected_event, GroupAutoCreateRejectedClaimEvent)
+    assert isinstance(rejected_event, GroupAutoCreateRejectedEvent)
     cap_event = group_auto_create_events["cap_breach"]
-    assert isinstance(cap_event, GroupAutoCreateCapBreachEvent)
+    assert isinstance(cap_event, GroupAutoCreateCappedEvent)
 
     created_result = await run_query(
         db=db,
         branch=default_branch,
         query=QUERY_GROUP_AUTO_CREATE_EVENTS,
-        variables={"event_type": ["infrahub.group.auto_create.created"]},
+        variables={"event_type": ["infrahub.group.auto_created"]},
         account_session=session_admin,
     )
     assert created_result.errors is None
@@ -860,7 +860,7 @@ async def test_event_query_group_auto_create(
     ]
     assert len(created_edges) == 1
     created_node = created_edges[0]["node"]
-    assert created_node["event"] == "infrahub.group.auto_create.created"
+    assert created_node["event"] == "infrahub.group.auto_created"
     assert created_node["idp"] == created_event.idp
     assert created_node["triggering_user_id"] == str(created_event.triggering_user_id)
     assert created_node["triggering_user_name"] == created_event.triggering_user_name
@@ -875,7 +875,7 @@ async def test_event_query_group_auto_create(
         db=db,
         branch=default_branch,
         query=QUERY_GROUP_AUTO_CREATE_EVENTS,
-        variables={"event_type": ["infrahub.group.auto_create.rejected_claim"]},
+        variables={"event_type": ["infrahub.group.auto_create_rejected"]},
         account_session=session_admin,
     )
     assert rejected_result.errors is None
@@ -885,7 +885,7 @@ async def test_event_query_group_auto_create(
     ]
     assert len(rejected_edges) == 1
     rejected_node = rejected_edges[0]["node"]
-    assert rejected_node["event"] == "infrahub.group.auto_create.rejected_claim"
+    assert rejected_node["event"] == "infrahub.group.auto_create_rejected"
     assert rejected_node["idp"] == rejected_event.idp
     assert rejected_node["triggering_user_name"] == rejected_event.triggering_user_name
     assert rejected_node["protocol"] == rejected_event.protocol.value
@@ -895,7 +895,7 @@ async def test_event_query_group_auto_create(
         db=db,
         branch=default_branch,
         query=QUERY_GROUP_AUTO_CREATE_EVENTS,
-        variables={"event_type": ["infrahub.group.auto_create.cap_breach"]},
+        variables={"event_type": ["infrahub.group.auto_create_capped"]},
         account_session=session_admin,
     )
     assert cap_result.errors is None
@@ -903,7 +903,7 @@ async def test_event_query_group_auto_create(
     cap_edges = [edge for edge in cap_result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
     assert len(cap_edges) == 1
     cap_node = cap_edges[0]["node"]
-    assert cap_node["event"] == "infrahub.group.auto_create.cap_breach"
+    assert cap_node["event"] == "infrahub.group.auto_create_capped"
     assert cap_node["idp"] == cap_event.idp
     assert cap_node["protocol"] == cap_event.protocol.value
     assert cap_node["cap_value"] == cap_event.cap_value
@@ -923,11 +923,11 @@ query($event_type_filter: EventTypeFilter) {
           idp
           protocol
         }
-        ... on GroupAutoCreateRejectedClaimEventType {
+        ... on GroupAutoCreateRejectedEventType {
           idp
           protocol
         }
-        ... on GroupAutoCreateCapBreachEventType {
+        ... on GroupAutoCreateCappedEventType {
           idp
           protocol
         }
@@ -959,7 +959,7 @@ async def group_auto_create_events_mixed_idps(
             origin_value=idp_a,
             meta=dummy_event_meta(branch=default_branch),
         ),
-        "a_oauth2_rejected": GroupAutoCreateRejectedClaimEvent(
+        "a_oauth2_rejected": GroupAutoCreateRejectedEvent(
             idp=idp_a,
             triggering_user_id=triggering_user_id,
             triggering_user_name=f"alice-{_TEST_ID}",
@@ -978,7 +978,7 @@ async def group_auto_create_events_mixed_idps(
             origin_value=idp_b,
             meta=dummy_event_meta(branch=default_branch),
         ),
-        "b_oauth2_cap_breach": GroupAutoCreateCapBreachEvent(
+        "b_oauth2_cap_breach": GroupAutoCreateCappedEvent(
             idp=idp_b,
             triggering_user_id=triggering_user_id,
             triggering_user_name=f"bob-{_TEST_ID}",

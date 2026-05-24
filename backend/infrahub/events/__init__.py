@@ -2,9 +2,9 @@ from .account_action import AccountLoggedInEvent, AccountLoggedOutEvent
 from .artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
 from .branch_action import BranchCreatedEvent, BranchDeletedEvent, BranchMergedEvent, BranchRebasedEvent
 from .group_action import (
-    GroupAutoCreateCapBreachEvent,
+    GroupAutoCreateCappedEvent,
     GroupAutoCreatedEvent,
-    GroupAutoCreateRejectedClaimEvent,
+    GroupAutoCreateRejectedEvent,
     GroupMemberAddedEvent,
     GroupMemberRemovedEvent,
 )
@@ -35,8 +35,8 @@ __all__ = [
     "BranchRebasedEvent",
     "CommitUpdatedEvent",
     "EventMeta",
-    "GroupAutoCreateCapBreachEvent",
-    "GroupAutoCreateRejectedClaimEvent",
+    "GroupAutoCreateCappedEvent",
+    "GroupAutoCreateRejectedEvent",
     "GroupAutoCreatedEvent",
     "GroupMemberAddedEvent",
     "GroupMemberRemovedEvent",

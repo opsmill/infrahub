@@ -20,6 +20,11 @@ from pydantic import BaseModel, Field
 
 from infrahub.core.timestamp import Timestamp
 from infrahub.events.constants import EVENT_NAMESPACE, EventSortOrder
+from infrahub.events.group_action import (
+    GroupAutoCreateCappedEvent,
+    GroupAutoCreatedEvent,
+    GroupAutoCreateRejectedEvent,
+)
 
 from .constants import LOG_LEVEL_MAPPING
 
@@ -160,9 +165,9 @@ class InfrahubEventFilter(EventFilter):
 
         if (group_auto_create := event_type_filter.get("group_auto_create")) is not None:
             auto_create_event_names = [
-                f"{EVENT_NAMESPACE}.group.auto_create.created",
-                f"{EVENT_NAMESPACE}.group.auto_create.rejected_claim",
-                f"{EVENT_NAMESPACE}.group.auto_create.cap_breach",
+                GroupAutoCreatedEvent.event_name,
+                GroupAutoCreateRejectedEvent.event_name,
+                GroupAutoCreateCappedEvent.event_name,
             ]
             if not any(name in event_type for name in auto_create_event_names):
                 event_type.extend(auto_create_event_names)

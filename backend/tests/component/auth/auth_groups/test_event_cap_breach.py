@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub.auth import signin_sso_account
-from infrahub.events.group_action import GroupAutoCreateCapBreachEvent, GroupAutoCreatedEvent
+from infrahub.events.group_action import GroupAutoCreateCappedEvent, GroupAutoCreatedEvent
 from infrahub.external_protocols import ExternalAuthProtocol
 from tests.adapters.event import MemoryInfrahubEvent
 from tests.helpers.identities import make_identity
@@ -20,7 +20,7 @@ async def test_cap_breach_event_emitted_with_dropped_claims_verbatim(
     register_core_models_schema: SchemaBranch,
     autocreate_filter_with_low_cap: int,
 ) -> None:
-    """A login that breaches the per-login cap emits exactly one `GroupAutoCreateCapBreachEvent`.
+    """A login that breaches the per-login cap emits exactly one `GroupAutoCreateCappedEvent`.
 
     The payload carries the cap value, the count of dropped claims, and the verbatim per-entry
     dropped claims.
@@ -42,10 +42,10 @@ async def test_cap_breach_event_emitted_with_dropped_claims_verbatim(
         event_service=recorder,
     )
 
-    cap_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateCapBreachEvent)]
+    cap_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateCappedEvent)]
     created_events = [event for event in recorder.events if isinstance(event, GroupAutoCreatedEvent)]
 
-    assert len(cap_events) == 1, "exactly one GroupAutoCreateCapBreachEvent must be emitted per breaching login"
+    assert len(cap_events) == 1, "exactly one GroupAutoCreateCappedEvent must be emitted per breaching login"
     assert len(created_events) == cap, "only `cap` new groups must be created before the breach"
 
     event = cap_events[0]
@@ -74,7 +74,7 @@ async def test_no_cap_breach_event_when_below_cap(
         event_service=recorder,
     )
 
-    cap_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateCapBreachEvent)]
+    cap_events = [event for event in recorder.events if isinstance(event, GroupAutoCreateCappedEvent)]
     created_events = [event for event in recorder.events if isinstance(event, GroupAutoCreatedEvent)]
 
     assert cap_events == []
