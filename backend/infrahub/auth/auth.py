@@ -9,7 +9,12 @@ import jwt
 from pydantic import BaseModel
 
 from infrahub import config, lock, models
-from infrahub.auth.auth_groups import AutoCreatedGroupsService, AutoCreateEventEmitter, ClaimFilter
+from infrahub.auth.auth_groups import (
+    AutoCreatedGroupsService,
+    AutoCreateEventEmitter,
+    ClaimFilter,
+    LiveAutoCreateEventEmitter,
+)
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.config import (
@@ -432,7 +437,7 @@ async def _build_auto_create_event_emitter(
     def factory() -> EventMeta:
         return EventMeta(branch=branch, context=event_context, account_id=account_session.account_id)
 
-    return AutoCreateEventEmitter(
+    return LiveAutoCreateEventEmitter(
         account=account,
         provider_name=provider_name,
         event_service=event_service,

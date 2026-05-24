@@ -1,16 +1,16 @@
 """Emit the auto-create audit events for one external login.
 
-Knows the three event shapes (`created`, `claim_rejected`, `cap_breached`), how
-to build their payloads from the login-scoped identity (account + provider_name)
-plus the runtime dependencies, and how to send each one defensively so a broker
-failure cannot abort the SSO login.
-
-When no event service is wired in, the `disabled()` constructor returns a Null
-Object so callers do not need to null-check before each emit.
+Defines the `AutoCreateEventEmitter` interface and two implementations:
+`LiveAutoCreateEventEmitter` sends the three event shapes (`created`,
+`claim_rejected`, `cap_breached`) defensively so a broker failure cannot
+abort the SSO login; `_NoopAutoCreateEventEmitter` is the Null Object
+returned by `AutoCreateEventEmitter.disabled()` when no event service is
+wired in, so callers do not need to null-check before each emit.
 """
 
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, Callable
 from uuid import UUID
 
@@ -38,8 +38,25 @@ def _truncate(value: str) -> str:
     return value[:MAX_CLAIM_VALUE_LENGTH]
 
 
-class AutoCreateEventEmitter:
-    """Emits the three auto-create audit events for one login."""
+class AutoCreateEventEmitter(ABC):
+    """Interface for emitting the three auto-create audit events for one login."""
+
+    @abstractmethod
+    async def created(self, *, group: CoreAccountGroup, source_pattern: str) -> None: ...
+
+    @abstractmethod
+    async def claim_rejected(self, *, claim: str) -> None: ...
+
+    @abstractmethod
+    async def cap_breached(self, *, cap_value: int, dropped_claims: list[str]) -> None: ...
+
+    @classmethod
+    def disabled(cls) -> AutoCreateEventEmitter:
+        return _NoopAutoCreateEventEmitter()
+
+
+class LiveAutoCreateEventEmitter(AutoCreateEventEmitter):
+    """Sends the three auto-create audit events through an `InfrahubEventService`."""
 
     def __init__(
         self,
@@ -55,10 +72,6 @@ class AutoCreateEventEmitter:
         self._event_service = event_service
         self._event_meta_factory = event_meta_factory
         self._protocol = protocol
-
-    @classmethod
-    def disabled(cls) -> AutoCreateEventEmitter:
-        return _NoopAutoCreateEventEmitter()
 
     async def created(self, *, group: CoreAccountGroup, source_pattern: str) -> None:
         await self._send(
@@ -111,9 +124,6 @@ class AutoCreateEventEmitter:
 
 class _NoopAutoCreateEventEmitter(AutoCreateEventEmitter):
     """No-op variant returned by `AutoCreateEventEmitter.disabled()`."""
-
-    def __init__(self) -> None:
-        pass
 
     async def created(self, *, group: CoreAccountGroup, source_pattern: str) -> None:  # noqa: ARG002
         return
