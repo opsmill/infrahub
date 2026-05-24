@@ -91,7 +91,7 @@ class EventTypeFilter(InputObjectType):
     group_auto_create = Field(
         GroupAutoCreateEventTypeFilter,
         required=False,
-        description="Filters specific to \"infrahub.group.auto_create[...]\" events",
+        description='Filters specific to "infrahub.group.auto_create[...]" events',
     )
 
 
