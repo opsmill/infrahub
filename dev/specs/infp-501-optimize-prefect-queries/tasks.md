@@ -93,21 +93,21 @@
 
 **Priority 2 — `client.filters()` candidates** (`git/tasks.py:145,167`; `generators/tasks.py:112`):
 
-- [ ] T020 [P] [US3] Write unit test for `GitRepositoryNodeQuery` (fields: `id`, `name`, `location`) in `backend/tests/unit/git/test_git_repository_query.py`
-- [ ] T021 [P] [US3] Write functional output-equivalence test for the `create_git_branch` / `delete_git_branch` flows in `backend/tests/functional/git/test_git_branch_task_optimization.py`
-- [ ] T022 [P] [US3] Write unit test for `GeneratorInstanceQuery` (fields: `id`, `status`) in `backend/tests/unit/generators/test_generator_instance_query.py`
-- [ ] T023 [P] [US3] Write functional output-equivalence test for the generator `_define_instance` flow in `backend/tests/functional/generators/test_generator_instance_task_optimization.py`
-- [ ] T024 [US3] Implement `GitRepositoryNodeQuery` in `backend/infrahub/git/models.py` (create file if absent): `render_query() -> str` selecting `id`, `name`, `location`; `parse_response(dict) -> list[GitRepoNode]` (depends on T004, T020)
-- [ ] T025 [US3] Replace `client.filters(kind=CoreRepository)` at `git/tasks.py:145` and `:167` with `client.execute_graphql()` + `GitRepositoryNodeQuery` (depends on T024)
-- [ ] T026 [US3] Implement `GeneratorInstanceQuery` in `backend/infrahub/generators/models.py`: `render_query() -> str` selecting `id`, `status`; `parse_response(dict) -> list[GeneratorInstanceNode]` (depends on T004, T022)
-- [ ] T027 [US3] Replace `client.filters(kind=CoreGeneratorInstance, ...)` at `generators/tasks.py:112` with `client.execute_graphql()` + `GeneratorInstanceQuery` (depends on T026)
+- [x] T020 [P] [US3] Write unit test for `GitRepositoryNodeQuery` (fields: `id`, `name`, `location`) in `backend/tests/unit/git/test_git_repository_query.py`
+- [x] T021 [P] [US3] Write functional output-equivalence test for the `create_git_branch` / `delete_git_branch` flows in `backend/tests/functional/git/test_git_branch_task_optimization.py`
+- [x] T022 [P] [US3] Write unit test for `GeneratorInstanceQuery` (fields: `id`, `status`) in `backend/tests/unit/generators/test_generator_instance_query.py`
+- [x] T023 [P] [US3] Write functional output-equivalence test for the generator `_define_instance` flow in `backend/tests/functional/generators/test_generator_instance_task_optimization.py`
+- [x] T024 [US3] Implement `GitRepositoryNodeQuery` in `backend/infrahub/git/models.py` (create file if absent): `render_query() -> str` selecting `id`, `name`, `location`; `parse_response(dict) -> list[GitRepoNode]` (depends on T004, T020)
+- [x] T025 [US3] Replace `client.filters(kind=CoreRepository)` at `git/tasks.py:145` and `:167` with `client.execute_graphql()` + `GitRepositoryNodeQuery` (depends on T024)
+- [x] T026 [US3] Implement `GeneratorInstanceQuery` in `backend/infrahub/generators/models.py`: `render_query() -> str` selecting `id`, `status`; `parse_response(dict) -> list[GeneratorInstanceNode]` (depends on T004, T022)
+- [x] T027 [US3] Replace `client.filters(kind=CoreGeneratorInstance, ...)` at `generators/tasks.py:112` with `client.execute_graphql()` + `GeneratorInstanceQuery` (depends on T026)
 
 **`client.get()` pure-read candidates** (`computed_attribute/tasks.py:84,95`):
 
-- [ ] T028 [P] [US3] Write unit test for `ComputedAttributeTransformQuery` (fields: `id`, `repository.id`, `repository.typename`, `repository.name`, `query.id`) in `backend/tests/unit/computed_attribute/test_transform_query.py`
-- [ ] T029 [US3] Implement `ComputedAttributeTransformQuery` in `backend/infrahub/computed_attribute/queries.py`: replaces `client.get(kind=CoreTransformPython, ..., prefetch_relationships=True)` with a targeted query using `include=["repository", "query"]`; `parse_response()` returns a frozen dataclass with the 5 fields above (depends on T028)
-- [ ] T030 [US3] Replace `client.get(kind=CoreTransformPython, ..., prefetch_relationships=True)` at `computed_attribute/tasks.py:84` with `ComputedAttributeTransformQuery` and replace `client.get(kind=repo_typename, ..., id=..., raise_when_missing=True)` at line 95 with a targeted `execute_graphql()` call that fetches only `commit` (depends on T029)
-- [ ] T031 [US3] Verify T021, T023 functional tests pass and add equivalence assertions for the computed_attribute transform path (depends on T025, T027, T030)
+- [x] T028 [P] [US3] Write unit test for `ComputedAttributeTransformQuery` (fields: `id`, `repository.id`, `repository.typename`, `repository.name`, `query.id`) in `backend/tests/unit/computed_attribute/test_transform_query.py`
+- [x] T029 [US3] Implement `ComputedAttributeTransformQuery` in `backend/infrahub/computed_attribute/queries.py`: replaces `client.get(kind=CoreTransformPython, ..., prefetch_relationships=True)` with a targeted query using `include=["repository", "query"]`; `parse_response()` returns a frozen dataclass with the 5 fields above (depends on T028)
+- [x] T030 [US3] Replace `client.get(kind=CoreTransformPython, ..., prefetch_relationships=True)` at `computed_attribute/tasks.py:84` with `ComputedAttributeTransformQuery` and replace `client.get(kind=repo_typename, ..., id=..., raise_when_missing=True)` at line 95 with a targeted `execute_graphql()` call that fetches only `commit` (depends on T029)
+- [x] T031 [US3] Verify T021, T023 functional tests pass and add equivalence assertions for the computed_attribute transform path (depends on T025, T027, T030)
 
 **Checkpoint**: US3 — all identified candidates migrated independently. Each task independently verified.
 
@@ -117,11 +117,11 @@
 
 **Purpose**: Validation, measurement, and project housekeeping.
 
-- [ ] T032 [P] Measure final post-migration execution times for all migrated tasks vs T002 baselines — confirm SC-001 (≥30% reduction per task); document results in `specs/infp-501-optimize-prefect-queries/research.md`
-- [ ] T033 [P] Measure final post-migration data volumes for all migrated tasks vs T003 baselines — confirm SC-002 (≥50% data volume reduction per task); document results alongside T032
-- [ ] T034 [P] Add a `changelog/` Towncrier fragment for the optimization (e.g., `changelog/<issue-num>.changed.md`)
-- [ ] T035 Run full backend test suite (`uv run invoke backend.test-unit && uv run invoke backend.test-integration`) — confirm zero regressions
-- [ ] T036 [P] Update `dev/knowledge/` documentation if the query model pattern is not already documented — specifically note the `infrahub_sdk.graphql.Query` + `execute_graphql()` approach for Prefect task read optimization
+- [x] T032 [P] Measure final post-migration execution times for all migrated tasks vs T002 baselines — confirm SC-001 (≥30% reduction per task); document results in `specs/infp-501-optimize-prefect-queries/research.md`
+- [x] T033 [P] Measure final post-migration data volumes for all migrated tasks vs T003 baselines — confirm SC-002 (≥50% data volume reduction per task); document results alongside T032
+- [x] T034 [P] Add a `changelog/` Towncrier fragment for the optimization (e.g., `changelog/<issue-num>.changed.md`)
+- [x] T035 Run full backend test suite (`uv run invoke backend.test-unit && uv run invoke backend.test-integration`) — confirm zero regressions
+- [x] T036 [P] Update `dev/knowledge/` documentation if the query model pattern is not already documented — specifically note the `infrahub_sdk.graphql.Query` + `execute_graphql()` approach for Prefect task read optimization
 
 ---
 

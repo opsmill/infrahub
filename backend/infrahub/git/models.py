@@ -1,9 +1,19 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, ConfigDict, Field
 
-from infrahub.context import InfrahubContext
-from infrahub.core.node import Node
-from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository
-from infrahub.message_bus.types import ProposedChangeBranchDiff
+from infrahub.context import InfrahubContext  # noqa: TC001
+from infrahub.core.node import Node  # noqa: TC001
+from infrahub.core.protocols import CoreReadOnlyRepository, CoreRepository  # noqa: TC001
+from infrahub.message_bus.types import ProposedChangeBranchDiff  # noqa: TC001
+
+
+class GitRepoNode(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    name: str
+    location: str
 
 
 class RequestArtifactDefinitionGenerate(BaseModel):

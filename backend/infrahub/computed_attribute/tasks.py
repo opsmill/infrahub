@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from infrahub_sdk.protocols import CoreTransformPython
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
@@ -25,7 +24,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
-from .graphql_queries import ComputedAttributeNodeIDQuery
+from .graphql_queries.queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
 from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,
@@ -82,47 +81,44 @@ async def process_transform(
         return
 
     for attribute_name, transform_attribute in transform_attributes.items():
-        transform = await client.get(
-            kind=CoreTransformPython,
-            branch=branch_name,
-            id=transform_attribute.transform,
-            prefetch_relationships=True,
-            populate_store=True,
+        if not transform_attribute.transform:
+            raise ValueError(f"No transform configured for computed attribute '{attribute_name}'")
+        transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
+        transform_response = await client.execute_graphql(
+            query=transform_query.render_query(),
+            variables=transform_query.get_variables(),
+            branch_name=branch_name,
         )
+        transform = transform_query.parse_response(response=transform_response)
 
         if not transform:
-            continue
-
-        repo_node = await client.get(
-            kind=str(transform.repository.peer.typename),
-            branch=branch_name,
-            id=transform.repository.peer.id,
-            raise_when_missing=True,
-        )
+            raise ValueError(
+                f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
+            )
 
         repo = await get_initialized_repo(
             client=client,
-            repository_id=transform.repository.peer.id,
-            name=transform.repository.peer.name.value,
-            repository_kind=str(transform.repository.peer.typename),
-            commit=repo_node.commit.value,
+            repository_id=transform.repository_id,
+            name=transform.repository_name,
+            repository_kind=transform.repository_typename,
+            commit=transform.repository_commit,
         )
 
         data = await client.query_gql_query(
-            name=transform.query.id,
+            name=transform.query_name,
             branch_name=branch_name,
             variables={"id": object_id},
             update_group=True,
             subscribers=[object_id],
         )
 
-        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout.value)(
+        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout)(
             client=client,
             branch_name=branch_name,
-            commit=repo_node.commit.value,
-            location=f"{transform.file_path.value}::{transform.class_name.value}",
+            commit=transform.repository_commit,
+            location=f"{transform.file_path}::{transform.class_name}",
             data=data,
-            convert_query_response=transform.convert_query_response.value,
+            convert_query_response=transform.convert_query_response,
         )  # type: ignore[call-overload]
 
         await client.execute_graphql(
