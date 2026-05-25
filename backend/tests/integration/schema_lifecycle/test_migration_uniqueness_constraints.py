@@ -288,10 +288,16 @@ class TestUniquenessConstraintMigrationRemoveFromConstraint(TestSchemaLifecycleB
     async def test_final_validate(self, db: InfrahubDatabase) -> None:
         await verify_no_duplicate_relationships(db=db)
         await verify_no_edges_added_after_node_delete(db=db)
+        await assert_no_virtual_schema_relationships_in_db(db=db)
 
 
 class TestGenericRemoveAttributesAndConstraints(TestSchemaLifecycleBase):
-    """Removing attributes and their uniqueness constraints from generics in one update must not error."""
+    """Removing attributes and their uniqueness constraints from generics.
+
+    Removing an attribute without removing its uniqueness constraint is rejected.
+    Removing both together in one update succeeds.
+
+    """
 
     @pytest.fixture(scope="class")
     def schema_step_01(self) -> dict[str, Any]:
@@ -319,7 +325,24 @@ class TestGenericRemoveAttributesAndConstraints(TestSchemaLifecycleBase):
         }
 
     @pytest.fixture(scope="class")
-    def schema_step_02(self) -> dict[str, Any]:
+    def schema_step_02_reject(self) -> dict[str, Any]:
+        """Vehicle identifier removed via state:absent but uniqueness constraint kept — must be rejected."""
+        return {
+            "version": "1.0",
+            "generics": [
+                {
+                    "name": "Vehicle",
+                    "namespace": "Testing",
+                    "attributes": [
+                        {"name": "identifier", "kind": "Text", "optional": True, "state": "absent"},
+                    ],
+                    "uniqueness_constraints": [["identifier__value"]],
+                },
+            ],
+        }
+
+    @pytest.fixture(scope="class")
+    def schema_step_03(self) -> dict[str, Any]:
         return {
             "version": "1.0",
             "generics": [
@@ -369,15 +392,28 @@ class TestGenericRemoveAttributesAndConstraints(TestSchemaLifecycleBase):
         assert "label" in fleet.attribute_names
         assert fleet.uniqueness_constraints == [["identifier__value"], ["label__value"]]
 
-    async def test_step02_remove_attributes_and_constraints_simultaneously(
+    async def test_step02_rejected_when_attribute_removed_without_constraint(
+        self,
+        client: InfrahubClient,
+        initial_dataset: None,
+        schema_step_02_reject: dict[str, Any],
+    ) -> None:
+        """Removing an attribute that is still referenced in a uniqueness constraint is rejected."""
+        response = await client.schema.load(schemas=[schema_step_02_reject])
+        assert response.errors
+        error_message = response.errors["errors"][0]["message"]
+        assert "Requested unique constraint not found within node" in error_message
+        assert "identifier__value" in error_message
+
+    async def test_step03_remove_attributes_and_constraints_simultaneously(
         self,
         client: InfrahubClient,
         default_branch: Branch,
         initial_dataset: None,
-        schema_step_02: dict[str, Any],
+        schema_step_03: dict[str, Any],
     ) -> None:
         """Removing attributes and constraints together in one update must succeed without error."""
-        response = await client.schema.load(schemas=[schema_step_02])
+        response = await client.schema.load(schemas=[schema_step_03])
         assert not response.errors
 
         schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
