@@ -1128,5 +1128,10 @@ async def test_event_query_group_auto_create_empty_filter_restricts_to_auto_crea
     edges = [edge for edge in result.data["InfrahubEvent"]["edges"] if edge["node"]["id"] in in_scope_ids]
     returned_ids = {edge["node"]["id"] for edge in edges}
     assert returned_ids == {str(auto_create_and_branch_events["auto_created"].meta.id)}
+    auto_create_event_names = {
+        GroupAutoCreatedEvent.event_name,
+        GroupAutoCreateRejectedEvent.event_name,
+        GroupAutoCreateCappedEvent.event_name,
+    }
     for edge in edges:
-        assert edge["node"]["event"].startswith("infrahub.group.auto_create.")
+        assert edge["node"]["event"] in auto_create_event_names
