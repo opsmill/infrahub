@@ -40,9 +40,7 @@ AioPikaInstrumentor().instrument()
 
 # TODO: remove this once https://github.com/open-telemetry/opentelemetry-python-contrib/issues/1835 is resolved
 def patch_spanbuilder_set_channel() -> None:
-    """The default SpanBuilder.set_channel does not work with aio_pika 9.1 and the refactored connection
-    attribute
-    """
+    """The default SpanBuilder.set_channel does not work with aio_pika 9.1 and the refactored connection attribute."""
 
     def set_channel(self: SpanBuilder, channel: AbstractChannel) -> None:
         if hasattr(channel, "_connection"):
@@ -251,7 +249,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     @staticmethod
     def format_message(message: InfrahubMessage) -> aio_pika.Message:
-        pika_message = aio_pika.Message(
+        return aio_pika.Message(
             body=message.body,
             content_type="application/json",
             content_encoding="utf-8",
@@ -261,4 +259,3 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             headers=message.meta.headers,
             expiration=message.meta.expiration,
         )
-        return pika_message

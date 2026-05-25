@@ -156,7 +156,7 @@ class TestDiffTreeTerminalBranch:
 
     @pytest.fixture(scope="class")
     async def proposed_change_id(self, db: InfrahubDatabase) -> str:
-        """Make a mock Proposed Change"""
+        """Make a mock Proposed Change."""
         pc_id = str(uuid4())
         await db.execute_query(query="CREATE (pc:Node {uuid: $uuid})", params={"uuid": pc_id})
         return pc_id
@@ -389,7 +389,7 @@ class TestDiffTreeTerminalBranch:
         db: InfrahubDatabase,
         merged_branch: Branch,
     ) -> Branch:
-        """Delete the branch and remove it from registry"""
+        """Delete the branch and remove it from registry."""
         await merged_branch.delete(db=db)
         registry.branch.pop(merged_branch.name, None)
         return merged_branch
@@ -402,7 +402,7 @@ class TestDiffTreeTerminalBranch:
         deleted_branch: Branch,
         proposed_change_id: str,
     ) -> None:
-        """DiffTree with branch + proposed_change_id should work after the branch is deleted"""
+        """DiffTree with branch + proposed_change_id should work after the branch is deleted."""
         default_branch_scope_class.update_schema_hash()
         params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
         result = await graphql(
@@ -429,7 +429,7 @@ class TestDiffTreeTerminalBranch:
         deleted_branch: Branch,
         proposed_change_id: str,
     ) -> None:
-        """DiffTreeSummary with branch + proposed_change_id should work after the branch is deleted"""
+        """DiffTreeSummary with branch + proposed_change_id should work after the branch is deleted."""
         default_branch_scope_class.update_schema_hash()
         params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
         result = await graphql(

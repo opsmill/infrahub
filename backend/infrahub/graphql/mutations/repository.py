@@ -170,7 +170,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
 
 def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:
-    """If the input payload contains an http URL that doesn't end in .git it will be added to the payload"""
+    """If the input payload contains an http URL that doesn't end in .git it will be added to the payload."""
     http_without_dotgit = r"^(https?://)(?!.*\.git$).*"
     if (
         data.get("location")

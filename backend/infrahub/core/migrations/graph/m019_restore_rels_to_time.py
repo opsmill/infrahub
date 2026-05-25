@@ -20,9 +20,11 @@ class FixBranchAwareEdgesQuery(Query):
     insert_return = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        """Between a Node and a Relationship, if Relationship.branch_support=aware, replace any global edge
+        """Between a Node and a Relationship, if Relationship.branch_support=aware, replace any global edge.
+
         to the branch of a non-global edge leaving out of the Relationship node. Note that there can't
         be multiple non-global branches on these edges, as a dedicated Relationship node would exist for that.
+
         """
         query = """
         MATCH (node:Node)-[global_edge:IS_RELATED {branch: $global_branch}]-(rel:Relationship)
@@ -48,9 +50,11 @@ class SetMissingToTimeQuery(Query):
     insert_return = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        """If both a deleted edge and an active edge with no time exist between 2 nodes on the same branch,
+        """If both a deleted edge and an active edge with no time exist between 2 nodes on the same branch,.
+
         set `to` time of active edge using `from` time of the deleted one. This would typically happen after having
         replaced a deleted edge on global branch by correct branch with above query.
+
         """
         query = """
         MATCH (node:Node)-[deleted_edge:IS_RELATED {status: "deleted"}]-(rel:Relationship)
@@ -68,8 +72,10 @@ class DeleteNodesRelsQuery(Query):
     insert_return = False
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
-        """Some nodes may have been incorrectly deleted, typically, while these nodes edges connected to Root
+        """Some nodes may have been incorrectly deleted, typically, while these nodes edges connected to Root.
+
         are correctly deleted, edges connected to other `Node` through a `Relationship` node may still be active.
+
         Following query correctly deletes these edges by both setting correct to time and creating corresponding deleted edge.
         """
         query = """
@@ -205,9 +211,11 @@ class DeleteNodesRelsQuery(Query):
 
 
 class Migration019(GraphMigration):
-    """Fix corrupted state introduced by Migration012 when duplicating a CoreAccount (branch Aware)
+    """Fix corrupted state introduced by Migration012 when duplicating a CoreAccount (branch Aware).
+
     being part of a CoreStandardGroup (branch Agnostic). Database is corrupted at multiple points:
     - Old CoreAccount node <> group_member node `active` edge has no `to` time (possibly because of #5590).
+
     - Old CoreAccount node <> group_member node `deleted` edge is on `$global_branch` branch instead of `main`.
     - New CoreAccount node <> group_member node `active` edge is on `$global_branch` branch instead of `main`.
 
@@ -224,5 +232,4 @@ class Migration019(GraphMigration):
     queries: Sequence[type[Query]] = [FixBranchAwareEdgesQuery, SetMissingToTimeQuery, DeleteNodesRelsQuery]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

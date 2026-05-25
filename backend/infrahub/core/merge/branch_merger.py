@@ -87,9 +87,10 @@ class BranchMerger:
 
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
+
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
          - having a faster way to pull a previous version of the schema
-         - using the diff generated from the data
+         - using the diff generated from the data.
         """
         if self._initial_source_schema:
             return self._initial_source_schema
@@ -132,9 +133,7 @@ class BranchMerger:
 
         diff_source = initial_source_schema.diff(other=self.source_schema)
         diff_destination = initial_source_schema.diff(other=self.destination_schema)
-        diff_both = diff_source + diff_destination
-
-        return diff_both
+        return diff_source + diff_destination
 
     async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
         diff_3way = await self.get_3ways_diff_schema()

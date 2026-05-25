@@ -208,7 +208,7 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
         await deleted_specific_three.save(db=db)
         await deleted_specific_three.delete(db=db)
 
-        objs = {
+        return {
             "thing_one": thing_one,
             "thing_two": thing_two,
             "thing_three": thing_three,
@@ -216,7 +216,6 @@ class SchemaLifecycleGenericBase(TestSchemaLifecycleBase):
             "specific_two": specific_two,
             "specific_three": specific_three,
         }
-        return objs
 
     @pytest.fixture(scope="class")
     async def initial_dataset(
@@ -1707,10 +1706,12 @@ class TestSchemaLifecycleGenericUpdates(SchemaLifecycleGenericBase):
         self, db: InfrahubDatabase, branch: Branch, inheriting_schemas: list[NodeSchema]
     ) -> list[str]:
         """Validate the following:
+
         - SchemaNode nodes do not have relationship to SchemaAttribute or SchemaRelationship nodes for
            any inherited relationships or attributes
         - SchemaNode nodes have relationship to SchemaAttribute or SchemaRelationship nodes for
-           all local relationships and attributes
+           all local relationships and attributes.
+
         """
         node_kind_map: dict[str, list[str]] = {}
         for node_schema in inheriting_schemas:
@@ -1792,9 +1793,11 @@ RETURN node_kind, relationship_names, collect(anv.value) AS attribute_names
 
 
 class TestSchemaLifecycleGenericUpdatedWithLegacyDuplicates(SchemaLifecycleGenericBase):
-    """Same tests as TestSchemaLifecycleGenericUpdates, but start with duplicated inherited SchemaAttributes
+    """Same tests as TestSchemaLifecycleGenericUpdates, but start with duplicated inherited SchemaAttributes.
+
     and SchemaRelationships in the database b/c this is how we used to store inherited fields of a schema
-    And skip the database-level verification in TestSchemaLifecycleGenericUpdates b/c it would fail
+    And skip the database-level verification in TestSchemaLifecycleGenericUpdates b/c it would fail.
+
     """
 
     @pytest.fixture(scope="class")

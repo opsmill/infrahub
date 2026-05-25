@@ -50,7 +50,7 @@ Read the PR diff to understand the failing test.
 
 ## Implement the fix
 
-Read `.github/bug-agent-pipeline/shared/fix-implementation.md` and follow all steps (1 through 9).
+Read `dev/bug-pipeline/fix-implementation.md` and follow all steps (1 through 9).
 
 ### Escalation
 

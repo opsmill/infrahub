@@ -24,6 +24,7 @@ MIGRATION_MAP: dict[str, type[SchemaMigration] | None] = {
     "attribute.kind.update": AttributeKindUpdateMigration,
     "attribute.optional.update": AttributeSupportsGeneratedSchemaMigration,
     "attribute.read_only.update": AttributeSupportsGeneratedSchemaMigration,
+    "attribute.unique.update": AttributeSupportsGeneratedSchemaMigration,
     "relationship.branch.update": None,
     "relationship.direction.update": None,
     "relationship.identifier.update": PlaceholderDummyMigration,

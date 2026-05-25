@@ -75,7 +75,7 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
         await red.new(db=db, name="red", persons=[john])
         await red.save(db=db)
 
-        objs = {
+        return {
             "john": john.id,
             "jane": jane.id,
             "honda": honda.id,
@@ -87,15 +87,13 @@ class TestSchemaLifecycleValidatorRebase(TestSchemaLifecycleBase):
             "red": red.id,
         }
 
-        return objs
-
     @pytest.fixture(scope="class")
     async def branch_2(self, db: InfrahubDatabase) -> Branch:
         return await create_branch(db=db, branch_name="branch_2")
 
     @pytest.fixture(scope="class")
     def schema_01_person_name_regex(self, schema_person_base: dict[str, Any]) -> dict[str, Any]:
-        """Add regex to TestPerson.name that does not fit existing data"""
+        """Add regex to TestPerson.name that does not fit existing data."""
         new_schema = {**schema_person_base}
         new_schema["attributes"][0]["regex"] = "^[A-Z][a-z]+$"
         return new_schema

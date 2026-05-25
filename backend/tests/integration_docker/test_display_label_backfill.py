@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from asyncio import sleep
+from asyncio import sleep, timeout
 from typing import TYPE_CHECKING
 
 import pytest
@@ -31,6 +31,27 @@ async def wait_for_all_tasks_to_be_completed(client: InfrahubClient) -> None:
         await client.task.count(filters=TaskFilter(state=[TaskState.PENDING, TaskState.RUNNING, TaskState.SCHEDULED]))
         > 0
     ):
+        await sleep(1)
+
+
+async def wait_for_display_label_backfill(client: InfrahubClient, node_id: str) -> None:
+    # The backfill is dispatched async: SchemaUpdatedEvent -> Prefect automation ->
+    # display-labels-setup-jinja2 -> trigger-update-display-labels -> per-node
+    # display-label-jinja2-update-value. With Redis-backed scaleout messaging that
+    # chain has non-trivial latency, so polling for an empty task queue can return
+    # before the backfill is even scheduled. Wait for the per-node update flow to
+    # reach a terminal state instead. Wrap in `asyncio.timeout()` to bound the wait.
+    terminal = [TaskState.COMPLETED, TaskState.FAILED, TaskState.CRASHED, TaskState.CANCELLED]
+    while True:
+        observed = await client.task.count(
+            filters=TaskFilter(
+                workflow=["display-label-jinja2-update-value"],
+                related_node__ids=[node_id],
+                state=terminal,
+            )
+        )
+        if observed:
+            return
         await sleep(1)
 
 
@@ -86,8 +107,12 @@ class TestDisplayLabelBackfillOnSchemaChange(TestInfrahubDockerClient):
         labels = await self._get_display_labels(client)
         assert labels[color_after] == "Blue"
 
-    async def test_backfill_updates_preexisting_node(self, client: InfrahubClient, color_after: str) -> None:
+    async def test_backfill_updates_preexisting_node(
+        self, client: InfrahubClient, color_before: str, color_after: str
+    ) -> None:
         """After the async backfill completes, all nodes should have correct display_labels."""
-        await wait_for_all_tasks_to_be_completed(client=client)
+        async with timeout(120):
+            await wait_for_display_label_backfill(client=client, node_id=color_before)
         labels = await self._get_display_labels(client)
-        assert set(labels.values()) == {"Red", "Blue"}
+        assert labels[color_before] == "Red"
+        assert labels[color_after] == "Blue"

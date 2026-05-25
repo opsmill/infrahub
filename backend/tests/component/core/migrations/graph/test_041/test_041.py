@@ -13,13 +13,15 @@ from tests.helpers.db_validation import verify_no_duplicate_paths
 
 
 class TestMigration041:
-    """Test Migration041 to delete duplicated edges after a merge that includes peers with updated kinds/inheritance
+    """Test Migration041 to delete duplicated edges after a merge that includes peers with updated kinds/inheritance.
+
     - load a known bad data set, then massage it into a state that can be used by the migration and NodeManager
     - get the nodes before the migration
     - run the migration
     - verify the duplicate paths are all gone
     - get the nodes after the migration
-    - verify the nodes attribute values and peers are the same
+    - verify the nodes attribute values and peers are the same.
+
     """
 
     @pytest.fixture

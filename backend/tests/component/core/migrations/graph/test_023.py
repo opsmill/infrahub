@@ -18,8 +18,10 @@ from infrahub.database import InfrahubDatabase
 async def test_migration_023(
     db: InfrahubDatabase, branch: Branch, car_person_schema: SchemaBranch, redis: dict[int, int] | None
 ) -> None:
-    """Reproduce corrupted state where two nodes would be connected by multiple relationships while relationship
+    """Reproduce corrupted state where two nodes would be connected by multiple relationships while relationship.
+
     cardinality is one.
+
     """
     person_john = await Node.init(schema="TestPerson", db=db, branch=branch)
     await person_john.new(db=db, name="John")

@@ -17,14 +17,16 @@ log = get_logger()
 
 
 class CleanUpDuplicatedUuidVertices(Query):
-    """Find vertexes that include the given label and have the same UUID and same set of labels
+    """Find vertexes that include the given label and have the same UUID and same set of labels.
+
     For each of these duplicate vertex groups, keep one and mark all the others to be deleted by the PerformHardDeletesQuery
       - Group all of the edges touching a vertex in this vertex group by branch, edge_type, peer_element_id, and direction
         - For each edge group, we will link one edge to the vertex we are keeping for this vertex group and mark all of the others to be deleted
         - we will set/create one active edge from the vertex to keep to the peer of this group, setting its from time to the earliest active
             from time in this group
         - if ALL edges in this edge group are deleted, then we will set the to time of the active edge to the latest deleted time and
-            set/create a deleted edge with a from time of the latest deleted time
+            set/create a deleted edge with a from time of the latest deleted time.
+
     """
 
     name = "clean_up_duplicated_uuid_vertices"
@@ -56,7 +58,7 @@ class CleanUpDuplicatedUuidVertices(Query):
             l_arrow = ""
             r_arrow = ">"
 
-        query = """
+        return """
     CALL (vertex_to_keep, edge_type, branch, peer, earliest_active_time, latest_deleted_time, all_edges_deleted, edge_to_copy) {
         // ------------
         // get or create the active %(edge_type)s edge
@@ -80,7 +82,6 @@ class CleanUpDuplicatedUuidVertices(Query):
             "l_arrow": l_arrow,
             "r_arrow": r_arrow,
         }
-        return query
 
     def _add_deleted_edge_subquery(
         self,
@@ -93,7 +94,7 @@ class CleanUpDuplicatedUuidVertices(Query):
         else:
             l_arrow = ""
             r_arrow = ">"
-        subquery = """
+        return """
     CALL (vertex_to_keep, edge_type, branch, peer, latest_deleted_time, edge_to_copy) {
         // ------------
         // create the deleted %(edge_type)s edge
@@ -110,7 +111,6 @@ class CleanUpDuplicatedUuidVertices(Query):
         SET deleted_edge.hierarchy = edge_to_copy.hierarchy
     }
         """ % {"edge_type": edge_type.value, "l_arrow": l_arrow, "r_arrow": r_arrow}
-        return subquery
 
     def _build_directed_edges_subquery(
         self,
@@ -137,7 +137,7 @@ class CleanUpDuplicatedUuidVertices(Query):
         active_edge_subqueries = "\n".join(active_subqueries)
         deleted_edge_subqueries = "\n".join(delete_subqueries)
 
-        edges_query = """
+        return """
 //------------
 // Get every %(direction)s branch, edge_type, peer element_id combinations touching vertices with this uuid/labels combination
 //------------
@@ -255,7 +255,6 @@ CALL (n_uuid, vertex_element_ids, element_id_to_keep) {
             "deleted_edge_subqueries": deleted_edge_subqueries,
             "vertex_label": self.vertex_label,
         }
-        return edges_query
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: dict[str, Any]) -> None:  # noqa: ARG002
         self.params["limit"] = self.limit or 1000
@@ -337,10 +336,12 @@ RETURN more_nodes_to_process
 
 
 class DeleteDuplicatedEdgesQuery(Query):
-    """For all Node vertices, find duplicated or overlapping edges of the same status, type, direction, and branch to update and delete
+    """For all Node vertices, find duplicated or overlapping edges of the same status, type, direction, and branch to update and delete.
+
     - one edge will be kept for each pair of nodes and a given status, type, direction, and branch. it will be
         updated to have the earliest "from" and latest "to" times in this group
-    - all the other duplicate/overlapping edges will be deleted
+    - all the other duplicate/overlapping edges will be deleted.
+
     """
 
     name = "delete_duplicated_edges"
@@ -415,10 +416,12 @@ CALL (node_with_dup_edges, edge_type, edge_branch, peer, is_outbound) {
 
 
 class DeleteIllegalRelationships(Query):
-    """Find all Relationship vertices with the same UUID (in a valid database, there are none)
+    """Find all Relationship vertices with the same UUID (in a valid database, there are none).
+
     If any of these Relationships have an IS_RELATED edge to a deleted Node, then delete them
         this includes if an IS_RELATED edge was added on a branch after the Node was deleted on main or -global-
-    If any of these Relationships are now only connected to a single Node, then delete them
+    If any of these Relationships are now only connected to a single Node, then delete them.
+
     """
 
     name = "delete_illegal_relationships"
@@ -486,6 +489,7 @@ DETACH DELETE rel
 
 class DeleteDuplicateRelationships(Query):
     """There can also be leftover duplicate active Relationships that do not have the same UUID.
+
     They are linked to the same Nodes, have the same Relationship.name, and are on the same branch.
     In this case, we want to DETACH DELETE the later Relationship. We won't lose any information b/c the exact
     same Relationship (maybe with an earlier from time) still exists.
@@ -546,7 +550,7 @@ CALL () {
 
 
 class Migration029(ArbitraryMigration):
-    """Clean up a variety of bad data created during bugged merges for node kind/inheritance updates
+    """Clean up a variety of bad data created during bugged merges for node kind/inheritance updates.
 
     1. Identify improperly duplicated nodes (ie nodes with the same UUID and the same database labels)
         a. Consolidate edges onto a single duplicated node, making sure that the edges remain active if ANY active path exists
@@ -565,9 +569,7 @@ class Migration029(ArbitraryMigration):
     limit: int = 100
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
         migration_result = MigrationResult()

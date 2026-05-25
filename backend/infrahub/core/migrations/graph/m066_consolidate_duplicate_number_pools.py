@@ -25,7 +25,8 @@ class DuplicatePoolGroup:
 
 
 class Migration066(ArbitraryMigration):
-    """Consolidate duplicate CoreNumberPool instances with pool_type='Schema'
+    """Consolidate duplicate CoreNumberPool instances with pool_type='Schema'.
+
     that share the same node + node_attribute combination.
 
     Keeps the earliest pool (by creation timestamp) and moves all

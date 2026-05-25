@@ -30,7 +30,7 @@ If `$ARGUMENTS` is empty or the issue cannot be fetched, inform the developer an
 
 ## Instructions
 
-Read `.github/bug-agent-pipeline/shared/investigation.md` and follow all sections in order.
+Read `dev/bug-pipeline/investigation.md` and follow all sections in order.
 
 ### Escalation
 

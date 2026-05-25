@@ -114,7 +114,7 @@ class PatchRunner:
             )
 
     async def revert(self, patch_plan_directory: Path) -> PatchPlan:
-        """Invert the PatchPlan to create the complement of every added/updated/deleted element and undo them"""
+        """Invert the PatchPlan to create the complement of every added/updated/deleted element and undo them."""
         patch_plan = self.plan_reader.read(patch_plan_directory)
         await self._revert_deleted_vertices(patch_plan=patch_plan, patch_plan_directory=patch_plan_directory)
         await self._revert_deleted_edges(

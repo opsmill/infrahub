@@ -117,7 +117,7 @@ class GraphQLArgument:
 
     @property
     def as_variable_name(self) -> str:
-        """Return the name without a $ prefix"""
+        """Return the name without a $ prefix."""
         return str(self.value).removeprefix("$")
 
     @property
@@ -174,7 +174,7 @@ class GraphQLQueryNode:
     mutate_actions: list[MutateAction] = field(default_factory=list)
 
     def context_model(self) -> MainSchemaTypes | None:
-        """Return the closest Infrahub object by going up in the tree"""
+        """Return the closest Infrahub object by going up in the tree."""
         if self.infrahub_model:
             return self.infrahub_model
         if self.parent:
@@ -183,7 +183,7 @@ class GraphQLQueryNode:
         return None
 
     def context_path(self) -> str:
-        """Return the relative path for the current context with the closest Infrahub object as the root"""
+        """Return the relative path for the current context with the closest Infrahub object as the root."""
         if self.infrahub_model:
             return f"/{self.path}"
         if self.parent:
@@ -239,7 +239,7 @@ class GraphQLQueryNode:
             self.parent.append_relationship(relationship=relationship)
 
     def get_models(self) -> list[GraphQLQueryModel]:
-        """Return all models defined on this node along with child nodes"""
+        """Return all models defined on this node along with child nodes."""
         models: list[GraphQLQueryModel] = []
         if self.infrahub_model:
             models.append(
@@ -275,7 +275,7 @@ class GraphQLQueryReport:
 
     @property
     def impacted_models(self) -> list[str]:
-        """Return a list of all Infrahub objects that are impacted by queries within the request"""
+        """Return a list of all Infrahub objects that are impacted by queries within the request."""
         models: set[str] = set()
         for query in self.queries:
             query_models = query.get_models()
@@ -285,7 +285,7 @@ class GraphQLQueryReport:
 
     @cached_property
     def requested_read(self) -> dict[str, ObjectAccess]:
-        """Return Infrahub objects and the fields (attributes and relationships) that this query would attempt to read"""
+        """Return Infrahub objects and the fields (attributes and relationships) that this query would attempt to read."""
         access: dict[str, ObjectAccess] = {}
         for query in self.queries:
             query_models = query.get_models()
@@ -307,7 +307,7 @@ class GraphQLQueryReport:
 
     @cached_property
     def variables(self) -> list[GraphQLVariable]:
-        """Return input variables defined on the query document
+        """Return input variables defined on the query document.
 
         All subqueries will use the same document level queries,
         so only the first entry is required
@@ -368,7 +368,7 @@ class GraphQLQueryReport:
 
     @property
     def only_has_unique_targets(self) -> bool:
-        """Indicate if the query document is defined so that it will return a single root level object"""
+        """Indicate if the query document is defined so that it will return a single root level object."""
         for query in self.queries:
             targets_single_query = False
             if query.infrahub_model and query.infrahub_model.uniqueness_constraints:

@@ -126,8 +126,10 @@ class TestCascadeWithExplicitUpdates:
         assert names.index("summary") > names.index("desc")
 
     def test_cascade_mixed_direct_and_transitive(self, make_target: Callable[..., ComputedAttributeTarget]) -> None:
-        """When name triggers both label and fqdn, but fqdn also depends on label,
+        """When name triggers both label and fqdn, but fqdn also depends on label,.
+
         label must be recomputed before fqdn regardless of list order in local_fields.
+
         """
         label_target = make_target(kind=LOCAL_KIND, attr_name="label")
         fqdn_target = make_target(kind=LOCAL_KIND, attr_name="fqdn")

@@ -360,7 +360,8 @@ async def test_delete_branch_aware_node_with_agnostic_relationship(
     db: InfrahubDatabase,
     default_branch: Branch,
 ) -> None:
-    """Test that deleting a branch-aware node with an explicitly branch-agnostic relationship
+    """Test that deleting a branch-aware node with an explicitly branch-agnostic relationship.
+
     only deletes the relationship on the specific branch, not globally.
 
     The scenario:
@@ -491,6 +492,47 @@ async def test_delete_branch_aware_node_with_agnostic_relationship(
     assert device_ids_on_branch3 == [device_id], (
         "Location's devices relationship SHOULD include the device on branch3 after device deleted on branch2"
     )
+
+
+async def test_error_only_includes_violation_node_during_cascade_delete(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    car_person_schema: SchemaBranch,
+    person_jane_main: Node,
+    person_albert_main: Node,
+    car_camry_main: Node,
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+
+    person_schema = schema_branch.get(name="TestPerson", duplicate=False)
+    person_schema.get_relationship("cars").on_delete = RelationshipDeleteBehavior.CASCADE
+
+    person_schema.relationships.append(
+        RelationshipSchema(
+            name="manager",
+            kind="Attribute",
+            optional=False,
+            peer="TestPerson",
+            cardinality="one",
+            identifier="person__manager",
+            on_delete=RelationshipDeleteBehavior.NO_ACTION,
+            branch=BranchSupportType.AWARE,
+        )
+    )
+
+    albert = await NodeManager.get_one(db=db, id=person_albert_main.id)
+    await albert.manager.update(db=db, data=person_jane_main.id)
+    await albert.save(db=db)
+
+    with pytest.raises(ValidationError) as exc:
+        await NodeManager.delete(db=db, branch=default_branch, nodes=[person_jane_main])
+
+    error_msg = str(exc.value)
+    expected_msg = (
+        f"Cannot delete TestPerson '{person_jane_main.id}'. "
+        f"It is linked to mandatory relationship manager on node TestPerson '{person_albert_main.id}' at TestPerson.manager"
+    )
+    assert error_msg == expected_msg
 
 
 async def test_delete_cascade_artifacts(

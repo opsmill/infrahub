@@ -41,6 +41,7 @@ class RepositoryFinalizer:
         delete_on_connectivity_failure: bool = True,
     ) -> None:
         """Method meant to be called after a repository has been created in the database.
+
         It mainly checks the connectivity to the remote repository and submit the workflow to create the repository in the local filesystem.
 
         Raises:

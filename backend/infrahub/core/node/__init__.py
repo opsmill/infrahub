@@ -275,9 +275,13 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)
 
+        raise ValueError(f"Unable to retrieve value for unsupported schema path type {path!r} on {self.get_kind()!r}")
+
     def get_labels(self) -> list[str]:
-        """Return the labels for this object, composed of the kind
+        """Return the labels for this object, composed of the kind.
+
         and the list of Generic this object is inheriting from.
+
         """
         labels: list[str] = []
         if isinstance(self._schema, NodeSchema):
@@ -290,14 +294,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return labels
 
         if isinstance(self._schema, ProfileSchema | TemplateSchema):
-            labels = [self.get_kind()] + self._schema.inherit_from
-            return labels
+            return [self.get_kind()] + self._schema.inherit_from
 
         return [self.get_kind()]
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Returns:
             Branch:
@@ -377,7 +381,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         attribute: BaseAttribute,
         allocate_resources: bool = True,
     ) -> None:
-        """Evaluate if a resource has been requested from a pool and apply the resource
+        """Evaluate if a resource has been requested from a pool and apply the resource.
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
@@ -898,7 +902,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         data: Any,
         db: InfrahubDatabase,
     ) -> RelationshipManager:
-        rm = await RelationshipManager.init(
+        return await RelationshipManager.init(
             db=db,
             data=data,
             schema=schema,
@@ -906,8 +910,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             at=self._at,
             node=self,
         )
-
-        return rm
 
     async def _generate_attribute_default(
         self,
@@ -1215,7 +1217,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         permissions: dict | None = None,
         include_properties: bool = True,
     ) -> dict:
-        """Generate GraphQL Payload for all attributes
+        """Generate GraphQL Payload for all attributes.
 
         Returns:
             (dict): Return GraphQL Payload
@@ -1346,7 +1348,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._display_label.set_value(value=value, manually_assigned=True)
 
     def _get_parent_relationship_name(self) -> str | None:
-        """Return the name of the parent relationship is one is present"""
+        """Return the name of the parent relationship is one is present."""
         for relationship in self._schema.relationships:
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name

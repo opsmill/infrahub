@@ -2350,7 +2350,7 @@ export interface components {
             warnings?: components["schemas"]["SchemaWarning"][];
             /**
              * Schema Updated
-             * @description Indicates if the loading of the schema changed the existing schema
+             * @description Indicates if the loading of the schema changed the existing schema.
              */
             readonly schema_updated: boolean;
         };

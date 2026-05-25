@@ -44,8 +44,7 @@ async def account_resolver(
             order=OrderModel(disable=True),
         )
         if results:
-            account_profile = await results[0].to_graphql(db=db, fields=fields)
-            return account_profile
+            return await results[0].to_graphql(db=db, fields=fields)
 
         raise NodeNotFoundError(
             node_type=InfrahubKind.GENERICACCOUNT, identifier=graphql_context.account_session.account_id
@@ -331,7 +330,7 @@ async def descendants_resolver(parent: dict, info: GraphQLResolveInfo, **kwargs)
 async def hierarchy_resolver(
     direction: RelationshipHierarchyDirection, parent: dict, info: GraphQLResolveInfo, **kwargs
 ) -> dict[str, Any]:
-    """Resolver for ancestors and dependants for Hierarchical nodes
+    """Resolver for ancestors and dependants for Hierarchical nodes.
 
     This resolver is used for paginated responses and as such we redefined the requested
     fields by only reusing information below the 'node' key.

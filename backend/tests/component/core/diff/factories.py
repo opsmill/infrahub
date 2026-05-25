@@ -80,7 +80,7 @@ class EnrichedNodeFactory(DataclassFactory[EnrichedDiffNode]):
 
     @classmethod
     def build(cls, **kwargs: Any) -> EnrichedDiffNode:
-        """Handle uuid and kind kwargs from before identifier field was added"""
+        """Handle uuid and kind kwargs from before identifier field was added."""
         uuid_val = kwargs.pop("uuid", None)
         kind_val = kwargs.pop("kind", None)
         if uuid_val or kind_val:
