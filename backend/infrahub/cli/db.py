@@ -169,7 +169,7 @@ async def migrate_cmd(
         None, help="Apply a specific migration by number, regardless of current database version"
     ),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
+    """Check the current format of the internal graph and apply the necessary migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -247,7 +247,12 @@ async def showmigration_cmd(
     migration_number: int = typer.Argument(..., help="Migration number to inspect"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Show detailed information about a specific migration."""
+    """Show detailed information about a specific migration.
+
+    Raises:
+        typer.Exit: If the migration number does not match any known migration.
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -299,7 +304,12 @@ async def check_inheritance_cmd(
     fix: bool = typer.Option(False, help="Fix the inheritance of any invalid nodes."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the database for any vertices with incorrect inheritance"""
+    """Check the database for any vertices with incorrect inheritance.
+
+    Raises:
+        Exit: When inheritance checks fail (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -330,6 +340,12 @@ async def reset_deployment_id_cmd(
 
     Running Infrahub server and worker processes cache this value at startup and
     must be restarted after this command to pick up the new value.
+
+    Raises:
+        Exit: When the provided deployment_id is not a valid UUID, the user declines the
+            confirmation prompt, or resetting the deployment_id fails (raises typer.Exit to
+            terminate the CLI command).
+
     """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
@@ -379,7 +395,12 @@ async def check_duplicate_schema_fields_cmd(
     fix: bool = typer.Option(False, help="Fix the duplicate schema fields on the default branch."),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check for any duplicate schema attributes or relationships on the default branch"""
+    """Check for any duplicate schema attributes or relationships on the default branch.
+
+    Raises:
+        Exit: When duplicate schema fields are detected and not resolved (raises typer.Exit to terminate the CLI command).
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -402,7 +423,7 @@ async def update_core_schema_cmd(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Check the current format of the internal graph and apply the necessary migrations"""
+    """Check the current format of the internal graph and apply the necessary migrations."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -425,7 +446,12 @@ async def constraint(
     action: ConstraintAction = typer.Argument(ConstraintAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Manage Database Constraints"""
+    """Manage Database Constraints.
+
+    Raises:
+        Exit: When the configured database type is not supported (raises typer.Exit to terminate the CLI command).
+
+    """
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
@@ -469,7 +495,7 @@ async def index(
     action: IndexAction = typer.Argument(IndexAction.SHOW),
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Manage Database Indexes"""
+    """Manage Database Indexes."""
     config.load_and_exit(config_file_name=config_file)
 
     context: CliContext = ctx.obj
@@ -725,7 +751,13 @@ async def initialize_internal_schema() -> None:
 
 
 async def update_core_schema(db: InfrahubDatabase, initialize: bool = True, debug: bool = False) -> None:
-    """Update the core schema of Infrahub to the latest version"""
+    """Update the core schema of Infrahub to the latest version.
+
+    Raises:
+        Exit: When schema validation fails, migration validation reports violations, or the
+            schema update execution raises an exception (raises typer.Exit to terminate the CLI command).
+
+    """
     # ----------------------------------------------------------
     # Initialize Schema and Registry
     # ----------------------------------------------------------
@@ -834,7 +866,7 @@ async def selected_export_cmd(
     export_dir: Path = typer.Option(Path("infrahub-exports"), help="Path of directory to save exports"),  # noqa: B008
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
-    """Export database structure of selected nodes from the database without any actual data"""
+    """Export database structure of selected nodes from the database without any actual data."""
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)
@@ -1000,6 +1032,7 @@ async def load_export_cmd(
     config_file: str = typer.Argument("infrahub.toml", envvar="INFRAHUB_CONFIG"),
 ) -> None:
     """Cannot be used for backup/restore functionality.
+
     Loads an anonymized export into Neo4j.
     Only used for analysis of output of the selected-export command.
     """

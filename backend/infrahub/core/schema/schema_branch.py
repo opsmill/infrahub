@@ -284,7 +284,12 @@ class SchemaBranch:
             self.set(name=item_kind, schema=other_item)
 
     def validate_node_deletions(self, diff: SchemaDiff) -> None:
-        """Given a diff, check if a deleted node is still used in relationships or inherit_from of other nodes."""
+        """Given a diff, check if a deleted node is still used in relationships or inherit_from of other nodes.
+
+        Raises:
+            ValueError: When a removed schema is still referenced by another node's relationship peer or inherit_from.
+
+        """
         removed_schema_names = set(diff.removed.keys())
         for name in self.all_names:
             if name in removed_schema_names:
@@ -352,6 +357,11 @@ class SchemaBranch:
         by default the function always returns a copy of the object, not the object itself
 
         If duplicate is set to false, the real object will be returned.
+
+        Raises:
+            SchemaNotFoundError: When no schema with the given name is registered on this branch.
+            ValueError: When the schema entry references a hash that is missing from the cache.
+
         """
         key = None
         if name in self.nodes:
@@ -380,28 +390,48 @@ class SchemaBranch:
         return schema
 
     def get_node(self, name: str, duplicate: bool = True) -> NodeSchema:
-        """Access a specific NodeSchema, defined by its kind."""
+        """Access a specific NodeSchema, defined by its kind.
+
+        Raises:
+            ValueError: When the schema with the given name is not a NodeSchema.
+
+        """
         item = self.get(name=name, duplicate=duplicate)
         if not isinstance(item, NodeSchema):
             raise ValueError(f"{name!r} is not of type NodeSchema")
         return item
 
     def get_generic(self, name: str, duplicate: bool = True) -> GenericSchema:
-        """Access a specific GenericSchema, defined by its kind."""
+        """Access a specific GenericSchema, defined by its kind.
+
+        Raises:
+            ValueError: When the schema with the given name is not a GenericSchema.
+
+        """
         item = self.get(name=name, duplicate=duplicate)
         if not isinstance(item, GenericSchema):
             raise ValueError(f"{name!r} is not of type GenericSchema")
         return item
 
     def get_profile(self, name: str, duplicate: bool = True) -> ProfileSchema:
-        """Access a specific ProfileSchema, defined by its kind."""
+        """Access a specific ProfileSchema, defined by its kind.
+
+        Raises:
+            ValueError: When the schema with the given name is not a ProfileSchema.
+
+        """
         item = self.get(name=name, duplicate=duplicate)
         if not isinstance(item, ProfileSchema):
             raise ValueError(f"{name!r} is not of type ProfileSchema")
         return item
 
     def get_template(self, name: str, duplicate: bool = True) -> TemplateSchema:
-        """Access a specific TemplateSchema, defined by its kind."""
+        """Access a specific TemplateSchema, defined by its kind.
+
+        Raises:
+            ValueError: When the schema with the given name is not a TemplateSchema.
+
+        """
         item = self.get(name=name, duplicate=duplicate)
         if not isinstance(item, TemplateSchema):
             raise ValueError(f"{name!r} is not of type TemplateSchema")
@@ -599,6 +629,10 @@ class SchemaBranch:
         """Load a SchemaRoot object and store all NodeSchema or GenericSchema.
 
         In the current implementation, if a schema object present in the SchemaRoot already exist, it will be overwritten.
+
+        Raises:
+            ValidationError: When an incoming schema kind conflicts with an existing schema of a different node/generic type.
+
         """
         # Reconcile deprecated attribute parameters before merging
         self._reconcile_legacy_attribute_parameters(schema)
@@ -725,7 +759,12 @@ class SchemaBranch:
             self.set(name=name, schema=node)
 
     def validate_identifiers(self) -> None:
-        """Validate that all relationships have a unique identifier for a given model."""
+        """Validate that all relationships have a unique identifier for a given model.
+
+        Raises:
+            ValueError: When relationships sharing an identifier have invalid direction combinations or peer mismatches.
+
+        """
         # Organize all the relationships per identifier and node
         rels_per_identifier: dict[str, dict[str, list[RelationshipSchema]]] = defaultdict(lambda: defaultdict(list))
         for name in self.all_names:
@@ -968,7 +1007,7 @@ class SchemaBranch:
     def _is_attr_combination_unique(
         self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None, unique_attribute_names: list[str]
     ) -> bool:
-        """Return whether at least one combination of any length of `attrs_paths` is unique"""
+        """Return whether at least one combination of any length of `attrs_paths` is unique."""
         if unique_attribute_names:
             for attr_path in attrs_paths:
                 for unique_attr_name in unique_attribute_names:
@@ -1135,8 +1174,13 @@ class SchemaBranch:
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
 
     def validate_restricted_namespaces_from_generic(self) -> None:
-        """Ensure that every node which inherit from a generic node containing restricted namespaces are following on
-        the rules
+        """Ensure that every node which inherit from a generic node containing restricted namespaces are following on.
+
+        the rules.
+
+        Raises:
+            ValueError: When a node's namespace is not allowed by the restricted_namespaces of an inherited generic.
+
         """
         for name in self.nodes:
             node = self.get_node(name=name, duplicate=False)
@@ -1154,7 +1198,12 @@ class SchemaBranch:
                     )
 
     def validate_python_keywords(self) -> None:
-        """Validate that attribute and relationship names don't use Python keywords."""
+        """Validate that attribute and relationship names don't use Python keywords.
+
+        Raises:
+            ValueError: When an attribute name is a Python keyword, or when a relationship name is a Python keyword in strict mode.
+
+        """
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
@@ -1278,7 +1327,12 @@ class SchemaBranch:
                 self._validate_computed_attribute(node=node_schema, attribute=attribute)
 
     def _validate_generic_computed_attributes(self) -> None:
-        """Ensure no node inherits the same computed attribute from multiple generics."""
+        """Ensure no node inherits the same computed attribute from multiple generics.
+
+        Raises:
+            ValueError: When a node inherits a computed attribute with the same name from more than one generic.
+
+        """
         defined_from_generic: dict[str, str] = {}
         for name in self.generics.keys():
             generic_schema = self.get_generic(name=name, duplicate=False)
@@ -1369,7 +1423,12 @@ class SchemaBranch:
             self.computed_attributes.add_python_attribute(node=node, attribute=attribute)
 
     def validate_count_against_cardinality(self) -> None:
-        """Validate every RelationshipSchema cardinality against the min_count and max_count."""
+        """Validate every RelationshipSchema cardinality against the min_count and max_count.
+
+        Raises:
+            ValueError: When a relationship's min_count or max_count is inconsistent with its declared cardinality.
+
+        """
         for name in self.all_names:
             node = self.get(name=name, duplicate=False)
 
@@ -1547,8 +1606,9 @@ class SchemaBranch:
 
     def process_human_friendly_id(self, kinds: list[str] | None = None, raise_parsing_errors: bool = True) -> None:
         """For each schema node, if there is no HFID defined, set it with:
+
         - The first unique attribute if existing
-        - Otherwise the first uniqueness constraint with a single attribute
+        - Otherwise the first uniqueness constraint with a single attribute.
 
         Also, HFID is added to the uniqueness constraints.
         """
@@ -1565,6 +1625,10 @@ class SchemaBranch:
         Path-parsing failures during the constraint path resolution are re-raised
         when `raise_parsing_errors=True` and silently skipped otherwise (the error
         will surface later in process_validate as a structured ValueError).
+
+        Raises:
+            AttributePathParsingError: When a uniqueness constraint path cannot be parsed and `raise_parsing_errors` is True.
+
         """
         node = self.get(name=name, duplicate=False)
         if node.human_friendly_id:
@@ -1607,6 +1671,10 @@ class SchemaBranch:
         No-op if the node has no HFID or the conversion produces an empty constraint.
         Path-parsing failures from `convert_hfid_to_uniqueness_constraint` are re-raised
         when `raise_parsing_errors=True` and silently skipped otherwise.
+
+        Raises:
+            AttributePathParsingError: When the HFID conversion fails to parse a path and `raise_parsing_errors` is True.
+
         """
         node = self.get(name=name, duplicate=False)
         try:
@@ -1628,7 +1696,7 @@ class SchemaBranch:
         self.set(name=node.kind, schema=node)
 
     def register_human_friendly_id(self) -> None:
-        """Register HFID automations
+        """Register HFID automations.
 
         Register the HFIDs after all processing and validation has been done.
         """
@@ -1708,8 +1776,13 @@ class SchemaBranch:
         return generic_fields_map
 
     def process_inheritance(self) -> None:
-        """Extend all the nodes with the attributes and relationships
+        """Extend all the nodes with the attributes and relationships.
+
         from the Interface objects defined in inherited_from.
+
+        Raises:
+            ValueError: When a node inherits from incompatible generics or references a generic that does not exist.
+
         """
         generics_used_by = defaultdict(list)
         node_inheritance_handler = NodeInheritanceHandler()

@@ -67,6 +67,9 @@ class SchemaUpdateCoordinator:
             migration_executor: How to execute migrations (DIRECT or WORKFLOW)
             logger: Logger to use (defaults to module logger)
 
+        Raises:
+            RuntimeError: When the WORKFLOW executor is selected but workflow or context is not provided.
+
         """
         self.db = db
         self.branch = branch
@@ -81,13 +84,23 @@ class SchemaUpdateCoordinator:
             raise RuntimeError("Workflow and context are required for WORKFLOW executor")
 
     def _get_workflow(self) -> InfrahubWorkflow:
-        """Get workflow service, raising if not available."""
+        """Get workflow service, raising if not available.
+
+        Raises:
+            RuntimeError: When the workflow service has not been provided to the coordinator.
+
+        """
         if self.workflow is None:
             raise RuntimeError("Workflow service is required but not provided")
         return self.workflow
 
     def _get_context(self) -> InfrahubContext:
-        """Get context, raising if not available."""
+        """Get context, raising if not available.
+
+        Raises:
+            RuntimeError: When the Infrahub context has not been provided to the coordinator.
+
+        """
         if self.context is None:
             raise RuntimeError("Context is required but not provided")
         return self.context
@@ -332,7 +345,12 @@ class SchemaUpdateCoordinator:
         exception: Exception | None,
         error_msgs: list[str],
     ) -> NoReturn:
-        """Log, roll back the schema update, and raise. Never returns."""
+        """Log, roll back the schema update, and raise. Never returns.
+
+        Raises:
+            MigrationError: Always raised after rollback, wrapping the original exception or aggregated error messages.
+
+        """
         if exception:
             self.log.error(
                 f"Schema {phase} failed, beginning rollback",

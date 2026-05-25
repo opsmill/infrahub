@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from prefect import flow
 from prefect.logging import get_run_logger
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
@@ -55,7 +55,7 @@ async def objects_profiles_refresh_multiple(branch_name: str, node_ids: list[str
 
 @flow(name="profile-refresh-setup", flow_run_name="Setup profile refresh triggers")
 async def profile_refresh_setup(
-    context: InfrahubContext,  # noqa: ARG001
+    context: EventContext,  # noqa: ARG001
     branch_name: str | None = None,
     event_name: str | None = None,  # noqa: ARG001
 ) -> None:
@@ -87,7 +87,7 @@ async def profile_refresh_process(
     branch_name: str,
     profile_kind: str,
     profile_id: str,
-    context: InfrahubContext,  # noqa: ARG001
+    context: EventContext,  # noqa: ARG001
 ) -> None:
     """Process profile refresh when a profile's attributes or relationships change.
 

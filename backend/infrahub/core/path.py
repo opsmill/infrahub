@@ -23,7 +23,8 @@ if TYPE_CHECKING:
 
 class InfrahubPath(BaseModel):
     """A Path represent the location of a single resource stored in Infrahub.
-    TODO Add definition of a resource
+
+    TODO Add definition of a resource.
     """
 
     def __hash__(self) -> int:

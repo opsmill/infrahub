@@ -20,9 +20,10 @@ class BaseDiffElement(BaseModel):
 
     def to_graphql(self) -> dict[str, Any]:
         """Recursively Export the model to a dict for GraphQL.
+
         The main rules of convertion are:
             - Ignore the fields mark as exclude=True
-            - Convert the Dict in List
+            - Convert the Dict in List.
         """
         resp: dict[str, Any] = {}
         for key, value in self:
@@ -290,6 +291,10 @@ class DiffSummary(BaseModel):
         """Increase one of the counter by 1.
 
         Return the new value of the counter.
+
+        Raises:
+            ValueError: When `name` does not match an existing counter on `DiffSummary`.
+
         """
         try:
             cnt = getattr(self, name)

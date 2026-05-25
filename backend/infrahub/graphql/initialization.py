@@ -23,6 +23,7 @@ if TYPE_CHECKING:
     from infrahub.auth import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventContext
     from infrahub.services import InfrahubServices
 
 
@@ -50,9 +51,13 @@ class GraphqlContext:
 
     @property
     def active_account_session(self) -> AccountSession:
-        """Return an account session or raise an error
+        """Return an account session or raise an error.
 
         Eventualy this property should be removed, that can be done after self.account_session is no longer optional
+
+        Raises:
+            InitializationError: When the GraphQL context does not contain an account session.
+
         """
         if self.account_session:
             return self.account_session
@@ -60,10 +65,14 @@ class GraphqlContext:
 
     @property
     def active_permissions(self) -> PermissionManager:
-        """Return a permission manager or raise an error
+        """Return a permission manager or raise an error.
 
         This property should be removed, once self.account_session is no longer optional which will imply self.permissions will no longer be optional
         as well.
+
+        Raises:
+            InitializationError: When the GraphQL context does not contain permissions.
+
         """
         if self.permissions:
             return self.permissions
@@ -77,6 +86,9 @@ class GraphqlContext:
 
     def get_context(self) -> InfrahubContext:
         return InfrahubContext.init(branch=self.branch, account=self.active_account_session)
+
+    def to_event_context(self) -> EventContext:
+        return self.get_context().to_event_context()
 
     @property
     def assigned_user_id(self) -> str:

@@ -1,6 +1,6 @@
-import { apiClient } from "@/shared/api/rest/client";
 import type { components } from "@/shared/api/rest/types.generated";
 
+import { refreshAccessTokenFromApi } from "@/entities/authentication/api/refresh-access-token-from-api";
 import { REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
 import {
   removeTokensInLocalStorage,
@@ -18,18 +18,13 @@ export const refreshAccessToken: RefreshAccessToken = async () => {
     throw new Error("Refresh token not found");
   }
 
-  const { data, error } = await apiClient.POST("/api/auth/refresh", {
-    headers: {
-      authorization: `Bearer ${refreshToken}`,
-    },
-  });
-
-  if (error) {
+  try {
+    const data = await refreshAccessTokenFromApi(refreshToken);
+    saveTokensInLocalStorage(data);
+    return data;
+  } catch (error) {
     removeTokensInLocalStorage();
     window.location.reload();
     throw error;
   }
-
-  saveTokensInLocalStorage(data);
-  return data;
 };

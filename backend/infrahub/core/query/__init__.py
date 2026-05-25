@@ -144,7 +144,8 @@ class QueryType(Enum):
 
 def cleanup_return_labels(labels: list[str]) -> list[str]:
     """Cleanup a list of return labels by checking if there is an alias defined.
-    if an alias is defined with `value AS alias` we extract just the alias from the label
+
+    if an alias is defined with `value AS alias` we extract just the alias from the label.
     """
     clean_labels = []
     for label in labels:
@@ -174,7 +175,8 @@ class QueryResult:
 
     def calculate_branch_score(self) -> None:
         """The branch score is a simple way to order and classify multiple responses for the same branch.
-        If the branch name is not the default branch it will get a higher score
+
+        If the branch name is not the default branch it will get a higher score.
         """
         self.branch_score = 0
 
@@ -187,9 +189,7 @@ class QueryResult:
             self.branch_score += branch_level
 
     def calculate_time_score(self) -> None:
-        """The time score look into the to and from time all relationships
-        if the 'to' field is not defined
-        """
+        """The time score look into the to and from time all relationships if the 'to' field is not defined."""
         self.time_score = 0
 
         for rel in self.get_rels():
@@ -206,7 +206,7 @@ class QueryResult:
                 self.time_score += 2
 
     def check_rels_status(self) -> None:
-        """Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""
+        """Check if some relationships have the status deleted and update the flag `has_deleted_rels`."""
         for rel in self.get_rels():
             if rel.get("status", None) == "deleted":
                 self.has_deleted_rels = True
@@ -414,6 +414,7 @@ class Query:
 
     def get_context(self) -> dict[str, str]:
         """Provide additional context for this query, beyond the name.
+
         Right now it's mainly used to add more labels to the metrics.
         """
         return {}
@@ -520,6 +521,7 @@ class Query:
 
     def _get_params_for_neo4j_shell(self) -> str:
         """Generate string to define some parameters in Neo4j browser interface.
+
         It's especially useful to later execute a query that includes some variables.
 
         The params string must be executed on its own window in Neo4j, before executing the query.
@@ -595,7 +597,14 @@ class Query:
 
     async def count(self, db: InfrahubDatabase) -> int:
         """Count the number of results matching a READ query.
+
         OFFSET and LIMIT are automatically excluded when counting.
+
+        Raises:
+            TypeError: When the query is a WRITE query.
+            ValueError: When the query type is not READ.
+            QueryError: When the count query returns no results and `raise_error_if_empty` is True.
+
         """
         if self.type == QueryType.WRITE:
             raise TypeError("Unable to count the number of response on a Write query.")

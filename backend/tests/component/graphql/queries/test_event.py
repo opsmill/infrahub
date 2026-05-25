@@ -18,7 +18,7 @@ from infrahub.events.group_action import GroupMemberAddedEvent
 from infrahub.events.models import EventMeta, EventNode, InfrahubEvent
 from infrahub.events.node_action import NodeCreatedEvent, NodeUpdatedEvent
 from infrahub.graphql.initialization import prepare_graphql_params
-from tests.helpers.events import send_events
+from tests.helpers.events import dummy_event_meta, send_events
 from tests.helpers.graphql import graphql
 
 QUERY_EVENT = """
@@ -237,29 +237,29 @@ async def events_data(
             branch_name=BRANCH1_NAME,
             branch_id=str(branch1_id),
             sync_with_git=True,
-            meta=EventMeta.with_dummy_context(branch=branch1),
+            meta=dummy_event_meta(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
             branch_name=BRANCH1_NAME,
             branch_id=str(branch1_id),
-            meta=EventMeta.with_dummy_context(branch=branch1),
+            meta=dummy_event_meta(branch=branch1),
         ),
         "branch2_created": BranchCreatedEvent(
             branch_name=BRANCH2_NAME,
             branch_id=str(branch2_id),
             sync_with_git=False,
-            meta=EventMeta.with_dummy_context(branch=branch2),
+            meta=dummy_event_meta(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
             branch_name=BRANCH2_NAME,
             branch_id=str(branch2_id),
-            meta=EventMeta.with_dummy_context(branch=branch2),
+            meta=dummy_event_meta(branch=branch2),
         ),
         "branch3_created": BranchCreatedEvent(
             branch_name=BRANCH3_NAME,
             branch_id=str(branch3_id),
             sync_with_git=True,
-            meta=EventMeta.with_dummy_context(branch=branch3),
+            meta=dummy_event_meta(branch=branch3),
         ),
         "branch1_mutated1": NodeCreatedEvent(
             kind="BuiltinTag",
@@ -268,7 +268,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch1,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
         "branch1_mutated2": NodeUpdatedEvent(
@@ -278,7 +278,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch1,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
         "branch1_mutated3": NodeCreatedEvent(
@@ -288,7 +288,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch1,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
         "branch1_mutated4": NodeCreatedEvent(
@@ -298,7 +298,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch1,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch1_mutated5": NodeCreatedEvent(
@@ -308,7 +308,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch1,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch1_mutated6": GroupMemberAddedEvent(
@@ -322,7 +322,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch1,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch1_mutated7": NodeCreatedEvent(
@@ -332,7 +332,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch1,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch1, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch2_mutated1": NodeCreatedEvent(
@@ -342,7 +342,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch2,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
         "branch2_mutated2": NodeCreatedEvent(
@@ -352,7 +352,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch2,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch2_mutated3": NodeCreatedEvent(
@@ -362,7 +362,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch2,
                 account_id=ACCOUNT2_ID,
-                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2),
+                context=InfrahubContext.init(branch=branch2, account=ACCOUNT_SESSION_2).to_event_context(),
             ),
         ),
         "branch3_mutated1": NodeCreatedEvent(
@@ -372,7 +372,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch3,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
         "branch3_mutated2": NodeCreatedEvent(
@@ -382,7 +382,7 @@ async def events_data(
             meta=EventMeta(
                 branch=branch3,
                 account_id=ACCOUNT1_ID,
-                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1),
+                context=InfrahubContext.init(branch=branch3, account=ACCOUNT_SESSION_1).to_event_context(),
             ),
         ),
     }
@@ -404,8 +404,10 @@ async def event_ids_inscope(events_data: dict[str, InfrahubEvent]) -> list[str]:
 
 
 def filter_outofscope_events(result_data: dict, in_scope_ids: list[str]) -> dict[str, Any]:
-    """Because we can't guarantee that Prefect is empty at the start of the test easily
+    """Because we can't guarantee that Prefect is empty at the start of the test easily.
+
     we need to exclude all events not created by this test suite.
+
     """
     filtered_events = [event for event in result_data["InfrahubEvent"]["edges"] if event["node"]["id"] in in_scope_ids]
     return {"InfrahubEvent": {"count": len(filtered_events), "edges": filtered_events}}

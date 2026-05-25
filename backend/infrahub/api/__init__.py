@@ -15,6 +15,7 @@ from infrahub.api import (
     diff,
     file,
     internal,
+    ldap,
     menu,
     oauth2,
     oidc,
@@ -34,6 +35,7 @@ router = APIRouter(prefix="/api")
 
 router.include_router(artifact.router)
 router.include_router(auth.router)
+router.include_router(ldap.router)
 router.include_router(diff.router)
 router.include_router(file.router)
 router.include_router(internal.router)
@@ -75,7 +77,12 @@ async def redoc_html(_: AccountSession = Depends(get_current_user)) -> HTMLRespo
     response_model=None,
 )
 async def not_found(rest_of_path: str) -> NoReturn:
-    """Used to avoid having the mounting of the React App mask 404 errors."""
+    """Used to avoid having the mounting of the React App mask 404 errors.
+
+    Raises:
+        ResourceNotFoundError: Always raised to signal that the requested API endpoint does not exist.
+
+    """
     raise ResourceNotFoundError(
         message=f"The requested endpoint /api/{rest_of_path} does not exist",
     )

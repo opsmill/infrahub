@@ -29,6 +29,7 @@ core_trigger_rule = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(
             name="name",
@@ -90,6 +91,7 @@ core_action = GenericSchema(
     branch=BranchSupportType.AGNOSTIC,
     uniqueness_constraints=[["name__value"]],
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[
         Attr(
             name="name",
@@ -129,6 +131,7 @@ core_node_trigger_match = GenericSchema(
     label="Node Trigger Match",
     branch=BranchSupportType.AGNOSTIC,
     generate_profile=False,
+    restricted_namespaces=["Core"],
     attributes=[],
     relationships=[
         Rel(

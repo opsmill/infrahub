@@ -62,7 +62,7 @@ class DiffChangelogCollector:
         return self._diff_nodes[node_id]
 
     def get_peer_kind(self, peer_id: str, node_kind: str, relationship_name: str) -> str:
-        """If the peer kind doesn't exist in the diff use the peer kind from the schema"""
+        """If the peer kind doesn't exist in the diff use the peer kind from the schema."""
         try:
             return self.get_node(node_id=peer_id).kind
         except KeyError:
@@ -245,7 +245,7 @@ def _keep_branch_update(diff_property: EnrichedDiffProperty) -> bool:
 
 
 class MigrationTracker:
-    """Keeps track of schema updates that happened as part of a migration"""
+    """Keeps track of schema updates that happened as part of a migration."""
 
     def __init__(self, migrations: list[SchemaUpdateMigrationInfo] | None = None) -> None:
         # A dictionary of Node kind, previous attribute name and new attribute
@@ -263,7 +263,7 @@ class MigrationTracker:
                     )
 
     def get_attribute_name(self, node: NodeChangelog, attribute: EnrichedDiffAttribute) -> str:
-        """Return the current name of the requested attribute"""
+        """Return the current name of the requested attribute."""
         if node.node_kind not in self._migrations_attribute_map:
             return attribute.name
         if attribute.name not in self._migrations_attribute_map[node.node_kind]:

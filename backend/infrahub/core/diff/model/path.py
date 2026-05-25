@@ -87,7 +87,7 @@ def deserialize_tracking_id(tracking_id_str: str) -> TrackingId:
 
 @dataclass
 class NodeIdentifier:
-    """Uniquely identifying nodes that have had their kind or inheritance updated requires all of these fields"""
+    """Uniquely identifying nodes that have had their kind or inheritance updated requires all of these fields."""
 
     uuid: str
     kind: str

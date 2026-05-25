@@ -32,7 +32,7 @@ class TestBranchStatusChecker:
             BranchStatusChecker().check(branch=branch)
 
     def test_check_passes_for_need_upgrade_rebase_branch(self) -> None:
-        """Test that check passes for NEED_UPGRADE_REBASE branches"""
+        """Test that check passes for NEED_UPGRADE_REBASE branches."""
         branch = Branch(name="upgrade-branch", status=BranchStatus.NEED_UPGRADE_REBASE)
         BranchStatusChecker().check(branch=branch)
 

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class UndeleteRelationshipProperties(Query):
-    """Find Relationship vertices that are missing IS_VISIBLE and/or IS_PROTECTED edges linking them to Boolean vertices
+    """Find Relationship vertices that are missing IS_VISIBLE and/or IS_PROTECTED edges linking them to Boolean vertices.
 
     Use the existing IS_RELATED edges to determine when the IS_VISIBLE/IS_PROTECTED edges should exist on each branch
     and add the missing edges

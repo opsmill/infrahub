@@ -37,7 +37,7 @@ class SchemaAttributeTimeframe:
 
 
 class GetLargeAttributeTypesQuery(Query):
-    """For every active attribute on every branch, return a SchemaAttributeTimeframe object"""
+    """For every active attribute on every branch, return a SchemaAttributeTimeframe object."""
 
     name = "get_large_attribute_types_query"
     type = QueryType.READ
@@ -439,7 +439,7 @@ REMOVE av_no_index:AttributeValueNonIndexed
 
 
 class Migration037(ArbitraryMigration):
-    """Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES
+    """Update AttributeValue vertices to be AttributeValueIndexed, unless they include values for LARGE_ATTRIBUTE_TYPES.
 
     0. Drop the index on the AttributeValueIndexed vertex, there are no AttributeValueIndexed vertices at this point anyway
     1. For all attributes of all schema on all branches, determine if the attribute is a LARGE_ATTRIBUTE_TYPE and when
@@ -458,9 +458,7 @@ class Migration037(ArbitraryMigration):
     minimum_version: int = 36
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-
-        return result
+        return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:  # noqa: PLR0915
         console = migration_input.console

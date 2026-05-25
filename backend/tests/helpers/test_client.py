@@ -10,7 +10,7 @@ from infrahub_sdk.types import HTTPMethod
 async def dummy_async_request(
     url: str, method: HTTPMethod, headers: dict[str, Any], timeout: int, payload: dict | None = None
 ) -> httpx.Response:
-    """Return an empty response and to pretend that the git commit was updated successfully"""
+    """Return an empty response and to pretend that the git commit was updated successfully."""
     return httpx.Response(status_code=200, json={"data": {}}, request=httpx.Request(method="POST", url="http://mock"))
 
 

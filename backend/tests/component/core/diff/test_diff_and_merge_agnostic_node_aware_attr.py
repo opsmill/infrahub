@@ -60,8 +60,7 @@ class TestDiffAndMergeAgnosticNodeAwareAttr:
         diff_repository: DiffRepository,
         repo_mirror_main: Node,
     ) -> None:
-        """Update an AWARE attribute on a branch and verify the merged value
-        appears on default after merge_graph."""
+        """Update an AWARE attribute on a branch and verify the merged value appears on default after merge_graph."""
         branch = await create_branch(db=db, branch_name="repo_mirror_merge_branch")
         repo_on_branch = await NodeManager.get_one(db=db, branch=branch, id=repo_mirror_main.id)
         new_commit = "b" * 40

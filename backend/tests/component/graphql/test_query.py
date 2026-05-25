@@ -29,7 +29,12 @@ async def execute_query(
     branch: Branch | str | None = None,
     at: Timestamp | str | None = None,
 ) -> ExecutionResult:
-    """Helper function to Execute a GraphQL Query."""
+    """Helper function to Execute a GraphQL Query.
+
+    Raises:
+        ValueError: When a GraphQL query with the given name cannot be found.
+
+    """
     if not isinstance(branch, Branch):
         branch = await registry.get_branch(db=db, branch=branch)
     at = Timestamp(at)
@@ -46,15 +51,13 @@ async def execute_query(
         at=at,
     )
 
-    result = await graphql(
+    return await graphql(
         schema=gql_params.schema,
         source=graphql_query.query.value,
         context_value=gql_params.context,
         root_value=None,
         variable_values=params or {},
     )
-
-    return result
 
 
 async def test_execute_query(

@@ -75,7 +75,12 @@ class BaseMigration(BaseModel):
 
     @property
     def number(self) -> int:
-        """The migration number, derived from the class name (e.g. 67 from Migration067)."""
+        """The migration number, derived from the class name (e.g. 67 from Migration067).
+
+        Raises:
+            ValueError: If the class name does not start with the ``Migration`` prefix.
+
+        """
         cls_name = type(self).__name__
         prefix = "Migration"
         if not cls_name.startswith(prefix):

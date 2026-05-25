@@ -341,7 +341,7 @@ async def test_rabbitmq_initial_setup(rabbitmq_api: RabbitMQManager) -> None:
 
 
 async def test_rabbitmq_publish(rabbitmq_api: RabbitMQManager) -> None:
-    """Validate that the adapter publishes messages to the correct queue"""
+    """Validate that the adapter publishes messages to the correct queue."""
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     service = await InfrahubServices.new(message_bus=bus, component_type=ComponentType.API_SERVER)
 
@@ -443,7 +443,7 @@ async def test_rabbitmq_on_message(rabbitmq_api: RabbitMQManager, fake_log: Fake
 
 
 async def test_rabbitmq_on_message_invalid_routing_key(rabbitmq_api: RabbitMQManager, fake_log: FakeLogger) -> None:
-    """Validates logging of invalid routing key"""
+    """Validates logging of invalid routing key."""
     bus = await RabbitMQMessageBus.new(settings=rabbitmq_api.settings, component_type=ComponentType.API_SERVER)
     await bus.shutdown()
 

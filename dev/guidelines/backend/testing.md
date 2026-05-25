@@ -25,6 +25,40 @@ Tests are behavioral specifications. Write them to describe **what the system sh
 - **Do not reference issue numbers, GitHub URLs, or Jira tickets** in test code (names, comments, or docstrings). The git history links commits to issues.
 - **Do not describe which bug a test prevents.** Describe the expected behavior instead.
 
+## What not to test
+
+Every test costs maintenance. Before adding one, ask whether it actually exercises behavior the project owns.
+
+Skip tests that only assert third-party behavior:
+
+- **Pydantic field constraints** (`ge`, `le`, `min_length`, `max_length`, etc.) — these are exercised by Pydantic's own test suite. Asserting that `Field(ge=1)` rejects `0` tests Pydantic, not us.
+- **Pure assignment round-trips** — constructing a model with a value and asserting the attribute reads back the same value tests Python, not our code.
+- **`SettingsConfigDict` plumbing** — asserting that an `env_prefix` exists or that `env_nested_delimiter` is set tests Pydantic Settings configuration, not behavior. Test the behavior you care about (an env var resolves to the right field) instead.
+- **Plain `Enum` value checks** — asserting `MyEnum.FOO.value == "foo"` only tests that the enum literal matches itself.
+
+Skip tests that test the framework rather than our integration:
+
+- A test that only asserts a FastAPI route appears in `router.routes` duplicates `APIRouter`'s own contract — write it only when the registration goes through non-trivial conditional logic.
+- A test that only asserts a Pydantic model has a particular field duplicates the type system.
+
+A useful rule of thumb: if the test would still pass after we delete our implementation and reinstall the library, the test belongs to the library, not us.
+
+## Async tests
+
+The project sets `asyncio_mode = "auto"` in `pyproject.toml`, so any `async def test_*` function is automatically driven by `pytest-asyncio`. **Do not** wrap async code in `asyncio.run(...)` inside synchronous tests — declare the test function `async` and `await` directly:
+
+```python
+# Good
+async def test_returns_config() -> None:
+    cfg = await get_config()
+    assert cfg.ldap.enabled is False
+
+# Bad — wraps the event loop unnecessarily
+def test_returns_config() -> None:
+    cfg = asyncio.run(get_config())
+    assert cfg.ldap.enabled is False
+```
+
 ## Test Schemas
 
 Many tests require schemas to be loaded before they can run. Over time this has led to duplicated schema definitions scattered across test files. To reduce duplication and ease maintenance, shared helper schemas are available in [`tests/helpers/schema/`](../../../backend/tests/helpers/schema/).

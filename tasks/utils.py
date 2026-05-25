@@ -72,7 +72,13 @@ def get_group_id(context: Context) -> int:
 
 
 def str_to_bool(value: str) -> bool:
-    """Convert a String to a Boolean"""
+    """Convert a String to a Boolean.
+
+    Raises:
+        TypeError: When ``value`` is not a string, bool, or supported integer.
+        ValueError: When ``value`` cannot be mapped to a boolean.
+
+    """
     if isinstance(value, bool):
         return value
 
@@ -112,5 +118,4 @@ def get_yamllint_rules() -> dict:
     from ruamel.yaml import YAML
 
     yaml = YAML(typ="rt")
-    yamllint_rules = yaml.load(Path(".yamllint.yml"))
-    return yamllint_rules
+    return yaml.load(Path(".yamllint.yml"))

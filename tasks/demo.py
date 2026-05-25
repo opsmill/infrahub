@@ -125,7 +125,7 @@ def load_infra_schema(context: Context, database: str = INFRAHUB_DATABASE) -> No
 
 @task(optional=["database"])
 def run_infra_patch_scripts(context: Context, database: str = INFRAHUB_DATABASE) -> None:
-    """Run demo patches scripts"""
+    """Run demo patches scripts."""
     run_infrastructure_patch_scripts(context=context, database=database, namespace=NAMESPACE)
 
 

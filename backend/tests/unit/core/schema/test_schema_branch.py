@@ -5,7 +5,7 @@ from infrahub.core.schema.schema_branch import SchemaBranch
 
 
 class TestHierarchySchemaProcessingSetsCorrectPeerAndHierarchical:
-    """Proves that schema processing produces the peer/hierarchical values in an expected manner"""
+    """Proves that schema processing produces the peer/hierarchical values in an expected manner."""
 
     @pytest.fixture(scope="class")
     def processed_schema(self) -> SchemaBranch:

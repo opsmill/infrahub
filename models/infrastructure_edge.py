@@ -486,7 +486,12 @@ DEVICE_STATUSES = ["active", "provisioning", "drained"]
 class SiteDesign:
     def __init__(self, number_of_device: int) -> None:
         """Takes the number of devices that need to be created on a given site.
+
         This method will decide how many device of each type to create and return all those objects as a list.
+
+        Raises:
+            ValueError: When ``number_of_device`` is not a positive integer.
+
         """
         if number_of_device > 0:
             self.number_of_device = number_of_device
@@ -977,8 +982,10 @@ async def apply_interface_profiles_and_groups(client: InfrahubClient, log: loggi
 
 
 async def apply_devices_groups(client: InfrahubClient, log: logging.Logger, branch: str) -> None:
-    """Fetch devices from Infrahub, group them based on their role and manufacturer,
+    """Fetch devices from Infrahub, group them based on their role and manufacturer,.
+
     and update the corresponding device groups.
+
     """
     log.info("Adding devices to groups")
 
@@ -1978,7 +1985,7 @@ async def branch_scenario_add_upstream(
 async def branch_scenario_replace_ip_addresses(
     client: InfrahubClient, log: logging.Logger, site_name: str, interconnection_pool: CoreNode
 ) -> None:
-    """Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site"""
+    """Create a new Branch and Change the IP addresses between edge1 and edge2 on the selected site."""
     device1_name = f"{site_name}-edge1"
     device2_name = f"{site_name}-edge2"
 
@@ -2037,7 +2044,7 @@ async def branch_scenario_replace_ip_addresses(
 
 
 async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
-    """Create a new Branch and Delete Colt Upstream Circuit"""
+    """Create a new Branch and Delete Colt Upstream Circuit."""
     log.info("Create a new Branch and Delete Colt Upstream Circuit")
     new_branch_name = f"{site_name}-delete-upstream"
     await client.branch.create(
@@ -2100,7 +2107,7 @@ async def branch_scenario_remove_colt(client: InfrahubClient, log: logging.Logge
 
 
 async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.Logger, site_name: str) -> None:
-    """Create a new Branch and introduce some conflicts"""
+    """Create a new Branch and introduce some conflicts."""
     log.info("Create a new Branch and introduce some conflicts")
     device1_name = f"{site_name}-edge1"
     f"{site_name}-edge2"
@@ -2141,7 +2148,7 @@ async def branch_scenario_conflict_device(client: InfrahubClient, log: logging.L
 
 
 async def branch_scenario_conflict_platform(client: InfrahubClient, log: logging.Logger) -> None:
-    """Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE"""
+    """Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE."""
     log.info("Create a new Branch and introduce some conflicts on the platforms for node ADD and DELETE")
     new_branch_name = "platform-conflict"
     await client.branch.create(

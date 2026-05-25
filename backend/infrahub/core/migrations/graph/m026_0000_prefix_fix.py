@@ -8,6 +8,7 @@ from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
+from infrahub.core.protocols import BuiltinIPPrefix
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 
@@ -36,7 +37,7 @@ class Migration026(InternalSchemaMigration):
 
         for branch in await Branch.get_list(db=db):
             prefix_0000s = await NodeManager.query(
-                db=db, schema="BuiltinIPPrefix", branch=branch, filters={"prefix__values": ["0.0.0.0/0", "::/0"]}
+                db=db, schema=BuiltinIPPrefix, branch=branch, filters={"prefix__values": ["0.0.0.0/0", "::/0"]}
             )
             if not prefix_0000s:
                 continue

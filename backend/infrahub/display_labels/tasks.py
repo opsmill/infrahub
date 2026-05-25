@@ -5,10 +5,10 @@ from prefect import flow
 from prefect.logging import get_run_logger
 
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.registry import registry
 from infrahub.display_labels.graphql_queries import DisplayLabelNodeIDQuery
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers_specific
 from infrahub.workers.dependencies import get_client, get_component, get_database, get_workflow
@@ -48,7 +48,7 @@ async def display_label_jinja2_update_value(
     obj: DisplayLabelJinja2GraphQLResponse,
     node_kind: str,
     template: InfrahubJinja2Template,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -67,7 +67,7 @@ async def display_label_jinja2_update_value(
                 "id": obj.node_id,
                 "kind": node_kind,
                 "value": value,
-                "context_account_id": context.account.account_id,
+                "context_account_id": context.account_id,
             },
             branch_name=branch_name,
         )
@@ -87,7 +87,7 @@ async def process_display_label(
     node_kind: str,
     object_id: str,
     target_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -135,7 +135,7 @@ async def process_display_label(
 
 @flow(name="display-labels-setup-jinja2", flow_run_name="Setup display labels in task-manager")
 async def display_labels_setup_jinja2(
-    context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
+    context: EventContext, branch_name: str | None = None, event_name: str | None = None
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
@@ -196,7 +196,7 @@ async def display_labels_setup_jinja2(
 async def trigger_update_display_labels(
     branch_name: str,
     kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 

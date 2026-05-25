@@ -239,6 +239,19 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
         context.run(exec_cmd)
 
 
+@task(name="export-error-catalogue")
+def export_error_catalogue(context: Context, output: str = "schema/error-catalogue.json") -> None:  # noqa: ARG001
+    """Export the Infrahub error catalogue to a JSON Schema artefact."""
+    from infrahub.errors.export import write_catalogue
+
+    destination = Path(output)
+    if not destination.is_absolute():
+        destination = Path(ESCAPED_REPO_PATH) / destination
+
+    written = write_catalogue(destination)
+    print(f" - [{NAMESPACE}] Wrote error catalogue to {written}")
+
+
 def _generate_schemas(context: Context) -> None:
     from jinja2 import Environment, FileSystemLoader, StrictUndefined
 

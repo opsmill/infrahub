@@ -137,7 +137,12 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
         trigger_node: ComputedAttributeTriggerNode,
         branches_out_of_scope: list[str] | None = None,
     ) -> Self:
-        """This function is used to create a trigger definition for a computed attribute of type Jinja2."""
+        """This function is used to create a trigger definition for a computed attribute of type Jinja2.
+
+        Raises:
+            ValueError: When the computed attribute does not define a Jinja2 template.
+
+        """
         event_trigger = EventTrigger()
         event_trigger.events.add(NodeUpdatedEvent.event_name)
         if computed_attribute.attribute.optional:
@@ -191,7 +196,7 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             },
         )
 
-        definition = cls(
+        return cls(
             name=f"{computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{trigger_node.kind}",
             template_hash=template_hash,
             trigger_kind=trigger_node.kind,
@@ -200,8 +205,6 @@ class ComputedAttrJinja2TriggerDefinition(TriggerBranchDefinition):
             trigger=event_trigger,
             actions=[workflow],
         )
-
-        return definition
 
 
 class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
@@ -241,7 +244,7 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
             # attribute query
             event_trigger.match_related["infrahub.field.name"] = update_fields
 
-        definition = cls(
+        return cls(
             name=computed_attribute.computed_attribute.key_name,
             branch=branch,
             computed_attribute=computed_attribute,
@@ -266,8 +269,6 @@ class ComputedAttrPythonTriggerDefinition(TriggerBranchDefinition):
                 ),
             ],
         )
-
-        return definition
 
 
 class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
@@ -306,7 +307,7 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
         elif not branches_out_of_scope and branch != registry.default_branch:
             event_trigger.match["infrahub.branch.name"] = branch
 
-        definition = cls(
+        return cls(
             name=f"{computed_attribute.computed_attribute.key_name}{NAME_SEPARATOR}kind{NAME_SEPARATOR}{kind}",
             branch=branch,
             trigger=event_trigger,
@@ -328,8 +329,6 @@ class ComputedAttrPythonQueryTriggerDefinition(TriggerBranchDefinition):
                 ),
             ],
         )
-
-        return definition
 
 
 class ComputedAttrJinja2GraphQLResponse(BaseModel):

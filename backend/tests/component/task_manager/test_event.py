@@ -4,11 +4,11 @@ from typing import Any
 
 import pytest
 from prefect.client.orchestration import PrefectClient, get_client
-from tests.helpers.events import extract_expected_ids, send_events
+from tests.helpers.events import dummy_event_meta, extract_expected_ids, send_events
 
 from infrahub.core.branch import Branch
 from infrahub.events.branch_action import BranchCreatedEvent, BranchRebasedEvent
-from infrahub.events.models import EventMeta, InfrahubEvent
+from infrahub.events.models import InfrahubEvent
 from infrahub.task_manager.event import PrefectEvent
 from infrahub.task_manager.models import InfrahubEventFilter
 
@@ -29,8 +29,10 @@ query {
 
 
 def filter_outofscope_events(events: dict, in_scope_ids: list[str]) -> dict[str, Any]:
-    """Because we can't guarantee that Prefect is empty at the start of the test easily
+    """Because we can't guarantee that Prefect is empty at the start of the test easily.
+
     we need to exclude all events not created by this test suite.
+
     """
     filtered_events = [event for event in events["edges"] if event["node"]["id"] in in_scope_ids]
     return {"count": len(filtered_events), "edges": filtered_events}
@@ -62,19 +64,19 @@ async def events_data(prefect_client: PrefectClient, branch1_id: str, branch2_id
             branch_name="branch1",
             branch_id=branch1_id,
             sync_with_git=True,
-            meta=EventMeta.with_dummy_context(branch=branch1),
+            meta=dummy_event_meta(branch=branch1),
         ),
         "branch1_rebased": BranchRebasedEvent(
-            branch_name="branch1", branch_id=branch1_id, meta=EventMeta.with_dummy_context(branch=branch1)
+            branch_name="branch1", branch_id=branch1_id, meta=dummy_event_meta(branch=branch1)
         ),
         "branch2_created": BranchCreatedEvent(
             branch_name="branch2",
             branch_id=branch2_id,
             sync_with_git=False,
-            meta=EventMeta.with_dummy_context(branch=branch2),
+            meta=dummy_event_meta(branch=branch2),
         ),
         "branch2_rebased": BranchRebasedEvent(
-            branch_name="branch2", branch_id=branch2_id, meta=EventMeta.with_dummy_context(branch=branch2)
+            branch_name="branch2", branch_id=branch2_id, meta=dummy_event_meta(branch=branch2)
         ),
     }
 

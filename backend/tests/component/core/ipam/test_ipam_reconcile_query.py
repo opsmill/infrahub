@@ -771,7 +771,7 @@ async def test_reconcile_query_on_migrated_kind_node(
 async def test_reconcile_query_for_address_with_prefix_added_on_branch_and_merged(
     db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
 ) -> None:
-    """Test for bug that could cause an IP address to be its own parent after an update on a branch was merged"""
+    """Test for bug that could cause an IP address to be its own parent after an update on a branch was merged."""
     default_ipnamespace = await get_default_ipnamespace(db=db)
     registry.default_ipnamespace = default_ipnamespace.id
     address_10 = ip_dataset_01["address10"]

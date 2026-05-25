@@ -81,7 +81,12 @@ async def upgrade_cmd(
     ),
     verbose: bool = typer.Option(False, help="Show detailed internal output from migrations and rebase."),
 ) -> None:
-    """Upgrade Infrahub to the latest version."""
+    """Upgrade Infrahub to the latest version.
+
+    Raises:
+        typer.Exit: If the prerequisite validation fails before upgrading.
+
+    """
     logging.getLogger("infrahub").setLevel(logging.WARNING)
     logging.getLogger("neo4j").setLevel(logging.ERROR)
     logging.getLogger("prefect").setLevel(logging.ERROR)

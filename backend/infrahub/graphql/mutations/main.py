@@ -70,7 +70,7 @@ async def emit_node_mutation_events(
         deleted_nodes=deleted_nodes or [],
         db=graphql_context.db,
         branch=graphql_context.branch,
-        context=graphql_context.get_context(),
+        context=graphql_context.to_event_context(),
         request_id=request_id,
         action=action,
         side_effect_nodes=side_effect_nodes or [],
@@ -383,10 +383,16 @@ class InfrahubMutationMixin:
         database: InfrahubDatabase | None = None,
         file_processor: FileUploadProcessor | None = None,
     ) -> UpsertResult:
-        """First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
+        """First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for.
+
         default_filter. If not, we will try to create the node, but this creation might fail if payload contains
         hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
         we would update the node without rerunning uniqueness constraint.
+
+        Raises:
+            NodeNotFoundError: When an existing node matched by HFID cannot be retrieved on the current branch.
+            RuntimeError: When more than one node matches the same human-friendly ID.
+
         """
         schema = cls._meta.active_schema
         schema_name = schema.kind

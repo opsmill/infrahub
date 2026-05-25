@@ -179,7 +179,12 @@ class StandardNode(BaseModel):
         await query.execute(db=db)
 
     async def create(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
-        """Create a new node in the database."""
+        """Create a new node in the database.
+
+        Raises:
+            Error: When the create query does not return a result.
+
+        """
         self.created_by = user_id
         self.updated_by = self.created_by
         self.updated_at = self.created_at
@@ -197,7 +202,12 @@ class StandardNode(BaseModel):
         return True
 
     async def update(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
-        """Update the node in the database if needed."""
+        """Update the node in the database if needed.
+
+        Raises:
+            Error: When the update query does not return a result.
+
+        """
         self.updated_by = user_id
         self.updated_at = current_timestamp()
         query: Query = await StandardNodeUpdateQuery.init(db=db, node=self)
@@ -231,7 +241,7 @@ class StandardNode(BaseModel):
 
     @classmethod
     def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
-        """Convert a Neo4j Node to a Infrahub StandardNode
+        """Convert a Neo4j Node to a Infrahub StandardNode.
 
         Args:
             node (neo4j.graph.Node): Neo4j Node object

@@ -29,7 +29,7 @@ class RequestArtifactDefinitionGenerate(BaseModel):
 
 
 class RequestArtifactGenerate(BaseModel):
-    """Runs to generate an artifact"""
+    """Runs to generate an artifact."""
 
     artifact_name: str = Field(..., description="Name of the artifact")
     artifact_definition: str = Field(..., description="The ID of the artifact definition")
@@ -84,7 +84,7 @@ class GitRepositoryAddReadOnly(BaseModel):
 
 
 class GitRepositoryPullReadOnly(BaseModel):
-    """Update a read-only repository to the latest commit for its ref"""
+    """Update a read-only repository to the latest commit for its ref."""
 
     location: str = Field(..., description="The external URL of the repository")
     repository_id: str = Field(..., description="The unique ID of the Repository")
