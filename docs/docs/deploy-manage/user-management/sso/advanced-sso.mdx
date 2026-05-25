@@ -167,7 +167,7 @@ Anchor your regex (`^...$`) and scope it tightly. A permissive pattern can creat
 
 ### Per-login cap
 
-`auto_create_groups_max_per_login` bounds how many **new** groups a single login can create. Reuse of already-existing groups is uncapped. When the cap is hit, surplus claims that would have required a fresh creation are dropped — the login still completes. Each cap breach emits a `GroupAutoCreateCapBreachEvent` carrying the cap value and the verbatim dropped claims.
+`auto_create_groups_max_per_login` bounds how many **new** groups a single login can create. Reuse of already-existing groups is uncapped. When the cap is hit, surplus claims that would have required a fresh creation are dropped — the login still completes. Each cap breach emits a `GroupAutoCreateCappedEvent` carrying the cap value and the verbatim dropped claims.
 
 ### Provenance: the `origin` attribute
 
@@ -180,8 +180,8 @@ Every auto-created `CoreAccountGroup` row stores the configured **provider name*
 Three event types are emitted on the standard event bus — useful for compliance pipelines and operational dashboards:
 
 - `GroupAutoCreatedEvent` — a new group was created from a claim
-- `GroupAutoCreateRejectedClaimEvent` — a claim matched but produced an invalid effective name (empty, whitespace-only)
-- `GroupAutoCreateCapBreachEvent` — the per-login cap was reached and surplus claims were dropped
+- `GroupAutoCreateRejectedEvent` — a claim matched but produced an invalid effective name (empty, whitespace-only)
+- `GroupAutoCreateCappedEvent` — the per-login cap was reached and surplus claims were dropped
 
 See the [group events reference](../../../reference/infrahub-events/group.mdx) for full payload shapes.
 
