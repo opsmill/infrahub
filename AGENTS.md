@@ -86,15 +86,14 @@ cd docs && npm run build              # Build documentation
 
 - `backend/infrahub/core/schema/generated/` – Schema definitions
 - `backend/infrahub/core/protocols.py` – Protocol definitions
-- `backend/infrahub/generators/queries/*.py` – Pydantic types generated from `.gql` query files
-- `backend/infrahub/computed_attribute/queries/*.py` – Pydantic types generated from `.gql` query files
+- `backend/infrahub/generators/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
+- `backend/infrahub/computed_attribute/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
 - `frontend/app/src/shared/api/graphql/generated/` – GraphQL types
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
 
 Regenerate backend (offline): `uv run invoke backend.generate`
-Regenerate GraphQL query types: `uv run invoke backend.generate-graphql-types`
 Export GraphQL/OpenAPI schemas (requires running instance): `infrahub dev export-graphql-schema`
 Regenerate frontend types (offline, reads local schema files): `cd frontend/app && pnpm codegen`
 

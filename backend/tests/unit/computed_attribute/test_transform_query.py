@@ -1,3 +1,5 @@
+import pytest
+
 from infrahub.computed_attribute.graphql_queries.queries import ComputedAttributeTransformQuery, TransformNode
 
 
@@ -89,3 +91,31 @@ class TestComputedAttributeTransformQuery:
     def test_parse_response_returns_none_for_missing_kind(self) -> None:
         q = ComputedAttributeTransformQuery(transform_id="txfm-001")
         assert q.parse_response(response={}) is None
+
+    def test_parse_response_raises_for_unsupported_repository_kind(self) -> None:
+        q = ComputedAttributeTransformQuery(transform_id="txfm-001")
+        response = {
+            "CoreTransformPython": {
+                "edges": [
+                    {
+                        "node": {
+                            "id": "txfm-001",
+                            "file_path": {"value": "transforms/my_transform.py"},
+                            "class_name": {"value": "MyTransform"},
+                            "timeout": {"value": 60},
+                            "convert_query_response": {"value": False},
+                            "repository": {
+                                "node": {
+                                    "id": "repo-001",
+                                    "__typename": "CoreGenericRepository",
+                                    "name": {"value": "my-repo"},
+                                }
+                            },
+                            "query": {"node": {"id": "query-001", "name": {"value": "my-query"}}},
+                        }
+                    }
+                ]
+            }
+        }
+        with pytest.raises(ValueError, match="Unsupported repository kind 'CoreGenericRepository'"):
+            q.parse_response(response=response)

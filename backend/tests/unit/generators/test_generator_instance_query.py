@@ -1,3 +1,6 @@
+import pytest
+from pydantic import ValidationError
+
 from infrahub.generators.graphql_queries.queries import GeneratorInstanceQuery
 from infrahub.generators.models import GeneratorInstanceNode
 
@@ -49,18 +52,20 @@ class TestGeneratorInstanceQuery:
         q = GeneratorInstanceQuery(definition_id="def-001", object_id="obj-001")
         assert q.parse_response(response={"CoreGeneratorInstance": {"edges": []}}) == []
 
-    def test_parse_response_missing_kind_key(self) -> None:
+    def test_parse_response_raises_on_invalid_response(self) -> None:
         q = GeneratorInstanceQuery(definition_id="def-001", object_id="obj-001")
-        assert q.parse_response(response={}) == []
+        with pytest.raises(ValidationError):
+            q.parse_response(response={})
 
-    def test_parse_response_invalid_node_returns_empty(self) -> None:
+    def test_parse_response_null_node_is_skipped(self) -> None:
         q = GeneratorInstanceQuery(definition_id="def-001", object_id="obj-001")
         response = {
             "CoreGeneratorInstance": {
                 "edges": [
                     {"node": {"id": "abc-123", "status": {"value": "pending"}}},
-                    {"node": {"status": {"value": "error"}}},
+                    {"node": None},
                 ]
             }
         }
-        assert q.parse_response(response=response) == []
+        result = q.parse_response(response=response)
+        assert result == [GeneratorInstanceNode(id="abc-123", status="pending")]

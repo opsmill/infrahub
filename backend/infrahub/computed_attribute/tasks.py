@@ -82,7 +82,7 @@ async def process_transform(
 
     for attribute_name, transform_attribute in transform_attributes.items():
         if not transform_attribute.transform:
-            continue
+            raise ValueError(f"No transform configured for computed attribute '{attribute_name}'")
         transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
         transform_response = await client.execute_graphql(
             query=transform_query.render_query(),
@@ -92,7 +92,9 @@ async def process_transform(
         transform = transform_query.parse_response(response=transform_response)
 
         if not transform:
-            continue
+            raise ValueError(
+                f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
+            )
 
         repo = await get_initialized_repo(
             client=client,

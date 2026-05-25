@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, ClassVar
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 
 from infrahub.generators.graphql_queries.generator_instance_fetch import GeneratorInstanceFetch
 from infrahub.generators.models import GeneratorInstanceNode
@@ -23,10 +23,7 @@ class GeneratorInstanceQuery(BaseModel):
         return {"definition_id": self.definition_id, "object_id": self.object_id}
 
     def parse_response(self, response: dict[str, Any]) -> list[GeneratorInstanceNode]:
-        try:
-            typed = GeneratorInstanceFetch.model_validate(response)
-        except ValidationError:
-            return []
+        typed = GeneratorInstanceFetch.model_validate(response)
         result = []
         for edge in typed.core_generator_instance.edges:
             node = edge.node

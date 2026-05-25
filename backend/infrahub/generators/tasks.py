@@ -125,10 +125,9 @@ async def _define_instance(model: RequestGeneratorRun, client: InfrahubClient) -
                     kind=CoreGeneratorInstance,
                     id=instance_nodes[0].id,
                     branch=model.branch_name,
-                    include=["status"],
                 )
                 instance.status.value = GeneratorInstanceStatus.PENDING.value
-                await instance.update(do_full_update=False)
+                await instance.update(do_full_update=True)
             else:
                 instance = await client.create(
                     kind=CoreGeneratorInstance,

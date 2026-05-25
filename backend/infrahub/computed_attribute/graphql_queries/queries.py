@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from infrahub.computed_attribute.graphql_queries.computed_attribute_fetch_transform import (
     ComputedAttributeFetchTransform,
 )
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.graphql_query.node_id_query import NodeIDQuery
 
 TRANSFORM_QUERY = (Path(__file__).parent / "transform_fetch.gql").read_text()
@@ -81,6 +82,8 @@ class ComputedAttributeTransformQuery(BaseModel):
             and query_node.name
             and query_node.name.value is not None
         ):
+            if repo.typename__ not in {InfrahubKind.REPOSITORY, InfrahubKind.READONLYREPOSITORY}:
+                raise ValueError(f"Unsupported repository kind '{repo.typename__}' for transform '{node.id}'")
             return TransformNode(
                 id=node.id,
                 file_path=node.file_path.value,
