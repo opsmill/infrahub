@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
+    from infrahub.events.models import EventContext
     from tests.adapters.message_bus import BusSimulator
 
 
@@ -31,14 +32,14 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
         db: InfrahubDatabase,
         initialize_registry: None,
         default_branch: Branch,
-    ) -> InfrahubContext:
+    ) -> EventContext:
         admin_account = await NodeManager.get_one_by_hfid(
             db=db, kind=InfrahubKind.ACCOUNT, hfid=["admin"], raise_on_error=True
         )
         return InfrahubContext(
             account=AccountSession(authenticated=True, account_id=admin_account.id, auth_type=AuthType.API),
             branch=BranchContext(name=default_branch.name, id=str(default_branch.uuid)),
-        )
+        ).to_event_context()
 
     @pytest.fixture(scope="class")
     async def tags_dataset(
@@ -62,7 +63,7 @@ class TestComputedAttributeTaskOptimization(TestInfrahubApp):
         tags_dataset: list[str],
         default_branch: Branch,
         client: InfrahubClient,
-        context: InfrahubContext,
+        context: EventContext,
         prefect_test_fixture: None,
     ) -> None:
         recorder = WorkflowRecorder()
