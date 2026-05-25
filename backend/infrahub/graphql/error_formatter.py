@@ -33,6 +33,7 @@ from infrahub.exceptions import (
 
 if TYPE_CHECKING:
     from graphql import GraphQLError, GraphQLFormattedError
+    from pydantic import BaseModel
 
 
 UNDEFINED_ERROR_CODE = "UNDEFINED_ERROR"
@@ -44,38 +45,40 @@ _EXPIRED_SIGNATURE_MARKER = "Expired Signature"
 _logger = structlog.get_logger("infrahub.graphql.errors")
 
 
-def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:  # noqa: PLR0911
-    if code == "NODE_NOT_FOUND" and isinstance(exc, NodeNotFoundError):
-        return NodeNotFoundData(node_kind=exc.node_type, identifier=exc.identifier).model_dump(mode="json")
-    if code == "AUTHENTICATION_REQUIRED":
-        return AuthenticationRequiredData().model_dump(mode="json")
-    if code == "TOKEN_EXPIRED":
-        return TokenExpiredData().model_dump(mode="json")
-    if code == "PERMISSION_DENIED":
-        action = getattr(exc, "action", None) if exc is not None else None
-        resource_kind = getattr(exc, "resource_kind", None) if exc is not None else None
-        return PermissionDeniedData(action=action, resource_kind=resource_kind).model_dump(mode="json")
-    if code == "ATTRIBUTE_REQUIRED" and isinstance(exc, AttributeRequiredError):
-        return AttributeRequiredData(node_kind=exc.node_kind, field_name=exc.field_name).model_dump(mode="json")
-    if code == "ATTRIBUTE_INVALID_TYPE" and isinstance(exc, AttributeInvalidTypeError):
-        return AttributeInvalidTypeData(
-            node_kind=exc.node_kind,
-            field_name=exc.field_name,
-            expected_type=exc.expected_type,
-            received_type=exc.received_type,
-        ).model_dump(mode="json")
-    if code == "ATTRIBUTE_CONSTRAINT_VIOLATION" and isinstance(exc, AttributeConstraintViolationError):
-        return AttributeConstraintViolationData(
-            node_kind=exc.node_kind,
-            field_name=exc.field_name,
-            constraint=exc.constraint,
-            detail=exc.detail,
-        ).model_dump(mode="json")
-    if code == "BRANCH_NOT_FOUND" and isinstance(exc, BranchNotFoundError):
-        return BranchNotFoundData(branch_name=exc.identifier).model_dump(mode="json")
-    if code == "SCHEMA_NOT_FOUND" and isinstance(exc, SchemaNotFoundError):
-        return SchemaNotFoundData(kind=exc.identifier).model_dump(mode="json")
-    return UndefinedErrorData().model_dump(mode="json")
+def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
+    payload: BaseModel = UndefinedErrorData()
+    match code:
+        case "NODE_NOT_FOUND" if isinstance(exc, NodeNotFoundError):
+            payload = NodeNotFoundData(node_kind=exc.node_type, identifier=exc.identifier)
+        case "AUTHENTICATION_REQUIRED":
+            payload = AuthenticationRequiredData()
+        case "TOKEN_EXPIRED":
+            payload = TokenExpiredData()
+        case "PERMISSION_DENIED":
+            action = getattr(exc, "action", None) if exc is not None else None
+            resource_kind = getattr(exc, "resource_kind", None) if exc is not None else None
+            payload = PermissionDeniedData(action=action, resource_kind=resource_kind)
+        case "ATTRIBUTE_REQUIRED" if isinstance(exc, AttributeRequiredError):
+            payload = AttributeRequiredData(node_kind=exc.node_kind, field_name=exc.field_name)
+        case "ATTRIBUTE_INVALID_TYPE" if isinstance(exc, AttributeInvalidTypeError):
+            payload = AttributeInvalidTypeData(
+                node_kind=exc.node_kind,
+                field_name=exc.field_name,
+                expected_type=exc.expected_type,
+                received_type=exc.received_type,
+            )
+        case "ATTRIBUTE_CONSTRAINT_VIOLATION" if isinstance(exc, AttributeConstraintViolationError):
+            payload = AttributeConstraintViolationData(
+                node_kind=exc.node_kind,
+                field_name=exc.field_name,
+                constraint=exc.constraint,
+                detail=exc.detail,
+            )
+        case "BRANCH_NOT_FOUND" if isinstance(exc, BranchNotFoundError):
+            payload = BranchNotFoundData(branch_name=exc.identifier)
+        case "SCHEMA_NOT_FOUND" if isinstance(exc, SchemaNotFoundError):
+            payload = SchemaNotFoundData(kind=exc.identifier)
+    return payload.model_dump(mode="json")
 
 
 def _classify_authorization_error(exc: AuthorizationError) -> str:
