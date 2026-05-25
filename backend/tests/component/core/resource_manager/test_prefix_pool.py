@@ -467,6 +467,74 @@ async def test_ipv4_same_prefixlen_pool_exhaustion(
         )
 
 
+async def test_mixed_prefixlen_allocation_two_resources(
+    db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
+) -> None:
+    prefix_schema = registry.schema.get_node_schema(name="IpamIPPrefix", branch=default_branch)
+
+    ns = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
+    await ns.new(db=db, name="ns_mixed_prefixlen")
+    await ns.save(db=db)
+
+    resource_a = await Node.init(db=db, schema=prefix_schema)
+    await resource_a.new(db=db, prefix="192.168.0.0/30", ip_namespace=ns)
+    await resource_a.save(db=db)
+
+    resource_b = await Node.init(db=db, schema=prefix_schema)
+    await resource_b.new(db=db, prefix="192.168.0.4/30", ip_namespace=ns)
+    await resource_b.save(db=db)
+
+    prefix_pool_schema = registry.schema.get_node_schema(name=InfrahubKind.IPPREFIXPOOL, branch=default_branch)
+
+    pool = await CoreIPPrefixPool.init(schema=prefix_pool_schema, db=db)
+    await pool.new(db=db, name="pool_mixed", resources=[resource_a, resource_b], ip_namespace=ns)
+    await pool.save(db=db)
+
+    # /31 from first /30 succeeds
+    first_31 = await pool.get_resource(
+        db=db,
+        prefixlen=31,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="first_31",
+        branch=default_branch,
+    )
+    assert first_31.prefix.value == "192.168.0.0/31"
+
+    # /30 succeeds — first /30 is partially used so the allocator moves to the second /30
+    first_30 = await pool.get_resource(
+        db=db,
+        prefixlen=30,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="first_30",
+        branch=default_branch,
+    )
+    assert first_30.prefix.value == "192.168.0.4/30"
+
+    # second /30 is exhausted, first /30 can't fit another /30 — fails
+    with pytest.raises(IndexError):
+        await pool.get_resource(
+            db=db,
+            prefixlen=30,
+            prefix_type="IpamIPPrefix",
+            member_type="prefix",
+            identifier="second_30",
+            branch=default_branch,
+        )
+
+    # /31 still fits in the remaining space of the first /30
+    second_31 = await pool.get_resource(
+        db=db,
+        prefixlen=31,
+        prefix_type="IpamIPPrefix",
+        member_type="prefix",
+        identifier="second_31",
+        branch=default_branch,
+    )
+    assert second_31.prefix.value == "192.168.0.2/31"
+
+
 async def test_ipv6_same_prefixlen_pool_exhaustion(
     db: InfrahubDatabase, default_branch: Branch, default_ipnamespace: Node, register_ipam_schema: SchemaBranch
 ) -> None:

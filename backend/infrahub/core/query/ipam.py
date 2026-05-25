@@ -333,6 +333,8 @@ class IPPrefixSubnetFetchFree(Query):
         obj: IPNetworkType,
         target_prefixlen: int,
         namespace: Node | str | None = None,
+        # obj is an IPNetworkType (Python network object); parent_uuid is the database UUID of
+        # the pool-resource node. They represent different things and cannot substitute each other.
         parent_uuid: str | None = None,
         **kwargs,
     ) -> None:
@@ -379,6 +381,9 @@ class IPPrefixSubnetFetchFree(Query):
         WHERE ns_rel.name = "ip_namespace__ip_prefix"
             AND av.binary_address STARTS WITH $prefix_binary
             AND av.prefixlen >= $maxprefixlen
+            // Exclude the pool-resource prefix node itself: it appears in the DB at the same
+            // address as the parent, so without this filter it would be counted as occupied
+            // space and prevent allocating a prefix of the same length as the resource.
             AND pfx.uuid <> $exclude_uuid
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
@@ -464,6 +469,8 @@ class IPv6PrefixSubnetFetchFree(Query):
         obj: IPNetworkType,
         target_prefixlen: int,
         namespace: Node | str | None = None,
+        # obj is an IPNetworkType (Python network object); parent_uuid is the database UUID of
+        # the pool-resource node. They represent different things and cannot substitute each other.
         parent_uuid: str | None = None,
         **kwargs,
     ) -> None:
@@ -511,6 +518,9 @@ class IPv6PrefixSubnetFetchFree(Query):
         WHERE ns_rel.name = "ip_namespace__ip_prefix"
             AND av.binary_address STARTS WITH $prefix_binary
             AND av.prefixlen >= $maxprefixlen
+            // Exclude the pool-resource prefix node itself: it appears in the DB at the same
+            // address as the parent, so without this filter it would be counted as occupied
+            // space and prevent allocating a prefix of the same length as the resource.
             AND pfx.uuid <> $exclude_uuid
             AND av.version = $ip_version
             AND all(r IN relationships(path2) WHERE (%(branch_filter)s) AND r.status = "active")
