@@ -198,7 +198,7 @@ async def test_hfid_migration(
     db: InfrahubDatabase,
     benchmark_dataset: dict[str, Any],
 ) -> None:
-    """hfid task: client.all(kind, exclude=...) → HFIDNodeIDQuery."""
+    """Hfid task: client.all(kind, exclude=...) → HFIDNodeIDQuery."""
     branch: Branch = benchmark_dataset["branch"]
 
     optimized_query = HFIDNodeIDQuery(kind="BuiltinTag").render_query()
@@ -231,7 +231,7 @@ async def test_git_migration(
     db: InfrahubDatabase,
     benchmark_dataset: dict[str, Any],
 ) -> None:
-    """git task: client.filters(kind=CoreRepository) → GitRepositoryNodeQuery."""
+    """Git task: client.filters(kind=CoreRepository) → GitRepositoryNodeQuery."""
     branch: Branch = benchmark_dataset["branch"]
 
     optimized_query = GitRepositoryNodeQuery().render_query()
