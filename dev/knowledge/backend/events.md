@@ -94,5 +94,6 @@ Events can be queried through:
 
 - [ADR-0002: Prefect Events System](../../adr/0002-events-system.md) - Why we use Prefect Events
 - [Creating Events Guide](../../guides/backend/creating-events.md) - How to create a new event
+- [Authentication](authentication.md) - SSO group resolution and auto-create group events
 - [Webhooks](webhooks.md) - HTTP notification delivery triggered by events
 - [Backend Architecture](architecture.md) - Overall backend structure
