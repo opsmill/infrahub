@@ -221,10 +221,25 @@ def test_format_graphql_errors_fans_out_multi_field_validation() -> None:
     assert formatted[1]["path"] == ["BuiltinTagCreate", "data", "description"]
 
 
+class _PermissionDeniedWithExtrasError(PermissionDeniedError):
+    """Subclass that simulates an attacker-controlled exception carrying extra resource identifiers.
+
+    Real ``PermissionDeniedError`` instances do not (and should not) carry an ``identifier`` or
+    ``resource_id`` attribute — this subclass exists only to prove the formatter ignores them
+    if they were ever present.
+    """
+
+    identifier: str
+    resource_id: str
+
+    def __init__(self, message: str, *, identifier: str, resource_id: str) -> None:
+        super().__init__(message)
+        self.identifier = identifier
+        self.resource_id = resource_id
+
+
 def test_permission_denied_payload_strips_identifier_attributes() -> None:
-    exc = PermissionDeniedError("Forbidden")
-    exc.identifier = "user-42-secret"
-    exc.resource_id = "node-99"
+    exc = _PermissionDeniedWithExtrasError("Forbidden", identifier="user-42-secret", resource_id="node-99")
 
     extensions = build_catalogue_extensions(exc)
 

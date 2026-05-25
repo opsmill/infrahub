@@ -5,8 +5,7 @@ from typing import TYPE_CHECKING, Any
 import pytest
 
 from infrahub.core.node import Node
-from infrahub.core.schema import SchemaRoot
-from tests.helpers.schema import TAG, load_schema
+from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
 if TYPE_CHECKING:
@@ -17,15 +16,15 @@ if TYPE_CHECKING:
     from tests.helpers.test_client import InfrahubTestClient
 
 
-TAG_SCHEMA = SchemaRoot(nodes=[TAG])
-
-
 def _admin_headers(api_admin_token: str) -> dict[str, str]:
     return {"X-INFRAHUB-KEY": api_admin_token}
 
 
 async def _post_graphql(
-    client: InfrahubTestClient, query: str, headers: dict[str, str], variables: dict[str, Any] | None = None
+    client: InfrahubTestClient,
+    query: str,
+    headers: dict[str, str],
+    variables: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {"query": query}
     if variables is not None:
@@ -45,11 +44,11 @@ class TestErrorCatalogue(TestInfrahubApp):
         bus_simulator: BusSimulator,
         prefect_test_fixture: None,
     ) -> str:
-        await load_schema(db, schema=TAG_SCHEMA, update_db=True)
-        tag = await Node.init(db=db, schema="TestingTag")
-        await tag.new(db=db, name="seed-tag", description="seed")
-        await tag.save(db=db)
-        return tag.id
+        await load_schema(db, schema=CAR_SCHEMA, update_db=True)
+        person = await Node.init(db=db, schema="TestingPerson")
+        await person.new(db=db, name="seed-person", height=180)
+        await person.save(db=db)
+        return person.id
 
     async def test_node_not_found_emits_catalogue_envelope(
         self,
@@ -60,18 +59,18 @@ class TestErrorCatalogue(TestInfrahubApp):
         unknown_id = "17a90b4e-0000-0000-0000-deadbeef0000"
         query = """
         mutation {
-            TestingTagUpdate(
+            TestingPersonUpdate(
                 data: { id: "17a90b4e-0000-0000-0000-deadbeef0000", description: { value: "rename" } }
             ) { ok }
         }
         """
         body = await _post_graphql(client=test_client, query=query, headers=_admin_headers(api_admin_token))
-        assert body["data"] == {"TestingTagUpdate": None}
+        assert body["data"] == {"TestingPersonUpdate": None}
         assert len(body["errors"]) == 1
         error = body["errors"][0]
         assert error["extensions"]["code"] == "NODE_NOT_FOUND"
         assert error["extensions"]["http_status"] == 404
-        assert error["extensions"]["data"] == {"node_kind": "TestingTag", "identifier": unknown_id}
+        assert error["extensions"]["data"] == {"node_kind": "TestingPerson", "identifier": unknown_id}
 
     async def test_attribute_required_for_single_missing_field(
         self,
@@ -81,7 +80,7 @@ class TestErrorCatalogue(TestInfrahubApp):
     ) -> None:
         query = """
         mutation {
-            TestingTagCreate(data: { description: { value: "only description" } }) { ok }
+            TestingPersonCreate(data: { height: { value: 175 } }) { ok }
         }
         """
         body = await _post_graphql(client=test_client, query=query, headers=_admin_headers(api_admin_token))
@@ -89,55 +88,41 @@ class TestErrorCatalogue(TestInfrahubApp):
         error = body["errors"][0]
         assert error["extensions"]["code"] == "ATTRIBUTE_REQUIRED"
         assert error["extensions"]["http_status"] == 422
-        assert error["extensions"]["data"] == {"node_kind": "TestingTag", "field_name": "name"}
+        assert error["extensions"]["data"] == {"node_kind": "TestingPerson", "field_name": "name"}
 
-    async def test_branch_not_found_emits_catalogue_envelope(
+    async def test_multi_field_validation_returns_one_entry_per_failing_field(
         self,
         initial_dataset: str,
         test_client: InfrahubTestClient,
         api_admin_token: str,
     ) -> None:
-        query = """
-        query {
-            TestingTag { count }
-        }
-        """
-        body = await _post_graphql(
-            client=test_client,
-            query=query,
-            headers={**_admin_headers(api_admin_token), "X-INFRAHUB-BRANCH": "does-not-exist"},
-        )
-        # The branch-not-found short-circuits the GraphQLApp before graphql-core runs and
-        # returns a JSONResponse rather than the catalogue envelope. Skip if the response
-        # doesn't contain a catalogue envelope.
-        if body.get("errors") and isinstance(body["errors"][0].get("extensions"), dict):
-            extensions = body["errors"][0]["extensions"]
-            if "code" in extensions:
-                assert extensions["code"] == "BRANCH_NOT_FOUND"
-                assert extensions["http_status"] == 400
-                assert extensions["data"] == {"branch_name": "does-not-exist"}
-
-    async def test_multi_field_validation_returns_one_entry_per_field(
-        self,
-        initial_dataset: str,
-        test_client: InfrahubTestClient,
-        api_admin_token: str,
-    ) -> None:
+        # TestingCar requires name + color attributes AND owner + manufacturer relationships.
+        # Submitting an empty payload triggers the resolver's per-field validation fan-out and
+        # must produce one errors[] entry per missing field, each carrying its own catalogue
+        # code, typed data, and path.
         query = """
         mutation {
-            TestingTagCreate(data: { description: { value: 42 } }) { ok }
+            TestingCarCreate(data: {}) { ok }
         }
         """
         body = await _post_graphql(client=test_client, query=query, headers=_admin_headers(api_admin_token))
-        codes = {error["extensions"]["code"] for error in body["errors"]}
-        # The Int-on-Text rejection happens at GraphQL parse time (schema-driven type checking),
-        # surfacing as a graphql-core ValidationError rather than as the catalogued
-        # ATTRIBUTE_INVALID_TYPE. The mandatory-field check is the catalogue-level signal we own.
-        # When the GraphQL parser accepts the input, the formatter splits the validation error
-        # into per-field entries. When it rejects at parse time we get one structural error.
-        assert codes  # at least one error
-        if len(body["errors"]) >= 2:
-            assert "ATTRIBUTE_REQUIRED" in codes
+
+        assert body["data"] == {"TestingCarCreate": None}
+        errors = body["errors"]
+        assert len(errors) >= 2, f"expected per-field fan-out, got {len(errors)} entry/entries"
+
+        codes = {error["extensions"]["code"] for error in errors}
+        assert codes == {"ATTRIBUTE_REQUIRED"}, codes
+
+        field_names = {error["extensions"]["data"]["field_name"] for error in errors}
+        # name and color are mandatory attributes on TestingCar; both must be reported.
+        assert {"name", "color"}.issubset(field_names), field_names
+
+        for error in errors:
+            assert error["extensions"]["http_status"] == 422
+            data = error["extensions"]["data"]
+            assert data["node_kind"] == "TestingCar"
+            assert error["path"][-1] == data["field_name"], error["path"]
 
     async def test_undefined_error_falls_back_for_uncatalogued_exception(
         self,
@@ -146,12 +131,9 @@ class TestErrorCatalogue(TestInfrahubApp):
         api_admin_token: str,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
-        # A syntactically valid query against a non-existent field yields a graphql-core
-        # validation error whose original_error is None — the formatter should still emit
-        # UNDEFINED_ERROR with a 500 fallback.
-        query = """
-        query { ThisFieldDoesNotExist { id } }
-        """
+        # A graphql-core validation error (unknown field) has no original_error — the formatter
+        # should still emit UNDEFINED_ERROR with a 500 fallback.
+        query = "query { ThisFieldDoesNotExist { id } }"
         caplog.set_level("INFO", logger="infrahub.graphql.errors")
         body = await _post_graphql(client=test_client, query=query, headers=_admin_headers(api_admin_token))
         assert body["errors"], "expected at least one error"

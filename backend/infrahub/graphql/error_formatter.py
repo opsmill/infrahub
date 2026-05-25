@@ -86,12 +86,17 @@ def _classify_authorization_error(exc: AuthorizationError) -> str:
 
 def resolve_catalogue_code(exc: BaseException) -> str:
     """Return the catalogue code for ``exc``, or ``UNDEFINED_ERROR`` if no mapping exists."""
+    if not isinstance(exc, Exception):
+        return UNDEFINED_ERROR_CODE
     if isinstance(exc, AuthorizationError):
         return _classify_authorization_error(exc)
-    code = EXCEPTION_TO_CODE.get(type(exc))
+    exc_type: type[Exception] = type(exc)
+    code = EXCEPTION_TO_CODE.get(exc_type)
     if code is not None:
         return code
-    for parent in type(exc).__mro__[1:]:
+    for parent in exc_type.__mro__[1:]:
+        if not isinstance(parent, type) or not issubclass(parent, Exception):
+            continue
         parent_code = EXCEPTION_TO_CODE.get(parent)
         if parent_code is not None:
             return parent_code

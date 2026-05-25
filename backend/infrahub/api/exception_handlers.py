@@ -39,8 +39,13 @@ def _rest_envelope(messages: list[str], http_code: int) -> dict[str, Any]:
     }
 
 
-def _extract_messages(exc: Exception) -> tuple[list[str], int]:
-    http_code = 500
+async def generic_api_exception_handler(request: Request, exc: Exception, http_code: int = 500) -> JSONResponse:
+    """Generic API Exception handler.
+
+    For requests hitting the GraphQL endpoint, the response body uses the GraphQL error envelope
+    (``extensions.code`` as a string drawn from the catalogue, plus ``http_status`` and ``data``).
+    REST routes keep the legacy shape with an integer ``extensions.code``.
+    """
     if isinstance(exc, Error):
         if exc.HTTP_CODE:
             http_code = exc.HTTP_CODE
@@ -52,19 +57,6 @@ def _extract_messages(exc: Exception) -> tuple[list[str], int]:
         messages = [ed["msg"] for ed in exc.errors()]
     else:
         messages = [str(exc)]
-    return messages, http_code
-
-
-async def generic_api_exception_handler(request: Request, exc: Exception, http_code: int = 500) -> JSONResponse:
-    """Generic API Exception handler.
-
-    For requests hitting the GraphQL endpoint, the response body uses the GraphQL error envelope
-    (``extensions.code`` as a string drawn from the catalogue, plus ``http_status`` and ``data``).
-    REST routes keep the legacy shape with an integer ``extensions.code``.
-    """
-    messages, resolved_http_code = _extract_messages(exc)
-    if http_code == 500 and resolved_http_code != 500:
-        http_code = resolved_http_code
 
     if request.url.path.startswith(GRAPHQL_PATH_PREFIX):
         body = _graphql_envelope(exc=exc, messages=messages, http_code=http_code)

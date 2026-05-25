@@ -46,45 +46,17 @@ class TestExceptionHandlers(TestInfrahubApp):
         assert extensions["http_status"] == 401
         assert extensions["data"] == {}
 
-    async def test_expired_jwt_on_graphql_returns_token_expired(
-        self,
-        initial_dataset: None,
-        test_client: InfrahubTestClient,
-    ) -> None:
-        # An expired JWT raises AuthorizationError("Expired Signature"); ensure the formatter
-        # splits the AuthorizationError mapping into TOKEN_EXPIRED.
-        expired_jwt = (
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9."
-            "eyJzdWIiOiIxMjM0NTY3ODkwIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjN9."
-            "ZQYqVz0EJ9C1zG4dC1xS4lF9N2J2lUvT8O0eL0XHb3o"
-        )
-        response = await test_client.post(
-            "/graphql",
-            json={"query": "{ TestingTag { count } }"},
-            headers={"Authorization": f"Bearer {expired_jwt}"},
-        )
-        # The token is structurally malformed in this test, so it likely fails as
-        # AUTHENTICATION_REQUIRED rather than TOKEN_EXPIRED. The point of this test
-        # is that whichever code is emitted, it is a catalogue string, not an integer.
-        body = response.json()
-        assert isinstance(body["errors"][0]["extensions"]["code"], str)
-        assert body["errors"][0]["extensions"]["code"] in {
-            "AUTHENTICATION_REQUIRED",
-            "TOKEN_EXPIRED",
-        }
-
     async def test_unauthenticated_rest_response_preserves_integer_code(
         self,
         initial_dataset: None,
         test_client: InfrahubTestClient,
     ) -> None:
         response = await test_client.get("/api/schema", headers={"Authorization": "Bearer not-a-real-token"})
-        # The REST shape must keep the legacy integer-code envelope so external integrations
-        # built against /api/... do not regress.
-        if response.status_code == 401:
-            body = response.json()
-            assert body["data"] is None
-            assert body["errors"]
-            code = body["errors"][0]["extensions"]["code"]
-            assert isinstance(code, int)
-            assert code == 401
+
+        assert response.status_code == 401
+        body = response.json()
+        assert body["data"] is None
+        assert body["errors"]
+        code = body["errors"][0]["extensions"]["code"]
+        assert isinstance(code, int)
+        assert code == 401

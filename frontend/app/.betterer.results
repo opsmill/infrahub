@@ -277,7 +277,7 @@ exports[`fix ts error`] = {
     "src/pages/resource-manager/resource-pool-details.tsx:2798533623": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/shared/api/graphql/graphqlClientApollo.tsx:2901762482": [
+    "src/shared/api/graphql/graphqlClientApollo.tsx:1833546096": [
       [55, 33, 44, "tsc: Not all code paths return a value.", "2633054574"]
     ],
     "src/shared/components/display/badge-circle.tsx:698452183": [

@@ -34,9 +34,16 @@ class MultiFieldValidationError(Exception):
 
 
 def classify_field_reason(field_name: str, reason: str, *, node_kind: str) -> ClassifiedFieldError:
-    """Map a single ValidationError ``{field: reason}`` entry to a typed catalogue exception."""
+    """Map a single ValidationError ``{field: reason}`` entry to a typed catalogue exception.
+
+    The resulting exception's ``message`` mirrors the legacy ``ValidationError({field: reason})``
+    shape — ``"<reason> at <field>"`` — so callers that scrape error messages remain stable.
+    The catalogue payload is built from the typed attributes (``field_name``, ``expected_type``,
+    etc.), not from the message text.
+    """
+    legacy_message = f"{reason} at {field_name}"
     if _MANDATORY_RE.search(reason):
-        return AttributeRequiredError(node_kind=node_kind, field_name=field_name, message=reason)
+        return AttributeRequiredError(node_kind=node_kind, field_name=field_name, message=legacy_message)
     match = _INVALID_TYPE_RE.match(reason)
     if match:
         return AttributeInvalidTypeError(
@@ -44,13 +51,13 @@ def classify_field_reason(field_name: str, reason: str, *, node_kind: str) -> Cl
             field_name=field_name,
             expected_type=match.group("expected"),
             received_type=match.group("received"),
-            message=reason,
+            message=legacy_message,
         )
     return AttributeConstraintViolationError(
         node_kind=node_kind,
         field_name=field_name,
         constraint=reason,
-        message=reason,
+        message=legacy_message,
     )
 
 
