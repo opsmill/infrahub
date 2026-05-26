@@ -57,16 +57,16 @@ _USER_BRANCH_QPP_DELETION_FILTER = """
     // account for objects active on default/global and deleted on the user's branch
     // ----------------
     AND NOT EXISTS {
-      (a)-[del:IS_RELATED {status: "deleted", branch: $user_branch}]-(rel)
-      WHERE del.from > r1.from
-        AND del.from <= $at
-        AND (del.to IS NULL OR del.to >= $at)
+      (a)-[del1:IS_RELATED {status: "deleted", branch: $user_branch}]-(rel)
+      WHERE del1.from > r1.from
+        AND del1.from <= $at
+        AND (del1.to IS NULL OR del1.to >= $at)
     }
     AND NOT EXISTS {
-      (rel)-[del:IS_RELATED {status: "deleted", branch: $user_branch}]-(b)
-      WHERE del.from > r2.from
-        AND del.from <= $at
-        AND (del.to IS NULL OR del.to >= $at)
+      (rel)-[del2:IS_RELATED {status: "deleted", branch: $user_branch}]-(b)
+      WHERE del2.from > r2.from
+        AND del2.from <= $at
+        AND (del2.to IS NULL OR del2.to >= $at)
     }"""
 
 _SOURCE_MATCH = """
