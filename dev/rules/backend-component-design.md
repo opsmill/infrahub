@@ -41,7 +41,7 @@ in-memory version of a component typically backed by the database).
 
 ## Why this matters
 
-Constructor-injected long-lived dependencies plus method-passed transient entities is the boundary that lets components be reused across requests/operations and mocked with adapter implementations instead of `unittest.mock`. The [testing rule](`dev/rules/testing-python.md`) requires adapter/protocol patterns for tests — that requirement is only practical when production code follows this design.
+Constructor-injected long-lived dependencies plus method-passed transient entities is the boundary that lets components be reused across requests/operations and mocked with adapter implementations instead of `unittest.mock`. The [testing rule](./testing-python.md) requires adapter/protocol patterns for tests — that requirement is only practical when production code follows this design.
 
 ## Existing code
 
