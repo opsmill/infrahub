@@ -57,11 +57,60 @@ YAML
 
 ### 0b — Drop the realm import
 
-Write `development/keycloak/import/realm.json` — full template in [PR #9302](https://github.com/opsmill/infrahub/pull/9302). The realm needs:
+Write `development/keycloak/import/realm.json`. The realm needs:
 
 - Groups: `ops-admins`, `ops-readers`, `data-engineers`, `noise-group`
-- User `alice` in `ops-admins`, `data-engineers`, `noise-group`
-- Client `my-oauth2` with a `groups` mapper (`oidc-group-membership-mapper`, `full.path=false`) and `redirectUris` containing `http://localhost:8080/*`
+- User `alice` (firstName=Alice, lastName=Admin) in `ops-admins`, `data-engineers`, `noise-group`
+- Client `my-oauth2` with a `groups` mapper (`oidc-group-membership-mapper`, `full.path=false`) and `redirectUris` containing both `http://localhost:8000/*` and `http://localhost:8080/*`
+
+```sh
+mkdir -p development/keycloak/import
+cat > development/keycloak/import/realm.json <<'JSON'
+{
+  "realm": "infrahub-test",
+  "enabled": true,
+  "sslRequired": "none",
+  "groups": [
+    {"name": "ops-admins", "path": "/ops-admins"},
+    {"name": "ops-readers", "path": "/ops-readers"},
+    {"name": "data-engineers", "path": "/data-engineers"},
+    {"name": "noise-group", "path": "/noise-group"}
+  ],
+  "users": [{
+    "username": "alice",
+    "enabled": true,
+    "emailVerified": true,
+    "firstName": "Alice",
+    "lastName": "Admin",
+    "email": "alice@example.com",
+    "credentials": [{"type": "password", "value": "alice", "temporary": false}],
+    "groups": ["/ops-admins", "/data-engineers", "/noise-group"]
+  }],
+  "clients": [{
+    "clientId": "my-oauth2",
+    "enabled": true,
+    "protocol": "openid-connect",
+    "publicClient": false,
+    "secret": "infrahub-dev-secret-not-for-prod",
+    "standardFlowEnabled": true,
+    "redirectUris": ["http://localhost:8000/*", "http://localhost:8080/*"],
+    "webOrigins": ["+"],
+    "protocolMappers": [{
+      "name": "groups",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-group-membership-mapper",
+      "config": {
+        "full.path": "false",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "userinfo.token.claim": "true",
+        "claim.name": "groups"
+      }
+    }]
+  }]
+}
+JSON
+```
 
 ### 0c — Export the full backend config in the shell
 
@@ -73,6 +122,14 @@ export INFRAHUB_CACHE_ADDRESS=localhost
 export INFRAHUB_WORKFLOW_ADDRESS=localhost
 export INFRAHUB_PUBLIC_URL=http://localhost:8080
 export INFRAHUB_API_CORS_ALLOW_ORIGINS='["http://localhost:8080"]'
+
+# Native-run paths (defaults point at /opt/infrahub which needs root on macOS)
+mkdir -p /tmp/infrahub-test/storage /tmp/infrahub-test/git
+export INFRAHUB_STORAGE_LOCAL_PATH=/tmp/infrahub-test/storage
+export INFRAHUB_INTERNAL_ADDRESS=http://localhost:8000
+export INFRAHUB_METRICS_PORT=8001
+export PREFECT_API_URL=http://localhost:4200/api
+export GIT_CONFIG_GLOBAL=/tmp/infrahub-test/.gitconfig
 
 # OIDC provider config
 export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1"]'
@@ -219,7 +276,7 @@ query AccountGroupsOrigin {
 5. `noise-group` is **not** present — it matched neither the captured name nor the filter.
 6. Run **Probe 1**: exactly **two** `GroupAutoCreatedEventType` events. For each one:
    - `idp = "provider1"`, `protocol = "oidc"`
-   - `triggering_user_name = "alice"`
+   - `triggering_user_name = "Alice Admin"`
    - `source_pattern = "^(?P<name>(ops|data)-.*)$"`
    - `origin_value = "provider1"` (matches the `origin` attribute on the group)
    - `group_id` matches the group's UUID from the UI
@@ -261,7 +318,7 @@ Continuing from Scenario A:
      - `cap_value = 5`
      - `dropped_count` equals the number of matching claims beyond 5 (7 if you added 12)
      - `dropped_claims` is the verbatim list of those claim values (each entry length-truncated)
-     - `idp = "provider1"`, `protocol = "oidc"`, `triggering_user_name = "carol"`
+     - `idp = "provider1"`, `protocol = "oidc"`, `triggering_user_name` equals carol's display name (the OIDC `name` claim — `firstName + lastName` as set in the realm)
 8. Sign `carol` in a second time. Re-run **Probe 1** — neither the created nor the capped event count changes (existing-group reuse is uncapped and not audited as creation).
 
 ## Scenario E — Rejected claim emits `GroupAutoCreateRejectedEvent`
@@ -282,7 +339,7 @@ The rejection path fires when a claim matches the filter but the captured name i
 4. Run **Probe 1**:
    - One new `GroupAutoCreateRejectedEventType` event.
    - `rejected_claim_value` holds the original verbatim claim (`pad-`), length-truncated.
-   - `idp = "provider1"`, `protocol = "oidc"`, `triggering_user_name = "bob"`.
+   - `idp = "provider1"`, `protocol = "oidc"`, `triggering_user_name` equals bob's display name (the OIDC `name` claim — `firstName + lastName` as set in the realm).
 5. Run **Probe 3** — no new row with a null/whitespace `name.value` exists.
 
 Restore the original filter (`'^(?P<name>(ops|data)-.*)$'`) and Ctrl-C → re-run the API-server command from 0e in Shell 1 before moving on.
