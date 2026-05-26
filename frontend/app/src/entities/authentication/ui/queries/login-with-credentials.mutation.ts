@@ -1,6 +1,7 @@
-import { mutationOptions, useMutation } from "@tanstack/react-query";
+import { mutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { loginWithCredentials } from "@/entities/authentication/domain/login-with-credentials";
+import { accountQueryKeys } from "@/entities/user-profile/ui/queries/account-query.keys";
 
 export function loginWithCredentialsMutationOptions() {
   return mutationOptions({
@@ -10,5 +11,12 @@ export function loginWithCredentialsMutationOptions() {
 }
 
 export function useLoginWithCredentials() {
-  return useMutation(loginWithCredentialsMutationOptions());
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    ...loginWithCredentialsMutationOptions(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: accountQueryKeys.all });
+    },
+  });
 }

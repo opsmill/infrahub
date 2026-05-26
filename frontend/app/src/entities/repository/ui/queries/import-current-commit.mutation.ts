@@ -11,6 +11,9 @@ interface ImportCurrentCommitProps extends MutationConfig<typeof importCurrentCo
 
 export const IMPORT_CURRENT_COMMIT_MUTATION_KEY = ["repository", "import-current-commit"] as const;
 
+// invalidation-at-callsite: this hook intentionally accepts a `config` argument
+// so each caller chooses which queries to invalidate (e.g.
+// repository-menu-section.tsx invalidates `objectQueryKeys.all` on success).
 export function useImportCurrentCommitMutation(
   config?: Omit<ImportCurrentCommitProps, "mutationFn">
 ) {
