@@ -5,6 +5,5 @@ export async function logoutFromApi(accessToken: string | null): Promise<void> {
     headers: accessToken ? { authorization: `Bearer ${accessToken}` } : undefined,
   });
 
-  if (!response.ok)
-    throw Object.assign(new Error("Logout failed"), { status: response.status });
+  if (!response.ok) throw Object.assign(new Error("Logout failed"), { status: response.status });
 }
