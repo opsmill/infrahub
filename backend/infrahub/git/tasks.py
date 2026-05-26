@@ -587,10 +587,17 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
                 infrahub_branch_name=model.infrahub_branch_name,
             )
 
-        await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=model.commit)  # type: ignore[call-overload]
-        await repo.sync_from_remote(commit=model.commit)
+        # Resolve the ref to a concrete commit once so the sync and the broadcast share the same
+        # SHA. model.commit may be None for a ref-only pull, in which case broadcasting it would
+        # leave workers to re-resolve the ref independently and diverge.
+        pinned_commit = model.commit
+        if pinned_commit is None and repo.ref:
+            pinned_commit = repo.get_commit_value(branch_name=repo.ref, remote=True)
 
-        # Tell workers to fetch to stay in sync
+        await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name, commit=pinned_commit)  # type: ignore[call-overload]
+        await repo.sync_from_remote(commit=pinned_commit)
+
+        # Tell workers to fetch and check out the resolved commit to stay in sync
         message = messages.RefreshGitFetch(
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
             location=model.location,
@@ -599,7 +606,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
             repository_kind=InfrahubKind.READONLYREPOSITORY,
             infrahub_branch_name=model.infrahub_branch_name,
             infrahub_branch_id=model.infrahub_branch_id,
-            commit=model.commit,
+            commit=pinned_commit,
         )
         message_bus = await get_message_bus()
         await message_bus.send(message=message)
