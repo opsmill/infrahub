@@ -2,7 +2,6 @@ import { Icon } from "@iconify-icon/react";
 import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver from "@/shared/components/display/slide-over";
@@ -83,7 +82,6 @@ export const ProposedChangeEditTrigger = ({
           initialData={proposedChangesDetails}
           onSuccess={async () => {
             setShowEditDrawer(false);
-            await graphqlClient.reFetchObservableQueries();
             await queryClient.invalidateQueries({ queryKey: proposedChangesQueryKeys.all });
           }}
         />

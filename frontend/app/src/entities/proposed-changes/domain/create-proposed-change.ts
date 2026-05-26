@@ -5,14 +5,14 @@ import {
 
 export type CreateProposedChangeParams = CreateProposedChangeFromApiParams;
 
-export interface CreateProposedChangeResult {
+export interface CreateProposedChangeOutcome {
   id: string;
   displayLabel: string;
 }
 
 export async function createProposedChange(
   params: CreateProposedChangeParams
-): Promise<CreateProposedChangeResult> {
+): Promise<CreateProposedChangeOutcome> {
   const { data, errors } = await createProposedChangeFromApi(params);
 
   if (errors?.length) {
