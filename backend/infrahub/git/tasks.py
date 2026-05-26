@@ -1,6 +1,6 @@
 from typing import Any
 
-from git.exc import GitError
+from git.exc import InvalidGitRepositoryError
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -105,7 +105,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
 
             try:
                 pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
-            except (ValueError, GitError):
+            except (ValueError, InvalidGitRepositoryError):
                 pinned_commit = None
             # Notify other workers they need to clone the repository and check out the SHA pinned
             # by this initial sync, so the whole pool converges even if upstream advances meanwhile.
@@ -312,7 +312,7 @@ async def sync_remote_repositories() -> None:
                 )
                 try:
                     pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
-                except (ValueError, GitError) as exc:
+                except (ValueError, InvalidGitRepositoryError) as exc:
                     log.debug(f"Could not resolve pinned commit for {repo_name}, workers will fall back to pull: {exc}")
                     pinned_commit = None
                 # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
