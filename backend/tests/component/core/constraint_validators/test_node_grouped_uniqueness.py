@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
+from infrahub.core.node.create import create_node
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
 from infrahub.database import InfrahubDatabase
@@ -348,3 +349,26 @@ class TestNodeGroupedUniquenessConstraint:
         with pytest.raises(ValidationError, match="Violates uniqueness constraint 'name'") as exc_info:
             await self.__call_system_under_test(db=db, branch=default_branch, node=car_mercedes_of_maria)
         assert not isinstance(exc_info.value, HFIDViolatedError), "HFIDViolatedError should not be raised here"
+
+    async def test_hfid_violated_on_required_computed_attribute(
+        self, db: InfrahubDatabase, default_branch: Branch, car_schema_computed_hfid: SchemaRoot
+    ) -> None:
+        await create_and_save(db=db, schema="TestCar", model="mustang")
+
+        duplicate = await Node.init(db=db, schema="TestCar", branch=default_branch)
+        await duplicate.new(db=db, model="mustang")
+        assert duplicate.name.value == "MUSTANG-CAR"
+
+        with pytest.raises(HFIDViolatedError, match=r"Violates uniqueness constraint 'name' \(computed from: model\)"):
+            await self.__call_system_under_test(db=db, branch=default_branch, node=duplicate, filters=["model"])
+
+    async def test_create_node_rejects_duplicate_computed_hfid(
+        self, db: InfrahubDatabase, default_branch: Branch, car_schema_computed_hfid: SchemaRoot
+    ) -> None:
+        car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
+
+        first = await create_node(data={"model": "mustang"}, db=db, branch=default_branch, schema=car_schema)
+        assert first.name.value == "MUSTANG-CAR"
+
+        with pytest.raises(HFIDViolatedError, match=r"Violates uniqueness constraint 'name' \(computed from: model\)"):
+            await create_node(data={"model": "mustang"}, db=db, branch=default_branch, schema=car_schema)
