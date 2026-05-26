@@ -16,18 +16,17 @@ if TYPE_CHECKING:
 
 
 @pytest.fixture
-async def car_schema_computed_hfid(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+async def stuff_schema_computed_hfid(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     """Schema where the human-friendly id is a required computed attribute derived from a local attribute."""
     schema = SchemaRoot(
         nodes=[
             NodeSchema(
-                name="Car",
-                namespace="Test",
-                display_label="name__value",
+                name="Stuff",
+                namespace="Random",
                 human_friendly_id=["name__value"],
                 attributes=[
-                    computed_jinja2_attr(name="name", template="{{ model__value | upper }}-CAR"),
-                    AttributeSchema(name="model", kind="Text"),
+                    computed_jinja2_attr(name="name", template="{{ description__value | upper }}-STUFF"),
+                    AttributeSchema(name="description", kind="Text"),
                 ],
             ),
         ],
@@ -37,36 +36,23 @@ async def car_schema_computed_hfid(db: InfrahubDatabase, default_branch: Branch)
 
 
 @pytest.fixture
-async def car_schema_computed_from_relationship(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+async def stuff_schema_computed_from_relationship(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     """Schema where the unique computed attribute is derived from an attribute on a peer relationship."""
     schema = SchemaRoot(
         nodes=[
             NodeSchema(
-                name="Car",
-                namespace="Test",
-                display_label="name__value",
+                name="Stuff",
+                namespace="Random",
                 human_friendly_id=["name__value"],
-                attributes=[
-                    computed_jinja2_attr(name="name", template="{{ owner__name__value | upper }}-CAR"),
-                ],
+                attributes=[computed_jinja2_attr(name="name", template="{{ owner__name__value | upper }}")],
                 relationships=[
-                    RelationshipSchema(
-                        name="owner",
-                        peer="TestPerson",
-                        identifier="person__car",
-                        optional=False,
-                        cardinality="one",
-                    ),
+                    RelationshipSchema(name="owner", peer="RandomOwner", optional=False, cardinality="one"),
                 ],
             ),
             NodeSchema(
-                name="Person",
-                namespace="Test",
-                human_friendly_id=["name__value"],
+                name="Owner",
+                namespace="Random",
                 attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
-                relationships=[
-                    RelationshipSchema(name="cars", peer="TestCar", identifier="person__car", cardinality="many"),
-                ],
             ),
         ],
     )
@@ -75,19 +61,18 @@ async def car_schema_computed_from_relationship(db: InfrahubDatabase, default_br
 
 
 @pytest.fixture
-async def car_schema_computed_secondary_unique(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+async def stuff_schema_computed_secondary_unique(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     """Schema where a unique computed attribute exists alongside a separate, non-computed human-friendly id."""
     schema = SchemaRoot(
         nodes=[
             NodeSchema(
-                name="Car",
-                namespace="Test",
-                display_label="name__value",
+                name="Stuff",
+                namespace="Random",
                 human_friendly_id=["name__value"],
                 attributes=[
                     AttributeSchema(name="name", kind="Text", unique=True),
-                    computed_jinja2_attr(name="vin", template="VIN-{{ model__value | upper }}"),
-                    AttributeSchema(name="model", kind="Text"),
+                    computed_jinja2_attr(name="code", template="{{ description__value | upper }}"),
+                    AttributeSchema(name="description", kind="Text"),
                 ],
             ),
         ],
@@ -97,47 +82,51 @@ async def car_schema_computed_secondary_unique(db: InfrahubDatabase, default_bra
 
 
 async def test_create_node_rejects_duplicate_computed_hfid(
-    db: InfrahubDatabase, default_branch: Branch, car_schema_computed_hfid: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, stuff_schema_computed_hfid: SchemaRoot
 ) -> None:
-    car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
+    stuff_schema = registry.schema.get_node_schema(name="RandomStuff", branch=default_branch)
 
-    first = await create_node(data={"model": "mustang"}, db=db, branch=default_branch, schema=car_schema)
-    assert first.name.value == "MUSTANG-CAR"
+    first = await create_node(data={"description": "widget"}, db=db, branch=default_branch, schema=stuff_schema)
+    assert first.name.value == "WIDGET-STUFF"
 
-    with pytest.raises(HFIDViolatedError, match=r"Violates uniqueness constraint 'name' \(computed from: model\)"):
-        await create_node(data={"model": "mustang"}, db=db, branch=default_branch, schema=car_schema)
+    with pytest.raises(
+        HFIDViolatedError, match=r"Violates uniqueness constraint 'name' \(computed from: description\)"
+    ):
+        await create_node(data={"description": "widget"}, db=db, branch=default_branch, schema=stuff_schema)
 
 
 async def test_violation_message_lists_relationship_peer_attribute(
-    db: InfrahubDatabase, default_branch: Branch, car_schema_computed_from_relationship: SchemaRoot
+    db: InfrahubDatabase, default_branch: Branch, stuff_schema_computed_from_relationship: SchemaRoot
 ) -> None:
-    car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
-    person_schema = registry.schema.get_node_schema(name="TestPerson", branch=default_branch)
+    stuff_schema = registry.schema.get_node_schema(name="RandomStuff", branch=default_branch)
+    owner_schema = registry.schema.get_node_schema(name="RandomOwner", branch=default_branch)
 
-    alice = await create_node(data={"name": "alice"}, db=db, branch=default_branch, schema=person_schema)
-    first = await create_node(data={"owner": {"id": alice.id}}, db=db, branch=default_branch, schema=car_schema)
-    assert first.name.value == "ALICE-CAR"
+    alice = await create_node(data={"name": "alice"}, db=db, branch=default_branch, schema=owner_schema)
+    first = await create_node(data={"owner": {"id": alice.id}}, db=db, branch=default_branch, schema=stuff_schema)
+    assert first.name.value == "ALICE"
 
     with pytest.raises(
         HFIDViolatedError, match=r"Violates uniqueness constraint 'name' \(computed from: owner\.name\)"
     ):
-        await create_node(data={"owner": {"id": alice.id}}, db=db, branch=default_branch, schema=car_schema)
+        await create_node(data={"owner": {"id": alice.id}}, db=db, branch=default_branch, schema=stuff_schema)
 
 
 async def test_create_node_rejects_duplicate_computed_secondary_unique(
     db: InfrahubDatabase,
     default_branch: Branch,
-    car_schema_computed_secondary_unique: SchemaRoot,
+    stuff_schema_computed_secondary_unique: SchemaRoot,
 ) -> None:
-    car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
+    stuff_schema = registry.schema.get_node_schema(name="RandomStuff", branch=default_branch)
 
     first = await create_node(
-        data={"name": "alpha", "model": "mustang"}, db=db, branch=default_branch, schema=car_schema
+        data={"name": "alpha", "description": "widget"}, db=db, branch=default_branch, schema=stuff_schema
     )
-    assert first.vin.value == "VIN-MUSTANG"
+    assert first.code.value == "WIDGET"
 
     with pytest.raises(
-        ValidationError, match=r"Violates uniqueness constraint 'vin' \(computed from: model\)"
+        ValidationError, match=r"Violates uniqueness constraint 'code' \(computed from: description\)"
     ) as exc_info:
-        await create_node(data={"name": "beta", "model": "mustang"}, db=db, branch=default_branch, schema=car_schema)
+        await create_node(
+            data={"name": "beta", "description": "widget"}, db=db, branch=default_branch, schema=stuff_schema
+        )
     assert not isinstance(exc_info.value, HFIDViolatedError)
