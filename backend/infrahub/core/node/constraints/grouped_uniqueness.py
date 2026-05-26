@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.template.exceptions import JinjaTemplateError
+
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE
@@ -237,7 +239,11 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
             template = attr_schema.computed_attribute.jinja2_template
             if not template:
                 continue
-            for variable in InfrahubJinja2Template(template=template).get_variables():
+            try:
+                variables = InfrahubJinja2Template(template=template).get_variables()
+            except JinjaTemplateError:
+                continue
+            for variable in variables:
                 input_name = variable.split("__", 1)[0]
                 if input_name and input_name not in inputs:
                     inputs.append(input_name)
