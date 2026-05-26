@@ -16,14 +16,12 @@ from infrahub.auth.auth import (
 )
 from infrahub.auth.session import AccountSession, AnonymousSession
 from infrahub.auth.types import AuthType
-from infrahub.external_protocols import ExternalAuthProtocol
 
 __all__ = [
     "AccountSession",
     "AnonymousSession",
     "AuthResult",
     "AuthType",
-    "ExternalAuthProtocol",
     "ExternalIdentity",
     "SSOStateCache",
     "authenticate_with_password",

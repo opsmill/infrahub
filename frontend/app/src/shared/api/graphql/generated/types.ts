@@ -1572,6 +1572,8 @@ export type CoreAccountGroup = CoreGroup & LineageOwner & LineageSource & {
   label: Maybe<TextAttribute>;
   members: NestedPaginatedCoreNode;
   name: Maybe<TextAttribute>;
+  /** Identity provider name that auto-created this group; null on manual / bootstrap / pre-upgrade groups. */
+  origin: Maybe<TextAttribute>;
   parent: NestedEdgedCoreGroup;
   roles: NestedPaginatedCoreAccountRole;
   subscribers: NestedPaginatedCoreNode;
@@ -1835,6 +1837,11 @@ export type CoreAccountRoleGroupsArgs = {
   name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+  origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__source__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__value?: InputMaybe<Scalars['String']['input']>;
+  origin__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
 };
 
 
@@ -17104,6 +17111,8 @@ export type EventTypeFilter = {
   branch_merged?: InputMaybe<BranchEventTypeFilter>;
   /** Filters specific to infrahub.branch.rebased events */
   branch_rebased?: InputMaybe<BranchEventTypeFilter>;
+  /** Filters specific to "infrahub.group.auto_create[...]" events */
+  group_auto_create?: InputMaybe<GroupAutoCreateEventTypeFilter>;
 };
 
 export type Events = {
@@ -17140,6 +17149,128 @@ export type GraphQlQueryReport = {
   __typename: 'GraphQLQueryReport';
   /** True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change. */
   targets_unique_nodes: Scalars['Boolean']['output'];
+};
+
+export type GroupAutoCreateCappedEventType = EventNodeInterface & {
+  __typename: 'GroupAutoCreateCappedEventType';
+  /** The account ID that triggered the event. */
+  account_id: Maybe<Scalars['String']['output']>;
+  /** The branch where the event occurred. */
+  branch: Maybe<Scalars['String']['output']>;
+  /** Configured per-login cap value */
+  cap_value: Scalars['Int']['output'];
+  /** Verbatim, per-entry length-truncated dropped claims */
+  dropped_claims: Array<Scalars['String']['output']>;
+  /** Total count of dropped claims for this login */
+  dropped_count: Scalars['Int']['output'];
+  /** The name of the event. */
+  event: Scalars['String']['output'];
+  /** Indicates if the event is expected to have child events under it */
+  has_children: Scalars['Boolean']['output'];
+  /** The ID of the event. */
+  id: Scalars['String']['output'];
+  /** Configured name of the originating identity provider */
+  idp: Scalars['String']['output'];
+  /** The level of the event 0 is a root level event, the child events will have 1 and grand children 2. */
+  level: Scalars['Int']['output'];
+  /** The timestamp when the event occurred. */
+  occurred_at: Scalars['DateTime']['output'];
+  /** The event ID of the direct parent to this event. */
+  parent_id: Maybe<Scalars['String']['output']>;
+  payload: Scalars['GenericScalar']['output'];
+  /** The primary Infrahub node this event is associated with. */
+  primary_node: Maybe<RelatedNode>;
+  /** Authentication protocol used for the login */
+  protocol: Scalars['String']['output'];
+  /** Related Infrahub nodes this event is associated with. */
+  related_nodes: Array<RelatedNode>;
+  /** UUID of the account whose login produced the event */
+  triggering_user_id: Scalars['String']['output'];
+  /** Login identifier of the triggering account */
+  triggering_user_name: Scalars['String']['output'];
+};
+
+export type GroupAutoCreateEventTypeFilter = {
+  /** Filter by the configured identity-provider name */
+  idp?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Filter by authentication protocol */
+  protocol?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+export type GroupAutoCreateRejectedEventType = EventNodeInterface & {
+  __typename: 'GroupAutoCreateRejectedEventType';
+  /** The account ID that triggered the event. */
+  account_id: Maybe<Scalars['String']['output']>;
+  /** The branch where the event occurred. */
+  branch: Maybe<Scalars['String']['output']>;
+  /** The name of the event. */
+  event: Scalars['String']['output'];
+  /** Indicates if the event is expected to have child events under it */
+  has_children: Scalars['Boolean']['output'];
+  /** The ID of the event. */
+  id: Scalars['String']['output'];
+  /** Configured name of the originating identity provider */
+  idp: Scalars['String']['output'];
+  /** The level of the event 0 is a root level event, the child events will have 1 and grand children 2. */
+  level: Scalars['Int']['output'];
+  /** The timestamp when the event occurred. */
+  occurred_at: Scalars['DateTime']['output'];
+  /** The event ID of the direct parent to this event. */
+  parent_id: Maybe<Scalars['String']['output']>;
+  payload: Scalars['GenericScalar']['output'];
+  /** The primary Infrahub node this event is associated with. */
+  primary_node: Maybe<RelatedNode>;
+  /** Authentication protocol used for the login */
+  protocol: Scalars['String']['output'];
+  /** Verbatim, length-truncated rejected claim value */
+  rejected_claim_value: Scalars['String']['output'];
+  /** Related Infrahub nodes this event is associated with. */
+  related_nodes: Array<RelatedNode>;
+  /** UUID of the account whose login produced the event */
+  triggering_user_id: Scalars['String']['output'];
+  /** Login identifier of the triggering account */
+  triggering_user_name: Scalars['String']['output'];
+};
+
+export type GroupAutoCreatedEventType = EventNodeInterface & {
+  __typename: 'GroupAutoCreatedEventType';
+  /** The account ID that triggered the event. */
+  account_id: Maybe<Scalars['String']['output']>;
+  /** The branch where the event occurred. */
+  branch: Maybe<Scalars['String']['output']>;
+  /** The name of the event. */
+  event: Scalars['String']['output'];
+  /** UUID of the newly created group */
+  group_id: Scalars['String']['output'];
+  /** Local name of the new group */
+  group_name: Scalars['String']['output'];
+  /** Indicates if the event is expected to have child events under it */
+  has_children: Scalars['Boolean']['output'];
+  /** The ID of the event. */
+  id: Scalars['String']['output'];
+  /** Configured name of the originating identity provider */
+  idp: Scalars['String']['output'];
+  /** The level of the event 0 is a root level event, the child events will have 1 and grand children 2. */
+  level: Scalars['Int']['output'];
+  /** The timestamp when the event occurred. */
+  occurred_at: Scalars['DateTime']['output'];
+  /** Configured provider name written to the group's origin attribute */
+  origin_value: Scalars['String']['output'];
+  /** The event ID of the direct parent to this event. */
+  parent_id: Maybe<Scalars['String']['output']>;
+  payload: Scalars['GenericScalar']['output'];
+  /** The primary Infrahub node this event is associated with. */
+  primary_node: Maybe<RelatedNode>;
+  /** Authentication protocol used for the login */
+  protocol: Scalars['String']['output'];
+  /** Related Infrahub nodes this event is associated with. */
+  related_nodes: Array<RelatedNode>;
+  /** Raw regex pattern from the configured filter that matched */
+  source_pattern: Scalars['String']['output'];
+  /** UUID of the account whose login produced the event */
+  triggering_user_id: Scalars['String']['output'];
+  /** Login identifier of the triggering account */
+  triggering_user_name: Scalars['String']['output'];
 };
 
 export type GroupEvent = EventNodeInterface & {
@@ -25540,6 +25671,12 @@ export type QueryCoreAccountGroupArgs = {
   node_metadata__updated_by__ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   offset?: InputMaybe<Scalars['Int']['input']>;
   order?: InputMaybe<OrderInput>;
+  origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  origin__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__source__id?: InputMaybe<Scalars['ID']['input']>;
+  origin__value?: InputMaybe<Scalars['String']['input']>;
+  origin__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   parent__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   parent__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   parent__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -25615,6 +25752,11 @@ export type QueryCoreAccountRoleArgs = {
   groups__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   groups__name__value?: InputMaybe<Scalars['String']['input']>;
   groups__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  groups__origin__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  groups__origin__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  groups__origin__source__id?: InputMaybe<Scalars['ID']['input']>;
+  groups__origin__value?: InputMaybe<Scalars['String']['input']>;
+  groups__origin__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   ids?: InputMaybe<Array<InputMaybe<Scalars['ID']['input']>>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -37210,6 +37352,15 @@ export type Branch_DeleteMutationVariables = Exact<{
 
 export type Branch_DeleteMutation = { BranchDelete: { __typename: 'BranchDelete', ok: boolean | null } | null };
 
+export type Get_Branch_Action_StateQueryVariables = Exact<{
+  branch: Scalars['String']['input'];
+  workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
+  state?: InputMaybe<Array<InputMaybe<StateType>> | InputMaybe<StateType>>;
+}>;
+
+
+export type Get_Branch_Action_StateQuery = { InfrahubTask: { __typename: 'Tasks', count: number } };
+
 export type GetBranchDetailsQueryVariables = Exact<{
   branchName: Scalars['String']['input'];
 }>;
@@ -37251,15 +37402,6 @@ export type GetBranchesQueryVariables = Exact<{
 
 export type GetBranchesQuery = { InfrahubBranch: { __typename: 'InfrahubBranchType', edges: Array<{ __typename: 'InfrahubBranchEdge', node: { __typename: 'InfrahubBranch', id: string, created_at: string | null, name: { __typename: 'RequiredStringValueField', value: string }, description: { __typename: 'NonRequiredStringValueField', value: string | null } | null, origin_branch: { __typename: 'NonRequiredStringValueField', value: string | null } | null, branched_from: { __typename: 'NonRequiredStringValueField', value: string | null } | null, status: { __typename: 'StatusField', value: BranchStatus }, sync_with_git: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null, is_default: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null, has_schema_changes: { __typename: 'NonRequiredBooleanValueField', value: boolean | null } | null }, node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, updated_at: any | null, created_by: { __typename: 'CoreAccount', id: string, display_label: string | null, hfid: Array<string> | null } | null, updated_by: { __typename: 'CoreAccount', id: string, display_label: string | null, hfid: Array<string> | null } | null } }> } };
 
-export type Get_Branch_Action_StateQueryVariables = Exact<{
-  branch: Scalars['String']['input'];
-  workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  state?: InputMaybe<Array<InputMaybe<StateType>> | InputMaybe<StateType>>;
-}>;
-
-
-export type Get_Branch_Action_StateQuery = { InfrahubTask: { __typename: 'Tasks', count: number } };
-
 export type Branch_MergeMutationVariables = Exact<{
   name?: InputMaybe<Scalars['String']['input']>;
 }>;
@@ -37282,6 +37424,13 @@ export type Branch_ValidateMutationVariables = Exact<{
 
 export type Branch_ValidateMutation = { BranchValidate: { __typename: 'BranchValidate', ok: boolean | null, task: { __typename: 'TaskInfo', id: string | null } | null } | null };
 
+export type Get_Artifact_ThreadsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+}>;
+
+
+export type Get_Artifact_ThreadsQuery = { CoreArtifactThread: { __typename: 'PaginatedCoreArtifactThread', count: number, edges: Array<{ __typename: 'EdgedCoreArtifactThread', node: { __typename: 'CoreArtifactThread', id: string, display_label: string | null, line_number: { __typename: 'NumberAttribute', value: any | null } | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
+
 export type Get_Check_DetailsQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
@@ -37295,6 +37444,22 @@ export type Get_Check_DetailsQuery = { CoreCheck: { __typename: 'PaginatedCoreCh
         | { __typename: 'CoreSchemaCheck', id: string, display_label: string | null, conflicts: { __typename: 'JSONAttribute', value: any | null } | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
         | { __typename: 'CoreStandardCheck', id: string, display_label: string | null, name: { __typename: 'TextAttribute', value: string | null } | null, message: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, kind: { __typename: 'TextAttribute', value: string | null } | null, origin: { __typename: 'TextAttribute', value: string | null } | null, created_at: { __typename: 'TextAttribute', value: string | null } | null }
        | null }> } };
+
+export type Get_Object_Thread_CommentsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+  objectPath?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type Get_Object_Thread_CommentsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
+
+export type Get_Object_ThreadsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+  objectPath?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type Get_Object_ThreadsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number } } | null }>, permissions: { __typename: 'PaginatedObjectPermission', edges: Array<{ __typename: 'ObjectPermissionNode', node: { __typename: 'ObjectPermission', kind: string, view: BranchRelativePermissionDecision, create: BranchRelativePermissionDecision, update: BranchRelativePermissionDecision, delete: BranchRelativePermissionDecision } }> } } };
 
 export type Get_Diff_TreeQueryVariables = Exact<{
   branchName?: InputMaybe<Scalars['String']['input']>;
@@ -37315,6 +37480,13 @@ export type Get_Diff_Tree_SummaryQueryVariables = Exact<{
 
 
 export type Get_Diff_Tree_SummaryQuery = { DiffTreeSummary: { __typename: 'DiffTreeSummary', num_added: number, num_updated: number, num_removed: number, num_conflicts: number } | null };
+
+export type Get_File_ThreadsQueryVariables = Exact<{
+  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
+}>;
+
+
+export type Get_File_ThreadsQuery = { CoreFileThread: { __typename: 'PaginatedCoreFileThread', count: number, edges: Array<{ __typename: 'EdgedCoreFileThread', node: { __typename: 'CoreFileThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, file: { __typename: 'TextAttribute', value: string | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, repository: { __typename: 'NestedEdgedCoreRepository', node: { __typename: 'CoreRepository', id: string } | null }, line_number: { __typename: 'NumberAttribute', value: any | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
 
 export type Get_Core_ValidatorsQueryVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -37483,6 +37655,9 @@ export type Get_Infrahub_EventsQuery = { InfrahubEvent: { __typename: 'Events', 
         | { __typename: 'BranchDeletedEvent', payload: any, deleted_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'BranchMergedEvent', source_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'BranchRebasedEvent', payload: any, rebased_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
+        | { __typename: 'GroupAutoCreateCappedEventType', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
+        | { __typename: 'GroupAutoCreateRejectedEventType', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
+        | { __typename: 'GroupAutoCreatedEventType', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'GroupEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, ancestors: Array<{ __typename: 'RelatedNode', id: string, kind: string }>, members: Array<{ __typename: 'RelatedNode', id: string, kind: string }>, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'NodeMutatedEvent', payload: any, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, attributes: Array<{ __typename: 'InfrahubMutatedAttribute', action: DiffAction, kind: string, name: string, value: string | null, value_previous: string | null }>, relationships: Array<{ __typename: 'InfrahubMutatedRelationship', action: DiffAction, name: string, peer: { __typename: 'RelatedNode', id: string, kind: string } }>, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'ProposedChangeApprovalsRevokedEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
@@ -37609,36 +37784,6 @@ export type ActionsQueryVariables = Exact<{
 
 
 export type ActionsQuery = { CoreProposedChangeAvailableActions: { __typename: 'AvailableActions', count: number, edges: Array<{ __typename: 'ActionAvailabilityEdge', node: { __typename: 'ActionAvailability', action: string, available: boolean, unavailability_reason: string | null } }> } };
-
-export type Get_Artifact_ThreadsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-}>;
-
-
-export type Get_Artifact_ThreadsQuery = { CoreArtifactThread: { __typename: 'PaginatedCoreArtifactThread', count: number, edges: Array<{ __typename: 'EdgedCoreArtifactThread', node: { __typename: 'CoreArtifactThread', id: string, display_label: string | null, line_number: { __typename: 'NumberAttribute', value: any | null } | null, storage_id: { __typename: 'TextAttribute', value: string | null } | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
-
-export type Get_File_ThreadsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-}>;
-
-
-export type Get_File_ThreadsQuery = { CoreFileThread: { __typename: 'PaginatedCoreFileThread', count: number, edges: Array<{ __typename: 'EdgedCoreFileThread', node: { __typename: 'CoreFileThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, file: { __typename: 'TextAttribute', value: string | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, repository: { __typename: 'NestedEdgedCoreRepository', node: { __typename: 'CoreRepository', id: string } | null }, line_number: { __typename: 'NumberAttribute', value: any | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
-
-export type Get_Object_Thread_CommentsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  objectPath?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Get_Object_Thread_CommentsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number, edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, display_label: string | null, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
-
-export type Get_Object_ThreadsQueryVariables = Exact<{
-  changeIds?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
-  objectPath?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type Get_Object_ThreadsQuery = { CoreObjectThread: { __typename: 'PaginatedCoreObjectThread', count: number, edges: Array<{ __typename: 'EdgedCoreObjectThread', node: { __typename: 'CoreObjectThread', id: string, comments: { __typename: 'NestedPaginatedCoreThreadComment', count: number } } | null }>, permissions: { __typename: 'PaginatedObjectPermission', edges: Array<{ __typename: 'ObjectPermissionNode', node: { __typename: 'ObjectPermission', kind: string, view: BranchRelativePermissionDecision, create: BranchRelativePermissionDecision, update: BranchRelativePermissionDecision, delete: BranchRelativePermissionDecision } }> } } };
 
 export type ProposedChangeReviewMutationVariables = Exact<{
   proposedChangeId: Scalars['String']['input'];
