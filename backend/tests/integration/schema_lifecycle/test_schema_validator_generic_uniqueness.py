@@ -150,7 +150,7 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
         await megane.new(db=db, name="Megane", description="Renault Megane", color="#c93420", owner=starbuck)
         await megane.save(db=db)
 
-        objs = {
+        return {
             "starbuck": starbuck.id,
             "president": president.id,
             "gaius": gaius.id,
@@ -161,8 +161,6 @@ class TestSchemaLifecycleValidatorMain(TestSchemaLifecycleBase):
             "civic": civic.id,
             "megane": megane.id,
         }
-
-        return objs
 
     @pytest.fixture(scope="class")
     def schema_step_01(

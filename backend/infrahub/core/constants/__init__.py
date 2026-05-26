@@ -69,6 +69,9 @@ class EventType(InfrahubStringEnum):
 
     GROUP_MEMBER_ADDED = f"{EVENT_NAMESPACE}.group.member_added"
     GROUP_MEMBER_REMOVED = f"{EVENT_NAMESPACE}.group.member_removed"
+    GROUP_AUTO_CREATED = f"{EVENT_NAMESPACE}.group.auto_created"
+    GROUP_AUTO_CREATE_REJECTED = f"{EVENT_NAMESPACE}.group.auto_create_rejected"
+    GROUP_AUTO_CREATE_CAPPED = f"{EVENT_NAMESPACE}.group.auto_create_capped"
 
     PROPOSED_CHANGE_MERGED = f"{EVENT_NAMESPACE}.proposed_change.merged"
     PROPOSED_CHANGE_REVIEW_REQUESTED = f"{EVENT_NAMESPACE}.proposed_change.review_requested"

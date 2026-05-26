@@ -223,7 +223,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     @staticmethod
     def format_message(message: InfrahubMessage) -> aio_pika.Message:
-        pika_message = aio_pika.Message(
+        return aio_pika.Message(
             body=message.body,
             content_type="application/json",
             content_encoding="utf-8",
@@ -233,4 +233,3 @@ class RabbitMQMessageBus(InfrahubMessageBus):
             headers=message.meta.headers,
             expiration=message.meta.expiration,
         )
-        return pika_message

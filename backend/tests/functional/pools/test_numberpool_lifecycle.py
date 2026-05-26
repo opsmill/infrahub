@@ -65,12 +65,11 @@ class TestAttributeNumberPoolLifecycle(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     def initial_schema(self) -> SchemaRoot:
-        schema = SchemaRoot(
+        return SchemaRoot(
             version="1.0",
             generics=[SNOW_TASK],
             nodes=[node_schema_definition, SNOW_INCIDENT, SNOW_REQUEST],
         )
-        return schema
 
     @pytest.fixture(scope="class")
     async def initial_dataset(
