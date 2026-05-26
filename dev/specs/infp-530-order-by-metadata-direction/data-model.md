@@ -4,7 +4,7 @@ This feature does not introduce persistent entities. The data model captures the
 
 ## Entity: `OrderDirection` (existing enum, reused)
 
-Defined in `backend/infrahub/core/constants/relationship_label.py` (and re-exported via `infrahub.core.constants`). Values: `ASC`, `DESC`. Already used by `OrderModel` and `FieldAttributeRequirement`.
+Defined in `backend/infrahub/constants/enums.py`. Values: `ASC`, `DESC`. Already used by `OrderModel` and `FieldAttributeRequirement`.
 
 No change.
 

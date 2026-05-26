@@ -39,8 +39,8 @@ description: "Task list for schema-level order_by for node metadata and directio
 
 **⚠️ CRITICAL**: No user story work may begin until T002–T005 are complete.
 
-- [ ] T002 Add the literal `"node_metadata"` to `RESERVED_ATTR_REL_NAMES` in `backend/infrahub/core/constants/__init__.py` (the list defined around lines 28–48). Do not modify `RESERVED_ATTR_GEN_NAMES`. No code comment referencing the spec or ticket.
-- [ ] T003 Create new module `backend/infrahub/core/schema/order_by.py` that defines:
+- [ ] T002 [P] Add the literal `"node_metadata"` to `RESERVED_ATTR_REL_NAMES` in `backend/infrahub/core/constants/__init__.py` (the list defined around lines 28–48). Do not modify `RESERVED_ATTR_GEN_NAMES`. No code comment referencing the spec or ticket.
+- [ ] T003 [P] Create new module `backend/infrahub/core/schema/order_by.py` that defines:
   - Frozen dataclass `ParsedOrderByEntry` with fields `raw: str`, `kind: OrderByTargetKind`, `direction: OrderDirection`, `schema_path: SchemaAttributePath | None`, `metadata_field: OrderByMetadataField | None`, plus a `target_key` property (see `data-model.md`).
   - String enums `OrderByTargetKind` (`ATTRIBUTE`, `RELATIONSHIP_ATTRIBUTE`, `METADATA`) and `OrderByMetadataField` (`CREATED_AT="created_at"`, `UPDATED_AT="updated_at"`).
   - `parse_order_by_entry(entry: str, node_schema) -> ParsedOrderByEntry` that recognizes the six grammar shapes in `contracts/grammar.md`. Raise `ValueError` with messages matching the templates in `contracts/errors.md` on malformed input; resolve attribute / relationship-attribute paths via the existing `node_schema.parse_schema_path()` helper.
@@ -152,7 +152,7 @@ description: "Task list for schema-level order_by for node metadata and directio
 ### Phase dependencies
 
 - **Phase 1 (Setup)**: No dependencies.
-- **Phase 2 (Foundational)**: Depends on Phase 1. Blocks every user-story phase. T002 and T003 are sequential (different files, but T005's test depends on T002 landing). T004 depends on T003. T005 depends on T002.
+- **Phase 2 (Foundational)**: Depends on Phase 1. Blocks every user-story phase. T002 and T003 are parallel (different files). T004 depends on T003. T005 depends on T002.
 - **Phase 3 (US1, MVP)**: Depends on Phase 2. T012–T018 each depend on T003. T014/T015 are sequential (same file). T013 is parallel to T012. T016 is parallel to T014/T015 (different file). T017 is sequential with T014/T015 (same file). T018 is sequential with T016/T017.
 - **Phase 4 (US2)**: Depends on Phase 3 (US2 implementation lives in US1's direction-propagation code). Verification-heavy.
 - **Phase 5 (US3)**: Depends on Phase 2 (parser exists) and is independent of US1/US2 — the validator changes touch `schema_branch.py` and `order_by.py` only.

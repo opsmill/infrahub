@@ -10,7 +10,7 @@ Extend the schema `order_by` field to accept two new entry shapes — `node_meta
 ## Technical Context
 
 **Language/Version**: Python 3.12 (backend); no frontend changes (spec Assumptions).
-**Primary Dependencies**: FastAPI 0.121.1, GraphQL via Strawberry (existing), Pydantic 2.10, Neo4j Python driver 5.28.
+**Primary Dependencies**: FastAPI 0.131.0, GraphQL via graphene, Pydantic>=2.12,<2.13, Neo4j Python driver 6.0.3.
 **Storage**: Neo4j 5.28. No schema migration required; no data backfill.
 **Testing**: pytest 9.0 with the existing unit / component / functional / integration_docker layering. New tests at the component layer for the validator and the three query paths.
 **Target Platform**: Linux backend service.
