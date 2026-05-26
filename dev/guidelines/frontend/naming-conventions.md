@@ -32,7 +32,7 @@
 | `entities/{name}/domain/` | `{noun}.mappers.ts` (optional) | `branch.mappers.ts` |
 | `entities/{name}/ui/queries/` | `verb-noun.query.ts` | `get-branches.query.ts` |
 | `entities/{name}/ui/queries/` | `verb-noun.mutation.ts` | `create-branch.mutation.ts` |
-| `entities/{name}/ui/queries/` | `{noun}.query-keys.ts` | `branch.query-keys.ts` |
+| `entities/{name}/ui/queries/` | `{noun}.query-keys.ts` (singular file, plural export — `branchesQueryKeys`) | `branch.query-keys.ts` |
 | `entities/{name}/ui/` | `kebab-case.tsx` | `branches-table.tsx` |
 | `pages/` | `kebab-case.tsx` | `login.tsx` |
 
@@ -42,6 +42,29 @@
 - Tests: colocate with source, never in `__tests__/`
 - Types: `{noun}.types.ts` in entity `domain/`, or inline in component
 - Avoid `index.ts` barrel exports; prefer direct imports
+
+## Domain Function Types
+
+Every `entities/*/domain/{verb-noun}.ts` exports a matched pair of types so callers stay decoupled from the GraphQL shape:
+
+- `{Verb}{Noun}Params` — the input the domain function accepts. Aliases the `*FromApiParams` type 1:1 unless the domain wraps additional fields.
+- `{Verb}{Noun}Result` — the value the domain function returns. Either an explicit shape or `Awaited<ReturnType<typeof verbNoun>>`.
+
+```ts
+// ✅ Good
+export type GetDiffSummaryParams = GetDiffTreeSummaryFromApiParams;
+export type GetDiffSummaryResult = {
+  num_added: number;
+  num_updated: number;
+  num_removed: number;
+  num_conflicts: number;
+};
+
+// ❌ Bad — `*Response` ties the type to the wire shape
+export type GetDiffSummaryResponse = { /* ... */ };
+```
+
+Do not use `*Response`, `*Output`, `*Outcome`, or `*Data` suffixes — `*Result` is the only sanctioned name.
 
 ## Query Keys
 
