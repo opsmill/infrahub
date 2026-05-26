@@ -61,3 +61,59 @@ traverse: (sourceId, destinationId, maxDepth) =>
 ```
 
 Partial invalidation works naturally with the object form: `queryClient.invalidateQueries({ queryKey: pathTraversalKeys.all })`.
+
+## Mutation Invalidation
+
+**Invalidation lives in the mutation hook, not at the callsite.** Co-locating `onSuccess`/`onSettled` with the `useMutation` makes the cache contract auditable — every callsite gets it for free, and you can grep for missing invalidations in CI.
+
+```ts
+// ✅ Good — invalidation in the hook
+export function useMergeBranch() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: mergeBranch,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: branchesQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: tasksQueryKeys.all });
+    },
+  });
+}
+```
+
+Use callsite-level invalidation **only** when the queryKey depends on context the hook does not have (e.g., the conflict resolution mutation needs the proposed-change id from the page it is rendered on). When you make that choice, leave a top-of-file comment containing the literal phrase `invalidation-at-callsite` so the audit script below stays green:
+
+```ts
+// invalidation-at-callsite: callers pass an explicit `onSuccess` because
+// the queryKey depends on the proposed change being viewed.
+```
+
+For mutations that genuinely don't change any cached server state (e.g., a connectivity probe), use the same comment and explain why.
+
+### Audit
+
+Every `.mutation.ts` file must contain either `onSuccess`, `onSettled`, or the marker comment:
+
+```bash
+for f in $(find frontend/app/src/entities -name '*.mutation.ts'); do
+  grep -q 'onSuccess\|onSettled\|invalidation-at-callsite' "$f" || echo "MISSING: $f"
+done
+```
+
+The output must be empty.
+
+## API files: `*-from-api.ts` / `*.query.ts` / `*.mutation.ts`
+
+Every file under `entities/*/api/` ends in one of:
+
+- `*-from-api.ts` — calls `graphqlClient.query`/`graphqlClient.mutate` (or REST equivalent).
+- `*.query.ts` — pure query-string builders (e.g., `jsonToGraphQLQuery`) consumed by an adjacent `*-from-api.ts`.
+- `*.mutation.ts` — pure GraphQL mutation literals (rare; usually co-locate with the from-api file instead).
+
+The check is enforced by:
+
+```bash
+find frontend/app/src/entities -type f -path '*/api/*.ts' \
+  ! -name '*-from-api.ts' ! -name '*.query.ts' ! -name '*.mutation.ts'
+```
+
+The output must be empty.
