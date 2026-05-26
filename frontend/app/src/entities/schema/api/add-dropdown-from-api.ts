@@ -1,8 +1,36 @@
-import type { VariablesOf } from "gql.tada";
+import { type VariablesOf, graphql } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import { DROPDOWN_ADD_MUTATION } from "@/entities/schema/api/dropdown";
+export const DROPDOWN_ADD_MUTATION = graphql(`
+  mutation DropdownAdd(
+    $kind: String!
+    $attribute: String!
+    $dropdown: String!
+    $label: String
+    $color: String
+    $description: String
+  ) {
+    SchemaDropdownAdd(
+      data: {
+        kind: $kind
+        attribute: $attribute
+        dropdown: $dropdown
+        label: $label
+        color: $color
+        description: $description
+      }
+    ) {
+      ok
+      object {
+        value
+        label
+        color
+        description
+      }
+    }
+  }
+`);
 
 export interface AddDropdownFromApiParams extends VariablesOf<typeof DROPDOWN_ADD_MUTATION> {}
 

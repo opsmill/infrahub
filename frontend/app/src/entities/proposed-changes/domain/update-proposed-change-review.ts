@@ -1,7 +1,7 @@
 import {
   type UpdateProposedChangeReviewFromApiParams,
   updateProposedChangeReviewFromApi,
-} from "@/entities/proposed-changes/api/updateProposedChangeReviewFromApi";
+} from "@/entities/proposed-changes/api/update-proposed-change-review-from-api";
 
 export type UpdateProposedChangeReviewParams = UpdateProposedChangeReviewFromApiParams;
 

@@ -1,7 +1,7 @@
 import {
   type SearchAnywhereFromApiParams,
   searchAnywhereFromApi,
-} from "@/entities/navigation/api/search";
+} from "@/entities/navigation/api/search-from-api";
 
 export type SearchAnywhereParams = SearchAnywhereFromApiParams;
 
