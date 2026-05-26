@@ -655,7 +655,14 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
         async with lock.registry.get(name=model.repository_name, namespace="repository"):
             await repo.merge(source_branch=model.source_branch, dest_branch=model.destination_branch)
             if repo.location:
-                # Destination branch has changed and pushed remotely, tell workers to re-fetch
+                try:
+                    pinned_commit: str | None = repo.get_commit_value(
+                        branch_name=model.destination_branch, remote=False
+                    )
+                except (ValueError, InvalidGitRepositoryError):
+                    pinned_commit = None
+                # Destination branch has changed and pushed remotely, tell workers to re-fetch and
+                # check out the merge commit so the pool converges even if upstream advances meanwhile.
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                     location=repo.location,
@@ -664,6 +671,7 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
                     repository_kind=InfrahubKind.REPOSITORY,
                     infrahub_branch_name=model.destination_branch,
                     infrahub_branch_id=model.destination_branch_id,
+                    commit=pinned_commit,
                 )
                 message_bus = await get_message_bus()
                 await message_bus.send(message=message)
