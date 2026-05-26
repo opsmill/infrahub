@@ -969,6 +969,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
             repo = self.get_git_repo_worktree(identifier=branch_name)
             commit_after = str(repo.head.commit)
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
         else:
             raise ValueError(
                 f"Unable to identify the worktree for the branch : {branch_name} "
