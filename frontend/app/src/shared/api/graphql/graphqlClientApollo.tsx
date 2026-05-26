@@ -27,7 +27,6 @@ const httpLink = createUploadLink({
   uri: (operation: { getContext: () => { branch?: string; date?: Date | null } }) => {
     const context = operation.getContext();
 
-    // Initial value for url, will be overriden in useQuery
     return CONFIG.GRAPHQL_URL(context?.branch, context?.date);
   },
 });

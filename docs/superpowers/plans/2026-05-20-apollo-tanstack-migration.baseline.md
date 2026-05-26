@@ -81,3 +81,25 @@ Reviser action required from the human before Group 1 starts — see the message
 - `index-CfVYkEdJ.js` main chunk: 911.79 kB gzip → target ≤ ~872 kB gzip (~40 kB reduction). Likely smaller — `graphqlClientApollo` chunk should also shrink once `@apollo/client/react` tree-shakes.
 - Tests: 93 files / 703 tests passing → same or higher.
 - E2E suite: green.
+
+## Final Result (2026-05-20)
+
+Migration complete on branch `ple-tanstack-migration`.
+
+### Tests
+- Before: 703
+- After: 708
+
+### Bundle sizes (gzip)
+- `index-*.js` main chunk: 911.79 kB → 911.74 kB (Δ −0.05 kB)
+- `graphqlClientApollo-*.js`: 62.62 kB → 62.54 kB (Δ −0.08 kB)
+
+### Apollo footprint
+- Total `@apollo/client` import lines: 49 → 34
+- Hook-level imports (useQuery/useMutation/etc.): 12 → 0
+- Wrapper file: deleted
+
+### Open items
+- Browser smoke tests (Groups 1–6) pending human verification on dev server.
+- Note any behavior changes flagged during migration: 403 error handling in `new.tsx` (HTTP 403 now shows generic ErrorScreen instead of UnauthorizedScreen; application-level permission check handles the common case).
+- Bundle size reduction is minimal (< 1 kB gzip on both chunks). The `graphqlClientApollo` chunk did NOT shrink significantly, indicating `@apollo/client/react` tree-shook only a very small amount. The React hooks are gone from source but the Apollo client package itself still bundles its full react integration layer since `ApolloProvider` and `ApolloClient` construction remain. A larger reduction would require removing `@apollo/client` entirely, which is out of scope.

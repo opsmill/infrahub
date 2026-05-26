@@ -5,12 +5,12 @@ import {
 
 export type ValidateBranchParams = ValidateBranchFromApiParams;
 
-export interface ValidateBranchResult {
+export interface ValidateBranchOutcome {
   ok: boolean;
   taskId: string | null;
 }
 
-export async function validateBranch(params: ValidateBranchParams): Promise<ValidateBranchResult> {
+export async function validateBranch(params: ValidateBranchParams): Promise<ValidateBranchOutcome> {
   const { data, errors } = await validateBranchFromApi(params);
 
   if (errors?.length) {

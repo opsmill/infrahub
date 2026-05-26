@@ -145,3 +145,11 @@ entities/branches/
 ## File Naming
 
 See `dev/guidelines/frontend/naming-conventions.md` for the full naming conventions table.
+
+## GraphQL transport vs server-state hooks
+
+Apollo Client is kept as the GraphQL transport (auth links, error handling, retry) only. All server-state hooks are TanStack Query. Do not use `useQuery` / `useMutation` / `useLazyQuery` from `@apollo/client` — they were removed in 2026-05.
+
+- `@apollo/client` imports are allowed **only** in `src/app/app.tsx` (for `ApolloProvider`) and `src/shared/api/graphql/graphqlClientApollo.tsx` (client construction), plus `gql` template-tag imports in `entities/*/api/` files.
+- React hooks (`useQuery`, `useMutation`, etc.) from `@apollo/client` are forbidden throughout the codebase.
+- Use `useQuery` / `useMutation` from `@tanstack/react-query` (typically via the pattern in `ui/queries/`) for all data fetching.
