@@ -30,6 +30,13 @@ class UniquenessViolationMessageBuilder:
         return message
 
     def _collect_computed_inputs(self, node_schema: MainSchemaTypes, fields: list[str]) -> list[str]:
+        """Return the user-controllable inputs that feed the computed fields among `fields`.
+
+        For each field that is computed, the Jinja2 template is parsed and each referenced
+        path is resolved against the schema. Local attributes contribute their bare name
+        (`model`); single-cardinality relationships contribute a dotted form
+        (`owner.name`)
+        """
         allowed_path_types = (
             SchemaElementPathType.ATTR_WITH_PROP
             | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
