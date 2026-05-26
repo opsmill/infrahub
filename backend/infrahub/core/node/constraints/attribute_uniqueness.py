@@ -22,7 +22,7 @@ class NodeAttributeUniquenessConstraint(NodeConstraintInterface):
         at = Timestamp(at)
         node_schema = node.get_schema()
         for unique_attr in node_schema.unique_attributes:
-            if filters and unique_attr.name not in filters:
+            if filters and unique_attr.name not in filters and not unique_attr.computed_attribute:
                 continue
 
             comparison_schema: MainSchemaTypes = node_schema
