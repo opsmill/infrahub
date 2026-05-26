@@ -233,7 +233,7 @@ class SchemaBranch:
 
                 cache[node_hash] = node
 
-        return cls(cache=cache, data=nodes, name=data.get("name", "Unknown"))
+        return cls(cache=cache, data=nodes, name=data["name"])
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
