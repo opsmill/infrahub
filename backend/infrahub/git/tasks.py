@@ -355,7 +355,12 @@ async def git_branch_create(
     async with lock.registry.get(name=repository_name, namespace="repository"):
         await repo.create_branch_in_git(branch_name=branch, branch_id=branch_id, push_origin=True)
 
-        # New branch has been pushed remotely, tell workers to fetch it
+        try:
+            pinned_commit: str | None = repo.get_commit_value(branch_name=branch, remote=False)
+        except (ValueError, InvalidGitRepositoryError):
+            pinned_commit = None
+        # New branch has been pushed remotely, tell workers to fetch it and check out the SHA it
+        # was created at so the pool converges even if upstream advances during fan-out.
         message = messages.RefreshGitFetch(
             meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
             location=repo.get_location(),
@@ -364,6 +369,7 @@ async def git_branch_create(
             repository_kind=InfrahubKind.REPOSITORY,
             infrahub_branch_name=branch,
             infrahub_branch_id=branch_id,
+            commit=pinned_commit,
         )
         await message_bus.send(message=message)
         log.debug("Sent message to all workers to fetch the latest version of the repository (RefreshGitFetch)")
