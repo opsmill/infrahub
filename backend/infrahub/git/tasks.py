@@ -587,6 +587,7 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
             repository_kind=InfrahubKind.READONLYREPOSITORY,
             infrahub_branch_name=model.infrahub_branch_name,
             infrahub_branch_id=model.infrahub_branch_id,
+            commit=model.commit,
         )
         message_bus = await get_message_bus()
         await message_bus.send(message=message)
