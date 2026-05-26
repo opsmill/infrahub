@@ -51,15 +51,13 @@ async def execute_query(
         at=at,
     )
 
-    result = await graphql(
+    return await graphql(
         schema=gql_params.schema,
         source=graphql_query.query.value,
         context_value=gql_params.context,
         root_value=None,
         variable_values=params or {},
     )
-
-    return result
 
 
 async def test_execute_query(

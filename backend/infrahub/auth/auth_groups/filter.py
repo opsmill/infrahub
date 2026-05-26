@@ -8,10 +8,17 @@ capture groups are not used for name extraction.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Iterable
+from typing import TYPE_CHECKING, Iterable, NamedTuple
 
 if TYPE_CHECKING:
     import re
+
+
+class ClaimMatch(NamedTuple):
+    """A successful match of an external IdP claim against a configured filter pattern."""
+
+    name: str
+    source_pattern: str
 
 
 class ClaimFilter:
@@ -26,14 +33,19 @@ class ClaimFilter:
 
     def name_for(self, claim: str) -> str | None:
         """The local group name for `claim`, or `None` if no pattern matches."""
+        match = self.match_for(claim)
+        return match.name if match else None
+
+    def match_for(self, claim: str) -> ClaimMatch | None:
+        """The local group name and the raw regex source of the matching pattern, or `None`."""
         for pattern in self._patterns:
             match = pattern.search(claim)
             if match is None:
                 continue
             named = match.groupdict()
             if "name" in named and named["name"] is not None:
-                return named["name"]
-            return claim
+                return ClaimMatch(name=named["name"], source_pattern=pattern.pattern)
+            return ClaimMatch(name=claim, source_pattern=pattern.pattern)
         return None
 
     def names_for(self, claims: Iterable[str]) -> tuple[str, ...]:

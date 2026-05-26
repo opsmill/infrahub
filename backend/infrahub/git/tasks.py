@@ -25,6 +25,7 @@ from infrahub.core.constants import (
 from infrahub.core.manager import NodeManager
 from infrahub.core.registry import registry
 from infrahub.exceptions import CheckError, RepositoryError
+from infrahub.git.graphql_queries import GitRepositoryNodeQuery
 from infrahub.message_bus import Meta, messages
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
 from infrahub.validators.tasks import start_validator
@@ -62,6 +63,21 @@ from .models import (
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
+
+
+def format_check_log_entry(entry: dict[str, Any]) -> str:
+    """Render one user-check log record as a single line for the Prefect flow logger."""
+    parts = [f"[{entry['level']}] {entry['message']}"]
+    object_type = entry.get("object_type")
+    object_id = entry.get("object_id")
+    if object_type or object_id:
+        details = []
+        if object_type:
+            details.append(f"object_type={object_type}")
+        if object_id:
+            details.append(f"object_id={object_id}")
+        parts.append(f"({', '.join(details)})")
+    return " ".join(parts)
 
 
 @flow(
@@ -142,7 +158,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
 
     client = get_client()
 
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
@@ -150,9 +168,9 @@ async def create_branch(branch: str, branch_id: str) -> None:
             client=client,
             branch=branch,
             branch_id=branch_id,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
             message_bus=await get_message_bus(),
         )
 
@@ -164,16 +182,18 @@ async def create_branch(branch: str, branch_id: str) -> None:
 async def delete_git_branch(branch: str) -> None:
     """Fan out branch deletion across all CoreRepository instances."""
     client = get_client()
-    repositories: list[CoreRepository] = await client.filters(kind=CoreRepository)
+    repo_query = GitRepositoryNodeQuery()
+    response = await client.execute_graphql(query=repo_query.render_query())
+    repositories = repo_query.parse_response(response=response)
     batch = await client.create_batch()
     for repository in repositories:
         batch.add(
             task=git_branch_delete,
             client=client,
             branch=branch,
-            repository_name=repository.name.value,
+            repository_name=repository.name,
             repository_id=repository.id,
-            repository_location=repository.location.value,
+            repository_location=repository.location,
         )
     async for _, _ in batch.execute():
         pass
@@ -699,10 +719,7 @@ async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffName
     else:
         files_added = await repo.list_all_files(commit=model.first_commit)
 
-    response = GitDiffNamesOnlyResponse(
-        files_added=files_added, files_changed=files_changed, files_removed=files_removed
-    )
-    return response
+    return GitDiffNamesOnlyResponse(files_added=files_added, files_changed=files_changed, files_removed=files_removed)
 
 
 @flow(
@@ -1047,8 +1064,8 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
             log.info("The check passed")
         else:
             log.warning("The check reported failures")
-            for log_entry in check_run.log_entries:
-                log.warning(log_entry)
+            for entry in check_run.logs:
+                log.warning(format_check_log_entry(entry))
         log_entries = check_run.log_entries
     except CheckError as exc:
         log.warning("The check failed to run")

@@ -11,6 +11,9 @@ and skipped; the login completes.
 A per-login cap bounds how many new groups one login can spawn. Memberships to already-existing
 groups do NOT consume cap budget. Once the cap is reached, every subsequent matching claim that
 would have required a fresh creation is dropped and the login still completes.
+
+Auto-group audit events are emitted via an injected emitter; pass the disabled emitter
+to suppress emission.
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
     from infrahub.lock import InfrahubLockRegistry
 
+    from .emitter import AutoCreateEventEmitter
     from .filter import ClaimFilter
 
 log = get_logger()
@@ -53,10 +57,11 @@ class AutoCreatedGroupsService:
         self,
         *,
         db: InfrahubDatabase,
-        account: Node,
+        account: CoreAccount,
         provider_name: str,
         lock_registry: InfrahubLockRegistry,
         max_per_login: int,
+        emitter: AutoCreateEventEmitter,
         node_manager: type[NodeManager] = NodeManager,
     ) -> None:
         self._db = db
@@ -64,6 +69,7 @@ class AutoCreatedGroupsService:
         self._provider_name = provider_name
         self._lock_registry = lock_registry
         self._max_per_login = max_per_login
+        self._emitter = emitter
         self._node_manager = node_manager
 
     async def assign(
@@ -85,25 +91,28 @@ class AutoCreatedGroupsService:
 
         granted: list[str] = []
         new_creations = 0
+        dropped: list[str] = []
         seen: set[str] = set()
 
         for claim in claims:
-            name = claim_filter.name_for(claim)
-            if name is None:
+            match = claim_filter.match_for(claim)
+            if match is None:
                 continue
+            name = match.name
             if not name or name.isspace():
                 log.info(
                     "auth_groups.skip_invalid_effective_name",
                     provider_name=self._provider_name,
                     effective_name=name,
                 )
+                await self._emitter.claim_rejected(claim=claim)
                 continue
             if name in seen:
                 continue
             seen.add(name)
 
             if new_creations < self._max_per_login:
-                result = await self._find_or_create(name)
+                result = await self._find_or_create(name=name, source_pattern=match.source_pattern)
                 group = result.group
                 if group is None:
                     continue
@@ -120,6 +129,7 @@ class AutoCreatedGroupsService:
                         effective_name=name,
                         max_per_login=self._max_per_login,
                     )
+                    dropped.append(claim)
                     continue
                 group = self._reuse_or_skip(name, existing)
                 if group is None:
@@ -128,9 +138,11 @@ class AutoCreatedGroupsService:
             if await self._add_member(group):
                 granted.append(name)
 
+        if dropped:
+            await self._emitter.cap_breached(cap_value=self._max_per_login, dropped_claims=dropped)
         return tuple(granted)
 
-    async def _find_or_create(self, name: str) -> FindOrCreateResult:
+    async def _find_or_create(self, *, name: str, source_pattern: str) -> FindOrCreateResult:
         """Find a `CoreAccountGroup` named `name`, or create one with `origin = provider_name`.
 
         Serialized through the distributed lock registry under the `auto-create-group` namespace.
@@ -145,9 +157,10 @@ class AutoCreatedGroupsService:
             if existing is not None:
                 return FindOrCreateResult(group=self._reuse_or_skip(name, existing), was_created=False)
 
-            group = await Node.init(db=self._db, schema=InfrahubKind.ACCOUNTGROUP)
+            group = await Node.init(db=self._db, schema=CoreAccountGroup)
             await group.new(db=self._db, name=name, origin=self._provider_name)
             await group.save(db=self._db)
+            await self._emitter.created(group=group, source_pattern=source_pattern)
             return FindOrCreateResult(group=group, was_created=True)
 
     async def _lookup_by_name(self, name: str) -> Node | None:
@@ -187,6 +200,6 @@ class AutoCreatedGroupsService:
         members = await members_rel.get_peers(db=self._db, branch_agnostic=True, peer_type=CoreAccount)
         if self._account.id in members:
             return True
-        await members_rel.add(db=self._db, data=self._account)
+        await members_rel.add(db=self._db, data={"id": self._account.id})
         await members_rel.save(db=self._db)
         return True

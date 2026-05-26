@@ -38,17 +38,15 @@ class SchemaAttributeUpdateQuery(Query):
 
     def _render_match_schema_node(self) -> str:
         # ruff: noqa: E501
-        query = """
+        return """
         MATCH path = (node:SchemaNode)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[rel:HAS_VALUE]->(av:AttributeValue)
         """
-        return query
 
     def _render_match_schema_attribute(self) -> str:
         # ruff: noqa: E501
-        query = """
+        return """
         MATCH path = (node:SchemaNode)-[:IS_RELATED]->(:Relationship)<-[:IS_RELATED]-(attr_node:SchemaAttribute)-[:HAS_ATTRIBUTE]->(attr:Attribute)-[rel:HAS_VALUE]->(av:AttributeValue)
         """
-        return query
 
     def render_where(self) -> str:
         at = self.at or Timestamp()

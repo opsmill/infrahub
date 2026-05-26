@@ -59,8 +59,7 @@ async def schema_aware() -> NodeSchema:
         ],
     }
 
-    node = NodeSchema(**SCHEMA)
-    return node
+    return NodeSchema(**SCHEMA)
 
 
 @pytest.fixture
