@@ -458,6 +458,18 @@ class SchemaBranch:
             raise ValueError(f"{name!r} is not of type TemplateSchema")
         return item
 
+    def get_node_or_generic_schema(self, name: str, duplicate: bool = True) -> NodeSchema | GenericSchema:
+        """Access a specific NodeSchema or GenericSchema, defined by its kind.
+
+        Raises:
+            ValueError: When the schema with the given name is neither a NodeSchema nor a GenericSchema.
+
+        """
+        item = self.get(name=name, duplicate=duplicate)
+        if not isinstance(item, NodeSchema | GenericSchema):
+            raise ValueError(f"{name!r} is not of type NodeSchema or GenericSchema")
+        return item
+
     def delete(self, name: str) -> None:
         if name in self.nodes:
             del self.nodes[name]
@@ -1165,9 +1177,7 @@ class SchemaBranch:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}
         dependency_map: dict[str, set[str]] = defaultdict(set)
         for name in self.generic_names_without_templates + self.node_names:
-            node_schema = self.get(name=name, duplicate=False)
-            if not isinstance(node_schema, NodeSchema | GenericSchema):
-                continue
+            node_schema = self.get_node_or_generic_schema(name=name, duplicate=False)
 
             parent_relationships: list[RelationshipSchema] = []
             component_relationships: list[RelationshipSchema] = []
@@ -2474,9 +2484,13 @@ class SchemaBranch:
 
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names_without_templates:
+<<<<<<< HEAD
             node = self.get(name=node_name, duplicate=False)
             if not isinstance(node, NodeSchema | GenericSchema):
                 continue
+=======
+            node = self.get_node_or_generic_schema(name=node_name, duplicate=False)
+>>>>>>> d6ea36073 (add and use get_node_or_generic_schema())
             if (
                 (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
                 or not node.generate_profile
@@ -2726,9 +2740,7 @@ class SchemaBranch:
             A RelationshipSchema for the resource pool relationship, or None if not applicable
 
         """
-        peer_schema = self.get(name=relationship.peer, duplicate=False)
-        if not isinstance(peer_schema, NodeSchema | GenericSchema):
-            return None
+        peer_schema = self.get_node_or_generic_schema(name=relationship.peer, duplicate=False)
 
         pool_peer = None
         if isinstance(peer_schema, GenericSchema):
@@ -2965,8 +2977,8 @@ class SchemaBranch:
             ):
                 continue
 
-            peer_schema = self.get(name=relationship.peer, duplicate=False)
-            if not isinstance(peer_schema, NodeSchema | GenericSchema) or peer_schema in identified:
+            peer_schema = self.get_node_or_generic_schema(name=relationship.peer, duplicate=False)
+            if peer_schema in identified:
                 continue
             # In a context of a generic, we won't be able to create objects out of it, so any kind of nodes implementing the generic is a valid
             # option, we therefore need to have a template for each of those nodes
