@@ -1,8 +1,14 @@
-import type { VariablesOf } from "gql.tada";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import { ENUM_ADD_MUTATION } from "@/entities/schema/api/enum";
+export const ENUM_ADD_MUTATION = graphql(`
+  mutation EnumAdd($kind: String!, $attribute: String!, $enum: String!) {
+    SchemaEnumAdd(data: { kind: $kind, attribute: $attribute, enum: $enum }) {
+      ok
+    }
+  }
+`);
 
 export interface AddEnumFromApiParams extends VariablesOf<typeof ENUM_ADD_MUTATION> {}
 

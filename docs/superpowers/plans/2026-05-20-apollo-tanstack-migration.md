@@ -1,5 +1,19 @@
 # Apollo → TanStack Query Migration Implementation Plan
 
+> ## ✅ COMPLETED (2026-05-26)
+>
+> The seven migration PRs (#9305–#9311) and the four follow-up groups in
+> [`2026-05-26-apollo-tanstack-migration-completion.md`](./2026-05-26-apollo-tanstack-migration-completion.md)
+> (api naming sweep, mutation invalidation audit, domain-return-type alignment, doc
+> updates) have all landed on `develop`. Apollo React hooks are gone from feature
+> code; Apollo remains as the low-level GraphQL transport per the scope above.
+>
+> Conventions established by this migration are documented at
+> `dev/knowledge/frontend/entities-structure.md` and
+> `dev/guidelines/frontend/naming-conventions.md`. Future Apollo-transport removal
+> is captured as "Group 8" in the completion doc; it is intentionally out of scope
+> here.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Remove all Apollo React hook usage (`useQuery`, `useMutation`, `useLazyQuery`) from the Infrahub frontend feature code, keeping `ApolloClient` as the GraphQL transport.

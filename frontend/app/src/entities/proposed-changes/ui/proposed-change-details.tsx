@@ -14,7 +14,7 @@ import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { GetProposedChangeDetailsResponse } from "@/entities/proposed-changes/domain/get-proposed-change-details";
+import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/get-proposed-change-details";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
 import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
 import { Overview } from "@/entities/proposed-changes/ui/overview";
@@ -26,7 +26,7 @@ import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 interface ProposedChangeDetailsProps
   extends HTMLAttributes<HTMLDivElement>,
-    GetProposedChangeDetailsResponse {}
+    GetProposedChangeDetailsResult {}
 
 export const ProposedChangeDetails = ({
   proposedChangeData,

@@ -1,8 +1,14 @@
-import type { VariablesOf } from "gql.tada";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import { DROPDOWN_REMOVE_MUTATION } from "@/entities/schema/api/dropdown";
+export const DROPDOWN_REMOVE_MUTATION = graphql(`
+  mutation DropdownDelete($kind: String!, $attribute: String!, $dropdown: String!) {
+    SchemaDropdownRemove(data: { kind: $kind, attribute: $attribute, dropdown: $dropdown }) {
+      ok
+    }
+  }
+`);
 
 export interface RemoveDropdownFromApiParams extends VariablesOf<typeof DROPDOWN_REMOVE_MUTATION> {}
 

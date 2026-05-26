@@ -5,12 +5,12 @@ import {
 
 export type MergeBranchParams = MergeBranchFromApiParams;
 
-export interface MergeBranchOutcome {
+export interface MergeBranchResult {
   ok: boolean;
   taskId: string | null;
 }
 
-export async function mergeBranch(params: MergeBranchParams): Promise<MergeBranchOutcome> {
+export async function mergeBranch(params: MergeBranchParams): Promise<MergeBranchResult> {
   const { data, errors } = await mergeBranchFromApi(params);
 
   if (errors?.length) {

@@ -20,9 +20,9 @@ The epic's stated scope — *"Apollo React hooks and Apollo-driven application p
 - [x] Apollo Client is contained to the transport layer (allowlist above).
 - [x] Existing product behavior preserved (pagination, polling, branch-aware data access, time-based query behavior).
 - [x] Frontend structure docs (`entities-structure.md`, `naming-conventions.md`) reflect the new pattern.
-- [ ] All `entities/*/api/` files follow the `*-from-api.ts` naming convention. *(see Group A)*
-- [ ] Every mutation has a documented invalidation strategy — either `onSuccess`/`onSettled` in the mutation hook, or an explicit callsite-level invalidation comment. *(see Group B)*
-- [ ] Domain-layer return-type naming is consistent. *(see Group C)*
+- [x] All `entities/*/api/` files follow the `*-from-api.ts` naming convention. *(see Group A)*
+- [x] Every mutation has a documented invalidation strategy — either `onSuccess`/`onSettled` in the mutation hook, or an explicit callsite-level invalidation comment. *(see Group B)*
+- [x] Domain-layer return-type naming is consistent. *(see Group C)*
 
 ---
 
@@ -204,11 +204,11 @@ Bundle impact: ~40 KB gzipped removed. Maintenance: simpler mental model (one ca
 
 ## Definition of done for this epic
 
-- [ ] Group A merged (api file naming).
-- [ ] Group B merged (mutation invalidation standardized + audit completed).
-- [ ] Group C merged (domain return-type naming aligned).
-- [ ] Group D merged (docs updated).
-- [ ] `2026-05-20-apollo-tanstack-migration.md` banner updated to "✅ COMPLETED".
+- [x] Group A merged (api file naming).
+- [x] Group B merged (mutation invalidation standardized + audit completed).
+- [x] Group C merged (domain return-type naming aligned).
+- [x] Group D merged (docs updated).
+- [x] `2026-05-20-apollo-tanstack-migration.md` banner updated to "✅ COMPLETED".
 - [ ] Epic ticket closed.
 
 Group 8 (full Apollo removal) is tracked separately if/when the team decides to pursue the bundle-size win.

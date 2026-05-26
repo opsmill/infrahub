@@ -146,7 +146,7 @@ exports[`fix ts error`] = {
     "src/entities/proposed-changes/ui/action-button/pc-review-button.tsx:2712035776": [
       [39, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
-    "src/entities/proposed-changes/ui/proposed-change-details.tsx:180721791": [
+    "src/entities/proposed-changes/ui/proposed-change-details.tsx:3884295807": [
       [68, 59, 5, "tsc: Argument of type \'null | string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "195031250"],
       [200, 18, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],

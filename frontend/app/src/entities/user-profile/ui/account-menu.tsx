@@ -152,10 +152,13 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
       await logout();
     } catch (error) {
       console.error("Error when logging out: ", error);
+    } finally {
+      // Always reset client-side state, even if the server call failed —
+      // otherwise a transient error could leave the user with a stale token
+      // and another user's cached data still visible.
+      setToken(null);
+      queryClient.clear();
     }
-
-    setToken(null);
-    queryClient.clear();
   };
 
   if (isPending) {

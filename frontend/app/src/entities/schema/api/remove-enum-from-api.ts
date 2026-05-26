@@ -1,8 +1,14 @@
-import type { VariablesOf } from "gql.tada";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
-import { ENUM_REMOVE_MUTATION } from "@/entities/schema/api/enum";
+export const ENUM_REMOVE_MUTATION = graphql(`
+  mutation EnumDelete($kind: String!, $attribute: String!, $enum: String!) {
+    SchemaEnumRemove(data: { kind: $kind, attribute: $attribute, enum: $enum }) {
+      ok
+    }
+  }
+`);
 
 export interface RemoveEnumFromApiParams extends VariablesOf<typeof ENUM_REMOVE_MUTATION> {}
 
