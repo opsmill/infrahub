@@ -103,7 +103,12 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
             await repo.sync()
 
-            # Notify other workers they need to clone the repository
+            try:
+                pinned_commit: str | None = repo.get_commit_value(branch_name=repo.default_branch, remote=False)
+            except (ValueError, GitError):
+                pinned_commit = None
+            # Notify other workers they need to clone the repository and check out the SHA pinned
+            # by this initial sync, so the whole pool converges even if upstream advances meanwhile.
             notification = messages.RefreshGitFetch(
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                 location=model.location,
@@ -112,6 +117,7 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
                 repository_kind=InfrahubKind.REPOSITORY,
                 infrahub_branch_name=model.infrahub_branch_name,
                 infrahub_branch_id=model.infrahub_branch_id,
+                commit=pinned_commit,
             )
             message_bus = await get_message_bus()
             await message_bus.send(message=notification)
