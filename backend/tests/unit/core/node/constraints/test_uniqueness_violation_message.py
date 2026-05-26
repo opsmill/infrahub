@@ -1,10 +1,10 @@
 import pytest
 
-from infrahub.core.constants import ComputedAttributeKind, RelationshipCardinality
+from infrahub.core.constants import RelationshipCardinality
 from infrahub.core.node.constraints.uniqueness_violation_message import UniquenessViolationMessageBuilder
 from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
-from infrahub.core.schema.computed_attribute import ComputedAttribute
 from infrahub.core.schema.schema_branch import SchemaBranch
+from tests.helpers.schema_builders import computed_jinja2_attr
 
 
 @pytest.fixture
@@ -14,27 +14,13 @@ def schema_root() -> SchemaRoot:
         namespace="Test",
         human_friendly_id=["name__value"],
         attributes=[
-            AttributeSchema(
-                name="name",
-                kind="Text",
-                unique=True,
-                read_only=True,
-                optional=False,
-                computed_attribute=ComputedAttribute(
-                    kind=ComputedAttributeKind.JINJA2,
-                    jinja2_template="{{ model__value | upper }}-CAR",
-                ),
-            ),
+            computed_jinja2_attr(name="name", template="{{ model__value | upper }}-CAR"),
             AttributeSchema(name="model", kind="Text"),
-            AttributeSchema(
+            computed_jinja2_attr(
                 name="badge",
-                kind="Text",
-                read_only=True,
+                template="{{ owner__name__value }} :: {{ model__value }}",
+                unique=False,
                 optional=True,
-                computed_attribute=ComputedAttribute(
-                    kind=ComputedAttributeKind.JINJA2,
-                    jinja2_template="{{ owner__name__value }} :: {{ model__value }}",
-                ),
             ),
         ],
         relationships=[

@@ -6,8 +6,9 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.node.create import create_node
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.exceptions import HFIDViolatedError, ValidationError
+from tests.helpers.schema_builders import computed_jinja2_attr
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -17,31 +18,20 @@ if TYPE_CHECKING:
 @pytest.fixture
 async def car_schema_computed_hfid(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     """Schema where the human-friendly id is a required computed attribute derived from a local attribute."""
-    SCHEMA = {
-        "nodes": [
-            {
-                "name": "Car",
-                "namespace": "Test",
-                "display_label": "name__value",
-                "human_friendly_id": ["name__value"],
-                "attributes": [
-                    {
-                        "name": "name",
-                        "kind": "Text",
-                        "computed_attribute": {
-                            "kind": "Jinja2",
-                            "jinja2_template": "{{ model__value | upper }}-CAR",
-                        },
-                        "read_only": True,
-                        "unique": True,
-                        "optional": False,
-                    },
-                    {"name": "model", "kind": "Text"},
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Car",
+                namespace="Test",
+                display_label="name__value",
+                human_friendly_id=["name__value"],
+                attributes=[
+                    computed_jinja2_attr(name="name", template="{{ model__value | upper }}-CAR"),
+                    AttributeSchema(name="model", kind="Text"),
                 ],
-            },
+            ),
         ],
-    }
-    schema = SchemaRoot(**SCHEMA)
+    )
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
@@ -49,50 +39,37 @@ async def car_schema_computed_hfid(db: InfrahubDatabase, default_branch: Branch)
 @pytest.fixture
 async def car_schema_computed_from_relationship(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     """Schema where the unique computed attribute is derived from an attribute on a peer relationship."""
-    SCHEMA = {
-        "nodes": [
-            {
-                "name": "Car",
-                "namespace": "Test",
-                "display_label": "name__value",
-                "human_friendly_id": ["name__value"],
-                "attributes": [
-                    {
-                        "name": "name",
-                        "kind": "Text",
-                        "computed_attribute": {
-                            "kind": "Jinja2",
-                            "jinja2_template": "{{ owner__name__value | upper }}-CAR",
-                        },
-                        "read_only": True,
-                        "unique": True,
-                        "optional": False,
-                    },
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Car",
+                namespace="Test",
+                display_label="name__value",
+                human_friendly_id=["name__value"],
+                attributes=[
+                    computed_jinja2_attr(name="name", template="{{ owner__name__value | upper }}-CAR"),
                 ],
-                "relationships": [
-                    {
-                        "name": "owner",
-                        "peer": "TestPerson",
-                        "identifier": "person__car",
-                        "optional": False,
-                        "cardinality": "one",
-                    },
+                relationships=[
+                    RelationshipSchema(
+                        name="owner",
+                        peer="TestPerson",
+                        identifier="person__car",
+                        optional=False,
+                        cardinality="one",
+                    ),
                 ],
-            },
-            {
-                "name": "Person",
-                "namespace": "Test",
-                "human_friendly_id": ["name__value"],
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
+            ),
+            NodeSchema(
+                name="Person",
+                namespace="Test",
+                human_friendly_id=["name__value"],
+                attributes=[AttributeSchema(name="name", kind="Text", unique=True)],
+                relationships=[
+                    RelationshipSchema(name="cars", peer="TestCar", identifier="person__car", cardinality="many"),
                 ],
-                "relationships": [
-                    {"name": "cars", "peer": "TestCar", "identifier": "person__car", "cardinality": "many"},
-                ],
-            },
+            ),
         ],
-    }
-    schema = SchemaRoot(**SCHEMA)
+    )
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
@@ -100,32 +77,21 @@ async def car_schema_computed_from_relationship(db: InfrahubDatabase, default_br
 @pytest.fixture
 async def car_schema_computed_secondary_unique(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
     """Schema where a unique computed attribute exists alongside a separate, non-computed human-friendly id."""
-    SCHEMA = {
-        "nodes": [
-            {
-                "name": "Car",
-                "namespace": "Test",
-                "display_label": "name__value",
-                "human_friendly_id": ["name__value"],
-                "attributes": [
-                    {"name": "name", "kind": "Text", "unique": True},
-                    {
-                        "name": "vin",
-                        "kind": "Text",
-                        "computed_attribute": {
-                            "kind": "Jinja2",
-                            "jinja2_template": "VIN-{{ model__value | upper }}",
-                        },
-                        "read_only": True,
-                        "unique": True,
-                        "optional": False,
-                    },
-                    {"name": "model", "kind": "Text"},
+    schema = SchemaRoot(
+        nodes=[
+            NodeSchema(
+                name="Car",
+                namespace="Test",
+                display_label="name__value",
+                human_friendly_id=["name__value"],
+                attributes=[
+                    AttributeSchema(name="name", kind="Text", unique=True),
+                    computed_jinja2_attr(name="vin", template="VIN-{{ model__value | upper }}"),
+                    AttributeSchema(name="model", kind="Text"),
                 ],
-            },
+            ),
         ],
-    }
-    schema = SchemaRoot(**SCHEMA)
+    )
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
 
