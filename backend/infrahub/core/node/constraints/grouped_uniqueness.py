@@ -7,6 +7,7 @@ from infrahub_sdk.template.exceptions import JinjaTemplateError
 from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE
+from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.schema.basenode_schema import (
     UniquenessConstraintType,
     UniquenessConstraintViolation,
@@ -231,6 +232,12 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
 
     def _collect_computed_inputs(self, node: Node, fields: list[str]) -> list[str]:
         node_schema = node.get_schema()
+        schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
+        allowed_path_types = (
+            SchemaElementPathType.ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
+            | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
+        )
         inputs: list[str] = []
         for field in fields:
             attr_schema = node_schema.get_attribute_or_none(name=field)
@@ -244,7 +251,21 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
             except JinjaTemplateError:
                 continue
             for variable in variables:
-                input_name = variable.split("__", 1)[0]
-                if input_name and input_name not in inputs:
+                try:
+                    attribute_path = schema_branch.validate_schema_path(
+                        node_schema=node_schema, path=variable, allowed_path_types=allowed_path_types
+                    )
+                except ValueError:
+                    continue
+                if attribute_path.is_type_relationship:
+                    input_name = (
+                        f"{attribute_path.active_relationship_schema.name}"
+                        f".{attribute_path.active_attribute_schema.name}"
+                    )
+                elif attribute_path.is_type_attribute:
+                    input_name = attribute_path.active_attribute_schema.name
+                else:
+                    continue
+                if input_name not in inputs:
                     inputs.append(input_name)
         return inputs
