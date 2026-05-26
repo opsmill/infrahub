@@ -14,9 +14,5 @@ class RefreshGitFetch(InfrahubMessage):
     infrahub_branch_id: str = Field(..., description="Id of the Infrahub branch on which to sync the remote repository")
     commit: str | None = Field(
         default=None,
-        description=(
-            "Commit SHA pinned by the sync orchestrator. When set, receiving workers check out this "
-            "exact commit instead of pulling whatever upstream HEAD currently is, ensuring all workers "
-            "in the pool converge on the same commit even if upstream advances during fan-out."
-        ),
+        description="Commit SHA to check out, pinned by the sync orchestrator instead of pulling the latest upstream HEAD",
     )
