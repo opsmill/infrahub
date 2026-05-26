@@ -141,9 +141,14 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
         )
         await repo.import_objects_from_files(infrahub_branch_name=model.infrahub_branch_name)  # type: ignore[call-overload]
         if model.internal_status == RepositoryInternalStatus.ACTIVE.value:
-            await repo.sync_from_remote()
+            # Resolve the ref to a concrete commit once so the sync and the broadcast share the
+            # same SHA; broadcasting nothing would leave workers to re-resolve the ref and diverge.
+            pinned_commit: str | None = None
+            if repo.ref:
+                pinned_commit = repo.get_commit_value(branch_name=repo.ref, remote=True)
+            await repo.sync_from_remote(commit=pinned_commit)
 
-            # Notify other workers they need to clone the repository
+            # Notify other workers they need to clone the repository and check out the resolved commit
             notification = messages.RefreshGitFetch(
                 meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                 location=model.location,
@@ -152,6 +157,7 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
                 repository_kind=InfrahubKind.REPOSITORY,
                 infrahub_branch_name=model.infrahub_branch_name,
                 infrahub_branch_id=model.infrahub_branch_id,
+                commit=pinned_commit,
             )
             message_bus = await get_message_bus()
             await message_bus.send(message=notification)
