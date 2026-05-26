@@ -1,5 +1,6 @@
 import importlib
 import inspect
+from enum import StrEnum
 from typing import Any, Awaitable, TypeVar
 from uuid import UUID
 
@@ -18,6 +19,17 @@ from .constants import TAG_NAMESPACE, WorkflowTag, WorkflowType
 TASK_RESULT_STORAGE_NAME = "infrahub-storage"
 
 WorkflowReturn = TypeVar("WorkflowReturn")
+
+
+class ConcurrencyLimitConfig(StrEnum):
+    """Names the operator-tunable setting that drives a workflow's Prefect concurrency limit.
+
+    Each non-NONE value is the attribute name on `config.WorkflowConcurrencyLimits`.
+    NONE means the workflow has no operator-tunable concurrency limit.
+    """
+
+    NONE = "none"
+    ARTIFACT_GENERATE = "artifact_generate"
 
 
 class WorkerPoolDefinition(BaseModel):
@@ -55,6 +67,14 @@ class WorkflowDefinition(BaseModel):
     concurrency_limit_strategy: ConcurrencyLimitStrategy | None = Field(
         default=None,
         description="The concurrency options for the deployment.",
+    )
+    concurrency_limit_config: ConcurrencyLimitConfig = Field(
+        default=ConcurrencyLimitConfig.NONE,
+        description=(
+            "Names the operator-tunable setting that drives this workflow's "
+            "concurrency limit. When not NONE, the resolved value overrides "
+            "`concurrency_limit` at deploy time."
+        ),
     )
 
     @property

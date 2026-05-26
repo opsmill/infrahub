@@ -1,13 +1,19 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import pytest
 import redis
 from redis.connection import Connection, SSLConnection
 
-from infrahub.config import CacheSettings
-from infrahub.workflows.initialization import build_cache_connection_string
+from infrahub import config
+from infrahub.config import CacheSettings, Settings, WorkflowConcurrencyLimits
+from infrahub.workflows.initialization import build_cache_connection_string, resolve_configured_concurrency_limit
+from infrahub.workflows.models import ConcurrencyLimitConfig, WorkflowDefinition
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @dataclass
@@ -267,3 +273,92 @@ def test_connection_string_round_trip_through_redis_py(case: RoundTripCase) -> N
         assert pool.connection_kwargs.get(key) == expected_value, (
             f"kwarg {key!r}: expected {expected_value!r}, got {pool.connection_kwargs.get(key)!r}"
         )
+
+
+@pytest.fixture
+def reset_settings() -> Iterator[None]:
+    """Snapshot config.SETTINGS.settings, replace with a fresh Settings, restore on teardown."""
+    saved = config.SETTINGS.settings
+    config.SETTINGS.settings = Settings()
+    yield
+    config.SETTINGS.settings = saved
+
+
+def _make_workflow(
+    concurrency_limit: int | None = None,
+    concurrency_limit_config: ConcurrencyLimitConfig = ConcurrencyLimitConfig.NONE,
+) -> WorkflowDefinition:
+    return WorkflowDefinition(
+        name="test-flow",
+        module="infrahub.tasks.dummy",
+        function="dummy_flow",
+        concurrency_limit=concurrency_limit,
+        concurrency_limit_config=concurrency_limit_config,
+    )
+
+
+@dataclass
+class ResolveCase:
+    name: str
+    config_limits: WorkflowConcurrencyLimits
+    workflow_initial_limit: int | None
+    workflow_config: ConcurrencyLimitConfig
+    expected_limit: int | None
+
+
+CASES: list[ResolveCase] = [
+    ResolveCase(
+        name="NONE preserves catalogue value untouched",
+        config_limits=WorkflowConcurrencyLimits(artifact_generate=99),
+        workflow_initial_limit=7,
+        workflow_config=ConcurrencyLimitConfig.NONE,
+        expected_limit=7,
+    ),
+    ResolveCase(
+        name="ARTIFACT_GENERATE with default settings applies 10",
+        config_limits=WorkflowConcurrencyLimits(),
+        workflow_initial_limit=None,
+        workflow_config=ConcurrencyLimitConfig.ARTIFACT_GENERATE,
+        expected_limit=10,
+    ),
+    ResolveCase(
+        name="ARTIFACT_GENERATE with positive override applies that value",
+        config_limits=WorkflowConcurrencyLimits(artifact_generate=3),
+        workflow_initial_limit=None,
+        workflow_config=ConcurrencyLimitConfig.ARTIFACT_GENERATE,
+        expected_limit=3,
+    ),
+    ResolveCase(
+        name="ARTIFACT_GENERATE with zero means unlimited (None on the deployment)",
+        config_limits=WorkflowConcurrencyLimits(artifact_generate=0),
+        workflow_initial_limit=42,
+        workflow_config=ConcurrencyLimitConfig.ARTIFACT_GENERATE,
+        expected_limit=None,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", CASES, ids=[c.name for c in CASES])
+def test_resolve_configured_concurrency_limit(case: ResolveCase, reset_settings: None) -> None:
+    """Ensures the resolver honors the per-workflow config link.
+
+    Verifies the three meaningful states of the operator-tunable limit:
+    unset config keeps the catalogue value, a positive integer overrides it,
+    and zero clears the limit so Prefect imposes no cap on the deployment.
+    """
+    assert config.SETTINGS.settings is not None
+    config.SETTINGS.settings.workflow.concurrency_limits = case.config_limits
+    workflow = _make_workflow(
+        concurrency_limit=case.workflow_initial_limit,
+        concurrency_limit_config=case.workflow_config,
+    )
+
+    resolve_configured_concurrency_limit(workflow)
+
+    assert workflow.concurrency_limit == case.expected_limit
+
+
+def test_artifact_generate_rejects_negative(reset_settings: None) -> None:
+    """The settings field enforces `ge=0`; negative values are invalid and rejected at load time."""
+    with pytest.raises(ValueError, match=r"greater than or equal to 0"):
+        WorkflowConcurrencyLimits(artifact_generate=-1)

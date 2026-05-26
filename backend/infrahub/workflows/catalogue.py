@@ -4,7 +4,7 @@ from fast_depends import Depends, inject
 from prefect.client.schemas.objects import ConcurrencyLimitStrategy
 
 from .constants import WorkflowTag, WorkflowType
-from .models import WorkerPoolDefinition, WorkflowDefinition
+from .models import ConcurrencyLimitConfig, WorkerPoolDefinition, WorkflowDefinition
 
 INFRAHUB_WORKER_POOL = WorkerPoolDefinition(name="infrahub-worker", description="Default Pool for internal tasks")
 
@@ -143,6 +143,7 @@ REQUEST_ARTIFACT_GENERATE = WorkflowDefinition(
     module="infrahub.git.tasks",
     function="generate_artifact",
     tags=[WorkflowTag.DATABASE_CHANGE],
+    concurrency_limit_config=ConcurrencyLimitConfig.ARTIFACT_GENERATE,
 )
 
 REQUEST_ARTIFACT_DEFINITION_GENERATE = WorkflowDefinition(
