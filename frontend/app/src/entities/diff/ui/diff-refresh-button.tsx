@@ -7,7 +7,11 @@ import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { classNames } from "@/shared/utils/common";
 
-import { treeQueryKeys, updateDiffMutationKeys } from "@/entities/diff/ui/queries/diff.query-keys";
+import {
+  diffSummaryKeys,
+  treeQueryKeys,
+  updateDiffMutationKeys,
+} from "@/entities/diff/ui/queries/diff.query-keys";
 import { useUpdateDiffMutation } from "@/entities/diff/ui/queries/update-diff.mutation";
 
 export interface DiffRefreshButtonProps extends Omit<ButtonProps, "onPress"> {
@@ -27,6 +31,7 @@ export function DiffRefreshButton({ branchName, ...props }: DiffRefreshButtonPro
     updateDiffMutation.mutate(branchName, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
+        queryClient.invalidateQueries({ queryKey: diffSummaryKeys.all });
         toast(<Alert type={ALERT_TYPES.SUCCESS} message="Diff updated!" />);
       },
       onError: (error) => {

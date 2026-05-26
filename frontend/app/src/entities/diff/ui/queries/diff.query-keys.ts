@@ -10,6 +10,18 @@ export const treeQueryKeys = {
     [...treeQueryKeys.all, branchName, filters, proposedChangeId] as const,
 };
 
+type DiffSummaryKeyParams = {
+  branch?: string | null;
+  filters?: unknown;
+  proposedChangeId?: string | null;
+};
+
+export const diffSummaryKeys = {
+  all: ["diff-summary"] as const,
+  detail: ({ branch, filters, proposedChangeId }: DiffSummaryKeyParams) =>
+    [...diffSummaryKeys.all, branch, filters, proposedChangeId] as const,
+};
+
 export const updateDiffMutationKeys = {
   all: ["update-diff"] as const,
 };
