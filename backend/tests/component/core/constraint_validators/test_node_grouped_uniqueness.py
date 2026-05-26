@@ -372,3 +372,24 @@ class TestNodeGroupedUniquenessConstraint:
 
         with pytest.raises(HFIDViolatedError, match=r"Violates uniqueness constraint 'name' \(computed from: model\)"):
             await create_node(data={"model": "mustang"}, db=db, branch=default_branch, schema=car_schema)
+
+    async def test_create_node_rejects_duplicate_computed_secondary_unique(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        car_schema_computed_secondary_unique: SchemaRoot,
+    ) -> None:
+        car_schema = registry.schema.get_node_schema(name="TestCar", branch=default_branch)
+
+        first = await create_node(
+            data={"name": "alpha", "model": "mustang"}, db=db, branch=default_branch, schema=car_schema
+        )
+        assert first.vin.value == "VIN-MUSTANG"
+
+        with pytest.raises(
+            ValidationError, match=r"Violates uniqueness constraint 'vin' \(computed from: model\)"
+        ) as exc_info:
+            await create_node(
+                data={"name": "beta", "model": "mustang"}, db=db, branch=default_branch, schema=car_schema
+            )
+        assert not isinstance(exc_info.value, HFIDViolatedError)

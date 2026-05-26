@@ -190,3 +190,35 @@ async def car_schema_computed_hfid(db: InfrahubDatabase, default_branch: Branch)
     schema = SchemaRoot(**SCHEMA)
     registry.schema.register_schema(schema=schema, branch=default_branch.name)
     return schema
+
+
+@pytest.fixture
+async def car_schema_computed_secondary_unique(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
+    SCHEMA = {
+        "nodes": [
+            {
+                "name": "Car",
+                "namespace": "Test",
+                "display_label": "name__value",
+                "human_friendly_id": ["name__value"],
+                "attributes": [
+                    {"name": "name", "kind": "Text", "unique": True},
+                    {
+                        "name": "vin",
+                        "kind": "Text",
+                        "computed_attribute": {
+                            "kind": "Jinja2",
+                            "jinja2_template": "VIN-{{ model__value | upper }}",
+                        },
+                        "read_only": True,
+                        "unique": True,
+                        "optional": False,
+                    },
+                    {"name": "model", "kind": "Text"},
+                ],
+            },
+        ],
+    }
+    schema = SchemaRoot(**SCHEMA)
+    registry.schema.register_schema(schema=schema, branch=default_branch.name)
+    return schema
