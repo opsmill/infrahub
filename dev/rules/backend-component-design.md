@@ -35,11 +35,13 @@ Each component should have one reason to change. If a class is doing two unrelat
 
 When more than one implementation of a component is required (e.g. real vs. in-memory adapter, different backends, A/B variants), define a `Protocol` or abstract base class. The correct implementation is selected at the wiring layer and injected to the constructor — the consumer codes against the interface, not a concrete class.
 
-A single implementation does not need an interface yet; introduce one when the second implementation arrives.
+A single implementation does not need an interface yet; introduce one when the second implementation arrives. Note that the second implementation
+can be either a no-op version (such as in the case of an enterprise-only feature) or a testing version of a component (such as in the case of an
+in-memory version of a component typically backed by the database).
 
 ## Why this matters
 
-Constructor-injected long-lived dependencies plus method-passed transient entities is the boundary that lets components be reused across requests/operations and mocked with adapter implementations instead of `unittest.mock`. The testing rule (`dev/rules/testing-python.md`) requires adapter/protocol patterns for tests — that requirement is only practical when production code follows this design.
+Constructor-injected long-lived dependencies plus method-passed transient entities is the boundary that lets components be reused across requests/operations and mocked with adapter implementations instead of `unittest.mock`. The [testing rule](`dev/rules/testing-python.md`) requires adapter/protocol patterns for tests — that requirement is only practical when production code follows this design.
 
 ## Existing code
 
