@@ -6,7 +6,7 @@ import hashlib
 import keyword
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.template.filters import ExecutionContext
@@ -84,6 +84,14 @@ if TYPE_CHECKING:
     from infrahub.core.validators.schema_branch.interface import SchemaBranchValidator
 
 log = get_logger()
+
+
+class SchemaBranchDict(TypedDict):
+    name: str
+    nodes: dict[str, NodeSchema]
+    profiles: dict[str, ProfileSchema]
+    generics: dict[str, GenericSchema]
+    templates: dict[str, TemplateSchema]
 
 
 profiles_rel_settings: dict[str, Any] = {
@@ -188,13 +196,13 @@ class SchemaBranch:
     def to_dict(self) -> dict[str, Any]:
         return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles, "templates": self.templates}
 
-    def to_dict_schema_object(self, duplicate: bool = False) -> dict[str, Any]:
+    def to_dict_schema_object(self, duplicate: bool = False) -> SchemaBranchDict:
         return {
             "name": self.name,
-            "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
-            "profiles": {name: self.get(name, duplicate=duplicate) for name in self.profiles},
-            "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
-            "templates": {name: self.get(name, duplicate=duplicate) for name in self.templates},
+            "nodes": {name: self.get_node(name, duplicate=duplicate) for name in self.nodes},
+            "profiles": {name: self.get_profile(name, duplicate=duplicate) for name in self.profiles},
+            "generics": {name: self.get_generic(name, duplicate=duplicate) for name in self.generics},
+            "templates": {name: self.get_template(name, duplicate=duplicate) for name in self.templates},
         }
 
     def to_dict_api_schema_object(self) -> dict[str, list[dict]]:
