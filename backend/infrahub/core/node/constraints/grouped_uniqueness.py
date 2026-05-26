@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from infrahub.core.node import Node
     from infrahub.core.relationship.model import RelationshipManager
     from infrahub.core.schema import (
+        AttributeSchema,
         MainSchemaTypes,
         SchemaAttributePath,
     )
@@ -182,11 +183,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         for schema in schemas_to_check:
             schema_filters = list(filters) if filters is not None else []
             for attr_schema in schema.attributes:
-                if (
-                    (attr_schema.optional or attr_schema.computed_attribute)
-                    and attr_schema.unique
-                    and attr_schema.name not in schema_filters
-                ):
+                if self._should_implicitly_check_uniqueness(attr_schema=attr_schema, schema_filters=schema_filters):
                     schema_filters.append(attr_schema.name)
 
             schema_violations = await self._get_single_schema_violations(
@@ -222,6 +219,20 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         if hfid_violation:
             error_msg = self._format_violation_message(node=node, fields=hfid_violation.fields)
             raise HFIDViolatedError(error_msg, matching_nodes_ids=hfid_violation.nodes_ids)
+
+    @staticmethod
+    def _should_implicitly_check_uniqueness(attr_schema: AttributeSchema, schema_filters: list[str]) -> bool:
+        """A unique attribute whose value is set by the system rather than supplied by the user.
+
+        Optional attributes can carry a default value and computed attributes are populated after
+        the request is submitted, so neither appears in the user-provided filter list but both must
+        still be evaluated for uniqueness.
+        """
+        if attr_schema.name in schema_filters:
+            return False
+        if not attr_schema.unique:
+            return False
+        return bool(attr_schema.optional or attr_schema.computed_attribute)
 
     def _format_violation_message(self, node: Node, fields: list[str]) -> str:
         message = f"Violates uniqueness constraint '{'-'.join(fields)}'"
