@@ -4,6 +4,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
+from infrahub.core.node.constraints.uniqueness_violation_message import UniquenessViolationMessageBuilder
 from infrahub.core.schema import SchemaRoot
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ValidationError
@@ -12,7 +13,13 @@ from infrahub.exceptions import ValidationError
 async def test_node_validate_constraint_node_uniqueness_failure(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
-    constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
+    constraint = NodeGroupedUniquenessConstraint(
+        db=db,
+        branch=default_branch,
+        message_builder=UniquenessViolationMessageBuilder(
+            schema_branch=registry.schema.get_schema_branch(default_branch.name)
+        ),
+    )
     new_john = await Node.init(db=db, schema="TestPerson", branch=default_branch)
     await new_john.new(db=db, name="John", height=160)
 
@@ -25,7 +32,13 @@ async def test_node_validate_constraint_node_uniqueness_failure(
 async def test_node_validate_constraint_node_uniqueness_success(
     db: InfrahubDatabase, default_branch: Branch, car_accord_main: Node, car_volt_main: Node, person_john_main: Node
 ) -> None:
-    constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
+    constraint = NodeGroupedUniquenessConstraint(
+        db=db,
+        branch=default_branch,
+        message_builder=UniquenessViolationMessageBuilder(
+            schema_branch=registry.schema.get_schema_branch(default_branch.name)
+        ),
+    )
     alfred = await Node.init(db=db, schema="TestPerson", branch=default_branch)
 
     await alfred.new(db=db, name="Alfred", height=160)
@@ -45,7 +58,13 @@ async def test_hierarchical_uniqueness_constraint(
     rack_schema.uniqueness_constraints = [["parent", "status__value"]]
 
     registry.schema.register_schema(schema=hierarchical_location_schema_simple_unregistered, branch=default_branch.name)
-    constraint = NodeGroupedUniquenessConstraint(db=db, branch=default_branch)
+    constraint = NodeGroupedUniquenessConstraint(
+        db=db,
+        branch=default_branch,
+        message_builder=UniquenessViolationMessageBuilder(
+            schema_branch=registry.schema.get_schema_branch(default_branch.name)
+        ),
+    )
 
     eu = await Node.init(db=db, schema="LocationRegion", branch=default_branch)
     await eu.new(db=db, name="Europe")

@@ -2,12 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub_sdk.template.exceptions import JinjaTemplateError
-
-from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.constants import NULL_VALUE
-from infrahub.core.constants.schema import SchemaElementPathType
 from infrahub.core.schema.basenode_schema import (
     UniquenessConstraintType,
     UniquenessConstraintViolation,
@@ -34,12 +30,20 @@ if TYPE_CHECKING:
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
+    from .uniqueness_violation_message import UniquenessViolationMessageBuilder
+
 
 class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
-    def __init__(self, db: InfrahubDatabase, branch: Branch) -> None:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        branch: Branch,
+        message_builder: UniquenessViolationMessageBuilder,
+    ) -> None:
         self.db = db
         self.branch = branch
         self.schema_branch = registry.schema.get_schema_branch(branch.name)
+        self._message_builder = message_builder
 
     async def _get_unique_valued_paths(
         self,
@@ -213,11 +217,11 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
                 ):
                     continue
 
-            error_msg = self._format_violation_message(node=node, fields=violation.fields)
+            error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=violation.fields)
             raise ValidationError(error_msg)
 
         if hfid_violation:
-            error_msg = self._format_violation_message(node=node, fields=hfid_violation.fields)
+            error_msg = self._message_builder.build(node_schema=node.get_schema(), fields=hfid_violation.fields)
             raise HFIDViolatedError(error_msg, matching_nodes_ids=hfid_violation.nodes_ids)
 
     @staticmethod
@@ -233,50 +237,3 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
         if not attr_schema.unique:
             return False
         return bool(attr_schema.optional or attr_schema.computed_attribute)
-
-    def _format_violation_message(self, node: Node, fields: list[str]) -> str:
-        message = f"Violates uniqueness constraint '{'-'.join(fields)}'"
-        inputs = self._collect_computed_inputs(node=node, fields=fields)
-        if inputs:
-            message += f" (computed from: {', '.join(inputs)})"
-        return message
-
-    def _collect_computed_inputs(self, node: Node, fields: list[str]) -> list[str]:
-        node_schema = node.get_schema()
-        schema_branch = self.db.schema.get_schema_branch(name=self.branch.name)
-        allowed_path_types = (
-            SchemaElementPathType.ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_MANDATORY_ATTR_WITH_PROP
-            | SchemaElementPathType.REL_ONE_OPTIONAL_ATTR_WITH_PROP
-        )
-        inputs: list[str] = []
-        for field in fields:
-            attr_schema = node_schema.get_attribute_or_none(name=field)
-            if attr_schema is None or attr_schema.computed_attribute is None:
-                continue
-            template = attr_schema.computed_attribute.jinja2_template
-            if not template:
-                continue
-            try:
-                variables = InfrahubJinja2Template(template=template).get_variables()
-            except JinjaTemplateError:
-                continue
-            for variable in variables:
-                try:
-                    attribute_path = schema_branch.validate_schema_path(
-                        node_schema=node_schema, path=variable, allowed_path_types=allowed_path_types
-                    )
-                except ValueError:
-                    continue
-                if attribute_path.is_type_relationship:
-                    input_name = (
-                        f"{attribute_path.active_relationship_schema.name}"
-                        f".{attribute_path.active_attribute_schema.name}"
-                    )
-                elif attribute_path.is_type_attribute:
-                    input_name = attribute_path.active_attribute_schema.name
-                else:
-                    continue
-                if input_name not in inputs:
-                    inputs.append(input_name)
-        return inputs
