@@ -1,5 +1,6 @@
 from typing import Any
 
+from git.exc import GitError
 from infrahub_sdk import InfrahubClient
 from infrahub_sdk.protocols import (
     CoreArtifact,
@@ -303,7 +304,13 @@ async def sync_remote_repositories() -> None:
                     staging_branch=staging_branch,
                     infrahub_branch=infrahub_branch,
                 )
-                # Tell workers to fetch to stay in sync
+                try:
+                    pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
+                except (ValueError, GitError) as exc:
+                    log.debug(f"Could not resolve pinned commit for {repo_name}, workers will fall back to pull: {exc}")
+                    pinned_commit = None
+                # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
+                # pool converges on the same commit even if upstream advances during fan-out.
                 message = messages.RefreshGitFetch(
                     meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
                     location=repository.location.value,
@@ -312,6 +319,7 @@ async def sync_remote_repositories() -> None:
                     repository_kind=repository.get_kind(),
                     infrahub_branch_name=infrahub_branch,
                     infrahub_branch_id=branches[infrahub_branch].id,
+                    commit=pinned_commit,
                 )
                 message_bus = await get_message_bus()
                 await message_bus.send(message=message)
