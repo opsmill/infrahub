@@ -1210,7 +1210,7 @@ class RelationshipManager:
                 return rel
         return None
 
-    async def update(
+    async def update(  # noqa: PLR0915
         self,
         data: list[str | Node | dict[str, Any] | PeerWithRelationshipMetadata]
         | dict[str, Any]
@@ -1251,7 +1251,11 @@ class RelationshipManager:
             if hasattr(item, "_schema"):
                 item_id = getattr(item, "id", None)
                 if item_id and item_id in previous_relationships:
-                    self._relationships.append(previous_relationships[str(item_id)])
+                    rel = previous_relationships[str(item_id)]
+                    if rel.is_from_profile:
+                        rel.is_from_profile = False
+                        rel.clear_source()
+                    self._relationships.append(rel)
                     continue
 
             if item is None:
@@ -1263,7 +1267,11 @@ class RelationshipManager:
                 continue
 
             if isinstance(item, str) and item in previous_relationships:
-                self._relationships.append(previous_relationships[item])
+                rel = previous_relationships[item]
+                if rel.is_from_profile:
+                    rel.is_from_profile = False
+                    rel.clear_source()
+                self._relationships.append(rel)
                 continue
 
             if isinstance(item, dict) and item.get("id", None) in previous_relationships:
@@ -1272,6 +1280,9 @@ class RelationshipManager:
                 rel.load(data=item, db=db)
                 if hash(rel) != hash_before:
                     changed = True
+                if rel.is_from_profile:
+                    rel.is_from_profile = False
+                    rel.clear_source()
                 self._relationships.append(rel)
                 continue
 
