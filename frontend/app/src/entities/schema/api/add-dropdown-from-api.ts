@@ -1,4 +1,4 @@
-import { type VariablesOf, graphql } from "gql.tada";
+import { graphql, type VariablesOf } from "gql.tada";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 
