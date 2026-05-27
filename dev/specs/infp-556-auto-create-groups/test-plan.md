@@ -231,25 +231,7 @@ query AutoCreateEvents {
 }
 ```
 
-**Probe 2 — `group_auto_create` filter (idp + protocol)**
-
-```graphql
-query AutoCreateEventsByIdp {
-  InfrahubEvent(
-    event_type_filter: {
-      group_auto_create: { idp: ["provider1"], protocol: ["oidc"] }
-    }
-    order: ASC
-  ) {
-    count
-    edges { node { id event } }
-  }
-}
-```
-
-The `group_auto_create` sub-filter is silently ignored on non-auto-create events, so you don't strictly need to combine it with `event_type:` — but adding the explicit list keeps results unambiguous.
-
-**Probe 3 — inspect `origin` on every account group**
+**Probe 2 — inspect `origin` on every account group**
 
 ```graphql
 query AccountGroupsOrigin {
@@ -281,7 +263,7 @@ query AccountGroupsOrigin {
    - `origin_value = "provider1"` (matches the `origin` attribute on the group)
    - `group_id` matches the group's UUID from the UI
    - `group_name` is `ops-admins` or `data-engineers`
-7. Run **Probe 3**: `origin.value` is `"provider1"` on the two new rows and is `null` on every pre-existing group (`Infrahub Users`, admin-seeded rows, etc.).
+7. Run **Probe 2**: `origin.value` is `"provider1"` on the two new rows and is `null` on every pre-existing group (`Infrahub Users`, admin-seeded rows, etc.).
 
 ## Scenario B — Filter excludes unrelated claims (no event emitted)
 
@@ -340,7 +322,7 @@ The rejection path fires when a claim matches the filter but the captured name i
    - One new `GroupAutoCreateRejectedEventType` event.
    - `rejected_claim_value` holds the original verbatim claim (`pad-`), length-truncated.
    - `idp = "provider1"`, `protocol = "oidc"`, `triggering_user_name` equals bob's display name (the OIDC `name` claim — `firstName + lastName` as set in the realm).
-5. Run **Probe 3** — no new row with a null/whitespace `name.value` exists.
+5. Run **Probe 2** — no new row with a null/whitespace `name.value` exists.
 
 Restore the original filter (`'^(?P<name>(ops|data)-.*)$'`) and Ctrl-C → re-run the API-server command from 0e in Shell 1 before moving on.
 
@@ -357,7 +339,7 @@ For an auto-created group from Scenario A (e.g. `ops-admins`):
    mutation { CoreAccountGroupUpdate(data: { id: "<id>", origin: { value: "tampered" } }) { ok } }
    ```
 
-   **Expect** a parse-time error: `Field 'origin' is not defined by type 'CoreAccountGroupUpdateInput'.` Re-read with **Probe 3** — `origin.value` is still `"provider1"`.
+   **Expect** a parse-time error: `Field 'origin' is not defined by type 'CoreAccountGroupUpdateInput'.` Re-read with **Probe 2** — `origin.value` is still `"provider1"`.
 
 For a manually-created group:
 
@@ -368,11 +350,11 @@ For a manually-created group:
    ```
 
    **Expect** a parse-time error: `Field 'origin' is not defined by type 'CoreAccountGroupCreateInput'.`
-2. Re-run without the `origin` field — the create succeeds; re-read via **Probe 3** — `origin.value` is `null`.
+2. Re-run without the `origin` field — the create succeeds; re-read via **Probe 2** — `origin.value` is `null`.
 
 For a pre-existing group (any row that existed before the upgrade — e.g. `Infrahub Users`, `Super Administrators`):
 
-1. **Probe 3** confirms `origin.value` is `null` — no migration backfill ran.
+1. **Probe 2** confirms `origin.value` is `null` — no migration backfill ran.
 
 ## Scenario G — Default-group fallback (no auto-create events)
 
@@ -401,6 +383,18 @@ npm run start            # dev server with hot-reload — or `npm run build && n
 
 1. Visit [**`/docs/deploy-manage/user-management/sso/advanced-sso`**](http://localhost:3000/docs/deploy-manage/user-management/sso/advanced-sso) → the **"Auto-create groups from identity provider claims"** section is present and ready for review.
 2. Follow the link → [**`/docs/reference/infrahub-events/group`**](http://localhost:3000/docs/reference/infrahub-events/group) → all three auto-create event types are present with full payload tables.
+
+## Scenario I — Activity-feed UI for the auto-create events
+
+Frontend verification of how the three events render. Run after Scenarios A, D and E have produced created, capped and rejected events. Sign in as `admin` and open the **Activities** tab at <http://localhost:8080/activities>.
+
+1. **Provider is the subject.** Every auto-create row leads with the identity-provider name (`provider1`) in bold — not the triggering user, who appears only in the event detail view. Confirm the wording:
+   - Created: **provider1** auto-created group `ops-admins`
+   - Rejected: **provider1** claim `pad-` rejected (invalid group name)
+   - Capped: **provider1** auto-create cap of `5` reached, 7 claims dropped
+2. **Event-type filter.** Open the **Event Type** filter → the dropdown lists **Group auto-created**, **Group auto-create rejected** and **Group auto-create capped**. Selecting one narrows the feed to that type; there is **no** idp/protocol filter (out of scope).
+3. **Detail view.** Click **View details** on a created event → the Details card shows `Identity Provider`, `Protocol`, `Triggering User`, `Group Name`, `Group ID`, `Source Pattern` and `Origin`. The rejected detail shows `Rejected Claim`; the capped detail shows `Cap Value`, `Dropped Count` and `Dropped Claims`.
+4. **Group activity timeline.** Open a group that was auto-created *after* the related-node change landed (e.g. re-run Scenario D with `MAX_PER_LOGIN=20` so `ops-team-06…12` are created) → its own **Activities** view lists the `provider1 auto-created group …` event for that group. Groups created before that change do not show it retroactively.
 
 ---
 
