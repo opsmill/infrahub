@@ -20,7 +20,7 @@
 | `frontend/app/src/shared/api/graphql/errors.test.ts` | **create** | Vitest tests for `parseErrorExtensions`: per-code narrowing, fallback to `UNDEFINED_ERROR`, malformed inputs, and a compile-time exhaustiveness check that fails to build if `ErrorCode` gains a value without a corresponding switch arm. |
 | `frontend/app/src/shared/api/graphql/graphqlClientApollo.tsx` | **modify** | Replace the `if`-chain `errorLink` body with a `switch (parsed.code)` over `parseErrorExtensions(graphQLError.extensions)`; extract `retryWithRefreshedToken` and `notifyUser` as file-local helpers; add `code` to the `console.error` log line. No other change to the file. |
 
-No files outside `frontend/app/src/shared/api/graphql/` are touched. `login.tsx`'s inline `extensions: { code: string; http_status?: number }` type remains assignment-compatible with `GraphQLErrorExtensions` (it only reads `code` and `message`).
+No source or test files outside `frontend/app/src/shared/api/graphql/` are touched. The only other file the plan edits is `dev/specs/infp-468-graphql-error-catalogue/tasks.md`, where Task 4 flips the T031a–T031d task checkboxes to `[X]` (no code or content changes). `login.tsx`'s inline `extensions: { code: string; http_status?: number }` type remains assignment-compatible with `GraphQLErrorExtensions` (it only reads `code` and `message`).
 
 ---
 
