@@ -1222,10 +1222,6 @@ class LDAPSettings(BaseSettings):
             "`uid` is typical on OpenLDAP."
         ),
     )
-    attribute_email: str = Field(
-        default="mail",
-        description="Name of the LDAP attribute that holds a user's email address.",
-    )
     attribute_display_name: str = Field(
         default="displayName",
         description="Name of the LDAP attribute that holds a user's human-readable display name.",

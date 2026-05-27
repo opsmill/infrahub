@@ -97,7 +97,7 @@ class ExternalIdentity(BaseModel):
     provider_name: str  # as configured in Infrahub, e.g. "google", "provider1"
     protocol: ExternalAuthProtocol
     display_name: str  # user_info["name"] — used as label and as name on creation (if no conflict)
-    email: str  # user_info["email"] — fallback for name when display_name is already taken
+    email: str | None = None  # optional fallback name on display-name collision; not all providers expose it
 
 
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
@@ -291,11 +291,20 @@ async def _pick_account_name(*, db: InfrahubDatabase, external_identity: Externa
     """Pick the `name` for a new account, falling back to email on display-name collision.
 
     Raises:
-        ProcessingError: When both `display_name` and `email` are already in use as account names.
+        ProcessingError: When the display name is taken and no email fallback is available, or
+            when both `display_name` and `email` are already in use as account names.
 
     """
     if not name_collision:
         return external_identity.display_name
+
+    if external_identity.email is None:
+        raise ProcessingError(
+            message=(
+                f"Cannot create account: '{external_identity.display_name}' is already in use "
+                "and the identity provider did not supply an email to derive a fallback name."
+            )
+        )
 
     existing_by_email = await NodeManager.get_one_by_default_filter(db=db, id=external_identity.email, kind=CoreAccount)
     if existing_by_email is not None:
