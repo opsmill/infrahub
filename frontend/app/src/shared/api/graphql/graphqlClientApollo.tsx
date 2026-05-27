@@ -91,7 +91,10 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
 });
 
 // Helper: refresh the access token and replay the operation. Lifted from
-// the previous inline Observable block in errorLink — behaviour unchanged.
+// the previous inline Observable block in errorLink; the only behaviour
+// change is that a refresh resolving without an access_token now errors
+// the observer instead of leaving it pending (the old code dropped the
+// no-token branch silently and the request hung forever).
 function retryWithRefreshedToken(
   operation: Parameters<Parameters<typeof onError>[0]>[0]["operation"],
   forward: Parameters<Parameters<typeof onError>[0]>[0]["forward"]
@@ -102,27 +105,31 @@ function retryWithRefreshedToken(
     queryClient
       .fetchQuery(refreshAccessTokenQueryOptions())
       .then((newToken) => {
-        if (newToken?.access_token) {
-          operation.setContext({
-            headers: {
-              ...oldHeaders,
-              authorization: newToken?.access_token,
-            },
-          });
-
-          // Retry the failed request.
-          const subscriber = {
-            next: observer.next.bind(observer),
-            error: observer.error.bind(observer),
-            complete: observer.complete.bind(observer),
-          };
-
-          forward(operation).subscribe(subscriber);
+        if (!newToken?.access_token) {
+          // Refresh resolved but the server returned no token — fail the
+          // retry observable so the caller sees an error instead of hanging
+          // forever. Apollo will surface this as a network error.
+          observer.error(new Error("Token refresh returned no access_token"));
+          return;
         }
+
+        operation.setContext({
+          headers: {
+            ...oldHeaders,
+            authorization: newToken.access_token,
+          },
+        });
+
+        // Retry the failed request.
+        const subscriber = {
+          next: observer.next.bind(observer),
+          error: observer.error.bind(observer),
+          complete: observer.complete.bind(observer),
+        };
+
+        forward(operation).subscribe(subscriber);
       })
       .catch((err) => observer.error(err));
-
-    forward(operation);
   });
 }
 
