@@ -6,7 +6,7 @@ import hashlib
 import keyword
 from collections import defaultdict
 from itertools import chain, combinations
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 from infrahub_sdk.template.exceptions import JinjaTemplateError, JinjaTemplateOperationViolationError
 from infrahub_sdk.template.filters import ExecutionContext
@@ -86,6 +86,14 @@ if TYPE_CHECKING:
 log = get_logger()
 
 
+class SchemaBranchDict(TypedDict):
+    name: str
+    nodes: dict[str, NodeSchema]
+    profiles: dict[str, ProfileSchema]
+    generics: dict[str, GenericSchema]
+    templates: dict[str, TemplateSchema]
+
+
 profiles_rel_settings: dict[str, Any] = {
     "name": PROFILES_RELATIONSHIP_NAME,
     "identifier": PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
@@ -101,14 +109,14 @@ class SchemaBranch:
     def __init__(
         self,
         cache: dict,
-        name: str | None = None,
+        name: str,
         data: dict[str, dict[str, str]] | None = None,
         computed_attributes: ComputedAttributes | None = None,
         display_labels: DisplayLabels | None = None,
         hfids: HFIDs | None = None,
     ) -> None:
         self._cache: dict[str, NodeSchema | GenericSchema] = cache
-        self.name: str | None = name
+        self.name: str = name
         self.nodes: dict[str, str] = {}
         self.generics: dict[str, str] = {}
         self.profiles: dict[str, str] = {}
@@ -188,12 +196,13 @@ class SchemaBranch:
     def to_dict(self) -> dict[str, Any]:
         return {"nodes": self.nodes, "generics": self.generics, "profiles": self.profiles, "templates": self.templates}
 
-    def to_dict_schema_object(self, duplicate: bool = False) -> dict[str, dict[str, MainSchemaTypes]]:
+    def to_dict_schema_object(self, duplicate: bool = False) -> SchemaBranchDict:
         return {
-            "nodes": {name: self.get(name, duplicate=duplicate) for name in self.nodes},
-            "profiles": {name: self.get(name, duplicate=duplicate) for name in self.profiles},
-            "generics": {name: self.get(name, duplicate=duplicate) for name in self.generics},
-            "templates": {name: self.get(name, duplicate=duplicate) for name in self.templates},
+            "name": self.name,
+            "nodes": {name: self.get_node(name, duplicate=duplicate) for name in self.nodes},
+            "profiles": {name: self.get_profile(name, duplicate=duplicate) for name in self.profiles},
+            "generics": {name: self.get_generic(name, duplicate=duplicate) for name in self.generics},
+            "templates": {name: self.get_template(name, duplicate=duplicate) for name in self.templates},
         }
 
     def to_dict_api_schema_object(self) -> dict[str, list[dict]]:
@@ -224,7 +233,7 @@ class SchemaBranch:
 
                 cache[node_hash] = node
 
-        return cls(cache=cache, data=nodes)
+        return cls(cache=cache, data=nodes, name=data["name"])
 
     def diff(self, other: SchemaBranch) -> SchemaDiff:
         # Identify the nodes or generics that have been added or removed
@@ -245,9 +254,7 @@ class SchemaBranch:
 
         # Process of the one that have been updated to identify the list of impacted fields
         for key in present_both:
-            local_node = self.get(name=key, duplicate=False)
-            other_node = other.get(name=key, duplicate=False)
-            diff_node = other_node.diff(other=local_node)
+            diff_node = self._diff_node_or_generic(other_schema_branch=other, local_key=key, other_key=key)
             if diff_node.has_diff:
                 schema_diff.changed[key] = diff_node
 
@@ -255,15 +262,30 @@ class SchemaBranch:
         reversed_map_other: dict[str | None, str] = {v: k for k, v in other_kind_id_map.items()}
 
         for shared_id in shared_ids:
-            local_node = self.get(name=reversed_map_local[shared_id], duplicate=False)
-            other_node = other.get(name=reversed_map_other[shared_id], duplicate=False)
-            diff_node = other_node.diff(other=local_node)
-            if other_node.state == HashableModelState.ABSENT:
-                schema_diff.removed[reversed_map_other[shared_id]] = None
+            local_key = reversed_map_local[shared_id]
+            other_key = reversed_map_other[shared_id]
+            diff_node = self._diff_node_or_generic(other_schema_branch=other, local_key=local_key, other_key=other_key)
+            if other.get(name=other_key, duplicate=False).state == HashableModelState.ABSENT:
+                schema_diff.removed[other_key] = None
             elif diff_node.has_diff:
-                schema_diff.changed[reversed_map_other[shared_id]] = diff_node
+                schema_diff.changed[other_key] = diff_node
 
         return schema_diff
+
+    def _diff_node_or_generic(
+        self, other_schema_branch: SchemaBranch, local_key: str, other_key: str
+    ) -> HashableModelDiff:
+        """Diff two schemas across branches, dispatching to the matching concrete subclass.
+
+        Callers must ensure both keys reference either nodes or generics (not profiles or templates).
+        """
+        if local_key in self.nodes:
+            local_node = self.get_node(name=local_key, duplicate=False)
+            other_node = other_schema_branch.get_node(name=other_key, duplicate=False)
+            return other_node.diff(other=local_node)
+        local_generic = self.get_generic(name=local_key, duplicate=False)
+        other_generic = other_schema_branch.get_generic(name=other_key, duplicate=False)
+        return other_generic.diff(other=local_generic)
 
     def update(self, schema: SchemaBranch) -> None:
         """Update another SchemaBranch into this one."""
@@ -320,7 +342,7 @@ class SchemaBranch:
     def duplicate(self, name: str | None = None) -> SchemaBranch:
         """Duplicate the current object but conserve the same cache."""
         return self.__class__(
-            name=name,
+            name=name if name is not None else self.name,
             data=copy.deepcopy(self.to_dict()),
             cache=self._cache,
             computed_attributes=self.computed_attributes.duplicate(),
@@ -434,6 +456,18 @@ class SchemaBranch:
         item = self.get(name=name, duplicate=duplicate)
         if not isinstance(item, TemplateSchema):
             raise ValueError(f"{name!r} is not of type TemplateSchema")
+        return item
+
+    def get_node_or_generic_schema(self, name: str, duplicate: bool = True) -> NodeSchema | GenericSchema:
+        """Access a specific NodeSchema or GenericSchema, defined by its kind.
+
+        Raises:
+            ValueError: When the schema with the given name is neither a NodeSchema nor a GenericSchema.
+
+        """
+        item = self.get(name=name, duplicate=duplicate)
+        if not isinstance(item, NodeSchema | GenericSchema):
+            raise ValueError(f"{name!r} is not of type NodeSchema or GenericSchema")
         return item
 
     def delete(self, name: str) -> None:
@@ -1143,7 +1177,7 @@ class SchemaBranch:
         # {parent_kind: {component_kind_1, component_kind_2, ...}}
         dependency_map: dict[str, set[str]] = defaultdict(set)
         for name in self.generic_names_without_templates + self.node_names:
-            node_schema = self.get(name=name, duplicate=False)
+            node_schema = self.get_node_or_generic_schema(name=name, duplicate=False)
 
             parent_relationships: list[RelationshipSchema] = []
             component_relationships: list[RelationshipSchema] = []
@@ -1558,7 +1592,7 @@ class SchemaBranch:
 
     def validate_inherited_relationships_fields(self) -> None:
         for name in self.node_names:
-            node_schema = self.get(name=name, duplicate=False)
+            node_schema = self.get_node(name=name, duplicate=False)
             if not node_schema.inherit_from:
                 continue
 
@@ -2382,29 +2416,33 @@ class SchemaBranch:
             read_only = InfrahubKind.IPPREFIX in node.inherit_from
 
             parent_peer = node.parent or node.hierarchy
-            if "parent" not in node.relationship_names:
-                node.relationships.append(
-                    self._get_hierarchy_parent_rel(
-                        peer=parent_peer,
-                        hierarchical=node.hierarchy,
-                        read_only=read_only,
-                        optional=parent_peer in [node_name] + self.generic_names,
+            if parent_peer is not None:
+                if "parent" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_parent_rel(
+                            peer=parent_peer,
+                            hierarchical=node.hierarchy,
+                            read_only=read_only,
+                            optional=parent_peer in [node_name] + self.generic_names,
+                        )
                     )
-                )
-            else:
-                parent_rel = node.get_relationship(name="parent")
-                if parent_rel.peer != parent_peer:
-                    parent_rel.peer = parent_peer
+                else:
+                    parent_rel = node.get_relationship(name="parent")
+                    if parent_rel.peer != parent_peer:
+                        parent_rel.peer = parent_peer
 
             children_peer = node.children or node.hierarchy
-            if "children" not in node.relationship_names:
-                node.relationships.append(
-                    self._get_hierarchy_child_rel(peer=children_peer, hierarchical=node.hierarchy, read_only=read_only)
-                )
-            else:
-                children_rel = node.get_relationship(name="children")
-                if children_rel.peer != children_peer:
-                    children_rel.peer = children_peer
+            if children_peer is not None:
+                if "children" not in node.relationship_names:
+                    node.relationships.append(
+                        self._get_hierarchy_child_rel(
+                            peer=children_peer, hierarchical=node.hierarchy, read_only=read_only
+                        )
+                    )
+                else:
+                    children_rel = node.get_relationship(name="children")
+                    if children_rel.peer != children_peer:
+                        children_rel.peer = children_peer
 
             self.set(name=node_name, schema=node)
 
@@ -2456,7 +2494,7 @@ class SchemaBranch:
 
         profile_schema_kinds = set()
         for node_name in self.node_names + self.generic_names_without_templates:
-            node = self.get(name=node_name, duplicate=False)
+            node = self.get_node_or_generic_schema(name=node_name, duplicate=False)
             if (
                 (node.namespace in RESTRICTED_NAMESPACES and node.namespace != "Builtin")
                 or not node.generate_profile
@@ -2542,7 +2580,7 @@ class SchemaBranch:
     def _get_profile_kind(self, node_kind: str) -> str:
         return f"Profile{node_kind}"
 
-    def generate_profile_from_node(self, node: NodeSchema) -> ProfileSchema:
+    def generate_profile_from_node(self, node: NodeSchema | GenericSchema) -> ProfileSchema:
         core_profile_schema = self.get(name=InfrahubKind.PROFILE, duplicate=False)
         core_name_attr = core_profile_schema.get_attribute(name="profile_name")
         name_attr_schema_class = get_attribute_schema_class_for_kind(kind=core_name_attr.kind)
@@ -2706,9 +2744,7 @@ class SchemaBranch:
             A RelationshipSchema for the resource pool relationship, or None if not applicable
 
         """
-        peer_schema = self.get(name=relationship.peer, duplicate=False)
-        if not isinstance(peer_schema, NodeSchema | GenericSchema):
-            return None
+        peer_schema = self.get_node_or_generic_schema(name=relationship.peer, duplicate=False)
 
         pool_peer = None
         if isinstance(peer_schema, GenericSchema):
@@ -2945,8 +2981,8 @@ class SchemaBranch:
             ):
                 continue
 
-            peer_schema = self.get(name=relationship.peer, duplicate=False)
-            if not isinstance(peer_schema, NodeSchema | GenericSchema) or peer_schema in identified:
+            peer_schema = self.get_node_or_generic_schema(name=relationship.peer, duplicate=False)
+            if peer_schema in identified:
                 continue
             # In a context of a generic, we won't be able to create objects out of it, so any kind of nodes implementing the generic is a valid
             # option, we therefore need to have a template for each of those nodes
@@ -2956,7 +2992,7 @@ class SchemaBranch:
                 ):
                     for used_by in peer_schema.used_by:
                         identified |= self.identify_required_object_templates(
-                            node_schema=self.get(name=used_by, duplicate=False), identified=identified
+                            node_schema=self.get_node(name=used_by, duplicate=False), identified=identified
                         )
 
             identified |= self.identify_required_object_templates(node_schema=peer_schema, identified=identified)
@@ -2968,7 +3004,7 @@ class SchemaBranch:
         template_schema_kinds: set[str] = set()
 
         for node_name in self.node_names:
-            node = self.get(name=node_name, duplicate=False)
+            node = self.get_node(name=node_name, duplicate=False)
 
             # Delete old object templates if schemas were removed
             if (
@@ -2978,7 +3014,7 @@ class SchemaBranch:
             ):
                 try:
                     if any(r.name == OBJECT_TEMPLATE_RELATIONSHIP_NAME for r in node.relationships):
-                        node = self.get(name=node_name, duplicate=True)
+                        node = self.get_node(name=node_name, duplicate=True)
                         node.relationships = [
                             r for r in node.relationships if r.name != OBJECT_TEMPLATE_RELATIONSHIP_NAME
                         ]
