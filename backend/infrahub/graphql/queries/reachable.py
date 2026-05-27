@@ -56,7 +56,7 @@ class ReachableNodesInput(InputObjectType):
     max_paths = Int(
         required=False,
         default_value=500,
-        description="Maximum total paths returned across all discovered terminals (default: 500, max: 10000)",
+        description="Maximum total paths returned across all discovered terminals (default: 500, max: 5000)",
     )
 
 

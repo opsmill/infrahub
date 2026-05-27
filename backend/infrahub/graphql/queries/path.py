@@ -69,7 +69,7 @@ class PathTraversalInput(InputObjectType):
     destination_id = String(required=True, description="UUID of the end node")
     max_depth = Int(required=False, default_value=5, description="Maximum number of node hops (default: 5, max: 20)")
     max_paths = Int(
-        required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 100)"
+        required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 5000)"
     )
     kind_filter = List(
         of_type=NonNull(String), required=False, description="Filter to only traverse through nodes of these kinds"
