@@ -19,14 +19,12 @@ const EVENTS_QUERY = graphql(`
     $offset: Int
     $limit: Int
     $order: EventSortOrder
-    $eventTypeFilter: EventTypeFilter
   ) {
     InfrahubEvent(
       ids: $ids
       has_children: $hasChildren
       branches: $branches
       event_type: $eventType
-      event_type_filter: $eventTypeFilter
       primary_node__ids: $primaryNodeIds
       related_node__ids: $relatedNodeIds
       parent__ids: $parentIds
