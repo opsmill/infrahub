@@ -225,7 +225,7 @@ class NodeGroupedUniquenessConstraint(NodeConstraintInterface):
             raise HFIDViolatedError(error_msg, matching_nodes_ids=hfid_violation.nodes_ids)
 
     def _should_implicitly_check_uniqueness(self, attr_schema: AttributeSchema, schema_filters: list[str]) -> bool:
-        """A unique attribute whose value is set by the system rather than supplied by the user.
+        """Decide whether an attribute must be validated for uniqueness despite being absent from the user-provided filters.
 
         Optional attributes can carry a default value and computed attributes are populated after
         the request is submitted, so neither appears in the user-provided filter list but both must
