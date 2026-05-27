@@ -44,12 +44,12 @@ class TestPathTraversalCypherRendererValidation:
             _build_renderer(max_targets=201)
 
     def test_rejects_max_paths_below_minimum(self) -> None:
-        with pytest.raises(ValueError, match=r"max_paths must be in \[1, 10000\]"):
+        with pytest.raises(ValueError, match=r"max_paths must be in \[1, 5000\]"):
             _build_renderer(max_paths=0)
 
     def test_rejects_max_paths_above_maximum(self) -> None:
-        with pytest.raises(ValueError, match=r"max_paths must be in \[1, 10000\]"):
-            _build_renderer(max_paths=10001)
+        with pytest.raises(ValueError, match=r"max_paths must be in \[1, 5000\]"):
+            _build_renderer(max_paths=5001)
 
     def test_render_rejects_empty_plan(self) -> None:
         renderer = _build_renderer()
