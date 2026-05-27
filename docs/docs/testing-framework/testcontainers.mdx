@@ -1,0 +1,156 @@
+---
+title: Integration testing with Testcontainers
+---
+
+# Integration testing with Testcontainers
+
+The `infrahub-testcontainers` package starts a complete Infrahub stack in Docker during your test session. Use it to write integration tests that validate schemas, SDK usage, or GraphQL queries against a live Infrahub instance.
+
+:::info Testcontainers vs. the built-in testing framework
+
+Infrahub ships with a [built-in testing framework](./overview.mdx) for validating Transformations, Checks, and other resources defined in a connected Git repository.
+
+`infrahub-testcontainers` serves a different purpose: it provisions a full Infrahub instance on demand so that external code — custom integrations, schemas under development, or SDK scripts — can be tested without maintaining a persistent environment.
+
+:::
+
+## Prerequisites
+
+- Docker Engine installed and running
+- Python 3.10 or later
+- At least 4 GB of available RAM (Neo4j requires significant memory to start)
+- Sufficient disk space for the Docker images (approximately 2 GB on first pull)
+
+## Installation
+
+```bash
+pip install infrahub-testcontainers
+```
+
+Or with `uv`:
+
+```bash
+uv add infrahub-testcontainers
+```
+
+## Quick start
+
+The `TestInfrahubDocker` base class provides class-scoped pytest fixtures that start and stop the Infrahub stack around your tests.
+
+```python
+import os
+import subprocess
+import pytest
+from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
+from infrahub_testcontainers.helpers import TestInfrahubDocker
+
+
+class TestSchemaLoading(TestInfrahubDocker):
+    def test_load_schema(self, infrahub_port: int) -> None:
+        result = subprocess.run(
+            ["infrahubctl", "schema", "load", "my_schema.yaml"],
+            env={
+                **os.environ,
+                "INFRAHUB_ADDRESS": f"http://localhost:{infrahub_port}",
+                "INFRAHUB_API_TOKEN": PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN"],
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        assert result.returncode == 0
+```
+
+The `infrahub_app` fixture starts the full stack — Infrahub server, Neo4j, RabbitMQ, Redis, Prefect task manager, and task workers — before any test in the class runs. After the last test completes, the stack is stopped and containers are removed. If startup fails, the container logs are printed automatically.
+
+Run the tests with:
+
+```bash
+pytest tests/
+```
+
+## Available fixtures
+
+`TestInfrahubDocker` provides the following class-scoped fixtures:
+
+| Fixture | Type | Description |
+|---|---|---|
+| `infrahub_app` | `dict[str, int]` | Starts the stack; yields a mapping of service name to host port |
+| `infrahub_port` | `int` | Host port for the Infrahub API server |
+| `task_manager_port` | `int` | Host port for the Prefect task manager |
+| `tmp_directory` | `Path` | Temporary directory shared across the test class |
+| `remote_repos_dir` | `Path` | Subdirectory used for local Git repositories |
+| `default_branch` | `str` | Returns `"main"` |
+
+## Connecting the Python SDK
+
+Use `PROJECT_ENV_VARIABLES` to retrieve the credentials pre-configured for the test stack:
+
+```python
+from infrahub_sdk import Config, InfrahubClient
+from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
+
+
+def get_client(infrahub_port: int) -> InfrahubClient:
+    config = Config(
+        address=f"http://localhost:{infrahub_port}",
+        api_token=PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN"],
+    )
+    return InfrahubClient(config=config)
+```
+
+The default admin token is `06438eb2-8019-4776-878c-0941b1f1d1ec`. Override it by setting `INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN` in the environment before starting the test process.
+
+For a full reference of SDK methods, see the [Python SDK documentation]($(base_url)python-sdk/introduction).
+
+## Configuration
+
+The following environment variables control the test stack:
+
+| Variable | Default | Description |
+|---|---|---|
+| `INFRAHUB_TESTING_IMAGE_VER` | Package version | Docker image tag to pull and run |
+| `INFRAHUB_TESTING_DOCKER_IMAGE` | `registry.opsmill.io/opsmill/infrahub` | Docker image to use |
+| `INFRAHUB_TESTING_ENTERPRISE` | — | Set to any value to switch to the enterprise image |
+| `INFRAHUB_TESTING_DOCKER_PULL` | `true` | Set to `false` to skip image pulls (useful with locally built images) |
+| `INFRAHUB_TESTING_SCHEMA_STRICT_MODE` | `true` | Reject schemas that contain unknown or invalid fields |
+| `INFRAHUB_TESTING_WEB_CONCURRENCY` | `4` | Number of Gunicorn worker processes for the API server |
+| `INFRAHUB_TESTING_API_SERVER_COUNT` | `2` | Number of API server replicas |
+| `INFRAHUB_TESTING_TASK_WORKER_COUNT` | `2` | Number of task worker replicas |
+
+The full set of variables and their defaults is defined in `infrahub_testcontainers.container.PROJECT_ENV_VARIABLES`.
+
+## Deployment types
+
+By default, the stack starts a single-node Infrahub instance. To test against a Neo4j cluster topology, pass `--deployment-type cluster` to pytest:
+
+```bash
+pytest tests/ --deployment-type cluster
+```
+
+Cluster mode requires Neo4j Enterprise edition. Set `INFRAHUB_TESTING_ENTERPRISE=1` before running.
+
+## Running in CI
+
+`TestInfrahubDocker` works in any CI environment that can run Docker. The example below shows a GitHub Actions job:
+
+```yaml
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install infrahub-testcontainers pytest infrahub-sdk
+      - run: pytest tests/
+        env:
+          INFRAHUB_TESTING_IMAGE_VER: "1.9.0"
+```
+
+:::tip Resource-constrained runners
+
+On runners with limited RAM (the free GitHub-hosted runners have 7 GB), set `INFRAHUB_TESTING_WEB_CONCURRENCY=2` and `INFRAHUB_TESTING_API_SERVER_COUNT=1` to reduce memory pressure.
+
+:::

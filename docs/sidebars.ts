@@ -239,7 +239,14 @@ const sidebars: SidebarsConfig = {
           ],
         },
         { type: 'doc', id: 'checks/overview', label: 'Checks & Validation' },
-        { type: 'doc', id: 'testing-framework/overview', label: 'Testing Framework' },
+        {
+          type: 'category',
+          label: 'Testing Framework',
+          link: { type: 'doc', id: 'testing-framework/overview' },
+          items: [
+            { type: 'doc', id: 'testing-framework/testcontainers', label: 'Integration testing with Testcontainers' },
+          ],
+        },
         { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
         {
           type: 'category',
