@@ -45,7 +45,7 @@ export const GroupAutoCreateEventTitle = (props: GroupAutoCreateEvent) => {
       return (
         <AutoCreateLayout idp={props.idp}>
           auto-create cap of <Highlight>{props.cap_value}</Highlight> reached, {props.dropped_count}{" "}
-          claim{props.dropped_count === 1 ? "" : "s"} dropped
+          claim{props.dropped_count <= 1 ? "" : "s"} dropped
         </AutoCreateLayout>
       );
     }
