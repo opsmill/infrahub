@@ -200,3 +200,13 @@ jobs:
 On runners with limited RAM (the free GitHub-hosted runners have 7 GB), set `INFRAHUB_TESTING_WEB_CONCURRENCY=2` and `INFRAHUB_TESTING_API_SERVER_COUNT=1` to reduce memory pressure.
 
 :::
+
+## Real-world examples
+
+The following public repositories show complete integration test setups:
+
+| Repository | What it demonstrates |
+|---|---|
+| [infrahub-demo-dc — test\_workflow.py](https://github.com/opsmill/infrahub-demo-dc/blob/main/tests/integration/test_workflow.py) | End-to-end DC workflow: schema load, bootstrap data, repository import, branch creation, Generator run, proposed change, and merge |
+| [infrahub-demo-service-catalog — test\_create\_service.py](https://github.com/opsmill/infrahub-demo-service-catalog/blob/main/tests/integration/test_create_service.py) | Schema and data load using `ObjectFile`, repository import, and a Streamlit portal test |
+| [devnet-live-2025 — test\_end2end.py](https://github.com/opsmill/devnet-live-2025/blob/main/tests/integration/test_end2end.py) | Schema load from YAML files, data population, and repository sync |
