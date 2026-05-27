@@ -239,14 +239,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         { type: 'doc', id: 'checks/overview', label: 'Checks & Validation' },
-        {
-          type: 'category',
-          label: 'Testing Framework',
-          link: { type: 'doc', id: 'testing-framework/overview' },
-          items: [
-            { type: 'doc', id: 'testing-framework/testcontainers', label: 'Integration testing with Testcontainers' },
-          ],
-        },
+        { type: 'doc', id: 'testing-framework/overview', label: 'Testing Framework' },
         { type: 'doc', id: 'change-approval/change-approval-workflow', label: 'Change Approval Policy' },
         {
           type: 'category',
@@ -477,6 +470,7 @@ const sidebars: SidebarsConfig = {
       link: { type: 'generated-index', slug: 'development-resources' },
       items: [
         { type: 'doc', id: 'development-resources/developer-guide', label: 'Developer Guide' },
+        { type: 'doc', id: 'development-resources/testcontainers', label: 'Integration testing with Testcontainers' },
         {
           type: 'category',
           label: 'APIs & interfaces',
