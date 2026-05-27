@@ -106,6 +106,33 @@ def test_group_auto_create_capped_get_resource_pins_wire_format() -> None:
     }
 
 
+def test_group_auto_created_get_related_includes_group_as_related_node() -> None:
+    group_id = uuid4()
+    event = GroupAutoCreatedEvent(
+        meta=_make_meta(),
+        idp="provider1",
+        triggering_user_id=uuid4(),
+        triggering_user_name="alice",
+        protocol=ExternalAuthProtocol.OIDC,
+        group_id=group_id,
+        group_name="ops-admins",
+        source_pattern=r"^(?P<name>ops-.*)$",
+        origin_value="provider1",
+    )
+
+    related_nodes = [
+        item for item in event.get_related() if item.get("prefect.resource.role") == "infrahub.related.node"
+    ]
+
+    assert related_nodes == [
+        {
+            "prefect.resource.id": str(group_id),
+            "prefect.resource.role": "infrahub.related.node",
+            "infrahub.node.kind": InfrahubKind.ACCOUNTGROUP,
+        }
+    ]
+
+
 @pytest.mark.parametrize("dropped_claims", [[], ["only-one"], ["alpha", "beta", "gamma"]])
 def test_group_auto_create_capped_get_related_pins_dropped_claim_shape(
     dropped_claims: list[str],
