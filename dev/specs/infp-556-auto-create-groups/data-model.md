@@ -83,7 +83,7 @@ Extends `GroupAutoCreateEvent` with:
 
 Emitted once per successful auto-creation (creation only, not on subsequent membership adds — FR-015).
 
-## `GroupAutoCreateRejectedClaimEvent` — FR-017
+## `GroupAutoCreateRejectedEvent` — FR-017
 
 Extends `GroupAutoCreateEvent` with:
 
@@ -93,7 +93,7 @@ Extends `GroupAutoCreateEvent` with:
 
 Emitted when a claim matches the configured filter but the effective local name fails `CoreAccountGroup` identifier validation. The login still completes (FR-017).
 
-## `GroupAutoCreateCapBreachEvent` — FR-020
+## `GroupAutoCreateCappedEvent` — FR-020
 
 Extends `GroupAutoCreateEvent` with:
 

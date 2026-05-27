@@ -25,7 +25,7 @@ Emitted exactly once per successful auto-creation. NOT emitted on subsequent mem
 
 ```python
 class GroupAutoCreatedEvent(GroupAutoCreateEvent):
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create.created"
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_created"
 
     group_id: UUID
     group_name: str
@@ -33,24 +33,24 @@ class GroupAutoCreatedEvent(GroupAutoCreateEvent):
     origin_value: str             # The configured identity-provider name written to the new group's `origin` attribute. Type is `str` (no AccountGroupOrigin enum — superseded 2026-05-13). Carried in addition to the base `idp` field for self-contained payloads.
 ```
 
-## `GroupAutoCreateRejectedClaimEvent` (extends `GroupAutoCreateEvent`) — FR-017
+## `GroupAutoCreateRejectedEvent` (extends `GroupAutoCreateEvent`) — FR-017
 
 Emitted when a claim matches the configured filter but the effective local name fails `CoreAccountGroup` identifier validation. The login still completes; no exception propagates to the end user.
 
 ```python
-class GroupAutoCreateRejectedClaimEvent(GroupAutoCreateEvent):
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create.rejected_claim"
+class GroupAutoCreateRejectedEvent(GroupAutoCreateEvent):
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create_rejected"
 
     rejected_claim_value: str     # verbatim, length-truncated to a documented upper bound
 ```
 
-## `GroupAutoCreateCapBreachEvent` (extends `GroupAutoCreateEvent`) — FR-020
+## `GroupAutoCreateCappedEvent` (extends `GroupAutoCreateEvent`) — FR-020
 
 Emitted at most once per login, when the per-login soft cap on new-group creation is reached. Auto-creation stops for that login at the cap; the login still completes successfully.
 
 ```python
-class GroupAutoCreateCapBreachEvent(GroupAutoCreateEvent):
-    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create.cap_breach"
+class GroupAutoCreateCappedEvent(GroupAutoCreateEvent):
+    event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.group.auto_create_capped"
 
     cap_value: int
     dropped_claims: list[str]     # verbatim per-entry, length-truncated
@@ -59,7 +59,7 @@ class GroupAutoCreateCapBreachEvent(GroupAutoCreateEvent):
 
 ## Access control & retention
 
-Inherits from the platform audit-log layer (shared with INFP-474). No feature-specific RBAC; claim values on `GroupAutoCreateRejectedClaimEvent.rejected_claim_value` and `GroupAutoCreateCapBreachEvent.dropped_claims` are stored verbatim with length truncation only (clarification 2026-05-11).
+Inherits from the platform audit-log layer (shared with INFP-474). No feature-specific RBAC; claim values on `GroupAutoCreateRejectedEvent.rejected_claim_value` and `GroupAutoCreateCappedEvent.dropped_claims` are stored verbatim with length truncation only (clarification 2026-05-11).
 
 ## What does NOT emit an event
 

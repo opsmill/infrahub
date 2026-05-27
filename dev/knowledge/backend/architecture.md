@@ -37,7 +37,8 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 
 | Layer | Responsibility | Key Directories |
 |-------|----------------|-----------------|
-| API | HTTP handling, serialization, auth | `api/`, `graphql/` |
+| API | HTTP handling, serialization | `api/`, `graphql/` |
+| Auth | Password/SSO/LDAP login, SSO group resolution, auto-create groups | `auth/`, `ldap_auth/` |
 | Core | Business logic, domain models | `core/` |
 | Database | Query execution, connection mgmt | `database/` |
 | Workers | Async task processing | `workers/`, `task_manager/` |
@@ -56,6 +57,7 @@ Similar to pull requests, proposed changes allow reviewing and approving data mo
 ### Related Knowledge
 
 - [Testing](testing.md) - Testing infrastructure and patterns
+- [Authentication](authentication.md) - Login flow, SSO group resolution, auto-create groups
 - [Events System](events.md) - Event-driven architecture
 - [Async Tasks](async-tasks.md) - Background task processing
 - [Message Bus](message-bus.md) - Inter-service communication

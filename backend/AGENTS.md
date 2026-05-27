@@ -10,6 +10,7 @@ FastAPI backend with GraphQL API, Neo4j database, and async-first architecture.
 
 - `infrahub/` – Main application
   - `api/` – REST endpoints
+  - `auth/` – Authentication (password, SSO, LDAP) and auto-create groups (`auth/auth_groups/`)
   - `graphql/` – GraphQL schema, mutations, resolvers
   - `core/` – Domain logic (nodes, schemas, branches, diff)
   - `branch/` – Branch lifecycle enforcement (`BranchStatusChecker`, merge mutation checker)
@@ -85,6 +86,7 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 
 - `dev/knowledge/backend/architecture.md` - Backend architecture overview
 - `dev/knowledge/backend/testing.md` - Testing infrastructure and patterns
+- `dev/knowledge/backend/authentication.md` - Authentication flow, SSO group resolution, auto-create groups
 - `dev/knowledge/backend/branch-status.md` - Branch status enforcement (`BranchStatusChecker`, middleware allowlists, permission integration)
 - `dev/knowledge/backend/events.md` - Events system
 - `dev/knowledge/backend/async-tasks.md` - Asynchronous tasks (Prefect)
