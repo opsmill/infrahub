@@ -9,6 +9,7 @@ from graphql import GraphQLError
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
 from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
@@ -263,14 +264,20 @@ async def path_traversal_resolver(
         # No schema route survives planning, return an empty result
         path_data_list: list[PathData] = []
     else:
+        renderer = PathTraversalCypherRenderer(
+            branch=graphql_context.branch,
+            default_branch_name=registry.default_branch,
+            at=graphql_context.at,
+            max_targets=1,
+            max_paths=max_paths,
+        )
         query = await PathTraversalQuery.init(
             db=graphql_context.db,
             branch=graphql_context.branch,
             at=graphql_context.at,
+            renderer=renderer,
             plan=plan,
             source_id=source_id,
-            default_branch_name=registry.default_branch,
-            max_paths=max_paths,
         )
         await query.execute(db=graphql_context.db)
         path_data_list = query.get_paths()

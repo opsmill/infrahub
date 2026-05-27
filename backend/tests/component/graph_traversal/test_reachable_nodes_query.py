@@ -7,8 +7,7 @@ from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graph_traversal.planning.models import Plan, TerminalByKinds, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from infrahub.graph_traversal.reachable import ReachableNodesQuery
-from tests.helpers.graph_traversal.builders import build_permission_resolver, identifier_of
+from tests.helpers.graph_traversal.builders import build_permission_resolver, build_reachable_query, identifier_of
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -47,7 +46,7 @@ async def test_returns_reachable_target_on_default_branch(
     plan = _build_plan(db=db, branch=default_branch, source=person, target_kinds=frozenset({tag.get_kind()}))
     assert not plan.is_empty
 
-    query = await ReachableNodesQuery.init(
+    query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=plan,
@@ -80,7 +79,7 @@ async def test_user_branch_edge_does_not_surface_on_default_branch(
     plan = _build_plan(db=db, branch=default_branch, source=person, target_kinds=frozenset({tag_blue_main.get_kind()}))
     assert not plan.is_empty
 
-    query = await ReachableNodesQuery.init(
+    query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=plan,
@@ -109,7 +108,7 @@ async def test_default_branch_target_is_hidden_when_edge_deleted_on_user_branch(
     plan = _build_plan(db=db, branch=feature_branch, source=person, target_kinds=frozenset({tag.get_kind()}))
     assert not plan.is_empty
 
-    query = await ReachableNodesQuery.init(
+    query = await build_reachable_query(
         db=db,
         branch=feature_branch,
         plan=plan,
@@ -131,7 +130,7 @@ async def test_default_branch_target_remains_visible_on_untouched_user_branch(
     plan = _build_plan(db=db, branch=feature_branch, source=person, target_kinds=frozenset({tag.get_kind()}))
     assert not plan.is_empty
 
-    query = await ReachableNodesQuery.init(
+    query = await build_reachable_query(
         db=db,
         branch=feature_branch,
         plan=plan,
@@ -164,7 +163,7 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
     baseline_plan = _build_plan(
         db=db, branch=default_branch, source=car, target_kinds=frozenset({"TestPerson"}), max_depth=1
     )
-    baseline_query = await ReachableNodesQuery.init(
+    baseline_query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=baseline_plan,
@@ -183,7 +182,7 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({owner_identifier})),
     )
-    owner_only_query = await ReachableNodesQuery.init(
+    owner_only_query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=owner_only_plan,
@@ -202,7 +201,7 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({driver_identifier})),
     )
-    driver_only_query = await ReachableNodesQuery.init(
+    driver_only_query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=driver_only_plan,
@@ -226,7 +225,7 @@ async def test_excluded_kinds_drops_one_concrete_generic_implementor(
     baseline_plan = _build_plan(
         db=db, branch=default_branch, source=human, target_kinds=frozenset({"TestDog", "TestCat"}), max_depth=1
     )
-    baseline_query = await ReachableNodesQuery.init(
+    baseline_query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=baseline_plan,
@@ -245,7 +244,7 @@ async def test_excluded_kinds_drops_one_concrete_generic_implementor(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), excluded_kinds=frozenset({"TestCat"})),
     )
-    dog_only_query = await ReachableNodesQuery.init(
+    dog_only_query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=dog_only_plan,
@@ -264,7 +263,7 @@ async def test_excluded_kinds_drops_one_concrete_generic_implementor(
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), excluded_kinds=frozenset({"TestDog"})),
     )
-    cat_only_query = await ReachableNodesQuery.init(
+    cat_only_query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=cat_only_plan,
@@ -285,7 +284,7 @@ async def test_target_kinds_accepts_generic_and_expands_to_concretes(
     human, dog, cat = human_with_two_pets
 
     plan = _build_plan(db=db, branch=default_branch, source=human, target_kinds=frozenset({"TestAnimal"}), max_depth=1)
-    query = await ReachableNodesQuery.init(
+    query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=plan,
@@ -334,7 +333,7 @@ async def test_kind_filter_accepts_generic_and_admits_every_concrete_implementor
         max_depth=1,
         user_filters=UserFilters(excluded_namespaces=frozenset(), kind_filter=frozenset({"TestAnimal"})),
     )
-    query = await ReachableNodesQuery.init(
+    query = await build_reachable_query(
         db=db,
         branch=default_branch,
         plan=plan,

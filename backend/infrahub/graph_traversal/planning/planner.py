@@ -157,23 +157,26 @@ class SchemaPlanner:
         terminal_predicate = self._expand_generic_kinds_in_terminal(terminal_predicate)
         user_filters = self._expand_generic_kinds_in_filters(user_filters)
 
-        adjacency: Mapping[str, Mapping[str, frozenset[str]]]
+        new_plan = Plan(source_kind=source_kind, terminal_predicate=terminal_predicate, max_depth=max_depth)
         if not self._permission_cache.can_view(source_kind):
-            adjacency = {}
-        else:
-            adjacency = self._build_adjacency(
-                source_kind=source_kind,
-                terminal_predicate=terminal_predicate,
-                max_depth=max_depth,
-                user_filters=user_filters,
-            )
+            return new_plan
 
-        return Plan(
-            adjacency=adjacency,
+        adjacency, min_depth_to_terminal = self._build_adjacency(
             source_kind=source_kind,
             terminal_predicate=terminal_predicate,
             max_depth=max_depth,
+            user_filters=user_filters,
         )
+        for start_kind, rels in adjacency.items():
+            for rel_name, end_kinds in rels.items():
+                for end_kind in end_kinds:
+                    new_plan.add_hop(
+                        source_kind=start_kind,
+                        relationship_identifier=rel_name,
+                        end_kind=end_kind,
+                        min_hops_to_terminal=min_depth_to_terminal[end_kind],
+                    )
+        return new_plan
 
     def _expand_to_concretes(self, kinds: frozenset[str]) -> frozenset[str]:
         """Replace each generic in ``kinds`` with its concrete implementors."""
@@ -213,8 +216,8 @@ class SchemaPlanner:
         terminal_predicate: TerminalPredicate,
         max_depth: int,
         user_filters: UserFilters,
-    ) -> Mapping[str, Mapping[str, frozenset[str]]]:
-        """Two-pass kind-level BFS that emits the per-hop adjacency directly.
+    ) -> tuple[Mapping[str, Mapping[str, frozenset[str]]], Mapping[str, int]]:
+        """Build per-hop adjacency and per-kind hop count to a terminal-matching end_kind.
 
         Pass 1 (``_forward_bfs``): BFS from ``source_kind``, recording every
         legal ``(start, rel, end)`` hop and the minimum hops from the source
@@ -236,13 +239,14 @@ class SchemaPlanner:
         )
         min_depth_to_terminal = _min_depth_to_terminal(forward=forward, terminal_predicate=terminal_predicate)
         if not min_depth_to_terminal:
-            return {}
-        return _combine_with_depth_bound(
+            return {}, {}
+        adjacency = _combine_with_depth_bound(
             forward=forward,
             min_depth_from_source=min_depth_from_source,
             min_depth_to_terminal=min_depth_to_terminal,
             max_depth=max_depth,
         )
+        return adjacency, min_depth_to_terminal
 
     def _forward_bfs(
         self,

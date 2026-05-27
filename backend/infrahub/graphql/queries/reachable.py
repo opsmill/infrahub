@@ -8,6 +8,7 @@ from graphql import GraphQLError
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
 from infrahub.graph_traversal.planning.models import TerminalByKinds, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
 from infrahub.graph_traversal.reachable import ReachableNodesQuery
@@ -47,7 +48,16 @@ class ReachableNodesInput(InputObjectType):
     source_id = String(required=True, description="UUID of the source node")
     target_kinds = List(of_type=NonNull(String), required=True, description="Node kinds to search for")
     max_depth = Int(required=False, default_value=5, description="Maximum traversal depth (default: 5, max: 20)")
-    max_results = Int(required=False, default_value=50, description="Maximum results (default: 50, max: 200)")
+    max_results = Int(
+        required=False,
+        default_value=50,
+        description="Maximum number of distinct terminal nodes to discover (default: 50, max: 200)",
+    )
+    max_paths = Int(
+        required=False,
+        default_value=500,
+        description="Maximum total paths returned across all discovered terminals (default: 500, max: 10000)",
+    )
 
 
 async def reachable_nodes_resolver(
@@ -61,6 +71,7 @@ async def reachable_nodes_resolver(
     target_kinds = list(data.target_kinds) if data.target_kinds else []
     max_depth = data.max_depth or 5
     max_results = data.max_results or 50
+    max_paths = data.max_paths or 500
 
     if not target_kinds:
         raise GraphQLError("At least one target kind is required")
@@ -99,14 +110,20 @@ async def reachable_nodes_resolver(
 
     reachable_data: list[ReachableNodeData] = []
     if not plan.is_empty:
+        renderer = PathTraversalCypherRenderer(
+            branch=graphql_context.branch,
+            default_branch_name=registry.default_branch,
+            at=graphql_context.at,
+            max_targets=max_results,
+            max_paths=max_paths,
+        )
         query = await ReachableNodesQuery.init(
             db=graphql_context.db,
             branch=graphql_context.branch,
             at=graphql_context.at,
+            renderer=renderer,
             plan=plan,
             source_id=source_id,
-            default_branch_name=registry.default_branch,
-            max_results=max_results,
         )
         await query.execute(db=graphql_context.db)
         reachable_data = query.get_reachable_nodes()
