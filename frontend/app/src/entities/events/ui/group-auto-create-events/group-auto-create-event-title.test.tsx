@@ -53,14 +53,14 @@ const cappedEvent: GroupAutoCreateCappedEventType = {
 };
 
 describe("GroupAutoCreateEventTitle", () => {
-  test("renders the created event with the group name and provider", async () => {
+  test("leads with the provider as the subject and names the created group", async () => {
     // GIVEN / WHEN
     const component = await render(<GroupAutoCreateEventTitle {...createdEvent} />);
 
     // THEN
-    await expect.element(component.getByText("ops-admins")).toBeVisible();
+    await expect.element(component.getByText("provider1")).toBeVisible();
     await expect.element(component.getByText(/auto-created group/)).toBeVisible();
-    await expect.element(component.getByText(/from provider1/)).toBeVisible();
+    await expect.element(component.getByText("ops-admins")).toBeVisible();
   });
 
   test("renders the rejected event with the rejected claim", async () => {
@@ -68,6 +68,7 @@ describe("GroupAutoCreateEventTitle", () => {
     const component = await render(<GroupAutoCreateEventTitle {...rejectedEvent} />);
 
     // THEN
+    await expect.element(component.getByText("provider1")).toBeVisible();
     await expect.element(component.getByText("pad-")).toBeVisible();
     await expect.element(component.getByText(/rejected/)).toBeVisible();
   });
@@ -78,6 +79,6 @@ describe("GroupAutoCreateEventTitle", () => {
 
     // THEN
     await expect.element(component.getByText("5")).toBeVisible();
-    await expect.element(component.getByText(/dropping 7 claims/)).toBeVisible();
+    await expect.element(component.getByText(/7 claims dropped/)).toBeVisible();
   });
 });

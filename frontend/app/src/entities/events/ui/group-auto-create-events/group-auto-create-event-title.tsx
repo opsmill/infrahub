@@ -3,30 +3,16 @@ import type React from "react";
 import { classNames, warnUnexpectedType } from "@/shared/utils/common";
 
 import type { GroupAutoCreateEvent } from "@/entities/events/types";
-import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
 interface AutoCreateLayoutProps {
-  accountId: string | null;
-  triggeringUserName: string;
-  branch: string | null;
+  idp: string;
   children: React.ReactNode;
 }
 
-const AutoCreateLayout = ({
-  accountId,
-  triggeringUserName,
-  branch,
-  children,
-}: AutoCreateLayoutProps) => {
+const AutoCreateLayout = ({ idp, children }: AutoCreateLayoutProps) => {
   return (
     <div className="flex w-full min-w-0 items-center gap-1 overflow-hidden text-sm">
-      <span className="max-w-50 shrink-0 truncate">
-        {accountId ? (
-          <NodeLabel id={accountId} kind="CoreAccount" branch={branch} />
-        ) : (
-          triggeringUserName
-        )}
-      </span>
+      <span className="max-w-50 shrink-0 truncate font-medium text-black">{idp}</span>
 
       <span className="flex min-w-0 items-center gap-1 whitespace-nowrap text-gray-600">
         {children}
@@ -40,33 +26,26 @@ const Highlight = ({ children }: { children: React.ReactNode }) => {
 };
 
 export const GroupAutoCreateEventTitle = (props: GroupAutoCreateEvent) => {
-  const layoutProps = {
-    accountId: props.account_id,
-    triggeringUserName: props.triggering_user_name,
-    branch: props.branch,
-  };
-
   switch (props.__typename) {
     case "GroupAutoCreatedEventType": {
       return (
-        <AutoCreateLayout {...layoutProps}>
-          auto-created group <Highlight>{props.group_name}</Highlight> from {props.idp}
+        <AutoCreateLayout idp={props.idp}>
+          auto-created group <Highlight>{props.group_name}</Highlight>
         </AutoCreateLayout>
       );
     }
     case "GroupAutoCreateRejectedEventType": {
       return (
-        <AutoCreateLayout {...layoutProps}>
-          had auto-create claim <Highlight>{props.rejected_claim_value}</Highlight> rejected from{" "}
-          {props.idp}
+        <AutoCreateLayout idp={props.idp}>
+          claim <Highlight>{props.rejected_claim_value}</Highlight> rejected (invalid group name)
         </AutoCreateLayout>
       );
     }
     case "GroupAutoCreateCappedEventType": {
       return (
-        <AutoCreateLayout {...layoutProps}>
-          reached the auto-create cap of <Highlight>{props.cap_value}</Highlight>, dropping{" "}
-          {props.dropped_count} claim{props.dropped_count === 1 ? "" : "s"} from {props.idp}
+        <AutoCreateLayout idp={props.idp}>
+          auto-create cap of <Highlight>{props.cap_value}</Highlight> reached, {props.dropped_count}{" "}
+          claim{props.dropped_count === 1 ? "" : "s"} dropped
         </AutoCreateLayout>
       );
     }
