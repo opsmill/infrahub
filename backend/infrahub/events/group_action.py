@@ -149,6 +149,17 @@ class GroupAutoCreatedEvent(GroupAutoCreateEvent):
         resource["infrahub.security.origin_value"] = self.origin_value
         return resource
 
+    def get_related(self) -> list[dict[str, str]]:
+        related = super().get_related()
+        related.append(
+            {
+                "prefect.resource.id": str(self.group_id),
+                "prefect.resource.role": "infrahub.related.node",
+                "infrahub.node.kind": InfrahubKind.ACCOUNTGROUP,
+            }
+        )
+        return related
+
 
 class GroupAutoCreateRejectedEvent(GroupAutoCreateEvent):
     """Emitted when a matched claim's effective name fails identifier validation."""
