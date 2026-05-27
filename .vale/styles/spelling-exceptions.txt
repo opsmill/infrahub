@@ -27,6 +27,8 @@ booleans
 Buildkite
 Ceph
 changelog
+conftest
+Conftest
 check_color_tags_name
 check_definitions
 class_name

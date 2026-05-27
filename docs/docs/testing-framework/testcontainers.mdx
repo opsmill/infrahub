@@ -23,45 +23,75 @@ Infrahub ships with a [built-in testing framework](./overview.mdx) for validatin
 
 ## Installation
 
+Install both `infrahub-testcontainers` and the Python SDK. The SDK provides the `TestInfrahubDockerClient` base class used in all examples below.
+
 ```bash
-pip install infrahub-testcontainers
+pip install infrahub-testcontainers infrahub-sdk
 ```
 
 Or with `uv`:
 
 ```bash
-uv add infrahub-testcontainers
+uv add infrahub-testcontainers infrahub-sdk
 ```
 
 ## Quick start
 
-The `TestInfrahubDocker` base class provides class-scoped pytest fixtures that start and stop the Infrahub stack around your tests.
+`TestInfrahubDockerClient` (from `infrahub_sdk.testing.docker`) extends `TestInfrahubDocker` with pre-configured `client` (async) and `client_sync` (sync) fixtures that point at the running stack.
+
+The example below covers the three steps that appear in almost every project: load a schema, populate initial data, and connect a Git repository.
 
 ```python
-import os
-import subprocess
+from pathlib import Path
+from typing import Any
+
 import pytest
-from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
-from infrahub_testcontainers.helpers import TestInfrahubDocker
+from infrahub_sdk import InfrahubClient, InfrahubClientSync
+from infrahub_sdk.protocols import CoreGenericRepository
+from infrahub_sdk.testing.docker import TestInfrahubDockerClient
+from infrahub_sdk.testing.repository import GitRepo
+from infrahub_sdk.yaml import SchemaFile
 
 
-class TestSchemaLoading(TestInfrahubDocker):
-    def test_load_schema(self, infrahub_port: int) -> None:
-        result = subprocess.run(
-            ["infrahubctl", "schema", "load", "my_schema.yaml"],
-            env={
-                **os.environ,
-                "INFRAHUB_ADDRESS": f"http://localhost:{infrahub_port}",
-                "INFRAHUB_API_TOKEN": PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN"],
-            },
-            capture_output=True,
-            text=True,
-            check=False,
+class TestMyProject(TestInfrahubDockerClient):
+
+    def test_schema_load(
+        self,
+        client_sync: InfrahubClientSync,
+        schema_dir: Path,
+        default_branch: str,
+    ) -> None:
+        schema_files = SchemaFile.load_from_disk(paths=[schema_dir])
+        schemas = [f.content for f in schema_files if f.content]
+
+        client_sync.schema.load(schemas=schemas)
+        client_sync.schema.wait_until_converged(branch=default_branch)
+
+    async def test_data_load(self, client: InfrahubClient, default_branch: str) -> None:
+        tag = await client.create(kind="BuiltinTag", name="production")
+        await tag.save()
+
+        tags = await client.all(kind="BuiltinTag")
+        assert len(tags) == 1
+
+    async def test_load_repository(
+        self,
+        client: InfrahubClient,
+        root_dir: Path,
+        remote_repos_dir: Path,
+    ) -> None:
+        repo = GitRepo(
+            name="my-project",
+            src_directory=root_dir,
+            dst_directory=remote_repos_dir,
         )
-        assert result.returncode == 0
-```
+        await repo.add_to_infrahub(client=client)
+        in_sync = await repo.wait_for_sync_to_complete(client=client, interval=10, retries=30)
+        assert in_sync
 
-The `infrahub_app` fixture starts the full stack — Infrahub server, Neo4j, RabbitMQ, Redis, Prefect task manager, and task workers — before any test in the class runs. After the last test completes, the stack is stopped and containers are removed. If startup fails, the container logs are printed automatically.
+        repos = await client.all(kind=CoreGenericRepository)
+        assert repos
+```
 
 Run the tests with:
 
@@ -69,39 +99,55 @@ Run the tests with:
 pytest tests/
 ```
 
+The `infrahub_app` fixture starts the full stack — Infrahub server, Neo4j, RabbitMQ, Redis, Prefect task manager, and task workers — before any test in the class runs. After the last test completes, the stack is stopped and containers are removed. If startup fails, the container logs are printed automatically.
+
+## Conftest setup
+
+The `root_dir`, `schema_dir`, and `data_dir` fixtures used in the examples above are not provided by the library — define them in `conftest.py` for your project:
+
+```python
+# tests/conftest.py
+from pathlib import Path
+from typing import Any
+
+import pytest
+from infrahub_sdk.yaml import SchemaFile
+
+@pytest.fixture(scope="session")
+def root_dir() -> Path:
+    return Path(__file__).parent.parent
+
+@pytest.fixture(scope="session")
+def schema_dir(root_dir: Path) -> Path:
+    return root_dir / "schemas"
+
+@pytest.fixture(scope="session")
+def data_dir(root_dir: Path) -> Path:
+    return root_dir / "data"
+```
+
 ## Available fixtures
 
-`TestInfrahubDocker` provides the following class-scoped fixtures:
+`TestInfrahubDockerClient` provides all fixtures from `TestInfrahubDocker`, plus two SDK client fixtures:
 
 | Fixture | Type | Description |
 |---|---|---|
+| `client` | `InfrahubClient` | Async SDK client pointed at the running stack |
+| `client_sync` | `InfrahubClientSync` | Sync SDK client pointed at the running stack |
 | `infrahub_app` | `dict[str, int]` | Starts the stack; yields a mapping of service name to host port |
 | `infrahub_port` | `int` | Host port for the Infrahub API server |
 | `task_manager_port` | `int` | Host port for the Prefect task manager |
 | `tmp_directory` | `Path` | Temporary directory shared across the test class |
 | `remote_repos_dir` | `Path` | Subdirectory used for local Git repositories |
-| `default_branch` | `str` | Returns `"main"` |
+| `default_branch` | `str` | Returns `"main"` — override in your class to change it |
 
-## Connecting the Python SDK
+`client` and `client_sync` authenticate with username `admin` and password `infrahub`.
 
-Use `PROJECT_ENV_VARIABLES` to retrieve the credentials pre-configured for the test stack:
+:::tip Using TestInfrahubDocker directly
 
-```python
-from infrahub_sdk import Config, InfrahubClient
-from infrahub_testcontainers.container import PROJECT_ENV_VARIABLES
+`TestInfrahubDockerClient` is the recommended starting point for most projects. Use `TestInfrahubDocker` directly only when you need a different authentication mechanism or want to instantiate the SDK client yourself.
 
-
-def get_client(infrahub_port: int) -> InfrahubClient:
-    config = Config(
-        address=f"http://localhost:{infrahub_port}",
-        api_token=PROJECT_ENV_VARIABLES["INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN"],
-    )
-    return InfrahubClient(config=config)
-```
-
-The default admin token is `06438eb2-8019-4776-878c-0941b1f1d1ec`. Override it by setting `INFRAHUB_TESTING_INITIAL_ADMIN_TOKEN` in the environment before starting the test process.
-
-For a full reference of SDK methods, see the [Python SDK documentation]($(base_url)python-sdk/introduction).
+:::
 
 ## Configuration
 
@@ -132,7 +178,7 @@ Cluster mode requires Neo4j Enterprise edition. Set `INFRAHUB_TESTING_ENTERPRISE
 
 ## Running in CI
 
-`TestInfrahubDocker` works in any CI environment that can run Docker. The example below shows a GitHub Actions job:
+`TestInfrahubDockerClient` works in any CI environment that can run Docker. The example below shows a GitHub Actions job:
 
 ```yaml
 jobs:
@@ -143,7 +189,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install infrahub-testcontainers pytest infrahub-sdk
+      - run: pip install infrahub-testcontainers infrahub-sdk pytest pytest-asyncio
       - run: pytest tests/
         env:
           INFRAHUB_TESTING_IMAGE_VER: "1.9.0"
