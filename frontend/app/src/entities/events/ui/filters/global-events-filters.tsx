@@ -3,6 +3,7 @@ import { TagGroup, TagList } from "react-aria-components";
 
 import { EVENT_TYPE_CHOICES } from "@/entities/events/constants";
 
+import { GlobalAutoCreateFilter } from "./global-auto-create-filter";
 import { GlobalBranchFilter } from "./global-branch-filter";
 import { GlobalFilter } from "./global-filter";
 import { GlobalKindFilter } from "./global-kind-filter";
@@ -58,6 +59,8 @@ export const GlobalEventsFilters = () => {
               kind: "DateTime",
             }}
           />
+
+          <GlobalAutoCreateFilter />
         </TagList>
       </TagGroup>
     </ScrollArea>

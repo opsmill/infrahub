@@ -10,6 +10,7 @@ import { AccountLoggedOutEventTitle } from "@/entities/events/ui/account-events/
 import { ArtifactEventTitle } from "@/entities/events/ui/artifact-events/artifact-event-title";
 import { BranchEventTitle } from "@/entities/events/ui/branch-events/branch-event-title";
 import { EventDetailsPopover } from "@/entities/events/ui/event-details-popover";
+import { GroupAutoCreateEventTitle } from "@/entities/events/ui/group-auto-create-events/group-auto-create-event-title";
 import { GroupEventTitle } from "@/entities/events/ui/group-events/group-event-title";
 import { EventAttributes } from "@/entities/events/ui/node-events/event-attributes";
 import { NodeEventTitle } from "@/entities/events/ui/node-events/node-event-title";
@@ -52,6 +53,14 @@ const EventContent = (props: EventType) => {
 
   if (props.__typename === "GroupEvent") {
     return <GroupEventTitle {...props} />;
+  }
+
+  if (
+    props.__typename === "GroupAutoCreatedEventType" ||
+    props.__typename === "GroupAutoCreateRejectedEventType" ||
+    props.__typename === "GroupAutoCreateCappedEventType"
+  ) {
+    return <GroupAutoCreateEventTitle {...props} />;
   }
 
   if (props.__typename === "ArtifactEvent") {

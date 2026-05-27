@@ -19,12 +19,14 @@ const EVENTS_QUERY = graphql(`
     $offset: Int
     $limit: Int
     $order: EventSortOrder
+    $eventTypeFilter: EventTypeFilter
   ) {
     InfrahubEvent(
       ids: $ids
       has_children: $hasChildren
       branches: $branches
       event_type: $eventType
+      event_type_filter: $eventTypeFilter
       primary_node__ids: $primaryNodeIds
       related_node__ids: $relatedNodeIds
       parent__ids: $parentIds
@@ -126,6 +128,32 @@ const EVENTS_QUERY = graphql(`
             timestamp
             client_ip
             user_agent
+          }
+          ... on GroupAutoCreatedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            group_id
+            group_name
+            source_pattern
+            origin_value
+          }
+          ... on GroupAutoCreateRejectedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            rejected_claim_value
+          }
+          ... on GroupAutoCreateCappedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            cap_value
+            dropped_count
+            dropped_claims
           }
         }
       }
