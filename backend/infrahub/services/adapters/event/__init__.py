@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from typing import TYPE_CHECKING
 
 from prefect.events import emit_event
@@ -10,8 +9,6 @@ if TYPE_CHECKING:
     from infrahub.events import InfrahubEvent
     from infrahub.log_forwarding.service import LogForwardingService
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
-
-logger = logging.getLogger(__name__)
 
 
 class InfrahubEventService:

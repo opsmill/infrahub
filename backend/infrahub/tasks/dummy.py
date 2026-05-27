@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-import logging
-
 from prefect import flow, task
+from prefect.logging import get_run_logger
 from pydantic import BaseModel
 
 from infrahub.workflows.models import WorkflowDefinition
@@ -37,7 +36,8 @@ async def aggregate_name(firstname: str, lastname: str) -> str:
 
 @flow(name="dummy-flow", persist_result=True)
 async def dummy_flow(data: DummyInput) -> DummyOutput:
-    logging.getLogger("infrahub.tasks").info("Log in the flow")
+    log = get_run_logger()
+    log.info("Log in the flow")
     return DummyOutput(full_name=await aggregate_name(firstname=data.firstname, lastname=data.lastname))
 
 
