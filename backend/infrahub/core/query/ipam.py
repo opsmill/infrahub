@@ -14,6 +14,7 @@ from infrahub.core.utils import convert_ip_to_binary_str
 if TYPE_CHECKING:
     from uuid import UUID
 
+    from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
 
@@ -1028,6 +1029,7 @@ class IPPrefixUtilizationResult:
 class IPPrefixUtilization(Query):
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
+    branch: Branch | None = None  # type: ignore[assignment]
 
     def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs) -> None:
         self.ip_prefixes = ip_prefixes
@@ -1044,10 +1046,27 @@ class IPPrefixUtilization(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
-        self.params["time_at"] = self.at.to_string()
 
-        def rel_filter(rel_name: str) -> str:
-            return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
+        branch = self.branch
+        if branch is not None and not self.branch_agnostic:
+            branches_times = branch.get_branches_and_times_to_query_global(at=self.at)
+            for idx, (branch_names, time_to_query) in enumerate(branches_times.items()):
+                self.params[f"util_branch{idx}"] = list(branch_names)
+                self.params[f"util_time{idx}"] = time_to_query
+            num_branches = len(branches_times)
+
+            def rel_filter(rel_name: str) -> str:
+                parts = [
+                    f"({rel_name}.branch IN $util_branch{idx} AND {rel_name}.from <= $util_time{idx} "
+                    f"AND ({rel_name}.to IS NULL OR {rel_name}.to >= $util_time{idx}))"
+                    for idx in range(num_branches)
+                ]
+                return " OR ".join(parts)
+        else:
+            self.params["time_at"] = self.at.to_string()
+
+            def rel_filter(rel_name: str) -> str:
+                return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
 
         query = f"""
         MATCH (pfx:Node)
@@ -1088,14 +1107,13 @@ class IPPrefixUtilization(Query):
             pfx,
             child,
             av,
-            deepest_branch_details[0] AS branch_level,
-            deepest_branch_details[1] AS branch,
+            head(collect(deepest_branch_details[1])) AS branch,
             head(collect(is_active)) AS is_latest_active
         WHERE is_latest_active = TRUE
         """ % {
             "id_func": db.get_id_function_name(),
         }
-        self.return_labels = ["pfx", "child", "av", "branch_level", "branch"]
+        self.return_labels = ["pfx", "child", "av", "branch"]
         self.add_to_query(query)
 
     def get_data(self) -> list[IPPrefixUtilizationResult]:

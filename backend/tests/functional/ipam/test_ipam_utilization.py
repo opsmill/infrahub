@@ -629,7 +629,7 @@ class TestIpamUtilization(TestIpam):
         assert {
             "node": {
                 "id": container.id,
-                "utilization": {"value": 12},
+                "utilization": {"value": 18},
                 "prefix": {"value": container.prefix.value},
             }
         } in prefix_details_list
@@ -709,7 +709,7 @@ class TestIpamUtilization(TestIpam):
         assert {
             "node": {
                 "id": prefix.id,
-                "utilization": {"value": int(12 / 14 * 100)},
+                "utilization": {"value": int(13 / 14 * 100)},
                 "prefix": {"value": prefix.prefix.value},
             }
         } in prefix_details_list

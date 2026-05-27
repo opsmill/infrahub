@@ -50,3 +50,80 @@ async def test_graphql_utilization_inherited_on_new_branch(
     branch_response = await branch_prefix.to_graphql(db=db, fields={"utilization": None})
 
     assert branch_response["utilization"] == main_response["utilization"]
+
+
+async def test_graphql_utilization_branch_addition(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    net143_id = ip_dataset_01["net143"].id
+    ns1 = ip_dataset_01["ns1"]
+
+    new_branch = await create_branch(db=db, branch_name="branch-utilization-add")
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=new_branch)
+
+    net143_on_branch = await NodeManager.get_one(db=db, branch=new_branch, id=net143_id)
+    new_address = await Node.init(db=db, branch=new_branch, schema=address_schema)
+    await new_address.new(db=db, address="10.10.1.2", ip_prefix=net143_on_branch, ip_namespace=ns1)
+    await new_address.save(db=db)
+
+    branch_prefix = await NodeManager.get_one(db=db, branch=new_branch, id=net143_id)
+    assert isinstance(branch_prefix, BuiltinIPPrefix)
+    branch_response = await branch_prefix.to_graphql(db=db, fields={"utilization": None})
+    # net143 has 30 usable addresses, 1 from main + 1 added on branch = 2/30 -> int(6.66) = 6
+    assert branch_response["utilization"] == {"value": 6}
+
+    main_prefix = await NodeManager.get_one(db=db, branch=default_branch, id=net143_id)
+    assert isinstance(main_prefix, BuiltinIPPrefix)
+    main_response = await main_prefix.to_graphql(db=db, fields={"utilization": None})
+    assert main_response["utilization"] == {"value": 3}
+
+
+async def test_graphql_utilization_branch_deletion(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    net143_id = ip_dataset_01["net143"].id
+    address11_id = ip_dataset_01["address11"].id
+
+    new_branch = await create_branch(db=db, branch_name="branch-utilization-delete")
+
+    address_on_branch = await NodeManager.get_one(db=db, branch=new_branch, id=address11_id)
+    assert address_on_branch is not None
+    await address_on_branch.delete(db=db)
+
+    branch_prefix = await NodeManager.get_one(db=db, branch=new_branch, id=net143_id)
+    assert isinstance(branch_prefix, BuiltinIPPrefix)
+    branch_response = await branch_prefix.to_graphql(db=db, fields={"utilization": None})
+    assert branch_response["utilization"] == {"value": 0}
+
+    main_prefix = await NodeManager.get_one(db=db, branch=default_branch, id=net143_id)
+    assert isinstance(main_prefix, BuiltinIPPrefix)
+    main_response = await main_prefix.to_graphql(db=db, fields={"utilization": None})
+    assert main_response["utilization"] == {"value": 3}
+
+
+async def test_graphql_utilization_main_addition_after_branch_creation(
+    db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]
+) -> None:
+    registry.node[InfrahubKind.IPPREFIX] = BuiltinIPPrefix
+    net143_id = ip_dataset_01["net143"].id
+    ns1 = ip_dataset_01["ns1"]
+
+    new_branch = await create_branch(db=db, branch_name="branch-utilization-main-add")
+
+    address_schema = registry.schema.get_node_schema(name="IpamIPAddress", branch=default_branch)
+    net143_on_main = await NodeManager.get_one(db=db, branch=default_branch, id=net143_id)
+    new_address = await Node.init(db=db, schema=address_schema)
+    await new_address.new(db=db, address="10.10.1.2", ip_prefix=net143_on_main, ip_namespace=ns1)
+    await new_address.save(db=db)
+
+    main_prefix = await NodeManager.get_one(db=db, branch=default_branch, id=net143_id)
+    assert isinstance(main_prefix, BuiltinIPPrefix)
+    main_response = await main_prefix.to_graphql(db=db, fields={"utilization": None})
+    assert main_response["utilization"] == {"value": 6}
+
+    branch_prefix = await NodeManager.get_one(db=db, branch=new_branch, id=net143_id)
+    assert isinstance(branch_prefix, BuiltinIPPrefix)
+    branch_response = await branch_prefix.to_graphql(db=db, fields={"utilization": None})
+    assert branch_response["utilization"] == {"value": 3}

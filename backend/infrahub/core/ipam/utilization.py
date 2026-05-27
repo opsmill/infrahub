@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
 from infrahub.core.query.ipam import IPPrefixUtilization
@@ -18,10 +19,17 @@ class PrefixChildDetails:
 
 
 class PrefixUtilizationGetter:
-    def __init__(self, db: InfrahubDatabase, ip_prefixes: list[Node], at: Timestamp | str | None = None) -> None:
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        ip_prefixes: list[Node],
+        at: Timestamp | str | None = None,
+        branch: Branch | None = None,
+    ) -> None:
         self.db = db
         self.ip_prefixes = ip_prefixes
         self.at = at
+        self.branch = branch
         self._has_data = False
         self._results_by_prefix_id: dict[str, dict[str, list[PrefixChildDetails]]] = {}
 
@@ -35,6 +43,7 @@ class PrefixUtilizationGetter:
         query = await IPPrefixUtilization.init(
             db=self.db,
             at=self.at,
+            branch=self.branch,
             ip_prefixes=self.ip_prefixes,
             allocated_kinds=[InfrahubKind.IPPREFIX, InfrahubKind.IPADDRESS],
         )
@@ -60,6 +69,11 @@ class PrefixUtilizationGetter:
         prefix_member_type: PrefixMemberType | None = None,
         branch_names: list[str] | None = None,
     ) -> list[PrefixChildDetails]:
+        if branch_names is not None and self.branch is not None:
+            raise ValueError(
+                "branch_names is incompatible with a branch-scoped PrefixUtilizationGetter; "
+                "the query is already restricted to the branch's visible set"
+            )
         await self._fetch_data()
         prefix_child_details_list: list[PrefixChildDetails] = []
         if ip_prefixes is None:
