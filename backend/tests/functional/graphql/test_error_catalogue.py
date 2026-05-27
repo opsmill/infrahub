@@ -134,7 +134,7 @@ class TestErrorCatalogue(TestInfrahubApp):
         # A graphql-core validation error (unknown field) has no original_error — the formatter
         # should still emit UNDEFINED_ERROR with a 500 fallback.
         query = "query { ThisFieldDoesNotExist { id } }"
-        caplog.set_level("INFO", logger="infrahub.graphql.errors")
+        caplog.set_level("INFO", logger="infrahub")
         body = await _post_graphql(client=test_client, query=query, headers=_admin_headers(api_admin_token))
         assert body["errors"], "expected at least one error"
         error = body["errors"][0]

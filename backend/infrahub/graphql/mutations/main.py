@@ -216,6 +216,9 @@ class InfrahubMutationMixin:
             # The new catalogued subclasses (AttributeRequiredError, AttributeInvalidTypeError,
             # AttributeConstraintViolationError) are already classified — let them propagate
             # unchanged so the formatter can read their typed attributes directly.
+            # The reason we need to have this here is to enrich the ValidationError exceptions,
+            # this is to avoid having to refactor all the places where those errors are raised.
+            # Once that job is completed we'll be able to remove this again.
             if exc.__class__ is ValidationError:
                 info_path = list(info.path.as_list()) if info.path is not None else []
                 raise_classified_from_validation_error(

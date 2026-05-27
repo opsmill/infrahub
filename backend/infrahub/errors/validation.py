@@ -40,6 +40,8 @@ def classify_field_reason(field_name: str, reason: str, *, node_kind: str) -> Cl
     shape — ``"<reason> at <field>"`` — so callers that scrape error messages remain stable.
     The catalogue payload is built from the typed attributes (``field_name``, ``expected_type``,
     etc.), not from the message text.
+
+    Note that this function should be phased out once the internals raise the more specific errors directly.
     """
     legacy_message = f"{reason} at {field_name}"
     if _MANDATORY_RE.search(reason):

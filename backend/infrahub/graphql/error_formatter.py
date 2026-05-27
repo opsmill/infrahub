@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-import structlog
 from graphql.error.graphql_error import format_error
 
 from infrahub.errors.catalogue import CATALOGUE, EXCEPTION_TO_CODE
@@ -30,6 +29,7 @@ from infrahub.exceptions import (
     NodeNotFoundError,
     SchemaNotFoundError,
 )
+from infrahub.log import get_logger
 
 if TYPE_CHECKING:
     from graphql import GraphQLError, GraphQLFormattedError
@@ -42,7 +42,7 @@ UNDEFINED_ERROR_HTTP_STATUS = 500
 # Substring in an AuthorizationError message that signals an expired JWT.
 _EXPIRED_SIGNATURE_MARKER = "Expired Signature"
 
-_logger = structlog.get_logger("infrahub.graphql.errors")
+log = get_logger()
 
 
 def _build_payload(exc: BaseException | None, code: str) -> dict[str, Any]:
@@ -137,7 +137,7 @@ def catalogue_error_formatter(error: GraphQLError) -> GraphQLFormattedError:
     base_extensions.update(extensions)
     formatted["extensions"] = base_extensions
 
-    _logger.info(
+    log.info(
         "graphql.error",
         code=extensions["code"],
         http_status=extensions["http_status"],

@@ -179,7 +179,7 @@ def test_catalogue_error_formatter_emits_structlog_code(caplog: pytest.LogCaptur
         original_error=NodeNotFoundError(node_type="BuiltinTag", identifier="abc-123"),
     )
 
-    caplog.set_level("INFO", logger="infrahub.graphql.errors")
+    caplog.set_level("INFO", logger="infrahub")
     catalogue_error_formatter(error)
 
     matching = [

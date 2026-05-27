@@ -40,11 +40,19 @@ def _rest_envelope(messages: list[str], http_code: int) -> dict[str, Any]:
 
 
 async def generic_api_exception_handler(request: Request, exc: Exception, http_code: int = 500) -> JSONResponse:
-    """Generic API Exception handler.
+    """Translate any uncaught exception into a JSON error response.
 
-    For requests hitting the GraphQL endpoint, the response body uses the GraphQL error envelope
-    (``extensions.code`` as a string drawn from the catalogue, plus ``http_status`` and ``data``).
-    REST routes keep the legacy shape with an integer ``extensions.code``.
+    Wire shape depends on the request path:
+
+    - ``/api/...`` (REST): legacy envelope with an integer ``extensions.code`` mirroring
+      the HTTP status.
+    - ``/graphql``: catalogue envelope with a string ``extensions.code``, integer
+      ``extensions.http_status``, and a typed ``extensions.data`` payload.
+
+    On the GraphQL path this handler only fires for failures that escape before query
+    execution begins — primarily authentication errors. Exceptions raised from inside a
+    GraphQL resolver are wrapped by graphql-core and formatted at the GraphQL layer, so
+    they never reach this handler.
     """
     if isinstance(exc, Error):
         if exc.HTTP_CODE:
