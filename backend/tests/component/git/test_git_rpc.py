@@ -70,7 +70,6 @@ class TestAddRepository:
 
         with dependency_provider.scope(build_message_bus, lambda: self.recorder):
             self.mock_repo = AsyncMock(spec=InfrahubRepository)
-            self.mock_repo = AsyncMock(spec=InfrahubRepository)
             self.mock_repo.default_branch = self.default_branch_name
             self.mock_repo.infrahub_branch_name = self.default_branch_name
             self.mock_repo.internal_status = "active"
