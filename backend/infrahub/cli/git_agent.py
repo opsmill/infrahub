@@ -75,7 +75,7 @@ async def start(
     logging.getLogger("git").setLevel(logging.ERROR)
     logging.getLogger("aiosqlite").setLevel(logging.ERROR)
 
-    log.debug(f"Config file : {config_file}")
+    log.debug("Loading config file", config_file=config_file)
     # Prevent git from interactively prompting the user for passwords if the credentials provided
     # by the credential helper is failing.
     os.environ["GIT_TERMINAL_PROMPT"] = "0"
@@ -93,14 +93,14 @@ async def start(
     start_http_server(port)
 
     # initialize the Infrahub Client and query the list of branches to validate that the API is reacheable and the auth is working
-    log.debug(f"Using Infrahub API at {config.SETTINGS.main.internal_address}")
+    log.debug("Connecting to Infrahub API", address=config.SETTINGS.main.internal_address)
     client = InfrahubClient(
         config=Config(address=config.SETTINGS.main.internal_address, retry_on_failure=True, log=log)
     )
     try:
         await client.branch.all()
     except SdkError as exc:
-        log.error(f"Error in communication with Infrahub: {exc.message}")
+        log.error("Error in communication with Infrahub", error=exc.message)
         raise typer.Exit(1) from None
 
     # Initialize trace

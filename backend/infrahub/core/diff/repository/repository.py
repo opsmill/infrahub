@@ -99,7 +99,7 @@ class DiffRepository:
                 proposed_change_id=proposed_change_id,
                 exclude_merged=exclude_merged,
             )
-            log.info(f"Beginning enriched diff get query {batch_size_limit=}, {offset=}")
+            log.info("Beginning enriched diff get query", batch_size_limit=batch_size_limit, offset=offset)
             await get_query.execute(db=self.db)
             log.info("Enriched diff get query complete")
             last_result = None
@@ -256,12 +256,12 @@ class DiffRepository:
                     node_requests.append(EnrichedNodeCreateRequest(node=node, root_uuid=diff_root.uuid))
                     size_count += node_size_count
                 else:
-                    log.info(f"Num nodes in batch: {len(node_requests)}, num properties in batch: {size_count}")
+                    log.info("Flushing node save batch", num_nodes=len(node_requests), num_properties=size_count)
                     yield node_requests
                     size_count = node_size_count
                     node_requests = [EnrichedNodeCreateRequest(node=node, root_uuid=diff_root.uuid)]
         if node_requests:
-            log.info(f"Num nodes in batch: {len(node_requests)}, num properties in batch: {size_count}")
+            log.info("Final node save batch", num_nodes=len(node_requests), num_properties=size_count)
             yield node_requests
 
     @retry_db_transaction(name="enriched_diff_metadata_save")
@@ -296,7 +296,7 @@ class DiffRepository:
 
     @retry_db_transaction(name="enriched_diff_hierarchy_update")
     async def _run_hierarchy_links_update_query(self, diff_root_uuid: str, diff_nodes: list[EnrichedDiffNode]) -> None:
-        log.info(f"Updating diff hierarchy links, num_nodes={len(diff_nodes)}")
+        log.info("Updating diff hierarchy links", num_nodes=len(diff_nodes))
         link_query = await EnrichedNodesLinkQuery.init(db=self.db, diff_root_uuid=diff_root_uuid, diff_nodes=diff_nodes)
         await link_query.execute(db=self.db)
 
@@ -353,14 +353,14 @@ class DiffRepository:
             return
 
         count_nodes_remaining = len(enriched_diffs.base_branch_diff.nodes) + len(enriched_diffs.diff_branch_diff.nodes)
-        log.info(f"Saving diff (num_nodes={count_nodes_remaining})...")
+        log.info("Saving diff", num_nodes=count_nodes_remaining)
         for batch_num, node_create_batch in enumerate(
             self._get_node_create_request_batch(enriched_diffs=enriched_diffs)
         ):
-            log.info(f"Saving node batch #{batch_num}...")
+            log.info("Saving node batch", batch=batch_num)
             await self._save_node_batch(node_create_batch=node_create_batch)
             count_nodes_remaining -= len(node_create_batch)
-            log.info(f"Batch saved. {count_nodes_remaining=}")
+            log.info("Batch saved", nodes_remaining=count_nodes_remaining)
         if node_identifiers_to_drop:
             await self._drop_nodes(diff_root=enriched_diffs.diff_branch_diff, node_identifiers=node_identifiers_to_drop)
         await self._update_hierarchy_links(enriched_diffs=enriched_diffs)

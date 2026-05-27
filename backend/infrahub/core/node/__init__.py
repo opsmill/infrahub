@@ -554,7 +554,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             fields.pop("updated_at")
         for field_name in fields.keys():
             if field_name not in self._schema.valid_input_names:
-                log.error(f"{field_name} is not a valid input for {self.get_kind()}")
+                log.error("Invalid input field", field=field_name, kind=self.get_kind())
 
         errors = []
         # Backfill fields with the ones from the template if there's one

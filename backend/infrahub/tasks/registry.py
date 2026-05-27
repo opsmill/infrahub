@@ -63,7 +63,7 @@ async def update_branch_registry(db: InfrahubDatabase, branch: Branch) -> None:
             )
             registry.branch[branch.name] = branch
         elif existing_branch.status != branch.status:
-            log.info(f"Updating registry branch cache for {branch.name=}")
+            log.info("Updating registry branch cache for status change", branch=branch.name, worker=WORKER_IDENTITY)
             registry.branch[branch.name] = branch
         return
 
@@ -105,4 +105,4 @@ async def refresh_branches(db: InfrahubDatabase) -> None:
             graphql_registry.purge_inactive(active_branches=[branch.name for branch in active_branches])
         )
         for branch_name in sorted(purged_branches):
-            log.info(f"Removed branch {branch_name!r} from the registry", branch=branch_name, worker=WORKER_IDENTITY)
+            log.info("Removed branch from the registry", branch=branch_name, worker=WORKER_IDENTITY)

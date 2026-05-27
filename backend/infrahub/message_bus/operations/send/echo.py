@@ -8,7 +8,7 @@ from infrahub.workers.dependencies import get_message_bus
 
 @flow(name="echo-request")
 async def request(message: messages.SendEchoRequest) -> None:
-    get_logger().info(f"Received message: {message.message}")
+    get_logger().info("Received message", message=message.message)
 
     if message.reply_requested:
         response = SendEchoRequestResponse(data=SendEchoRequestResponseData(response=f"Reply to: {message.message}"))

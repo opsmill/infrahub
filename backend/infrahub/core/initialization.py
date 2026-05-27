@@ -221,7 +221,7 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
 async def create_root_node(db: InfrahubDatabase) -> Root:
     root = Root(graph_version=GRAPH_VERSION, default_branch=config.SETTINGS.initial.default_branch)
     await root.save(db=db)
-    log.info(f"Generated instance ID : {root.uuid} (v{GRAPH_VERSION})")
+    log.info("Generated instance ID", instance_id=root.uuid, graph_version=GRAPH_VERSION)
 
     registry.id = root.id
     registry.default_branch = root.default_branch
@@ -336,7 +336,7 @@ async def create_account(
     obj = await Node.init(db=db, schema=CoreAccount)
     await obj.new(db=db, name=name, account_type="User", password=password)
     await obj.save(db=db)
-    log.info(f"Created Account: {name}", account_name=name)
+    log.info("Created account", account=name)
 
     if token_value:
         token = await Node.init(db=db, schema=token_schema)
@@ -354,7 +354,7 @@ async def create_ipam_namespace(
     obj = await Node.init(db=db, schema=InfrahubKind.NAMESPACE)
     await obj.new(db=db, name=name, description=description, default=True)
     await obj.save(db=db)
-    log.info(f"Created IPAM Namespace: {name}")
+    log.info("Created IPAM namespace", namespace=name)
 
     return obj
 
@@ -368,13 +368,13 @@ async def create_super_administrator_role(db: InfrahubDatabase) -> CoreAccountRo
         description="Allow a user to do anything",
     )
     await permission.save(db=db)
-    log.info(f"Created global permission: {GlobalPermissions.SUPER_ADMIN}")
+    log.info("Created global permission", permission=GlobalPermissions.SUPER_ADMIN)
 
     role_name = "Super Administrator"
     role = await Node.init(db=db, schema=CoreAccountRole)
     await role.new(db=db, name=role_name, permissions=[permission])
     await role.save(db=db)
-    log.info(f"Created account role: {role_name}")
+    log.info("Created account role", role=role_name)
 
     return role
 
@@ -453,7 +453,7 @@ async def create_default_role(db: InfrahubDatabase) -> CoreAccountRole:
         ],
     )
     await role.save(db=db)
-    log.info(f"Created account role: {role_name}")
+    log.info("Created account role", role=role_name)
 
     return role
 
@@ -485,7 +485,7 @@ async def create_proposed_change_reviewer_role(db: InfrahubDatabase) -> CoreAcco
         permissions=[edit_default_branch_permission, reviewer_permission, proposed_change_update_permission],
     )
     await role.save(db=db)
-    log.info(f"Created account role: {role_name}")
+    log.info("Created account role", role=role_name)
 
     return role
 
@@ -508,7 +508,7 @@ async def create_anonymous_role(db: InfrahubDatabase) -> CoreAccountRole:
         db=db, name=config.SETTINGS.main.anonymous_access_role, permissions=[deny_permission, view_permission]
     )
     await role.save(db=db)
-    log.info(f"Created anonymous account role: {config.SETTINGS.main.anonymous_access_role}")
+    log.info("Created anonymous account role", role=config.SETTINGS.main.anonymous_access_role)
 
     return role
 
@@ -519,12 +519,12 @@ async def create_accounts_group(
     group = await Node.init(db=db, schema=CoreAccountGroup)
     await group.new(db=db, name=name, roles=list(roles))
     await group.save(db=db)
-    log.info(f"Created account group: {name}")
+    log.info("Created account group", group=name)
 
     for account in accounts:
         await group.members.add(db=db, data=account)  # type: ignore[arg-type]
         await group.members.save(db=db)
-        log.info(f"Assigned account group: {name} to {account.name.value}")
+        log.info("Assigned account to group", group=name, account=account.name.value)
 
     return group
 

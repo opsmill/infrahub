@@ -80,13 +80,13 @@ class Migration032(ArbitraryMigration):
                 log.info("No partially deleted branches found. All done.")
                 return migration_result
 
-            log.info(f"Found {len(orphaned_branch_names)} orphaned branch names: {orphaned_branch_names}")
+            log.info("Found orphaned branch names", count=len(orphaned_branch_names), branches=orphaned_branch_names)
 
             for branch_name in orphaned_branch_names:
-                log.info(f"Cleaning up branch '{branch_name}'...")
+                log.info("Cleaning up orphaned branch", branch=branch_name)
                 delete_query = await DeleteBranchRelationshipsQuery.init(db=db, branch_name=branch_name)
                 await delete_query.execute(db=db)
-                log.info(f"Branch '{branch_name}' cleaned up.")
+                log.info("Orphaned branch cleaned up", branch=branch_name)
 
             log.info("Deleting orphaned relationships...")
             delete_relationships_query = await DeleteOrphanRelationshipsQuery.init(db=db)

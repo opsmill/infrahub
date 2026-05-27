@@ -1396,7 +1396,7 @@ class RelationshipDeleteAllQuery(Query):
                 continue  # TODO Unidirectional relationship changelog should be handled, cf IFC-1319.
 
             if len(deleted_rel_schemas) > 2:
-                log.error(f"Duplicated relationship schema with identifier {item.rel_identifier}")
+                log.error("Duplicated relationship schema", rel_identifier=item.rel_identifier)
                 continue
 
             if len(deleted_rel_schemas) == 2:

@@ -58,11 +58,11 @@ class DiffMerger:
                 latest_diff = diff
         if latest_diff is None:
             raise RuntimeError(f"Missing diff for branch {self.source_branch.name}")
-        log.info(f"Retrieving diff {latest_diff.uuid}")
+        log.info("Retrieving diff", diff_id=latest_diff.uuid)
         enriched_diff = await self.diff_repository.get_one(
             diff_branch_name=self.source_branch.name, diff_id=latest_diff.uuid
         )
-        log.info(f"Diff {latest_diff.uuid} retrieved")
+        log.info("Diff retrieved", diff_id=latest_diff.uuid)
         batch_num = 0
         migrated_kinds_id_map = {}
         for n in enriched_diff.nodes:
@@ -77,16 +77,16 @@ class DiffMerger:
 
         async for node_diff_dicts, property_diff_dicts in self.serializer.serialize_diff(diff=enriched_diff):
             if node_diff_dicts:
-                log.info(f"Merging batch of nodes #{batch_num}")
+                log.info("Merging batch of nodes", batch=batch_num)
                 await self._merge_nodes(
                     at=at, node_diff_dicts=node_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
                 )
             if property_diff_dicts:
-                log.info(f"Merging batch of properties #{batch_num}")
+                log.info("Merging batch of properties", batch=batch_num)
                 await self._merge_properties(
                     at=at, property_diff_dicts=property_diff_dicts, migrated_kinds_id_map=migrated_kinds_id_map
                 )
-            log.info(f"Batch #{batch_num} merged")
+            log.info("Batch merged", batch=batch_num)
             batch_num += 1
         migrated_kind_uuids = {n.identifier.uuid for n in enriched_diff.nodes if n.is_node_kind_migration}
         if migrated_kind_uuids:
@@ -104,7 +104,7 @@ class DiffMerger:
         if affected_node_uuids:
             for i in range(0, len(affected_node_uuids), self.metadata_batch_size):
                 batch_uuids = affected_node_uuids[i : i + self.metadata_batch_size]
-                log.info(f"Updating metadata for batch {i // self.metadata_batch_size + 1} ({len(batch_uuids)} nodes)")
+                log.info("Updating metadata batch", batch=i // self.metadata_batch_size + 1, num_nodes=len(batch_uuids))
                 metadata_query = await DiffMergeMetadataQuery.init(
                     db=self.db,
                     branch=self.source_branch,
