@@ -268,9 +268,7 @@ class TestAddReadOnly:
             infrahub_branch_name="read-only-branch",
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(infrahub_branch_name="read-only-branch")
-        self.mock_repo.sync_from_remote.assert_awaited_once_with(
-            commit="0123456789abcdef0123456789abcdef01234567"
-        )
+        self.mock_repo.sync_from_remote.assert_awaited_once_with(commit="0123456789abcdef0123456789abcdef01234567")
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
