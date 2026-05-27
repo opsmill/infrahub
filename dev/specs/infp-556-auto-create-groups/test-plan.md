@@ -394,7 +394,12 @@ Frontend verification of how the three events render. Run after Scenarios A, D a
    - Capped: **provider1** auto-create cap of `5` reached, 7 claims dropped
 2. **Event-type filter.** Open the **Event Type** filter → the dropdown lists **Group auto-created**, **Group auto-create rejected** and **Group auto-create capped**. Selecting one narrows the feed to that type; there is **no** idp/protocol filter (out of scope).
 3. **Detail view.** Click **View details** on a created event → the Details card shows `Identity Provider`, `Protocol`, `Triggering User`, `Group Name`, `Group ID`, `Source Pattern` and `Origin`. The rejected detail shows `Rejected Claim`; the capped detail shows `Cap Value`, `Dropped Count` and `Dropped Claims`.
-4. **Group activity timeline.** Open a group that was auto-created *after* the related-node change landed (e.g. re-run Scenario D with `MAX_PER_LOGIN=20` so `ops-team-06…12` are created) → its own **Activities** view lists the `provider1 auto-created group …` event for that group. Groups created before that change do not show it retroactively.
+4. **Group's own activity window.** This verifies the auto-create event is reachable from the group it created, via the related-node wiring. Use a group auto-created *after* the related-node change landed — e.g. re-run Scenario D with `MAX_PER_LOGIN=20` so `ops-team-06…12` are created fresh.
+   1. Open the **Groups** panel at <http://localhost:8080/role-management/groups>.
+   2. Click into one of those auto-created groups (e.g. `ops-team-06`) to open its detail window.
+   3. Open the **Activities** tab inside that window.
+   4. **Expect** the `provider1 auto-created group ops-team-06` event listed there, and clicking it opens the same event detail from step 3.
+   5. Groups created *before* the related-node change (alice's `ops-admins`/`data-engineers`, carol's `ops-team-01…05`) do **not** show the event in their Activities tab — the related node is only attached to newly emitted events.
 
 ---
 
