@@ -1,4 +1,11 @@
-import { ApolloClient, type DefaultOptions, type FetchResult, from, InMemoryCache, Observable } from "@apollo/client";
+import {
+  ApolloClient,
+  type DefaultOptions,
+  type FetchResult,
+  from,
+  InMemoryCache,
+  Observable,
+} from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
