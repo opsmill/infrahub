@@ -450,7 +450,7 @@ async def test_validator(
         constraint_name="relationship.peer.update",
         node_schema=car_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.RELATIONSHIP, schema_kind="TestCar", field_name="owner"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = RelationshipPeerChecker(db=db, branch=default_branch)

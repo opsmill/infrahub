@@ -460,7 +460,7 @@ async def test_validator(
         constraint_name="relationship.max_count.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="cars"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = RelationshipCountChecker(db=db, branch=branch)
@@ -502,7 +502,7 @@ async def test_validator_cardinality_failure(
         constraint_name="relationship.cardinality.update",
         node_schema=person_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.ATTRIBUTE, schema_kind="TestPerson", field_name="cars"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = RelationshipCountChecker(db=db, branch=branch)
