@@ -176,6 +176,60 @@ pytest tests/ --deployment-type cluster
 
 Cluster mode requires Neo4j Enterprise edition. Set `INFRAHUB_TESTING_ENTERPRISE=1` before running.
 
+## Pausing a test to inspect the running instance
+
+When debugging a failing test, it can help to pause execution mid-run and inspect the live Infrahub instance directly — via the UI, the SDK, or `infrahubctl`.
+
+Add a `breakpoint()` call at the point in your test where you want to pause:
+
+```python
+async def test_load_repository(self, client: InfrahubClient, ...) -> None:
+    repo = GitRepo(...)
+    await repo.add_to_infrahub(client=client)
+
+    breakpoint()  # execution pauses here; containers stay up
+
+    in_sync = await repo.wait_for_sync_to_complete(client=client)
+    assert in_sync
+```
+
+Run pytest with `-s` to keep stdin attached (required for the interactive prompt):
+
+```bash
+pytest tests/ -s
+```
+
+When the breakpoint is hit, pytest drops into a Python debugger (pdb). While paused, the Infrahub containers are still running. You can find the port from the `infrahub_port` fixture value printed in the test output, or look it up in the pdb session:
+
+```python
+(Pdb) print(infrahub_port)
+52341
+```
+
+Open `http://localhost:<port>` in a browser to access the Infrahub UI, or point `infrahubctl` at it:
+
+```bash
+INFRAHUB_ADDRESS=http://localhost:52341 infrahubctl schema list
+```
+
+Type `c` (continue) in the pdb prompt to resume the test and let the containers shut down normally.
+
+:::tip Keeping containers up after a test failure
+
+If the test fails before reaching a breakpoint, the `infrahub_app` fixture still tears down the containers. To keep them running after a failure for post-mortem inspection, override the fixture in your test class:
+
+```python
+@pytest.fixture(scope="class")
+def infrahub_app(self, request, infrahub_compose):
+    infrahub_compose.start()
+    yield infrahub_compose.get_services_port()
+    # containers are NOT stopped — remember to clean up manually
+```
+
+Remove this override once you're done debugging.
+
+:::
+
 ## Running in CI
 
 `TestInfrahubDockerClient` works in any CI environment that can run Docker. The example below shows a GitHub Actions job:

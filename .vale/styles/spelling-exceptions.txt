@@ -166,8 +166,11 @@ overridable
 parameterized
 partial_match
 passthrough
+breakpoint
+pdb
 performant
 pluggable
+post-mortem
 pre
 prebuilt
 precomputed
@@ -200,6 +203,7 @@ reusability
 rollout
 Schema
 schema_mapping
+stdin
 schema's
 scrollbar
 SDK
