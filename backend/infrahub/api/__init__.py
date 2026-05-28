@@ -29,7 +29,7 @@ from infrahub.api.storage import storage
 from infrahub.exceptions import ResourceNotFoundError
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
 
 router = APIRouter(prefix="/api")
 

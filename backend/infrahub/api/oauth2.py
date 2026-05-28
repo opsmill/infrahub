@@ -12,15 +12,15 @@ from opentelemetry import trace
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
 from infrahub.api.event_builder import make_event_meta, make_login_event
-from infrahub.auth import (
-    AccountSession,
-    AuthType,
+from infrahub.auth.auth import (
     ExternalIdentity,
     SSOStateCache,
     get_groups_from_provider,
     signin_sso_account,
     validate_auth_response,
 )
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod

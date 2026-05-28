@@ -1,6 +1,7 @@
 import bcrypt
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision

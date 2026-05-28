@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.auth import ExternalIdentity, signin_sso_account
+from infrahub.auth.auth import ExternalIdentity, signin_sso_account
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup
 from infrahub.external_protocols import ExternalAuthProtocol

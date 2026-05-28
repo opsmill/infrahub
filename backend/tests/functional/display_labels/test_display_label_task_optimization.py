@@ -5,7 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 from fast_depends import dependency_provider
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager

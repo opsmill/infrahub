@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from infrahub_sdk import InfrahubClient
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.schema.schema_branch import SchemaBranch

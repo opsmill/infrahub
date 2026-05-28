@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Iterator
 import pytest
 
 from infrahub import config
-from infrahub.auth import signin_sso_account
+from infrahub.auth.auth import signin_sso_account
 from infrahub.auth.auth_groups.emitter import MAX_CLAIM_VALUE_LENGTH
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup

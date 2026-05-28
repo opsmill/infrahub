@@ -1,5 +1,5 @@
 from infrahub import config
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission
 from infrahub.core.branch import Branch

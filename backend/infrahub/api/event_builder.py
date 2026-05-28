@@ -1,6 +1,7 @@
 from fastapi import Request
 
-from infrahub.auth import AccountSession, AuthResult
+from infrahub.auth.auth import AuthResult
+from infrahub.auth.session import AccountSession
 from infrahub.context import InfrahubContext
 from infrahub.core.branch.models import Branch
 from infrahub.events.account_action import AccountLoggedInEvent, AccountLoggedOutEvent, AuthMethod
