@@ -1086,8 +1086,7 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
             ]
         },
         expected_error=(
-            "TestCriticality: 'save' is a reserved name (relationship: 'save'). "
-            "Rename this attribute or relationship."
+            "TestCriticality: 'save' is a reserved name (relationship: 'save'). Rename this attribute or relationship."
         ),
     ),
     SchemaBranchValidateNamesTestCaseData(
@@ -1109,8 +1108,7 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
             ]
         },
         expected_error=(
-            "TestCriticality: 'save' is a reserved name (attribute: 'save'). "
-            "Rename this attribute or relationship."
+            "TestCriticality: 'save' is a reserved name (attribute: 'save'). Rename this attribute or relationship."
         ),
     ),
     SchemaBranchValidateNamesTestCaseData(

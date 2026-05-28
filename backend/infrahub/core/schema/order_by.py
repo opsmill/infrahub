@@ -67,9 +67,7 @@ class ParsedMetadataOrderBy(_ParsedOrderByBase):
         return (self.kind.value, self.metadata_field.value)
 
 
-type ParsedOrderByEntry = (
-    ParsedAttributeOrderBy | ParsedRelationshipAttributeOrderBy | ParsedMetadataOrderBy
-)
+type ParsedOrderByEntry = ParsedAttributeOrderBy | ParsedRelationshipAttributeOrderBy | ParsedMetadataOrderBy
 
 
 def parse_order_by_entry(entry: str, node_schema: BaseNodeSchema) -> ParsedOrderByEntry:
@@ -91,12 +89,8 @@ def _consume_direction(entry: str, parts: list[str], path_length: int) -> OrderD
         token = parts[-1]
         if token in _DIRECTION_TOKENS:
             return OrderDirection(token.upper())
-        raise ValueError(
-            f"invalid direction (entry: {entry!r}). Direction must be 'asc' or 'desc'."
-        )
-    raise ValueError(
-        f"invalid entry (entry: {entry!r}). Unexpected number of segments."
-    )
+        raise ValueError(f"invalid direction (entry: {entry!r}). Direction must be 'asc' or 'desc'.")
+    raise ValueError(f"invalid entry (entry: {entry!r}). Unexpected number of segments.")
 
 
 def _parse_metadata(entry: str, parts: list[str]) -> ParsedMetadataOrderBy:
@@ -112,9 +106,7 @@ def _parse_metadata(entry: str, parts: list[str]) -> ParsedMetadataOrderBy:
         metadata_field = OrderByMetadataField(field_token)
     except ValueError as exc:
         supported = ", ".join(field.value for field in OrderByMetadataField)
-        raise ValueError(
-            f"unknown metadata field (entry: {entry!r}). Supported metadata fields: {supported}."
-        ) from exc
+        raise ValueError(f"unknown metadata field (entry: {entry!r}). Supported metadata fields: {supported}.") from exc
 
     direction = _consume_direction(entry=entry, parts=parts, path_length=2)
 
@@ -156,6 +148,4 @@ def _parse_path(
             property_name=parts[1],
         )
 
-    raise ValueError(
-        f"attribute {first!r} not defined on this schema (entry: {entry!r})."
-    )
+    raise ValueError(f"attribute {first!r} not defined on this schema (entry: {entry!r}).")
