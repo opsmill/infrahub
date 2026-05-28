@@ -68,6 +68,16 @@ Available 'docs' tasks:
   .validate                Validate that the generated documentation is committed to Git.
 ```
 
+## Linting before submitting
+
+Run the documentation linters locally before opening a pull request that touches files under `docs/docs/`. CI runs the same checks and will reject the PR otherwise.
+
+```shell
+invoke docs.lint
+```
+
+This task runs both `markdownlint-cli2` and `vale`. The markdownlint binary is provided by `docs/node_modules` after `cd docs && npm install`; Vale is a separate native binary and the task warns and skips it when it is not available locally. CI runs both regardless.
+
 ## Writing documentation with AI
 
 We are increasingly using AI to assist developers in writing technical documentation. To ensure consistency, we maintain a set of instructions that guide the AI when generating documentation for Infrahub.
