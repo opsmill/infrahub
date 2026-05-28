@@ -113,6 +113,7 @@ const sidebars: SidebarsConfig = {
           items: [
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
+            { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
           ],
         },
         // ── Advanced schema features ──────────────────────────

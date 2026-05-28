@@ -99,3 +99,4 @@ See [Docs Revamp — URL Migration & Redirects](https://opsmill.atlassian.net/wi
 | `integrations.yml` | Integrations | TBD |
 | `events.yml` | Events | TBD |
 | `generators.yml` | Generators | TBD |
+| `marketplace.yml` | Infrahub Marketplace (single-page merge, supersedes PR #9093) | TBD |

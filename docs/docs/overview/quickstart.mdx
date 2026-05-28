@@ -80,31 +80,30 @@ You should see the Infrahub web interface with a navigation menu on the left sid
 
 A schema defines the structure of your infrastructure data in Infrahub — the types of objects, their attributes, and how they relate to each other. [Learn more about schemas](../schema/overview).
 
-Rather than writing a schema from scratch, use the [Schema Library](https://github.com/opsmill/schema-library), a community-maintained collection of reusable data models.
+Rather than writing a schema from scratch, use the [Infrahub Marketplace](https://marketplace.infrahub.app), a catalog of reusable schemas for common infrastructure domains maintained by the community and OpsMill.
 
-1. Download the schema library:
+1. Browse [marketplace.infrahub.app](https://marketplace.infrahub.app) and identify the schema you need (for example, `opsmill/dcim`).
+
+2. Fetch the schema to your project:
 
 ```bash
-uv run invoke schema-library-get
+infrahubctl marketplace get opsmill/dcim
 ```
 
-2. Explore the downloaded schema files in the `schema-library/` folder in your IDE.
+This downloads the schema YAML to `./schemas/`.
 
 :::info
 
-- The schema library is divided into a `base/` with core definitions and `extensions/` that build on top of the base. You need to load the base to add extensions.
-- Since you have access to the full schema code, you can explore and modify the schemas to fit your organization's needs.
+The Marketplace organizes schemas into base schemas (core definitions) and extensions that build on top of a base.
+You need to load the base before loading extensions.
+Browse the Marketplace to discover what is available and check each schema's dependencies.
 
 :::
 
 3. Load the schema into your project:
 
-:::info
-To keep things organized, put all schema files in a `schemas/` folder in your project and load them from there. Copy the files you need from the `schema-library/` folder into your project's `schemas/` folder.
-:::
-
 ```bash
-uv run infrahubctl schema load schemas/
+infrahubctl schema load schemas/
 ```
 
 :::success Verification
