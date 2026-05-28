@@ -154,7 +154,7 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
                 location=model.location,
                 repository_id=model.repository_id,
                 repository_name=model.repository_name,
-                repository_kind=InfrahubKind.REPOSITORY,
+                repository_kind=InfrahubKind.READONLYREPOSITORY,
                 infrahub_branch_name=model.infrahub_branch_name,
                 infrahub_branch_id=model.infrahub_branch_id,
                 commit=pinned_commit,
