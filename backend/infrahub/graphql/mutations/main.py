@@ -151,7 +151,7 @@ class InfrahubMutationMixin:
         return True
 
     @classmethod
-    async def mutate(  # noqa: PLR0915
+    async def mutate(
         cls,
         root: dict,  # noqa: ARG003
         info: GraphQLResolveInfo,

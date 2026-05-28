@@ -96,11 +96,7 @@ def raise_classified_validation_errors(
 
 
 def flatten_validation_input(exc: ValidationError) -> dict[str, str] | None:
-    """Flatten a ``ValidationError.input_value`` into a single ``{field: reason}`` dict.
-
-    Returns ``None`` when the input cannot be structurally interpreted as per-field reasons,
-    in which case the caller should let the original error propagate as ``UNDEFINED_ERROR``.
-    """
+    """Flatten a ``ValidationError.input_value`` into a single ``{field: reason}`` dict."""
     value = getattr(exc, "input_value", None)
     if isinstance(value, dict):
         return {str(k): str(v) for k, v in value.items() if isinstance(k, str)}
