@@ -1085,7 +1085,10 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as a relationship name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (relationship: 'save'). "
+            "Rename this attribute or relationship."
+        ),
     ),
     SchemaBranchValidateNamesTestCaseData(
         name="attribute-reserved-names-test",
@@ -1105,7 +1108,54 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                 }
             ]
         },
-        expected_error="TestCriticality: save isn't allowed as an attribute name.",
+        expected_error=(
+            "TestCriticality: 'save' is a reserved name (attribute: 'save'). "
+            "Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="attribute-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                        {"name": "node_metadata", "kind": "Text"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (attribute: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
+    ),
+    SchemaBranchValidateNamesTestCaseData(
+        name="relationship-node-metadata-reserved",
+        schema={
+            "nodes": [
+                {
+                    "name": "Criticality",
+                    "namespace": "Test",
+                    "default_filter": "name__value",
+                    "branch": BranchSupportType.AWARE.value,
+                    "attributes": [
+                        {"name": "name", "kind": "Text"},
+                    ],
+                    "relationships": [
+                        {"name": "node_metadata", "peer": "TestCriticality", "cardinality": "one"},
+                    ],
+                }
+            ]
+        },
+        expected_error=(
+            "TestCriticality: 'node_metadata' is a reserved name (relationship: 'node_metadata'). "
+            "Rename this attribute or relationship."
+        ),
     ),
 ]
 
