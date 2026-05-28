@@ -2,7 +2,7 @@ from typing import Any, Generator
 
 import pytest
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.branch import Branch

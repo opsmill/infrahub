@@ -6,7 +6,8 @@ from unittest.mock import call, patch
 import pytest
 
 from infrahub import config
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.initialization import create_branch
 from infrahub.groups.models import RequestGraphQLQueryGroupUpdate

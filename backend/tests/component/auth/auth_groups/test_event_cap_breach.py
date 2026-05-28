@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from infrahub.auth import signin_sso_account
+from infrahub.auth.auth import signin_sso_account
 from infrahub.events.group_action import GroupAutoCreateCappedEvent, GroupAutoCreatedEvent
 from infrahub.external_protocols import ExternalAuthProtocol
 from tests.adapters.event import MemoryInfrahubEvent

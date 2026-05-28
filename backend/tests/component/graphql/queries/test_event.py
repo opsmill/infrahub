@@ -6,7 +6,8 @@ import pytest
 from graphql import ExecutionResult
 from prefect.client.orchestration import PrefectClient, get_client
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.manager import NodeManager

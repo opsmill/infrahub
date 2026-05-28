@@ -1,6 +1,6 @@
 import pytest
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionAction, PermissionDecision

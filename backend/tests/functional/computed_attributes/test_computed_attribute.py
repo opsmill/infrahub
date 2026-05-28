@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_python
 from infrahub.computed_attribute.tasks import query_transform_targets
 from infrahub.context import BranchContext, InfrahubContext

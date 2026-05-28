@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from infrahub.core import registry
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.permissions.types import AssignedPermissions

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import config
-from infrahub.auth import signin_sso_account
+from infrahub.auth.auth import signin_sso_account
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node

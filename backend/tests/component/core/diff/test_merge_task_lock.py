@@ -7,7 +7,8 @@ import pytest
 from fast_depends import Provider
 
 from infrahub import lock
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch
