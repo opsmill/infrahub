@@ -24,10 +24,7 @@ function LoginPage() {
         <LoginMethodPicker />
 
         {location?.state?.errors?.map(
-          (
-            error: { extensions: { code: string; http_status?: number }; message: string },
-            index: number
-          ) => (
+          (error: { extensions: { code: number }; message: string }, index: number) => (
             <p key={index} className="mt-2 text-red-500 text-sm">
               ({error.extensions.code}) {error.message}
             </p>
