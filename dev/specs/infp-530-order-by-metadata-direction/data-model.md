@@ -29,30 +29,50 @@ New string enum, same module.
 
 The supported field set is identical to the GraphQL `InfrahubNodeMetadataOrder` input (FR-010): `created_at`, `updated_at`. No user-reference fields (`created_by`, `updated_by`).
 
-## Entity: `ParsedOrderByEntry` (frozen dataclass)
+## Entity: `ParsedOrderByEntry` (discriminated union of frozen dataclasses)
+
+`ParsedOrderByEntry` is a type alias for a three-variant union; each variant carries only the fields it actually needs. `kind` is a `ClassVar[Literal[...]]` so callers narrow via `isinstance` or `parsed.kind is OrderByTargetKind.<...>` without runtime assertions.
 
 ```python
 @dataclass(frozen=True, slots=True)
-class ParsedOrderByEntry:
+class _ParsedOrderByBase:
     raw: str                          # the original string from order_by
-    kind: OrderByTargetKind
-    direction: OrderDirection
-    # ATTRIBUTE / RELATIONSHIP_ATTRIBUTE only:
-    schema_path: SchemaAttributePath | None
-    # METADATA only:
-    metadata_field: OrderByMetadataField | None
+    direction: OrderDirection         # always set; defaults to ASC when no suffix
 
-    @property
-    def target_key(self) -> tuple[str, ...]:
-        """Stable tuple identifying the sortable target. Used for duplicate detection."""
+
+@dataclass(frozen=True, slots=True)
+class ParsedAttributeOrderBy(_ParsedOrderByBase):
+    attribute_name: str
+    property_name: str
+    kind: ClassVar[Literal[OrderByTargetKind.ATTRIBUTE]] = OrderByTargetKind.ATTRIBUTE
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedRelationshipAttributeOrderBy(_ParsedOrderByBase):
+    relationship_name: str
+    attribute_name: str
+    property_name: str
+    kind: ClassVar[Literal[OrderByTargetKind.RELATIONSHIP_ATTRIBUTE]] = OrderByTargetKind.RELATIONSHIP_ATTRIBUTE
+
+
+@dataclass(frozen=True, slots=True)
+class ParsedMetadataOrderBy(_ParsedOrderByBase):
+    metadata_field: OrderByMetadataField
+    kind: ClassVar[Literal[OrderByTargetKind.METADATA]] = OrderByTargetKind.METADATA
+
+
+type ParsedOrderByEntry = (
+    ParsedAttributeOrderBy | ParsedRelationshipAttributeOrderBy | ParsedMetadataOrderBy
+)
 ```
 
-Invariants enforced by the parser/validator:
+Each variant exposes a `target_key` property used for duplicate detection (see below).
 
-- `kind == METADATA` ⇒ `metadata_field is not None` AND `schema_path is None`.
-- `kind in {ATTRIBUTE, RELATIONSHIP_ATTRIBUTE}` ⇒ `schema_path is not None` AND `metadata_field is None`.
+Invariants:
+
 - `direction` is always set (defaulted to `ASC` when no suffix is provided).
 - `raw` is preserved so error messages and `__repr__` can echo what the author wrote.
+- Path resolution (verifying that a relationship's peer schema actually has the named attribute, checking cardinality, etc.) is **not** the parser's job — it stays in `validate_schema_path` at schema-load time. The parser is a pure classifier + direction extractor and needs only `node_schema.attribute_names` / `node_schema.relationship_names` (no `SchemaBranch`).
 
 ### `target_key` rules
 

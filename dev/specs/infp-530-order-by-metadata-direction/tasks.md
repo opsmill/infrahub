@@ -29,7 +29,7 @@ description: "Task list for schema-level order_by for node metadata and directio
 
 **Purpose**: Confirm baseline before changes. No new project scaffolding required — feature lives entirely inside the existing backend.
 
-- [ ] T001 Run baseline unit + targeted component tests (`uv run invoke backend.test-unit` and `uv run pytest -x backend/tests/component/core/schema_manager/test_manager_schema.py backend/tests/component/core/test_node_get_list_query.py`); record any pre-existing failures so they aren't attributed to this branch.
+- [X] T001 Run baseline unit + targeted component tests (`uv run invoke backend.test-unit` and `uv run pytest -x backend/tests/component/core/schema_manager/test_manager_schema.py backend/tests/component/core/test_node_get_list_query.py`); record any pre-existing failures so they aren't attributed to this branch.
 
 ---
 
@@ -39,14 +39,14 @@ description: "Task list for schema-level order_by for node metadata and directio
 
 **⚠️ CRITICAL**: No user story work may begin until T002–T005 are complete.
 
-- [ ] T002 [P] Add the literal `"node_metadata"` to `RESERVED_ATTR_REL_NAMES` in `backend/infrahub/core/constants/__init__.py` (the list defined around lines 28–48). Do not modify `RESERVED_ATTR_GEN_NAMES`. No code comment referencing the spec or ticket.
-- [ ] T003 [P] Create new module `backend/infrahub/core/schema/order_by.py` that defines:
+- [X] T002 [P] Add the literal `"node_metadata"` to `RESERVED_ATTR_REL_NAMES` in `backend/infrahub/core/constants/__init__.py` (the list defined around lines 28–48). Do not modify `RESERVED_ATTR_GEN_NAMES`. No code comment referencing the spec or ticket.
+- [X] T003 [P] Create new module `backend/infrahub/core/schema/order_by.py` that defines:
   - Frozen dataclass `ParsedOrderByEntry` with fields `raw: str`, `kind: OrderByTargetKind`, `direction: OrderDirection`, `schema_path: SchemaAttributePath | None`, `metadata_field: OrderByMetadataField | None`, plus a `target_key` property (see `data-model.md`).
   - String enums `OrderByTargetKind` (`ATTRIBUTE`, `RELATIONSHIP_ATTRIBUTE`, `METADATA`) and `OrderByMetadataField` (`CREATED_AT="created_at"`, `UPDATED_AT="updated_at"`).
   - `parse_order_by_entry(entry: str, node_schema) -> ParsedOrderByEntry` that recognizes the six grammar shapes in `contracts/grammar.md`. Raise `ValueError` with messages matching the templates in `contracts/errors.md` on malformed input; resolve attribute / relationship-attribute paths via the existing `node_schema.parse_schema_path()` helper.
   - Reuse `OrderDirection` from `infrahub.core.constants` and `METADATA_CREATED_AT` / `METADATA_UPDATED_AT` literals where appropriate.
-- [ ] T004 [P] Create `backend/tests/unit/core/schema/test_order_by_parser.py` with parametrized cases covering: all six grammar shapes (with and without direction); implicit-ascending default; rejection of malformed direction tokens (`__descending`, `__ASC`, empty tail); rejection of unsupported metadata field (`node_metadata__created_by`); rejection of empty string. Each case asserts on `kind`, `direction`, and `target_key`.
-- [ ] T005 [P] Add a reserved-name component test to `backend/tests/component/core/schema_manager/test_manager_schema.py`: loading a schema whose `NodeSchema.attributes` or `NodeSchema.relationships` contains an item named `node_metadata` raises the standard `SchemaNotValidError` and the message includes the offending node kind plus the literal `'node_metadata'` and the word "reserved".
+- [X] T004 [P] Create `backend/tests/unit/core/schema/test_order_by_parser.py` with parametrized cases covering: all six grammar shapes (with and without direction); implicit-ascending default; rejection of malformed direction tokens (`__descending`, `__ASC`, empty tail); rejection of unsupported metadata field (`node_metadata__created_by`); rejection of empty string. Each case asserts on `kind`, `direction`, and `target_key`.
+- [X] T005 [P] Add a reserved-name component test to `backend/tests/component/core/schema_manager/test_manager_schema.py`: loading a schema whose `NodeSchema.attributes` or `NodeSchema.relationships` contains an item named `node_metadata` raises the standard `SchemaNotValidError` and the message includes the offending node kind plus the literal `'node_metadata'` and the word "reserved".
 
 **Checkpoint**: Parser and reserved name are in place. User-story phases can now proceed in parallel.
 
