@@ -943,12 +943,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
         return self.get_git_repo_worktree(identifier=branch_name)
 
-    async def _update_commit_value_if_requested(self, branch_name: str, commit: str, update_commit_value: bool) -> None:
-        if not update_commit_value:
-            return
-        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-        await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-
     async def pull(
         self,
         branch_name: str,
