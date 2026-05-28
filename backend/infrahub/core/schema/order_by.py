@@ -9,7 +9,7 @@ from infrahub.core.constants import NODE_METADATA_PREFIX
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
 
 if TYPE_CHECKING:
-    from infrahub.core.schema.basenode_schema import BaseNodeSchema, SchemaAttributePath
+    from infrahub.core.schema.basenode_schema import BaseNodeSchema
 
 
 _DIRECTION_TOKENS = {direction.value.lower() for direction in OrderDirection}
@@ -36,7 +36,6 @@ class _ParsedOrderByBase:
 class ParsedAttributeOrderBy(_ParsedOrderByBase):
     attribute_name: str
     property_name: str
-    schema_path: SchemaAttributePath | None = None
     kind: ClassVar[Literal[OrderByTargetKind.ATTRIBUTE]] = OrderByTargetKind.ATTRIBUTE
 
     @property
@@ -49,7 +48,6 @@ class ParsedRelationshipAttributeOrderBy(_ParsedOrderByBase):
     relationship_name: str
     attribute_name: str
     property_name: str
-    schema_path: SchemaAttributePath | None = None
     kind: ClassVar[Literal[OrderByTargetKind.RELATIONSHIP_ATTRIBUTE]] = OrderByTargetKind.RELATIONSHIP_ATTRIBUTE
 
     @property
@@ -75,6 +73,9 @@ def parse_order_by_entry(entry: str, node_schema: BaseNodeSchema) -> ParsedOrder
         raise ValueError(f"order_by entries must be non-empty strings (entry: {entry!r}).")
 
     parts = entry.split("__")
+
+    if any(not part for part in parts):
+        raise ValueError(f"invalid entry (entry: {entry!r}). Entry segments must be non-empty.")
 
     if parts[0] == NODE_METADATA_PREFIX:
         return _parse_metadata(entry=entry, parts=parts)

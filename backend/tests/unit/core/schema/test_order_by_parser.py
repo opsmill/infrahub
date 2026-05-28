@@ -151,7 +151,17 @@ REJECTION_CASES = [
     RejectionCase(
         name="empty_direction_tail",
         entry="name__value__",
-        match=r"invalid direction.*Direction must be 'asc' or 'desc'",
+        match=r"Entry segments must be non-empty",
+    ),
+    RejectionCase(
+        name="empty_middle_segment",
+        entry="name____value",
+        match=r"Entry segments must be non-empty",
+    ),
+    RejectionCase(
+        name="empty_leading_segment",
+        entry="__value",
+        match=r"Entry segments must be non-empty",
     ),
     RejectionCase(
         name="unknown_attribute",
