@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request, Response
 
-from infrahub.health import HealthResponse, health_report
+from infrahub.health import HealthResponse, OverallStatus, health_report
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -23,5 +23,5 @@ async def health(request: Request) -> Response:
     return Response(
         content=response_data.model_dump_json(),
         media_type="application/json",
-        status_code=200 if response_data.status == "healthy" else 503,
+        status_code=200 if response_data.status == OverallStatus.HEALTHY else 503,
     )

@@ -1424,7 +1424,8 @@ export interface components {
         DependencyHealth: {
             name: components["schemas"]["DependencyName"];
             status: components["schemas"]["DependencyStatus"];
-            error?: components["schemas"]["ErrorCategory"] | null;
+            /** @default none */
+            error: components["schemas"]["ErrorCategory"];
         };
         /**
          * DependencyName
@@ -1460,7 +1461,7 @@ export interface components {
          * ErrorCategory
          * @enum {string}
          */
-        ErrorCategory: "timeout" | "connection_refused" | "connection_closed" | "not_initialized" | "unknown_error";
+        ErrorCategory: "none" | "timeout" | "connection_refused" | "connection_closed" | "not_initialized" | "unknown_error";
         /** ExperimentalFeaturesSettings */
         ExperimentalFeaturesSettings: {
             /**
@@ -1628,7 +1629,10 @@ export interface components {
             status: components["schemas"]["OverallStatus"];
             /** Checks */
             checks: components["schemas"]["DependencyHealth"][];
-            /** Timestamp */
+            /**
+             * Timestamp
+             * Format: date-time
+             */
             timestamp: string;
         };
         /** InfoAPI */

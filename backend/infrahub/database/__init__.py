@@ -312,9 +312,12 @@ class InfrahubDatabase:
         await self._driver.close()
 
     async def is_healthy(self) -> bool:
-        """Check if the database is reachable by executing a lightweight query."""
+        """Check if the database leader is reachable by executing a lightweight query.
+
+        Uses the default (write) session so the probe lands on the leader/write node
+        rather than potentially a read replica."""
         try:
-            async with self.start_session(read_only=True) as db:
+            async with self.start_session() as db:
                 await db.execute_query(query="RETURN 1", name="health_check")
             return True
         except Exception:

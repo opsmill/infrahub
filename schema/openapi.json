@@ -4387,14 +4387,8 @@
                         "$ref": "#/components/schemas/DependencyStatus"
                     },
                     "error": {
-                        "anyOf": [
-                            {
-                                "$ref": "#/components/schemas/ErrorCategory"
-                            },
-                            {
-                                "type": "null"
-                            }
-                        ]
+                        "$ref": "#/components/schemas/ErrorCategory",
+                        "default": "none"
                     }
                 },
                 "type": "object",
@@ -4497,6 +4491,7 @@
             "ErrorCategory": {
                 "type": "string",
                 "enum": [
+                    "none",
                     "timeout",
                     "connection_refused",
                     "connection_closed",
@@ -4894,6 +4889,7 @@
                     },
                     "timestamp": {
                         "type": "string",
+                        "format": "date-time",
                         "title": "Timestamp"
                     }
                 },

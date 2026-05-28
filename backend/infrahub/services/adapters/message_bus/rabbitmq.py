@@ -120,7 +120,11 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def is_healthy(self) -> bool:
         try:
-            return not self.connection.is_closed
+            if self.channel.is_closed:
+                return False
+            queue = await self.channel.declare_queue(exclusive=True, auto_delete=True)
+            await queue.delete()
+            return True
         except Exception:
             return False
 
