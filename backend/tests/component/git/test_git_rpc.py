@@ -74,7 +74,6 @@ class TestAddRepository:
             self.mock_repo.infrahub_branch_name = self.default_branch_name
             self.mock_repo.internal_status = "active"
             self.mock_repo.get_commit_value.return_value = "0123456789abcdef0123456789abcdef01234567"
-
             yield
 
             patch.stopall()

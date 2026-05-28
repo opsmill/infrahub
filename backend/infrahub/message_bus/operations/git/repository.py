@@ -48,8 +48,8 @@ async def fetch(message: messages.RefreshGitFetch) -> None:
 
     await repo.fetch()
     if message.commit:
-        # reset_to_commit hard-resets the worktree, which would silently discard a concurrent
-        # local change. Serialize it against the merges and syncs holding the same lock.
+        # Hold the repo lock so the hard reset doesn't interleave with other git
+        # operations on the same on-disk tree (merges, syncs, branch creation).
         async with lock.registry.get(name=message.repository_name, namespace="repository"):
             await repo.reset_to_commit(
                 branch_name=message.infrahub_branch_name,

@@ -986,9 +986,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         else:
             raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
 
-        await self._update_commit_value_if_requested(
-            branch_name=branch_name, commit=commit_after, update_commit_value=update_commit_value
-        )
+        if update_commit_value:
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
         return commit_after
 
     async def reset_to_commit(
@@ -998,7 +998,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         branch_id: str | None = None,
         create_if_missing: bool = False,
         update_commit_value: bool = True,
-    ) -> str:
+    ) -> None:
         """Hard-reset a branch worktree to a specific commit already present locally.
 
         The caller must have fetched the commit beforehand; this method does not
@@ -1008,9 +1008,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
 
         """
-        if not self.has_origin:
-            return commit
-
         repo = self._get_branch_worktree(branch_name)
         if repo is None:
             if not create_if_missing or not branch_id:
@@ -1026,10 +1023,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             await self._raise_enriched_error(error=exc, branch_name=branch_name)
 
         self.create_commit_worktree(commit=commit)
-        await self._update_commit_value_if_requested(
-            branch_name=branch_name, commit=commit, update_commit_value=update_commit_value
-        )
-        return commit
+
+        if update_commit_value:
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
 
     async def get_conflicts(self, source_branch: str, dest_branch: str) -> list[str]:
         repo = self.get_git_repo_worktree(identifier=dest_branch)
