@@ -325,7 +325,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.schema_branch"
 disable_error_code = [
-    "arg-type",
     "assignment",
     "attr-defined",
     "index",

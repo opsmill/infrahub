@@ -381,7 +381,7 @@ async def test_validator_parents_failure(
         constraint_name="node.parent.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -408,7 +408,7 @@ async def test_validator_parents_success(
         constraint_name="node.parent.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="parent"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -433,7 +433,7 @@ async def test_validator_children_failure(
         constraint_name="node.children.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)
@@ -460,7 +460,7 @@ async def test_validator_children_success(
         constraint_name="node.children.update",
         node_schema=site_schema,
         schema_path=SchemaPath(path_type=SchemaPathType.NODE, schema_kind="LocationSite", field_name="children"),
-        schema_branch=SchemaBranch(cache={}),
+        schema_branch=SchemaBranch(cache={}, name="test"),
     )
 
     constraint_checker = NodeHierarchyChecker(db=db, branch=default_branch)

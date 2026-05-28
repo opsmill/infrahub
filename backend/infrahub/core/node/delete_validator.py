@@ -169,8 +169,8 @@ class NodeDeleteValidator:
         if not missing_delete_ids:
             return node_ids_to_delete
         missing_delete_peers_data = []
-        for peers_data_list in dependent_node_details_map.values():
-            missing_delete_peers_data.extend(peers_data_list)
+        for peer_id in missing_delete_ids:
+            missing_delete_peers_data.extend(dependent_node_details_map[peer_id])
         validation_error = self._build_validation_error(missing_delete_peers_data=missing_delete_peers_data)
         raise validation_error
 
