@@ -23,7 +23,7 @@ class TestUniquenessChecker:
             constraint_name="node.uniqueness_constraints.update",
             node_schema=schema,
             schema_path=schema_path,
-            schema_branch=SchemaBranch(cache={}),
+            schema_branch=SchemaBranch(cache={}, name="test"),
         )
         return await checker.check(request)
 
