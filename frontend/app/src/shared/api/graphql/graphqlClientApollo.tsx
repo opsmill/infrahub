@@ -18,6 +18,7 @@ import { CONFIG } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
+import { removeTokensInLocalStorage } from "@/entities/authentication/utils";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {
@@ -78,6 +79,9 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
       case ERROR_CODES.TOKEN_EXPIRED:
         return retryWithRefreshedToken(operation, forward);
 
+      case ERROR_CODES.AUTHENTICATION_REQUIRED:
+        return redirectToLogin();
+
       case ERROR_CODES.PERMISSION_DENIED:
         // Silent — 403s are handled by route-level guards, not toasts.
         return;
@@ -131,6 +135,17 @@ function retryWithRefreshedToken(
       })
       .catch((err) => observer.error(err));
   });
+}
+
+// Helper: token is invalid or missing — clear local credentials and bounce
+// to /login. Hard-navigates because errorLink runs outside React Router,
+// and the AuthProvider's localStorage hook does not re-render on external
+// writes. Skips the redirect if we're already on /login to avoid loops.
+function redirectToLogin(): void {
+  removeTokensInLocalStorage();
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
 }
 
 // Helper: surface an error to the user. Calls operation.context's
