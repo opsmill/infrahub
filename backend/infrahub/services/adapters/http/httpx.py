@@ -93,16 +93,16 @@ class HttpxAdapter(InfrahubHTTP):
                     **params,
                 )
             except ssl.SSLCertVerificationError as exc:
-                log.info(f"TLS verification failed for connection to {url}")
+                log.info("TLS verification failed", url=url)
                 raise HTTPServerSSLError(message=f"Unable to validate TLS certificate for connection to {url}") from exc
             except httpx.ReadTimeout as exc:
-                log.info(f"Connection timed out when trying to reach {url}")
+                log.info("Connection timed out", url=url)
                 raise HTTPServerTimeoutError(
                     message=f"Connection to {url} timed out after {self.settings.timeout}"
                 ) from exc
             except httpx.RequestError as exc:
                 # Catch all error from httpx
-                log.warning(f"Unhandled HTTP error for {url} ({exc})")
+                log.warning("Unhandled HTTP error", url=url, exc_info=exc)
                 raise HTTPServerError(message=f"Unknown http error when connecting to {url}") from exc
 
         return response

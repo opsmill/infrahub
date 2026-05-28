@@ -161,8 +161,13 @@ def test_assign_headers_warns_on_duplicate_keys(caplog: pytest.LogCaptureFixture
 
     assert webhook._headers is not None
     assert webhook._headers["X-Token"] == "second"
-    assert "duplicate header key 'X-Token'" in caplog.text
-    assert "dup-test" in caplog.text
+    duplicate_warnings = [
+        r for r in caplog.records if r.levelname == "WARNING" and "Duplicate header key" in r.getMessage()
+    ]
+    assert len(duplicate_warnings) == 1
+    rendered = duplicate_warnings[0].getMessage()
+    assert "X-Token" in rendered
+    assert "dup-test" in rendered
 
 
 def test_webhook_signature_with_payload() -> None:
