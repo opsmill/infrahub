@@ -267,9 +267,6 @@ async def path_traversal_resolver(
         renderer = PathTraversalCypherRenderer(
             branch=graphql_context.branch,
             default_branch_name=registry.default_branch,
-            at=graphql_context.at,
-            max_targets=1,
-            max_paths=max_paths,
         )
         query = await PathTraversalQuery.init(
             db=graphql_context.db,
@@ -278,6 +275,7 @@ async def path_traversal_resolver(
             renderer=renderer,
             plan=plan,
             source_id=source_id,
+            max_paths=max_paths,
         )
         await query.execute(db=graphql_context.db)
         path_data_list = query.get_paths()

@@ -34,15 +34,25 @@ class ReachableNodesQuery(Query):
         renderer: PathTraversalCypherRenderer,
         plan: Plan,
         source_id: str,
+        max_targets: int,
+        max_paths: int,
         **kwargs: Any,
     ) -> None:
         self._renderer = renderer
         self._plan = plan
         self._source_id = source_id
+        self._max_targets = max_targets
+        self._max_paths = max_paths
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        rendered = self._renderer.render(plan=self._plan, source_id=self._source_id)
+        rendered = self._renderer.render(
+            plan=self._plan,
+            source_id=self._source_id,
+            at=self.at,
+            max_targets=self._max_targets,
+            max_paths=self._max_paths,
+        )
         self.add_to_query(rendered.text)
         self.params.update(rendered.params)
         self.return_labels = list(rendered.return_labels)

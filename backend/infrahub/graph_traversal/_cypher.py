@@ -163,33 +163,9 @@ class PathTraversalCypherRenderer:
       ``$max_targets``) and Phase 2 (path enumeration, capped at ``$max_paths``).
     - ``TerminalById`` anchors the given target, builds
       ``terminal_uuids = [target.uuid]``, runs only Phase 2.
-
-    Raises:
-        ValueError: when ``max_targets`` is out of range or
-            ``max_paths`` is out of range.
-
     """
 
-    def __init__(
-        self,
-        *,
-        branch: Branch,
-        default_branch_name: str,
-        at: Timestamp | None,
-        max_targets: int,
-        max_paths: int,
-    ) -> None:
-        if not _MAX_TARGETS_MINIMUM <= max_targets <= _MAX_TARGETS_MAXIMUM:
-            raise ValueError(
-                f"max_targets must be in [{_MAX_TARGETS_MINIMUM}, {_MAX_TARGETS_MAXIMUM}], got {max_targets}"
-            )
-        if not _MAX_PATHS_MINIMUM <= max_paths <= _MAX_PATHS_MAXIMUM:
-            raise ValueError(f"max_paths must be in [{_MAX_PATHS_MINIMUM}, {_MAX_PATHS_MAXIMUM}], got {max_paths}")
-
-        self._at = at if at is not None else Timestamp()
-        self._max_targets = max_targets
-        self._max_paths = max_paths
-
+    def __init__(self, *, branch: Branch, default_branch_name: str) -> None:
         self._is_user_branch = not branch.is_default
         self._user_branch_name = branch.name
         self._valid_branches: list[str] = (
@@ -198,16 +174,33 @@ class PathTraversalCypherRenderer:
             else [default_branch_name, GLOBAL_BRANCH_NAME, branch.name]
         )
 
-    def render(self, *, plan: Plan, source_id: str) -> RenderedCypher:
+    def render(
+        self,
+        *,
+        plan: Plan,
+        source_id: str,
+        at: Timestamp | None,
+        max_targets: int,
+        max_paths: int,
+    ) -> RenderedCypher:
         """Render ``plan`` as a two-phase Cypher query rooted at ``source_id``.
 
         Raises:
-            ValueError: when ``plan`` is empty or no feasible fixed-depth branch
-                survives the per-step budget.
+            ValueError: when ``plan`` is empty, ``max_targets`` or ``max_paths``
+                is out of range, or no feasible fixed-depth branch survives
+                the per-step budget.
 
         """
+        if not _MAX_TARGETS_MINIMUM <= max_targets <= _MAX_TARGETS_MAXIMUM:
+            raise ValueError(
+                f"max_targets must be in [{_MAX_TARGETS_MINIMUM}, {_MAX_TARGETS_MAXIMUM}], got {max_targets}"
+            )
+        if not _MAX_PATHS_MINIMUM <= max_paths <= _MAX_PATHS_MAXIMUM:
+            raise ValueError(f"max_paths must be in [{_MAX_PATHS_MINIMUM}, {_MAX_PATHS_MAXIMUM}], got {max_paths}")
         if plan.is_empty:
             raise ValueError("plan has no adjacency")
+
+        at = at if at is not None else Timestamp()
 
         terminal_anchored_by_id = isinstance(plan.terminal_predicate, TerminalById)
         terminal_kinds: frozenset[str] = (
@@ -245,10 +238,10 @@ class PathTraversalCypherRenderer:
 
         params: dict[str, Any] = {
             "source_id": source_id,
-            "at": self._at.to_string(),
+            "at": at.to_string(),
             "valid_branches": self._valid_branches,
-            "max_targets": self._max_targets,
-            "max_paths": self._max_paths,
+            "max_targets": max_targets,
+            "max_paths": max_paths,
         }
         for branch_data in feasible:
             for hop_idx, hop_tuples in enumerate(branch_data.tuples_per_hop, start=1):

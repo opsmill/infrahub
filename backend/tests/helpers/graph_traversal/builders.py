@@ -127,12 +127,16 @@ async def build_reachable_query(
     renderer = PathTraversalCypherRenderer(
         branch=branch,
         default_branch_name=default_branch_name,
-        at=timestamp,
-        max_targets=max_targets,
-        max_paths=max_paths,
     )
     return await ReachableNodesQuery.init(
-        db=db, branch=branch, at=timestamp, renderer=renderer, plan=plan, source_id=source_id
+        db=db,
+        branch=branch,
+        at=timestamp,
+        renderer=renderer,
+        plan=plan,
+        source_id=source_id,
+        max_targets=max_targets,
+        max_paths=max_paths,
     )
 
 
@@ -151,12 +155,15 @@ async def build_path_traversal_query(
     renderer = PathTraversalCypherRenderer(
         branch=branch,
         default_branch_name=default_branch_name,
-        at=timestamp,
-        max_targets=1,
-        max_paths=max_paths,
     )
     return await PathTraversalQuery.init(
-        db=db, branch=branch, at=timestamp, renderer=renderer, plan=plan, source_id=source_id
+        db=db,
+        branch=branch,
+        at=timestamp,
+        renderer=renderer,
+        plan=plan,
+        source_id=source_id,
+        max_paths=max_paths,
     )
 
 
