@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 
 _DIRECTION_TOKENS = {direction.value.lower() for direction in OrderDirection}
+_REQUIRED_PROPERTY = "value"
 
 
 class OrderByTargetKind(StrEnum):
@@ -123,8 +124,12 @@ def _parse_path(
         if len(parts) < 3:
             raise ValueError(
                 f"invalid relationship path (entry: {entry!r}). "
-                f"Expected '<relationship>__<attribute>__<property>' "
+                f"Expected '<relationship>__<attribute>__{_REQUIRED_PROPERTY}' "
                 f"with an optional direction suffix."
+            )
+        if parts[2] != _REQUIRED_PROPERTY:
+            raise ValueError(
+                f"invalid relationship path (entry: {entry!r}). Property segment must be {_REQUIRED_PROPERTY!r}."
             )
         direction = _consume_direction(entry=entry, parts=parts, path_length=3)
         return ParsedRelationshipAttributeOrderBy(
@@ -139,7 +144,11 @@ def _parse_path(
         if len(parts) < 2:
             raise ValueError(
                 f"invalid attribute path (entry: {entry!r}). "
-                f"Expected '<attribute>__<property>' with an optional direction suffix."
+                f"Expected '<attribute>__{_REQUIRED_PROPERTY}' with an optional direction suffix."
+            )
+        if parts[1] != _REQUIRED_PROPERTY:
+            raise ValueError(
+                f"invalid attribute path (entry: {entry!r}). Property segment must be {_REQUIRED_PROPERTY!r}."
             )
         direction = _consume_direction(entry=entry, parts=parts, path_length=2)
         return ParsedAttributeOrderBy(
