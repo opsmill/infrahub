@@ -71,7 +71,7 @@ async def reachable_nodes_resolver(
     target_kinds = list(data.target_kinds) if data.target_kinds else []
     max_depth = data.max_depth or 5
     max_results = data.max_results or 50
-    max_paths = data.max_paths or 500
+    max_paths = 500 if data.max_paths is None else data.max_paths
 
     if not target_kinds:
         raise GraphQLError("At least one target kind is required")
