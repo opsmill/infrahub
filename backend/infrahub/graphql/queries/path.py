@@ -268,15 +268,18 @@ async def path_traversal_resolver(
             branch=graphql_context.branch,
             default_branch_name=registry.default_branch,
         )
-        query = await PathTraversalQuery.init(
-            db=graphql_context.db,
-            branch=graphql_context.branch,
-            at=graphql_context.at,
-            renderer=renderer,
-            plan=plan,
-            source_id=source_id,
-            max_paths=max_paths,
-        )
+        try:
+            query = await PathTraversalQuery.init(
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                renderer=renderer,
+                plan=plan,
+                source_id=source_id,
+                max_paths=max_paths,
+            )
+        except ValueError as exc:
+            raise GraphQLError(str(exc)) from exc
         await query.execute(db=graphql_context.db)
         path_data_list = query.get_paths()
 

@@ -114,16 +114,19 @@ async def reachable_nodes_resolver(
             branch=graphql_context.branch,
             default_branch_name=registry.default_branch,
         )
-        query = await ReachableNodesQuery.init(
-            db=graphql_context.db,
-            branch=graphql_context.branch,
-            at=graphql_context.at,
-            renderer=renderer,
-            plan=plan,
-            source_id=source_id,
-            max_targets=max_results,
-            max_paths=max_paths,
-        )
+        try:
+            query = await ReachableNodesQuery.init(
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                renderer=renderer,
+                plan=plan,
+                source_id=source_id,
+                max_targets=max_results,
+                max_paths=max_paths,
+            )
+        except ValueError as exc:
+            raise GraphQLError(str(exc)) from exc
         await query.execute(db=graphql_context.db)
         reachable_data = query.get_reachable_nodes()
 
