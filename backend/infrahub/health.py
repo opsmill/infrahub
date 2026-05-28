@@ -86,11 +86,23 @@ def determine_status(checks: list[DependencyHealth]) -> OverallStatus:
 
 
 async def get_health_checks(service: InfrahubServices, db: InfrahubDatabase) -> list[DependencyHealth]:
+    # Wrap service attribute accesses in inner async functions so that
+    # InitializationError from a partially-initialized service is caught by
+    # check_dependency and reported as DOWN instead of bubbling up as a 500.
+    async def probe_message_bus() -> bool:
+        return await service.message_bus.is_healthy()
+
+    async def probe_cache() -> bool:
+        return await service.cache.is_healthy()
+
+    async def probe_workflow() -> bool:
+        return await service.workflow.is_healthy()
+
     checks = await asyncio.gather(
         check_dependency(DependencyName.DATABASE, db.is_healthy),
-        check_dependency(DependencyName.MESSAGE_BUS, service.message_bus.is_healthy),
-        check_dependency(DependencyName.CACHE, service.cache.is_healthy),
-        check_dependency(DependencyName.TASK_MANAGER, service.workflow.is_healthy),
+        check_dependency(DependencyName.MESSAGE_BUS, probe_message_bus),
+        check_dependency(DependencyName.CACHE, probe_cache),
+        check_dependency(DependencyName.TASK_MANAGER, probe_workflow),
         return_exceptions=False,
     )
     return list(checks)

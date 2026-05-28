@@ -114,6 +114,31 @@ async def test_get_health_checks_database_down() -> None:
     assert by_name[DependencyName.TASK_MANAGER].status == DependencyStatus.UP
 
 
+async def test_get_health_checks_uninitialized_service() -> None:
+    """Service property access raising InitializationError must be reported as DOWN, not bubble up."""
+
+    class _UninitializedService:
+        @property
+        def message_bus(self) -> object:
+            raise InitializationError("Service is not initialized with a message bus")
+
+        @property
+        def cache(self) -> object:
+            raise InitializationError("Service is not initialized with a cache")
+
+        @property
+        def workflow(self) -> object:
+            raise InitializationError("Service is not initialized with a workflow")
+
+    checks = await get_health_checks(service=_UninitializedService(), db=HealthyProbe())  # type: ignore[arg-type]
+    by_name = {c.name: c for c in checks}
+    assert by_name[DependencyName.DATABASE].status == DependencyStatus.UP
+    assert by_name[DependencyName.MESSAGE_BUS].status == DependencyStatus.DOWN
+    assert by_name[DependencyName.MESSAGE_BUS].error == ErrorCategory.NOT_INITIALIZED
+    assert by_name[DependencyName.CACHE].error == ErrorCategory.NOT_INITIALIZED
+    assert by_name[DependencyName.TASK_MANAGER].error == ErrorCategory.NOT_INITIALIZED
+
+
 async def test_get_health_checks_all_down() -> None:
     service = _build_service(message_bus=UnhealthyProbe(), cache=UnhealthyProbe(), workflow=UnhealthyProbe())
     db = UnhealthyProbe()
