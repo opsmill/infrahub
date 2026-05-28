@@ -400,7 +400,9 @@ LIMIT $max_targets"""
         For depth-``d`` paths, builds a single ``MATCH`` with ``2d`` IS_RELATED
         edges and ``d`` Relationship vertices. Each hop carries the per-hop
         triple predicate, edge active/branch filters, deletion-shadow checks on
-        user branches, and intermediate distinctness checks.
+        user branches, and intermediate distinctness checks. After all hops,
+        appends ``d - 2`` predicates forbidding any later intermediate uuid
+        from matching an earlier one to prevent loops.
 
         Example shape for depth=3::
 
@@ -415,11 +417,17 @@ LIMIT $max_targets"""
               AND <edge active for r2_s, r2_e> AND <hop2 triple>
               AND b2.uuid <> $source_id AND b2 <> target
               AND <edge active for r3_s, r3_e> AND <hop3 triple>
+              AND NOT b2.uuid IN [b1.uuid]
             RETURN source.uuid AS start_node_uuid, source.kind AS start_node_kind,
                    [{rel_id: rel1.name, uuid: b1.uuid, kind: b1.kind},
                     {rel_id: rel2.name, uuid: b2.uuid, kind: b2.kind},
                     {rel_id: rel3.name, uuid: target.uuid, kind: target.kind}] AS hops,
                    3 AS depth
+
+        At depth=4 the trailing predicates expand to::
+
+              AND NOT b2.uuid IN [b1.uuid]
+              AND NOT b3.uuid IN [b1.uuid, b2.uuid]
         """
         depth = branch_data.depth
         path_segs: list[str] = ["(source)"]
@@ -448,6 +456,11 @@ LIMIT $max_targets"""
                     intermediate_exclude_target=True,
                 )
             )
+
+        # Prevent loops that return to an intermediate object
+        for hop in range(2, depth):
+            earlier = ", ".join(f"b{h}.uuid" for h in range(1, hop))
+            preds.append(f"NOT b{hop}.uuid IN [{earlier}]")
 
         hop_entries: list[str] = []
         for hop in range(1, depth + 1):
