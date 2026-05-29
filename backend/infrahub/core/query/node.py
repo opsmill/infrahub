@@ -1731,7 +1731,7 @@ class NodeGetListQuery(Query):
             return False
         if self.requested_order.disable:
             return True
-        if self.requested_order.node_metadata is not None:
+        if self.requested_order.node_metadata:
             return True
         return False
 
