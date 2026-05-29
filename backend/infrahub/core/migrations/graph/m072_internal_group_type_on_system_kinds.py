@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core import registry
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
@@ -17,17 +16,14 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
-# Kinds whose schema now defaults group_type to "internal". They split by branch support:
-# AGNOSTIC instances store their attribute edges on the global branch only, the rest store
-# them on the branch where the value was last written.
-AGNOSTIC_GROUP_KINDS = ["CoreAccountGroup"]
-BRANCHED_GROUP_KINDS = [
+# Kinds whose schema now defaults group_type to "internal". All are LOCAL or AWARE,
+# so their attribute edges carry the writing branch's name.
+INTERNAL_GROUP_KINDS = [
     "CoreGeneratorGroup",
     "CoreGeneratorAwareGroup",
     "CoreGraphQLQueryGroup",
     "CoreRepositoryGroup",
 ]
-ALL_INTERNAL_GROUP_KINDS = AGNOSTIC_GROUP_KINDS + BRANCHED_GROUP_KINDS
 
 
 class Migration072Query01(Query):
@@ -77,39 +73,28 @@ class Migration072(MigrationRequiringRebase):
         db: InfrahubDatabase,
         at: Timestamp,
         branch_names: list[str],
-        kinds: list[str],
     ) -> MigrationResult:
-        if not kinds:
-            return MigrationResult()
         try:
             query = await Migration072Query01.init(db=db, at=at)
             query.params["branch_names"] = branch_names
-            query.params["kinds"] = kinds
+            query.params["kinds"] = INTERNAL_GROUP_KINDS
             await query.execute(db=db)
         except Exception as exc:
             return MigrationResult(errors=[str(exc) or f"{type(exc).__name__}: {exc!r}"])
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
-        """Default-branch pass.
-
-        AGNOSTIC kinds (edges on the global branch) plus the default-branch slice of LOCAL/AWARE kinds.
-        """
+        """Default-branch pass."""
         return await self._run(
             db=migration_input.db,
             at=migration_input.at,
-            branch_names=[registry.default_branch, GLOBAL_BRANCH_NAME],
-            kinds=ALL_INTERNAL_GROUP_KINDS,
+            branch_names=[registry.default_branch],
         )
 
     async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
-        """Per-branch pass for LOCAL/AWARE kinds.
-
-        AGNOSTIC kinds are not branch-specific and were already handled by execute().
-        """
+        """Per-branch pass; the rebase framework calls this once per non-default branch."""
         return await self._run(
             db=migration_input.db,
             at=migration_input.at,
             branch_names=[branch.name],
-            kinds=BRANCHED_GROUP_KINDS,
         )

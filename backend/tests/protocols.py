@@ -280,7 +280,6 @@ class CoreAccount(LineageOwner, LineageSource, CoreGenericAccount):
 
 
 class CoreAccountGroup(LineageOwner, LineageSource, CoreGroup):
-    group_type: Enum
     roles: RelationshipManager
 
 

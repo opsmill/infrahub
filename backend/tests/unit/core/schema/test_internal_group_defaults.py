@@ -8,7 +8,6 @@ from infrahub.core.schema.definitions.core.group import (
     core_graphql_query_group,
     core_repository_group,
 )
-from infrahub.core.schema.definitions.core.permission import core_account_group
 from infrahub.core.schema.node_schema import NodeSchema
 
 
@@ -22,7 +21,6 @@ class InternalGroupKindCase:
 
 
 INTERNAL_GROUP_KIND_CASES: list[InternalGroupKindCase] = [
-    InternalGroupKindCase(name="core_account_group", schema=core_account_group),
     InternalGroupKindCase(name="core_generator_group", schema=core_generator_group),
     InternalGroupKindCase(name="core_generator_aware_group", schema=core_generator_aware_group),
     InternalGroupKindCase(name="core_graphql_query_group", schema=core_graphql_query_group),

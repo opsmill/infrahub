@@ -1,8 +1,7 @@
 from infrahub.core.branch import Branch
-from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import create_branch
 from infrahub.core.migrations.graph.m072_internal_group_type_on_system_kinds import (
-    ALL_INTERNAL_GROUP_KINDS,
+    INTERNAL_GROUP_KINDS,
     Migration072,
 )
 from infrahub.core.migrations.shared import MigrationInput
@@ -17,29 +16,24 @@ async def test_migration_072(db: InfrahubDatabase, default_branch: Branch) -> No
     CREATE (default_value:AttributeValue:AttributeValueIndexed {value: "default", is_default: true})
 
     // one instance per system-managed kind, plus a user-managed CoreStandardGroup as a control.
-    // CoreAccountGroup is AGNOSTIC so its attribute edges live on the global branch.
-    CREATE (account:Node:CoreAccountGroup {uuid: "account-uuid"})
     CREATE (generator:Node:CoreGeneratorGroup {uuid: "generator-uuid"})
     CREATE (generator_aware:Node:CoreGeneratorAwareGroup {uuid: "generator-aware-uuid"})
     CREATE (graphql:Node:CoreGraphQLQueryGroup {uuid: "graphql-uuid"})
     CREATE (repository:Node:CoreRepositoryGroup {uuid: "repository-uuid"})
     CREATE (standard:Node:CoreStandardGroup {uuid: "standard-uuid"})
 
-    CREATE (account_attr:Attribute {name: "group_type"})
     CREATE (generator_attr:Attribute {name: "group_type"})
     CREATE (generator_aware_attr:Attribute {name: "group_type"})
     CREATE (graphql_attr:Attribute {name: "group_type"})
     CREATE (repository_attr:Attribute {name: "group_type"})
     CREATE (standard_attr:Attribute {name: "group_type"})
 
-    CREATE (account)-[:HAS_ATTRIBUTE {branch: $global_branch, branch_level: 1, status: "active", from: $at}]->(account_attr)
     CREATE (generator)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(generator_attr)
     CREATE (generator_aware)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(generator_aware_attr)
     CREATE (graphql)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(graphql_attr)
     CREATE (repository)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(repository_attr)
     CREATE (standard)-[:HAS_ATTRIBUTE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(standard_attr)
 
-    CREATE (account_attr)-[:HAS_VALUE {branch: $global_branch, branch_level: 1, status: "active", from: $at}]->(default_value)
     CREATE (generator_attr)-[:HAS_VALUE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(default_value)
     CREATE (generator_aware_attr)-[:HAS_VALUE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(default_value)
     CREATE (graphql_attr)-[:HAS_VALUE {branch: $branch, branch_level: 1, status: "active", from: $at}]->(default_value)
@@ -48,11 +42,7 @@ async def test_migration_072(db: InfrahubDatabase, default_branch: Branch) -> No
     """
     await db.execute_query(
         query=create_test_data_query,
-        params={
-            "branch": default_branch.name,
-            "global_branch": GLOBAL_BRANCH_NAME,
-            "at": current_timestamp(),
-        },
+        params={"branch": default_branch.name, "at": current_timestamp()},
     )
 
     migration = Migration072()
@@ -68,8 +58,8 @@ async def test_migration_072(db: InfrahubDatabase, default_branch: Branch) -> No
     RETURN n.uuid AS uuid, v.value AS group_type
     ORDER BY n.uuid
     """
-    results = await db.execute_query(query=affected_query, params={"kinds": ALL_INTERNAL_GROUP_KINDS})
-    assert len(results) == 5
+    results = await db.execute_query(query=affected_query, params={"kinds": INTERNAL_GROUP_KINDS})
+    assert len(results) == 4
     for row in results:
         assert row.get("group_type") == "internal"
 
