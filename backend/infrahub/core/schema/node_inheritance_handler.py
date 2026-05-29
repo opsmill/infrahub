@@ -2,6 +2,7 @@ from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_
 
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
+from .order_by import is_metadata_order_by_entry
 
 
 class NodeInheritanceHandler:
@@ -104,7 +105,13 @@ class NodeInheritanceHandler:
     def _update_order_by_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.order_by:
             return
-        node.order_by = self._get_updated_renamed_attrs_data(attr_data=node.order_by, renamed_attrs=renamed_attrs)
+        updated_entries: list[str] = []
+        for entry in node.order_by:
+            if is_metadata_order_by_entry(entry):
+                updated_entries.append(entry)
+                continue
+            updated_entries.extend(self._get_updated_renamed_attrs_data(attr_data=[entry], renamed_attrs=renamed_attrs))
+        node.order_by = updated_entries
 
     def _update_hfid_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.human_friendly_id:
