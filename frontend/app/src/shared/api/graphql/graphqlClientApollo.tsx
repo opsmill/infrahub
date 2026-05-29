@@ -61,25 +61,19 @@ export const authLink = setContext((_, previousContext) => {
   };
 });
 
-// Minimal structural type covering the bits of Apollo's `Operation` that
-// `bumpAuthRetryCount` touches. Lets the helper stay unit-testable without
-// pulling in Apollo's full type just to mock two methods.
-type RetryableOperation = {
-  getContext: () => { authRetryCount?: number; [key: string]: unknown };
-  setContext: (patch: Record<string, unknown>) => void;
-};
-
-// Increment the per-operation auth-retry counter and return the new value.
-// Callers use the returned count to break the TOKEN_EXPIRED → refresh →
-// TOKEN_EXPIRED loop after the first retry (clock skew, server-side revoke,
-// or a malformed refreshed token would otherwise loop the link forever).
-export function bumpAuthRetryCount(operation: RetryableOperation): number {
-  const next = (operation.getContext().authRetryCount ?? 0) + 1;
-  operation.setContext({ authRetryCount: next });
-  return next;
-}
-
 type ErrorLinkArgs = Parameters<Parameters<typeof onError>[0]>[0];
+
+// True iff a forwarded result still carries TOKEN_EXPIRED. Used inside
+// `retryWithRefreshedToken` because Apollo's onError link routes results
+// from the retried observable directly to the outer observer — it does
+// NOT re-invoke `handleGraphQLAuthError`, so a persistent TOKEN_EXPIRED
+// would otherwise leak through to the caller as a generic GraphQL error.
+function resultHasTokenExpired(result: FetchResult): boolean {
+  if (!result.errors) return false;
+  return result.errors.some(
+    (e) => parseErrorExtensions(e.extensions).code === ERROR_CODES.TOKEN_EXPIRED
+  );
+}
 
 // Error link callback: route each catalogue code to its policy. The catalogue
 // is mirrored in @/shared/api/graphql/errors until US2's generated bindings
@@ -103,10 +97,10 @@ export function handleGraphQLAuthError({
 
     switch (parsed.code) {
       case ERROR_CODES.TOKEN_EXPIRED:
-        if (bumpAuthRetryCount(operation) > 1) {
-          redirectToLogin();
-          return;
-        }
+        // The retry loop is bounded by construction: Apollo's onError
+        // does not re-invoke this handler for results from the retried
+        // observable, so we get exactly one refresh+replay attempt per
+        // operation. Persistence is caught inside `retryWithRefreshedToken`.
         return retryWithRefreshedToken(operation, forward);
 
       case ERROR_CODES.AUTHENTICATION_REQUIRED:
@@ -157,14 +151,24 @@ function retryWithRefreshedToken(
           },
         });
 
-        // Retry the failed request.
-        const subscriber = {
-          next: observer.next.bind(observer),
+        // Retry the failed request. Inspect the replayed result for a
+        // repeated TOKEN_EXPIRED — Apollo will not re-enter our handler
+        // for results that come back from this `forward` call, so this
+        // is the only place we can detect a persistent expiry (clock
+        // skew, malformed refreshed token, server-side revoke) and bail
+        // to /login instead of leaking the error to the caller.
+        forward(operation).subscribe({
+          next: (result) => {
+            if (resultHasTokenExpired(result)) {
+              redirectToLogin();
+              observer.error(new Error("TOKEN_EXPIRED persisted after refresh"));
+              return;
+            }
+            observer.next(result);
+          },
           error: observer.error.bind(observer),
           complete: observer.complete.bind(observer),
-        };
-
-        forward(operation).subscribe(subscriber);
+        });
       })
       .catch((err) => {
         // Refresh itself failed (refresh token expired, network error,

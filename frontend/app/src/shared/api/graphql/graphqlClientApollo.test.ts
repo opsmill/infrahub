@@ -7,60 +7,7 @@ import { queryClient } from "@/shared/api/rest/client";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
 
-import { __navigation, bumpAuthRetryCount, handleGraphQLAuthError } from "./graphqlClientApollo";
-
-describe("bumpAuthRetryCount", () => {
-  // Minimal stand-in for Apollo's Operation — only the two methods the
-  // helper touches. Keeping it local avoids importing the full Apollo
-  // Operation type just for a unit test.
-  function makeOperation(initial: Record<string, unknown> = {}) {
-    let ctx: Record<string, unknown> = { ...initial };
-    return {
-      getContext: () => ctx,
-      setContext: (patch: Record<string, unknown>) => {
-        ctx = { ...ctx, ...patch };
-      },
-    };
-  }
-
-  it("returns 1 and stores the counter on the first call", () => {
-    // GIVEN an operation with no prior auth-retry count
-    const operation = makeOperation();
-
-    // WHEN we bump
-    const count = bumpAuthRetryCount(operation);
-
-    // THEN the helper reports the first attempt and persists it
-    expect(count).toBe(1);
-    expect(operation.getContext().authRetryCount).toBe(1);
-  });
-
-  it("returns 2 on the second call within the same operation", () => {
-    // GIVEN an operation that already failed once
-    const operation = makeOperation();
-    bumpAuthRetryCount(operation);
-
-    // WHEN we bump again (simulates a TOKEN_EXPIRED that came back
-    // after the refreshed token was already used to replay once)
-    const count = bumpAuthRetryCount(operation);
-
-    // THEN the caller sees >1 and can break the loop
-    expect(count).toBe(2);
-  });
-
-  it("preserves unrelated context keys", () => {
-    // GIVEN an operation carrying caller-set context
-    const operation = makeOperation({ branch: "main", processErrorMessage: "fn" });
-
-    // WHEN we bump
-    bumpAuthRetryCount(operation);
-
-    // THEN the bump does not erase the existing keys
-    expect(operation.getContext().branch).toBe("main");
-    expect(operation.getContext().processErrorMessage).toBe("fn");
-    expect(operation.getContext().authRetryCount).toBe(1);
-  });
-});
+import { __navigation, handleGraphQLAuthError } from "./graphqlClientApollo";
 
 describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => {
   // Minimal stand-in for Apollo's `Operation`. The handler only touches
@@ -132,35 +79,46 @@ describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => 
       });
     });
 
-    // AND the operation was tagged so a follow-up TOKEN_EXPIRED bails
-    expect(operation.getContext().authRetryCount).toBe(1);
-
     // AND the replayed operation carries the Bearer-prefixed new token
     const headers = (operation.getContext() as { headers?: { authorization?: string } }).headers;
     expect(headers?.authorization).toBe("Bearer new-token");
 
     expect(fetchQuerySpy).toHaveBeenCalledOnce();
     expect(forward).toHaveBeenCalledOnce();
+    // AND the user is NOT bounced — the happy path completes cleanly
+    expect(assignSpy).not.toHaveBeenCalled();
   });
 
-  it("second TOKEN_EXPIRED on the same operation bails to /login with ?from=", () => {
-    // GIVEN an operation that already burned its single retry
+  it("replayed result that still carries TOKEN_EXPIRED bails to /login", async () => {
+    // GIVEN a refresh that succeeds, but the replayed request still
+    // comes back with TOKEN_EXPIRED (clock skew, malformed refreshed
+    // token, server-side revoke between refresh and replay). Apollo's
+    // onError does NOT re-invoke our handler for this result, so the
+    // bail has to be detected inside `retryWithRefreshedToken` itself.
+    fetchQuerySpy.mockResolvedValue({ access_token: "new-token", refresh_token: "new-refresh" });
     const operation = makeOperation();
-    bumpAuthRetryCount(operation); // simulate prior retry
-    const forward = vi.fn();
+    const replayedResult = { errors: [tokenExpiredError] };
+    const forward = vi.fn(() => Observable.of(replayedResult));
 
-    // WHEN a second TOKEN_EXPIRED arrives
+    // WHEN the handler runs the retry path
     const result = handleGraphQLAuthError({
       graphQLErrors: [tokenExpiredError],
       operation,
       forward,
     } as any);
 
-    // THEN the handler bails (returns void, no observable, no replay)
-    expect(result).toBeUndefined();
-    expect(forward).not.toHaveBeenCalled();
+    // THEN the retry observable errors out with the persistence sentinel
+    await expect(
+      new Promise<void>((resolve, reject) => {
+        (result as Observable<unknown>).subscribe({
+          next: () => {},
+          complete: () => resolve(),
+          error: (err) => reject(err),
+        });
+      })
+    ).rejects.toThrow(/persisted/i);
 
-    // AND the user is hard-navigated to /login with the current path encoded
+    // AND the user is hard-navigated to /login with `?from=…`
     expect(assignSpy).toHaveBeenCalledOnce();
     const target = assignSpy.mock.calls[0]?.[0] as string | undefined;
     expect(target).toMatch(/^\/login\?from=/);
