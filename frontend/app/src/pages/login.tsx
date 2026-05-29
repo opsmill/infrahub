@@ -38,8 +38,11 @@ function LoginPage() {
 
         <LoginMethodPicker />
 
-        {errors?.map((error, index) => (
-          <p key={index} className="mt-2 text-red-500 text-sm">
+        {errors?.map((error) => (
+          <p
+            key={`${error.extensions.code}-${error.message}`}
+            className="mt-2 text-red-500 text-sm"
+          >
             ({error.extensions.code}) {error.message}
           </p>
         ))}
