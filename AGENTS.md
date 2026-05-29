@@ -24,7 +24,7 @@ Responses must be direct and substantive. Do not use filler phrases, compliments
 
 - **Backend:** Python 3.12, FastAPI 0.121.1, Neo4j 5.28, Pydantic 2.10
 - **Frontend:** TypeScript 5.9, React 19.2, Vite 8.0, Tailwind CSS 4.2
-- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.56
+- **Testing:** pytest 9.0, Vitest 4.1, Playwright 1.60
 - **Linting:** ruff 0.15, mypy 1.15, Biome 2.4
 - **Package Managers:** uv (Python), pnpm (Frontend)
 - **Task Runner:** Invoke 2.2.0
