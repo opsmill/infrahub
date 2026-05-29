@@ -63,4 +63,5 @@ export type GetReachableNodesParams = ContextParams & {
   targetKinds: string[];
   maxDepth?: number;
   maxResults?: number;
+  maxPaths?: number;
 };
