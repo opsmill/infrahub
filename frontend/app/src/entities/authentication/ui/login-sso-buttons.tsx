@@ -22,8 +22,11 @@ export const LoginWithSSOButtons = ({ className, providers }: LoginWithSSOButton
   // set by `redirectToLogin()` on hard nav. Without this fallback, users
   // hard-navigated to `/login?from=/x` and then clicking an SSO button
   // would land at `/` after auth-callback because the backend only knows
-  // what we put in `final_url`.
-  const stateFrom = location.state?.from as Partial<Path> | undefined;
+  // what we put in `final_url`. Both sources flow through `safeInternalPath`
+  // so router-state pollution is held to the same open-redirect guard as
+  // the query-string twin.
+  const stateFromRaw = location.state?.from as Partial<Path> | undefined;
+  const stateFrom = stateFromRaw ? safeInternalPath(pathToString(stateFromRaw)) : null;
   const queryFrom = safeInternalPath(searchParams.get("from"));
   const redirectTo = pathToString(stateFrom ?? queryFrom ?? { pathname: "/" });
 

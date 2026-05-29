@@ -6,7 +6,7 @@ import type { RestErrorItem } from "@/shared/api/rest/fetch";
 
 import { LoginMethodPicker } from "@/entities/authentication/ui/login-method-picker";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { safeInternalPath } from "@/entities/authentication/utils";
+import { pathToString, safeInternalPath } from "@/entities/authentication/utils";
 
 function LoginPage() {
   const location = useLocation();
@@ -16,8 +16,12 @@ function LoginPage() {
   if (isAuthenticated) {
     // Prefer in-app navigation state (set by ProtectedRoute) and fall back
     // to the `?from=` query param set by `redirectToLogin()` on hard nav.
-    // `safeInternalPath` blocks open-redirect payloads from the query string.
-    const stateFrom = location.state?.from as Partial<Path> | undefined;
+    // Both sources are revalidated through `safeInternalPath` so that any
+    // pollution of router state (e.g. a future caller passing a string or
+    // an external URL) is held to the same open-redirect guard as the
+    // query-string twin.
+    const stateFromRaw = location.state?.from as Partial<Path> | undefined;
+    const stateFrom = stateFromRaw ? safeInternalPath(pathToString(stateFromRaw)) : null;
     const queryFrom = safeInternalPath(searchParams.get("from"));
     const target: Partial<Path> = stateFrom ?? queryFrom ?? { pathname: "/" };
     return <Navigate to={target} replace />;

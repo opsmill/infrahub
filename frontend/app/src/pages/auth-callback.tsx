@@ -49,6 +49,10 @@ function AuthCallback() {
         // FetchError without an `errors` array). Surface a generic envelope
         // so the user is bounced to /login with a visible message instead
         // of being stuck on the loading screen.
+        //
+        // `code: 0` is the local sentinel for "frontend-synthesised error,
+        // no backend code" — LoginPage renders the number verbatim, so 0
+        // signals to readers (not to users) that this entry was forged here.
         console.error("[auth-callback] unexpected failure", error);
         setErrors([
           {
