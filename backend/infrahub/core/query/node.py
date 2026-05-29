@@ -16,13 +16,15 @@ from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
-    NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
     MetadataOptions,
     RelationshipDirection,
     RelationshipHierarchyDirection,
+)
+from infrahub.core.constants import (
+    NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
 )
 from infrahub.core.order import (
     METADATA_CREATED_AT,

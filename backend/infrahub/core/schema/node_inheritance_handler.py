@@ -105,13 +105,7 @@ class NodeInheritanceHandler:
     def _update_order_by_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.order_by:
             return
-        updated_entries: list[str] = []
-        for entry in node.order_by:
-            if is_metadata_order_by_entry(entry):
-                updated_entries.append(entry)
-                continue
-            updated_entries.extend(self._get_updated_renamed_attrs_data(attr_data=[entry], renamed_attrs=renamed_attrs))
-        node.order_by = updated_entries
+        node.order_by = self._get_updated_renamed_attrs_data(attr_data=node.order_by, renamed_attrs=renamed_attrs)
 
     def _update_hfid_for_renamed_attributes(self, node: NodeSchema, renamed_attrs: dict[str, str]) -> None:
         if not node.human_friendly_id:
@@ -143,6 +137,9 @@ class NodeInheritanceHandler:
         updated_attrs_data = []
         for data in attr_data:
             updated_attr_data = data
+            if is_metadata_order_by_entry(data):
+                updated_attrs_data.append(updated_attr_data)
+                continue
             for old_name, new_name in renamed_attrs.items():
                 if data == old_name or data.startswith(f"{old_name}__"):
                     updated_attr_data = new_name + data[len(old_name) :]
