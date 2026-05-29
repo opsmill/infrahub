@@ -1,4 +1,4 @@
-import type { Path } from "react-router";
+import type { Location, Path } from "react-router";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
 import type { UserToken } from "@/entities/authentication/types";
@@ -33,6 +33,22 @@ export const safeInternalPath = (raw: string | null | undefined): Partial<Path> 
 // the SSO authorize endpoint, where the backend expects a flat string).
 export const pathToString = (path: Partial<Path>): string =>
   (path.pathname ?? "/") + (path.search ?? "") + (path.hash ?? "");
+
+// Resolves the post-login redirect target by preferring in-app router
+// state (set by ProtectedRoute) and falling back to the `?from=` query
+// param (set by `redirectToLogin()` on hard nav). Both sources are
+// revalidated through `safeInternalPath` so router-state pollution is
+// held to the same open-redirect guard as the query-string twin.
+// Defaults to "/" when neither source yields a safe target.
+export const resolveLoginRedirect = (
+  location: Pick<Location, "state">,
+  searchParams: URLSearchParams
+): Partial<Path> => {
+  const stateFromRaw = (location.state as { from?: Partial<Path> } | null)?.from;
+  const stateFrom = stateFromRaw ? safeInternalPath(pathToString(stateFromRaw)) : null;
+  const queryFrom = safeInternalPath(searchParams.get("from"));
+  return stateFrom ?? queryFrom ?? { pathname: "/" };
+};
 
 export const saveTokensInLocalStorage = (result: Partial<UserToken>) => {
   if (result?.access_token) {

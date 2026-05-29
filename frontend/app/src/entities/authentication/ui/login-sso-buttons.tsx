@@ -1,10 +1,10 @@
 import { Icon } from "@iconify-icon/react";
-import { type Path, useLocation, useSearchParams } from "react-router";
+import { useLocation, useSearchParams } from "react-router";
 
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { classNames } from "@/shared/utils/common";
 
-import { pathToString, safeInternalPath } from "@/entities/authentication/utils";
+import { pathToString, resolveLoginRedirect } from "@/entities/authentication/utils";
 import type { SSOProvider } from "@/entities/config/types";
 
 export interface LoginWithSSOButtonsProps {
@@ -16,19 +16,10 @@ export const LoginWithSSOButtons = ({ className, providers }: LoginWithSSOButton
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
-  // Mirror the resolution order used by LoginPage so SSO sign-in returns
-  // the user to the same destination as in-app sign-in: prefer router
-  // state (set by ProtectedRoute), fall back to the `?from=` query param
-  // set by `redirectToLogin()` on hard nav. Without this fallback, users
-  // hard-navigated to `/login?from=/x` and then clicking an SSO button
-  // would land at `/` after auth-callback because the backend only knows
-  // what we put in `final_url`. Both sources flow through `safeInternalPath`
-  // so router-state pollution is held to the same open-redirect guard as
-  // the query-string twin.
-  const stateFromRaw = location.state?.from as Partial<Path> | undefined;
-  const stateFrom = stateFromRaw ? safeInternalPath(pathToString(stateFromRaw)) : null;
-  const queryFrom = safeInternalPath(searchParams.get("from"));
-  const redirectTo = pathToString(stateFrom ?? queryFrom ?? { pathname: "/" });
+  // Backend echoes back `final_url` as-is, so SSO sign-in must use the
+  // same redirect target as in-app sign-in or hard-navigated users land
+  // at "/" instead of where they came from.
+  const redirectTo = pathToString(resolveLoginRedirect(location, searchParams));
 
   return (
     <div className={classNames("flex w-full flex-col gap-2", className)}>
