@@ -6,6 +6,7 @@ from aiodataloader import DataLoader
 from infrahub.core.branch.models import Branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.metadata.model import MetadataQueryOptions
+from infrahub.core.order import OrderModel
 from infrahub.core.relationship.model import Relationship
 from infrahub.core.schema.relationship_schema import RelationshipSchema
 from infrahub.core.timestamp import Timestamp
@@ -24,6 +25,7 @@ class QueryPeerParams:
     at: Timestamp | str | None = None
     branch_agnostic: bool = False
     include_metadata: MetadataQueryOptions = field(default_factory=MetadataQueryOptions)
+    order: OrderModel | None = None
 
     def __hash__(self) -> int:
         frozen_fields: frozenset | None = None
@@ -42,6 +44,8 @@ class QueryPeerParams:
                 str(self.source_kind),
                 str(self.branch_agnostic),
                 str(hash(self.include_metadata)),
+                # TODO: would it be safer to add a __hash__ method to OrderModel or is order guaranteed in model_dump_json?
+                self.order.model_dump_json() if self.order else "",
             ]
         )
         return hash(hash_str)
@@ -67,6 +71,7 @@ class PeerRelationshipsDataLoader(DataLoader[str, list[Relationship]]):
                 branch_agnostic=self.query_params.branch_agnostic,
                 include_metadata=self.query_params.include_metadata,
                 fetch_peers=True,
+                order=self.query_params.order,
             )
         peer_rels_by_node_id: dict[str, list[Relationship]] = {}
         for rel in peer_rels:

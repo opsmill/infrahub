@@ -286,6 +286,7 @@ class NodeManager:
         branch_agnostic: bool = False,
         fetch_peers: bool = False,
         include_metadata: MetadataQueryOptions | MetadataOptions = MetadataOptions.NONE,
+        order: OrderModel | None = None,
     ) -> list[Relationship]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -308,6 +309,7 @@ class NodeManager:
             at=at,
             branch_agnostic=branch_agnostic,
             include_metadata=relationship_metadata_options,
+            requested_order=order,
         )
         await query.execute(db=db)
 

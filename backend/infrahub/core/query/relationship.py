@@ -14,6 +14,8 @@ from infrahub.core.changelog.models import (
 )
 from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
+from infrahub.constants.enums import OrderDirection
+from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.schema.order_by import OrderByTargetKind, parse_order_by_entry
@@ -689,6 +691,7 @@ class RelationshipGetPeerQuery(Query):
         branch: Branch | None = None,
         at: Timestamp | str | None = None,
         include_metadata: MetadataOptions = MetadataOptions.NONE,
+        requested_order: OrderModel | None = None,
         **kwargs,
     ) -> None:
         if not source and not source_ids:
@@ -712,6 +715,7 @@ class RelationshipGetPeerQuery(Query):
         self.rel_type = rel_type or self.rel.rel_type
         self.schema = schema or self.rel.schema
         self.include_metadata = include_metadata
+        self.requested_order = requested_order
 
         if not branch and inspect.isclass(rel) and not hasattr(rel, "branch"):
             raise ValueError("Either an instance of Relationship or a valid branch must be provided.")
@@ -843,7 +847,45 @@ RETURN updated_at, updated_by
         """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
 
+    def _query_time_order_overrides_schema(self) -> bool:
+        if self.requested_order is None:
+            return False
+        if self.requested_order.disable:
+            return True
+        if self.requested_order.node_metadata is not None:
+            return True
+        return False
+
+    def _get_requested_metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
+        if not (self.requested_order and self.requested_order.node_metadata):
+            return []
+        fields: list[tuple[str, OrderDirection]] = []
+        nm = self.requested_order.node_metadata
+        if nm.created_at:
+            fields.append((METADATA_CREATED_AT, nm.created_at))
+        if nm.updated_at:
+            fields.append((METADATA_UPDATED_AT, nm.updated_at))
+        return fields
+
     async def _add_peer_order_by(self, db: InfrahubDatabase, peer_schema: MainSchemaTypes, branch_filter: str) -> None:
+        if self.requested_order and self.requested_order.disable:
+            return
+
+        if self._query_time_order_overrides_schema():
+            for order_cnt, (metadata_field, direction) in enumerate(self._get_requested_metadata_order_fields(), start=1):
+                subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
+                    metadata_field=metadata_field,
+                    branch=self.branch,
+                    branch_filter=branch_filter,
+                    branch_agnostic=self.branch_agnostic,
+                    node_alias="peer",
+                    subquery_idx=order_cnt,
+                )
+                self.order_by.append(f"{subquery_result_name} {direction.value}")
+                self.params.update(subquery_params)
+                self.add_subquery(subquery=subquery, node_alias="peer")
+            return
+
         if not (hasattr(peer_schema, "order_by") and peer_schema.order_by):
             return
 
@@ -876,11 +918,11 @@ RETURN updated_at, updated_by
             subquery, subquery_params, subquery_result_name = await build_subquery_order(
                 db=db,
                 field=field,
-                node_alias="peer",
                 name=order_by_field_name,
                 order_by=order_by_next_name,
                 branch_filter=branch_filter,
                 branch=self.branch,
+                node_alias="peer",
                 subquery_idx=order_cnt,
             )
             self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
