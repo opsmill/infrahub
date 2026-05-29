@@ -843,9 +843,7 @@ RETURN updated_at, updated_by
         """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
 
-    async def _add_peer_order_by(
-        self, db: InfrahubDatabase, peer_schema: MainSchemaTypes, branch_filter: str
-    ) -> None:
+    async def _add_peer_order_by(self, db: InfrahubDatabase, peer_schema: MainSchemaTypes, branch_filter: str) -> None:
         if not (hasattr(peer_schema, "order_by") and peer_schema.order_by):
             return
 

@@ -97,9 +97,7 @@ async def test_RelationshipGetListQuery_order_by_metadata_updated_at_desc(
     person_schema = car_person_schema.get_node(name="TestPerson", duplicate=False)
     rel_schema = person_schema.get_relationship("cars")
 
-    owner, cars = await _make_person_with_cars(
-        db=db, branch=branch, schema=car_person_schema, name="updated", count=3
-    )
+    owner, cars = await _make_person_with_cars(db=db, branch=branch, schema=car_person_schema, name="updated", count=3)
 
     car0_updated = await NodeManager.get_one(db=db, branch=branch, id=cars[0].id)
     car0_updated.get_attribute("name").value = "updated-car-0-renamed"

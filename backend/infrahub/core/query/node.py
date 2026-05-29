@@ -31,7 +31,7 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
@@ -60,6 +60,7 @@ if TYPE_CHECKING:
 # Grouped constants for validation/iteration
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
+# TODO: import from constants and append the "__"
 NODE_METADATA_PREFIX = "node_metadata__"
 
 
@@ -2573,32 +2574,54 @@ class NodeGetHierarchyQuery(Query):
         # ----------------------------------------------------------------------------
         if self.hierarchical_ordering:
             return
-        if hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
-            order_cnt = 1
+        await self._add_peer_order_by(db=db, hierarchy_schema=hierarchy_schema, branch_filter=branch_filter)
+        self.order_by.append("peer.uuid ASC")
 
-            for order_by_value in hierarchy_schema.order_by:
-                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+    async def _add_peer_order_by(
+        self, db: InfrahubDatabase, hierarchy_schema: NodeSchema | GenericSchema, branch_filter: str
+    ) -> None:
+        if not (hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by):
+            return
 
-                field = hierarchy_schema.get_field(order_by_field_name)
+        for order_cnt, order_by_value in enumerate(hierarchy_schema.order_by, start=1):
+            parsed = parse_order_by_entry(entry=order_by_value, node_schema=hierarchy_schema)
 
-                subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    db=db,
-                    field=field,
-                    node_alias="peer",
-                    name=order_by_field_name,
-                    order_by=order_by_next_name,
-                    branch_filter=branch_filter,
+            if parsed.kind is OrderByTargetKind.METADATA:
+                subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
+                    metadata_field=parsed.metadata_field.value,
                     branch=self.branch,
+                    branch_filter=branch_filter,
+                    branch_agnostic=self.branch_agnostic,
+                    node_alias="peer",
                     subquery_idx=order_cnt,
                 )
-                self.order_by.append(subquery_result_name)
+                self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
                 self.params.update(subquery_params)
-
                 self.add_subquery(subquery=subquery, node_alias="peer")
+                continue
 
-                order_cnt += 1
-        else:
-            self.order_by.append("peer.uuid")
+            if parsed.kind is OrderByTargetKind.ATTRIBUTE:
+                order_by_field_name = parsed.attribute_name
+                order_by_next_name = parsed.property_name
+            else:
+                order_by_field_name = parsed.relationship_name
+                order_by_next_name = f"{parsed.attribute_name}__{parsed.property_name}"
+
+            field = hierarchy_schema.get_field(order_by_field_name)
+
+            subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                db=db,
+                field=field,
+                node_alias="peer",
+                name=order_by_field_name,
+                order_by=order_by_next_name,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=order_cnt,
+            )
+            self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
+            self.params.update(subquery_params)
+            self.add_subquery(subquery=subquery, node_alias="peer")
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):
