@@ -307,3 +307,21 @@ kubectl get pods -l app=infrahub
 
 </TabItem>
 </Tabs>
+
+## Load a schema
+
+Infrahub ships with a minimal built-in schema. After installation, load a domain schema to model your infrastructure.
+
+:::tip Use the Marketplace for pre-built schemas
+
+The [Infrahub Marketplace](https://marketplace.infrahub.app) hosts ready-to-use schemas for common domains such as DCIM, IPAM, locations, and routing.
+Fetch a schema with `infrahubctl marketplace get opsmill/dcim`, then load it with `infrahubctl schema load schemas/dcim.yml`.
+See [Infrahub Marketplace](../../../schema/marketplace/) for the complete workflow.
+
+:::
+
+## Related resources
+
+- [Infrahub Marketplace](../../../schema/marketplace/) — Fetch and load pre-built schemas
+- [Database backup and restore](../../maintain-upgrade/database-backup/backup-and-restore) — Learn how to backup and restore your Infrahub database
+- [Production deployment](../production-deployment/overview) — Understand resilient deployment architectures
