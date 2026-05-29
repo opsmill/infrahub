@@ -1133,6 +1133,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         if "error: pathspec" in error.stderr:
             raise RepositoryInvalidBranchError(identifier=name, branch_name=branch_name, location=location) from error
 
+        if "reset" in (error.command or []) and "Could not parse object" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=(
+                    f"Commit not found in the local clone of repository {name}; "
+                    "it may have been force-pushed or pruned upstream."
+                ),
+            ) from error
+
         if "SSL certificate problem" in error.stderr or "server certificate verification failed" in error.stderr:
             raise RepositoryConnectionError(
                 identifier=name, message=f"SSL verification failed for {name}, please validate the certificate chain."
