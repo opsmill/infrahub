@@ -41,6 +41,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.exceptions import BranchNotFoundError, Error, PermissionDeniedError
 from infrahub.graphql.analyzer import InfrahubGraphQLQueryAnalyzer
+from infrahub.graphql.error_formatter import format_graphql_errors
 from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.log import get_logger
@@ -285,7 +286,7 @@ class InfrahubGraphQLApp:
                 request=request,
                 graphql_params=graphql_params,
             )
-            response["errors"] = [self.error_formatter(error) for error in result.errors]
+            response["errors"] = format_graphql_errors(list(result.errors))
 
         json_response = JSONResponse(
             response,
