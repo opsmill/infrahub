@@ -3,15 +3,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from infrahub_sdk.exceptions import URLNotFoundError
-from infrahub_sdk.protocols import CoreTransformPython
 from prefect import flow
 from prefect.client.orchestration import get_client as get_prefect_client
 from prefect.logging import get_run_logger
 
-from infrahub.context import InfrahubContext  # noqa: TC001  needed for prefect flow
 from infrahub.core.constants import ComputedAttributeKind, InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.events import BranchDeletedEvent
+from infrahub.events.models import EventContext  # noqa: TC001  needed for prefect flow
 from infrahub.git.repository import get_initialized_repo
 from infrahub.trigger.models import TriggerSetupReport, TriggerType
 from infrahub.trigger.setup import setup_triggers, setup_triggers_specific
@@ -25,7 +24,7 @@ from infrahub.workflows.catalogue import (
 from infrahub.workflows.utils import add_tags, wait_for_schema_to_converge
 
 from .gather import gather_trigger_computed_attribute_jinja2, gather_trigger_computed_attribute_python
-from .graphql_queries import ComputedAttributeNodeIDQuery
+from .graphql_queries.queries import ComputedAttributeNodeIDQuery, ComputedAttributeTransformQuery
 from .jinja2 import InfrahubJinja2Template
 from .models import (
     ComputedAttrJinja2GraphQL,
@@ -65,7 +64,7 @@ async def process_transform(
     object_id: str,
     computed_attribute_name: str,  # noqa: ARG001
     computed_attribute_kind: str,  # noqa: ARG001
-    context: InfrahubContext,
+    context: EventContext,
     updated_fields: list[str] | None = None,  # noqa: ARG001
 ) -> None:
     await add_tags(branches=[branch_name], nodes=[object_id])
@@ -82,47 +81,44 @@ async def process_transform(
         return
 
     for attribute_name, transform_attribute in transform_attributes.items():
-        transform = await client.get(
-            kind=CoreTransformPython,
-            branch=branch_name,
-            id=transform_attribute.transform,
-            prefetch_relationships=True,
-            populate_store=True,
+        if not transform_attribute.transform:
+            raise ValueError(f"No transform configured for computed attribute '{attribute_name}'")
+        transform_query = ComputedAttributeTransformQuery(transform_id=transform_attribute.transform)
+        transform_response = await client.execute_graphql(
+            query=transform_query.render_query(),
+            variables=transform_query.get_variables(),
+            branch_name=branch_name,
         )
+        transform = transform_query.parse_response(response=transform_response)
 
         if not transform:
-            continue
-
-        repo_node = await client.get(
-            kind=str(transform.repository.peer.typename),
-            branch=branch_name,
-            id=transform.repository.peer.id,
-            raise_when_missing=True,
-        )
+            raise ValueError(
+                f"Unable to fetch transform '{transform_attribute.transform}' for computed attribute '{attribute_name}'"
+            )
 
         repo = await get_initialized_repo(
             client=client,
-            repository_id=transform.repository.peer.id,
-            name=transform.repository.peer.name.value,
-            repository_kind=str(transform.repository.peer.typename),
-            commit=repo_node.commit.value,
+            repository_id=transform.repository_id,
+            name=transform.repository_name,
+            repository_kind=transform.repository_typename,
+            commit=transform.repository_commit,
         )
 
         data = await client.query_gql_query(
-            name=transform.query.id,
+            name=transform.query_name,
             branch_name=branch_name,
             variables={"id": object_id},
             update_group=True,
             subscribers=[object_id],
         )
 
-        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout.value)(
+        transformed_data = await repo.execute_python_transform.with_options(timeout_seconds=transform.timeout)(
             client=client,
             branch_name=branch_name,
-            commit=repo_node.commit.value,
-            location=f"{transform.file_path.value}::{transform.class_name.value}",
+            commit=transform.repository_commit,
+            location=f"{transform.file_path}::{transform.class_name}",
             data=data,
-            convert_query_response=transform.convert_query_response.value,
+            convert_query_response=transform.convert_query_response,
         )  # type: ignore[call-overload]
 
         await client.execute_graphql(
@@ -132,7 +128,7 @@ async def process_transform(
                 "kind": node_kind,
                 "attribute": attribute_name,
                 "value": transformed_data,
-                "context_account_id": context.account.account_id,
+                "context_account_id": context.account_id,
             },
             branch_name=branch_name,
         )
@@ -146,7 +142,7 @@ async def trigger_update_python_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 
@@ -177,7 +173,7 @@ async def computed_attribute_jinja2_update_value(
     node_kind: str,
     attribute_name: str,
     template: InfrahubJinja2Template,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     log = get_run_logger()
     client = get_client()
@@ -197,7 +193,7 @@ async def computed_attribute_jinja2_update_value(
                 "kind": node_kind,
                 "attribute": attribute_name,
                 "value": value,
-                "context_account_id": context.account.account_id,
+                "context_account_id": context.account_id,
             },
             branch_name=branch_name,
         )
@@ -218,7 +214,7 @@ async def process_jinja2(
     object_id: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
     updated_fields: list[str] | None = None,
 ) -> None:
     """Recompute a single Jinja2 computed attribute in response to a node mutation.
@@ -305,7 +301,7 @@ async def trigger_update_jinja2_computed_attributes(
     branch_name: str,
     computed_attribute_name: str,
     computed_attribute_kind: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
 
@@ -331,7 +327,7 @@ async def trigger_update_jinja2_computed_attributes(
 
 @flow(name="computed-attribute-setup-jinja2", flow_run_name="Setup computed attributes in task-manager")
 async def computed_attribute_setup_jinja2(
-    context: InfrahubContext, branch_name: str | None = None, event_name: str | None = None
+    context: EventContext, branch_name: str | None = None, event_name: str | None = None
 ) -> None:
     database = await get_database()
     async with database.start_session() as db:
@@ -398,7 +394,7 @@ async def computed_attribute_setup_jinja2(
     flow_run_name="Setup computed attributes for Python transforms in task-manager",
 )
 async def computed_attribute_setup_python(
-    context: InfrahubContext,
+    context: EventContext,
     branch_name: str | None = None,
     event_name: str | None = None,
     commit: str | None = None,  # noqa: ARG001
@@ -467,7 +463,7 @@ async def query_transform_targets(
     branch_name: str,
     node_kind: str,  # noqa: ARG001
     object_id: str,
-    context: InfrahubContext,
+    context: EventContext,
 ) -> None:
     await add_tags(branches=[branch_name])
     schema_branch = registry.schema.get_schema_branch(name=branch_name)

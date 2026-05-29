@@ -367,7 +367,7 @@ class ProposedChangeReview(Mutation):
         approved_by_ids = [node.id for _, node in approved_by.items()]
         rejected_by_ids = [node.id for _, node in rejected_by.items()]
         event: InfrahubEvent | None = None
-        event_meta = EventMeta.from_context(context=context.get_context())
+        event_meta = EventMeta.from_context(context=context.get_context().to_event_context())
 
         match decision:
             case ProposedChangeApprovalDecision.APPROVE:

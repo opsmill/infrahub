@@ -14,7 +14,8 @@ from starlette.requests import Request
 from ujson import loads
 
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.exceptions import Error, PermissionDeniedError
 from infrahub.log_forwarding.models import LogForwardingContext
 from infrahub.log_forwarding.service import LogForwardingService

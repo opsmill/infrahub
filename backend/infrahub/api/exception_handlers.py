@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.exceptions import Error, ForwardableError
 from infrahub.log_forwarding.models import LogForwardingContext
 from infrahub.services import InfrahubServices

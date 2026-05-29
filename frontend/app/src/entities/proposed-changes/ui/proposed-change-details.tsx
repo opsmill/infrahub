@@ -3,7 +3,6 @@ import { Card, CardContent, CardHeader } from "@infrahub/ui/card";
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
@@ -12,23 +11,22 @@ import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-ren
 import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { GetProposedChangeDetailsResponse } from "@/entities/proposed-changes/domain/get-proposed-change-details";
+import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/get-proposed-change-details";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
 import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
 import { Overview } from "@/entities/proposed-changes/ui/overview";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
-import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { useCheckTaskDetails } from "@/entities/tasks/ui/queries/check-task-details.query";
 import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 interface ProposedChangeDetailsProps
   extends HTMLAttributes<HTMLDivElement>,
-    GetProposedChangeDetailsResponse {}
+    GetProposedChangeDetailsResult {}
 
 export const ProposedChangeDetails = ({
   proposedChangeData,
@@ -39,14 +37,17 @@ export const ProposedChangeDetails = ({
   const { proposedChangeId } = useParams();
   const navigate = useNavigate();
 
-  const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
-    variables: {
+  const { isPending: loadingCheck, data: checkCount } = useCheckTaskDetails(
+    {
       workflow: [PROPOSED_CHANGE_MERGE_WORKFLOW],
       state: TASK_ONGOING_STATES,
       relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
     },
-    pollInterval: 10_000,
-  });
+    {
+      refetchInterval: 10_000,
+      refetchIntervalInBackground: true,
+    }
+  );
 
   const rejectedBy = proposedChangeData?.rejected_by?.edges?.map((edge) => edge.node) ?? [];
   const approvedBy = proposedChangeData?.approved_by?.edges?.map((edge) => edge.node) ?? [];
@@ -169,7 +170,7 @@ export const ProposedChangeDetails = ({
 
   return (
     <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
-      {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
+      {!loadingCheck && !!checkCount && (
         <Card>
           <CardContent>
             <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>

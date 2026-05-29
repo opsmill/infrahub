@@ -129,11 +129,7 @@ exports[`fix ts error`] = {
     "src/entities/nodes/object/ui/object-relationship-list.tsx:1515591506": [
       [39, 54, 5, "tsc: Property \'items\' does not exist on type \'NodeObject[]\'.", "179721187"]
     ],
-    "src/entities/nodes/object/ui/queries/delete-objects.mutation.ts:1568596081": [
-      [7, 14, 19, "tsc: Module \'\\"@/entities/nodes/object/api/delete-objects-from-api\\"\' has no exported member \'DeleteObjectsParams\'.", "479076294"],
-      [27, 8, 7, "tsc: Type \'DefaultContext | undefined\' is not assignable to type \'Record<string, any>\'.\\n  Type \'undefined\' is not assignable to type \'Record<string, any>\'.", "3716929786"]
-    ],
-    "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:3411425629": [
+    "src/entities/nodes/relationships/ui/queries/get-default-parent.query.ts:2275135453": [
       [18, 34, 2, "tsc: Property \'id\' does not exist on type \'NodeCore | NodeCore[] | { from_pool: { id: string; }; }\'.\\n  Property \'id\' does not exist on type \'NodeCore[]\'.", "5861160"]
     ],
     "src/entities/nodes/relationships/ui/relationship-combobox-list.tsx:2760838183": [
@@ -150,9 +146,9 @@ exports[`fix ts error`] = {
     "src/entities/proposed-changes/ui/action-button/pc-review-button.tsx:2712035776": [
       [39, 22, 5, "tsc: Type \'Record<string, ActionAvailability> | undefined\' is not assignable to type \'PcActionsContextType\'.\\n  Type \'undefined\' is not assignable to type \'PcActionsContextType\'.", "189936718"]
     ],
-    "src/entities/proposed-changes/ui/proposed-change-details.tsx:1655317610": [
-      [67, 59, 5, "tsc: Argument of type \'null | string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "195031250"],
-      [199, 18, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
+    "src/entities/proposed-changes/ui/proposed-change-details.tsx:3884295807": [
+      [68, 59, 5, "tsc: Argument of type \'null | string | undefined\' is not assignable to parameter of type \'string\'.\\n  Type \'undefined\' is not assignable to type \'string\'.", "195031250"],
+      [200, 18, 4, "tsc: Type \'unknown\' is not assignable to type \'Date | null | number | string | undefined\'.", "2087377937"]
     ],
     "src/entities/proposed-changes/ui/proposed-change-edit-form.tsx:160848387": [
       [79, 34, 5, "tsc: Property \'edges\' does not exist on type \'AttributeType\'.\\n  Property \'edges\' does not exist on type \'AnyAttribute\'.", "165200885"],
@@ -221,21 +217,14 @@ exports[`fix ts error`] = {
     "src/entities/schema/ui/computed-attribute-display.tsx:1618543609": [
       [37, 14, 8, "tsc: Type \'{ title: string; fileName: string; data: string; }\' is not assignable to type \'IntrinsicAttributes & DataViewerProps\'.\\n  Property \'fileName\' does not exist on type \'IntrinsicAttributes & DataViewerProps\'.", "3193632964"]
     ],
-    "src/entities/tasks/domain/is-task-running-on-branch/is-task-running-on-branch.test.ts:298753925": [
-      [60, 8, 24, "tsc: Type \'null\' is not assignable to type \'{ count: number; }\'.", "1753184293"]
-    ],
     "src/entities/tasks/ui/logs.tsx:3377694090": [
       [49, 31, 4, "tsc: Type \'{ values: { severity: any; timestamp: Element; id: string; message: string; }; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: { severity: any; timestamp: JSX.Element; id: string; message: string; }; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'{ severity: any; timestamp: JSX.Element; id: string; message: string; }\' is not assignable to type \'Record<string, number | string | tRowValue>\'.\\n        Property \'timestamp\' is incompatible with index signature.\\n          Type \'Element\' is not assignable to type \'string | number | tRowValue\'.", "2088305148"]
     ],
-    "src/entities/tasks/ui/task-display.tsx:2107536188": [
-      [45, 16, 4, "tsc: Binding element \'task\' implicitly has an \'any\' type.", "2087951912"],
-      [52, 10, 22, "tsc: Element implicitly has an \'any\' type because expression of type \'any\' can\'t be used to index type \'{ SCHEDULED: string; PENDING: string; RUNNING: string; PAUSED: string; CANCELLING: string; COMPLETED: string; CANCELLED: string; FAILED: string; CRASHED: string; }\'.", "1950518905"],
-      [67, 39, 4, "tsc: Parameter \'edge\' implicitly has an \'any\' type.", "2087414470"],
-      [67, 45, 5, "tsc: Parameter \'index\' implicitly has an \'any\' type.", "178792571"],
-      [102, 16, 4, "tsc: \'data\' is possibly \'undefined\'.", "2087377941"]
-    ],
-    "src/entities/tasks/ui/task-item-details.tsx:2706751782": [
-      [56, 25, 17, "tsc: Element implicitly has an \'any\' type because expression of type \'\\"InfrahubTask\\"\' can\'t be used to index type \'{}\'.\\n  Property \'InfrahubTask\' does not exist on type \'{}\'.", "1025837332"]
+    "src/entities/tasks/ui/task-display.tsx:2213803868": [
+      [43, 16, 4, "tsc: Binding element \'task\' implicitly has an \'any\' type.", "2087951912"],
+      [50, 10, 22, "tsc: Element implicitly has an \'any\' type because expression of type \'any\' can\'t be used to index type \'{ SCHEDULED: string; PENDING: string; RUNNING: string; PAUSED: string; CANCELLING: string; COMPLETED: string; CANCELLED: string; FAILED: string; CRASHED: string; }\'.", "1950518905"],
+      [65, 39, 4, "tsc: Parameter \'edge\' implicitly has an \'any\' type.", "2087414470"],
+      [65, 45, 5, "tsc: Parameter \'index\' implicitly has an \'any\' type.", "178792571"]
     ],
     "src/entities/tasks/ui/task-items.tsx:2642355725": [
       [179, 35, 4, "tsc: Type \'null; }; state: { display: any; }; related_nodes: { display: Element; }; progress: { display: number | null; }; updated_at: { display: Element; }; }; }[] | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow[]\'.\\n  Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; }; } | null; }; workflow: { display: string | { link: string; values: { title: { display: string; }; branch: { display: string\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'null; }; state: { display: any; }; related_nodes: { display: JSX.Element; }; progress: { display: number | null; }; updated_at: { display: JSX.Element; }; } | null; }; workflow: { display: string | { title: { display: string; }; branch: { display: string\' is not assignable to type \'Record<string, number | string | tRowValue>\'.\\n        Property \'title\' is incompatible with index signature.\\n          Type \'{ display: string; }\' is not assignable to type \'string | number | tRowValue\'.\\n            Property \'value\' is missing in type \'{ display: string; }\' but required in type \'tRowValue\'.", "2088305148"]
@@ -282,18 +271,14 @@ exports[`fix ts error`] = {
     "src/pages/ipam/ipam-layout.tsx:1869906965": [
       [39, 71, 5, "tsc: \'error\' is of type \'unknown\'.", "165548477"]
     ],
-    "src/pages/proposed-changes/new.tsx:2133627752": [
-      [25, 28, 10, "tsc: Property \'statusCode\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'statusCode\' does not exist on type \'Error\'.", "3382497788"],
-      [26, 46, 6, "tsc: Property \'result\' does not exist on type \'Error | ServerError | ServerParseError\'.\\n  Property \'result\' does not exist on type \'Error\'.", "2123807084"]
-    ],
     "src/pages/resource-manager/resource-allocation-details.tsx:2550256922": [
       [79, 35, 4, "tsc: Type \'{ values: ResourceAllocatedNode; link: string; }[]\' is not assignable to type \'tRow[]\'.\\n  Type \'{ values: ResourceAllocatedNode; link: string; }\' is not assignable to type \'tRow\'.\\n    Types of property \'values\' are incompatible.\\n      Type \'ResourceAllocatedNode\' is not assignable to type \'Record<string, string | number | tRowValue>\'.\\n        Index signature for type \'string\' is missing in type \'ResourceAllocatedNode\'.", "2088305148"]
     ],
     "src/pages/resource-manager/resource-pool-details.tsx:2798533623": [
       [157, 72, 4, "tsc: Property \'node\' does not exist on type \'NodeAttributeWithMetadata | NodeRelationshipManyWithMetadata | NodeRelationshipOneWithMetadata | string | string[]\'.\\n  Property \'node\' does not exist on type \'string\'.", "2087865285"]
     ],
-    "src/shared/api/graphql/graphqlClientApollo.tsx:4179510492": [
-      [56, 33, 44, "tsc: Not all code paths return a value.", "2633054574"]
+    "src/shared/api/graphql/graphqlClientApollo.tsx:2901762482": [
+      [55, 33, 44, "tsc: Not all code paths return a value.", "2633054574"]
     ],
     "src/shared/components/display/badge-circle.tsx:698452183": [
       [6, 12, 18, "tsc: This syntax is not allowed when \'erasableSyntaxOnly\' is enabled.", "460855417"]
@@ -376,10 +361,10 @@ exports[`fix ts error`] = {
       [45, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"],
       [68, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"]
     ],
-    "src/shared/components/inputs/dropdown.tsx:997444087": [
-      [206, 26, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
+    "src/shared/components/inputs/dropdown.tsx:1690186097": [
+      [205, 24, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
     ],
-    "src/shared/components/inputs/enum.tsx:3738970578": [
+    "src/shared/components/inputs/enum.tsx:3817540666": [
       [132, 33, 13, "tsc: \'formData.enum\' is possibly \'undefined\'.", "1980161662"]
     ],
     "src/shared/components/inputs/list.test.tsx:3096980043": [
@@ -388,7 +373,7 @@ exports[`fix ts error`] = {
     "src/shared/components/inputs/peer.tsx:3616063315": [
       [66, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node\'.\\n  Types of property \'display_label\' are incompatible.\\n    Type \'null | string | undefined\' is not assignable to type \'string\'.\\n      Type \'undefined\' is not assignable to type \'string\'.", "189936718"]
     ],
-    "src/shared/components/inputs/relationship-one.tsx:521599003": [
+    "src/shared/components/inputs/relationship-one.tsx:3286424152": [
       [97, 38, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [99, 54, 2, "tsc: Property \'id\' does not exist on type \'Node | PoolValue\'.\\n  Property \'id\' does not exist on type \'PoolValue\'.", "5861160"],
       [146, 23, 5, "tsc: Argument of type \'NodeCore\' is not assignable to parameter of type \'Node | PoolValue | null\'.\\n  Type \'NodeCore\' is not assignable to type \'Node\'.\\n    Types of property \'display_label\' are incompatible.\\n      Type \'null | string | undefined\' is not assignable to type \'string\'.\\n        Type \'undefined\' is not assignable to type \'string\'.", "189936718"]

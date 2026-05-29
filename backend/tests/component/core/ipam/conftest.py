@@ -155,7 +155,7 @@ async def ip_dataset_01_load(
     await net242.new(db=db, prefix="10.10.4.0/27", parent=net240, ip_namespace=ns2)
     await net242.save(db=db)
 
-    data = {
+    return {
         "ns1": ns1,
         "ns2": ns2,
         "net161": net161,
@@ -172,7 +172,6 @@ async def ip_dataset_01_load(
         "net241": net241,
         "net242": net242,
     }
-    return data
 
 
 @pytest.fixture(scope="module")

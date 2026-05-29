@@ -7,7 +7,7 @@ import type { NodeCore, NodeObject } from "@/entities/nodes/types";
 import type { ModelSchema } from "@/entities/schema/types";
 import { isOfKind } from "@/entities/schema/utils/is-of-kind";
 
-export interface UseDefaultParentParams {
+export interface DefaultParentInput {
   defaultValue?: FormRelationshipValue;
   parentRelationship?: {
     peer?: string;
@@ -16,10 +16,7 @@ export interface UseDefaultParentParams {
   };
 }
 
-export interface DefaultParentParams
-  extends UseDefaultParentParams,
-    ContextParams,
-    FormContextType {}
+export interface DefaultParentParams extends DefaultParentInput, ContextParams, FormContextType {}
 
 const convertNodeObjectToNode = (nodeObject: NodeObject | null | undefined): NodeCore | null => {
   if (!nodeObject) return null;

@@ -1,11 +1,29 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { updateDiff } from "@/entities/diff/domain/update-diff";
-import { updateDiffMutationKeys } from "@/entities/diff/ui/queries/diff.query-keys";
+import {
+  diffSummaryKeys,
+  treeQueryKeys,
+  updateDiffMutationKeys,
+} from "@/entities/diff/ui/queries/diff.query-keys";
 
 export function useUpdateDiffMutation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationKey: updateDiffMutationKeys.all,
     mutationFn: (branchName: string) => updateDiff(branchName),
+    onSettled: () => {
+      // A diff refresh changes both the tree view and the summary; every
+      // caller needs both invalidated (diff-rebase-button.tsx used to forget
+      // this — Option 1 ensures the rebase flow gets it for free).
+      //
+      // Use `onSettled` so the failure path also re-fetches: when a diff
+      // update fails after a rebase, the cached tree/summary are stale
+      // against the new branch state and silently leaving them would hide
+      // the discrepancy from the user.
+      queryClient.invalidateQueries({ queryKey: treeQueryKeys.all });
+      queryClient.invalidateQueries({ queryKey: diffSummaryKeys.all });
+    },
   });
 }

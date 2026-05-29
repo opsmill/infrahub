@@ -384,10 +384,10 @@ Not blocking spec sign-off, but each is something we should not lose track of.
 
 ## 10. Decisions needed from reviewer
 
-Please confirm or revise:
+All decisions resolved as of 2026-05-19.
 
-- **Q-D1**: Adopt the v1 catalogue list as proposed in §5 + §6 (9 codes, including auth split and validation split)?
+- **Q-D1** *(resolved 2026-05-19)*: **Accepted as proposed.** v1 catalogue is the 9-code list including both the auth split (`AUTHENTICATION_REQUIRED` + `TOKEN_EXPIRED`) and the validation split (`ATTRIBUTE_REQUIRED` / `ATTRIBUTE_INVALID_TYPE` / `ATTRIBUTE_CONSTRAINT_VIOLATION`). Applied to spec.md FR-005 and US1 acceptance scenarios 3 + 4.
 - **Q-D2** *(resolved 2026-05-15)*: ~~Adopt REST + GraphQL as a unified wire-format catalogue.~~ **Resolved**: REST keeps its current wire format; only GraphQL responses gain `extensions.code` + `extensions.data`. The Python catalogue is the shared source of truth across both transports, and OpenAPI is the long-term home for REST error documentation (captured as Future Direction in `spec.md`).
-- **Q-D3** *(partially applied 2026-05-15)*: Spec updates listed in §7 — Breaking Changes reframe, Transport assumption, `UNDEFINED_ERROR` catch-all (FR-015 + Edge Cases), `SC-008`, Future Direction section are **applied**. Outstanding: FR-005 final list (pending Q-D1), US1/US2 sub-code tightening (pending Q-D1), and the four FRs from Q-D5.
-- **Q-D4**: Adopt the worked example shapes in §8 as the canonical reference shape (acknowledging field names like `node_kind`, `field_name`, `expected_type` may still be refined during planning)?
-- **Q-D5**: Of the "Belongs in the spec" items in §9, which should be promoted into `spec.md` now (data evolution rules, per-error explosion, `path` requirement, telemetry/logging)? Default: all four.
+- **Q-D3** *(resolved 2026-05-19)*: All spec updates in §7 applied — Breaking Changes reframe, Transport assumption, `UNDEFINED_ERROR` (FR-015 + Edge Cases), SC-008, Future Direction section, CI-scope narrowing, FR-005 final list, US1 sub-code tightening, and the four FRs from Q-D5.
+- **Q-D4** *(resolved 2026-05-19)*: **Accepted.** The §8 worked-example shapes are the canonical reference shape for v1 (`NODE_NOT_FOUND`: `{node_kind, identifier}`; `ATTRIBUTE_REQUIRED`: `{node_kind, field_name}`; `ATTRIBUTE_INVALID_TYPE`: `{node_kind, field_name, expected_type, received_type}`). Field names may still be refined during planning.
+- **Q-D5** *(resolved 2026-05-19)*: **All four promoted.** Added to spec.md as FR-016 (per-error explosion), FR-017 (`path` requirement for catalogued field-level errors), FR-018 (structured logs + telemetry carry the catalogue `code`), and FR-019 (`data` schema evolution rules: additive optional = non-breaking; remove/rename/type-change/optional→required = breaking, follows deprecation policy).

@@ -36,5 +36,4 @@ class Migration005(InternalSchemaMigration):
         return cls(migrations=migrations, **kwargs)  # type: ignore[arg-type]
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

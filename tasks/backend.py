@@ -198,6 +198,28 @@ def generate(context: Context) -> None:
     _generate_protocols(context=context)
 
 
+GRAPHQL_QUERY_FILES = [
+    "backend/infrahub/generators/graphql_queries/generator_instance_fetch.gql",
+    "backend/infrahub/computed_attribute/graphql_queries/transform_fetch.gql",
+]
+
+
+def _generate_custom_graphql_types(context: Context) -> None:
+    for gql_file in GRAPHQL_QUERY_FILES:
+        execute_command(
+            context=context,
+            command=f"uv run infrahubctl graphql generate-return-types {gql_file} --schema schema/schema.graphql",
+        )
+        execute_command(context=context, command=f"uv run ruff check --fix {Path(gql_file).parent}")
+        execute_command(context=context, command=f"uv run ruff format {Path(gql_file).parent}")
+
+
+@task
+def generate_custom_graphql_types(context: Context) -> None:
+    """Generate Pydantic models from .gql query files using infrahubctl."""
+    _generate_custom_graphql_types(context=context)
+
+
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
     """Validate that generated schemas and protocols are committed to Git."""
@@ -210,6 +232,24 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
     exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py backend/tests/protocols.py"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
+
+    _generate_custom_graphql_types(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/generators/graphql_queries/ backend/infrahub/computed_attribute/graphql_queries/"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task(name="export-error-catalogue")
+def export_error_catalogue(context: Context, output: str = "schema/error-catalogue.json") -> None:  # noqa: ARG001
+    """Export the Infrahub error catalogue to a JSON Schema artefact."""
+    from infrahub.errors.export import write_catalogue
+
+    destination = Path(output)
+    if not destination.is_absolute():
+        destination = Path(ESCAPED_REPO_PATH) / destination
+
+    written = write_catalogue(destination)
+    print(f" - [{NAMESPACE}] Wrote error catalogue to {written}")
 
 
 def _generate_schemas(context: Context) -> None:

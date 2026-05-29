@@ -11,6 +11,14 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.9.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.6) - 2026-05-20
+
+### Fixed
+
+- Fixed "Copy ID", "Copy HFID", and "Copy Token" actions not working when accessing Infrahub over HTTP (non-secure context). ([#8857](https://github.com/opsmill/infrahub/issues/8857))
+- Fix a bug in the merge logic that prevented the merge operation from deleting an object that had its kind or inheritance updated on the default branch after the branch being merged forked. ([#9283](https://github.com/opsmill/infrahub/issues/9283))
+- Bump SDK version to 1.20.1 to include fix for retrieving branches in the MERGING status ([sdk#1036](https://github.com/opsmill/infrahub-sdk-python/pull/1036))
+
 ## [Infrahub - v1.9.5](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.5) - 2026-05-18
 
 ### Fixed

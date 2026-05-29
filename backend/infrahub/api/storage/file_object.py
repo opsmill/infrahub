@@ -21,7 +21,7 @@ from infrahub.exceptions import NodeNotFoundError
 from infrahub.permissions import define_object_permission_from_branch
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.permissions import PermissionManager
 
 router = APIRouter(prefix="/files")

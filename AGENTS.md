@@ -86,6 +86,8 @@ cd docs && npm run build              # Build documentation
 
 - `backend/infrahub/core/schema/generated/` – Schema definitions
 - `backend/infrahub/core/protocols.py` – Protocol definitions
+- `backend/infrahub/generators/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
+- `backend/infrahub/computed_attribute/graphql_queries/*.py` – Pydantic types generated from `.gql` query files
 - `frontend/app/src/shared/api/graphql/generated/` – GraphQL types
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema

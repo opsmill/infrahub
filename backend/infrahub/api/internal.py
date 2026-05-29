@@ -21,7 +21,7 @@ from infrahub.exceptions import NodeNotFoundError
 from infrahub.workers.dependencies import get_installation_type
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
 
 router = APIRouter()
 

@@ -12,7 +12,7 @@ from infrahub.message_bus.messages.git_repository_connectivity import GitReposit
 from infrahub.workflows.catalogue import GIT_REPOSITORY_ADD, GIT_REPOSITORY_ADD_READ_ONLY
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository

@@ -7,6 +7,7 @@ from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
+from infrahub.core.node.constraints.uniqueness_violation_message import UniquenessViolationMessageBuilder
 from infrahub.core.schema import SchemaRoot
 from infrahub.core.validators.uniqueness.query import UniquenessValidationQuery
 from infrahub.database import InfrahubDatabase
@@ -18,7 +19,13 @@ class TestNodeGroupedUniquenessConstraint:
     async def __call_system_under_test(
         self, db: InfrahubDatabase, branch: Branch, node: Node, filters: list[str] | None = None
     ) -> None:
-        constraint = NodeGroupedUniquenessConstraint(db=db, branch=branch)
+        constraint = NodeGroupedUniquenessConstraint(
+            db=db,
+            branch=branch,
+            message_builder=UniquenessViolationMessageBuilder(
+                schema_branch=registry.schema.get_schema_branch(branch.name)
+            ),
+        )
         await constraint.check(node=node, filters=filters)
 
     async def test_no_uniqueness_constraint(

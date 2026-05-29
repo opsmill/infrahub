@@ -26,7 +26,7 @@ from infrahub.transformations.models import TransformJinjaTemplateData, Transfor
 from infrahub.workflows.catalogue import TRANSFORM_JINJA2_RENDER, TRANSFORM_PYTHON_RENDER
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext
     from infrahub.services import InfrahubServices
 router = APIRouter()

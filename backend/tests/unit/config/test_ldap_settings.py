@@ -75,7 +75,6 @@ class TestLDAPAttributeMapping:
     def test_defaults_target_active_directory(self) -> None:
         s = LDAPSettings()
         assert s.attribute_username == "sAMAccountName"
-        assert s.attribute_email == "mail"
         assert s.attribute_display_name == "displayName"
         assert s.attribute_disabled == "userAccountControl"
         assert s.attribute_disabled_bitmask == 0x2

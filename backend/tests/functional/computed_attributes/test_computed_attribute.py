@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.computed_attribute.gather import gather_trigger_computed_attribute_python
 from infrahub.computed_attribute.tasks import query_transform_targets
 from infrahub.context import BranchContext, InfrahubContext
@@ -189,7 +190,7 @@ class TestComputedAttribute(TestInfrahubApp):
             branch_name=default_branch.name,
             node_kind="TestingColor",
             object_id=color_obj.id,
-            context=context,
+            context=context.to_event_context(),
         )
 
         tshirt_altered_pitch_allocation = await client.get(kind="TestingTShirt", id=tshirt_obj.id)

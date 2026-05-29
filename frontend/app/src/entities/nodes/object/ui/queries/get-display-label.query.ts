@@ -5,7 +5,7 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getNodeLabelFromApi } from "@/entities/nodes/object/api/get-display-label";
+import { getNodeLabelFromApi } from "@/entities/nodes/object/api/get-display-label-from-api";
 
 type NodeLabelProps = {
   objectId?: string | null;

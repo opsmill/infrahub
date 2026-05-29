@@ -92,7 +92,6 @@ x-infrahub-config: &infrahub_config
   INFRAHUB_LDAP_ATTRIBUTE_DISABLED: ${INFRAHUB_LDAP_ATTRIBUTE_DISABLED:-userAccountControl}
   INFRAHUB_LDAP_ATTRIBUTE_DISABLED_BITMASK: ${INFRAHUB_LDAP_ATTRIBUTE_DISABLED_BITMASK:-2}
   INFRAHUB_LDAP_ATTRIBUTE_DISPLAY_NAME: ${INFRAHUB_LDAP_ATTRIBUTE_DISPLAY_NAME:-displayName}
-  INFRAHUB_LDAP_ATTRIBUTE_EMAIL: ${INFRAHUB_LDAP_ATTRIBUTE_EMAIL:-mail}
   INFRAHUB_LDAP_ATTRIBUTE_USERNAME: ${INFRAHUB_LDAP_ATTRIBUTE_USERNAME:-sAMAccountName}
   INFRAHUB_LDAP_DISPLAY_LABEL: ${INFRAHUB_LDAP_DISPLAY_LABEL:-Sign in with LDAP}
   INFRAHUB_LDAP_ENABLED: ${INFRAHUB_LDAP_ENABLED:-false}
@@ -240,7 +239,7 @@ services:
       - 6362:6362
 
   task-manager:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.5}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.6}"
     command: uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect
     restart: unless-stopped
     depends_on:
@@ -273,7 +272,7 @@ services:
       retries: 5
 
   infrahub-server:
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.5}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.6}"
     restart: unless-stopped
     command: >
       gunicorn --config backend/infrahub/serve/gunicorn_config.py
@@ -319,7 +318,7 @@ services:
     deploy:
       mode: replicated
       replicas: 2
-    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.5}"
+    image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.9.6}"
     command: prefect worker start --type infrahubasync --pool infrahub-worker --with-healthcheck
     restart: unless-stopped
     depends_on:

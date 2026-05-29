@@ -256,7 +256,7 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Automation & Outputs',
+      label: 'Design & Integrate',
       collapsible: false,
       collapsed: false,
       link: { type: 'generated-index', slug: 'automation-and-outputs' },
@@ -639,6 +639,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 { type: 'doc', id: 'release-notes/infrahub/docs-restructure', label: 'Documentation restructure' },
+                'release-notes/infrahub/release-1_9_6',
                 'release-notes/infrahub/release-1_9_5',
                 'release-notes/infrahub/release-1_9_4',
                 'release-notes/infrahub/release-1_9_3',
