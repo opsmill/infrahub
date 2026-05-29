@@ -6,6 +6,7 @@ from infrahub.auth import AccountSession
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
+from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.ip_prefix_pool import CoreIPPrefixPool
@@ -303,6 +304,7 @@ mutation UpdateNumberPool(
     object {
       display_label
       id
+      end_range { value }
     }
   }
 }
@@ -319,6 +321,33 @@ mutation DeleteNumberPool(
     }
   ) {
     ok
+  }
+}
+"""
+
+
+UPSERT_NUMBER_POOL = """
+mutation UpsertNumberPool(
+    $name: String!,
+    $node: String!,
+    $node_attribute: String!,
+    $start_range: BigInt!,
+    $end_range: BigInt!
+  ) {
+  CoreNumberPoolUpsert(
+    data: {
+      name: {value: $name},
+      node: {value: $node},
+      node_attribute: {value: $node_attribute},
+      start_range: {value: $start_range},
+      end_range: {value: $end_range}
+    }
+  ) {
+    object {
+      display_label
+      id
+      end_range { value }
+    }
   }
 }
 """
@@ -1183,3 +1212,235 @@ async def test_update_schema_number_pool_range(
         "start_range or end_range can't be updated on schema defined pools, update the schema in the default branch instead"
         in str(update_forbidden.errors)
     )
+
+
+class TestNumberPoolUpsertImmutableFields:
+    """Tests for the immutable-field guard across CoreNumberPool update and upsert mutations.
+
+    Schema is loaded once for the class. Each test creates its own pool (unique name) so
+    there is no cross-test state dependency.
+    """
+
+    @pytest.fixture(scope="class")
+    async def ticket_schema(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        register_core_models_schema_scope_class: SchemaBranch,
+    ) -> None:
+        await load_schema(db=db, schema=SchemaRoot(nodes=[TICKET]))
+        default_branch_scope_class.update_schema_hash()
+
+    async def test_upsert_identical_fields(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        ticket_schema: None,
+    ) -> None:
+        """Upsert with all identical values (including node/node_attribute) succeeds."""
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_ok = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "pool-upsert-1",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 20,
+            },
+        )
+        assert not create_ok.errors
+
+        upsert_same = await graphql(
+            schema=gql_params.schema,
+            source=UPSERT_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "pool-upsert-1",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 20,
+            },
+        )
+        assert not upsert_same.errors
+        assert upsert_same.data
+
+    async def test_upsert_mutable_fields(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        ticket_schema: None,
+    ) -> None:
+        """Upsert with unchanged node/node_attribute but updated range succeeds and persists the new range."""
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_ok = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "pool-upsert-2",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 20,
+            },
+        )
+        assert not create_ok.errors
+        pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
+
+        upsert_mutable = await graphql(
+            schema=gql_params.schema,
+            source=UPSERT_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "pool-upsert-2",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 30,
+            },
+        )
+        assert not upsert_mutable.errors
+        assert upsert_mutable.data
+        assert upsert_mutable.data["CoreNumberPoolUpsert"]["object"]["id"] == pool_id
+        assert upsert_mutable.data["CoreNumberPoolUpsert"]["object"]["end_range"]["value"] == 30
+
+        pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch_scope_class)
+        assert pool is not None
+        assert pool.get_attribute("end_range").value == 30
+
+    async def test_update_with_unchanged_node_fields(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        ticket_schema: None,
+    ) -> None:
+        """CoreNumberPoolUpdate succeeds when node/node_attribute are present but unchanged.
+
+        This exercises the Update mutation path (mutate_update guard) specifically —
+        distinct from the upsert tests above which route through mutate_update_object.
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_ok = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "pool-update-same",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 20,
+            },
+        )
+        assert not create_ok.errors
+        pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
+
+        update_same_values = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 25,
+            },
+        )
+        assert not update_same_values.errors
+        assert update_same_values.data["CoreNumberPoolUpdate"]["object"]["end_range"]["value"] == 25
+
+        pool = await NodeManager.get_one(id=pool_id, db=db, branch=default_branch_scope_class)
+        assert pool is not None
+        assert pool.get_attribute("end_range").value == 25
+
+    async def test_update_rejects_node_attribute_change(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        ticket_schema: None,
+    ) -> None:
+        """CoreNumberPoolUpdate rejects a payload that changes node_attribute."""
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_ok = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "pool-update-rej",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 20,
+            },
+        )
+        assert not create_ok.errors
+        pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
+
+        update_changed_attr = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+                "node": "TestingTicket",
+                "node_attribute": "ticket_name",
+            },
+        )
+        assert update_changed_attr.errors
+        assert str(update_changed_attr.errors[0].message) == "The fields 'node' or 'node_attribute' can't be changed."
+
+    async def test_update_rejects_node_change(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        ticket_schema: None,
+    ) -> None:
+        """CoreNumberPoolUpdate rejects a payload that changes node."""
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch_scope_class)
+
+        create_ok = await graphql(
+            schema=gql_params.schema,
+            source=CREATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "name": "pool-update-node-rej",
+                "node": "TestingTicket",
+                "node_attribute": "ticket_id",
+                "start_range": 10,
+                "end_range": 20,
+            },
+        )
+        assert not create_ok.errors
+        pool_id = create_ok.data["CoreNumberPoolCreate"]["object"]["id"]
+
+        update_changed_node = await graphql(
+            schema=gql_params.schema,
+            source=UPDATE_NUMBER_POOL,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={
+                "id": pool_id,
+                "node": "SomeDifferentModel",
+                "node_attribute": "ticket_id",
+            },
+        )
+        assert update_changed_node.errors
+        assert str(update_changed_node.errors[0].message) == "The fields 'node' or 'node_attribute' can't be changed."

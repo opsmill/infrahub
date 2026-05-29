@@ -143,7 +143,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 )
 
     async def push(self, branch_name: str) -> bool:
-        """Push a given branch to the remote Origin repository"""
+        """Push a given branch to the remote Origin repository."""
         if not self.has_origin:
             return False
 
@@ -206,13 +206,11 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         After the rebase we need to resync the data
         """
-        response = await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
-
-        return response
+        return await self.merge(dest_branch=branch_name, source_branch=source_branch, push_remote=push_remote)
 
 
 class InfrahubReadOnlyRepository(InfrahubRepositoryIntegrator):
-    """Repository with only read-only access to the remote repo"""
+    """Repository with only read-only access to the remote repo."""
 
     is_read_only: bool = True
     ref: str | None = Field(None, description="Ref to track on the external repository")

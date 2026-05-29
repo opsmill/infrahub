@@ -106,7 +106,8 @@ class NodePropertyMixin:
         return getattr(self, f"_clear_{name}", False)
 
     def _get_node_property_from_cache(self, name: str) -> Node:
-        """Return the node attribute if it's already present locally,
+        """Return the node attribute if it's already present locally,.
+
         Otherwise raise an exception.
 
         Raises:
@@ -123,8 +124,9 @@ class NodePropertyMixin:
 
     async def _get_node_property(self, db: InfrahubDatabase, name: str) -> Node | None:
         """Return the node attribute.
+
         If the node is already present in cache, serve from the cache
-        If the node is not present, query it on the fly using the node_id
+        If the node is not present, query it on the fly using the node_id.
         """
         if getattr(self, f"_{name}") is None:
             await self._retrieve_node_property(db=db, name=name)
@@ -133,6 +135,7 @@ class NodePropertyMixin:
 
     def _set_node_property(self, name: str, value: str | Node | UUID | None) -> None:
         """Set the value of the node_property.
+
         If the value is a string, we assume it's an ID and we'll save it to query it later (if needed)
         If the value is a Node, we save the node and we extract the ID
         if the value is None, we just initialize the 2 variables.

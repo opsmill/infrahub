@@ -295,6 +295,7 @@ class ProposedChangeReview(Mutation):
         data: ProposedChangeReviewInput,
     ) -> dict[str, bool]:
         """This mutation is used to approve or reject a proposed change.
+
         It can also be used to undo an approval or rejection.
 
         Raises:

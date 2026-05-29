@@ -35,7 +35,8 @@ async def load_data_and_profile(
     graph_generator: GraphProfileGenerator,
     memory_profiling_rate: int | None = None,
 ) -> None:
-    """Loads data using the provided data generator, profiles the execution at specified loading intervals,
+    """Loads data using the provided data generator, profiles the execution at specified loading intervals,.
+
     and generate profiling graphs.
 
     Args:

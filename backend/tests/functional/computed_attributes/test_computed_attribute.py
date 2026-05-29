@@ -38,7 +38,7 @@ mutation Recompute($kind: String!, $attribute: String!, $node_ids: [String!]) {
 class TestComputedAttribute(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def context(self, db: InfrahubDatabase, initialize_registry: None, default_branch: Branch) -> InfrahubContext:
-        """Context with a real account from the database for computed attribute workflows"""
+        """Context with a real account from the database for computed attribute workflows."""
         admin_account = await NodeManager.get_one_by_hfid(
             db=db, kind=InfrahubKind.ACCOUNT, hfid=["admin"], raise_on_error=True
         )

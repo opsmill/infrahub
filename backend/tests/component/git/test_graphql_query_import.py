@@ -170,8 +170,10 @@ async def test_missing_fragment_file_raises_with_path(
 async def test_resync_after_fragment_update_reflects_new_definition(
     git_sources_dir: Path, git_repos_dir: Path, tmp_path: Path, prefect_test_fixture: None
 ) -> None:
-    """After a fragment file is updated in the upstream repo and re-synced, stored queries
+    """After a fragment file is updated in the upstream repo and re-synced, stored queries.
+
     reflect the new field selection from the updated fragment.
+
     """
     upstream_path = _create_upstream_repo(tmp_path)
     repo = await InfrahubRepository.new(
@@ -216,8 +218,10 @@ fragment portFragment on InterfaceL2 {
 async def test_fragment_isolation_between_repositories(
     git_sources_dir: Path, git_repos_dir: Path, tmp_path: Path, prefect_test_fixture: None
 ) -> None:
-    """Two repos declaring the same fragment name with different field selections
+    """Two repos declaring the same fragment name with different field selections.
+
     must each store their query using only their own fragment definition.
+
     """
 
     def _make_upstream(root: Path, variant: str) -> Path:

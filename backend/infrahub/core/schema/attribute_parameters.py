@@ -149,8 +149,7 @@ class NumberAttributeParameters(AttributeParameters):
         if not self.excluded_values:
             return []
 
-        results = [int(value) for value in self.excluded_values.split(",") if "-" not in value]
-        return results
+        return [int(value) for value in self.excluded_values.split(",") if "-" not in value]
 
     def get_excluded_ranges(self) -> list[tuple[int, int]]:
         if not self.excluded_values:

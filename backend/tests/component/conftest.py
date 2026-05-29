@@ -81,7 +81,8 @@ def load_component_dependency_registry() -> None:
 
 @pytest.fixture(scope="session")
 def neo4j_factory() -> _GraphHydrator:
-    """Return a Hydration Scope from Neo4j used to generate fake
+    """Return a Hydration Scope from Neo4j used to generate fake.
+
     Node and Relationship object.
 
     Example:
@@ -96,7 +97,7 @@ def neo4j_factory() -> _GraphHydrator:
 @pytest.fixture(scope="session", autouse=True)
 def prefect_test_fixture() -> Generator[None, None, None]:
     def _run_uvicorn_command(self: Any) -> subprocess.Popen[Any]:
-        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead"""
+        """Patched version of prefect method to call the test server, pointing at the Infrahub entrypoint instead."""
         # used to turn off serving the UI
         server_env = {
             "PREFECT_UI_ENABLED": "0",
@@ -440,7 +441,8 @@ async def base_dataset_02(db: InfrahubDatabase, default_branch: Branch, car_pers
 @pytest.fixture
 async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_person_schema_global: None) -> dict:
     """Creates a Simple dataset with 2 branches and some changes that can be used for testing.
-    This dataset is based on base_dataset_02 but it uses a different schema with person includes the global branch as well
+
+    This dataset is based on base_dataset_02 but it uses a different schema with person includes the global branch as well.
 
     To recreate a deterministic timeline, there are 10 timestamps that are being created ahead of time:
       * time0 is now
@@ -640,7 +642,7 @@ async def base_dataset_12(db: InfrahubDatabase, default_branch: Branch, car_pers
 
 @pytest.fixture
 async def base_dataset_03(db: InfrahubDatabase, default_branch: Branch, person_tag_schema: None) -> dict:
-    """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships
+    """Creates a Dataset with 4 branches, this dataset was initially created to test the diff of Nodes and relationships.
 
     To recreate a deterministic timeline, there are 20 timestamps that are being created ahead of time:
       * time0 is now
@@ -1384,15 +1386,13 @@ async def car_person_generics_data(db: InfrahubDatabase, car_person_schema_gener
     await c3.new(db=db, name="nolt", nbr_seats=4, mpg=25, owner=p2)
     await c3.save(db=db)
 
-    nodes = {
+    return {
         "p1": p1,
         "p2": p2,
         "c1": c1,
         "c2": c2,
         "c3": c3,
     }
-
-    return nodes
 
 
 @pytest.fixture
@@ -2591,8 +2591,7 @@ async def create_test_admin(db: InfrahubDatabase, register_core_models_schema: S
 
 @pytest.fixture
 async def session_admin(db: InfrahubDatabase, create_test_admin: Node) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
-    return session
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=create_test_admin.id)
 
 
 @pytest.fixture
@@ -2619,8 +2618,7 @@ async def first_account(
 
 @pytest.fixture
 async def session_first_account(db: InfrahubDatabase, first_account: Node) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
-    return session
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=first_account.id)
 
 
 @pytest.fixture
@@ -2635,8 +2633,7 @@ async def second_account(
 
 @pytest.fixture
 async def session_second_account(db: InfrahubDatabase, second_account: Node) -> AccountSession:
-    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
-    return session
+    return AccountSession(authenticated=True, auth_type=AuthType.API, account_id=second_account.id)
 
 
 @pytest.fixture
@@ -2780,7 +2777,7 @@ async def ip_dataset_01(
     await net242.new(db=db, prefix="10.10.4.0/27", parent=net240, ip_namespace=ns2)
     await net242.save(db=db)
 
-    data = {
+    return {
         "ns1": ns1,
         "ns2": ns2,
         "net161": net161,
@@ -2797,7 +2794,6 @@ async def ip_dataset_01(
         "net241": net241,
         "net242": net242,
     }
-    return data
 
 
 @pytest.fixture
@@ -2860,7 +2856,7 @@ async def ip_dataset_prefix_v4(
     await ip2_net147.new(db=db, address="10.200.0.2/30", ip_prefix=net147, ip_namespace=ns1)
     await ip2_net147.save(db=db)
 
-    data = {
+    return {
         "ns1": ns1,
         "net140": net140,
         "net141": net141,
@@ -2871,7 +2867,6 @@ async def ip_dataset_prefix_v4(
         "net146": net146,
         "net147": net147,
     }
-    return data
 
 
 @pytest.fixture

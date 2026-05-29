@@ -50,7 +50,7 @@ GLOBAL_GRAPH_LOCK = "global.graph"
 
 
 class InfrahubMultiLock:
-    """Context manager to allow multiple locks to be reserved together"""
+    """Context manager to allow multiple locks to be reserved together."""
 
     def __init__(
         self, lock_registry: InfrahubLockRegistry, locks: list[str] | None = None, metrics: bool = True
@@ -80,7 +80,7 @@ class InfrahubMultiLock:
 
 
 class NATSLock:
-    """Context manager to lock using NATS"""
+    """Context manager to lock using NATS."""
 
     def __init__(self, service: InfrahubServices, name: str) -> None:
         self.name = name

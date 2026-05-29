@@ -346,7 +346,7 @@ def test_log_forwarding_destination_names_per_dest_env_validates_tls_udp() -> No
 
 
 def test_log_forwarding_destination_names_rejects_matching_names_from_destinations_env() -> None:
-    """Defining different destinations with the same name using DESTINATIONS and DESTINATION_NAMES raises an error"""
+    """Defining different destinations with the same name using DESTINATIONS and DESTINATION_NAMES raises an error."""
     env = {
         "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem_primary",
         "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST": "host-from-env.example.com",
@@ -362,7 +362,7 @@ def test_log_forwarding_destination_names_rejects_matching_names_from_destinatio
 
 
 def test_log_forwarding_destination_names_rejects_matching_names_from_toml_destinations() -> None:
-    """Defining different destinations with the same name using DESTINATION_NAMES (per-dest env) and TOML destinations raises an error"""
+    """Defining different destinations with the same name using DESTINATION_NAMES (per-dest env) and TOML destinations raises an error."""
     env = {
         "INFRAHUB_LOG_FORWARDING_DESTINATION_NAMES": "siem_primary",
         "INFRAHUB_LOG_FORWARDING_DESTINATION_SIEM_PRIMARY_HOST": "host-from-env.example.com",
@@ -383,7 +383,7 @@ def test_log_forwarding_destination_names_rejects_matching_names_from_toml_desti
 
 
 def test_log_forwarding_destination_names_survives_revalidation() -> None:
-    """Validating the same destinations multiple times succeeds
+    """Validating the same destinations multiple times succeeds.
 
     This can happen when starting Infrahub
     """

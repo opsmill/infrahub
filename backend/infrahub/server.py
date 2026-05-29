@@ -164,8 +164,7 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
     if trace_id:
         set_log_data(key="trace_id", value=trace_id)
 
-    response = await call_next(request)
-    return response
+    return await call_next(request)
 
 
 @app.middleware("http")

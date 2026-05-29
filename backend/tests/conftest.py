@@ -754,7 +754,7 @@ async def car_person_schema(
 
 @pytest.fixture
 async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_branch: Branch) -> SchemaRoot:
-    schema = SchemaRoot(
+    return SchemaRoot(
         nodes=[
             NodeSchema(
                 name="Car",
@@ -799,7 +799,6 @@ async def car_person_schema_branch_local_root(db: InfrahubDatabase, default_bran
             ),
         ],
     )
-    return schema
 
 
 @pytest.fixture
@@ -1148,7 +1147,7 @@ async def standard_group_schema(db: InfrahubDatabase, default_branch: Branch, da
 
 @pytest.fixture(scope="module")
 def tmp_path_module_scope() -> Generator[Path, None, None]:
-    """Fixture similar to tmp_path but with scope=module"""
+    """Fixture similar to tmp_path but with scope=module."""
     with TemporaryDirectory() as tmpdir:
         directory = tmpdir
         if sys.platform == "darwin" and tmpdir.startswith("/var/"):
@@ -1204,11 +1203,11 @@ class BusRPCMock(InfrahubMessageBus):
 
 
 class TestHelper:
-    """TestHelper profiles functions that can be used as a fixture throughout the test framework"""
+    """TestHelper profiles functions that can be used as a fixture throughout the test framework."""
 
     @staticmethod
     def schema_file(file_name: str) -> dict:
-        """Return the contents of a schema file as a dictionary"""
+        """Return the contents of a schema file as a dictionary."""
         file_content = (TestHelper.get_fixtures_dir() / "schemas" / file_name).read_text(encoding="utf-8")
 
         return ujson.loads(file_content)

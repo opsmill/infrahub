@@ -243,7 +243,7 @@ class Branch(StandardNode):
         return [default_branch, self.name]
 
     def get_branches_and_times_to_query(self, at: Optional[Timestamp] = None) -> dict[frozenset, str]:
-        """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch"""
+        """Return all the names of the branches that are constituing this branch with the associated times excluding the global branch."""
         at = Timestamp(at)
 
         if self.is_default:
@@ -422,7 +422,7 @@ class Branch(StandardNode):
     async def rebase(
         self, db: InfrahubDatabase, at: str | Timestamp | None = None, user_id: str = SYSTEM_USER_ID
     ) -> None:
-        """Rebase the current Branch with its origin branch"""
+        """Rebase the current Branch with its origin branch."""
         at = Timestamp(at)
 
         await self.rebase_graph(db=db, at=at)

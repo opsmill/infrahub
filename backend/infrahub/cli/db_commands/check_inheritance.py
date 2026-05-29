@@ -27,8 +27,10 @@ log = get_logger()
 
 
 class GetSchemaWithUpdatedInheritance(Query):
-    """Get the name, namespace, and branch of any SchemaNodes with _updated_ inheritance
-    This query will only return schemas that have had `inherit_from` updated after they were created
+    """Get the name, namespace, and branch of any SchemaNodes with _updated_ inheritance.
+
+    This query will only return schemas that have had `inherit_from` updated after they were created.
+
     """
 
     name = "get_schema_with_updated_inheritance"
@@ -121,7 +123,7 @@ class KindLabelCountCorrected(KindLabelCount):
 
 
 class GetAllKindsAndLabels(Query):
-    """Get the kind, labels, and number of nodes for the given kinds and branch"""
+    """Get the kind, labels, and number of nodes for the given kinds and branch."""
 
     name = "get_all_kinds_and_labels"
     type = QueryType.READ
@@ -184,13 +186,15 @@ def display_kind_label_counts(kind_label_counts_by_branch: dict[str, list[KindLa
 
 
 async def check_inheritance(db: InfrahubDatabase, fix: bool = False) -> bool:
-    """Run migrations to update the inheritance of any nodes with incorrect inheritance from a failed migration
+    """Run migrations to update the inheritance of any nodes with incorrect inheritance from a failed migration.
+
     1. Identifies node schemas that have had their inheritance updated after they were created
         a. includes the kind and branch of the inheritance update
     2. Checks nodes of the given kinds on the given branch to verify their inheritance is correct
     3. Displays counts of any kinds with incorrect inheritance on the given branch
     4. If fix is True, runs migrations to update the inheritance of any nodes with incorrect inheritance
-        on the correct branch
+        on the correct branch.
+
     """
     updated_inheritance_query = await GetSchemaWithUpdatedInheritance.init(db=db)
     await updated_inheritance_query.execute(db=db)

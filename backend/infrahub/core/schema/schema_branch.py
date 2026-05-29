@@ -1058,7 +1058,7 @@ class SchemaBranch:
     def _is_attr_combination_unique(
         self, attrs_paths: list[str], uniqueness_constraints: list[list[str]] | None, unique_attribute_names: list[str]
     ) -> bool:
-        """Return whether at least one combination of any length of `attrs_paths` is unique"""
+        """Return whether at least one combination of any length of `attrs_paths` is unique."""
         if unique_attribute_names:
             for attr_path in attrs_paths:
                 for unique_attr_name in unique_attribute_names:
@@ -1218,14 +1218,25 @@ class SchemaBranch:
                     isinstance(node, GenericSchema) and attr.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {attr.name} isn't allowed as an attribute name.")
+                if "__" in attr.name:
+                    raise ValueError(
+                        f"{node.kind}: '{attr.name}' cannot be used as an attribute name because"
+                        " it contains '__', which is reserved as the schema path separator."
+                    )
             for rel in node.relationships:
                 if rel.name in RESERVED_ATTR_REL_NAMES or (
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
                     raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+                if "__" in rel.name:
+                    raise ValueError(
+                        f"{node.kind}: '{rel.name}' cannot be used as a relationship name"
+                        " because it contains '__', which is reserved as the schema path separator."
+                    )
 
     def validate_restricted_namespaces_from_generic(self) -> None:
-        """Ensure that every node which inherit from a generic node containing restricted namespaces are following on
+        """Ensure that every node which inherit from a generic node containing restricted namespaces are following on.
+
         the rules.
 
         Raises:
@@ -1703,8 +1714,9 @@ class SchemaBranch:
 
     def process_human_friendly_id(self, kinds: list[str] | None = None, raise_parsing_errors: bool = True) -> None:
         """For each schema node, if there is no HFID defined, set it with:
+
         - The first unique attribute if existing
-        - Otherwise the first uniqueness constraint with a single attribute
+        - Otherwise the first uniqueness constraint with a single attribute.
 
         Also, HFID is added to the uniqueness constraints.
         """
@@ -1746,7 +1758,7 @@ class SchemaBranch:
                 continue
             constraint_path = constraint_paths[0]
             try:
-                schema_path = node.parse_schema_path(path=constraint_path, schema=node)
+                schema_path = node.parse_schema_path(path=constraint_path, schema=self)
             except AttributePathParsingError:
                 if raise_parsing_errors:
                     raise
@@ -1792,7 +1804,7 @@ class SchemaBranch:
         self.set(name=node.kind, schema=node)
 
     def register_human_friendly_id(self) -> None:
-        """Register HFID automations
+        """Register HFID automations.
 
         Register the HFIDs after all processing and validation has been done.
         """
@@ -1872,7 +1884,8 @@ class SchemaBranch:
         return generic_fields_map
 
     def process_inheritance(self) -> None:
-        """Extend all the nodes with the attributes and relationships
+        """Extend all the nodes with the attributes and relationships.
+
         from the Interface objects defined in inherited_from.
 
         Raises:

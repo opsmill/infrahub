@@ -107,7 +107,8 @@ def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:  # n
 
 def pytest_runtest_teardown(item: pytest.Item, nextitem: pytest.Item | None) -> None:  # noqa: ARG001
     """Fetch metrics at each test teardown because there's no better hook...
-    pytest_sessionfinish() is executed after fixtures has been finalized and pytest_fixture_post_finalizer() is too late"""
+
+    pytest_sessionfinish() is executed after fixtures has been finalized and pytest_fixture_post_finalizer() is too late."""
     if not item.config.getoption("infrahub_performance_report"):
         return
 

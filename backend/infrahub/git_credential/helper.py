@@ -12,7 +12,7 @@ app = typer.Typer()
 
 
 def parse_helper_get_input(text: str) -> str:
-    """Parse the input provided to infrahub-githelper get
+    """Parse the input provided to infrahub-githelper get.
 
     Format1 (with usehttppath true)
       protocol=https

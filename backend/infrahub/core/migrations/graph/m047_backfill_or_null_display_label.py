@@ -221,8 +221,10 @@ CREATE (a)-[:IS_VISIBLE { branch: $branch, branch_level: $branch_level, status: 
 
 class Migration047(MigrationRequiringRebase):
     """Backfill `display_label` attributes for all nodes:
+
     - If schema does not define display_label OR attribute doesn't exist: insert NULL value
-    - If schema defines display_label: compute and store the value, invalidate NULL value if exists
+    - If schema defines display_label: compute and store the value, invalidate NULL value if exists.
+
     """
 
     name: str = "047_backfill_or_null_display_label"

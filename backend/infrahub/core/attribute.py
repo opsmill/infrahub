@@ -55,8 +55,11 @@ MAX_STRING_LENGTH = 4096
 
 
 def validate_string_length(value: str | None) -> None:
-    """Validates input string length does not exceed a given threshold, as Neo4J cannot index string values larger than 8167 bytes,
+    """Validates input string length does not exceed a given threshold.
+
+    Neo4J cannot index string values larger than 8167 bytes,
     see https://neo4j.com/developer/kb/index-limitations-and-workaround/.
+
     Note `value` parameter is optional as this function could be called from an attribute class
     with optional value such as StringOptional.
 
@@ -171,8 +174,9 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return bool(self.schema.enum)
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Returns:
             Branch:
@@ -623,7 +627,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return value
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
-        """Update attr from GraphQL payload"""
+        """Update attr from GraphQL payload."""
         changed = False
         if "value" in data:
             if self.is_enum:
@@ -752,7 +756,9 @@ class Integer(BaseAttribute):
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        """Make sure boolean objects are not accepted as value. Need to override `validate_format`
+        """Make sure boolean objects are not accepted as value.
+
+        Need to override `validate_format`
         as `isinstance(True, int)` is True.
 
         Raises:
@@ -808,7 +814,7 @@ class Dropdown(BaseAttribute):
 
     @property
     def color(self) -> str:
-        """Return the color for the current value"""
+        """Return the color for the current value."""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
             if selected and selected[0].color:
@@ -818,7 +824,7 @@ class Dropdown(BaseAttribute):
 
     @property
     def description(self) -> str:
-        """Return the description for the current value"""
+        """Return the description for the current value."""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
             if selected and selected[0].description:
@@ -828,7 +834,7 @@ class Dropdown(BaseAttribute):
 
     @property
     def label(self) -> str:
-        """Return the label for the current value"""
+        """Return the label for the current value."""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
             if selected and selected[0].label:

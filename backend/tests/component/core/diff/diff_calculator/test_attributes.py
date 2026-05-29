@@ -504,7 +504,7 @@ async def test_attribute_property_new_value_differs_per_branch_on_multi_change_n
     person_john_main: Node,
     person_alfred_main: Node,
 ) -> None:
-    """Validate diff for conflicting source updates on relationships"""
+    """Validate diff for conflicting source updates on relationships."""
     branch = await create_branch(db=db, branch_name="branch-prop-new-value-per-branch")
     from_time = Timestamp(branch.created_at)
 

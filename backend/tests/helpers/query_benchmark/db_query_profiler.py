@@ -149,7 +149,8 @@ class InfrahubDatabaseProfiler(InfrahubDatabase):
         return response, metadata
 
     def profile(self, profile_memory: bool) -> Self:
-        """This method allows to enable profiling of a InfrahubDatabaseProfiler instance
+        """This method allows to enable profiling of a InfrahubDatabaseProfiler instance.
+
         through a context manager with this syntax:
 
         `with db.profile(profile_memory=...):

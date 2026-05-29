@@ -142,8 +142,9 @@ class BranchInLocal(BaseModel):
 
 class InfrahubRepositoryBase(BaseModel, ABC):
     """Local version of a Git repository organized to work with Infrahub.
+
     The idea is that all commits that are being tracked in the graph will be checkout out
-    individually as worktree under the <repo_name>/commits subdirectory
+    individually as worktree under the <repo_name>/commits subdirectory.
 
     Directory organization
     <repo_directory>/
@@ -483,6 +484,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def get_branches_from_graph(self) -> dict[str, BranchInGraph]:
         """Return a dict with all the branches present in the graph.
+
         Query the list of branches first then query the repository for each branch.
         """
         response = {}
@@ -625,6 +627,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
+
         update it if they don't match.
 
         Returns:
@@ -759,6 +762,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         self, first_commit: str, second_commit: str
     ) -> tuple[list[str], list[str], list[str]]:
         """TODO need to refactor this function to return more information.
+
         Like :
           - What has changed inside the files
           - Are there some conflicts between the files.
@@ -844,8 +848,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
         """Returns:
+
         List[str] New Branches in Remote
-        List[str] Branches with different commit in Remote
+        List[str] Branches with different commit in Remote.
 
         """
         if not self.has_origin:
@@ -991,9 +996,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 repo.git.merge("--abort")
 
         changed_files = git_status.splitlines()
-        conflict_files = [filename[3:] for filename in changed_files if filename.startswith("UU ")]
-
-        return conflict_files
+        return [filename[3:] for filename in changed_files if filename.startswith("UU ")]
 
     async def find_files(
         self,

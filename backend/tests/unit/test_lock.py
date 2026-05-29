@@ -17,6 +17,7 @@ async def do_nothing(id: str, wait_sec: float, lock_name: str = "test1") -> tupl
 
 async def do_nothing_global_graph(id: str, wait_sec: float) -> tuple[str, int, int]:
     """Function for testing the global_graph_lock.
+
     After acquiring the locks, wait for the indicated amount and return the start time and the end time of the lock.
     """
     async with lock.registry.global_graph_lock():

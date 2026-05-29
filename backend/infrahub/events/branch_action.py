@@ -12,7 +12,7 @@ from .models import InfrahubEvent
 
 
 class BranchDeletedEvent(InfrahubEvent):
-    """Event generated when a branch has been deleted"""
+    """Event generated when a branch has been deleted."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.deleted"
 
@@ -47,7 +47,7 @@ class BranchDeletedEvent(InfrahubEvent):
 
 
 class BranchCreatedEvent(InfrahubEvent):
-    """Event generated when a branch has been created"""
+    """Event generated when a branch has been created."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.created"
 
@@ -76,7 +76,7 @@ class BranchCreatedEvent(InfrahubEvent):
 
 
 class BranchMergedEvent(InfrahubEvent):
-    """Event generated when a branch has been merged"""
+    """Event generated when a branch has been merged."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.merged"
 
@@ -102,7 +102,7 @@ class BranchMergedEvent(InfrahubEvent):
 
 
 class BranchRebasedEvent(InfrahubEvent):
-    """Event generated when a branch has been rebased"""
+    """Event generated when a branch has been rebased."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.rebased"
 
@@ -128,7 +128,7 @@ class BranchRebasedEvent(InfrahubEvent):
 
 
 class BranchMigratedEvent(InfrahubEvent):
-    """Event generated when a branch has been migrated"""
+    """Event generated when a branch has been migrated."""
 
     event_name: ClassVar[str] = f"{EVENT_NAMESPACE}.branch.migrated"
 

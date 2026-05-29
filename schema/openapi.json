@@ -3795,7 +3795,7 @@
                         "title": "Unique",
                         "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
                         "default": false,
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "optional": {
                         "type": "boolean",
@@ -4061,7 +4061,7 @@
                         "title": "Unique",
                         "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
                         "default": false,
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "optional": {
                         "type": "boolean",
@@ -6468,7 +6468,7 @@
                     "schema_updated": {
                         "type": "boolean",
                         "title": "Schema Updated",
-                        "description": "Indicates if the loading of the schema changed the existing schema",
+                        "description": "Indicates if the loading of the schema changed the existing schema.",
                         "readOnly": true
                     }
                 },

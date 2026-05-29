@@ -64,6 +64,21 @@ from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_init
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
+def format_check_log_entry(entry: dict[str, Any]) -> str:
+    """Render one user-check log record as a single line for the Prefect flow logger."""
+    parts = [f"[{entry['level']}] {entry['message']}"]
+    object_type = entry.get("object_type")
+    object_id = entry.get("object_id")
+    if object_type or object_id:
+        details = []
+        if object_type:
+            details.append(f"object_type={object_type}")
+        if object_id:
+            details.append(f"object_id={object_id}")
+        parts.append(f"({', '.join(details)})")
+    return " ".join(parts)
+
+
 @flow(
     name="git-repository-add-read-write",
     flow_run_name="Adding repository {model.repository_name} in branch {model.infrahub_branch_name}",
@@ -699,10 +714,7 @@ async def git_repository_diff_names_only(model: GitDiffNamesOnly) -> GitDiffName
     else:
         files_added = await repo.list_all_files(commit=model.first_commit)
 
-    response = GitDiffNamesOnlyResponse(
-        files_added=files_added, files_changed=files_changed, files_removed=files_removed
-    )
-    return response
+    return GitDiffNamesOnlyResponse(files_added=files_added, files_changed=files_changed, files_removed=files_removed)
 
 
 @flow(
@@ -1047,8 +1059,8 @@ async def run_user_check(model: UserCheckData) -> ValidatorConclusion:
             log.info("The check passed")
         else:
             log.warning("The check reported failures")
-            for log_entry in check_run.log_entries:
-                log.warning(log_entry)
+            for entry in check_run.logs:
+                log.warning(format_check_log_entry(entry))
         log_entries = check_run.log_entries
     except CheckError as exc:
         log.warning("The check failed to run")
