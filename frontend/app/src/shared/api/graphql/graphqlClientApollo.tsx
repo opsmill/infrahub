@@ -168,7 +168,7 @@ function redirectToLogin(): void {
   removeTokensInLocalStorage();
   if (window.location.pathname === "/login") return;
 
-  const from = window.location.pathname + window.location.search;
+  const from = window.location.pathname + window.location.search + window.location.hash;
   window.location.assign(`/login?from=${encodeURIComponent(from)}`);
 }
 
