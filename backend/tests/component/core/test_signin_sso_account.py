@@ -1,7 +1,9 @@
 import uuid
+from collections.abc import Iterator
 
 import pytest
 
+from infrahub import config
 from infrahub.auth import ExternalAuthProtocol, ExternalIdentity, signin_sso_account
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
@@ -11,6 +13,14 @@ from infrahub.core.protocols import CoreAccount
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.exceptions import ProcessingError
+
+
+@pytest.fixture
+def sso_account_name_fallback_disabled() -> Iterator[None]:
+    original = config.SETTINGS.security.sso_account_name_fallback
+    config.SETTINGS.security.sso_account_name_fallback = False
+    yield
+    config.SETTINGS.security.sso_account_name_fallback = original
 
 
 async def test_new_user_creates_account_and_identity(
@@ -235,6 +245,88 @@ async def test_name_and_email_collision_raises_processing_error(
     )
 
     with pytest.raises(ProcessingError):
+        await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+
+async def test_name_fallback_disabled_does_not_claim_unclaimed_account(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_disabled: None,
+) -> None:
+    """When the name fallback is disabled an SSO login must never adopt a pre-existing account.
+
+    A separate account, keyed by the email, is created instead so a controlled display name
+    cannot be used to claim a never-yet-linked account.
+
+    """
+    existing_account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await existing_account.new(db=db, name="Mona West", account_type="User", password=str(uuid.uuid4()))
+    await existing_account.save(db=db)
+
+    identity = ExternalIdentity(
+        sub="sub-nofallback-001",
+        provider_name="provider1",
+        protocol=ExternalAuthProtocol.OIDC,
+        display_name="Mona West",
+        email="mona@example.com",
+    )
+
+    auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+    assert auth_result.token.access_token
+
+    new_accounts = await NodeManager.query(
+        db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "mona@example.com"}
+    )
+    assert len(new_accounts) == 1
+    assert new_accounts[0].label.value == "Mona West"
+    assert new_accounts[0].id != existing_account.id
+
+    original = await NodeManager.get_one(db=db, id=existing_account.id)
+    original_identities = await NodeManager.query(
+        db=db, schema=InfrahubKind.EXTERNALIDENTITY, filters={"account__ids": [existing_account.id]}
+    )
+    assert original.name.value == "Mona West"
+    assert len(original_identities) == 0
+
+    new_identities = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.EXTERNALIDENTITY,
+        filters={"sub__value": "sub-nofallback-001", "account__ids": [new_accounts[0].id]},
+    )
+    assert len(new_identities) == 1
+
+
+async def test_name_fallback_disabled_both_names_taken_raises(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    sso_account_name_fallback_disabled: None,
+) -> None:
+    """With the fallback disabled a name match becomes a collision.
+
+    If the email is also already in
+    use as an account name there is no safe automatic resolution, so the login must fail loudly.
+
+    """
+    account_by_name = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account_by_name.new(db=db, name="Nora Park", account_type="User", password=str(uuid.uuid4()))
+    await account_by_name.save(db=db)
+
+    account_by_email = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account_by_email.new(db=db, name="nora@example.com", account_type="User", password=str(uuid.uuid4()))
+    await account_by_email.save(db=db)
+
+    identity = ExternalIdentity(
+        sub="sub-nofallback-002",
+        provider_name="provider1",
+        protocol=ExternalAuthProtocol.OIDC,
+        display_name="Nora Park",
+        email="nora@example.com",
+    )
+
+    with pytest.raises(ProcessingError, match=r"already in use as account names"):
         await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
 

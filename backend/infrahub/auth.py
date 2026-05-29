@@ -244,35 +244,39 @@ async def signin_sso_account(  # noqa: PLR0915
                 db=db, id=external_identity.display_name, kind=InfrahubKind.ACCOUNT
             )
 
-            name_collision = False
-            if account_by_name:
+            name_fallback_enabled = config.SETTINGS.security.sso_account_name_fallback
+
+            # A pre-existing same-named account may be adopted on a first login, but only as a
+            # transitional convenience and only while it has never been linked to an SSO identity.
+            adopt_existing_account = False
+            if account_by_name and name_fallback_enabled:
                 existing_identities = await NodeManager.query(
                     db=db,
                     schema=InfrahubKind.EXTERNALIDENTITY,
                     filters={"account__ids": [account_by_name.id]},
                     limit=1,
                 )
-                if existing_identities:
-                    # Account belongs to a different SSO user — treat as name collision
-                    name_collision = True
-                else:
-                    # Unclaimed account: true transition case, safe to link
-                    account = account_by_name
-                    identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
-                    await identity_node.new(
-                        db=db,
-                        sub=external_identity.sub,
-                        provider_name=external_identity.provider_name,
-                        protocol=external_identity.protocol,
-                        account=account.id,
-                    )
-                    await identity_node.save(db=db)
-                    if account.label.value != external_identity.display_name:
-                        account.label.value = external_identity.display_name
-                        await account.save(db=db)
+                adopt_existing_account = not existing_identities
 
-            if not account_by_name or name_collision:
-                if name_collision:
+            if adopt_existing_account:
+                account = account_by_name
+                identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
+                await identity_node.new(
+                    db=db,
+                    sub=external_identity.sub,
+                    provider_name=external_identity.provider_name,
+                    protocol=external_identity.protocol,
+                    account=account.id,
+                )
+                await identity_node.save(db=db)
+                if account.label.value != external_identity.display_name:
+                    account.label.value = external_identity.display_name
+                    await account.save(db=db)
+            else:
+                # Provision a dedicated account. Use the display name unless it is already taken
+                # by a claimed account, or because name-based adoption is disabled in which
+                # case fall back to the email, or fail if that is taken too.
+                if account_by_name:
                     existing_by_email = await NodeManager.get_one_by_default_filter(
                         db=db, id=external_identity.email, kind=InfrahubKind.ACCOUNT
                     )
