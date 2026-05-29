@@ -6,7 +6,7 @@ from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
