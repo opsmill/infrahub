@@ -1,5 +1,6 @@
 from prefect import flow
 
+from infrahub import lock
 from infrahub.exceptions import RepositoryError
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.log import get_logger
@@ -45,13 +46,25 @@ async def fetch(message: messages.RefreshGitFetch) -> None:
         repository_kind=message.repository_kind,
     )
 
-    await repo.fetch()
-    await repo.pull(
-        branch_name=message.infrahub_branch_name,
-        branch_id=message.infrahub_branch_id,
-        create_if_missing=True,
-        update_commit_value=False,
-    )
+    # Hold the repo lock so the hard reset doesn't interleave with other git
+    # operations on the same on-disk tree (merges, syncs, branch creation).
+    async with lock.registry.get(name=message.repository_name, namespace="repository"):
+        await repo.fetch()
+        if message.commit:
+            await repo.reset_to_commit(
+                branch_name=message.infrahub_branch_name,
+                commit=message.commit,
+                branch_id=message.infrahub_branch_id,
+                create_if_missing=True,
+                update_commit_value=False,
+            )
+        else:
+            await repo.pull(
+                branch_name=message.infrahub_branch_name,
+                branch_id=message.infrahub_branch_id,
+                create_if_missing=True,
+                update_commit_value=False,
+            )
 
 
 @flow(
