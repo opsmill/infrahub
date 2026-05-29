@@ -9,12 +9,16 @@ describe("paramsToFormValues", () => {
         source: "src-id",
         targetKinds: ["InfraDevice", "InfraInterface"],
         depth: 8,
+        maxResults: 100,
+        maxPaths: 1000,
         selectedIndex: 0,
       })
     ).toEqual({
       sourceId: "src-id",
       targetKinds: ["InfraDevice", "InfraInterface"],
       maxDepth: 8,
+      maxResults: 100,
+      maxPaths: 1000,
     });
   });
 });
@@ -26,11 +30,15 @@ describe("formValuesToParams", () => {
         sourceId: "src-id",
         targetKinds: ["InfraDevice"],
         maxDepth: 3,
+        maxResults: 100,
+        maxPaths: 1000,
       })
     ).toEqual({
       source: "src-id",
       targetKinds: ["InfraDevice"],
       depth: 3,
+      maxResults: 100,
+      maxPaths: 1000,
       selectedIndex: 0,
     });
   });

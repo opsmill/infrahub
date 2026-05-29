@@ -19,6 +19,8 @@ export function DependenciesModeMain({
       sourceId: params.source,
       targetKinds: params.targetKinds,
       maxDepth: params.depth,
+      maxResults: params.maxResults,
+      maxPaths: params.maxPaths,
     },
     { enabled: !!params.source && params.targetKinds.length > 0 }
   );

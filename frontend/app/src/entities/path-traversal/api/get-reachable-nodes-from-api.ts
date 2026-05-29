@@ -31,7 +31,7 @@ const pathFields = {
 };
 
 export async function getReachableNodesFromApi(params: GetReachableNodesParams) {
-  const { sourceId, targetKinds, maxDepth, maxResults, branchName, atDate } = params;
+  const { sourceId, targetKinds, maxDepth, maxResults, maxPaths, branchName, atDate } = params;
 
   const dataArgs: Record<string, unknown> = {
     source_id: sourceId,
@@ -39,6 +39,7 @@ export async function getReachableNodesFromApi(params: GetReachableNodesParams) 
   };
   if (maxDepth !== undefined) dataArgs.max_depth = maxDepth;
   if (maxResults !== undefined) dataArgs.max_results = maxResults;
+  if (maxPaths !== undefined) dataArgs.max_paths = maxPaths;
 
   const queryString = jsonToGraphQLQuery({
     query: {

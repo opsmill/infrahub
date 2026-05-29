@@ -100,6 +100,60 @@ export function DependenciesModeForm({ form, onSubmit, isPending }: Dependencies
                 </div>
               )}
             />
+
+            <FormField
+              name="maxResults"
+              rules={{
+                required: "Max results is required",
+                min: { value: 1, message: "Must be ≥ 1" },
+                max: { value: 200, message: "Must be ≤ 200" },
+              }}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <FormLabel>Max Results</FormLabel>
+                  <FormInput>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={(field.value as number) ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.valueAsNumber;
+                        field.onChange(isNaN(value) ? null : value);
+                      }}
+                    />
+                  </FormInput>
+                  <FormMessage />
+                </div>
+              )}
+            />
+
+            <FormField
+              name="maxPaths"
+              rules={{
+                required: "Max paths is required",
+                min: { value: 1, message: "Must be ≥ 1" },
+                max: { value: 5000, message: "Must be ≤ 5000" },
+              }}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <FormLabel>Max Paths</FormLabel>
+                  <FormInput>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={5000}
+                      value={(field.value as number) ?? ""}
+                      onChange={(e) => {
+                        const value = e.target.valueAsNumber;
+                        field.onChange(isNaN(value) ? null : value);
+                      }}
+                    />
+                  </FormInput>
+                  <FormMessage />
+                </div>
+              )}
+            />
           </AccordionContent>
         </AccordionItem>
       </Accordion>
