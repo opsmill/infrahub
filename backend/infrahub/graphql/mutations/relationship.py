@@ -492,7 +492,7 @@ async def _collect_current_peers(
 
 def _validate_cardinality_add(rel_schema: RelationshipSchema, existing_peers: dict[str, RelationshipPeerData]) -> None:
     if rel_schema.cardinality == RelationshipCardinality.ONE and existing_peers:
-        raise ValidationError({"name": f"'{rel_schema.name}' is a cardinality-one relationship and already has a peer"})
+        raise ValidationError(f"'{rel_schema.name}' is a cardinality-one relationship and already has a peer")
 
 
 def _validate_optional_remove(

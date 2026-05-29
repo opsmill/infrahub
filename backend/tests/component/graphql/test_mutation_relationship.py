@@ -272,89 +272,50 @@ async def test_relationship_wrong_name(
     branch: Branch,
 ) -> None:
     query = """
-    mutation {
+    mutation RelationshipAdd($id: String!, $name: String!, $node_id: String!) {
         RelationshipAdd(data: {
-            id: "%s",
-            name: "notvalid",
-            nodes: [{id: "%s"}],
+            id: $id,
+            name: $name,
+            nodes: [{id: $node_id}],
         }) {
             ok
         }
     }
-    """ % (
-        person_jack_main.id,
-        tag_blue_main.id,
-    )
+    """
 
     branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=branch)
+
     result = await graphql(
         schema=gql_params.schema,
         source=query,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"id": person_jack_main.id, "name": "notvalid", "node_id": tag_blue_main.id},
     )
-
     assert result.errors
     assert result.errors[0].message == "'notvalid' is not a valid relationship for 'TestPerson' at name"
 
     # Cardinality-one relationship: first add is allowed
-    query = """
-    mutation {
-        RelationshipAdd(data: {
-            id: "%s",
-            name: "primary_tag",
-            nodes: [{id: "%s"}],
-        }) {
-            ok
-        }
-    }
-    """ % (
-        person_jack_main.id,
-        tag_blue_main.id,
-    )
-
-    branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"id": person_jack_main.id, "name": "primary_tag", "node_id": tag_blue_main.id},
     )
-
     assert result.errors is None
 
     # Cardinality-one relationship: second add is rejected (peer already exists)
-    query = """
-    mutation {
-        RelationshipAdd(data: {
-            id: "%s",
-            name: "primary_tag",
-            nodes: [{id: "%s"}],
-        }) {
-            ok
-        }
-    }
-    """ % (
-        person_jack_main.id,
-        tag_red_main.id,
-    )
-
-    branch.update_schema_hash()
-    gql_params = await prepare_graphql_params(db=db, branch=branch)
     result = await graphql(
         schema=gql_params.schema,
         source=query,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"id": person_jack_main.id, "name": "primary_tag", "node_id": tag_red_main.id},
     )
-
     assert result.errors
-    assert result.errors[0].message == "'primary_tag' is a cardinality-one relationship and already has a peer at name"
+    assert result.errors[0].message == "'primary_tag' is a cardinality-one relationship and already has a peer"
 
 
 async def test_relationship_wrong_node(
@@ -1678,7 +1639,7 @@ async def test_relationship_add_cardinality_one_rejected(
         variable_values={"id": person_jack_main.id, "node_id": tag_red_main.id},
     )
     assert result.errors
-    assert result.errors[0].message == "'primary_tag' is a cardinality-one relationship and already has a peer at name"
+    assert result.errors[0].message == "'primary_tag' is a cardinality-one relationship and already has a peer"
 
 
 class TestRelationshipRemoveMandatory:
