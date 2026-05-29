@@ -8,11 +8,20 @@ import type { UserToken } from "@/entities/authentication/types";
 // schemed (`https://evil`), and anything URL() can't parse. Used by the
 // login flow to guard the `?from=` redirect target against open-redirect
 // abuse — the value comes from a URL query param, so it is attacker-controlled.
+//
+// Note on the post-normalization pathname check: WHATWG URL parsing
+// collapses `..` segments, so `/..//evil.com` resolves to pathname
+// `//evil.com` against the same origin. Origin-equality alone would
+// pass that through, and the returned protocol-relative pathname then
+// becomes the open-redirect payload when the caller serialises it back
+// to a string (Navigate to / SSO `final_url=…`). Reject any pathname
+// that starts with `//` after normalization, regardless of origin.
 export const safeInternalPath = (raw: string | null | undefined): Partial<Path> | null => {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
   try {
     const url = new URL(raw, window.location.origin);
     if (url.origin !== window.location.origin) return null;
+    if (url.pathname.startsWith("//")) return null;
     return { pathname: url.pathname, search: url.search, hash: url.hash };
   } catch {
     return null;

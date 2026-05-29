@@ -58,6 +58,20 @@ describe("safeInternalPath", () => {
     expect(safeInternalPath("./foo")).toBeNull();
     expect(safeInternalPath("../foo")).toBeNull();
   });
+
+  it("rejects payloads that normalize to a protocol-relative pathname", () => {
+    // GIVEN a path that passes the leading-`//` gate but whose WHATWG URL
+    // normalization collapses `..` segments back into a `//evil.com`
+    // pathname. The leading-/ gate misses these because the raw string
+    // starts with a single `/`, and the same-origin check passes because
+    // the resolved URL stays on the baseline origin — but the pathname
+    // itself is then the open-redirect payload when the caller serialises
+    // it back to a string. The post-normalization pathname guard catches
+    // them.
+    expect(safeInternalPath("/..//evil.com")).toBeNull();
+    expect(safeInternalPath("/../..//evil.com")).toBeNull();
+    expect(safeInternalPath("/foo/..//evil.com")).toBeNull();
+  });
 });
 
 describe("pathToString", () => {
