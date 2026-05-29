@@ -13,8 +13,6 @@ from infrahub.graph_traversal.planning.models import (
 from infrahub.graph_traversal.planning.permissions import KindPermissionCache
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
-
     from infrahub.core.branch import Branch
     from infrahub.core.schema import RelationshipSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -157,23 +155,12 @@ class SchemaPlanner:
         terminal_predicate = self._expand_generic_kinds_in_terminal(terminal_predicate)
         user_filters = self._expand_generic_kinds_in_filters(user_filters)
 
-        adjacency: Mapping[str, Mapping[str, frozenset[str]]]
+        new_plan = Plan(source_kind=source_kind, terminal_predicate=terminal_predicate, max_depth=max_depth)
         if not self._permission_cache.can_view(source_kind):
-            adjacency = {}
-        else:
-            adjacency = self._build_adjacency(
-                source_kind=source_kind,
-                terminal_predicate=terminal_predicate,
-                max_depth=max_depth,
-                user_filters=user_filters,
-            )
+            return new_plan
 
-        return Plan(
-            adjacency=adjacency,
-            source_kind=source_kind,
-            terminal_predicate=terminal_predicate,
-            max_depth=max_depth,
-        )
+        self._populate_plan(plan=new_plan, terminal_predicate=terminal_predicate, user_filters=user_filters)
+        return new_plan
 
     def _expand_to_concretes(self, kinds: frozenset[str]) -> frozenset[str]:
         """Replace each generic in ``kinds`` with its concrete implementors."""
@@ -206,42 +193,41 @@ class SchemaPlanner:
             relationship_filter=user_filters.relationship_filter,
         )
 
-    def _build_adjacency(
+    def _populate_plan(
         self,
         *,
-        source_kind: str,
+        plan: Plan,
         terminal_predicate: TerminalPredicate,
-        max_depth: int,
         user_filters: UserFilters,
-    ) -> Mapping[str, Mapping[str, frozenset[str]]]:
-        """Two-pass kind-level BFS that emits the per-hop adjacency directly.
+    ) -> None:
+        """Add every legal source→terminal hop within ``plan.max_depth`` to ``plan``.
 
-        Pass 1 (``_forward_bfs``): BFS from ``source_kind``, recording every
-        legal ``(start, rel, end)`` hop and the minimum hops from the source
-        to each kind. Filters and permissions are applied at the hop level.
+        Three passes:
 
-        Pass 2 (``_min_depth_to_terminal``): from terminal-matching ``end_kind``s,
-        BFS backward through the forward adjacency to compute, for every kind
-        that can still reach a terminal, the minimum hops to do so.
-
-        Pass 3 (``_combine_with_depth_bound``): keep only edges ``(s, r, e)``
-        whose total path length ``d_from_source[s] + 1 + d_to_terminal[e]`` is
-        ≤ ``max_depth``, and sort the surviving adjacency for determinism.
+        1. Forward BFS from ``plan.source_kind`` records every legal
+           ``(start, rel, end)`` hop and the min hops from source to each
+           kind. Filters and permissions are applied per-hop.
+        2. Reverse BFS from terminal-matching kinds computes the min hops
+           from each kind back to a terminal. If no kind reaches a terminal,
+           the plan stays empty.
+        3. For every forward hop whose total length
+           ``d_from_source[start] + 1 + d_to_terminal[end] ≤ plan.max_depth``,
+           call ``plan.add_hop``.
         """
         forward, min_depth_from_source = self._forward_bfs(
-            source_kind=source_kind,
+            source_kind=plan.source_kind,
             terminal_predicate=terminal_predicate,
-            max_depth=max_depth,
+            max_depth=plan.max_depth,
             user_filters=user_filters,
         )
         min_depth_to_terminal = _min_depth_to_terminal(forward=forward, terminal_predicate=terminal_predicate)
         if not min_depth_to_terminal:
-            return {}
-        return _combine_with_depth_bound(
+            return
+        _add_hops_within_depth(
+            plan=plan,
             forward=forward,
             min_depth_from_source=min_depth_from_source,
             min_depth_to_terminal=min_depth_to_terminal,
-            max_depth=max_depth,
         )
 
     def _forward_bfs(
@@ -362,29 +348,24 @@ def _min_depth_to_terminal(
     return min_depth
 
 
-def _combine_with_depth_bound(
+def _add_hops_within_depth(
     *,
+    plan: Plan,
     forward: dict[str, dict[str, set[str]]],
     min_depth_from_source: dict[str, int],
     min_depth_to_terminal: dict[str, int],
-    max_depth: int,
-) -> Mapping[str, Mapping[str, frozenset[str]]]:
-    """Pass 3: keep only hops on some ≤``max_depth`` source→terminal path.
-
-    Sorted outer/inner mappings for FR-016 determinism.
-    """
-    adjacency: dict[str, Mapping[str, frozenset[str]]] = {}
-    for start in sorted(forward):
-        d_s = min_depth_from_source[start]
-        rels_out: dict[str, frozenset[str]] = {}
-        for identifier in sorted(forward[start]):
-            kept = frozenset(
-                end
-                for end in forward[start][identifier]
-                if end in min_depth_to_terminal and d_s + 1 + min_depth_to_terminal[end] <= max_depth
-            )
-            if kept:
-                rels_out[identifier] = kept
-        if rels_out:
-            adjacency[start] = rels_out
-    return adjacency
+) -> None:
+    """Pass 3: add every forward hop on some ≤``plan.max_depth`` source→terminal path to ``plan``."""
+    max_depth = plan.max_depth
+    for start, rels in forward.items():
+        d_from_source = min_depth_from_source[start]
+        for identifier, ends in rels.items():
+            for end in ends:
+                d_to_terminal = min_depth_to_terminal.get(end)
+                if d_to_terminal is not None and d_from_source + 1 + d_to_terminal <= max_depth:
+                    plan.add_hop(
+                        source_kind=start,
+                        relationship_identifier=identifier,
+                        end_kind=end,
+                        min_hops_to_terminal=d_to_terminal,
+                    )

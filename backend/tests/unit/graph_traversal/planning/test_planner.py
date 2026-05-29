@@ -17,7 +17,7 @@ from infrahub.graph_traversal.planning.models import (
     TerminalByKinds,
     UserFilters,
 )
-from tests.helpers.graph_traversal.builders import build_schema_branch, make_planner
+from tests.helpers.graph_traversal.builders import build_schema_branch, dump_adjacency, make_planner
 
 if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
@@ -76,7 +76,6 @@ class TestEmptyPlan:
             max_depth=5,
             user_filters=_default_filters(),
         )
-        assert plan.adjacency == {}
         assert plan.is_empty is True
 
 
@@ -89,7 +88,7 @@ class TestAdjacencyEnumeration:
             max_depth=1,
             user_filters=_default_filters(),
         )
-        assert plan.adjacency == _adj(("TestingKindA", "a__b", "TestingKindB"))
+        assert dump_adjacency(plan) == _adj(("TestingKindA", "a__b", "TestingKindB"))
 
     def test_finds_multi_hop_adjacency_through_intermediate(self, linear_a_b_c_schema: SchemaBranch) -> None:
         """Over a BIDIR chain A↔B↔C with ``max_depth=5`` and terminal=C, every reachable hop appears.
@@ -109,7 +108,7 @@ class TestAdjacencyEnumeration:
             max_depth=5,
             user_filters=_default_filters(),
         )
-        assert plan.adjacency == _adj(
+        assert dump_adjacency(plan) == _adj(
             ("TestingKindA", "a__b", "TestingKindB"),
             ("TestingKindB", "a__b", "TestingKindA"),
             ("TestingKindB", "b__c", "TestingKindC"),
@@ -134,7 +133,7 @@ class TestAdjacencyEnumeration:
             max_depth=3,
             user_filters=_default_filters(),
         )
-        assert plan_shallow.adjacency == {}
+        assert plan_shallow.is_empty
 
         plan_deep = planner.plan(
             source_kind="TestingAaa",
@@ -143,7 +142,7 @@ class TestAdjacencyEnumeration:
             user_filters=_default_filters(),
         )
         # The shortest route is A→B→C→D→E→F (length 5); each forward hop appears once.
-        assert plan_deep.adjacency == _adj(
+        assert dump_adjacency(plan_deep) == _adj(
             ("TestingAaa", "aaa__bbb", "TestingBbb"),
             ("TestingBbb", "bbb__ccc", "TestingCcc"),
             ("TestingCcc", "ccc__ddd", "TestingDdd"),
@@ -178,7 +177,7 @@ class TestGenericExpansion:
         )
         # The generic kind itself never appears as an end_kind. Both concrete
         # inheritors are reached via the same `device__interfaces` identifier.
-        assert plan.adjacency == _adj(
+        assert dump_adjacency(plan) == _adj(
             ("TestingDevice", "device__interfaces", "TestingEthernetInterface"),
             ("TestingDevice", "device__interfaces", "TestingVirtualInterface"),
         )
@@ -212,7 +211,7 @@ class TestUserFilters:
             max_depth=5,
             user_filters=UserFilters.from_graphql_input(None),
         )
-        assert plan.adjacency == {}
+        assert plan.is_empty
 
     def test_excluded_kinds_drops_paths_containing_that_kind(self, linear_a_b_c_schema: SchemaBranch) -> None:
         """Every A→C path requires KindB as an intermediate, which is excluded."""
@@ -223,7 +222,7 @@ class TestUserFilters:
             max_depth=5,
             user_filters=UserFilters(excluded_kinds=frozenset({"TestingKindB"})),
         )
-        assert plan.adjacency == {}
+        assert plan.is_empty
 
     def test_relationship_filter_requires_every_hop_match(self, linear_a_b_c_schema: SchemaBranch) -> None:
         """Every A→C path requires the ``b__c`` identifier, which the filter excludes."""
@@ -234,7 +233,7 @@ class TestUserFilters:
             max_depth=5,
             user_filters=UserFilters(relationship_filter=frozenset({"a__b"})),
         )
-        assert plan.adjacency == {}
+        assert plan.is_empty
 
 
 class TestDeterminism:
@@ -253,7 +252,7 @@ class TestDeterminism:
             user_filters=_default_filters(),
         )
         assert plan_a == plan_b
-        assert plan_a.adjacency == plan_b.adjacency
+        assert dump_adjacency(plan_a) == dump_adjacency(plan_b)
 
 
 class TestTerminalById:
@@ -279,7 +278,7 @@ class TestTerminalById:
             user_filters=_default_filters(),
         )
         # Only the EndA edge is kept; the EndB edge is on a non-terminal path.
-        assert plan.adjacency == _adj(("TestingStart", "start__a", "TestingEndA"))
+        assert dump_adjacency(plan) == _adj(("TestingStart", "start__a", "TestingEndA"))
 
 
 class TestKindFilter:
@@ -300,7 +299,7 @@ class TestKindFilter:
         )
         # Start (source) and End (terminal) are exempt from kind_filter; Mid is
         # in the filter as an intermediate. The two-hop path survives.
-        assert plan.adjacency == _adj(
+        assert dump_adjacency(plan) == _adj(
             ("TestingStart", "s__m", "TestingMid"),
             ("TestingMid", "m__e", "TestingEnd"),
         )

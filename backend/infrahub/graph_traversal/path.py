@@ -3,17 +3,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from infrahub.core.query import Query, QueryType
-from infrahub.graph_traversal._cypher import render_plan_to_cypher
 from infrahub.graph_traversal._extract import extract_path_from_result
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
+    from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
     from infrahub.graph_traversal.planning.models import Plan
     from infrahub.graph_traversal.results import PathData
 
 
 class PathTraversalQuery(Query):
-    """Render a pre-built ``Plan`` into Cypher and execute it."""
+    """Execute a traversal plan and project the matched paths."""
 
     name = "path_traversal"
     type = QueryType.READ
@@ -23,30 +23,25 @@ class PathTraversalQuery(Query):
     def __init__(
         self,
         *,
+        renderer: PathTraversalCypherRenderer,
         plan: Plan,
         source_id: str,
-        default_branch_name: str,
-        max_paths: int = 10,
+        max_paths: int,
         **kwargs: Any,
     ) -> None:
-        if plan.is_empty:
-            raise ValueError("PathTraversalQuery requires a non-empty plan")
-
-        self.plan = plan
-        self.source_id = source_id
-        self.default_branch_name = default_branch_name
-        self.max_paths = max_paths
-
+        self._renderer = renderer
+        self._plan = plan
+        self._source_id = source_id
+        self._max_paths = max_paths
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        rendered = render_plan_to_cypher(
-            plan=self.plan,
-            source_id=self.source_id,
-            branch=self.branch,
-            default_branch_name=self.default_branch_name,
+        rendered = self._renderer.render(
+            plan=self._plan,
+            source_id=self._source_id,
             at=self.at,
-            max_results=self.max_paths,
+            max_targets=1,
+            max_paths=self._max_paths,
         )
         self.add_to_query(rendered.text)
         self.params.update(rendered.params)

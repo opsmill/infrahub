@@ -10,7 +10,7 @@ from __future__ import annotations
 from infrahub.core.constants import RelationshipCardinality, RelationshipDirection, RelationshipKind
 from infrahub.core.schema import NodeSchema, RelationshipSchema
 from infrahub.graph_traversal.planning.models import TerminalByKinds, UserFilters
-from tests.helpers.graph_traversal.builders import build_schema_branch, make_planner
+from tests.helpers.graph_traversal.builders import build_schema_branch, dump_adjacency, make_planner
 
 
 def _node(name: str, *, relationships: list[RelationshipSchema] | None = None) -> NodeSchema:
@@ -59,7 +59,7 @@ class TestPermissionPruning:
             max_depth=5,
             user_filters=_default_filters(),
         )
-        assert plan.adjacency == {}
+        assert plan.is_empty
 
     def test_path_retained_when_alternate_path_avoids_forbidden_kind(self) -> None:
         """Two structural paths exist (Source→Allowed→Target and Source→Forbidden→Target).
@@ -87,7 +87,7 @@ class TestPermissionPruning:
             max_depth=3,
             user_filters=_default_filters(),
         )
-        assert plan.adjacency == _adj(
+        assert dump_adjacency(plan) == _adj(
             ("TestingSource", "s__a", "TestingAllowed"),
             ("TestingAllowed", "a__t", "TestingTarget"),
         )
@@ -110,7 +110,7 @@ class TestPermissionPruning:
             max_depth=2,
             user_filters=_default_filters(),
         )
-        assert plan.adjacency == {}
+        assert plan.is_empty
 
     def test_terminal_kind_is_checked(self) -> None:
         """A forbidden terminal kind is pruned when BFS reaches it as a peer."""
@@ -127,4 +127,4 @@ class TestPermissionPruning:
             max_depth=2,
             user_filters=_default_filters(),
         )
-        assert plan.adjacency == {}
+        assert plan.is_empty

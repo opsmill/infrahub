@@ -29,21 +29,36 @@ class TestTerminalById:
 
 
 class TestPlan:
-    def test_constructs_with_adjacency(self) -> None:
-        adjacency = {"A": {"rel_ab": frozenset({"B"})}}
+    def test_add_hop_builds_adjacency_and_min_depth(self) -> None:
         plan = Plan(
-            adjacency=adjacency,
             source_kind="A",
             terminal_predicate=TerminalById(node_id="uuid", kind="B"),
             max_depth=5,
         )
-        assert plan.adjacency == adjacency
+        plan.add_hop(source_kind="A", relationship_identifier="rel_ab", end_kind="B", min_hops_to_terminal=0)
+
+        assert plan.get_all_source_kinds() == ["A"]
+        assert plan.get_relationship_map_for_kind("A") == {"rel_ab": ["B"]}
+        assert plan.get_min_depth_to_terminal_for_kind("B") == 0
+        assert plan.get_min_depth_to_terminal_for_kind("A") is None
+        assert plan.get_kinds_within_hops_of_terminal(max_hops=0) == ["B"]
         assert plan.is_empty is False
+
+    def test_add_hop_keeps_smallest_min_depth_for_repeated_end_kind(self) -> None:
+        plan = Plan(
+            source_kind="A",
+            terminal_predicate=TerminalById(node_id="uuid", kind="B"),
+            max_depth=5,
+        )
+        plan.add_hop(source_kind="A", relationship_identifier="r1", end_kind="C", min_hops_to_terminal=3)
+        plan.add_hop(source_kind="A", relationship_identifier="r2", end_kind="C", min_hops_to_terminal=1)
+        plan.add_hop(source_kind="A", relationship_identifier="r3", end_kind="C", min_hops_to_terminal=5)
+
+        assert plan.get_min_depth_to_terminal_for_kind("C") == 1
 
     def test_rejects_max_depth_below_minimum(self) -> None:
         with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
             Plan(
-                adjacency={},
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
                 max_depth=0,
@@ -52,16 +67,13 @@ class TestPlan:
     def test_rejects_max_depth_above_maximum(self) -> None:
         with pytest.raises(ValueError, match=r"Plan.max_depth must be in \[1, 20\]"):
             Plan(
-                adjacency={},
                 source_kind="A",
                 terminal_predicate=TerminalById(node_id="uuid", kind="B"),
                 max_depth=21,
             )
 
-    def test_empty_adjacency_signals_no_viable_path(self) -> None:
-        """Empty adjacency is the legitimate 'no viable path' signal."""
+    def test_plan_with_no_hops_is_empty(self) -> None:
         plan = Plan(
-            adjacency={},
             source_kind="A",
             terminal_predicate=TerminalById(node_id="uuid", kind="B"),
             max_depth=5,

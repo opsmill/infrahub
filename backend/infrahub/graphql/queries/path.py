@@ -9,6 +9,7 @@ from graphql import GraphQLError
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.exceptions import SchemaNotFoundError
+from infrahub.graph_traversal._cypher import PathTraversalCypherRenderer
 from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.planning.models import TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
@@ -68,7 +69,7 @@ class PathTraversalInput(InputObjectType):
     destination_id = String(required=True, description="UUID of the end node")
     max_depth = Int(required=False, default_value=5, description="Maximum number of node hops (default: 5, max: 20)")
     max_paths = Int(
-        required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 100)"
+        required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 5000)"
     )
     kind_filter = List(
         of_type=NonNull(String), required=False, description="Filter to only traverse through nodes of these kinds"
@@ -263,15 +264,22 @@ async def path_traversal_resolver(
         # No schema route survives planning, return an empty result
         path_data_list: list[PathData] = []
     else:
-        query = await PathTraversalQuery.init(
-            db=graphql_context.db,
+        renderer = PathTraversalCypherRenderer(
             branch=graphql_context.branch,
-            at=graphql_context.at,
-            plan=plan,
-            source_id=source_id,
             default_branch_name=registry.default_branch,
-            max_paths=max_paths,
         )
+        try:
+            query = await PathTraversalQuery.init(
+                db=graphql_context.db,
+                branch=graphql_context.branch,
+                at=graphql_context.at,
+                renderer=renderer,
+                plan=plan,
+                source_id=source_id,
+                max_paths=max_paths,
+            )
+        except ValueError as exc:
+            raise GraphQLError(str(exc)) from exc
         await query.execute(db=graphql_context.db)
         path_data_list = query.get_paths()
 

@@ -5,10 +5,13 @@ from typing import TYPE_CHECKING
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
-from infrahub.graph_traversal.path import PathTraversalQuery
 from infrahub.graph_traversal.planning.models import Plan, TerminalById, UserFilters
 from infrahub.graph_traversal.planning.planner import SchemaPlanner
-from tests.helpers.graph_traversal.builders import build_permission_resolver, identifier_of
+from tests.helpers.graph_traversal.builders import (
+    build_path_traversal_query,
+    build_permission_resolver,
+    identifier_of,
+)
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
@@ -47,7 +50,7 @@ async def test_returns_direct_peer_path_on_default_branch(
     plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag)
     assert not plan.is_empty
 
-    query = await PathTraversalQuery.init(
+    query = await build_path_traversal_query(
         db=db,
         branch=default_branch,
         plan=plan,
@@ -75,7 +78,7 @@ async def test_returns_direct_peer_path_on_non_default_branch(
     plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
     assert not plan.is_empty
 
-    query = await PathTraversalQuery.init(
+    query = await build_path_traversal_query(
         db=db,
         branch=feature_branch,
         plan=plan,
@@ -106,7 +109,7 @@ async def test_user_branch_edge_is_invisible_on_default_branch(
     plan = _build_plan(db=db, branch=default_branch, source=person, destination=tag_blue_main)
     assert not plan.is_empty
 
-    query = await PathTraversalQuery.init(
+    query = await build_path_traversal_query(
         db=db,
         branch=default_branch,
         plan=plan,
@@ -134,7 +137,7 @@ async def test_default_branch_edge_deleted_on_user_branch_is_hidden(
     plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
     assert not plan.is_empty
 
-    query = await PathTraversalQuery.init(
+    query = await build_path_traversal_query(
         db=db,
         branch=feature_branch,
         plan=plan,
@@ -157,7 +160,7 @@ async def test_default_branch_edge_remains_visible_on_user_branch_when_not_delet
     plan = _build_plan(db=db, branch=feature_branch, source=person, destination=tag)
     assert not plan.is_empty
 
-    query = await PathTraversalQuery.init(
+    query = await build_path_traversal_query(
         db=db,
         branch=feature_branch,
         plan=plan,
@@ -193,7 +196,7 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
         destination=owner,
         user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({owner_identifier})),
     )
-    owner_query = await PathTraversalQuery.init(
+    owner_query = await build_path_traversal_query(
         db=db,
         branch=default_branch,
         plan=owner_plan,
@@ -216,7 +219,7 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
         destination=owner,
         user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({driver_identifier})),
     )
-    driver_only_to_owner_query = await PathTraversalQuery.init(
+    driver_only_to_owner_query = await build_path_traversal_query(
         db=db,
         branch=default_branch,
         plan=driver_only_to_owner_plan,
@@ -235,7 +238,7 @@ async def test_relationship_filter_selects_one_of_two_parallel_relationships(
         destination=driver,
         user_filters=UserFilters(excluded_namespaces=frozenset(), relationship_filter=frozenset({driver_identifier})),
     )
-    driver_query = await PathTraversalQuery.init(
+    driver_query = await build_path_traversal_query(
         db=db,
         branch=default_branch,
         plan=driver_plan,
@@ -264,7 +267,7 @@ async def test_kind_filter_accepts_generic_terminal(
         destination=dog,
         user_filters=UserFilters(excluded_namespaces=frozenset(), kind_filter=frozenset({"TestAnimal"})),
     )
-    query = await PathTraversalQuery.init(
+    query = await build_path_traversal_query(
         db=db,
         branch=default_branch,
         plan=plan,
