@@ -3,7 +3,7 @@ import json
 import httpx
 from structlog.testing import capture_logs
 
-from infrahub.auth import extract_sso_groups
+from infrahub.auth.auth import extract_sso_groups
 from infrahub.config import SecurityOAuth2Provider1
 from infrahub.services import InfrahubServices
 from tests.adapters.http import MemoryHTTP

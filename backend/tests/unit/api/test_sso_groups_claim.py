@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 from structlog.testing import capture_logs
 
-from infrahub.auth import extract_sso_groups
+from infrahub.auth.auth import extract_sso_groups
 
 
 @dataclass
