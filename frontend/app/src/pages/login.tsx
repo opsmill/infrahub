@@ -1,4 +1,4 @@
-import { Navigate, useLocation, useSearchParams } from "react-router";
+import { Navigate, type Path, useLocation, useSearchParams } from "react-router";
 
 import InfrahubLogo from "@/assets/Infrahub-SVG-hori.svg?react";
 
@@ -6,6 +6,7 @@ import type { RestErrorItem } from "@/shared/api/rest/fetch";
 
 import { LoginMethodPicker } from "@/entities/authentication/ui/login-method-picker";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { safeInternalPath } from "@/entities/authentication/utils";
 
 function LoginPage() {
   const location = useLocation();
@@ -15,10 +16,11 @@ function LoginPage() {
   if (isAuthenticated) {
     // Prefer in-app navigation state (set by ProtectedRoute) and fall back
     // to the `?from=` query param set by `redirectToLogin()` on hard nav.
-    const stateFrom = (location.state?.from?.pathname || "") + (location.state?.from?.search ?? "");
-    const queryFrom = searchParams.get("from");
-    const from = stateFrom || queryFrom || "/";
-    return <Navigate to={from} replace />;
+    // `safeInternalPath` blocks open-redirect payloads from the query string.
+    const stateFrom = location.state?.from as Partial<Path> | undefined;
+    const queryFrom = safeInternalPath(searchParams.get("from"));
+    const target: Partial<Path> = stateFrom ?? queryFrom ?? { pathname: "/" };
+    return <Navigate to={target} replace />;
   }
 
   const errors = location?.state?.errors as RestErrorItem[] | undefined;
