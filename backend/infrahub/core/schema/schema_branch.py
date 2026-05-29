@@ -2104,7 +2104,6 @@ class SchemaBranch:
             ]
             if len(filtered_attributes) == len(node.attributes):
                 continue
-
             updated_node = node.duplicate()
             updated_node.attributes = filtered_attributes
             self.set(name=name, schema=updated_node)
