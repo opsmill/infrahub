@@ -1,15 +1,24 @@
-import { ApolloClient, type DefaultOptions, from, InMemoryCache, Observable } from "@apollo/client";
+import {
+  ApolloClient,
+  type DefaultOptions,
+  type FetchResult,
+  from,
+  InMemoryCache,
+  Observable,
+} from "@apollo/client";
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import { toast } from "react-toastify";
 
+import { ERROR_CODES, parseErrorExtensions } from "@/shared/api/graphql/errors";
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
+import { removeTokensInLocalStorage } from "@/entities/authentication/utils";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {
@@ -52,67 +61,112 @@ export const authLink = setContext((_, previousContext) => {
   };
 });
 
-// Error link to refresh token or display error
+// Error link: route each catalogue code to its policy. The catalogue is
+// mirrored in @/shared/api/graphql/errors until US2's generated bindings
+// (T029) land — see dev/specs/infp-468-graphql-error-catalogue/.
 export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
-  if (graphQLErrors) {
-    for (const graphQLError of graphQLErrors) {
-      console.error(
-        `[GraphQL error]: Message: ${graphQLError.message}, Location: ${JSON.stringify(
-          graphQLError.locations
-        )}, Path: ${graphQLError.path}`
-      );
+  if (!graphQLErrors) return;
 
-      switch (graphQLError.extensions?.code) {
-        case 401: {
-          return new Observable((observer) => {
-            // Modify the operation context with a new token
-            const oldHeaders = operation.getContext().headers;
+  for (const graphQLError of graphQLErrors) {
+    const parsed = parseErrorExtensions(graphQLError.extensions);
 
-            queryClient
-              .fetchQuery(refreshAccessTokenQueryOptions())
-              .then((newToken) => {
-                if (newToken?.access_token) {
-                  operation.setContext({
-                    headers: {
-                      ...oldHeaders,
-                      authorization: newToken?.access_token,
-                    },
-                  });
+    console.error(
+      `[GraphQL error]: Code: ${parsed.code}, Message: ${graphQLError.message}, ` +
+        `Location: ${JSON.stringify(graphQLError.locations)}, Path: ${graphQLError.path}`
+    );
 
-                  // Retry the failed request
-                  const subscriber = {
-                    next: observer.next.bind(observer),
-                    error: observer.error.bind(observer),
-                    complete: observer.complete.bind(observer),
-                  };
+    switch (parsed.code) {
+      case ERROR_CODES.TOKEN_EXPIRED:
+        return retryWithRefreshedToken(operation, forward);
 
-                  forward(operation).subscribe(subscriber);
-                }
-              })
-              .catch((err) => observer.error(err));
+      case ERROR_CODES.AUTHENTICATION_REQUIRED:
+        return redirectToLogin();
 
-            forward(operation);
-          });
-        }
-        case 403: {
-          // Do not display alert on unauthorized errors
-          return;
-        }
-        default: {
-          const { processErrorMessage } = operation.getContext();
+      case ERROR_CODES.PERMISSION_DENIED:
+        // Silent — 403s are handled by route-level guards, not toasts.
+        return;
 
-          if (graphQLError.message && processErrorMessage) {
-            processErrorMessage(graphQLError.message);
-          } else if (graphQLError.message) {
-            toast(<Alert type={ALERT_TYPES.ERROR} message={graphQLError.message} />, {
-              toastId: "alert-error",
-            });
-          }
-        }
-      }
+      default:
+        notifyUser(graphQLError.message, operation);
     }
   }
+
+  return;
 });
+
+// Helper: refresh the access token and replay the operation. Lifted from
+// the previous inline Observable block in errorLink; the only behaviour
+// change is that a refresh resolving without an access_token now errors
+// the observer instead of leaving it pending (the old code dropped the
+// no-token branch silently and the request hung forever).
+function retryWithRefreshedToken(
+  operation: Parameters<Parameters<typeof onError>[0]>[0]["operation"],
+  forward: Parameters<Parameters<typeof onError>[0]>[0]["forward"]
+): Observable<FetchResult> {
+  return new Observable<FetchResult>((observer) => {
+    const oldHeaders = operation.getContext().headers;
+
+    queryClient
+      .fetchQuery(refreshAccessTokenQueryOptions())
+      .then((newToken) => {
+        if (!newToken?.access_token) {
+          // Refresh resolved but the server returned no token — fail the
+          // retry observable so the caller sees an error instead of hanging
+          // forever. Apollo will surface this as a network error.
+          observer.error(new Error("Token refresh returned no access_token"));
+          return;
+        }
+
+        operation.setContext({
+          headers: {
+            ...oldHeaders,
+            authorization: newToken.access_token,
+          },
+        });
+
+        // Retry the failed request.
+        const subscriber = {
+          next: observer.next.bind(observer),
+          error: observer.error.bind(observer),
+          complete: observer.complete.bind(observer),
+        };
+
+        forward(operation).subscribe(subscriber);
+      })
+      .catch((err) => observer.error(err));
+  });
+}
+
+// Helper: token is invalid or missing — clear local credentials and bounce
+// to /login. Hard-navigates because errorLink runs outside React Router,
+// and the AuthProvider's localStorage hook does not re-render on external
+// writes. Skips the redirect if we're already on /login to avoid loops.
+function redirectToLogin(): void {
+  removeTokensInLocalStorage();
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+}
+
+// Helper: surface an error to the user. Calls operation.context's
+// processErrorMessage if present (caller-specific override), else toasts.
+function notifyUser(
+  message: string | undefined,
+  operation: Parameters<Parameters<typeof onError>[0]>[0]["operation"]
+) {
+  if (!message) return;
+
+  const { processErrorMessage } = operation.getContext();
+
+  if (processErrorMessage) {
+    processErrorMessage(message);
+    return;
+  }
+
+  toast(<Alert type={ALERT_TYPES.ERROR} message={message} />, {
+    toastId: "alert-error",
+  });
+}
 
 const graphqlClient = new ApolloClient({
   link: from([errorLink, authLink, httpLink]),

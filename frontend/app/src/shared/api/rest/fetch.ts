@@ -2,6 +2,20 @@ import { QSP } from "@/shared/config/qsp";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 
+export type RestErrorItem = { message: string; extensions: { code: number } };
+
+export class FetchError extends Error {
+  status: number;
+  errors?: RestErrorItem[];
+
+  constructor(status: number, errors?: RestErrorItem[]) {
+    super(`Request failed with status ${status}`);
+    this.name = "FetchError";
+    this.status = status;
+    this.errors = errors;
+  }
+}
+
 export const fetchUrl = async (url: string, payload?: RequestInit) => {
   const localToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
@@ -23,7 +37,23 @@ export const fetchUrl = async (url: string, payload?: RequestInit) => {
   const rawResponse = await fetch(url, newPayload);
 
   if (!rawResponse.ok) {
-    throw new Error(`Request failed with status ${rawResponse.status}`);
+    // Try to surface the REST error envelope ({errors: [...]}) so callers
+    // (e.g. SSO auth-callback → /login) can render server-provided messages.
+    // Falls back to a bare FetchError when the body is missing or not JSON.
+    let errors: RestErrorItem[] | undefined;
+    try {
+      const body = (await rawResponse.json()) as unknown;
+      if (
+        body &&
+        typeof body === "object" &&
+        Array.isArray((body as { errors?: unknown }).errors)
+      ) {
+        errors = (body as { errors: RestErrorItem[] }).errors;
+      }
+    } catch {
+      // Body wasn't JSON — leave errors undefined.
+    }
+    throw new FetchError(rawResponse.status, errors);
   }
 
   return rawResponse.json();

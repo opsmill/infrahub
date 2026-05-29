@@ -14,24 +14,24 @@ invoke demo.destroy demo.start demo.load-infra-schema demo.load-infra-data
 
 :::
 
-Infrahub is built with React. Make sure you're running Node.js 24+ and npm 10+, to verify, run:
+Infrahub is built with React and uses [pnpm](https://pnpm.io/) as its package manager. Make sure you're running Node.js 24+ and pnpm 10+, to verify, run:
 
 ```shell
 node --version
-npm --version
+pnpm --version
 ```
 
 ## 1. Install dependencies
 
 ```shell
 cd frontend/app
-npm install
+pnpm install
 ```
 
 ## 2. Start a local server
 
 ```shell
-npm start
+pnpm start
 ```
 
 You can access your local server at [http://localhost:8080/](http://localhost:8080/). If you are not familiar with Infrahub, follow our [Overview Guide](../../overview/overview.mdx).
@@ -41,16 +41,16 @@ You can access your local server at [http://localhost:8080/](http://localhost:80
 ### Unit & integration tests
 
 ```shell
-npm run test
+pnpm test
 
 # same with coverage
-npm run test:coverage
+pnpm test:coverage
 ```
 
 ### E2E tests
 
 ```shell
-npm run test:e2e
+pnpm test:e2e
 ```
 
 All tests should succeed. For more information on testing, read [Running & Writing Tests](testing-guidelines.mdx).
