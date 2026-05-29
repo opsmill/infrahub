@@ -7,6 +7,7 @@ from git import Repo
 from pytest_httpx import HTTPXMock
 
 from infrahub.core.constants import InfrahubKind
+from infrahub.exceptions import RepositoryError
 from infrahub.git import InfrahubRepository
 from infrahub.message_bus import messages
 from infrahub.message_bus.operations.git.repository import fetch
@@ -62,3 +63,44 @@ async def test_fan_out_pins_to_orchestrator_commit_when_upstream_advances(
 
     worktree = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
     assert str(worktree.head.commit) == pinned_sha
+
+
+@pytest.mark.httpx_mock(should_mock=lambda request: request.url.host == "mock")
+async def test_fan_out_raises_when_pinned_commit_unreachable(
+    git_fixture_repo: InfrahubRepository,
+    git_sources_dir: Path,
+    dependency_provider: Provider,
+    httpx_mock: HTTPXMock,
+) -> None:
+    """Worker must raise when the broadcasted SHA is not reachable after fetch."""
+    httpx_mock.add_response(
+        method="POST",
+        url=re.compile(r"http://mock/graphql/.*"),
+        json={"data": {"CoreGenericRepositoryUpdate": {"ok": True}}},
+        is_reusable=True,
+        is_optional=True,
+    )
+
+    branch_name = "main"
+    branch_id = "8808dcea-f7b4-4f5a-b5e9-a0605d4c11ba"
+    unreachable_sha = "deadbeef" * 5
+
+    worktree_before = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
+    head_before = str(worktree_before.head.commit)
+
+    message = messages.RefreshGitFetch(
+        location=str(git_sources_dir / "test_base"),
+        repository_id=str(git_fixture_repo.id),
+        repository_name=git_fixture_repo.name,
+        repository_kind=InfrahubKind.REPOSITORY,
+        infrahub_branch_name=branch_name,
+        infrahub_branch_id=branch_id,
+        commit=unreachable_sha,
+    )
+
+    with dependency_provider.scope(build_client, lambda: git_fixture_repo.sdk):
+        with pytest.raises(RepositoryError, match=r"Commit not found in the local clone"):
+            await fetch.fn(message=message)
+
+    worktree_after = git_fixture_repo.get_git_repo_worktree(identifier=branch_name)
+    assert str(worktree_after.head.commit) == head_before
