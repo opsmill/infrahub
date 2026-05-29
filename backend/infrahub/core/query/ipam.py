@@ -333,8 +333,6 @@ class IPPrefixSubnetFetchFree(Query):
         obj: IPNetworkType,
         target_prefixlen: int,
         namespace: Node | str | None = None,
-        # obj is an IPNetworkType (Python network object); parent_uuid is the database UUID of
-        # the pool-resource node. They represent different things and cannot substitute each other.
         parent_uuid: str | None = None,
         **kwargs,
     ) -> None:
@@ -469,8 +467,6 @@ class IPv6PrefixSubnetFetchFree(Query):
         obj: IPNetworkType,
         target_prefixlen: int,
         namespace: Node | str | None = None,
-        # obj is an IPNetworkType (Python network object); parent_uuid is the database UUID of
-        # the pool-resource node. They represent different things and cannot substitute each other.
         parent_uuid: str | None = None,
         **kwargs,
     ) -> None:
