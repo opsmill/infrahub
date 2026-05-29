@@ -61,6 +61,24 @@ export const authLink = setContext((_, previousContext) => {
   };
 });
 
+// Minimal structural type covering the bits of Apollo's `Operation` that
+// `bumpAuthRetryCount` touches. Lets the helper stay unit-testable without
+// pulling in Apollo's full type just to mock two methods.
+type RetryableOperation = {
+  getContext: () => { authRetryCount?: number; [key: string]: unknown };
+  setContext: (patch: Record<string, unknown>) => void;
+};
+
+// Increment the per-operation auth-retry counter and return the new value.
+// Callers use the returned count to break the TOKEN_EXPIRED → refresh →
+// TOKEN_EXPIRED loop after the first retry (clock skew, server-side revoke,
+// or a malformed refreshed token would otherwise loop the link forever).
+export function bumpAuthRetryCount(operation: RetryableOperation): number {
+  const next = (operation.getContext().authRetryCount ?? 0) + 1;
+  operation.setContext({ authRetryCount: next });
+  return next;
+}
+
 // Error link: route each catalogue code to its policy. The catalogue is
 // mirrored in @/shared/api/graphql/errors until US2's generated bindings
 // (T029) land — see dev/specs/infp-468-graphql-error-catalogue/.
@@ -77,6 +95,7 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
 
     switch (parsed.code) {
       case ERROR_CODES.TOKEN_EXPIRED:
+        if (bumpAuthRetryCount(operation) > 1) return redirectToLogin();
         return retryWithRefreshedToken(operation, forward);
 
       case ERROR_CODES.AUTHENTICATION_REQUIRED:
@@ -120,7 +139,7 @@ function retryWithRefreshedToken(
         operation.setContext({
           headers: {
             ...oldHeaders,
-            authorization: newToken.access_token,
+            authorization: `Bearer ${newToken.access_token}`,
           },
         });
 
@@ -141,11 +160,16 @@ function retryWithRefreshedToken(
 // to /login. Hard-navigates because errorLink runs outside React Router,
 // and the AuthProvider's localStorage hook does not re-render on external
 // writes. Skips the redirect if we're already on /login to avoid loops.
+//
+// Encodes the current path as `?from=…` so `LoginPage` can route the user
+// back to where they were after re-authenticating. The hard nav means
+// `location.state` is gone, so the query string is the only carrier left.
 function redirectToLogin(): void {
   removeTokensInLocalStorage();
-  if (window.location.pathname !== "/login") {
-    window.location.assign("/login");
-  }
+  if (window.location.pathname === "/login") return;
+
+  const from = window.location.pathname + window.location.search;
+  window.location.assign(`/login?from=${encodeURIComponent(from)}`);
 }
 
 // Helper: surface an error to the user. Calls operation.context's
