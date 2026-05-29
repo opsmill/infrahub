@@ -16,6 +16,7 @@ from infrahub.constants.enums import OrderDirection
 from infrahub.core import registry
 from infrahub.core.constants import (
     GLOBAL_BRANCH_NAME,
+    NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
     PROFILE_NODE_RELATIONSHIP_IDENTIFIER,
     PROFILE_TEMPLATE_RELATIONSHIP_IDENTIFIER,
     AttributeDBNodeType,
@@ -60,8 +61,7 @@ if TYPE_CHECKING:
 # Grouped constants for validation/iteration
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
-# TODO: import from constants and append the "__"
-NODE_METADATA_PREFIX = "node_metadata__"
+NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
 
 
 @dataclass
