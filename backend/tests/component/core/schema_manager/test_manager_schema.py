@@ -1145,7 +1145,7 @@ SCHEMA_BRANCH_VALIDATE_NAMES_TEST_CASES = [
                         {"name": "name", "kind": "Text"},
                     ],
                     "relationships": [
-                        {"name": "node_metadata", "peer": "TestCriticality", "cardinality": "one"},
+                        {"name": "node_metadata", "peer": "Criticality", "cardinality": "one"},
                     ],
                 }
             ]
@@ -2038,6 +2038,17 @@ async def test_validate_display_label_error(
         ["my_generic_name__value"],
         ["primary_tag__name__value"],
         ["status__name__value", "mybool__value"],
+        ["my_generic_name__value__asc"],
+        ["my_generic_name__value__desc"],
+        ["primary_tag__name__value__asc"],
+        ["primary_tag__name__value__desc"],
+        ["node_metadata__created_at"],
+        ["node_metadata__created_at__asc"],
+        ["node_metadata__created_at__desc"],
+        ["node_metadata__updated_at"],
+        ["node_metadata__updated_at__desc"],
+        ["my_generic_name__value__desc", "mybool__value"],
+        ["node_metadata__created_at__desc", "mybool__value"],
     ],
 )
 async def test_validate_order_by_success(schema_all_in_one: dict[str, Any], order_by: list[str]) -> None:
