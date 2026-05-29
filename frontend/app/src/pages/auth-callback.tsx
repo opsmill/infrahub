@@ -43,7 +43,19 @@ function AuthCallback() {
       .catch((error: unknown) => {
         if (error instanceof FetchError && error.errors) {
           setErrors(error.errors);
+          return;
         }
+        // Non-envelope failure (network error, unexpected throw, or a
+        // FetchError without an `errors` array). Surface a generic envelope
+        // so the user is bounced to /login with a visible message instead
+        // of being stuck on the loading screen.
+        console.error("[auth-callback] unexpected failure", error);
+        setErrors([
+          {
+            message: "Failed to complete sign-in. Please try again.",
+            extensions: { code: 0 },
+          },
+        ]);
       });
   }, [config, protocol, provider]);
 
