@@ -1462,8 +1462,10 @@ class TestMetadataFilters:
 async def test_graphql_schema_order_by_metadata_honored_without_query_order(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
-    schema = registry.schema.get(name="TestCriticality", branch=default_branch, duplicate=False)
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = schema_branch.get(name="TestCriticality", duplicate=False)
     schema.order_by = ["node_metadata__created_at__desc"]
+    schema_branch.set(name="TestCriticality", schema=schema)
     default_branch.update_schema_hash()
 
     nodes = []
@@ -1500,7 +1502,10 @@ async def test_graphql_schema_order_by_metadata_honored_without_query_order(
 async def test_graphql_query_order_replaces_schema_order(
     db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
 ) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
     criticality_schema.order_by = ["node_metadata__created_at__desc"]
+    schema_branch.set(name="TestCriticality", schema=criticality_schema)
+    default_branch.update_schema_hash()
 
     nodes = []
     for idx in range(3):
@@ -1539,6 +1544,7 @@ async def test_graphql_relationship_peer_schema_order_by_metadata_honored(
     car_schema = car_person_schema.get_node(name="TestCar", duplicate=False)
     person_schema = car_person_schema.get_node(name="TestPerson", duplicate=False)
     car_schema.order_by = ["node_metadata__created_at__desc"]
+    car_person_schema.set(name="TestCar", schema=car_schema)
 
     owner = await Node.init(db=db, schema=person_schema)
     await owner.new(db=db, name="rel-peer-order-owner")
