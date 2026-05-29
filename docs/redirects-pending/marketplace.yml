@@ -1,0 +1,23 @@
+---
+feature: Infrahub Marketplace
+pr: TBD
+description: |
+  Merged topics/marketplace.mdx + guides/marketplace-install-schema.mdx (from PR #9093)
+  into a single page at schema/marketplace/index.mdx following the revamped single-page-merge
+  pattern. PR #9093 was authored before the docs revamp shipped; this PR supersedes it with
+  the content adapted to the new structure.
+
+# Legacy URLs that will redirect to new locations
+redirects:
+  - from: /topics/marketplace
+    to: /schema/marketplace/
+  - from: /guides/marketplace-install-schema
+    to: /schema/marketplace/
+
+# Net-new pages introduced by this migration
+new_pages:
+  - path: /schema/marketplace/
+    title: Infrahub Marketplace
+
+# Internal cross-link references in OTHER files that point at legacy paths
+cross_links_to_update: []
