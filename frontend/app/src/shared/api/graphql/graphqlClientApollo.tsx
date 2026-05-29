@@ -79,10 +79,18 @@ export function bumpAuthRetryCount(operation: RetryableOperation): number {
   return next;
 }
 
-// Error link: route each catalogue code to its policy. The catalogue is
-// mirrored in @/shared/api/graphql/errors until US2's generated bindings
-// (T029) land — see dev/specs/infp-468-graphql-error-catalogue/.
-export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
+type ErrorLinkArgs = Parameters<Parameters<typeof onError>[0]>[0];
+
+// Error link callback: route each catalogue code to its policy. The catalogue
+// is mirrored in @/shared/api/graphql/errors until US2's generated bindings
+// (T029) land — see dev/specs/infp-468-graphql-error-catalogue/. Exported
+// (not just inlined into `onError`) so tests can drive it directly without
+// spinning up an Apollo link chain.
+export function handleGraphQLAuthError({
+  graphQLErrors,
+  operation,
+  forward,
+}: ErrorLinkArgs): Observable<FetchResult> | undefined {
   if (!graphQLErrors) return;
 
   for (const graphQLError of graphQLErrors) {
@@ -95,11 +103,15 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
 
     switch (parsed.code) {
       case ERROR_CODES.TOKEN_EXPIRED:
-        if (bumpAuthRetryCount(operation) > 1) return redirectToLogin();
+        if (bumpAuthRetryCount(operation) > 1) {
+          redirectToLogin();
+          return;
+        }
         return retryWithRefreshedToken(operation, forward);
 
       case ERROR_CODES.AUTHENTICATION_REQUIRED:
-        return redirectToLogin();
+        redirectToLogin();
+        return;
 
       case ERROR_CODES.PERMISSION_DENIED:
         // Silent — 403s are handled by route-level guards, not toasts.
@@ -111,7 +123,9 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
   }
 
   return;
-});
+}
+
+export const errorLink = onError(handleGraphQLAuthError);
 
 // Helper: refresh the access token and replay the operation. Lifted from
 // the previous inline Observable block in errorLink; the only behaviour
@@ -173,12 +187,20 @@ function retryWithRefreshedToken(
 // Encodes the current path as `?from=…` so `LoginPage` can route the user
 // back to where they were after re-authenticating. The hard nav means
 // `location.state` is gone, so the query string is the only carrier left.
+// Holder so tests can stub the hard-nav without touching `window.location`
+// (which is non-configurable in real browsers — vitest's browser mode hits
+// that wall the moment you try to spy on `assign`). Production reads
+// through this same reference, so the indirection costs one property lookup.
+export const __navigation = {
+  assign: (url: string) => window.location.assign(url),
+};
+
 function redirectToLogin(): void {
   removeTokensInLocalStorage();
   if (window.location.pathname === "/login") return;
 
   const from = window.location.pathname + window.location.search + window.location.hash;
-  window.location.assign(`/login?from=${encodeURIComponent(from)}`);
+  __navigation.assign(`/login?from=${encodeURIComponent(from)}`);
 }
 
 // Helper: surface an error to the user. Calls operation.context's
