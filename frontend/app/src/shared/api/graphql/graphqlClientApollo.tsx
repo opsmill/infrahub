@@ -152,7 +152,16 @@ function retryWithRefreshedToken(
 
         forward(operation).subscribe(subscriber);
       })
-      .catch((err) => observer.error(err));
+      .catch((err) => {
+        // Refresh itself failed (refresh token expired, network error,
+        // server-side revoke). Without this branch the caller saw a
+        // network error, kept the stale credentials in localStorage,
+        // and every subsequent query hit the same wall — the user was
+        // effectively stuck until they cleared storage by hand. Bounce
+        // to /login so they can re-authenticate.
+        redirectToLogin();
+        observer.error(err);
+      });
   });
 }
 
