@@ -69,9 +69,10 @@ type ErrorLinkArgs = Parameters<Parameters<typeof onError>[0]>[0];
 // NOT re-invoke `handleGraphQLAuthError`, so a persistent TOKEN_EXPIRED
 // would otherwise leak through to the caller as a generic GraphQL error.
 function resultHasTokenExpired(result: FetchResult): boolean {
-  if (!result.errors) return false;
-  return result.errors.some(
-    (e) => parseErrorExtensions(e.extensions).code === ERROR_CODES.TOKEN_EXPIRED
+  return (
+    result.errors?.some(
+      (e) => parseErrorExtensions(e.extensions).code === ERROR_CODES.TOKEN_EXPIRED
+    ) ?? false
   );
 }
 
@@ -137,9 +138,11 @@ function retryWithRefreshedToken(
       .fetchQuery(refreshAccessTokenQueryOptions())
       .then((newToken) => {
         if (!newToken?.access_token) {
-          // Refresh resolved but the server returned no token — fail the
-          // retry observable so the caller sees an error instead of hanging
-          // forever. Apollo will surface this as a network error.
+          // Refresh resolved but the server returned no token — treat it
+          // like a refresh failure: clear stale credentials and bounce to
+          // /login, otherwise the user is left signed-in against tokens
+          // the server has already disowned.
+          redirectToLogin();
           observer.error(new Error("Token refresh returned no access_token"));
           return;
         }
