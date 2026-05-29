@@ -270,7 +270,9 @@ class TestAddReadOnly:
         self.mock_repo.sync_from_remote.assert_awaited_once_with(commit="0123456789abcdef0123456789abcdef01234567")
 
         assert len(self.recorder.messages) > 0
-        assert isinstance(self.recorder.messages[0], RefreshGitFetch)
+        broadcast = self.recorder.messages[0]
+        assert isinstance(broadcast, RefreshGitFetch)
+        assert broadcast.repository_kind == InfrahubKind.READONLYREPOSITORY
 
 
 class TestPullReadOnly:
