@@ -4,8 +4,8 @@ import { type Path, useLocation, useSearchParams } from "react-router";
 import { INFRAHUB_API_SERVER_URL } from "@/shared/config/config";
 import { classNames } from "@/shared/utils/common";
 
-import type { SSOProvider } from "@/entities/config/types";
 import { pathToString, safeInternalPath } from "@/entities/authentication/utils";
+import type { SSOProvider } from "@/entities/config/types";
 
 export interface LoginWithSSOButtonsProps {
   className?: string;
