@@ -767,6 +767,15 @@ class SecuritySettings(BaseSettings):
         default=None,
         description="Name of the group to which users authenticated via SSO will belong if not provided by identity provider",
     )
+    sso_account_name_fallback: bool = Field(
+        default=True,
+        description=(
+            "When enabled, an SSO login that has no linked identity and matches an existing account by "
+            "display name claims that account, as long as it has not already been linked to another "
+            "identity. When disabled, such a login always provisions a separate account instead of "
+            "reusing an existing one."
+        ),
+    )
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
