@@ -14,7 +14,6 @@ from infrahub.core.changelog.models import (
 )
 from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
-from infrahub.constants.enums import OrderDirection
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
@@ -28,6 +27,7 @@ if TYPE_CHECKING:
 
     from neo4j.graph import Relationship as Neo4jRelationship
 
+    from infrahub.constants.enums import OrderDirection
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
@@ -847,15 +847,6 @@ RETURN updated_at, updated_by
         """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
 
-    def _query_time_order_overrides_schema(self) -> bool:
-        if self.requested_order is None:
-            return False
-        if self.requested_order.disable:
-            return True
-        if self.requested_order.node_metadata is not None:
-            return True
-        return False
-
     def _get_requested_metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
         if not (self.requested_order and self.requested_order.node_metadata):
             return []
@@ -871,8 +862,11 @@ RETURN updated_at, updated_by
         if self.requested_order and self.requested_order.disable:
             return
 
-        if self._query_time_order_overrides_schema():
-            for order_cnt, (metadata_field, direction) in enumerate(self._get_requested_metadata_order_fields(), start=1):
+        query_time_order_overrides_schema = bool(self.requested_order)
+        if query_time_order_overrides_schema:
+            for order_cnt, (metadata_field, direction) in enumerate(
+                self._get_requested_metadata_order_fields(), start=1
+            ):
                 subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
                     metadata_field=metadata_field,
                     branch=self.branch,

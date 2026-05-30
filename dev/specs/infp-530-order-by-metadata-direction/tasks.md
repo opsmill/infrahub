@@ -92,14 +92,14 @@ description: "Task list for schema-level order_by for node metadata and directio
 
 ### Tests for User Story 2
 
-- [ ] T019 [P] [US2] Add to `backend/tests/component/core/test_node_get_list_query.py` a test `test_NodeGetListQuery_order_by_attribute_desc` with three nodes named alpha / bravo / charlie and `order_by: ["name__value__desc"]`; assert charlie / bravo / alpha order.
-- [ ] T020 [P] [US2] Add the equivalent test to `backend/tests/component/core/test_relationship_get_list_query.py`.
-- [ ] T021 [P] [US2] Add the equivalent test to `backend/tests/component/core/test_node_get_hierarchy_query.py`.
-- [ ] T022 [P] [US2] Add a multi-field mixed-direction test to each of the three component files: `order_by: ["status__value__desc", "name__value"]` on a schema with `status` and `name` attributes. Verify primary sort is descending status, secondary sort is ascending name, across two pairs of nodes that share status.
+- [X] T019 [P] [US2] Add to `backend/tests/component/core/test_node_get_list_query.py` a test `test_NodeGetListQuery_order_by_attribute_desc` with three nodes named alpha / bravo / charlie and `order_by: ["name__value__desc"]`; assert charlie / bravo / alpha order.
+- [X] T020 [P] [US2] Add the equivalent test to `backend/tests/component/core/test_relationship_get_list_query.py`.
+- [X] T021 [P] [US2] Add the equivalent test to `backend/tests/component/core/test_node_get_hierarchy_query.py`.
+- [X] T022 [P] [US2] Add a multi-field mixed-direction test to each of the three component files: `order_by: ["status__value__desc", "name__value"]` on a schema with `status` and `name` attributes. Verify primary sort is descending status, secondary sort is ascending name, across two pairs of nodes that share status.
 
 ### Implementation for User Story 2
 
-- [ ] T023 [US2] Run T019–T022. If any test fails, investigate whether the multi-field direction propagation in `_get_field_requirements` (`backend/infrahub/core/query/node.py`) preserves the parsed direction per entry. If not, fix the propagation point and re-run. Do not change behavior for ascending entries — they must remain byte-identical to today.
+- [X] T023 [US2] Run T019–T022. If any test fails, investigate whether the multi-field direction propagation in `_get_field_requirements` (`backend/infrahub/core/query/node.py`) preserves the parsed direction per entry. If not, fix the propagation point and re-run. Do not change behavior for ascending entries — they must remain byte-identical to today.
 
 **Checkpoint**: All US2 tests pass; descending and mixed-direction multi-field `order_by` is honored across the three paths. Quickstart step 7 succeeds.
 

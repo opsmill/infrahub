@@ -39,7 +39,9 @@ from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
     OrderByTargetKind,
+    ParsedAttributeOrderBy,
     ParsedOrderByEntry,
+    ParsedRelationshipAttributeOrderBy,
     parse_order_by_entry,
 )
 from infrahub.core.timestamp import Timestamp
@@ -1618,6 +1620,7 @@ class FieldAttributeRequirement:
     order_direction: OrderDirection | None = None
     # created_at, updated_at, created_by, updated_by
     is_metadata: bool = False
+    schema_order_position: int | None = None
 
     @property
     def is_attribute_value(self) -> bool:
@@ -1704,38 +1707,13 @@ class NodeGetListQuery(Query):
             return True
         return False
 
-    def _get_metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
-        """Return the metadata field and direction to order by, or None."""
-        if self.requested_order and self.requested_order.node_metadata:
-            fields: list[tuple[str, OrderDirection]] = []
-            nm = self.requested_order.node_metadata
-            if nm.created_at:
-                fields.append((METADATA_CREATED_AT, nm.created_at))
-            if nm.updated_at:
-                fields.append((METADATA_UPDATED_AT, nm.updated_at))
-            return fields
-
-        return [
-            (parsed.metadata_field.value, parsed.direction)
-            for parsed in self._get_parsed_schema_order_by()
-            if parsed.kind is OrderByTargetKind.METADATA
-        ]
-
     def _get_parsed_schema_order_by(self) -> list[ParsedOrderByEntry]:
-        if self._query_time_order_overrides_schema():
+        query_time_order_overrides_schema = bool(self.requested_order)
+        if query_time_order_overrides_schema:
             return []
         if not self.schema.order_by:
             return []
         return [parse_order_by_entry(entry=entry, node_schema=self.schema) for entry in self.schema.order_by]
-
-    def _query_time_order_overrides_schema(self) -> bool:
-        if self.requested_order is None:
-            return False
-        if self.requested_order.disable:
-            return True
-        if self.requested_order.node_metadata:
-            return True
-        return False
 
     @property
     def _has_metadata_filters(self) -> bool:
@@ -1888,10 +1866,6 @@ WITH %(tracked_vars)s,
                         self.add_to_query(f"AND {field} {far.comparison_operator} ${param_name}")
                     self.params[param_name] = far.field_attr_value
 
-                if far.is_metadata_order:
-                    direction = far.order_direction or OrderDirection.ASC
-                    self.order_by.append(f"{field} {direction.value}")
-
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
 
@@ -1934,8 +1908,8 @@ WITH %(tracked_vars)s,
             return
 
         # Determine ordering behavior
-        disable_order = self.requested_order is not None and self.requested_order.disable
-        has_any_order = bool(self.schema.order_by) or self._get_metadata_order_fields()
+        disable_order = bool(self.requested_order and self.requested_order.disable)
+        has_any_order = bool(self.schema.order_by) or bool(self.requested_order and self.requested_order.node_metadata)
 
         # needs ordering or filter if...
         needs_order_or_filter = bool(
@@ -1973,10 +1947,13 @@ WITH %(tracked_vars)s,
         if not is_default_or_global:
             self._add_metadata_subqueries(field_requirements=field_attribute_requirements, branch_filter=branch_filter)
 
-        # Apply order subqueries for non-metadata attributes (metadata ordering handled by _add_metadata_subqueries)
+        # Apply order subqueries for non-metadata attributes.
         await self._add_node_order_attributes(
             db=db, field_requirements=field_attribute_requirements, branch_filter=branch_filter
         )
+
+        # Emit the outer ORDER BY clauses in the schema-declared order.
+        self._emit_schema_order_by(field_attribute_requirements)
 
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
@@ -2043,23 +2020,20 @@ WITH %(tracked_vars)s,
     ) -> None:
         """Add ordering subqueries for schema attributes.
 
-        Note: Metadata ordering (created_at, updated_at) is handled by _add_metadata_subqueries.
+        Outer ORDER BY clauses are emitted by _emit_schema_order_by() so mixed
+        metadata/attribute entries land in their schema-declared order.
         """
         for far in field_requirements:
             # Skip metadata ordering - handled by _add_metadata_subqueries
-            if far.is_metadata:
+            if far.is_metadata or not far.is_order:
                 continue
 
-            # Handle schema attribute ordering
             if far.field is None:
                 continue
 
-            direction = (far.order_direction or OrderDirection.ASC).value
-
             # If this field is also used for filtering, the filter subquery already
-            # extracted the value - just add it to order_by, don't create another subquery
+            # extracted the value - no dedicated order subquery needed.
             if far.is_filter:
-                self.order_by.append(f"{far.node_value_query_variable} {direction}")
                 continue
 
             subquery, subquery_params, _ = await build_subquery_order(
@@ -2077,7 +2051,14 @@ WITH %(tracked_vars)s,
 
             self.params.update(subquery_params)
             self.add_to_query(["CALL (n) {", subquery, "}", f"WITH {with_str}"])
-            self.order_by.append(f"{far.node_value_query_variable} {direction}")
+
+    def _emit_schema_order_by(self, field_requirements: list[FieldAttributeRequirement]) -> None:
+        order_reqs = [far for far in field_requirements if far.is_order]
+        order_reqs.sort(key=lambda far: far.schema_order_position if far.schema_order_position is not None else 0)
+        for far in order_reqs:
+            direction = (far.order_direction or OrderDirection.ASC).value
+            variable = far.field_name if far.is_metadata else far.node_value_query_variable
+            self.order_by.append(f"{variable} {direction}")
 
     def _build_filter_where_clause(self, far: FieldAttributeRequirement) -> str | None:
         """Build a WHERE clause for a single filter requirement.
@@ -2221,105 +2202,127 @@ WITH %(tracked_vars)s,
 
         return requirements
 
+    def _upsert_metadata_order_requirement(
+        self,
+        filter_requirements: list[FieldAttributeRequirement],
+        metadata_field: str,
+        direction: OrderDirection,
+        position: int,
+        index: int,
+    ) -> FieldAttributeRequirement | None:
+        """Promote an existing filter FAR for the same metadata field, or build a new ORDER-only FAR.
+
+        Metadata filter FARs use operator-specific `field_attr_name` ("before", "after",
+        "value", ...), so we match on `field_name` alone — any FAR for the same metadata
+        field is fine because the outer ORDER BY references the field name directly.
+        """
+        for req in filter_requirements:
+            if req.field_name == metadata_field:
+                req.types.append(FieldAttributeRequirementType.ORDER)
+                req.order_direction = direction
+                req.schema_order_position = position
+                return None
+        return FieldAttributeRequirement(
+            field_name=metadata_field,
+            field=None,
+            field_attr_name=metadata_field,
+            field_attr_value=None,
+            index=index,
+            types=[FieldAttributeRequirementType.ORDER],
+            order_direction=direction,
+            is_metadata=True,
+            schema_order_position=position,
+        )
+
+    def _upsert_attribute_order_requirement(
+        self,
+        filter_requirements: list[FieldAttributeRequirement],
+        parsed: ParsedAttributeOrderBy | ParsedRelationshipAttributeOrderBy,
+        position: int,
+        index: int,
+    ) -> FieldAttributeRequirement | None:
+        if parsed.kind is OrderByTargetKind.ATTRIBUTE:
+            order_by_field_name = parsed.attribute_name
+            order_by_attr_property_name = parsed.property_name
+        else:
+            order_by_field_name = parsed.relationship_name
+            order_by_attr_property_name = f"{parsed.attribute_name}__{parsed.property_name}"
+
+        for req in filter_requirements:
+            if req.field_name == order_by_field_name and req.field_attr_name == order_by_attr_property_name:
+                req.types.append(FieldAttributeRequirementType.ORDER)
+                req.order_direction = parsed.direction
+                req.schema_order_position = position
+                return None
+
+        return FieldAttributeRequirement(
+            field_name=order_by_field_name,
+            field=self.schema.get_field(order_by_field_name),
+            field_attr_name=order_by_attr_property_name,
+            field_attr_value=None,
+            index=index,
+            types=[FieldAttributeRequirementType.ORDER],
+            order_direction=parsed.direction,
+            schema_order_position=position,
+        )
+
     def _get_order_requirements(
         self,
         filter_requirements: list[FieldAttributeRequirement],
-        start_index: int,
     ) -> list[FieldAttributeRequirement]:
         """Build ordering requirements.
 
-        Handles both metadata ordering and schema order_by.
+        Handles metadata-based and attribute-based ordering from query overrides or
+        the order_by defined on the schema.
         May modify existing requirements in filter_requirements to add ORDER type.
         Returns list of new FieldAttributeRequirement objects for order-only fields.
+        Each ORDER requirement is tagged with `schema_order_position` reflecting its
+        position in the originally declared ordering list, so the outer ORDER BY clause
+        can be emitted in the declared order regardless of which helper builds the subquery.
         """
-        # Build nested lookup map: field_name -> {field_attr_name -> requirement}
-        requirements_map: dict[str | None, dict[str, FieldAttributeRequirement]] = {}
-        for req in filter_requirements:
-            if req.field_name not in requirements_map:
-                requirements_map[req.field_name] = {}
-            requirements_map[req.field_name][req.field_attr_name] = req
-
         new_requirements: list[FieldAttributeRequirement] = []
-        index = start_index
+        base_index = len(filter_requirements) + 1
 
-        # Add metadata ordering requirements first
-        for metadata_field, direction in self._get_metadata_order_fields():
-            # Check if any filter exists for this metadata field
-            field_reqs = requirements_map.get(metadata_field)
-            existing_req = next(iter(field_reqs.values()), None) if field_reqs else None
-
-            if existing_req:
-                # Field already used for filtering, add ORDER type
-                existing_req.types.append(FieldAttributeRequirementType.ORDER)
-                existing_req.order_direction = direction
-            else:
-                new_requirements.append(
-                    FieldAttributeRequirement(
-                        field_name=metadata_field,
-                        field=None,
-                        field_attr_name=metadata_field,
-                        field_attr_value=None,
-                        index=index,
-                        types=[FieldAttributeRequirementType.ORDER],
-                        order_direction=direction,
-                        is_metadata=True,
-                    )
+        # requested order only supports metadata ordering for now
+        if self.requested_order and self.requested_order.node_metadata:
+            nm = self.requested_order.node_metadata
+            pairs: list[tuple[str, OrderDirection]] = []
+            if nm.created_at:
+                pairs.append((METADATA_CREATED_AT, nm.created_at))
+            if nm.updated_at:
+                pairs.append((METADATA_UPDATED_AT, nm.updated_at))
+            for position, (metadata_field, direction) in enumerate(pairs):
+                new_req = self._upsert_metadata_order_requirement(
+                    filter_requirements, metadata_field, direction, position, base_index + position
                 )
-            index += 1
+                if new_req is not None:
+                    new_requirements.append(new_req)
+            return new_requirements
 
-        # Add schema order_by requirements
-        for parsed in self._get_parsed_schema_order_by():
+        for position, parsed in enumerate(self._get_parsed_schema_order_by()):
             if parsed.kind is OrderByTargetKind.METADATA:
-                continue
-
-            if parsed.kind is OrderByTargetKind.ATTRIBUTE:
-                order_by_field_name = parsed.attribute_name
-                order_by_attr_property_name = parsed.property_name
-            else:
-                order_by_field_name = parsed.relationship_name
-                order_by_attr_property_name = f"{parsed.attribute_name}__{parsed.property_name}"
-
-            field = self.schema.get_field(order_by_field_name)
-            field_reqs = requirements_map.get(order_by_field_name)
-            existing_req = field_reqs.get(order_by_attr_property_name) if field_reqs else None
-            if existing_req:
-                # Field already used for filtering, add ORDER type
-                existing_req.types.append(FieldAttributeRequirementType.ORDER)
-                existing_req.order_direction = parsed.direction
-            else:
-                # New field requirement for ordering only
-                new_requirements.append(
-                    FieldAttributeRequirement(
-                        field_name=order_by_field_name,
-                        field=field,
-                        field_attr_name=order_by_attr_property_name,
-                        field_attr_value=None,
-                        index=index,
-                        types=[FieldAttributeRequirementType.ORDER],
-                        order_direction=parsed.direction,
-                    )
+                new_req = self._upsert_metadata_order_requirement(
+                    filter_requirements,
+                    parsed.metadata_field.value,
+                    parsed.direction,
+                    position,
+                    base_index + position,
                 )
-                index += 1
+            else:
+                new_req = self._upsert_attribute_order_requirement(
+                    filter_requirements, parsed, position, base_index + position
+                )
+            if new_req is not None:
+                new_requirements.append(new_req)
 
         return new_requirements
 
     def _get_field_requirements(self, disable_order: bool = False) -> list[FieldAttributeRequirement]:
-        """Build unified list of field requirements for filtering and ordering.
-
-        Iterates through filters once, using _get_metadata_field_details to determine
-        whether each filter is metadata or attribute/relationship based.
-        """
-        # Get filter requirements (single pass through self.filters)
+        """Build unified list of field requirements for filtering and ordering."""
         filter_requirements = self._get_filter_requirements(start_index=1)
-
         if disable_order:
             return filter_requirements
-
-        # Get ordering requirements (may modify filter_requirements to add ORDER type)
-        next_index = len(filter_requirements) + 1
-        order_requirements = self._get_order_requirements(filter_requirements, start_index=next_index)
-
-        return filter_requirements + order_requirements
+        return filter_requirements + self._get_order_requirements(filter_requirements)
 
     def get_node_ids(self) -> list[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]

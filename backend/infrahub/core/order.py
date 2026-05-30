@@ -26,6 +26,9 @@ class OrderModel(BaseModel):
     disable: bool | None = None
     node_metadata: NodeMetaOrder | None = None
 
+    def __bool__(self) -> bool:
+        return bool(self.disable) or bool(self.node_metadata)
+
     @model_validator(mode="after")
     def validate_metadata(self) -> Self:
         if self.node_metadata and self.node_metadata.created_at and self.node_metadata.updated_at:
