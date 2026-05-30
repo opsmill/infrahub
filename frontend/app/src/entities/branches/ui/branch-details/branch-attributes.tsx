@@ -2,6 +2,7 @@ import {
   BoxIcon,
   CheckIcon,
   CircleIcon,
+  FileTextIcon,
   GitCommitIcon,
   IdCardIcon,
   RefreshCwIcon,
@@ -14,6 +15,7 @@ import { Card } from "@/shared/components/ui/card";
 import { classNames } from "@/shared/utils/common";
 
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { BranchEditDescription } from "@/entities/branches/ui/branch-edit-description";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 
 interface BranchAttributesProps {
@@ -27,6 +29,18 @@ export function BranchAttributes({ branch }: BranchAttributesProps) {
         <IdCardIcon className="size-3.5" /> Name
       </BranchAttributeLabel>
       <BranchAttributeValue>{branch.name}</BranchAttributeValue>
+
+      <BranchAttributeLabel>
+        <FileTextIcon className="size-3.5" /> Description
+      </BranchAttributeLabel>
+      <BranchAttributeValue>
+        <BranchEditDescription
+          key={branch.name}
+          branchName={branch.name}
+          currentDescription={branch.description}
+          canEdit={branch.is_default === false}
+        />
+      </BranchAttributeValue>
 
       {branch.status !== BranchStatus.OPEN && (
         <>
