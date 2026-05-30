@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 from collections import defaultdict
-from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime
@@ -1685,11 +1684,7 @@ class NodeGetListQuery(Query):
 
         # Force disabling order when `limit` is 1 as it simplifies the query a lot.
         if "limit" in kwargs and kwargs["limit"] == 1:
-            if order is None:
-                order = OrderModel(disable=True)
-            else:
-                order = copy(order)
-                order.disable = True
+            order = OrderModel(disable=True) if order is None else order.model_copy(update={"disable": True})
 
         self.requested_order = order
 

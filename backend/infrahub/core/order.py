@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Self
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from infrahub.constants.enums import OrderDirection  # noqa: TC001
 from infrahub.exceptions import ValidationError
@@ -15,6 +15,8 @@ METADATA_UPDATED_BY = "updated_by"
 
 
 class NodeMetaOrder(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     created_at: OrderDirection | None = None
     updated_at: OrderDirection | None = None
 
@@ -23,6 +25,8 @@ class NodeMetaOrder(BaseModel):
 
 
 class OrderModel(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
     disable: bool | None = None
     node_metadata: NodeMetaOrder | None = None
 

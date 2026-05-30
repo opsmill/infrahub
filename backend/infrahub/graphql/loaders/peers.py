@@ -44,8 +44,7 @@ class QueryPeerParams:
                 str(self.source_kind),
                 str(self.branch_agnostic),
                 str(hash(self.include_metadata)),
-                # TODO: would it be safer to add a __hash__ method to OrderModel or is order guaranteed in model_dump_json?
-                self.order.model_dump_json() if self.order else "",
+                str(hash(self.order)) if self.order is not None else "",
             ]
         )
         return hash(hash_str)
