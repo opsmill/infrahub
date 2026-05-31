@@ -253,7 +253,7 @@ async def signin_sso_account(  # noqa: PLR0915
                 existing_identities = await NodeManager.query(
                     db=db,
                     schema=InfrahubKind.EXTERNALIDENTITY,
-                    filters={"account__ids": [account_by_name.id]},
+                    filters={"account__id": account_by_name.id},
                     limit=1,
                 )
                 adopt_existing_account = not existing_identities

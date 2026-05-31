@@ -166,7 +166,7 @@ async def test_transition_fallback_unclaimed_account_is_linked(
     identity_nodes = await NodeManager.query(
         db=db,
         schema=InfrahubKind.EXTERNALIDENTITY,
-        filters={"sub__value": "sub-transition-001", "account__ids": [account.id]},
+        filters={"sub__value": "sub-transition-001", "account__id": account.id},
     )
     assert len(identity_nodes) == 1
 
@@ -285,7 +285,7 @@ async def test_name_fallback_disabled_does_not_claim_unclaimed_account(
 
     original = await NodeManager.get_one(db=db, id=existing_account.id)
     original_identities = await NodeManager.query(
-        db=db, schema=InfrahubKind.EXTERNALIDENTITY, filters={"account__ids": [existing_account.id]}
+        db=db, schema=InfrahubKind.EXTERNALIDENTITY, filters={"account__id": existing_account.id}
     )
     assert original.name.value == "Mona West"
     assert len(original_identities) == 0
@@ -293,7 +293,7 @@ async def test_name_fallback_disabled_does_not_claim_unclaimed_account(
     new_identities = await NodeManager.query(
         db=db,
         schema=InfrahubKind.EXTERNALIDENTITY,
-        filters={"sub__value": "sub-nofallback-001", "account__ids": [new_accounts[0].id]},
+        filters={"sub__value": "sub-nofallback-001", "account__id": new_accounts[0].id},
     )
     assert len(new_identities) == 1
 
