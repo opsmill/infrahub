@@ -601,6 +601,14 @@ class SecurityOIDCBaseSettings(BaseSettings):
     pkce_enabled: bool = Field(
         default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
     )
+    id_token_verify_signature: bool = Field(
+        default=True,
+        description=(
+            "Verify the cryptographic signature, audience and issuer of the OIDC id_token before"
+            " trusting its group claims. Disable only to keep working against a misconfigured"
+            " provider; doing so accepts any token presented to the callback as authentic."
+        ),
+    )
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):

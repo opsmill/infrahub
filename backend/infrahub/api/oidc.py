@@ -190,9 +190,7 @@ async def token(
     user_info: dict[str, Any] = userinfo_response.json()
     sso_groups = (
         user_info.get("groups")
-        or await _get_id_token_groups(
-            oidc_config=oidc_config, service=service, payload=payload, client_id=provider.client_id
-        )
+        or await _get_id_token_groups(oidc_config=oidc_config, service=service, payload=payload, provider=provider)
         or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
     )
 
@@ -257,7 +255,10 @@ async def token(
 
 
 async def _get_id_token_groups(
-    oidc_config: OIDCDiscoveryConfig, service: InfrahubServices, payload: dict[str, Any], client_id: str
+    oidc_config: OIDCDiscoveryConfig,
+    service: InfrahubServices,
+    payload: dict[str, Any],
+    provider: config.SecurityOIDCSettings,
 ) -> list[str]:
     id_token = payload.get("id_token")
     if not id_token:
@@ -270,13 +271,21 @@ async def _get_id_token_groups(
 
     signing_key = jwk_client.get_signing_key_from_jwt(id_token)
 
+    verify = provider.id_token_verify_signature
+    if not verify:
+        log.warning(
+            "OIDC id_token signature verification is disabled; the audience and issuer claims"
+            " will not be checked either. Any token presented to the callback will be trusted.",
+            provider=provider.__class__.__name__,
+        )
+
     decoded_token: dict[str, Any] = jwt.decode(
         jwt=id_token,
         key=signing_key.key,
         algorithms=oidc_config.id_token_signing_alg_values_supported,
-        audience=client_id,
+        audience=provider.client_id,
         issuer=str(oidc_config.issuer),
-        options={"verify_signature": False, "verify_aud": False, "verify_iss": False},
+        options={"verify_signature": verify, "verify_aud": verify, "verify_iss": verify},
     )
 
     return decoded_token.get("groups", [])
