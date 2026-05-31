@@ -304,11 +304,11 @@ async def test_name_fallback_disabled_both_names_taken_raises(
     register_core_models_schema: SchemaBranch,
     sso_account_name_fallback_disabled: None,
 ) -> None:
-    """With the fallback disabled a display-name match is not adopted, so a separate account is.
+    """With the fallback disabled, both names already taken must fail the login.
 
-    provisioned under the email instead. When the email is also already taken as an account name
-    there is no unique name left to use, so the login fails rather than guessing.
-
+    The display-name match is not adopted, so the email is used to name a new account; when
+    the email is also already in use as an account name there is no unique name left, and
+    the login fails rather than guessing one.
     """
     account_by_name = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
     await account_by_name.new(db=db, name="Nora Park", account_type="User", password=str(uuid.uuid4()))
