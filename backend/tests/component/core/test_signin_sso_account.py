@@ -171,6 +171,61 @@ async def test_transition_fallback_unclaimed_account_is_linked(
     assert len(identity_nodes) == 1
 
 
+async def test_transition_fallback_ignores_unrelated_identities(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
+) -> None:
+    """The is-this-account-already-linked check must be scoped to the candidate account.
+
+    An identity linked to some other account must not block adoption of a name-matched
+    account that has no identity of its own. This guards against a broken relationship
+    filter (e.g. wrong key) that would silently match every identity in the database.
+    """
+    unrelated_account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await unrelated_account.new(db=db, name="Unrelated User", account_type="User", password=str(uuid.uuid4()))
+    await unrelated_account.save(db=db)
+
+    unrelated_identity = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
+    await unrelated_identity.new(
+        db=db,
+        sub="sub-unrelated-001",
+        provider_name="provider1",
+        protocol="oidc",
+        account=unrelated_account.id,
+    )
+    await unrelated_identity.save(db=db)
+
+    transition_account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await transition_account.new(db=db, name="Olive Reed", account_type="User", password=str(uuid.uuid4()))
+    await transition_account.save(db=db)
+
+    identity = ExternalIdentity(
+        sub="sub-transition-002",
+        provider_name="provider1",
+        protocol=ExternalAuthProtocol.OIDC,
+        display_name="Olive Reed",
+        email="olive@example.com",
+    )
+
+    await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+
+    accounts = await NodeManager.query(db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "Olive Reed"})
+    assert len(accounts) == 1
+    assert accounts[0].id == transition_account.id
+
+    accounts_by_email = await NodeManager.query(
+        db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "olive@example.com"}
+    )
+    assert len(accounts_by_email) == 0
+
+    linked_identities = await NodeManager.query(
+        db=db,
+        schema=InfrahubKind.EXTERNALIDENTITY,
+        filters={"account__id": transition_account.id},
+    )
+    assert len(linked_identities) == 1
+    assert linked_identities[0].sub.value == "sub-transition-002"
+
+
 async def test_transition_fallback_claimed_account_uses_email_as_name(
     db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: SchemaBranch
 ) -> None:
