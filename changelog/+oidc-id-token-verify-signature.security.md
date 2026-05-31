@@ -1,0 +1,1 @@
+Enable cryptographic verification of the OIDC `id_token` (signature, audience and issuer) by default when reading group claims. A new per-provider setting (`INFRAHUB_OIDC_<PROVIDER>_ID_TOKEN_VERIFY_SIGNATURE`, default `true`) gates the check; setting it to `false` restores the previous unverified behavior and should only be used to keep working against a misconfigured provider.
