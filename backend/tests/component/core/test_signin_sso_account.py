@@ -307,9 +307,9 @@ async def test_name_fallback_disabled_does_not_claim_unclaimed_account(
         email="mona@example.com",
     )
 
-    auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
+    token = await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
-    assert auth_result.token.access_token
+    assert token.access_token
 
     new_accounts = await NodeManager.query(
         db=db, schema=InfrahubKind.ACCOUNT, filters={"name__value": "mona@example.com"}
