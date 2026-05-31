@@ -157,6 +157,11 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
     request_id = correlation_id.get()
 
     set_log_data(key="request_id", value=request_id)
+
+    user_request_id = request.headers.get("x-infrahub-request-id")
+    if user_request_id:
+        set_log_data(key="user_request_id", value=user_request_id)
+
     set_log_data(key="app", value="infrahub.api")
     set_log_data(key="worker", value=WORKER_IDENTITY)
 

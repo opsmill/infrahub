@@ -58,6 +58,7 @@ def patch_spanbuilder_set_channel() -> None:
 async def _add_request_id(message: InfrahubMessage) -> None:
     log_data = get_log_data()
     message.meta.request_id = log_data.get("request_id", "")
+    message.meta.user_request_id = log_data.get("user_request_id", "")
 
 
 class RabbitMQMessageBus(InfrahubMessageBus):
@@ -239,7 +240,12 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         log_data = get_log_data()
         request_id = log_data.get("request_id", "")
-        message.meta = Meta(request_id=request_id, correlation_id=correlation_id, reply_to=self.callback_queue.name)
+        message.meta = Meta(
+            request_id=request_id,
+            user_request_id=log_data.get("user_request_id", ""),
+            correlation_id=correlation_id,
+            reply_to=self.callback_queue.name,
+        )
 
         await self.send(message=message)
 
