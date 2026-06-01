@@ -1,4 +1,5 @@
 from infrahub import lock
+from infrahub.lock import GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK, LOCAL_SCHEMA_LOCK
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
 
 
@@ -37,7 +38,7 @@ async def test_multi_lock_records_each_member(recording_lock_timeline: LockTimel
     async with lock.registry.global_graph_lock():
         held = recording_lock_timeline.currently_held()
 
-    assert held == {"local.schema", "global.graph", "global.schema"}
+    assert held == {LOCAL_SCHEMA_LOCK, GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK}
     assert recording_lock_timeline.currently_held() == set()
 
 
