@@ -110,6 +110,28 @@ export function handleGraphQLAuthError({
 
       case ERROR_CODES.PERMISSION_DENIED:
         // Silent — 403s are handled by route-level guards, not toasts.
+        // `continue` (not `return`) so any sibling errors in the same
+        // response still reach their handlers.
+        continue;
+
+      case ERROR_CODES.UNDEFINED_ERROR:
+        // Catalogue gap: the backend returned a code we don't recognise.
+        // In dev builds, surface this loudly so engineers see it without
+        // having to dig through devtools — a console.warn pointing at
+        // where to register the code, plus a prefix on the toast so the
+        // miss is visible during manual testing. Prod stays silent
+        // (just the generic toast) to avoid leaking implementation noise.
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[catalogue gap] Unmatched error code surfaced as UNDEFINED_ERROR. " +
+              "Register it in backend/infrahub/errors/catalogue.py and mirror " +
+              "the entry in frontend/app/src/shared/api/graphql/errors.ts.",
+            { message: graphQLError.message, extensions: graphQLError.extensions }
+          );
+          notifyUser(`[catalogue gap] ${graphQLError.message}`, operation);
+          return;
+        }
+        notifyUser(graphQLError.message, operation);
         return;
 
       default:

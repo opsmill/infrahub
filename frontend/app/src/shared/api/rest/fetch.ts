@@ -2,6 +2,16 @@ import { QSP } from "@/shared/config/qsp";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 
+// REST error envelope item. The REST and GraphQL envelopes carry different
+// `code` shapes and must not be conflated:
+//
+//   REST     extensions.code = number  (HTTP status, e.g. 401)
+//   GraphQL  extensions.code = string  (catalogue identifier, e.g. "TOKEN_EXPIRED")
+//            extensions.http_status = number (the HTTP status lives here instead)
+//
+// The GraphQL mirror lives at @/shared/api/graphql/errors (GraphQLErrorExtensions).
+// If REST endpoints ever migrate to the catalogue, this type becomes a
+// discriminated union — until then, keep the two shapes distinct.
 export type RestErrorItem = { message: string; extensions: { code: number } };
 
 // Typed wrapper around a REST envelope that carries `errors`. `status`
