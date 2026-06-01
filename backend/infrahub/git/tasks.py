@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
@@ -209,11 +210,26 @@ async def delete_git_branch(branch: str) -> None:
 
 
 async def sync_repository(
-    repo: InfrahubRepository, lock_registry: lock.InfrahubLockRegistry, staging_branch: str | None = None
+    repo: InfrahubRepository,
+    lock_registry: lock.InfrahubLockRegistry,
+    staging_branch: str | None = None,
+    import_objects: Callable[..., Awaitable[None]] | None = None,
 ) -> None:
-    """Run a repository sync under the repository lock."""
+    """Sync a repository, holding the repository lock only for the git working-copy mutations.
+
+    The object import for each synced branch runs after the lock is released; it reads from the
+    per-commit worktree pinned during the locked phase, so it does not need the lock that
+    serializes git working-copy mutations. The import callable is injectable for testing.
+    """
+    do_import: Callable[..., Awaitable[None]] = import_objects or repo.import_objects_from_files
     async with lock_registry.get(name=repo.name, namespace="repository"):
-        await repo.sync(staging_branch=staging_branch)
+        pending_imports = await repo.collect_pending_imports(staging_branch=staging_branch)
+    for pending in pending_imports:
+        await do_import(
+            infrahub_branch_name=pending.infrahub_branch_name,
+            git_branch_name=pending.git_branch_name,
+            commit=pending.commit,
+        )
 
 
 @flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
