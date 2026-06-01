@@ -208,6 +208,14 @@ async def delete_git_branch(branch: str) -> None:
         pass
 
 
+async def sync_repository(
+    repo: InfrahubRepository, lock_registry: lock.InfrahubLockRegistry, staging_branch: str | None = None
+) -> None:
+    """Run a repository sync under the repository lock."""
+    async with lock_registry.get(name=repo.name, namespace="repository"):
+        await repo.sync(staging_branch=staging_branch)
+
+
 @flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
 async def sync_git_repo_with_origin_and_tag_on_failure(
     client: InfrahubClient,
