@@ -25,6 +25,7 @@ export default function RelationshipManyField({
   rules,
   unique,
   shouldUnregister,
+  filterQuery,
   ...props
 }: RelationshipManyInputProps) {
   return (
@@ -57,6 +58,7 @@ export default function RelationshipManyField({
                     "has-[>:last-child:focus]:border-red-500 has-[>:last-child:focus]:ring-red-500/25"
                 )}
                 peer={relationship.peer}
+                filterQuery={filterQuery}
                 value={fieldData.value as NodeCore[] | null}
                 onChange={(newValue) => {
                   field.onChange(
