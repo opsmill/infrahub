@@ -27,7 +27,7 @@ from infrahub.auth import (
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod
-from infrahub.exceptions import ProcessingError
+from infrahub.exceptions import AuthorizationError, ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
@@ -273,13 +273,16 @@ async def _get_id_token_groups(
 
     verify = provider.id_token_verify_signature
 
-    decoded_token: dict[str, Any] = jwt.decode(
-        jwt=id_token,
-        key=signing_key.key,
-        algorithms=oidc_config.id_token_signing_alg_values_supported,
-        audience=provider.client_id,
-        issuer=str(oidc_config.issuer),
-        options={"verify_signature": verify, "verify_aud": verify, "verify_iss": verify},
-    )
+    try:
+        decoded_token: dict[str, Any] = jwt.decode(
+            jwt=id_token,
+            key=signing_key.key,
+            algorithms=oidc_config.id_token_signing_alg_values_supported,
+            audience=provider.client_id,
+            issuer=str(oidc_config.issuer),
+            options={"verify_signature": verify, "verify_aud": verify, "verify_iss": verify},
+        )
+    except jwt.PyJWTError as exc:
+        raise AuthorizationError(message=f"OIDC id_token verification failed: {exc}") from exc
 
     return decoded_token.get("groups", [])

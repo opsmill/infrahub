@@ -7,11 +7,11 @@ from typing import Any
 import httpx
 import pytest
 from jwcrypto import jwk, jwt
-from jwt.exceptions import InvalidAudienceError, InvalidIssuerError
 from pydantic import HttpUrl
 
 from infrahub.api.oidc import OIDCDiscoveryConfig, _get_id_token_groups
 from infrahub.config import SecurityOIDCSettings
+from infrahub.exceptions import AuthorizationError
 from infrahub.services import InfrahubServices
 from tests.adapters.http import MemoryHTTP
 
@@ -73,7 +73,7 @@ async def test_get_id_token_groups_rejects_invalid_issuer_by_default() -> None:
     discovery = deepcopy(OIDC_CONFIG)
     discovery.issuer = HttpUrl("https://something-incorrect.example.com")
 
-    with pytest.raises(InvalidIssuerError, match=r"^Invalid issuer$"):
+    with pytest.raises(AuthorizationError, match=r"^OIDC id_token verification failed: Invalid issuer$"):
         await _get_id_token_groups(
             oidc_config=discovery,
             service=service,
@@ -100,7 +100,7 @@ async def test_get_id_token_groups_rejects_invalid_audience_by_default() -> None
         response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
     )
 
-    with pytest.raises(InvalidAudienceError, match=r"^Audience doesn't match$"):
+    with pytest.raises(AuthorizationError, match=r"^OIDC id_token verification failed: Audience doesn't match$"):
         await _get_id_token_groups(
             oidc_config=OIDC_CONFIG,
             service=service,
@@ -137,6 +137,37 @@ async def test_get_id_token_groups_accepts_invalid_issuer_when_verification_disa
     )
 
     assert groups == ["operators"]
+
+
+async def test_get_id_token_groups_rejects_forged_signature() -> None:
+    """A token whose signature does not match the published key is rejected as an authorization error."""
+    memory_http = MemoryHTTP()
+    service = await InfrahubServices.new(http=memory_http)
+
+    helper = OIDCTestHelper()
+    token_response = helper.generate_token_response(
+        username="testuser",
+        groups=["operators"],
+        client_id=CLIENT_ID,
+        issuer=str(OIDC_CONFIG.issuer),
+    )
+
+    # Publish a JWKS whose key does not match the one that signed the token, while
+    # reusing the same kid so the signing key is still resolved and the signature check runs.
+    attacker = OIDCTestHelper()
+    forged_jwks = {"keys": [{**json.loads(attacker.key.export_public()), "kid": helper.kid}]}
+    memory_http.add_get_response(
+        url=str(OIDC_CONFIG.jwks_uri),
+        response=httpx.Response(status_code=200, content=json.dumps(forged_jwks)),
+    )
+
+    with pytest.raises(AuthorizationError, match=r"^OIDC id_token verification failed: Signature verification failed$"):
+        await _get_id_token_groups(
+            oidc_config=OIDC_CONFIG,
+            service=service,
+            payload=token_response,
+            provider=_make_provider(),
+        )
 
 
 async def test_get_id_token_groups_for_oidc_no_id_token() -> None:
