@@ -26,8 +26,8 @@ from infrahub.auth.types import AuthType
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod
-from infrahub.exceptions import ProcessingError
-from infrahub.external_protocols import AuthorizationError, ExternalAuthProtocol
+from infrahub.exceptions import AuthorizationError, ProcessingError
+from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
