@@ -8,10 +8,10 @@ export type RefreshAccessToken = () => Promise<components["schemas"]["AccessToke
 
 // Throws on every failure mode (missing refresh token, API error). The caller
 // is responsible for handling the failure — `retryWithRefreshedToken` in
-// graphqlClientApollo.tsx catches the rejection and calls `logoutLocally`
-// with a "refresh-failed" reason. Previously this function did its own
-// `window.location.reload()`, which dropped in-flight React Query state and
-// double-navigated when the catch site also redirected.
+// graphqlClientApollo.tsx catches the rejection and calls `redirectToLogin`.
+// Previously this function did its own `window.location.reload()`, which
+// dropped in-flight React Query state and double-navigated when the catch
+// site also redirected.
 export const refreshAccessToken: RefreshAccessToken = async () => {
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
 

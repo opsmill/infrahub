@@ -10,7 +10,7 @@ import {
 } from "@/entities/authentication/utils";
 
 export type AuthContextType = {
-  accessToken: string | null;
+  accessToken: string;
   isAuthenticated: boolean;
   setToken: (token: UserToken | null) => void;
   user: User | null;
@@ -29,7 +29,7 @@ function extractUser(payload: unknown): User | null {
 }
 
 export const AuthContext = React.createContext<AuthContextType>({
-  accessToken: null,
+  accessToken: "",
   isAuthenticated: false,
   setToken: () => {},
   user: null,
@@ -38,9 +38,10 @@ export const AuthContext = React.createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Inline state instead of useLocalStorage so the cross-tab `storage`
   // listener can update React without re-writing the value back to
-  // localStorage (which would cascade `storage` events between tabs and
-  // loop forever). Storage writes go through `setToken` / `logoutLocally`;
-  // pure state updates use `setAccessTokenState` directly.
+  // localStorage. `storage` events only fire in *other* tabs, so a
+  // write-back wouldn't loop in one tab — but it would bounce a redundant
+  // event to peers, doubling work on every cross-tab sync. Storage writes
+  // go through `setToken`; pure state updates use `setAccessTokenState`.
   const [accessToken, setAccessTokenState] = React.useState<string>(
     () => localStorage.getItem(ACCESS_TOKEN_KEY) ?? ""
   );
