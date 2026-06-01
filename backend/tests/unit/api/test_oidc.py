@@ -47,7 +47,7 @@ async def test_get_id_token_groups_for_oidc() -> None:
         oidc_config=OIDC_CONFIG,
         service=service,
         payload=token_response,
-        provider=_make_provider(),
+        provider_settings=_make_provider(),
     )
 
     assert groups == ["operators"]
@@ -78,7 +78,7 @@ async def test_get_id_token_groups_rejects_invalid_issuer_by_default() -> None:
             oidc_config=discovery,
             service=service,
             payload=token_response,
-            provider=_make_provider(),
+            provider_settings=_make_provider(),
         )
 
 
@@ -105,7 +105,7 @@ async def test_get_id_token_groups_rejects_invalid_audience_by_default() -> None
             oidc_config=OIDC_CONFIG,
             service=service,
             payload=token_response,
-            provider=_make_provider(),
+            provider_settings=_make_provider(),
         )
 
 
@@ -133,7 +133,7 @@ async def test_get_id_token_groups_accepts_invalid_issuer_when_verification_disa
         oidc_config=discovery,
         service=service,
         payload=token_response,
-        provider=_make_provider(verify_signature=False),
+        provider_settings=_make_provider(verify_signature=False),
     )
 
     assert groups == ["operators"]
@@ -166,7 +166,7 @@ async def test_get_id_token_groups_rejects_forged_signature() -> None:
             oidc_config=OIDC_CONFIG,
             service=service,
             payload=token_response,
-            provider=_make_provider(),
+            provider_settings=_make_provider(),
         )
 
 
@@ -192,7 +192,7 @@ async def test_get_id_token_groups_for_oidc_no_id_token() -> None:
         oidc_config=OIDC_CONFIG,
         service=service,
         payload=token_response,
-        provider=_make_provider(),
+        provider_settings=_make_provider(),
     )
 
     assert groups == []
