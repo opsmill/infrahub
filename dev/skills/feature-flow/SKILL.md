@@ -12,11 +12,34 @@ End-to-end orchestrator for a single feature. Reuses existing skills (`/speckit-
 
 ## Core principles
 
-- **Parallel = divergent thinking** (specs, plans, reviews). Multiple agents with different framings, then one synthesizer to converge.
+- **Parallel = divergent thinking** (specs, plans, reviews, assessments). Multiple agents with different framings, then one synthesizer to converge.
 - **Sequential = convergent/deterministic** (CI checks, commit, PR).
 - **Always synthesize before acting.** Never feed N parallel outputs directly into N implementation agents — one human-approved synthesis between phases.
 - **Worktrees for implementation** so parallel implementers don't stomp each other (`isolation: "worktree"` on Agent calls).
-- **Stop at checkpoints.** The user approves at the end of phases 1, 2, 4, and 5. Do not chain phases unattended.
+- **Stop at checkpoints.** The user approves at the end of phases 1, 2, 4, 5, and 6a. Do not chain phases unattended.
+
+## The divergent-then-synthesize primitive
+
+This is the single most important pattern in this skill. **Any phase that involves judgment, opinion, or design choice uses it.** Any phase that is deterministic (running tests, formatting) does not.
+
+**Shape:**
+
+1. **Diverge:** Spawn 2-4 agents *in parallel in a single message* (multiple tool calls in one assistant turn). Each gets a **different framing** of the same problem — not the same prompt N times. The framings are deliberate: minimal vs. refactor-friendly, security vs. simplicity, single-PR vs. split, etc.
+2. **Synthesize:** Spawn **1** `general-purpose` agent that receives all N outputs and produces a single ranked recommendation. It must compare, dedup, and flag tradeoffs — not just concatenate.
+3. **Checkpoint:** Surface the synthesis to the user with the open tradeoffs. User approves, redirects, or asks for another framing.
+
+**Why it works:** One agent's first answer is often locally optimal but globally narrow. Diverse framings surface options that no single agent would explore. The synthesizer prevents you from drowning in N opinions.
+
+**Where this primitive is used in this skill:**
+
+| Phase | Diverge (parallel) | Synthesize |
+|---|---|---|
+| 1 — Specs | 3 `Explore` framings | 1 `general-purpose` |
+| 2 — Plan | 3 `Plan` framings | 1 `general-purpose` |
+| 4 — Review | `coderabbit:code-reviewer` + `code-simplifier` + `general-purpose` | 1 `general-purpose` |
+| 6a — Split assessment | 3 `general-purpose` framings | 1 `general-purpose` |
+
+Phase 3 (implement) is **also** parallel but is *not* divergent — each agent owns a different unit of work, not a different framing of the same problem. Don't conflate the two.
 
 ## Phases
 
@@ -80,28 +103,33 @@ End-to-end orchestrator for a single feature. Reuses existing skills (`/speckit-
 
 #### 6a. Split assessment (bias toward single PR)
 
-Before drafting anything, **1 `general-purpose` agent** analyzes `git diff develop...HEAD` and `git log develop..HEAD` and decides: **single PR or split?**
+Apply the **divergent-then-synthesize primitive** to the split decision. Before drafting any PR, run **3 `general-purpose` agents in parallel** against `git diff develop...HEAD` and `git log develop..HEAD`, each with a deliberately different framing:
 
-**Default to single PR.** Only propose a split when at least one of these clearly applies:
+- **Reviewer ergonomics** — "what split would make this fastest to review?" (favors small, focused PRs)
+- **Risk isolation** — "what split would let us revert one part without affecting the others?" (favors separating high-risk from low-risk changes)
+- **Coherence preservation** — "what's the simplest narrative? when would splitting break tests or tell a worse story?" (favors a single PR; this framing is the counterweight)
 
-- **Independent concerns** — e.g. an unrelated drive-by refactor mixed in with the feature, or backend + frontend changes that could be reviewed and reverted independently.
-- **Different reviewers** — e.g. infra/CI changes that need a platform reviewer separate from product reviewers.
-- **Different risk profiles** — e.g. a low-risk doc/config change you want to land fast, bundled with a higher-risk feature.
-- **Revertable in isolation** — splitting would let one part be reverted without affecting the rest.
+Each agent returns either *"ship as one"* or *"split into N groups: ..."* with its reasoning.
 
-**Do NOT split when:**
+**Synthesize** with **1 `general-purpose` agent**: compare the three framings, weigh tradeoffs, and produce a single recommendation. Apply the strong bias toward a single PR:
 
-- ❌ Changes are coupled (feature + its own tests + its own docs).
-- ❌ Splitting would leave one PR with broken tests or builds.
-- ❌ The change has a single coherent narrative.
-- ❌ The split would create a chain of dependent PRs that must merge in order, and the value isn't worth that cost.
+- **Only recommend a split when ≥2 of the 3 framings independently suggest it**, AND at least one of these clearly applies:
+  - Independent concerns (e.g. unrelated drive-by refactor, or backend + frontend independently reviewable).
+  - Different reviewers needed (e.g. infra/CI vs. product).
+  - Different risk profiles (e.g. low-risk config + high-risk feature).
+  - Revertable in isolation.
+- **Do NOT recommend a split when:**
+  - ❌ Changes are coupled (feature + its own tests + its own docs).
+  - ❌ Splitting would leave one PR with broken tests or builds.
+  - ❌ The change has a single coherent narrative.
+  - ❌ The split would create a chain of dependent PRs that must merge in order, and the value isn't worth that cost.
 
-The agent outputs one of:
+The synthesizer outputs one of:
 
 - **"Ship as one PR"** with a one-line justification.
 - **"Suggest split into N PRs"** with the proposed groupings (which commits / which files go where, in dependency order if any), plus an explicit *"but a single PR is also reasonable"* note when the case is borderline.
 
-**Checkpoint:** show the assessment to the user. User picks single PR, accepts the split, or proposes a different split. Never force a split without approval.
+**Checkpoint:** show the synthesis (and the three framings if useful) to the user. User picks single PR, accepts the split, or proposes a different split. Never force a split without approval.
 
 #### 6b. Draft PR(s)
 
