@@ -613,8 +613,7 @@ class SecurityOIDCBaseSettings(BaseSettings):
     def warn_when_signature_verification_disabled(self) -> Self:
         if not self.id_token_verify_signature:
             log.warning(
-                "OIDC id_token signature verification is disabled; the audience and issuer claims"
-                " will not be checked either. Any token presented to the callback will be trusted.",
+                "OIDC id_token verification is disabled; any token presented to the callback will be trusted.",
                 provider=self.__class__.__name__,
             )
         return self

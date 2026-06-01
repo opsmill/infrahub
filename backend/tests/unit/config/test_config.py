@@ -87,7 +87,7 @@ def test_oidc_disabled_signature_verification_warns_once(caplog: pytest.LogCaptu
         provider = _make_oidc_provider(verify_signature=False)
 
     assert provider.id_token_verify_signature is False
-    warnings = [record for record in caplog.records if "signature verification is disabled" in record.message]
+    warnings = [record for record in caplog.records if "OIDC id_token verification is disabled" in record.message]
     assert len(warnings) == 1
 
 
@@ -96,4 +96,4 @@ def test_oidc_default_signature_verification_is_silent(caplog: pytest.LogCapture
         provider = _make_oidc_provider(verify_signature=True)
 
     assert provider.id_token_verify_signature is True
-    assert not [record for record in caplog.records if "signature verification is disabled" in record.message]
+    assert not [record for record in caplog.records if "OIDC id_token verification is disabled" in record.message]
