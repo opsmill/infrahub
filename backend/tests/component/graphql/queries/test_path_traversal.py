@@ -157,7 +157,7 @@ async def test_resolver_rejects_max_paths_above_maximum(
         }
     }
 
-    data, errors = await _run_resolver(db=db, branch=default_branch, session=session_admin, variables=variables)
+    _, errors = await _run_resolver(db=db, branch=default_branch, session=session_admin, variables=variables)
 
     assert errors is not None
     assert errors[0].message == "max_paths must be <= 100, got 101"
