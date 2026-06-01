@@ -110,7 +110,9 @@ export function handleGraphQLAuthError({
 
       case ERROR_CODES.PERMISSION_DENIED:
         // Silent — 403s are handled by route-level guards, not toasts.
-        return;
+        // `continue` (not `return`) so any sibling errors in the same
+        // response still reach their handlers.
+        continue;
 
       case ERROR_CODES.UNDEFINED_ERROR:
         // Catalogue gap: the backend returned a code we don't recognise.
