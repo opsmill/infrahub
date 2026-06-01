@@ -606,10 +606,7 @@ class SecurityOIDCBaseSettings(BaseSettings):
     )
     id_token_verify_signature: bool = Field(
         default=True,
-        description=(
-            "Verify the cryptographic signature, audience and issuer of the OIDC id_token before"
-            " trusting its group claims."
-        ),
+        description="Verify the cryptographic signature, audience and issuer of the OIDC id_token.",
     )
 
     @model_validator(mode="after")
