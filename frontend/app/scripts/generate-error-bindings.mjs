@@ -122,10 +122,7 @@ async function generate() {
 
   const entries = codes.map((code) => {
     const entry = catalogue.codes[code];
-    assert(
-      entry && typeof entry === "object",
-      `Catalogue entry "${code}" must be an object.`
-    );
+    assert(entry && typeof entry === "object", `Catalogue entry "${code}" must be an object.`);
     assert(
       Number.isInteger(entry.http_status),
       `Catalogue entry "${code}" must have an integer \`http_status\` (got ${JSON.stringify(entry.http_status)}).`
@@ -218,8 +215,7 @@ async function main() {
 // Importing this module — from a test, knip, or a programmatic caller — must
 // not write to disk as a side effect.
 const isDirectInvocation =
-  process.argv[1] !== undefined &&
-  import.meta.url === pathToFileURL(process.argv[1]).href;
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 
 if (isDirectInvocation) {
   main().catch((err) => {
