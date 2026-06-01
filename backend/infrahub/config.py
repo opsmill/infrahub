@@ -27,6 +27,7 @@ from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.log import get_logger
 from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
@@ -34,6 +35,8 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
+
+log = get_logger()
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
@@ -609,6 +612,16 @@ class SecurityOIDCBaseSettings(BaseSettings):
             " provider; doing so accepts any token presented to the callback as authentic."
         ),
     )
+
+    @model_validator(mode="after")
+    def warn_when_signature_verification_disabled(self) -> Self:
+        if not self.id_token_verify_signature:
+            log.warning(
+                "OIDC id_token signature verification is disabled; the audience and issuer claims"
+                " will not be checked either. Any token presented to the callback will be trusted.",
+                provider=self.__class__.__name__,
+            )
+        return self
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):

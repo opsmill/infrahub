@@ -272,12 +272,6 @@ async def _get_id_token_groups(
     signing_key = jwk_client.get_signing_key_from_jwt(id_token)
 
     verify = provider.id_token_verify_signature
-    if not verify:
-        log.warning(
-            "OIDC id_token signature verification is disabled; the audience and issuer claims"
-            " will not be checked either. Any token presented to the callback will be trusted.",
-            provider=provider.__class__.__name__,
-        )
 
     decoded_token: dict[str, Any] = jwt.decode(
         jwt=id_token,
