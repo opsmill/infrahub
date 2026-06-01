@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 # Feature Flow
 
-End-to-end orchestrator for a single feature. Reuses existing repo-level skills (`/speckit-*`, `/pre-ci`, `/git-commit`, `/capture-knowledge`) — does **not** reimplement them.
+End-to-end orchestrator for a single feature. Reuses existing repo-level slash commands and skills (`/speckit-*`, `/pre-ci`, `/git-commit`, `/git-pr`, `/capture-knowledge`) — does **not** reimplement them.
 
 ## Core principles
 
@@ -141,28 +141,19 @@ For **each** PR (one or many):
 
 #### 6c. Open
 
-For each approved PR branch:
+For each approved PR branch, invoke `/git-pr` with the approved title and body:
 
-4. Ensure the branch is pushed and tracking the remote:
-   ```bash
-   git push -u origin "$(git branch --show-current)"
-   ```
-   (If upstream is already set, `git push` is sufficient.)
-5. Open the PR with `gh pr create`, passing the body as a HEREDOC to preserve formatting:
-   ```bash
-   gh pr create --title "<approved title>" --body "$(cat <<'EOF'
-   ## Summary
-   <bullets from the synthesizer>
+```
+/git-pr --title "<approved title>" --body "<approved body>"
+```
 
-   ## Test plan
-   <checklist>
-   EOF
-   )"
-   ```
-   For split PRs with dependencies, add a "Depends on #<sibling-PR>" line at the top of dependent bodies and open in dependency order.
-6. Report PR URL(s). For split PRs, note merge order.
+`/git-pr` handles the push (setting upstream if needed) and `gh pr create` itself. It refuses to run if the working tree is dirty or if the branch has no commits ahead of base — surface either error to the user rather than working around it.
 
-Note: by this point, the work was already committed iteratively during Phase 3, so this sub-step is push + PR only — no commit step. If anything is uncommitted, stop and surface it; do not auto-commit drift.
+For split PRs with dependencies, prepend a `Depends on #<sibling-PR>` line to dependent bodies and open in dependency order.
+
+Report the PR URL(s) returned by `/git-pr`. For split PRs, note merge order.
+
+Note: by this point, the work was already committed iteratively during Phase 3. If anything is uncommitted, `/git-pr` will refuse — do not auto-commit drift to satisfy it; surface the dirty state to the user.
 
 ## Iteration notes
 
