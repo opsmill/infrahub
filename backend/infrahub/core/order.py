@@ -18,6 +18,9 @@ class NodeMetaOrder(BaseModel):
     created_at: OrderDirection | None = None
     updated_at: OrderDirection | None = None
 
+    def __bool__(self) -> bool:
+        return self.created_at is not None or self.updated_at is not None
+
 
 class OrderModel(BaseModel):
     disable: bool | None = None

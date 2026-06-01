@@ -15,7 +15,8 @@ from infrahub.core.changelog.models import (
 from infrahub.core.constants import InfrahubKind, MetadataOptions, RelationshipDirection, RelationshipStatus
 from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
+from infrahub.core.schema.order_by import OrderByTargetKind, parse_order_by_entry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
 from infrahub.log import get_logger
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.core.relationship import Relationship
-    from infrahub.core.schema import NodeSchema, RelationshipSchema
+    from infrahub.core.schema import MainSchemaTypes, NodeSchema, RelationshipSchema
     from infrahub.database import InfrahubDatabase
 
 
@@ -842,6 +843,50 @@ RETURN updated_at, updated_by
         """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
 
+    async def _add_peer_order_by(self, db: InfrahubDatabase, peer_schema: MainSchemaTypes, branch_filter: str) -> None:
+        if not (hasattr(peer_schema, "order_by") and peer_schema.order_by):
+            return
+
+        for order_cnt, order_by_value in enumerate(peer_schema.order_by, start=1):
+            parsed = parse_order_by_entry(entry=order_by_value, node_schema=peer_schema)
+
+            if parsed.kind is OrderByTargetKind.METADATA:
+                subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
+                    metadata_field=parsed.metadata_field.value,
+                    branch=self.branch,
+                    branch_filter=branch_filter,
+                    branch_agnostic=self.branch_agnostic,
+                    node_alias="peer",
+                    subquery_idx=order_cnt,
+                )
+                self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
+                self.params.update(subquery_params)
+                self.add_subquery(subquery=subquery, node_alias="peer")
+                continue
+
+            if parsed.kind is OrderByTargetKind.ATTRIBUTE:
+                order_by_field_name = parsed.attribute_name
+                order_by_next_name = parsed.property_name
+            else:
+                order_by_field_name = parsed.relationship_name
+                order_by_next_name = f"{parsed.attribute_name}__{parsed.property_name}"
+
+            field = peer_schema.get_field(order_by_field_name)
+
+            subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                db=db,
+                field=field,
+                node_alias="peer",
+                name=order_by_field_name,
+                order_by=order_by_next_name,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=order_cnt,
+            )
+            self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
+            self.params.update(subquery_params)
+            self.add_subquery(subquery=subquery, node_alias="peer")
+
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         branch_filter, branch_params = self.branch.get_query_filter_path(
             at=self.at, branch_agnostic=self.branch_agnostic
@@ -950,37 +995,12 @@ RETURN updated_at, updated_by
         # ----------------------------------------------------------------------------
         # ORDER Results
         # ----------------------------------------------------------------------------
-        if hasattr(peer_schema, "order_by") and peer_schema.order_by:
-            order_cnt = 1
-
-            for order_by_value in peer_schema.order_by:
-                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
-
-                field = peer_schema.get_field(order_by_field_name)
-
-                subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    db=db,
-                    field=field,
-                    node_alias="peer",
-                    name=order_by_field_name,
-                    order_by=order_by_next_name,
-                    branch_filter=branch_filter,
-                    branch=self.branch,
-                    subquery_idx=order_cnt,
-                )
-                self.order_by.append(subquery_result_name)
-                self.params.update(subquery_params)
-
-                self.add_subquery(subquery=subquery, node_alias="peer")
-
-                order_cnt += 1
-
-        else:
-            self.order_by.append("peer.uuid")
+        await self._add_peer_order_by(db=db, peer_schema=peer_schema, branch_filter=branch_filter)
+        self.order_by.append("peer.uuid ASC")
 
     def get_peer_ids(self) -> list[str]:
         """Return a list of UUID of nodes associated with this relationship."""
-        return [peer.peer_id for peer in self.get_peers()]
+        return [str(peer.peer_id) for peer in self.get_peers()]
 
     def get_peers(self) -> Generator[RelationshipPeerData, None, None]:
         for result in self.get_results_group_by(("peer", "uuid"), ("source_node", "uuid")):
@@ -989,12 +1009,12 @@ RETURN updated_at, updated_by
             peer_node = result.get_node("peer")
 
             if self.include_metadata & MetadataOptions.CREATED_AT:
-                created_at_str = result.get("created_at")
+                created_at_str = result.get_as_type("created_at", str)
                 created_at = Timestamp(created_at_str) if created_at_str else None
             else:
                 created_at = None
             if self.include_metadata & MetadataOptions.UPDATED_AT:
-                updated_at_str = result.get("updated_at")
+                updated_at_str = result.get_as_type("updated_at", str)
                 updated_at = Timestamp(updated_at_str) if updated_at_str else None
             else:
                 updated_at = None

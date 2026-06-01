@@ -23,6 +23,9 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
+from infrahub.core.constants import (
+    NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
+)
 from infrahub.core.order import (
     METADATA_CREATED_AT,
     METADATA_CREATED_BY,
@@ -31,9 +34,14 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.order_by import (
+    OrderByTargetKind,
+    ParsedOrderByEntry,
+    parse_order_by_entry,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
@@ -55,7 +63,7 @@ if TYPE_CHECKING:
 # Grouped constants for validation/iteration
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
-NODE_METADATA_PREFIX = "node_metadata__"
+NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
 
 
 @dataclass
@@ -1698,15 +1706,36 @@ class NodeGetListQuery(Query):
 
     def _get_metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
         """Return the metadata field and direction to order by, or None."""
-        if not self.requested_order or not self.requested_order.node_metadata:
+        if self.requested_order and self.requested_order.node_metadata:
+            fields: list[tuple[str, OrderDirection]] = []
+            nm = self.requested_order.node_metadata
+            if nm.created_at:
+                fields.append((METADATA_CREATED_AT, nm.created_at))
+            if nm.updated_at:
+                fields.append((METADATA_UPDATED_AT, nm.updated_at))
+            return fields
+
+        return [
+            (parsed.metadata_field.value, parsed.direction)
+            for parsed in self._get_parsed_schema_order_by()
+            if parsed.kind is OrderByTargetKind.METADATA
+        ]
+
+    def _get_parsed_schema_order_by(self) -> list[ParsedOrderByEntry]:
+        if self._query_time_order_overrides_schema():
             return []
-        fields: list[tuple[str, OrderDirection]] = []
-        nm = self.requested_order.node_metadata
-        if nm.created_at:
-            fields.append((METADATA_CREATED_AT, nm.created_at))
-        if nm.updated_at:
-            fields.append((METADATA_UPDATED_AT, nm.updated_at))
-        return fields
+        if not self.schema.order_by:
+            return []
+        return [parse_order_by_entry(entry=entry, node_schema=self.schema) for entry in self.schema.order_by]
+
+    def _query_time_order_overrides_schema(self) -> bool:
+        if self.requested_order is None:
+            return False
+        if self.requested_order.disable:
+            return True
+        if self.requested_order.node_metadata:
+            return True
+        return False
 
     @property
     def _has_metadata_filters(self) -> bool:
@@ -2025,10 +2054,12 @@ WITH %(tracked_vars)s,
             if far.field is None:
                 continue
 
+            direction = (far.order_direction or OrderDirection.ASC).value
+
             # If this field is also used for filtering, the filter subquery already
             # extracted the value - just add it to order_by, don't create another subquery
             if far.is_filter:
-                self.order_by.append(far.node_value_query_variable)
+                self.order_by.append(f"{far.node_value_query_variable} {direction}")
                 continue
 
             subquery, subquery_params, _ = await build_subquery_order(
@@ -2046,7 +2077,7 @@ WITH %(tracked_vars)s,
 
             self.params.update(subquery_params)
             self.add_to_query(["CALL (n) {", subquery, "}", f"WITH {with_str}"])
-            self.order_by.append(far.node_value_query_variable)
+            self.order_by.append(f"{far.node_value_query_variable} {direction}")
 
     def _build_filter_where_clause(self, far: FieldAttributeRequirement) -> str | None:
         """Build a WHERE clause for a single filter requirement.
@@ -2237,8 +2268,16 @@ WITH %(tracked_vars)s,
             index += 1
 
         # Add schema order_by requirements
-        for order_by_path in self.schema.order_by or []:
-            order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
+        for parsed in self._get_parsed_schema_order_by():
+            if parsed.kind is OrderByTargetKind.METADATA:
+                continue
+
+            if parsed.kind is OrderByTargetKind.ATTRIBUTE:
+                order_by_field_name = parsed.attribute_name
+                order_by_attr_property_name = parsed.property_name
+            else:
+                order_by_field_name = parsed.relationship_name
+                order_by_attr_property_name = f"{parsed.attribute_name}__{parsed.property_name}"
 
             field = self.schema.get_field(order_by_field_name)
             field_reqs = requirements_map.get(order_by_field_name)
@@ -2246,7 +2285,7 @@ WITH %(tracked_vars)s,
             if existing_req:
                 # Field already used for filtering, add ORDER type
                 existing_req.types.append(FieldAttributeRequirementType.ORDER)
-                existing_req.order_direction = OrderDirection.ASC
+                existing_req.order_direction = parsed.direction
             else:
                 # New field requirement for ordering only
                 new_requirements.append(
@@ -2257,7 +2296,7 @@ WITH %(tracked_vars)s,
                         field_attr_value=None,
                         index=index,
                         types=[FieldAttributeRequirementType.ORDER],
-                        order_direction=OrderDirection.ASC,
+                        order_direction=parsed.direction,
                     )
                 )
                 index += 1
@@ -2537,32 +2576,54 @@ class NodeGetHierarchyQuery(Query):
         # ----------------------------------------------------------------------------
         if self.hierarchical_ordering:
             return
-        if hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
-            order_cnt = 1
+        await self._add_peer_order_by(db=db, hierarchy_schema=hierarchy_schema, branch_filter=branch_filter)
+        self.order_by.append("peer.uuid ASC")
 
-            for order_by_value in hierarchy_schema.order_by:
-                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+    async def _add_peer_order_by(
+        self, db: InfrahubDatabase, hierarchy_schema: NodeSchema | GenericSchema, branch_filter: str
+    ) -> None:
+        if not (hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by):
+            return
 
-                field = hierarchy_schema.get_field(order_by_field_name)
+        for order_cnt, order_by_value in enumerate(hierarchy_schema.order_by, start=1):
+            parsed = parse_order_by_entry(entry=order_by_value, node_schema=hierarchy_schema)
 
-                subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    db=db,
-                    field=field,
-                    node_alias="peer",
-                    name=order_by_field_name,
-                    order_by=order_by_next_name,
-                    branch_filter=branch_filter,
+            if parsed.kind is OrderByTargetKind.METADATA:
+                subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
+                    metadata_field=parsed.metadata_field.value,
                     branch=self.branch,
+                    branch_filter=branch_filter,
+                    branch_agnostic=self.branch_agnostic,
+                    node_alias="peer",
                     subquery_idx=order_cnt,
                 )
-                self.order_by.append(subquery_result_name)
+                self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
                 self.params.update(subquery_params)
-
                 self.add_subquery(subquery=subquery, node_alias="peer")
+                continue
 
-                order_cnt += 1
-        else:
-            self.order_by.append("peer.uuid")
+            if parsed.kind is OrderByTargetKind.ATTRIBUTE:
+                order_by_field_name = parsed.attribute_name
+                order_by_next_name = parsed.property_name
+            else:
+                order_by_field_name = parsed.relationship_name
+                order_by_next_name = f"{parsed.attribute_name}__{parsed.property_name}"
+
+            field = hierarchy_schema.get_field(order_by_field_name)
+
+            subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                db=db,
+                field=field,
+                node_alias="peer",
+                name=order_by_field_name,
+                order_by=order_by_next_name,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=order_cnt,
+            )
+            self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
+            self.params.update(subquery_params)
+            self.add_subquery(subquery=subquery, node_alias="peer")
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):

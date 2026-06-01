@@ -77,6 +77,7 @@ from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER, RESOURCE_POOL_REL_SUFFIX
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .node_inheritance_handler import NodeInheritanceHandler
+from .order_by import is_metadata_order_by_entry, parse_order_by_entry
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
@@ -954,20 +955,26 @@ class SchemaBranch:
                     )
 
     def validate_order_by(self) -> None:
+        allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
         for name in self.all_names:
             node_schema = self.get(name=name, duplicate=False)
 
             if not node_schema.order_by:
                 continue
 
-            allowed_types = SchemaElementPathType.ATTR_WITH_PROP | SchemaElementPathType.REL_ONE_ATTR_WITH_PROP
-            for order_by_path in node_schema.order_by:
-                element_name = "order_by"
+            for order_by_entry in node_schema.order_by:
+                if is_metadata_order_by_entry(order_by_entry):
+                    try:
+                        parse_order_by_entry(entry=order_by_entry, node_schema=node_schema)
+                    except ValueError as exc:
+                        raise ValueError(f"{node_schema.kind}.order_by: {exc}") from exc
+                    continue
+
                 self.validate_schema_path(
                     node_schema=node_schema,
-                    path=order_by_path,
+                    path=order_by_entry,
                     allowed_path_types=allowed_types,
-                    element_name=element_name,
+                    element_name="order_by",
                 )
 
     def validate_default_filters(self) -> None:

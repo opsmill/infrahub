@@ -68,6 +68,10 @@ class ParsedMetadataOrderBy(_ParsedOrderByBase):
 type ParsedOrderByEntry = ParsedAttributeOrderBy | ParsedRelationshipAttributeOrderBy | ParsedMetadataOrderBy
 
 
+def is_metadata_order_by_entry(entry: str) -> bool:
+    return entry.startswith(f"{NODE_METADATA_PREFIX}__")
+
+
 def parse_order_by_entry(entry: str, node_schema: BaseNodeSchema) -> ParsedOrderByEntry:
     if not entry:
         raise ValueError(f"order_by entries must be non-empty strings (entry: {entry!r}).")
@@ -77,7 +81,7 @@ def parse_order_by_entry(entry: str, node_schema: BaseNodeSchema) -> ParsedOrder
     if any(not part for part in parts):
         raise ValueError(f"invalid entry (entry: {entry!r}). Entry segments must be non-empty.")
 
-    if parts[0] == NODE_METADATA_PREFIX:
+    if is_metadata_order_by_entry(entry):
         return _parse_metadata(entry=entry, parts=parts)
 
     return _parse_path(entry=entry, parts=parts, node_schema=node_schema)
@@ -126,6 +130,12 @@ def _parse_path(
                 f"Expected '<relationship>__<attribute>__<property>' "
                 f"with an optional direction suffix."
             )
+        if len(parts) == 3 and parts[2] in _DIRECTION_TOKENS:
+            raise ValueError(
+                f"invalid relationship path (entry: {entry!r}). "
+                f"Property segment is missing; "
+                f"direction token {parts[2]!r} cannot be used as a property name."
+            )
         direction = _consume_direction(entry=entry, parts=parts, path_length=3)
         return ParsedRelationshipAttributeOrderBy(
             raw=entry,
@@ -140,6 +150,12 @@ def _parse_path(
             raise ValueError(
                 f"invalid attribute path (entry: {entry!r}). "
                 f"Expected '<attribute>__<property>' with an optional direction suffix."
+            )
+        if len(parts) == 2 and parts[1] in _DIRECTION_TOKENS:
+            raise ValueError(
+                f"invalid attribute path (entry: {entry!r}). "
+                f"Property segment is missing; "
+                f"direction token {parts[1]!r} cannot be used as a property name."
             )
         direction = _consume_direction(entry=entry, parts=parts, path_length=2)
         return ParsedAttributeOrderBy(

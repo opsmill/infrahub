@@ -66,6 +66,20 @@ SUCCESS_CASES = [
         expected_target_key=("attribute", "status", "value"),
     ),
     ParserCase(
+        name="attribute_non_value_property",
+        entry="name__binary_address",
+        expected_kind=OrderByTargetKind.ATTRIBUTE,
+        expected_direction=OrderDirection.ASC,
+        expected_target_key=("attribute", "name", "binary_address"),
+    ),
+    ParserCase(
+        name="attribute_non_value_property_with_direction",
+        entry="name__prefixlen__desc",
+        expected_kind=OrderByTargetKind.ATTRIBUTE,
+        expected_direction=OrderDirection.DESC,
+        expected_target_key=("attribute", "name", "prefixlen"),
+    ),
+    ParserCase(
         name="relationship_attribute_implicit_asc",
         entry="account__name__value",
         expected_kind=OrderByTargetKind.RELATIONSHIP_ATTRIBUTE,
@@ -172,6 +186,16 @@ REJECTION_CASES = [
         name="metadata_malformed_direction",
         entry="node_metadata__created_at__descending",
         match=r"invalid direction",
+    ),
+    RejectionCase(
+        name="relationship_attribute_missing_property",
+        entry="account__name__desc",
+        match=r"direction token 'desc' cannot be used as a property name",
+    ),
+    RejectionCase(
+        name="attribute_missing_property",
+        entry="name__desc",
+        match=r"direction token 'desc' cannot be used as a property name",
     ),
 ]
 
