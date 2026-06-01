@@ -34,7 +34,11 @@ function AuthCallback() {
   useEffect(() => {
     if (!ssoEnabled || !tokenPath) return;
 
-    fetchUrl(`${INFRAHUB_API_SERVER_URL}${tokenPath}?code=${code}&state=${state}`)
+    const callbackUrl = new URL(`${INFRAHUB_API_SERVER_URL}${tokenPath}`);
+    if (code) callbackUrl.searchParams.set("code", code);
+    if (state) callbackUrl.searchParams.set("state", state);
+
+    fetchUrl(callbackUrl.toString())
       .then((result) => {
         // 2xx response that still carries `errors` — normalise to a
         // FetchError so the catch sees the same shape as a non-2xx
