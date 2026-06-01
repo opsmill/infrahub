@@ -6,8 +6,9 @@ import { ERROR_CODES } from "@/shared/api/graphql/errors";
 import { queryClient } from "@/shared/api/rest/client";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";
+import { __navigation } from "@/entities/authentication/domain/redirect-to-login";
 
-import { __navigation, handleGraphQLAuthError } from "./graphqlClientApollo";
+import { handleGraphQLAuthError } from "./graphqlClientApollo";
 
 describe("handleGraphQLAuthError — TOKEN_EXPIRED retry-then-bail loop", () => {
   // Minimal stand-in for Apollo's `Operation`. The handler only touches
