@@ -5,7 +5,6 @@ import pytest
 
 from infrahub import config
 from infrahub.auth.auth import ExternalIdentity, signin_sso_account
-from infrahub.external_protocols import ExternalAuthProtocol,
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager

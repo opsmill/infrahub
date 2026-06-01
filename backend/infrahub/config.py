@@ -841,6 +841,7 @@ class SecuritySettings(BaseSettings):
     def auto_create_groups_enabled(self) -> bool:
         """True iff at least one usable filter pattern is configured."""
         return len(self._auto_create_groups_filter_patterns) > 0
+
     sso_account_name_fallback: bool = Field(
         default=True,
         description=(
