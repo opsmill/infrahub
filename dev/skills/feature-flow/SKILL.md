@@ -8,7 +8,7 @@ disable-model-invocation: false
 
 # Feature Flow
 
-End-to-end orchestrator for a single feature. Reuses existing skills (`/speckit-*`, `/pre-ci`, `/capture-knowledge`, `/commit-commands:commit-push-pr`) — does **not** reimplement them.
+End-to-end orchestrator for a single feature. Reuses existing repo-level skills (`/speckit-*`, `/pre-ci`, `/git-commit`, `/capture-knowledge`) — does **not** reimplement them.
 
 ## Core principles
 
@@ -141,8 +141,28 @@ For **each** PR (one or many):
 
 #### 6c. Open
 
-4. On approval, invoke `/commit-commands:commit-push-pr` per branch.
-5. Report PR URL(s). For split PRs, note merge order if there are dependencies.
+For each approved PR branch:
+
+4. Ensure the branch is pushed and tracking the remote:
+   ```bash
+   git push -u origin "$(git branch --show-current)"
+   ```
+   (If upstream is already set, `git push` is sufficient.)
+5. Open the PR with `gh pr create`, passing the body as a HEREDOC to preserve formatting:
+   ```bash
+   gh pr create --title "<approved title>" --body "$(cat <<'EOF'
+   ## Summary
+   <bullets from the synthesizer>
+
+   ## Test plan
+   <checklist>
+   EOF
+   )"
+   ```
+   For split PRs with dependencies, add a "Depends on #<sibling-PR>" line at the top of dependent bodies and open in dependency order.
+6. Report PR URL(s). For split PRs, note merge order.
+
+Note: by this point, the work was already committed iteratively during Phase 3, so this sub-step is push + PR only — no commit step. If anything is uncommitted, stop and surface it; do not auto-commit drift.
 
 ## Iteration notes
 
