@@ -418,6 +418,23 @@ async def test_pull_new_branch(git_repo_01: InfrahubRepository) -> None:
     assert response is True
 
 
+async def test_pull_new_branch_updates_commit_value(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    await repo.fetch()
+
+    branch_name = "branch02"
+
+    response = await repo.pull(
+        branch_name=branch_name,
+        branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
+        create_if_missing=True,
+        update_commit_value=True,
+    )
+
+    commit = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert response == commit
+
+
 async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
     repo = git_repo_06
     await repo.fetch()
