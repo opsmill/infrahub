@@ -11,14 +11,14 @@ import { onError } from "@apollo/client/link/error";
 import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import { toast } from "react-toastify";
 
-import { ERROR_CODES, parseErrorExtensions } from "@/shared/api/graphql/errors";
+import { ERROR_CODES, parseCatalogueError } from "@/shared/api/errors";
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
 
 import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
+import { redirectToLogin } from "@/entities/authentication/domain/redirect-to-login";
 import { refreshAccessTokenQueryOptions } from "@/entities/authentication/ui/queries/refresh-access-token.query";
-import { removeTokensInLocalStorage } from "@/entities/authentication/utils";
 
 export const defaultOptions: DefaultOptions = {
   watchQuery: {
@@ -61,14 +61,35 @@ export const authLink = setContext((_, previousContext) => {
   };
 });
 
-// Error link: route each catalogue code to its policy. The catalogue is
-// mirrored in @/shared/api/graphql/errors until US2's generated bindings
-// (T029) land — see dev/specs/infp-468-graphql-error-catalogue/.
-export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
+type ErrorLinkArgs = Parameters<Parameters<typeof onError>[0]>[0];
+
+// True iff a forwarded result still carries TOKEN_EXPIRED. Used inside
+// `retryWithRefreshedToken` because Apollo's onError link routes results
+// from the retried observable directly to the outer observer — it does
+// NOT re-invoke `handleGraphQLAuthError`, so a persistent TOKEN_EXPIRED
+// would otherwise leak through to the caller as a generic GraphQL error.
+function resultHasTokenExpired(result: FetchResult): boolean {
+  return (
+    result.errors?.some(
+      (e) => parseCatalogueError(e.extensions).code === ERROR_CODES.TOKEN_EXPIRED
+    ) ?? false
+  );
+}
+
+// Error link callback: route each catalogue code to its policy. The
+// discriminated union is generated from `schema/error-catalogue.json` —
+// regenerate with `pnpm generate:error-bindings`. Exported (not just inlined
+// into `onError`) so tests can drive it directly without spinning up an
+// Apollo link chain.
+export function handleGraphQLAuthError({
+  graphQLErrors,
+  operation,
+  forward,
+}: ErrorLinkArgs): Observable<FetchResult> | undefined {
   if (!graphQLErrors) return;
 
   for (const graphQLError of graphQLErrors) {
-    const parsed = parseErrorExtensions(graphQLError.extensions);
+    const parsed = parseCatalogueError(graphQLError.extensions);
 
     console.error(
       `[GraphQL error]: Code: ${parsed.code}, Message: ${graphQLError.message}, ` +
@@ -77,13 +98,40 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
 
     switch (parsed.code) {
       case ERROR_CODES.TOKEN_EXPIRED:
+        // The retry loop is bounded by construction: Apollo's onError
+        // does not re-invoke this handler for results from the retried
+        // observable, so we get exactly one refresh+replay attempt per
+        // operation. Persistence is caught inside `retryWithRefreshedToken`.
         return retryWithRefreshedToken(operation, forward);
 
       case ERROR_CODES.AUTHENTICATION_REQUIRED:
-        return redirectToLogin();
+        redirectToLogin();
+        return;
 
       case ERROR_CODES.PERMISSION_DENIED:
         // Silent — 403s are handled by route-level guards, not toasts.
+        // `continue` (not `return`) so any sibling errors in the same
+        // response still reach their handlers.
+        continue;
+
+      case ERROR_CODES.UNDEFINED_ERROR:
+        // Catalogue gap: the backend returned a code we don't recognise.
+        // In dev builds, surface this loudly so engineers see it without
+        // having to dig through devtools — a console.warn pointing at
+        // where to register the code, plus a prefix on the toast so the
+        // miss is visible during manual testing. Prod stays silent
+        // (just the generic toast) to avoid leaking implementation noise.
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[catalogue gap] Unmatched error code surfaced as UNDEFINED_ERROR. " +
+              "Register it in backend/infrahub/errors/catalogue.py, regenerate " +
+              "the schema, and run `pnpm generate:error-bindings`.",
+            { message: graphQLError.message, extensions: graphQLError.extensions }
+          );
+          notifyUser(`[catalogue gap] ${graphQLError.message}`, operation);
+          return;
+        }
+        notifyUser(graphQLError.message, operation);
         return;
 
       default:
@@ -92,7 +140,9 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
   }
 
   return;
-});
+}
+
+export const errorLink = onError(handleGraphQLAuthError);
 
 // Helper: refresh the access token and replay the operation. Lifted from
 // the previous inline Observable block in errorLink; the only behaviour
@@ -110,9 +160,11 @@ function retryWithRefreshedToken(
       .fetchQuery(refreshAccessTokenQueryOptions())
       .then((newToken) => {
         if (!newToken?.access_token) {
-          // Refresh resolved but the server returned no token — fail the
-          // retry observable so the caller sees an error instead of hanging
-          // forever. Apollo will surface this as a network error.
+          // Refresh resolved but the server returned no token — treat it
+          // like a refresh failure: clear stale credentials and bounce to
+          // /login, otherwise the user is left signed-in against tokens
+          // the server has already disowned.
+          redirectToLogin();
           observer.error(new Error("Token refresh returned no access_token"));
           return;
         }
@@ -120,32 +172,40 @@ function retryWithRefreshedToken(
         operation.setContext({
           headers: {
             ...oldHeaders,
-            authorization: newToken.access_token,
+            authorization: `Bearer ${newToken.access_token}`,
           },
         });
 
-        // Retry the failed request.
-        const subscriber = {
-          next: observer.next.bind(observer),
+        // Retry the failed request. Inspect the replayed result for a
+        // repeated TOKEN_EXPIRED — Apollo will not re-enter our handler
+        // for results that come back from this `forward` call, so this
+        // is the only place we can detect a persistent expiry (clock
+        // skew, malformed refreshed token, server-side revoke) and bail
+        // to /login instead of leaking the error to the caller.
+        forward(operation).subscribe({
+          next: (result) => {
+            if (resultHasTokenExpired(result)) {
+              redirectToLogin();
+              observer.error(new Error("TOKEN_EXPIRED persisted after refresh"));
+              return;
+            }
+            observer.next(result);
+          },
           error: observer.error.bind(observer),
           complete: observer.complete.bind(observer),
-        };
-
-        forward(operation).subscribe(subscriber);
+        });
       })
-      .catch((err) => observer.error(err));
+      .catch((err) => {
+        // Refresh itself failed (refresh token expired, network error,
+        // server-side revoke). Without this branch the caller saw a
+        // network error, kept the stale credentials in localStorage,
+        // and every subsequent query hit the same wall — the user was
+        // effectively stuck until they cleared storage by hand. Bounce
+        // to /login so they can re-authenticate.
+        redirectToLogin();
+        observer.error(err);
+      });
   });
-}
-
-// Helper: token is invalid or missing — clear local credentials and bounce
-// to /login. Hard-navigates because errorLink runs outside React Router,
-// and the AuthProvider's localStorage hook does not re-render on external
-// writes. Skips the redirect if we're already on /login to avoid loops.
-function redirectToLogin(): void {
-  removeTokensInLocalStorage();
-  if (window.location.pathname !== "/login") {
-    window.location.assign("/login");
-  }
 }
 
 // Helper: surface an error to the user. Calls operation.context's

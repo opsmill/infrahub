@@ -20,6 +20,7 @@ export interface RelationshipManyInputProps
   onChange: (value: Array<NodeCore>) => void;
   peer: string;
   value: Array<NodeCore> | null;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -28,6 +29,7 @@ export function RelationshipManyInput({
   peer,
   value,
   onChange,
+  filterQuery,
   ref,
   ...props
 }: RelationshipManyInputProps) {
@@ -86,6 +88,7 @@ export function RelationshipManyInput({
           peer={peer}
           onSelect={handleSelect}
           filterItem={(node) => !value?.some((v) => v.id === node.id)}
+          filterQuery={filterQuery}
         />
         <AddRelationshipAction peer={peer} onSuccess={handleSelect} />
       </ComboboxContent>

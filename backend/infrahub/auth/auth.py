@@ -252,12 +252,18 @@ async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_ide
     - No account by that name → create a new account with `display_name` as its `name`.
     """
     lock_key = f"{external_identity.protocol}:{external_identity.provider_name}:{external_identity.sub}"
+    name_fallback_enabled = config.SETTINGS.security.sso_account_name_fallback
+
     async with lock.registry.get(name=lock_key, namespace="external-identity-account"):
         account_by_name = await NodeManager.get_one_by_default_filter(
             db=db, id=external_identity.display_name, kind=CoreAccount
         )
 
-        if account_by_name is not None and not await _account_has_identity(db=db, account=account_by_name):
+        if (
+            name_fallback_enabled
+            and account_by_name is not None
+            and not await _account_has_identity(db=db, account=account_by_name)
+        ):
             return await _link_unclaimed_account(db=db, account=account_by_name, external_identity=external_identity)
 
         account_name = await _pick_account_name(
