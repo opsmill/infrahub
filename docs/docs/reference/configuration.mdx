@@ -202,6 +202,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_SECURITY_OIDC_PROVIDER_SETTINGS` | None | object | Check nested parameters |
 | `INFRAHUB_SECURITY_RESTRICT_UNTRUSTED_JINJA2_FILTERS` | Indicates if untrusted Jinja2 filters should be disallowed for computed attributes | boolean | True |
 | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group to which users authenticated via SSO will belong if not provided by identity provider | None | None |
+| `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | When enabled, an SSO login that has no linked identity and matches an existing account by display name claims that account, as long as it has not already been linked to another identity. When disabled, such a login always provisions a separate account instead of reusing an existing one. | boolean | True |
 
 ### INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
 
