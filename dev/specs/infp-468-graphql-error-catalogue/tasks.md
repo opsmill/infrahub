@@ -105,9 +105,10 @@ description: "Task list for INFP-468 — Enriched GraphQL Error Catalogue"
 
 ### Tests for User Story 2
 
-- [ ] T035 [P] [US2] Vitest unit test for the discriminated-union guard in `frontend/app/src/shared/api/errors/index.test.ts` (asserts compile-time narrowing of `data` and exhaustiveness check via `never`)
+- [X] T035 [P] [US2] Vitest unit test for the discriminated-union guard in `frontend/app/src/shared/api/errors/index.test.ts` (asserts compile-time narrowing of `data` and exhaustiveness check via `never`) — *Scaffold + exhaustiveness mechanism in place. The `never`-narrowing helper at the bottom of the file forces every new `ErrorCode` to gain a matching switch arm at compile time. Per-code coverage growth is tracked separately as T038.*
 - [ ] T036 [P] [US2] Playwright E2E test for multi-field form validation in `frontend/app/tests/e2e/error-catalogue.spec.ts`: submit a Create-Node form with N invalid fields, assert all N field-error indicators render after one round-trip (SC-004)
 - [ ] T037 [P] [US2] Playwright E2E test in the same file for `PERMISSION_DENIED` routing: trigger a mutation the current user is not permitted to perform; assert the permission dialog opens (not a generic toast)
+- [ ] T038 [P] [US2] **Evergreen**: extend `frontend/app/src/shared/api/errors/index.test.ts` with explicit per-code parse cases as the catalogue grows. The `never` exhaustiveness check (T035) surfaces missing variant arms at compile time, but per-code happy-path + malformed-envelope tests are added on a rolling basis. This task is intentionally never closed; revisit at the end of each US that introduces new catalogue codes.
 
 **Checkpoint**: US2 is independently demonstrable — the frontend consumes the catalogue, both legacy integer-code call sites are removed, and the form/permission UX wins are visible.
 
