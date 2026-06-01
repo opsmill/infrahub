@@ -73,7 +73,7 @@ async def test_get_id_token_groups_rejects_invalid_issuer_by_default() -> None:
     discovery = deepcopy(OIDC_CONFIG)
     discovery.issuer = HttpUrl("https://something-incorrect.example.com")
 
-    with pytest.raises(InvalidIssuerError):
+    with pytest.raises(InvalidIssuerError, match=r"^Invalid issuer$"):
         await _get_id_token_groups(
             oidc_config=discovery,
             service=service,
@@ -100,7 +100,7 @@ async def test_get_id_token_groups_rejects_invalid_audience_by_default() -> None
         response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
     )
 
-    with pytest.raises(InvalidAudienceError):
+    with pytest.raises(InvalidAudienceError, match=r"^Audience doesn't match$"):
         await _get_id_token_groups(
             oidc_config=OIDC_CONFIG,
             service=service,
