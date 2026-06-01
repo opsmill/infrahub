@@ -1,0 +1,137 @@
+---
+title: Advanced SSO configuration
+---
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+# Advanced SSO configuration
+
+## Multiple identity providers
+
+To configure multiple identity providers:
+
+- Configure each provider using the same steps as above, but with the appropriate slot name (for example `provider1`, `provider2`)
+- Make sure to set the `INFRAHUB_SECURITY_OIDC_PROVIDERS` or `INFRAHUB_SECURITY_OAUTH2_PROVIDERS` variable to include all configured providers
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Configuration for first provider
+export INFRAHUB_OIDC_PROVIDER1_*
+
+# Configuration for second provider
+export INFRAHUB_OIDC_PROVIDER2_*
+
+# Then enable the providers
+export INFRAHUB_SECURITY_OIDC_PROVIDERS='["provider1", "provider2"]'
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[security.oidc_provider_settings.provider1]
+# Configuration for first provider
+
+[security.oidc_provider_settings.provider2]
+# Configuration for second provider
+
+[security]
+# Then enable the providers
+oidc_providers = ["provider1", "provider2"]
+```
+
+</TabItem>
+</Tabs>
+
+## Group mapping
+
+Infrahub can automatically assign users to groups based on information from your identity provider.
+
+:::warning
+Infrahub won't automatically create groups based on identity provider data. You must create the corresponding groups in Infrahub first.
+:::
+
+### Step 1: Configure group claims in your identity provider
+
+Configure your identity provider application to include group information in the authentication tokens sent to Infrahub.
+
+:::info
+Refer to your provider's documentation for instructions on "group claims" or "configuring OAuth2/OIDC group mappings".
+:::
+
+:::warning
+For OIDC, the `id_token` is verified (signature, audience and issuer) by default before its claims are used. Setting `INFRAHUB_OIDC_<SLOT>_ID_TOKEN_VERIFY_SIGNATURE=false` disables this and makes Infrahub trust any token presented to the callback; use it only as a temporary workaround for a misconfigured provider.
+:::
+
+### Step 2: Create corresponding groups in Infrahub
+
+Create groups in Infrahub that match the groups sent by your identity provider.
+
+:::danger
+Some providers send group IDs instead of display names. Create groups in Infrahub with the exact same IDs your provider sends, and use the label field to store human-friendly names.
+:::
+
+Follow these steps to create groups:
+
+1. Navigate to `Admin` > `Users and Permissions` > `Groups`
+2. Click `+ Create Account Group`
+3. Enter the exact name of the group as sent by your identity provider
+4. Optionally, add a description and assign permissions
+5. Click `Save`
+6. Repeat for each group you want to map
+
+:::info
+Every SSO authentication attempt is logged in the Infrahub server logs. These logs contain detailed information about the groups received from your identity provider.
+
+For example:
+
+```log
+SSO user authenticated  [infrahub] app=infrahub.api body={'user_name': 'Otto the otter', 'groups': ['Admin Otter']}
+```
+
+:::
+
+:::success
+To confirm group mapping is working, log in through SSO and check your user Profile in Infrahub. You should see the groups assigned based on your identity provider's data.
+:::
+
+### Step 3: Configure default group assignment (optional)
+
+If your identity provider cannot provide group information, configure a default group for SSO users.
+
+:::warning
+You must create this default group in Infrahub before configuring it here.
+:::
+
+<Tabs groupId="config-method" queryString>
+<TabItem value="environment-variables" default>
+
+```bash
+# Set the default group for SSO users
+export INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP='default-group'
+```
+
+</TabItem>
+<TabItem value="infrahub-toml">
+
+```toml
+[security]
+sso_user_default_group = "default-group"
+```
+
+</TabItem>
+</Tabs>
+
+:::success
+Now that group mapping is configured, manage user permissions in Infrahub by [assigning permissions and roles](../permissions-roles/manage-accounts-and-permissions.mdx) to these groups.
+:::
+
+## Related resources
+
+- [SSO overview](./overview.mdx)
+- [Configure SSO](./configure-sso.mdx)
+- [Authentication](../authentication.mdx)
+- [SSO reference](../../../reference/sso.mdx)
+- [Permissions and roles](../permissions-roles/overview.mdx)
