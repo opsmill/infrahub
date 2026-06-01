@@ -61,10 +61,31 @@ export const authLink = setContext((_, previousContext) => {
   };
 });
 
-// Error link: route each catalogue code to its policy. The catalogue is
-// mirrored in @/shared/api/graphql/errors until US2's generated bindings
-// (T029) land — see dev/specs/infp-468-graphql-error-catalogue/.
-export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
+type ErrorLinkArgs = Parameters<Parameters<typeof onError>[0]>[0];
+
+// True iff a forwarded result still carries TOKEN_EXPIRED. Used inside
+// `retryWithRefreshedToken` because Apollo's onError link routes results
+// from the retried observable directly to the outer observer — it does
+// NOT re-invoke `handleGraphQLAuthError`, so a persistent TOKEN_EXPIRED
+// would otherwise leak through to the caller as a generic GraphQL error.
+function resultHasTokenExpired(result: FetchResult): boolean {
+  return (
+    result.errors?.some(
+      (e) => parseErrorExtensions(e.extensions).code === ERROR_CODES.TOKEN_EXPIRED
+    ) ?? false
+  );
+}
+
+// Error link callback: route each catalogue code to its policy. The catalogue
+// is mirrored in @/shared/api/graphql/errors until US2's generated bindings
+// (T029) land — see dev/specs/infp-468-graphql-error-catalogue/. Exported
+// (not just inlined into `onError`) so tests can drive it directly without
+// spinning up an Apollo link chain.
+export function handleGraphQLAuthError({
+  graphQLErrors,
+  operation,
+  forward,
+}: ErrorLinkArgs): Observable<FetchResult> | undefined {
   if (!graphQLErrors) return;
 
   for (const graphQLError of graphQLErrors) {
@@ -77,10 +98,15 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
 
     switch (parsed.code) {
       case ERROR_CODES.TOKEN_EXPIRED:
+        // The retry loop is bounded by construction: Apollo's onError
+        // does not re-invoke this handler for results from the retried
+        // observable, so we get exactly one refresh+replay attempt per
+        // operation. Persistence is caught inside `retryWithRefreshedToken`.
         return retryWithRefreshedToken(operation, forward);
 
       case ERROR_CODES.AUTHENTICATION_REQUIRED:
-        return redirectToLogin();
+        redirectToLogin();
+        return;
 
       case ERROR_CODES.PERMISSION_DENIED:
         // Silent — 403s are handled by route-level guards, not toasts.
@@ -92,7 +118,9 @@ export const errorLink = onError(({ graphQLErrors, operation, forward }) => {
   }
 
   return;
-});
+}
+
+export const errorLink = onError(handleGraphQLAuthError);
 
 // Helper: refresh the access token and replay the operation. Lifted from
 // the previous inline Observable block in errorLink; the only behaviour
@@ -110,9 +138,11 @@ function retryWithRefreshedToken(
       .fetchQuery(refreshAccessTokenQueryOptions())
       .then((newToken) => {
         if (!newToken?.access_token) {
-          // Refresh resolved but the server returned no token — fail the
-          // retry observable so the caller sees an error instead of hanging
-          // forever. Apollo will surface this as a network error.
+          // Refresh resolved but the server returned no token — treat it
+          // like a refresh failure: clear stale credentials and bounce to
+          // /login, otherwise the user is left signed-in against tokens
+          // the server has already disowned.
+          redirectToLogin();
           observer.error(new Error("Token refresh returned no access_token"));
           return;
         }
@@ -120,20 +150,39 @@ function retryWithRefreshedToken(
         operation.setContext({
           headers: {
             ...oldHeaders,
-            authorization: newToken.access_token,
+            authorization: `Bearer ${newToken.access_token}`,
           },
         });
 
-        // Retry the failed request.
-        const subscriber = {
-          next: observer.next.bind(observer),
+        // Retry the failed request. Inspect the replayed result for a
+        // repeated TOKEN_EXPIRED — Apollo will not re-enter our handler
+        // for results that come back from this `forward` call, so this
+        // is the only place we can detect a persistent expiry (clock
+        // skew, malformed refreshed token, server-side revoke) and bail
+        // to /login instead of leaking the error to the caller.
+        forward(operation).subscribe({
+          next: (result) => {
+            if (resultHasTokenExpired(result)) {
+              redirectToLogin();
+              observer.error(new Error("TOKEN_EXPIRED persisted after refresh"));
+              return;
+            }
+            observer.next(result);
+          },
           error: observer.error.bind(observer),
           complete: observer.complete.bind(observer),
-        };
-
-        forward(operation).subscribe(subscriber);
+        });
       })
-      .catch((err) => observer.error(err));
+      .catch((err) => {
+        // Refresh itself failed (refresh token expired, network error,
+        // server-side revoke). Without this branch the caller saw a
+        // network error, kept the stale credentials in localStorage,
+        // and every subsequent query hit the same wall — the user was
+        // effectively stuck until they cleared storage by hand. Bounce
+        // to /login so they can re-authenticate.
+        redirectToLogin();
+        observer.error(err);
+      });
   });
 }
 
@@ -141,11 +190,24 @@ function retryWithRefreshedToken(
 // to /login. Hard-navigates because errorLink runs outside React Router,
 // and the AuthProvider's localStorage hook does not re-render on external
 // writes. Skips the redirect if we're already on /login to avoid loops.
+//
+// Encodes the current path as `?from=…` so `LoginPage` can route the user
+// back to where they were after re-authenticating. The hard nav means
+// `location.state` is gone, so the query string is the only carrier left.
+// Holder so tests can stub the hard-nav without touching `window.location`
+// (which is non-configurable in real browsers — vitest's browser mode hits
+// that wall the moment you try to spy on `assign`). Production reads
+// through this same reference, so the indirection costs one property lookup.
+export const __navigation = {
+  assign: (url: string) => window.location.assign(url),
+};
+
 function redirectToLogin(): void {
   removeTokensInLocalStorage();
-  if (window.location.pathname !== "/login") {
-    window.location.assign("/login");
-  }
+  if (window.location.pathname === "/login") return;
+
+  const from = window.location.pathname + window.location.search + window.location.hash;
+  __navigation.assign(`/login?from=${encodeURIComponent(from)}`);
 }
 
 // Helper: surface an error to the user. Calls operation.context's

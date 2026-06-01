@@ -4,6 +4,10 @@ import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 
 export type RestErrorItem = { message: string; extensions: { code: number } };
 
+// Typed wrapper around a REST envelope that carries `errors`. `status`
+// is the HTTP status — usually non-2xx, but may also be 2xx for SSO-style
+// "200 with errors" responses (see pages/auth-callback.tsx), so callers
+// must not assume `status >= 400`.
 export class FetchError extends Error {
   status: number;
   errors?: RestErrorItem[];
