@@ -15,6 +15,13 @@ if TYPE_CHECKING:
 _DIRECTION_TOKENS = {direction.value.lower() for direction in OrderDirection}
 
 
+def strip_order_direction_suffix(entry: str) -> str:
+    head, _, tail = entry.rpartition("__")
+    if head and tail in _DIRECTION_TOKENS:
+        return head
+    return entry
+
+
 class OrderByTargetKind(StrEnum):
     ATTRIBUTE = "attribute"
     RELATIONSHIP_ATTRIBUTE = "relationship_attribute"
