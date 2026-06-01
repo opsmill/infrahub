@@ -2,7 +2,7 @@ import { Observable } from "@apollo/client";
 import type { GraphQLFormattedError } from "graphql";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ERROR_CODES } from "@/shared/api/graphql/errors";
+import { ERROR_CODES } from "@/shared/api/errors";
 import { queryClient } from "@/shared/api/rest/client";
 
 import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY } from "@/entities/authentication/constants";

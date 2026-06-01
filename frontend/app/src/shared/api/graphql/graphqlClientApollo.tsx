@@ -11,7 +11,7 @@ import { onError } from "@apollo/client/link/error";
 import createUploadLink from "apollo-upload-client/createUploadLink.mjs";
 import { toast } from "react-toastify";
 
-import { ERROR_CODES, parseErrorExtensions } from "@/shared/api/graphql/errors";
+import { ERROR_CODES, parseCatalogueError } from "@/shared/api/errors";
 import { queryClient } from "@/shared/api/rest/client";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
 import { CONFIG } from "@/shared/config/config";
@@ -71,16 +71,16 @@ type ErrorLinkArgs = Parameters<Parameters<typeof onError>[0]>[0];
 function resultHasTokenExpired(result: FetchResult): boolean {
   return (
     result.errors?.some(
-      (e) => parseErrorExtensions(e.extensions).code === ERROR_CODES.TOKEN_EXPIRED
+      (e) => parseCatalogueError(e.extensions).code === ERROR_CODES.TOKEN_EXPIRED
     ) ?? false
   );
 }
 
-// Error link callback: route each catalogue code to its policy. The catalogue
-// is mirrored in @/shared/api/graphql/errors until US2's generated bindings
-// (T029) land — see dev/specs/infp-468-graphql-error-catalogue/. Exported
-// (not just inlined into `onError`) so tests can drive it directly without
-// spinning up an Apollo link chain.
+// Error link callback: route each catalogue code to its policy. The
+// discriminated union is generated from `schema/error-catalogue.json` —
+// regenerate with `pnpm generate:error-bindings`. Exported (not just inlined
+// into `onError`) so tests can drive it directly without spinning up an
+// Apollo link chain.
 export function handleGraphQLAuthError({
   graphQLErrors,
   operation,
@@ -89,7 +89,7 @@ export function handleGraphQLAuthError({
   if (!graphQLErrors) return;
 
   for (const graphQLError of graphQLErrors) {
-    const parsed = parseErrorExtensions(graphQLError.extensions);
+    const parsed = parseCatalogueError(graphQLError.extensions);
 
     console.error(
       `[GraphQL error]: Code: ${parsed.code}, Message: ${graphQLError.message}, ` +
@@ -124,8 +124,8 @@ export function handleGraphQLAuthError({
         if (import.meta.env.DEV) {
           console.warn(
             "[catalogue gap] Unmatched error code surfaced as UNDEFINED_ERROR. " +
-              "Register it in backend/infrahub/errors/catalogue.py and mirror " +
-              "the entry in frontend/app/src/shared/api/graphql/errors.ts.",
+              "Register it in backend/infrahub/errors/catalogue.py, regenerate " +
+              "the schema, and run `pnpm generate:error-bindings`.",
             { message: graphQLError.message, extensions: graphQLError.extensions }
           );
           notifyUser(`[catalogue gap] ${graphQLError.message}`, operation);
