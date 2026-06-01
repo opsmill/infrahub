@@ -608,8 +608,7 @@ class SecurityOIDCBaseSettings(BaseSettings):
         default=True,
         description=(
             "Verify the cryptographic signature, audience and issuer of the OIDC id_token before"
-            " trusting its group claims. Disable only to keep working against a misconfigured"
-            " provider; doing so accepts any token presented to the callback as authentic."
+            " trusting its group claims."
         ),
     )
 
