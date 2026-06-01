@@ -89,7 +89,7 @@ description: "Task list for INFP-468 — Enriched GraphQL Error Catalogue"
 
 ### Implementation for User Story 2
 
-- [ ] T027 [US2] Add `json-schema-to-typescript` to `frontend/app/package.json` `devDependencies` and register pnpm scripts `generate:error-bindings` and `check:error-bindings` (R-004)
+- [X] T027 [US2] Register pnpm scripts `generate:error-bindings` and `check:error-bindings` in `frontend/app/package.json`, both calling `node scripts/generate-error-bindings.mjs` (with `--check` for the second). No new devDependency required — the generator is plain Node and reaches `json-schema-to-typescript`-equivalent output via a ~30-line hand-rolled mapper guarded by `// @ts-check`. Revisit and add the lib if the catalogue's JSON-Schema vocabulary outgrows primitives + nullable `anyOf` + flat objects. (R-004)
 - [X] T028 [US2] Create generator script `frontend/app/scripts/generate-error-bindings.ts` that reads `schema/error-catalogue.json`, feeds it through `json-schema-to-typescript`, and writes `frontend/app/src/shared/api/errors/catalogue.generated.ts` including a generated `CatalogueError` discriminated union (R-004 sketch) — *Implemented as `scripts/generate-error-bindings.mjs` (plain Node, no `json-schema-to-typescript`). Same outcome: reads the catalogue, emits per-code interfaces + discriminated union + `ERROR_HTTP_STATUS` lookup. Catalogue's JSON-Schema vocabulary is narrow (primitives + nullable `anyOf` + flat objects); shape guards throw with the offending code on unsupported constructs. Revisit if the schema gains `$ref`/nested objects/arrays.*
 - [X] T029 [US2] Run the generator to produce the initial `frontend/app/src/shared/api/errors/catalogue.generated.ts` and commit it (depends on T011 and T028)
 - [X] T030 [US2] Hand-write `frontend/app/src/shared/api/errors/index.ts` re-exporting generated types and exposing the `CatalogueError` union plus a `isCatalogueError(extensions): extensions is CatalogueError` guard — *Also adds `parseCatalogueError(extensions): CatalogueError` with `UNDEFINED_ERROR` fallback (used by `graphqlClientApollo.tsx`).*
@@ -105,7 +105,7 @@ description: "Task list for INFP-468 — Enriched GraphQL Error Catalogue"
 
 ### Tests for User Story 2
 
-- [X] T035 [P] [US2] Vitest unit test for the discriminated-union guard in `frontend/app/src/shared/api/errors/index.test.ts` (asserts compile-time narrowing of `data` and exhaustiveness check via `never`)
+- [ ] T035 [P] [US2] Vitest unit test for the discriminated-union guard in `frontend/app/src/shared/api/errors/index.test.ts` (asserts compile-time narrowing of `data` and exhaustiveness check via `never`)
 - [ ] T036 [P] [US2] Playwright E2E test for multi-field form validation in `frontend/app/tests/e2e/error-catalogue.spec.ts`: submit a Create-Node form with N invalid fields, assert all N field-error indicators render after one round-trip (SC-004)
 - [ ] T037 [P] [US2] Playwright E2E test in the same file for `PERMISSION_DENIED` routing: trigger a mutation the current user is not permitted to perform; assert the permission dialog opens (not a generic toast)
 
