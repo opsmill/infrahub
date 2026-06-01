@@ -19,16 +19,22 @@ function AuthCallback() {
   const code = searchParams.get("code");
   const state = searchParams.get("state");
 
+  // Reduce the effect's deps to stable scalars. `config` is an object
+  // whose reference may change every time `useGetConfig` refetches —
+  // depending on it directly would re-fire the SSO token exchange on
+  // each refetch tick. The token exchange is one-shot, so re-running it
+  // would either succeed-then-error (code already consumed) or
+  // accidentally double-set tokens. The fields below are the only ones
+  // the effect actually reads.
+  const ssoEnabled = config?.sso?.enabled ?? false;
+  const tokenPath = config?.sso?.providers?.find(
+    (p) => p.protocol === protocol && p.name === provider
+  )?.token_path;
+
   useEffect(() => {
-    if (!config || !config.sso.enabled) return;
+    if (!ssoEnabled || !tokenPath) return;
 
-    const currentAuthProvider = config.sso.providers?.find(
-      (p) => p.protocol === protocol && p.name === provider
-    );
-    if (!currentAuthProvider) return;
-
-    const { token_path } = currentAuthProvider;
-    fetchUrl(`${INFRAHUB_API_SERVER_URL}${token_path}?code=${code}&state=${state}`)
+    fetchUrl(`${INFRAHUB_API_SERVER_URL}${tokenPath}?code=${code}&state=${state}`)
       .then((result) => {
         // 2xx response that still carries `errors` — normalise to a
         // FetchError so the catch sees the same shape as a non-2xx
@@ -61,9 +67,9 @@ function AuthCallback() {
           },
         ]);
       });
-  }, [config, protocol, provider]);
+  }, [ssoEnabled, tokenPath, code, state, setToken]);
 
-  if (!config || !config.sso.enabled) {
+  if (!ssoEnabled) {
     return <Navigate to="/login" replace />;
   }
 
