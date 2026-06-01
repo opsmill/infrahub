@@ -1,6 +1,6 @@
 from infrahub import lock
 from infrahub.lock import GLOBAL_GRAPH_LOCK, GLOBAL_SCHEMA_LOCK, LOCAL_SCHEMA_LOCK
-from tests.adapters.lock import LockTimeline, RecordingLockRegistry
+from tests.adapters.lock import LockAction, LockTimeline, RecordingLockRegistry
 
 
 async def test_records_acquire_and_release_order(recording_lock_timeline: LockTimeline) -> None:
@@ -10,7 +10,12 @@ async def test_records_acquire_and_release_order(recording_lock_timeline: LockTi
         pass
 
     assert recording_lock_timeline.acquire_sequence() == ["repository.repo-a", "repository.repo-b"]
-    assert [event.action for event in recording_lock_timeline.events] == ["acquire", "release", "acquire", "release"]
+    assert [event.action for event in recording_lock_timeline.events] == [
+        LockAction.ACQUIRE,
+        LockAction.RELEASE,
+        LockAction.ACQUIRE,
+        LockAction.RELEASE,
+    ]
     assert recording_lock_timeline.currently_held() == set()
 
 
@@ -30,7 +35,7 @@ async def test_reentrant_acquire_records_single_boundary(recording_lock_timeline
             recording_lock_timeline.checkpoint("nested")
 
     assert recording_lock_timeline.acquire_sequence() == ["repository.repo-a"]
-    assert [event.action for event in recording_lock_timeline.events].count("release") == 1
+    assert [event.action for event in recording_lock_timeline.events].count(LockAction.RELEASE) == 1
     recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "nested", expected=True)
 
 
