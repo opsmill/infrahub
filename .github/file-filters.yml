@@ -40,6 +40,11 @@ graphql_schema_files: &graphql_schema_files
   - "schema/schema.graphql"
   - "frontend/app/src/shared/api/graphql/generated/**"
 
+error_catalogue_files: &error_catalogue_files
+  - "schema/error-catalogue.json"
+  - "frontend/app/src/shared/api/errors/catalogue.generated.ts"
+  - "frontend/app/scripts/generate-error-bindings.mjs"
+
 e2e_test_files:
   - "frontend/app/tests/e2e/**"
 
@@ -114,6 +119,9 @@ openapi_schema_all:
 
 graphql_schema_all:
   - *graphql_schema_files
+
+error_catalogue_all:
+  - *error_catalogue_files
 
 observability_standalone_all:
   - "development/docker-compose-observability.yml"

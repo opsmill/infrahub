@@ -4,53 +4,49 @@
 // Regenerate with: pnpm generate:error-bindings
 
 export interface AttributeConstraintViolationData {
-node_kind: string
-field_name: string
-constraint: string
-detail?: (string | null)
+  node_kind: string;
+  field_name: string;
+  constraint: string;
+  detail?: string | null;
 }
 
 export interface AttributeInvalidTypeData {
-node_kind: string
-field_name: string
-expected_type: string
-received_type: string
+  node_kind: string;
+  field_name: string;
+  expected_type: string;
+  received_type: string;
 }
 
 export interface AttributeRequiredData {
-node_kind: string
-field_name: string
+  node_kind: string;
+  field_name: string;
 }
 
-export interface AuthenticationRequiredData {
-
-}
+export type AuthenticationRequiredData = Record<string, never>;
 
 export interface BranchNotFoundData {
-branch_name: string
+  branch_name: string;
 }
 
 export interface NodeNotFoundData {
-node_kind: string
-identifier: string
+  node_kind: string;
+  identifier: string;
 }
 
 export interface PermissionDeniedData {
-action?: (string | null)
-resource_kind?: (string | null)
+  action?: string | null;
+  resource_kind?: string | null;
 }
 
 export interface SchemaNotFoundData {
-kind: string
+  kind: string;
 }
 
 export interface TokenExpiredData {
-expired_at?: (string | null)
+  expired_at?: string | null;
 }
 
-export interface UndefinedErrorData {
-
-}
+export type UndefinedErrorData = Record<string, never>;
 
 export const ERROR_CODES = {
   ATTRIBUTE_CONSTRAINT_VIOLATION: "ATTRIBUTE_CONSTRAINT_VIOLATION",
