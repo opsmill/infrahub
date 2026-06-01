@@ -87,6 +87,18 @@ Infrahub maps the following claims from identity providers to its internal user 
 | Account name | `name` | `name` | Used as the account name on creation. If `name` is already claimed by another SSO user, `email` is used instead. |
 | Display label | `name` | `name` | Synced on every login. |
 
+### Account name fallback
+
+On a user's first SSO login (before an identity is linked), Infrahub can adopt a pre-existing account whose name matches the provider's display name, as long as that account has never been linked to another identity. This eases upgrades where local accounts already exist.
+
+| Parameter | Environment Variable | TOML Path | Description | Default |
+|-----------|---------------------|-----------|-------------|---------|
+| Account name fallback | `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | `security.sso_account_name_fallback` | Allow a first-time SSO login to adopt a pre-existing account that matches by display name. When disabled, such a login always provisions a separate account. | `true` |
+
+:::warning
+This fallback is a transitional convenience and is deprecated; it will be removed in a future release. Once all SSO users have completed their first login, set `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK=false` as a hardening step so that accounts are resolved only by the immutable `sub` identity anchor.
+:::
+
 ## Examples
 
 ### OIDC configuration example
