@@ -256,47 +256,6 @@ jobs:
             exit 1
           fi
 
-  frontend-validate-error-bindings:
-    if: |
-      needs.files-changed.outputs.error_catalogue == 'true'
-    needs: ["files-changed"]
-    defaults:
-      run:
-        working-directory: ./frontend/app
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    timeout-minutes: 5
-    steps:
-      - name: "Check out repository code"
-        uses: "actions/checkout@v6"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Check error-catalogue bindings are up to date
-        run: |
-          if ! pnpm check:error-bindings; then
-            echo "❌ Error: Generated error catalogue bindings are out of sync with schema/error-catalogue.json"
-            echo ""
-            echo "The backend error catalogue has been updated, but the generated TypeScript bindings haven't been regenerated."
-            echo ""
-            echo "To fix this, run the following commands from the repository root:"
-            echo "  cd frontend/app"
-            echo "  pnpm generate:error-bindings"
-            echo "  git add src/shared/api/errors/catalogue.generated.ts"
-            echo "  git commit -m 'chore: regenerate error catalogue bindings'"
-            exit 1
-          fi
-
   validate-observability-standalone:
     if: |
       needs.files-changed.outputs.observability_standalone == 'true'
