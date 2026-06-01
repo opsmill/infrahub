@@ -246,7 +246,7 @@ describe("ErrorCode exhaustiveness", () => {
     const variant: CatalogueError = {
       code: ERROR_CODES.UNDEFINED_ERROR,
       http_status: 500,
-      data: {} as never,
+      data: {},
     };
     const code: ErrorCode = variant.code;
     expect(code).toBe(ERROR_CODES.UNDEFINED_ERROR);

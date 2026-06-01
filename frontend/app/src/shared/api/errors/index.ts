@@ -47,7 +47,13 @@ export function isCatalogueError(extensions: unknown): extensions is CatalogueEr
 const UNDEFINED_FALLBACK: CatalogueError = {
   code: ERROR_CODES.UNDEFINED_ERROR,
   http_status: ERROR_HTTP_STATUS.UNDEFINED_ERROR,
-  data: {} as never,
+  data: {},
+};
+
+type RawErrorEnvelope = {
+  code: ErrorCode;
+  http_status?: unknown;
+  data?: unknown;
 };
 
 /**
@@ -56,22 +62,21 @@ const UNDEFINED_FALLBACK: CatalogueError = {
  * `UNDEFINED_ERROR` (http_status 500, empty data) so every caller gets a
  * narrowed value — there is no `undefined` return.
  *
- * Runtime trust note: we only validate `code` and `http_status` shapes; the
- * inner `data` payload is cast by `code` and not re-checked against its
- * generated shape. The backend contract guarantees a matching payload for
- * each catalogue code; if a callsite needs runtime data validation, layer
- * a Zod parser on top.
+ * Runtime trust note: we only validate the envelope shape (`code` is a known
+ * catalogue value, `http_status` is a positive number, `data` is an object).
+ * The inner `data` payload is NOT re-validated against its per-code schema —
+ * the backend contract guarantees a matching payload, and the final
+ * `as CatalogueError` coercion reflects that trust. If a callsite needs
+ * runtime data validation, layer a Zod parser on top.
  */
 export function parseCatalogueError(extensions: unknown): CatalogueError {
   if (!isCatalogueError(extensions)) return UNDEFINED_FALLBACK;
 
-  const record = extensions as Record<string, unknown>;
-  const code = record.code as ErrorCode;
-  const httpStatusRaw = Number(record.http_status);
+  const { code, http_status: rawHttpStatus, data: rawData } = extensions as RawErrorEnvelope;
+  const httpStatusNum = Number(rawHttpStatus);
   const http_status =
-    Number.isFinite(httpStatusRaw) && httpStatusRaw > 0 ? httpStatusRaw : ERROR_HTTP_STATUS[code];
-  const data =
-    record.data !== null && typeof record.data === "object" ? (record.data as object) : {};
+    Number.isFinite(httpStatusNum) && httpStatusNum > 0 ? httpStatusNum : ERROR_HTTP_STATUS[code];
+  const data = rawData !== null && typeof rawData === "object" ? rawData : {};
 
-  return { code, http_status, data: data as never } as CatalogueError;
+  return { code, http_status, data } as CatalogueError;
 }
