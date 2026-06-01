@@ -1,3 +1,4 @@
+// @ts-check
 // Generator for `frontend/app/src/shared/api/errors/catalogue.generated.ts`.
 //
 // Reads `schema/error-catalogue.json` (produced by the backend per
@@ -24,7 +25,7 @@
 // `pnpm check:error-bindings` and fails when the committed file is stale.
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(SCRIPT_DIR, "..", "..", "..");
@@ -39,9 +40,22 @@ const OUTPUT_PATH = path.resolve(
   "catalogue.generated.ts"
 );
 
-// Map a JSON Schema fragment to the TypeScript expression that represents
-// the same value. Throws for unsupported constructs so the build fails
-// loudly when the backend extends the catalogue's schema vocabulary.
+/**
+ * @param {unknown} condition
+ * @param {string} message
+ * @returns {asserts condition}
+ */
+function assert(condition, message) {
+  if (!condition) throw new Error(message);
+}
+
+/**
+ * Map a JSON Schema fragment to the TypeScript expression that represents
+ * the same value. Throws for unsupported constructs so the build fails
+ * loudly when the backend extends the catalogue's schema vocabulary.
+ * @param {any} schema
+ * @returns {string}
+ */
 function mapType(schema) {
   // Union form. The catalogue uses this for nullable wrappers
   // (`anyOf: [<T>, {type: "null"}]`); supporting deeper unions is free.
@@ -66,8 +80,13 @@ function mapType(schema) {
   }
 }
 
-// Emit a TypeScript interface (or `Record<string, never>` for the empty
-// case) for one code's `data_schema`.
+/**
+ * Emit a TypeScript interface (or `Record<string, never>` for the empty
+ * case) for one code's `data_schema`.
+ * @param {string} name
+ * @param {any} schema
+ * @returns {string}
+ */
 function generateInterface(name, schema) {
   const required = new Set(schema.required ?? []);
   const props = Object.entries(schema.properties ?? {});
@@ -87,12 +106,39 @@ async function generate() {
   const raw = await fs.readFile(SCHEMA_PATH, "utf-8");
   const catalogue = JSON.parse(raw);
 
+  assert(
+    catalogue && typeof catalogue === "object" && !Array.isArray(catalogue),
+    "schema/error-catalogue.json root must be an object."
+  );
+  assert(
+    catalogue.codes && typeof catalogue.codes === "object" && !Array.isArray(catalogue.codes),
+    "schema/error-catalogue.json must contain a `codes` object."
+  );
+
   // Sort codes alphabetically — the JSON's iteration order shouldn't drive
   // diff churn when the backend reorders entries.
   const codes = Object.keys(catalogue.codes).sort();
+  assert(codes.length > 0, "schema/error-catalogue.json `codes` is empty.");
 
   const entries = codes.map((code) => {
     const entry = catalogue.codes[code];
+    assert(
+      entry && typeof entry === "object",
+      `Catalogue entry "${code}" must be an object.`
+    );
+    assert(
+      Number.isInteger(entry.http_status),
+      `Catalogue entry "${code}" must have an integer \`http_status\` (got ${JSON.stringify(entry.http_status)}).`
+    );
+    assert(
+      entry.data_schema && typeof entry.data_schema === "object",
+      `Catalogue entry "${code}" must have a \`data_schema\` object.`
+    );
+    assert(
+      typeof entry.data_schema.title === "string" && entry.data_schema.title.length > 0,
+      `Catalogue entry "${code}" must have a non-empty \`data_schema.title\` (used as the TS interface name).`
+    );
+
     const typeName = entry.data_schema.title;
     return {
       code,
@@ -168,7 +214,16 @@ async function main() {
   console.info(`wrote ${path.relative(REPO_ROOT, OUTPUT_PATH)}`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+// Only execute when invoked directly (e.g. via `pnpm generate:error-bindings`).
+// Importing this module — from a test, knip, or a programmatic caller — must
+// not write to disk as a side effect.
+const isDirectInvocation =
+  process.argv[1] !== undefined &&
+  import.meta.url === pathToFileURL(process.argv[1]).href;
+
+if (isDirectInvocation) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
