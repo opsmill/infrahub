@@ -841,6 +841,15 @@ class SecuritySettings(BaseSettings):
     def auto_create_groups_enabled(self) -> bool:
         """True iff at least one usable filter pattern is configured."""
         return len(self._auto_create_groups_filter_patterns) > 0
+    sso_account_name_fallback: bool = Field(
+        default=True,
+        description=(
+            "When enabled, an SSO login that has no linked identity and matches an existing account by "
+            "display name claims that account, as long as it has not already been linked to another "
+            "identity. When disabled, such a login always provisions a separate account instead of "
+            "reusing an existing one."
+        ),
+    )
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
