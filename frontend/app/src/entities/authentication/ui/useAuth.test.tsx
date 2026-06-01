@@ -93,4 +93,28 @@ describe("AuthProvider — cross-tab storage reconciliation", () => {
     await expect.element(component.getByTestId("status")).toHaveTextContent("auth");
     await expect.element(component.getByTestId("token")).toHaveTextContent("still-good");
   });
+
+  it("logs the user out when another tab calls localStorage.clear()", async () => {
+    // GIVEN this tab is authenticated
+    localStorage.setItem(ACCESS_TOKEN_KEY, "tab-A-token");
+    const component = await render(
+      <AuthProvider>
+        <AuthProbe />
+      </AuthProvider>
+    );
+    await expect.element(component.getByTestId("status")).toHaveTextContent("auth");
+
+    // WHEN another tab (or DevTools "Clear site data") wipes storage — the
+    // browser dispatches a `storage` event with `key: null` for `.clear()`,
+    // not a per-key event. The naive `event.key === ACCESS_TOKEN_KEY` guard
+    // skipped this case, leaving this tab signed-in against dead tokens.
+    localStorage.clear();
+    window.dispatchEvent(
+      new StorageEvent("storage", { key: null, oldValue: null, newValue: null })
+    );
+
+    // THEN this tab reconciles to unauthenticated
+    await expect.element(component.getByTestId("status")).toHaveTextContent("anon");
+    await expect.element(component.getByTestId("token")).toHaveTextContent("");
+  });
 });

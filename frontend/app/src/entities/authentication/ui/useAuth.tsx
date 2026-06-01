@@ -56,16 +56,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Reconcile with cross-tab logout: a `storage` event with the access-token
-  // key going empty in another tab means somebody signed out — drop our
+  // Reconcile with cross-tab logout: a `storage` event signalling the access
+  // token went empty in another tab means somebody signed out — drop our
   // local state so this tab follows. Covers manual devtools edits too.
   // State-only update; the originating tab already wrote to storage, so
   // re-writing here would just bounce a redundant `storage` event around.
   React.useEffect(() => {
     function handleStorage(event: StorageEvent) {
-      if (event.key !== ACCESS_TOKEN_KEY) return;
-      // Re-read rather than trusting event.newValue — `localStorage.clear()`
-      // delivers `newValue: null`, and we want to match the post-clear state.
+      // `localStorage.clear()` (DevTools "Clear site data", peer tab calling
+      // `.clear()`) delivers `event.key === null`; that case needs to
+      // reconcile too, so only skip events keyed at *other* specific keys.
+      if (event.key !== null && event.key !== ACCESS_TOKEN_KEY) return;
       const current = localStorage.getItem(ACCESS_TOKEN_KEY) ?? "";
       setAccessTokenState(current);
     }
