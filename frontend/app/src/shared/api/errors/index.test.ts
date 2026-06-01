@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  type CatalogueError,
   ERROR_CODES,
   type ErrorCode,
-  type GraphQLErrorExtensions,
-  parseErrorExtensions,
-} from "./errors";
+  isCatalogueError,
+  parseCatalogueError,
+} from "./index";
 
-describe("parseErrorExtensions", () => {
+describe("parseCatalogueError", () => {
   it("narrows NODE_NOT_FOUND with its typed data", () => {
     // GIVEN
     const extensions = {
@@ -17,7 +18,7 @@ describe("parseErrorExtensions", () => {
     };
 
     // WHEN
-    const parsed = parseErrorExtensions(extensions);
+    const parsed = parseCatalogueError(extensions);
 
     // THEN
     expect(parsed).toEqual({
@@ -32,7 +33,7 @@ describe("parseErrorExtensions", () => {
     const extensions = { code: "AUTHENTICATION_REQUIRED", http_status: 401, data: {} };
 
     // WHEN
-    const parsed = parseErrorExtensions(extensions);
+    const parsed = parseCatalogueError(extensions);
 
     // THEN
     expect(parsed.code).toBe(ERROR_CODES.AUTHENTICATION_REQUIRED);
@@ -49,7 +50,7 @@ describe("parseErrorExtensions", () => {
     };
 
     // WHEN
-    const parsed = parseErrorExtensions(extensions);
+    const parsed = parseCatalogueError(extensions);
 
     // THEN
     expect(parsed).toEqual({
@@ -68,7 +69,7 @@ describe("parseErrorExtensions", () => {
     };
 
     // WHEN
-    const parsed = parseErrorExtensions(extensions);
+    const parsed = parseCatalogueError(extensions);
 
     // THEN
     expect(parsed.code).toBe(ERROR_CODES.PERMISSION_DENIED);
@@ -104,7 +105,7 @@ describe("parseErrorExtensions", () => {
     const extensions = { code, http_status: httpStatus, data };
 
     // WHEN
-    const parsed = parseErrorExtensions(extensions);
+    const parsed = parseCatalogueError(extensions);
 
     // THEN
     expect(parsed.code).toBe(code);
@@ -117,7 +118,7 @@ describe("parseErrorExtensions", () => {
     const extensions = { code: "SOMETHING_NEW", http_status: 500, data: {} };
 
     // WHEN
-    const parsed = parseErrorExtensions(extensions);
+    const parsed = parseCatalogueError(extensions);
 
     // THEN
     expect(parsed).toEqual({
@@ -135,7 +136,7 @@ describe("parseErrorExtensions", () => {
     ["a boolean", true],
   ])("returns UNDEFINED_ERROR when extensions is %s", (_label, input) => {
     // WHEN
-    const parsed = parseErrorExtensions(input);
+    const parsed = parseCatalogueError(input);
 
     // THEN
     expect(parsed).toEqual({
@@ -150,33 +151,33 @@ describe("parseErrorExtensions", () => {
     const extensions = { http_status: 401, data: {} };
 
     // WHEN
-    const parsed = parseErrorExtensions(extensions);
+    const parsed = parseCatalogueError(extensions);
 
     // THEN
     expect(parsed.code).toBe(ERROR_CODES.UNDEFINED_ERROR);
   });
 
-  it("defaults http_status to 500 when missing or non-numeric", () => {
-    // GIVEN
-    const missing = parseErrorExtensions({ code: "AUTHENTICATION_REQUIRED", data: {} });
-    const garbage = parseErrorExtensions({
+  it("defaults http_status to the catalogue value when missing or non-numeric", () => {
+    // GIVEN — AUTHENTICATION_REQUIRED's catalogue http_status is 401
+    const missing = parseCatalogueError({ code: "AUTHENTICATION_REQUIRED", data: {} });
+    const garbage = parseCatalogueError({
       code: "AUTHENTICATION_REQUIRED",
       http_status: "not-a-number",
       data: {},
     });
 
-    // THEN
-    expect(missing.http_status).toBe(500);
-    expect(garbage.http_status).toBe(500);
+    // THEN — fall back to the catalogue's known http_status, not 500
+    expect(missing.http_status).toBe(401);
+    expect(garbage.http_status).toBe(401);
   });
 
   it("defaults data to {} when missing or non-object", () => {
     // GIVEN
-    const missing = parseErrorExtensions({
+    const missing = parseCatalogueError({
       code: "AUTHENTICATION_REQUIRED",
       http_status: 401,
     });
-    const garbage = parseErrorExtensions({
+    const garbage = parseCatalogueError({
       code: "AUTHENTICATION_REQUIRED",
       http_status: 401,
       data: "not-an-object",
@@ -188,11 +189,32 @@ describe("parseErrorExtensions", () => {
   });
 });
 
+describe("isCatalogueError", () => {
+  it("accepts a known code with arbitrary payload", () => {
+    expect(isCatalogueError({ code: "NODE_NOT_FOUND", http_status: 404, data: {} })).toBe(true);
+  });
+
+  it("rejects an unknown code", () => {
+    expect(isCatalogueError({ code: "TOTALLY_FAKE", http_status: 500, data: {} })).toBe(false);
+  });
+
+  it.each([
+    ["null", null],
+    ["undefined", undefined],
+    ["a string", "NODE_NOT_FOUND"],
+    ["a number", 42],
+    ["an empty object", {}],
+    ["an object with non-string code", { code: 42 }],
+  ])("rejects %s", (_label, input) => {
+    expect(isCatalogueError(input)).toBe(false);
+  });
+});
+
 /**
  * Compile-time exhaustiveness guard. If a new code is added to ERROR_CODES
- * without a corresponding case here, the assertion below will fail to
- * compile because `unhandled` will not narrow to `never`. This is a
- * type-level test — it runs at `tsc`, not at vitest.
+ * without a corresponding case here, the `unhandled: never` assignment fails
+ * to compile because the residual `code` won't narrow to `never`. This is a
+ * type-level check that runs at `tsc`, not at vitest.
  */
 describe("ErrorCode exhaustiveness", () => {
   it("forces every ErrorCode to have a switch arm in this file", () => {
@@ -219,9 +241,9 @@ describe("ErrorCode exhaustiveness", () => {
     expect(assertExhaustive(ERROR_CODES.NODE_NOT_FOUND)).toBe("NODE_NOT_FOUND");
   });
 
-  it("locks the GraphQLErrorExtensions union to ErrorCode values", () => {
-    // Compile-time check: any GraphQLErrorExtensions.code must be an ErrorCode.
-    const variant: GraphQLErrorExtensions = {
+  it("locks the CatalogueError union to ErrorCode values", () => {
+    // Compile-time check: any CatalogueError.code must be an ErrorCode.
+    const variant: CatalogueError = {
       code: ERROR_CODES.UNDEFINED_ERROR,
       http_status: 500,
       data: {},

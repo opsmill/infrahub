@@ -27,7 +27,9 @@
     "biome": "biome check .",
     "biome:fix": "biome check --write .",
     "knip": "knip",
-    "betterer": "betterer"
+    "betterer": "betterer",
+    "generate:error-bindings": "node scripts/generate-error-bindings.mjs",
+    "check:error-bindings": "node scripts/generate-error-bindings.mjs --check"
   },
   "dependencies": {
     "@apollo/client": "3.13.8",

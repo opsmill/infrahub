@@ -9,7 +9,7 @@ import { ACCESS_TOKEN_KEY } from "@/entities/authentication/constants";
 //   GraphQL  extensions.code = string  (catalogue identifier, e.g. "TOKEN_EXPIRED")
 //            extensions.http_status = number (the HTTP status lives here instead)
 //
-// The GraphQL mirror lives at @/shared/api/graphql/errors (GraphQLErrorExtensions).
+// The GraphQL counterpart lives at @/shared/api/errors (`CatalogueError`).
 // If REST endpoints ever migrate to the catalogue, this type becomes a
 // discriminated union — until then, keep the two shapes distinct.
 export type RestErrorItem = { message: string; extensions: { code: number } };
