@@ -28,7 +28,6 @@ from typing_extensions import Self
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
 from infrahub.log import get_logger
-from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
     from infrahub.services.adapters.cache import InfrahubCache

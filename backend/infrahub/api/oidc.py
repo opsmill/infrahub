@@ -22,8 +22,6 @@ from infrahub.auth import (
     validate_auth_response,
 )
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
-from infrahub.core import registry
-from infrahub.events.account_action import AuthMethod
 from infrahub.exceptions import AuthorizationError, ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
