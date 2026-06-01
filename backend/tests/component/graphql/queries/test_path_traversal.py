@@ -138,6 +138,31 @@ async def test_resolver_kind_filter_blocks_intermediate_kind(
     assert data["InfrahubPathTraversal"]["count"] == 0
 
 
+async def test_resolver_rejects_max_paths_above_maximum(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    session_admin: AccountSession,
+    two_cars_one_owner: tuple[Node, Node, Node],
+) -> None:
+    car_a, car_b, _person = two_cars_one_owner
+    default_branch.update_schema_hash()
+
+    variables = {
+        "data": {
+            "source_id": car_a.id,
+            "destination_id": car_b.id,
+            "max_depth": 5,
+            "max_paths": 101,
+        }
+    }
+
+    data, errors = await _run_resolver(db=db, branch=default_branch, session=session_admin, variables=variables)
+
+    assert errors is not None
+    assert errors[0].message == "max_paths must be <= 100, got 101"
+
+
 async def test_resolver_kind_filter_admits_intermediate_kind(
     db: InfrahubDatabase,
     default_branch: Branch,

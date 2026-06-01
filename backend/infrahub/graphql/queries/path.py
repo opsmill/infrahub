@@ -23,6 +23,9 @@ if TYPE_CHECKING:
     from infrahub.graphql.initialization import GraphqlContext
 
 
+MAX_PATHS = 100
+
+
 class PathNodeType(ObjectType):
     id = Field(String, required=True, description="Node UUID")
     kind = Field(String, required=True, description="Schema kind")
@@ -69,7 +72,7 @@ class PathTraversalInput(InputObjectType):
     destination_id = String(required=True, description="UUID of the end node")
     max_depth = Int(required=False, default_value=5, description="Maximum number of node hops (default: 5, max: 20)")
     max_paths = Int(
-        required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 5000)"
+        required=False, default_value=10, description="Maximum number of paths to return (default: 10, max: 100)"
     )
     kind_filter = List(
         of_type=NonNull(String), required=False, description="Filter to only traverse through nodes of these kinds"
@@ -222,6 +225,9 @@ async def path_traversal_resolver(
     destination_id = data.destination_id
     max_depth = data.max_depth or 5
     max_paths = data.max_paths or 10
+
+    if max_paths > MAX_PATHS:
+        raise GraphQLError(f"max_paths must be <= {MAX_PATHS}, got {max_paths}")
 
     if source_id == destination_id:
         raise GraphQLError("Source and destination nodes must be different")
