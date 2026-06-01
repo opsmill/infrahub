@@ -78,10 +78,43 @@ End-to-end orchestrator for a single feature. Reuses existing skills (`/speckit-
 
 ### Phase 6 — PR
 
-1. **1 `general-purpose` agent** drafts PR title (≤70 chars) and summary from `git diff develop...HEAD` plus the spec brief from Phase 1.
-2. Show draft to user.
-3. On approval, invoke `/commit-commands:commit-push-pr` to commit, push, and open the PR.
-4. Report the PR URL.
+#### 6a. Split assessment (bias toward single PR)
+
+Before drafting anything, **1 `general-purpose` agent** analyzes `git diff develop...HEAD` and `git log develop..HEAD` and decides: **single PR or split?**
+
+**Default to single PR.** Only propose a split when at least one of these clearly applies:
+
+- **Independent concerns** — e.g. an unrelated drive-by refactor mixed in with the feature, or backend + frontend changes that could be reviewed and reverted independently.
+- **Different reviewers** — e.g. infra/CI changes that need a platform reviewer separate from product reviewers.
+- **Different risk profiles** — e.g. a low-risk doc/config change you want to land fast, bundled with a higher-risk feature.
+- **Revertable in isolation** — splitting would let one part be reverted without affecting the rest.
+
+**Do NOT split when:**
+
+- ❌ Changes are coupled (feature + its own tests + its own docs).
+- ❌ Splitting would leave one PR with broken tests or builds.
+- ❌ The change has a single coherent narrative.
+- ❌ The split would create a chain of dependent PRs that must merge in order, and the value isn't worth that cost.
+
+The agent outputs one of:
+
+- **"Ship as one PR"** with a one-line justification.
+- **"Suggest split into N PRs"** with the proposed groupings (which commits / which files go where, in dependency order if any), plus an explicit *"but a single PR is also reasonable"* note when the case is borderline.
+
+**Checkpoint:** show the assessment to the user. User picks single PR, accepts the split, or proposes a different split. Never force a split without approval.
+
+#### 6b. Draft PR(s)
+
+For **each** PR (one or many):
+
+1. If splitting, create a new branch from `origin/develop` and cherry-pick the relevant commits onto it. Verify the branch builds (`/pre-ci --fast` at minimum on each split branch).
+2. **1 `general-purpose` agent** drafts title (≤70 chars) and summary from the diff of *that* PR plus the spec brief from Phase 1. For split PRs, the summary should note any dependencies on sibling PRs.
+3. Show draft(s) to user.
+
+#### 6c. Open
+
+4. On approval, invoke `/commit-commands:commit-push-pr` per branch.
+5. Report PR URL(s). For split PRs, note merge order if there are dependencies.
 
 ## Iteration notes
 
@@ -97,3 +130,4 @@ This skill is intentionally lightweight — it composes existing skills rather t
 - ❌ Chaining all phases unattended — checkpoints exist so the user can redirect early.
 - ❌ Opening a PR with a red `/pre-ci` — the hook would block it, but don't even try.
 - ❌ Reimplementing `/pre-ci`, `/speckit-*`, or commit/PR logic inside this skill. Call them.
+- ❌ Forcing a PR split when the changes are coupled — split assessment is a *suggestion*, not a mandate. Single PR is the default.
