@@ -67,6 +67,7 @@ export function AddGroupForm({
           rules: { required: true },
           defaultValue: defaultGroupIds,
           relationship: memberOfGroupsRelationship,
+          filterQuery: { group_type__values: ["default"] },
         },
       ]}
       onSubmit={async (formData) => {
