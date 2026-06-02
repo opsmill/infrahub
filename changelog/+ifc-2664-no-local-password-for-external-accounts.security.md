@@ -1,0 +1,1 @@
+Local password changes are now refused for accounts that authenticate through an external directory (LDAP, OIDC, OAuth2). The self-service form is hidden in the UI and the GraphQL mutation rejects the request, preventing a user from bypassing directory-side revocation by setting a local password.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
@@ -27,7 +28,7 @@ from infrahub.auth import (
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod
-from infrahub.exceptions import ProcessingError
+from infrahub.exceptions import AuthorizationError, HTTPServerError, ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
@@ -191,7 +192,7 @@ async def token(
     sso_groups = (
         user_info.get("groups")
         or await _get_id_token_groups(
-            oidc_config=oidc_config, service=service, payload=payload, client_id=provider.client_id
+            oidc_config=oidc_config, service=service, payload=payload, provider_settings=provider
         )
         or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
     )
@@ -257,26 +258,40 @@ async def token(
 
 
 async def _get_id_token_groups(
-    oidc_config: OIDCDiscoveryConfig, service: InfrahubServices, payload: dict[str, Any], client_id: str
+    oidc_config: OIDCDiscoveryConfig,
+    service: InfrahubServices,
+    payload: dict[str, Any],
+    provider_settings: config.SecurityOIDCSettings,
 ) -> list[str]:
     id_token = payload.get("id_token")
     if not id_token:
         return []
+    verify = provider_settings.id_token_verify_signature
+
     jwks = await service.http.get(url=str(oidc_config.jwks_uri))
+    try:
+        jwks_payload = jwks.json()
+    except json.JSONDecodeError as exc:
+        raise HTTPServerError(
+            message=f"OIDC provider returned a non-JSON JWKS response from {oidc_config.jwks_uri}"
+        ) from exc
 
-    jwk_client = jwt.PyJWKClient(uri=str(oidc_config.jwks_uri), cache_jwk_set=True)
-    if jwk_client.jwk_set_cache:
-        jwk_client.jwk_set_cache.put(jwks.json())
+    try:
+        jwk_client = jwt.PyJWKClient(uri=str(oidc_config.jwks_uri), cache_jwk_set=True)
+        if jwk_client.jwk_set_cache:
+            jwk_client.jwk_set_cache.put(jwks_payload)
 
-    signing_key = jwk_client.get_signing_key_from_jwt(id_token)
+        signing_key = jwk_client.get_signing_key_from_jwt(id_token)
 
-    decoded_token: dict[str, Any] = jwt.decode(
-        jwt=id_token,
-        key=signing_key.key,
-        algorithms=oidc_config.id_token_signing_alg_values_supported,
-        audience=client_id,
-        issuer=str(oidc_config.issuer),
-        options={"verify_signature": False, "verify_aud": False, "verify_iss": False},
-    )
+        decoded_token: dict[str, Any] = jwt.decode(
+            jwt=id_token,
+            key=signing_key.key,
+            algorithms=oidc_config.id_token_signing_alg_values_supported,
+            audience=provider_settings.client_id,
+            issuer=str(oidc_config.issuer),
+            options={"verify_signature": verify, "verify_aud": verify, "verify_iss": verify},
+        )
+    except jwt.PyJWTError as exc:
+        raise AuthorizationError(message=f"OIDC id_token verification failed: {exc}") from exc
 
     return decoded_token.get("groups", [])
