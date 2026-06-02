@@ -1,0 +1,1 @@
+Prefix pools no longer allocate the same prefix multiple times when the pool resource has the same prefix length as the requested allocation size. Prefix pools can now correctly allocate a prefix that uses an entire linked resource.
