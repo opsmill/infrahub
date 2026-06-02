@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from infrahub.core.constants import BranchSupportType, HashableModelState
@@ -46,7 +48,7 @@ def test_strip_removed_paths_handles_relationship_name_prefixes() -> None:
 
 
 def test_schema_branch_cleanup_inherited_elements_strips_stale_identity_paths() -> None:
-    schema_dict = {
+    schema_dict: dict[str, Any] = {
         "generics": [
             {
                 "name": "Parent",
@@ -99,7 +101,7 @@ def test_schema_branch_cleanup_inherited_elements_strips_stale_identity_paths() 
 
 
 def test_cleanup_inherited_elements_strips_locally_defined_identity_fields() -> None:
-    schema_dict = {
+    schema_dict: dict[str, Any] = {
         "generics": [
             {
                 "name": "Parent",
