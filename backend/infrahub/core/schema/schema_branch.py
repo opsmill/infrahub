@@ -1220,17 +1220,14 @@ class SchemaBranch:
                 if rel.name in RESERVED_ATTR_REL_NAMES or (
                     isinstance(node, GenericSchema) and rel.name in RESERVED_ATTR_GEN_NAMES
                 ):
-<<<<<<< HEAD
                     raise ValueError(
                         f"{node.kind}: {rel.name!r} is a reserved name (relationship: {rel.name!r}). "
                         "Rename this attribute or relationship."
-=======
-                    raise ValueError(f"{node.kind}: {rel.name} isn't allowed as a relationship name.")
+                    )
                 if "__" in rel.name:
                     raise ValueError(
                         f"{node.kind}: '{rel.name}' cannot be used as a relationship name"
                         " because it contains '__', which is reserved as the schema path separator."
->>>>>>> develop
                     )
 
     def validate_restricted_namespaces_from_generic(self) -> None:
