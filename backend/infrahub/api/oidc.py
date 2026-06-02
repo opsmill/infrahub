@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urljoin
 
@@ -27,7 +28,7 @@ from infrahub.auth import (
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod
-from infrahub.exceptions import AuthorizationError, ProcessingError
+from infrahub.exceptions import AuthorizationError, HTTPServerError, ProcessingError
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
@@ -267,12 +268,18 @@ async def _get_id_token_groups(
         return []
     verify = provider_settings.id_token_verify_signature
 
+    jwks = await service.http.get(url=str(oidc_config.jwks_uri))
     try:
-        jwks = await service.http.get(url=str(oidc_config.jwks_uri))
+        jwks_payload = jwks.json()
+    except json.JSONDecodeError as exc:
+        raise HTTPServerError(
+            message=f"OIDC provider returned a non-JSON JWKS response from {oidc_config.jwks_uri}"
+        ) from exc
 
+    try:
         jwk_client = jwt.PyJWKClient(uri=str(oidc_config.jwks_uri), cache_jwk_set=True)
         if jwk_client.jwk_set_cache:
-            jwk_client.jwk_set_cache.put(jwks.json())
+            jwk_client.jwk_set_cache.put(jwks_payload)
 
         signing_key = jwk_client.get_signing_key_from_jwt(id_token)
 

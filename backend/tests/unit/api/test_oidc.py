@@ -13,7 +13,7 @@ from pydantic import HttpUrl
 
 from infrahub.api.oidc import OIDCDiscoveryConfig, _get_id_token_groups
 from infrahub.config import SecurityOIDCSettings
-from infrahub.exceptions import AuthorizationError
+from infrahub.exceptions import AuthorizationError, HTTPServerError
 from infrahub.services import InfrahubServices
 from tests.adapters.http import MemoryHTTP
 
@@ -43,11 +43,15 @@ def helper() -> OIDCTestHelper:
     return OIDCTestHelper()
 
 
-def _serve_jwks(memory_http: MemoryHTTP, jwks: dict[str, Any]) -> None:
+def _serve_jwks_raw(memory_http: MemoryHTTP, content: bytes) -> None:
     memory_http.add_get_response(
         url=str(OIDC_CONFIG.jwks_uri),
-        response=httpx.Response(status_code=200, content=json.dumps(jwks)),
+        response=httpx.Response(status_code=200, content=content),
     )
+
+
+def _serve_jwks(memory_http: MemoryHTTP, jwks: dict[str, Any]) -> None:
+    _serve_jwks_raw(memory_http, json.dumps(jwks).encode())
 
 
 @pytest.fixture
@@ -195,6 +199,27 @@ async def test_get_id_token_groups_empty_jwks_raises_authorization_error(
             payload=_token_response(helper),
             provider_settings=_make_provider(verify_signature=verify_signature),
         )
+
+
+@pytest.mark.parametrize("verify_signature", [True, False])
+async def test_get_id_token_groups_non_json_jwks_raises_http_server_error(
+    memory_http: MemoryHTTP, service: InfrahubServices, helper: OIDCTestHelper, verify_signature: bool
+) -> None:
+    """A JWKS endpoint returning a non-JSON body is an upstream failure, surfaced as a gateway error.
+
+    The parse happens before any claim/signature check, so the behavior is independent of the flag.
+    """
+    _serve_jwks_raw(memory_http, b"<html>Bad Gateway</html>")
+
+    with pytest.raises(HTTPServerError) as exc_info:
+        await _get_id_token_groups(
+            oidc_config=OIDC_CONFIG,
+            service=service,
+            payload=_token_response(helper),
+            provider_settings=_make_provider(verify_signature=verify_signature),
+        )
+
+    assert exc_info.value.message == f"OIDC provider returned a non-JSON JWKS response from {OIDC_CONFIG.jwks_uri}"
 
 
 @pytest.mark.parametrize("verify_signature", [True, False])
