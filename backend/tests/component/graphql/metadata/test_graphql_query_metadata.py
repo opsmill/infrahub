@@ -1586,3 +1586,52 @@ async def test_graphql_relationship_peer_schema_order_by_metadata_honored(
     cars_edges = result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]
     names = [e["node"]["name"]["value"] for e in cars_edges]
     assert names == ["rel-peer-car-2", "rel-peer-car-1", "rel-peer-car-0"]
+
+
+async def test_graphql_relationship_peer_query_order_replaces_schema_order(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    car_schema = car_person_schema.get_node(name="TestCar", duplicate=False)
+    person_schema = car_person_schema.get_node(name="TestPerson", duplicate=False)
+    car_schema.order_by = ["node_metadata__created_at__desc"]
+
+    owner = await Node.init(db=db, schema=person_schema)
+    await owner.new(db=db, name="rel-peer-override-owner")
+    await owner.save(db=db)
+
+    cars: list[Node] = []
+    for idx in range(3):
+        car = await Node.init(db=db, schema=car_schema)
+        await car.new(db=db, name=f"rel-peer-override-car-{idx}", nbr_seats=4, is_electric=False, owner=owner)
+        await car.save(db=db)
+        cars.append(car)
+
+    default_branch.update_schema_hash()
+
+    query = """
+    query($owner_id: ID!) {
+        TestPerson(ids: [$owner_id]) {
+            edges {
+                node {
+                    cars(order: {node_metadata: {created_at: ASC}}) {
+                        edges { node { name { value } } }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"owner_id": owner.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    cars_edges = result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]
+    names = [e["node"]["name"]["value"] for e in cars_edges]
+    assert names == ["rel-peer-override-car-0", "rel-peer-override-car-1", "rel-peer-override-car-2"]
