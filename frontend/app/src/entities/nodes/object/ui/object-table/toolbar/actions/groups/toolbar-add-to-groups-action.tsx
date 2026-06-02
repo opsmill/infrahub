@@ -49,6 +49,7 @@ export function ToolbarAddToGroupsAction({ selectedRows }: ToolbarAddToGroupActi
                   await queryClient.invalidateQueries({ queryKey: objectQueryKeys.all });
                 }}
                 onClose={close}
+                groupsQueryFilter={{ group_type__values: ["default"] }}
               />
             );
           }}
