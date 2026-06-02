@@ -2290,7 +2290,10 @@ class SchemaBranch:
                     relationships_to_delete.append(item_name)
 
             # If there is either an attribute or a relationship to delete
-            # We clone the node and we set the attribute / relationship as ABSENT
+            # We clone the node and we set the attribute / relationship as ABSENT,
+            # then strip the deleted field names from the schema-path properties
+            # (uniqueness_constraints, human_friendly_id, display_labels, order_by)
+            # so the node's inherited paths stay consistent with its inherited fields.
             if attributes_to_delete or relationships_to_delete:
                 node_copy = self.get_node(name=name, duplicate=True)
                 for item_name in attributes_to_delete:
@@ -2299,6 +2302,11 @@ class SchemaBranch:
                 for item_name in relationships_to_delete:
                     rel = node_copy.get_relationship(name=item_name)
                     rel.state = HashableModelState.ABSENT
+                # Expects that field renames are handled elsewhere
+                node_copy._apply_schema_path_updates(
+                    deleted_field_names=set(attributes_to_delete) | set(relationships_to_delete),
+                    renamed_field_name_map={},
+                )
                 self.set(name=name, schema=node_copy)
 
     def add_groups(self) -> None:
