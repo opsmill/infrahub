@@ -170,6 +170,127 @@ async def test_get_id_token_groups_rejects_forged_signature() -> None:
         )
 
 
+async def test_get_id_token_groups_accepts_invalid_audience_when_verification_disabled() -> None:
+    """Explicit opt-out skips the audience claim check for a misconfigured provider."""
+    memory_http = MemoryHTTP()
+    service = await InfrahubServices.new(http=memory_http)
+
+    helper = OIDCTestHelper()
+    token_response = helper.generate_token_response(
+        username="testuser",
+        groups=["operators"],
+        client_id="some-other-client",
+        issuer=str(OIDC_CONFIG.issuer),
+    )
+
+    memory_http.add_get_response(
+        url=str(OIDC_CONFIG.jwks_uri),
+        response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
+    )
+
+    groups = await _get_id_token_groups(
+        oidc_config=OIDC_CONFIG,
+        service=service,
+        payload=token_response,
+        provider_settings=_make_provider(verify_signature=False),
+    )
+
+    assert groups == ["operators"]
+
+
+async def test_get_id_token_groups_accepts_forged_signature_when_verification_disabled() -> None:
+    """Explicit opt-out skips the signature check, so a key that does not match is still accepted."""
+    memory_http = MemoryHTTP()
+    service = await InfrahubServices.new(http=memory_http)
+
+    helper = OIDCTestHelper()
+    token_response = helper.generate_token_response(
+        username="testuser",
+        groups=["operators"],
+        client_id=CLIENT_ID,
+        issuer=str(OIDC_CONFIG.issuer),
+    )
+
+    attacker = OIDCTestHelper()
+    forged_jwks = {"keys": [{**json.loads(attacker.key.export_public()), "kid": helper.kid}]}
+    memory_http.add_get_response(
+        url=str(OIDC_CONFIG.jwks_uri),
+        response=httpx.Response(status_code=200, content=json.dumps(forged_jwks)),
+    )
+
+    groups = await _get_id_token_groups(
+        oidc_config=OIDC_CONFIG,
+        service=service,
+        payload=token_response,
+        provider_settings=_make_provider(verify_signature=False),
+    )
+
+    assert groups == ["operators"]
+
+
+@pytest.mark.parametrize("verify_signature", [True, False])
+async def test_get_id_token_groups_empty_jwks_raises_authorization_error(verify_signature: bool) -> None:
+    """An empty/broken JWKS endpoint is wrapped as a clean error regardless of the verification flag.
+
+    Signing-key resolution happens before the claim/signature checks, so the encapsulation must
+    hold whether or not verification is enabled.
+    """
+    memory_http = MemoryHTTP()
+    service = await InfrahubServices.new(http=memory_http)
+
+    helper = OIDCTestHelper()
+    token_response = helper.generate_token_response(
+        username="testuser",
+        groups=["operators"],
+        client_id=CLIENT_ID,
+        issuer=str(OIDC_CONFIG.issuer),
+    )
+
+    memory_http.add_get_response(
+        url=str(OIDC_CONFIG.jwks_uri),
+        response=httpx.Response(status_code=200, content=json.dumps({"keys": []})),
+    )
+
+    with pytest.raises(
+        AuthorizationError, match=r"^OIDC id_token verification failed: The JWK Set did not contain any keys$"
+    ):
+        await _get_id_token_groups(
+            oidc_config=OIDC_CONFIG,
+            service=service,
+            payload=token_response,
+            provider_settings=_make_provider(verify_signature=verify_signature),
+        )
+
+
+@pytest.mark.parametrize("verify_signature", [True, False])
+async def test_get_id_token_groups_malformed_id_token_raises_authorization_error(verify_signature: bool) -> None:
+    """A malformed id_token is wrapped as a clean error regardless of the verification flag."""
+    memory_http = MemoryHTTP()
+    service = await InfrahubServices.new(http=memory_http)
+
+    helper = OIDCTestHelper()
+    token_response = helper.generate_token_response(
+        username="testuser",
+        groups=["operators"],
+        client_id=CLIENT_ID,
+        issuer=str(OIDC_CONFIG.issuer),
+    )
+    token_response["id_token"] = "not-a-jwt"
+
+    memory_http.add_get_response(
+        url=str(OIDC_CONFIG.jwks_uri),
+        response=httpx.Response(status_code=200, content=json.dumps(helper.jwks_payload)),
+    )
+
+    with pytest.raises(AuthorizationError, match=r"^OIDC id_token verification failed: Not enough segments$"):
+        await _get_id_token_groups(
+            oidc_config=OIDC_CONFIG,
+            service=service,
+            payload=token_response,
+            provider_settings=_make_provider(verify_signature=verify_signature),
+        )
+
+
 async def test_get_id_token_groups_for_oidc_no_id_token() -> None:
     memory_http = MemoryHTTP()
     service = await InfrahubServices.new(http=memory_http)
