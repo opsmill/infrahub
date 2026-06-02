@@ -208,6 +208,7 @@ export interface DynamicRelationshipFieldProps
   parent?: string;
   options?: SelectOption[];
   peerField?: string;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
 }
 
 export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;

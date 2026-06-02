@@ -1,4 +1,4 @@
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch

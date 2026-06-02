@@ -89,7 +89,7 @@ backend/
 │   │   # NOTE: `auth_groups/mapper.py` and `auth_groups/origin.py` are NOT created — the previous enum-mapping design
 │   │   #       was superseded by clarification 2026-05-13 (Text attribute holding the configured provider name).
 │   └── events/
-│       └── group_action.py                               # PENDING (US5 follow-up) — add GroupAutoCreateEvent (intermediate) + 3 leaf classes: GroupAutoCreatedEvent, GroupAutoCreateRejectedClaimEvent, GroupAutoCreateCapBreachEvent (structural template: GroupMutatedEvent + GroupMemberAddedEvent/GroupMemberRemovedEvent)
+│       └── group_action.py                               # PENDING (US5 follow-up) — add GroupAutoCreateEvent (intermediate) + 3 leaf classes: GroupAutoCreatedEvent, GroupAutoCreateRejectedEvent, GroupAutoCreateCappedEvent (structural template: GroupMutatedEvent + GroupMemberAddedEvent/GroupMemberRemovedEvent)
 └── tests/
     ├── unit/auth_groups/
     │   └── test_filter.py                                # SHIPPED in PR #9257

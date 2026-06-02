@@ -1,17 +1,13 @@
-"""Component test: configured provider name passes through verbatim to `origin`.
-
-Two distinct providers must produce two groups whose `origin` values match the input strings exactly.
-"""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 import pytest
 
-from infrahub.auth import ExternalAuthProtocol, ExternalIdentity, signin_sso_account
+from infrahub.auth.auth import ExternalIdentity, signin_sso_account
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreAccountGroup
+from infrahub.external_protocols import ExternalAuthProtocol
 
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch

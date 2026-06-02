@@ -9,7 +9,7 @@ from infrahub.permissions.loader import PermissionLoader
 from infrahub.permissions.resolver import PermissionResolver
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.core.account import ObjectPermission
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase

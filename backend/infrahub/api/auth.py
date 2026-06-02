@@ -7,13 +7,13 @@ from fastapi import APIRouter, Depends, Request, Response
 from infrahub import config, models
 from infrahub.api.dependencies import get_access_token, get_db, get_refresh_token
 from infrahub.api.event_builder import make_event_meta, make_login_event, make_logout_event
-from infrahub.auth import (
-    AccountSession,
-    AuthType,
+from infrahub.auth.auth import (
     authenticate_with_password,
     create_fresh_access_token,
     invalidate_refresh_token,
 )
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core import registry
 from infrahub.core.manager import NodeManager
 from infrahub.core.protocols import CoreGenericAccount

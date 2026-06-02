@@ -3,7 +3,6 @@ import { Button, LinkButton, Spinner } from "@infrahub/ui";
 import React from "react";
 import { Link, useLocation } from "react-router";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import { queryClient } from "@/shared/api/rest/client";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { Avatar } from "@/shared/components/display/avatar";
@@ -153,11 +152,13 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
       await logout();
     } catch (error) {
       console.error("Error when logging out: ", error);
+    } finally {
+      // Always reset client-side state, even if the server call failed —
+      // otherwise a transient error could leave the user with a stale token
+      // and another user's cached data still visible.
+      setToken(null);
+      queryClient.clear();
     }
-
-    setToken(null);
-    queryClient.clear();
-    graphqlClient.clearStore();
   };
 
   if (isPending) {

@@ -10,6 +10,18 @@ export const treeQueryKeys = {
     [...treeQueryKeys.all, branchName, filters, proposedChangeId] as const,
 };
 
+type DiffSummaryKeyParams = {
+  branch?: string | null;
+  filters?: unknown;
+  proposedChangeId?: string | null;
+};
+
+export const diffSummaryKeys = {
+  all: ["diff-summary"] as const,
+  detail: ({ branch, filters, proposedChangeId }: DiffSummaryKeyParams) =>
+    [...diffSummaryKeys.all, branch, filters, proposedChangeId] as const,
+};
+
 export const updateDiffMutationKeys = {
   all: ["update-diff"] as const,
 };
@@ -85,4 +97,16 @@ export const fileContentDiffKeys = {
   all: ["file-content-diff"] as const,
   detail: (params: FileContentDiffKeyParams) =>
     [...fileContentDiffKeys.all, "detail", params] as const,
+};
+
+type ValidatorDetailsKeyParams = {
+  validatorId: string;
+  checksOffset?: number;
+  checksLimit?: number;
+};
+
+export const validatorDetailsKeys = {
+  all: ["validator-details"] as const,
+  detail: (params: ValidatorDetailsKeyParams) =>
+    [...validatorDetailsKeys.all, "detail", params] as const,
 };

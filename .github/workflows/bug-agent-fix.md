@@ -16,8 +16,6 @@ permissions:
 tools:
   github:
     toolsets: [default]
-    min-integrity: approved
-    approval-labels: [state/ai-pipeline-ready]
 network: defaults
 checkout:
   fetch-depth: 0
@@ -75,13 +73,15 @@ steps:
       version: 10
   - uses: actions/setup-node@v6
     with:
-      node-version: 24
+      # https://github.com/microsoft/playwright/issues/41000
+      node-version: 24.15.0
   - run: cd frontend/app && pnpm install --frozen-lockfile
   - run: cd frontend/app && pnpm exec playwright install chromium
 safe-outputs:
   github-app:
     client-id: ${{ secrets.GH_AW_APP_ID }}
     private-key: ${{ secrets.GH_AW_APP_PRIVATE_KEY }}
+  report-failure-as-issue: false
   add-comment:
     max: 3
     discussions: false

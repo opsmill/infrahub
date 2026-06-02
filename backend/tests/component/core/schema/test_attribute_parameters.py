@@ -103,7 +103,7 @@ def test_number_pool_optional() -> None:
     node_schema = NodeSchema(**node_schema_definition)
 
     schema = SchemaRoot(nodes=[node_schema])
-    schema_branch = SchemaBranch(cache={})
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
         ValidationError, match=r"TestNumberAttribute.assigned_number is a NumberPool it can't be optional"
@@ -130,7 +130,7 @@ def test_number_pool_read_only() -> None:
     node_schema = NodeSchema(**node_schema_definition)
 
     schema = SchemaRoot(nodes=[node_schema])
-    schema_branch = SchemaBranch(cache={})
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
         ValidationError, match=r"TestNumberAttribute.assigned_number is a NumberPool it has to be a read_only attribute"
@@ -174,7 +174,7 @@ def test_number_pool_override_generic() -> None:
     generic_schema = GenericSchema(**generic_node_schema_definition)
 
     schema = SchemaRoot(nodes=[node_schema], generics=[generic_schema])
-    schema_branch = SchemaBranch(cache={})
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
         ValidationError,
@@ -194,7 +194,7 @@ def test_number_pool_fail_on_multiple_generics() -> None:
 
     modified_incident.inherit_from.append("SnowOtherTask")
     schema = SchemaRoot(generics=[SNOW_TASK, alternate_base], nodes=[modified_incident])
-    schema_branch = SchemaBranch(cache={})
+    schema_branch = SchemaBranch(cache={}, name="test")
     schema_branch.load_schema(schema=schema)
     with pytest.raises(
         ValidationError, match=r"SnowIncident.number is a NumberPool inherited from more than one generic"

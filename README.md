@@ -58,15 +58,15 @@ Three ways to try Infrahub:
 
 - **[Sandbox](https://sandbox.infrahub.app/)** — a hosted demo of the Infrahub UI with sample data — explore the interface without installing anything.
 - **[Getting Started Lab](https://opsmill.instruqt.com/pages/labs)** — a guided browser tutorial covering branches, schemas, and unified storage.
-- **[Quick Start guide](https://docs.infrahub.app/getting-started/quick-start)** — set up a local Infrahub instance and walk through the basics in your own environment.
+- **[Quick Start guide](https://docs.infrahub.app/overview/quickstart)** — set up a local Infrahub instance and walk through the basics in your own environment.
 
 For production deployments on Kubernetes, see [`opsmill/infrahub-helm`](https://github.com/opsmill/infrahub-helm) and the [installation guide](https://docs.infrahub.app/guides/installation).
 
 ## Documentation
 
 - [Documentation home](https://docs.infrahub.app/)
-- [Getting started](https://docs.infrahub.app/getting-started/overview)
-- [Core concepts](https://docs.infrahub.app/getting-started/concepts)
+- [Getting started](https://docs.infrahub.app/overview)
+- [Core concepts](https://docs.infrahub.app/overview/concepts)
 - [Release notes](https://docs.infrahub.app/release-notes)
 - [FAQ](https://docs.infrahub.app/faq/)
 

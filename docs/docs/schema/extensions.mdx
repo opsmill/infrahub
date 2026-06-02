@@ -61,7 +61,7 @@ If multiple extensions target the same node, all extensions are merged. Conflict
 
 The extension mechanism was designed to support modular schema composition. In large organizations, different teams often own different parts of the infrastructure model. Extensions allow teams to add their specific requirements to shared base schemas without coordinating changes to common files.
 
-This pattern is used extensively in the [OpsMill Schema Library](https://github.com/opsmill/schema-library), where the `extensions/` directory contains feature modules that augment base schemas:
+This pattern is used extensively in schemas published on the [Infrahub Marketplace](https://marketplace.infrahub.app), where extensions are feature modules that augment base schemas:
 
 - `extensions/lag/` adds LAG support to interface models
 - `extensions/contracts/` adds procurement tracking to organization models
@@ -155,4 +155,4 @@ Schema extensions interact with several other Infrahub concepts:
 
 - [Reference: Node extension](../reference/schema/node-extension) — Complete reference for extension properties
 - [Create and load schema](./create-and-load) — How to load schema files including extensions
-- [OpsMill Schema Library](https://github.com/opsmill/schema-library/tree/main/extensions) — Production examples of schema extensions
+- [Infrahub Marketplace](https://marketplace.infrahub.app) — Community and OpsMill schema catalog, including production examples of schema extensions

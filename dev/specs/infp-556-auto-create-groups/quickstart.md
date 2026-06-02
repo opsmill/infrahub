@@ -85,7 +85,7 @@ Configure a user carrying more matching claims than the per-login cap (default 5
 
 - Up to `cap` new groups are created.
 - The login succeeds.
-- One `GroupAutoCreateCapBreachEvent` is emitted, carrying `cap_value`, `dropped_count`, and `dropped_claims` (verbatim, length-truncated). See `contracts/events.md`.
+- One `GroupAutoCreateCappedEvent` is emitted, carrying `cap_value`, `dropped_count`, and `dropped_claims` (verbatim, length-truncated). See `contracts/events.md`.
 
 ## 9 — Turn the feature off
 

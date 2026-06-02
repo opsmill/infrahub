@@ -8172,6 +8172,8 @@ input EventTypeFilter {
   branch_merged: BranchEventTypeFilter = null
   """Filters specific to infrahub.branch.rebased events"""
   branch_rebased: BranchEventTypeFilter = null
+  """Filters specific to "infrahub.group.auto_create[...]" events"""
+  group_auto_create: GroupAutoCreateEventTypeFilter = null
 }
 
 type Events {
@@ -8182,6 +8184,15 @@ type Events {
 type FieldsMapping {
   mapping: GenericScalar!
 }
+
+"""
+GenericScalar with correct variable substitution in parse_literal.
+
+graphene's GenericScalar.parse_literal does not forward _variables to
+recursive calls, so $variable references inside a nested object or list
+resolve to None instead of their supplied values.
+"""
+scalar FixedGenericScalar
 
 type GeneratorDefinitionRequestRun {
   ok: Boolean
@@ -8213,6 +8224,131 @@ type GraphQLQueryReport {
   True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change.
   """
   targets_unique_nodes: Boolean!
+}
+
+type GroupAutoCreateCappedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """Configured per-login cap value"""
+  cap_value: Int!
+  """Verbatim, per-entry length-truncated dropped claims"""
+  dropped_claims: [String!]!
+  """Total count of dropped claims for this login"""
+  dropped_count: Int!
+  """The name of the event."""
+  event: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
+}
+
+input GroupAutoCreateEventTypeFilter {
+  """Filter by the configured identity-provider name"""
+  idp: [String!]
+  """Filter by authentication protocol"""
+  protocol: [String!]
+}
+
+type GroupAutoCreateRejectedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """The name of the event."""
+  event: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Verbatim, length-truncated rejected claim value"""
+  rejected_claim_value: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
+}
+
+type GroupAutoCreatedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """The name of the event."""
+  event: String!
+  """UUID of the newly created group"""
+  group_id: String!
+  """Local name of the new group"""
+  group_name: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """Configured provider name written to the group's origin attribute"""
+  origin_value: String!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """Raw regex pattern from the configured filter that matched"""
+  source_pattern: String!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
 }
 
 type GroupEvent implements EventNodeInterface {
@@ -8257,7 +8393,7 @@ input IPAddressPoolGetResourceInput {
   """Kind of IP address to allocate"""
   address_type: String
   """Additional data to pass to the newly created IP address"""
-  data: GenericScalar
+  data: FixedGenericScalar
   """HFID of the pool to allocate from"""
   hfid: [String]
   """ID of the pool to allocate from"""
@@ -8354,7 +8490,7 @@ type IPPrefixPoolGetResource {
 
 input IPPrefixPoolGetResourceInput {
   """Additional data to pass to the newly created prefix"""
-  data: GenericScalar
+  data: FixedGenericScalar
   """HFID of the pool to allocate from"""
   hfid: [String]
   """ID of the pool to allocate from"""

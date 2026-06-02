@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mutation, String
-from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
 from infrahub.core import protocols, registry
@@ -14,6 +13,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
+from infrahub.graphql.scalars import FixedGenericScalar
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ..queries.resource_manager import PoolAllocatedNode
@@ -38,7 +38,9 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
     prefix_length = InputField(Int(required=False), description="Size of the prefix to allocate")
     member_type = InputField(String(required=False), description="Type of members for the newly created prefix")
     prefix_type = InputField(String(required=False), description="Kind of prefix to allocate")
-    data = InputField(GenericScalar(required=False), description="Additional data to pass to the newly created prefix")
+    data = InputField(
+        FixedGenericScalar, required=False, description="Additional data to pass to the newly created prefix"
+    )
 
 
 class IPAddressPoolGetResourceInput(InputObjectType):
@@ -50,7 +52,7 @@ class IPAddressPoolGetResourceInput(InputObjectType):
     )
     address_type = InputField(String(required=False), description="Kind of IP address to allocate")
     data = InputField(
-        GenericScalar(required=False), description="Additional data to pass to the newly created IP address"
+        FixedGenericScalar, required=False, description="Additional data to pass to the newly created IP address"
     )
 
 

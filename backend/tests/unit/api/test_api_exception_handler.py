@@ -14,8 +14,9 @@ from starlette.requests import Request
 from ujson import loads
 
 from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
-from infrahub.auth import AccountSession, AuthType
-from infrahub.exceptions import Error, PermissionDeniedError
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
+from infrahub.exceptions import AuthorizationError, Error, NodeNotFoundError, PermissionDeniedError
 from infrahub.log_forwarding.models import LogForwardingContext
 from infrahub.log_forwarding.service import LogForwardingService
 from infrahub.services import InfrahubServices
@@ -151,6 +152,48 @@ class TestAPIExceptionHandler:
 
         error_dict = get_response_body(error_response)
         assert error_dict["errors"] == [{"message": "the teapot error", "extensions": {"code": 418}}]
+
+    async def test_graphql_route_emits_catalogue_envelope(self) -> None:
+        exception = AuthorizationError("Authentication required.")
+
+        error_response = await generic_api_exception_handler(_make_request(path="/graphql"), exception)
+
+        body = get_response_body(error_response)
+        assert error_response.status_code == 401
+        assert body["data"] is None
+        assert len(body["errors"]) == 1
+        extensions = body["errors"][0]["extensions"]
+        assert extensions["code"] == "AUTHENTICATION_REQUIRED"
+        assert extensions["http_status"] == 401
+        assert extensions["data"] == {}
+
+    async def test_graphql_route_emits_token_expired_for_expired_signature(self) -> None:
+        exception = AuthorizationError("Expired Signature")
+
+        error_response = await generic_api_exception_handler(_make_request(path="/graphql"), exception)
+
+        body = get_response_body(error_response)
+        assert body["errors"][0]["extensions"]["code"] == "TOKEN_EXPIRED"
+
+    async def test_graphql_route_emits_node_not_found_with_data(self) -> None:
+        exception = NodeNotFoundError(node_type="BuiltinTag", identifier="abc-123")
+
+        error_response = await generic_api_exception_handler(_make_request(path="/graphql"), exception)
+
+        body = get_response_body(error_response)
+        extensions = body["errors"][0]["extensions"]
+        assert extensions["code"] == "NODE_NOT_FOUND"
+        assert extensions["http_status"] == 404
+        assert extensions["data"] == {"node_kind": "BuiltinTag", "identifier": "abc-123"}
+
+    async def test_rest_route_unchanged_for_authorization_error(self) -> None:
+        exception = AuthorizationError("Authentication required.")
+
+        error_response = await generic_api_exception_handler(_make_request(path="/api/foo"), exception)
+
+        body = get_response_body(error_response)
+        assert error_response.status_code == 401
+        assert body["errors"] == [{"message": "Authentication required.", "extensions": {"code": 401}}]
 
 
 class TestLogForwardingExceptionHandler:
