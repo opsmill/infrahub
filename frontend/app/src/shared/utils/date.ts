@@ -11,7 +11,7 @@ export function formatFullDateWithTz(date: string | number | Date) {
   return format(date, DATE_TIME_FORMAT_WITH_TZ);
 }
 
-export function formatRelativeTimeFromNow(date: number | Date) {
+export function formatRelativeTimeFromNow(date: string | number | Date) {
   return formatDistance(date, new Date(), { addSuffix: true });
 }
 
