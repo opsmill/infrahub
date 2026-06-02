@@ -29,6 +29,10 @@ def build_cache_connection_string(cache: CacheSettings) -> str:
     params are passed through to the connection. This keeps the Prefect result
     storage block in parity with lock.py and the cache adapter, which read the
     same INFRAHUB_CACHE_TLS_* settings directly.
+
+    Raises:
+        ValueError: When ``INFRAHUB_CACHE_USERNAME`` is set without ``INFRAHUB_CACHE_PASSWORD``.
+
     """
     if cache.username and not cache.password:
         raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
