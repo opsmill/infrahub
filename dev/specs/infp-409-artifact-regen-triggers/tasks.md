@@ -29,9 +29,9 @@ Multi-package web service per plan.md "Source Code" tree:
 
 **Purpose**: New package directories and changelog scaffolding so subsequent tasks have a place to write files.
 
-- [ ] T001 Create new closure-builder package directory `backend/infrahub/git/closure_builder/` with an empty `__init__.py`.
-- [ ] T002 [P] Create test directory `backend/tests/unit/git/closure_builder/` with an empty `__init__.py`.
-- [ ] T003 [P] Ensure `backend/tests/unit/proposed_change/` exists for predicate unit tests; create with empty `__init__.py` if absent.
+- [X] T001 Create new closure-builder package directory `backend/infrahub/git/closure_builder/` with an empty `__init__.py`.
+- [X] T002 [P] Create test directory `backend/tests/unit/git/closure_builder/` with an empty `__init__.py`.
+- [X] T003 [P] Ensure `backend/tests/unit/proposed_change/` exists for predicate unit tests; create with empty `__init__.py` if absent.
 - [ ] T004 [P] Add Towncrier fragment `changelog/+infp-409-stage1.changed.md` describing the Stage 1 selection-gate refactor; a Stage 2 fragment is added in Phase 8 (T067).
 
 ---
@@ -42,10 +42,10 @@ Multi-package web service per plan.md "Source Code" tree:
 
 **CRITICAL**: No user-story work can begin until this phase is complete.
 
-- [ ] T005 Define `ClosureResult` and `UnresolvedRef` frozen dataclasses in `backend/infrahub/git/closure_builder/result.py` per data-model.md §3 (`kw_only=True`, `slots=True`, deterministic `dependencies: tuple[str, ...]`, `complete: bool`, `unresolved: tuple[UnresolvedRef, ...]`).
-- [ ] T006 Implement the path canonicalizer in `backend/infrahub/git/closure_builder/canonicalizer.py` per data-model.md §4 (repo-relative, POSIX `/`, strip leading `./`, strip trailing `/`, no symlink resolution, case-preserving, idempotent).
-- [ ] T007 [P] Unit tests for the canonicalizer in `backend/tests/unit/git/closure_builder/test_canonicalizer.py`: idempotency, leading-`./` strip, trailing-`/` strip, Windows-style `\` to POSIX conversion, symlinks not resolved, absolute paths rejected (or converted per the chosen contract — pick one and assert it).
-- [ ] T008 Define a `ClosureBuilder` Protocol in `backend/infrahub/git/closure_builder/__init__.py` with a single entry method `build(transform_config, worktree_root) -> ClosureResult` per the component-design note in contracts/pipeline-predicates.md. (Location matches plan.md's Project Structure file listing — no separate `protocol.py`.)
+- [X] T005 Define `ClosureResult` and `UnresolvedRef` frozen dataclasses in `backend/infrahub/git/closure_builder/result.py` per data-model.md §3 (`kw_only=True`, `slots=True`, deterministic `dependencies: tuple[str, ...]`, `complete: bool`, `unresolved: tuple[UnresolvedRef, ...]`).
+- [X] T006 Implement the path canonicalizer in `backend/infrahub/git/closure_builder/canonicalizer.py` per data-model.md §4 (repo-relative, POSIX `/`, strip leading `./`, strip trailing `/`, no symlink resolution, case-preserving, idempotent). Leading `/` is treated as repo root and stripped (matches the `.gitignore` convention) so the same canonicalizer can later be reused on `watch.files` SDK input without rejecting user input.
+- [X] T007 [P] Unit tests for the canonicalizer in `backend/tests/unit/git/closure_builder/test_canonicalizer.py`: idempotency, leading-`./` strip, trailing-`/` strip, Windows-style `\` to POSIX conversion, symlinks not resolved, leading `/` normalized to repo-root (not rejected), empty / repo-root-collapsing inputs rejected.
+- [X] T008 Define a `ClosureBuilder` Protocol in `backend/infrahub/git/closure_builder/protocols.py` with a single entry method `build(transform_config, worktree_root) -> ClosureResult` per the component-design note in contracts/pipeline-predicates.md. (Deviation from the original "in `__init__.py`" instruction: code lives in a named sibling module per the repo convention — `__init__.py` stays empty. Matches the existing `backend/infrahub/services/protocols.py` pattern.)
 
 **Checkpoint**: Foundation ready — every user story can now begin.
 
@@ -61,15 +61,15 @@ Multi-package web service per plan.md "Source Code" tree:
 
 #### Tests for Stage 1 (write first, expect failures)
 
-- [ ] T009 [P] [US1] Unit tests for `_query_changed` in `backend/tests/unit/proposed_change/test_predicates.py`: returns True iff a `diff_summary` entry's `id` matches `definition.query_id`; False on empty diff; False on mismatched id; covers fragment-edit case (stored query text changes → node modification → predicate True) per contracts/pipeline-predicates.md "Why this works".
-- [ ] T010 [P] [US1] Unit tests for `_definition_changed` in `backend/tests/unit/proposed_change/test_predicates.py`: returns True iff a `diff_summary` entry's `id` matches `definition.node_id`; covers attribute change, `targets` repoint, `transformation` repoint, `query` repoint (FR-007).
+- [X] T009 [P] [US1] Unit tests for `_query_changed` in `backend/tests/unit/proposed_change/test_predicates.py`: returns True iff a `diff_summary` entry's `id` matches `definition.query_id`; False on empty diff; False on mismatched id; covers fragment-edit case (stored query text changes → node modification → predicate True) per contracts/pipeline-predicates.md "Why this works".
+- [X] T010 [P] [US1] Unit tests for `_definition_changed` in `backend/tests/unit/proposed_change/test_predicates.py`: returns True iff a `diff_summary` entry's `id` matches `definition.node_id`; covers attribute change, `targets` repoint, `transformation` repoint, `query` repoint (FR-007).
 
 #### Implementation
 
-- [ ] T011 [US1] Implement `_query_changed(definition, diff_summary) -> bool` in `backend/infrahub/proposed_change/tasks.py` per contracts/pipeline-predicates.md.
-- [ ] T012 [US1] Implement `_definition_changed(definition, diff_summary) -> bool` in `backend/infrahub/proposed_change/tasks.py` per contracts/pipeline-predicates.md.
-- [ ] T013 [US1] Replace the `FILE_CHANGES` selection gate at `refresh_artifacts` in `backend/infrahub/proposed_change/tasks.py` (≈ lines 1363–1382 per contracts/pipeline-predicates.md "Call-site replacement matrix") with `_query_changed OR _definition_changed`, OR-ed with the existing `MODIFIED_KINDS` clause and a residual legacy `has_file_modifications` clause (kept temporarily per spec's "Stage 1 / Stage 2 interim behavior"; removed in T030).
-- [ ] T014 [US1] In `validate_artifacts_generation` in `backend/infrahub/proposed_change/tasks.py` (≈ lines 805–807), flip `managed_branch = True` conditionally on `_query_changed OR _definition_changed` rather than unconditionally on `FILE_CHANGES`; preserve the residual `has_file_modifications` short-circuit until T031 removes it.
+- [X] T011 [US1] Implement `_query_changed(definition, diff_summary) -> bool` in `backend/infrahub/proposed_change/tasks.py` per contracts/pipeline-predicates.md.
+- [X] T012 [US1] Implement `_definition_changed(definition, diff_summary) -> bool` in `backend/infrahub/proposed_change/tasks.py` per contracts/pipeline-predicates.md.
+- [X] T013 [US1] Replace the `FILE_CHANGES` selection gate at `refresh_artifacts` in `backend/infrahub/proposed_change/tasks.py` (≈ lines 1363–1382 per contracts/pipeline-predicates.md "Call-site replacement matrix") with `_query_changed OR _definition_changed`, OR-ed with the existing `MODIFIED_KINDS` clause and a residual legacy `has_file_modifications` clause (kept temporarily per spec's "Stage 1 / Stage 2 interim behavior"; removed in T030).
+- [X] T014 [US1] In `validate_artifacts_generation` in `backend/infrahub/proposed_change/tasks.py` (≈ lines 805–807), flip `managed_branch = True` conditionally on `_query_changed OR _definition_changed` rather than unconditionally on `FILE_CHANGES`; preserve the residual `has_file_modifications` short-circuit until T031 removes it.
 
 ### Stage 2 — Schema, closure builders, transform predicate
 
