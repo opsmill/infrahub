@@ -1,7 +1,0 @@
-{
-  "setup": [
-    "uv sync"
-  ],
-  "teardown": [],
-  "run": []
-}
