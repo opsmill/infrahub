@@ -73,16 +73,13 @@ async def test_externally_authenticated_account_cannot_update_password(
     await _attach_external_identity(db=db, account=first_account)
     rejected_password = "should-be-rejected"
 
-    query = (
-        """
-    mutation {
-        InfrahubAccountSelfUpdate(data: {password: "%s"}) {
+    query = """
+    mutation UpdateSelf($password: String!) {
+        InfrahubAccountSelfUpdate(data: {password: $password}) {
             ok
         }
     }
     """
-        % rejected_password
-    )
 
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(
@@ -96,14 +93,15 @@ async def test_externally_authenticated_account_cannot_update_password(
         source=query,
         context_value=gql_params.context,
         root_value=None,
-        variable_values={},
+        variable_values={"password": rejected_password},
     )
 
     assert result.errors is not None
     assert len(result.errors) == 1
-    message = result.errors[0].message.lower()
-    assert "password" in message
-    assert "external" in message
+    assert result.errors[0].message == (
+        "Password cannot be changed on accounts authenticated through an external "
+        "directory; manage credentials in the provider."
+    )
 
     untouched_account = await NodeManager.get_one(db=db, id=first_account.id, branch=default_branch)
     assert not bcrypt.checkpw(
