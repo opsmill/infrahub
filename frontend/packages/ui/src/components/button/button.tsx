@@ -72,6 +72,7 @@ const buttonVariants = tv({
     },
   },
   compoundVariants: [
+    { shape: "default", size: "xxs", class: "gap-1 px-1.5" },
     { shape: "default", size: "xs", class: "gap-1 px-2" },
     { shape: "default", size: "sm", class: "gap-1.5 px-2" },
     { shape: "default", size: "md", class: "gap-2 px-3" },
