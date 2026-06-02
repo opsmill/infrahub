@@ -926,6 +926,25 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return True
 
+    def _resolve_worktree_identifier(self, branch_name: str) -> str:
+        """Map a branch name to the identifier used to locate its worktree on disk."""
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return "main"
+        return branch_name
+
+    def _get_branch_worktree(self, branch_name: str) -> Repo | None:
+        """Return the existing worktree for a branch, or None when it has none yet."""
+        identifier = self._resolve_worktree_identifier(branch_name)
+        try:
+            return self.get_git_repo_worktree(identifier=identifier)
+        except RepositoryError:
+            return None
+
+    async def _create_branch_worktree(self, branch_name: str, branch_id: str) -> Repo:
+        """Create the branch in git and return its freshly created worktree."""
+        await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
+        return self.get_git_repo_worktree(identifier=branch_name)
+
     async def pull(
         self,
         branch_name: str,
@@ -941,18 +960,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """
         if not self.has_origin:
             return False
-        identifier = branch_name
-        if branch_name == self.default_branch and branch_name != registry.default_branch:
-            identifier = "main"
 
-        repo: Repo | None = None
-        try:
-            repo = self.get_git_repo_worktree(identifier=identifier)
-        except RepositoryError as exc:
-            if not create_if_missing:
-                raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}") from exc
-
-        if repo:
+        repo = self._get_branch_worktree(branch_name)
+        if repo is not None:
             try:
                 commit_before = str(repo.head.commit)
                 repo.remotes.origin.pull(branch_name)
@@ -960,27 +970,59 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 await self._raise_enriched_error(error=exc, branch_name=branch_name)
 
             commit_after = str(repo.head.commit)
-
             if commit_after == commit_before:
                 return True
 
             self.create_commit_worktree(commit=commit_after)
-            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-
-        elif branch_id:
-            await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
-            repo = self.get_git_repo_worktree(identifier=branch_name)
+        elif create_if_missing and branch_id:
+            # create_branch_in_git already syncs any matching remote branch, and a local-only
+            # branch has no upstream ref to pull from, so skip the fast-forward here.
+            repo = await self._create_branch_worktree(branch_name, branch_id)
             commit_after = str(repo.head.commit)
         else:
-            raise ValueError(
-                f"Unable to identify the worktree for the branch : {branch_name} "
-                "and unable to pull the branch because the branch)id is missing"
-            )
+            raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
 
         if update_commit_value:
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
             await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
-
         return commit_after
+
+    async def reset_to_commit(
+        self,
+        branch_name: str,
+        commit: str,
+        branch_id: str | None = None,
+        create_if_missing: bool = False,
+        update_commit_value: bool = True,
+    ) -> None:
+        """Hard-reset a branch worktree to a specific commit already present locally.
+
+        The caller must have fetched the commit beforehand; this method does not
+        contact the remote.
+
+        Raises:
+            ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
+
+        """
+        repo = self._get_branch_worktree(branch_name)
+        if repo is None:
+            if not create_if_missing or not branch_id:
+                raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
+            repo = await self._create_branch_worktree(branch_name, branch_id)
+
+        # Hard reset, not merge: the worktree is a disposable mirror of the remote, so we
+        # force it onto the requested commit and intentionally drop any local divergence.
+        # Convergence on this exact SHA is the goal; a fast-forward could land elsewhere.
+        try:
+            repo.git.reset("--hard", commit)
+        except GitCommandError as exc:
+            await self._raise_enriched_error(error=exc, branch_name=branch_name)
+
+        self.create_commit_worktree(commit=commit)
+
+        if update_commit_value:
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
 
     async def get_conflicts(self, source_branch: str, dest_branch: str) -> list[str]:
         repo = self.get_git_repo_worktree(identifier=dest_branch)
@@ -1092,6 +1134,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         if "error: pathspec" in error.stderr:
             raise RepositoryInvalidBranchError(identifier=name, branch_name=branch_name, location=location) from error
+
+        if "reset" in (error.command or []) and "Could not parse object" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=(
+                    f"Commit not found in the local clone of repository {name}; "
+                    "it may have been force-pushed or pruned upstream."
+                ),
+            ) from error
 
         if "SSL certificate problem" in error.stderr or "server certificate verification failed" in error.stderr:
             raise RepositoryConnectionError(

@@ -70,11 +70,10 @@ class TestAddRepository:
 
         with dependency_provider.scope(build_message_bus, lambda: self.recorder):
             self.mock_repo = AsyncMock(spec=InfrahubRepository)
-            self.mock_repo = AsyncMock(spec=InfrahubRepository)
             self.mock_repo.default_branch = self.default_branch_name
             self.mock_repo.infrahub_branch_name = self.default_branch_name
             self.mock_repo.internal_status = "active"
-
+            self.mock_repo.get_commit_value.return_value = "0123456789abcdef0123456789abcdef01234567"
             yield
 
             patch.stopall()
@@ -232,6 +231,8 @@ class TestAddReadOnly:
             repo_class_patcher = patch("infrahub.git.tasks.InfrahubReadOnlyRepository", spec=InfrahubReadOnlyRepository)
             self.mock_repo_class = repo_class_patcher.start()
             self.mock_repo = AsyncMock(spec=InfrahubReadOnlyRepository)
+            self.mock_repo.ref = "branch01"
+            self.mock_repo.get_commit_value.return_value = "0123456789abcdef0123456789abcdef01234567"
             self.mock_repo_class.new.return_value = self.mock_repo
 
             yield
@@ -266,10 +267,12 @@ class TestAddReadOnly:
             infrahub_branch_name="read-only-branch",
         )
         self.mock_repo.import_objects_from_files.assert_awaited_once_with(infrahub_branch_name="read-only-branch")
-        self.mock_repo.sync_from_remote.assert_awaited_once_with()
+        self.mock_repo.sync_from_remote.assert_awaited_once_with(commit="0123456789abcdef0123456789abcdef01234567")
 
         assert len(self.recorder.messages) > 0
-        assert isinstance(self.recorder.messages[0], RefreshGitFetch)
+        broadcast = self.recorder.messages[0]
+        assert isinstance(broadcast, RefreshGitFetch)
+        assert broadcast.repository_kind == InfrahubKind.READONLYREPOSITORY
 
 
 class TestPullReadOnly:
