@@ -110,7 +110,11 @@ async def add_git_repository(model: GitRepositoryAdd) -> None:
             # Notify other workers they need to clone the repository and check out the SHA pinned
             # by this initial sync, so the whole pool converges even if upstream advances meanwhile.
             notification = messages.RefreshGitFetch(
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                meta=Meta(
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=get_log_data().get("request_id", ""),
+                    user_request_id=get_log_data().get("user_request_id", ""),
+                ),
                 location=model.location,
                 repository_id=model.repository_id,
                 repository_name=model.repository_name,
@@ -150,7 +154,11 @@ async def add_git_repository_read_only(model: GitRepositoryAddReadOnly) -> None:
 
             # Notify other workers they need to clone the repository and check out the resolved commit
             notification = messages.RefreshGitFetch(
-                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                meta=Meta(
+                    initiator_id=WORKER_IDENTITY,
+                    request_id=get_log_data().get("request_id", ""),
+                    user_request_id=get_log_data().get("user_request_id", ""),
+                ),
                 location=model.location,
                 repository_id=model.repository_id,
                 repository_name=model.repository_name,
@@ -324,7 +332,11 @@ async def sync_remote_repositories() -> None:
                 # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
                 # pool converges on the same commit even if upstream advances during fan-out.
                 message = messages.RefreshGitFetch(
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                    meta=Meta(
+                        initiator_id=WORKER_IDENTITY,
+                        request_id=get_log_data().get("request_id", ""),
+                        user_request_id=get_log_data().get("user_request_id", ""),
+                    ),
                     location=repository.location.value,
                     repository_id=repository.id,
                     repository_name=repository.name.value,
@@ -368,7 +380,11 @@ async def git_branch_create(
         # New branch has been pushed remotely, tell workers to fetch it and check out the SHA it
         # was created at so the pool converges even if upstream advances during fan-out.
         message = messages.RefreshGitFetch(
-            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+            meta=Meta(
+                initiator_id=WORKER_IDENTITY,
+                request_id=get_log_data().get("request_id", ""),
+                user_request_id=get_log_data().get("user_request_id", ""),
+            ),
             location=repo.get_location(),
             repository_id=str(repo.id),
             repository_name=repo.name,
@@ -410,7 +426,11 @@ async def git_branch_delete(
 
         message_bus = await get_message_bus()
         message = messages.RefreshGitRepositoryBranchDeleted(
-            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+            meta=Meta(
+                initiator_id=WORKER_IDENTITY,
+                request_id=get_log_data().get("request_id", ""),
+                user_request_id=get_log_data().get("user_request_id", ""),
+            ),
             repository_id=str(repo.id),
             repository_name=repo.name,
             repository_kind=InfrahubKind.REPOSITORY,
@@ -605,7 +625,11 @@ async def pull_read_only(model: GitRepositoryPullReadOnly) -> None:
 
         # Tell workers to fetch and check out the resolved commit to stay in sync
         message = messages.RefreshGitFetch(
-            meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+            meta=Meta(
+                initiator_id=WORKER_IDENTITY,
+                request_id=get_log_data().get("request_id", ""),
+                user_request_id=get_log_data().get("user_request_id", ""),
+            ),
             location=model.location,
             repository_id=model.repository_id,
             repository_name=model.repository_name,
@@ -683,7 +707,11 @@ async def merge_git_repository(model: GitRepositoryMerge) -> None:
                 # Destination branch has changed and pushed remotely, tell workers to re-fetch and
                 # check out the merge commit so the pool converges even if upstream advances meanwhile.
                 message = messages.RefreshGitFetch(
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                    meta=Meta(
+                        initiator_id=WORKER_IDENTITY,
+                        request_id=get_log_data().get("request_id", ""),
+                        user_request_id=get_log_data().get("user_request_id", ""),
+                    ),
                     location=repo.location,
                     repository_id=str(repo.id),
                     repository_name=repo.name,
