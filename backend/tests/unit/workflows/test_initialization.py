@@ -251,9 +251,9 @@ class RoundTripCase:
     ],
 )
 def test_connection_string_round_trip_through_redis_py(case: RoundTripCase) -> None:
-    """The URL we build must parse back through redis.ConnectionPool.from_url
-    into a connection class and kwargs that match the cache configuration.
+    """The URL we build must parse back through redis.ConnectionPool.from_url.
 
+    The parsed connection class and kwargs must match the cache configuration.
     This guards against silent regressions where the URL is syntactically valid
     but semantically wrong (e.g. redis-py changing how it parses ssl_* params).
     """
