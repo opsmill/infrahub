@@ -26,7 +26,7 @@ from infrahub.auth.types import AuthType
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod
-from infrahub.exceptions import ProcessingError
+from infrahub.exceptions import AuthorizationError, ProcessingError
 from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
@@ -191,7 +191,7 @@ async def token(
     sso_groups = (
         user_info.get("groups")
         or await _get_id_token_groups(
-            oidc_config=oidc_config, service=service, payload=payload, client_id=provider.client_id
+            oidc_config=oidc_config, service=service, payload=payload, provider_settings=provider
         )
         or await get_groups_from_provider(provider=provider, service=service, payload=payload, user_info=user_info)
     )
@@ -256,7 +256,10 @@ async def token(
 
 
 async def _get_id_token_groups(
-    oidc_config: OIDCDiscoveryConfig, service: InfrahubServices, payload: dict[str, Any], client_id: str
+    oidc_config: OIDCDiscoveryConfig,
+    service: InfrahubServices,
+    payload: dict[str, Any],
+    provider_settings: config.SecurityOIDCSettings,
 ) -> list[str]:
     id_token = payload.get("id_token")
     if not id_token:
@@ -269,13 +272,18 @@ async def _get_id_token_groups(
 
     signing_key = jwk_client.get_signing_key_from_jwt(id_token)
 
-    decoded_token: dict[str, Any] = jwt.decode(
-        jwt=id_token,
-        key=signing_key.key,
-        algorithms=oidc_config.id_token_signing_alg_values_supported,
-        audience=client_id,
-        issuer=str(oidc_config.issuer),
-        options={"verify_signature": False, "verify_aud": False, "verify_iss": False},
-    )
+    verify = provider_settings.id_token_verify_signature
+
+    try:
+        decoded_token: dict[str, Any] = jwt.decode(
+            jwt=id_token,
+            key=signing_key.key,
+            algorithms=oidc_config.id_token_signing_alg_values_supported,
+            audience=provider_settings.client_id,
+            issuer=str(oidc_config.issuer),
+            options={"verify_signature": verify, "verify_aud": verify, "verify_iss": verify},
+        )
+    except jwt.PyJWTError as exc:
+        raise AuthorizationError(message=f"OIDC id_token verification failed: {exc}") from exc
 
     return decoded_token.get("groups", [])
