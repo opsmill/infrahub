@@ -139,6 +139,19 @@ class AccountMixin:
         data: dict[str, Any],
         info: GraphQLResolveInfo,  # noqa: ARG003
     ) -> Self:
+        if data.get("password"):
+            external_identities = await NodeManager.query(
+                schema=InfrahubKind.EXTERNALIDENTITY,
+                filters={"account__ids": [account.id]},
+                db=db,
+                limit=1,
+            )
+            if external_identities:
+                raise PermissionDeniedError(
+                    "Password cannot be changed on accounts authenticated through an external "
+                    "directory; manage credentials in the provider."
+                )
+
         for field in ("password", "description"):
             if value := data.get(field):
                 getattr(account, field).value = value
