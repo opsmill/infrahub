@@ -808,7 +808,7 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         or (model.source_branch_sync_with_git and model.branch_diff.has_file_modifications)
     )
     if managed_branch:
-        log.info("Definition-level change or repository file modification detected, all artifacts will be processed")
+        log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
     checks = []
 
@@ -1205,7 +1205,8 @@ class DefinitionSelect(IntFlag):
     NONE = 0
     MODIFIED_KINDS = 1
     FILE_CHANGES = 2
-    DEFINITION_OR_QUERY_CHANGED = 4
+    QUERY_CHANGED = 4
+    DEFINITION_CHANGED = 8
 
     @staticmethod
     def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool) -> DefinitionSelect:
@@ -1219,8 +1220,11 @@ class DefinitionSelect(IntFlag):
         if DefinitionSelect.MODIFIED_KINDS in self:
             change_types.append("data changes within relevant object kinds")
 
-        if DefinitionSelect.DEFINITION_OR_QUERY_CHANGED in self:
-            change_types.append("changes to the artifact definition or its GraphQL query")
+        if DefinitionSelect.QUERY_CHANGED in self:
+            change_types.append("changes to the GraphQL query")
+
+        if DefinitionSelect.DEFINITION_CHANGED in self:
+            change_types.append("changes to the artifact definition")
 
         if DefinitionSelect.FILE_CHANGES in self:
             change_types.append("file modifications in Git repositories")
@@ -1393,9 +1397,13 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
         select = DefinitionSelect.NONE
         select = select.add_flag(
             current=select,
-            flag=DefinitionSelect.DEFINITION_OR_QUERY_CHANGED,
-            condition=_query_changed(definition=artifact_definition, diff_summary=diff_summary)
-            or _definition_changed(definition=artifact_definition, diff_summary=diff_summary),
+            flag=DefinitionSelect.QUERY_CHANGED,
+            condition=_query_changed(definition=artifact_definition, diff_summary=diff_summary),
+        )
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.DEFINITION_CHANGED,
+            condition=_definition_changed(definition=artifact_definition, diff_summary=diff_summary),
         )
         select = select.add_flag(
             current=select,
