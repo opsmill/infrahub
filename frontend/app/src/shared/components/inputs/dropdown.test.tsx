@@ -2,9 +2,10 @@ import { ApolloProvider } from "@apollo/client";
 import { afterEach, describe, expect, test } from "vitest";
 
 import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
+import { store } from "@/shared/stores";
+
 import { namespacesAtom } from "@/entities/schema/stores/schema.atom";
 import type { AttributeSchema, ModelSchema } from "@/entities/schema/types";
-import { store } from "@/shared/stores";
 
 import { render } from "../../../../tests/components/render";
 import { Dropdown } from "./dropdown";
