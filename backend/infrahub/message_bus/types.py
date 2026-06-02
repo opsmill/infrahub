@@ -89,7 +89,7 @@ class ProposedChangeArtifactDefinition(BaseModel):
     definition_id: str
     definition_name: str
     artifact_name: str
-    query_name: str  # Deprecated
+    query_name: str
     query_id: str
     query_models: list[str]
     query_payload: str = Field(..., description="GraphQL query")
@@ -103,6 +103,14 @@ class ProposedChangeArtifactDefinition(BaseModel):
         default=False, description="Convert query response to InfrahubNode objects for Python based transforms"
     )
     timeout: int
+    dependencies: list[str] | None = Field(
+        default=None,
+        description="Canonical repo-relative paths the transform reads from. None means not yet computed.",
+    )
+    dependencies_complete: bool | None = Field(
+        default=None,
+        description="True when the dependency list is fully resolved. False when partial. None when not yet computed.",
+    )
 
     @property
     def transform_location(self) -> str:

@@ -18,10 +18,8 @@ type TransformConfig = InfrahubJinja2TransformConfig | InfrahubPythonTransformCo
 class ClosureBuilder(Protocol):
     """Compute a transform's dependency closure from its source files in a git worktree.
 
-    Concrete implementations are dispatched per transform kind at the integrator wiring
-    layer. The returned `ClosureResult` carries the canonicalized dependency paths,
-    a completeness flag indicating whether the auto-detected closure can be trusted,
-    and any unresolved references encountered during the walk.
+    Returns a `ClosureResult` with canonicalized dependency paths, a completeness
+    flag, and any unresolved references encountered during the walk.
     """
 
     def build(

@@ -7306,6 +7306,16 @@ export type CoreGenericRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub */
 export type CoreGenericRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12241,6 +12251,16 @@ export type CoreReadOnlyRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub, Git-side will not be updated */
 export type CoreReadOnlyRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -12701,6 +12721,16 @@ export type CoreRepositoryTagsArgs = {
 
 /** A Git Repository integrated with Infrahub */
 export type CoreRepositoryTransformationsArgs = {
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -14944,6 +14974,10 @@ export type CoreThreadUpdateInput = {
 /** A file rendered from a Jinja2 template */
 export type CoreTransformJinja2 = CoreNode & CoreTransformation & {
   __typename: 'CoreTransformJinja2';
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -15060,6 +15094,10 @@ export type CoreTransformJinja2Create = {
 };
 
 export type CoreTransformJinja2CreateInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   id?: InputMaybe<Scalars['String']['input']>;
   label?: InputMaybe<TextAttributeCreate>;
@@ -15089,6 +15127,10 @@ export type CoreTransformJinja2Update = {
 };
 
 export type CoreTransformJinja2UpdateInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -15113,6 +15155,10 @@ export type CoreTransformJinja2Upsert = {
 };
 
 export type CoreTransformJinja2UpsertInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -15136,6 +15182,10 @@ export type CoreTransformPython = CoreNode & CoreTransformation & {
   class_name: Maybe<TextAttribute>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response: Maybe<CheckboxAttribute>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Path to the Python file in the repository (required) */
@@ -15256,6 +15306,10 @@ export type CoreTransformPythonCreateInput = {
   class_name?: InputMaybe<TextAttributeCreate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeCreate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeCreate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeCreate>;
   description?: InputMaybe<TextAttributeCreate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeCreate>;
@@ -15289,6 +15343,10 @@ export type CoreTransformPythonUpdateInput = {
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeUpdate>;
@@ -15317,6 +15375,10 @@ export type CoreTransformPythonUpsertInput = {
   class_name?: InputMaybe<TextAttributeUpdate>;
   /** Whether to convert the GraphQL response to SDK objects */
   convert_query_response?: InputMaybe<CheckboxAttributeUpdate>;
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   /** Path to the Python file in the repository */
   file_path?: InputMaybe<TextAttributeUpdate>;
@@ -15335,6 +15397,10 @@ export type CoreTransformPythonUpsertInput = {
 
 /** Generic Transformation Object. */
 export type CoreTransformation = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies: Maybe<ListAttribute>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete: Maybe<CheckboxAttribute>;
   description: Maybe<TextAttribute>;
   display_label: Maybe<Scalars['String']['output']>;
   /** Human friendly identifier */
@@ -15449,6 +15515,10 @@ export type CoreTransformationUpdate = {
 };
 
 export type CoreTransformationUpdateInput = {
+  /** Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate. */
+  dependencies?: InputMaybe<ListAttributeUpdate>;
+  /** True when the dependency closure can be trusted. False when auto-detection found unresolved references. */
+  dependencies_complete?: InputMaybe<CheckboxAttributeUpdate>;
   description?: InputMaybe<TextAttributeUpdate>;
   hfid?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   id?: InputMaybe<Scalars['String']['input']>;
@@ -26299,6 +26369,16 @@ export type QueryCoreArtifactDefinitionArgs = {
   targets__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   targets__name__value?: InputMaybe<Scalars['String']['input']>;
   targets__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformation__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformation__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformation__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformation__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -27623,6 +27703,16 @@ export type QueryCoreCustomWebhookArgs = {
   transformation__convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  transformation__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformation__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformation__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformation__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformation__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformation__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformation__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformation__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -29845,6 +29935,16 @@ export type QueryCoreGenericRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33123,6 +33223,16 @@ export type QueryCoreReadOnlyRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -33440,6 +33550,16 @@ export type QueryCoreRepositoryArgs = {
   tags__name__source__id?: InputMaybe<Scalars['ID']['input']>;
   tags__name__value?: InputMaybe<Scalars['String']['input']>;
   tags__name__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  transformations__dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  transformations__dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  transformations__dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  transformations__dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  transformations__dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   transformations__description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   transformations__description__owner__id?: InputMaybe<Scalars['ID']['input']>;
   transformations__description__source__id?: InputMaybe<Scalars['ID']['input']>;
@@ -34882,6 +35002,18 @@ export type QueryCoreTransformJinja2Args = {
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35073,6 +35205,18 @@ export type QueryCoreTransformPythonArgs = {
   convert_query_response__source__id?: InputMaybe<Scalars['ID']['input']>;
   convert_query_response__value?: InputMaybe<Scalars['Boolean']['input']>;
   convert_query_response__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -35252,6 +35396,18 @@ export type QueryCoreTransformationArgs = {
   any__source__id?: InputMaybe<Scalars['ID']['input']>;
   any__value?: InputMaybe<Scalars['String']['input']>;
   any__values?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+  dependencies__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies__value?: InputMaybe<Scalars['GenericScalar']['input']>;
+  dependencies__values?: InputMaybe<Array<InputMaybe<Scalars['GenericScalar']['input']>>>;
+  dependencies_complete__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__isnull?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__owner__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__source__id?: InputMaybe<Scalars['ID']['input']>;
+  dependencies_complete__value?: InputMaybe<Scalars['Boolean']['input']>;
+  dependencies_complete__values?: InputMaybe<Array<InputMaybe<Scalars['Boolean']['input']>>>;
   description__is_protected?: InputMaybe<Scalars['Boolean']['input']>;
   description__isnull?: InputMaybe<Scalars['Boolean']['input']>;
   description__owner__id?: InputMaybe<Scalars['ID']['input']>;
@@ -37488,62 +37644,6 @@ export type Get_File_ThreadsQueryVariables = Exact<{
 
 export type Get_File_ThreadsQuery = { CoreFileThread: { __typename: 'PaginatedCoreFileThread', count: number, edges: Array<{ __typename: 'EdgedCoreFileThread', node: { __typename: 'CoreFileThread', id: string, display_label: string | null, resolved: { __typename: 'CheckboxAttribute', value: boolean | null } | null, file: { __typename: 'TextAttribute', value: string | null } | null, commit: { __typename: 'TextAttribute', value: string | null } | null, repository: { __typename: 'NestedEdgedCoreRepository', node: { __typename: 'CoreRepository', id: string } | null }, line_number: { __typename: 'NumberAttribute', value: any | null } | null, comments: { __typename: 'NestedPaginatedCoreThreadComment', edges: Array<{ __typename: 'NestedEdgedCoreThreadComment', node_metadata: { __typename: 'InfrahubNodeMetadata', created_at: any | null, created_by: { __typename: 'CoreAccount', display_label: string | null } | null } | null, node: { __typename: 'CoreThreadComment', id: string, text: { __typename: 'TextAttribute', value: string | null } | null } | null }> } } | null }> } };
 
-export type Get_Core_ValidatorsQueryVariables = Exact<{
-  id: Scalars['ID']['input'];
-}>;
-
-
-export type Get_Core_ValidatorsQuery = { CoreValidator: { __typename: 'PaginatedCoreValidator', edges: Array<{ __typename: 'EdgedCoreValidator', node:
-        | { __typename: 'CoreArtifactValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreDataValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreGeneratorValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreRepositoryValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreSchemaValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-        | { __typename: 'CoreUserValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
-                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
-               | null }> | null } }
-       | null }> } };
-
 export type Get_Validator_DetailsQueryVariables = Exact<{
   ids?: InputMaybe<Array<Scalars['ID']['input']> | Scalars['ID']['input']>;
   checksOffset?: InputMaybe<Scalars['Int']['input']>;
@@ -37605,6 +37705,62 @@ export type Get_Validator_DetailsQuery = { CoreValidator: { __typename: 'Paginat
                | null }> | null } }
        | null }> } };
 
+export type Get_Core_ValidatorsQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type Get_Core_ValidatorsQuery = { CoreValidator: { __typename: 'PaginatedCoreValidator', edges: Array<{ __typename: 'EdgedCoreValidator', node:
+        | { __typename: 'CoreArtifactValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreDataValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreGeneratorValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreRepositoryValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreSchemaValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+        | { __typename: 'CoreUserValidator', id: string, display_label: string | null, conclusion: { __typename: 'TextAttribute', value: string | null } | null, started_at: { __typename: 'TextAttribute', value: string | null } | null, completed_at: { __typename: 'TextAttribute', value: string | null } | null, state: { __typename: 'TextAttribute', value: string | null } | null, checks: { __typename: 'NestedPaginatedCoreCheck', edges: Array<{ __typename: 'NestedEdgedCoreCheck', node:
+                | { __typename: 'CoreArtifactCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreDataCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreFileCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreGeneratorCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreSchemaCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+                | { __typename: 'CoreStandardCheck', conclusion: { __typename: 'TextAttribute', value: string | null } | null, severity: { __typename: 'TextAttribute', value: string | null } | null }
+               | null }> | null } }
+       | null }> } };
+
 export type Resolve_ConflictMutationVariables = Exact<{
   id?: InputMaybe<Scalars['String']['input']>;
   selection?: InputMaybe<ConflictSelection>;
@@ -37655,9 +37811,9 @@ export type Get_Infrahub_EventsQuery = { InfrahubEvent: { __typename: 'Events', 
         | { __typename: 'BranchDeletedEvent', payload: any, deleted_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'BranchMergedEvent', source_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'BranchRebasedEvent', payload: any, rebased_branch: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'GroupAutoCreateCappedEventType', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'GroupAutoCreateRejectedEventType', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
-        | { __typename: 'GroupAutoCreatedEventType', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
+        | { __typename: 'GroupAutoCreateCappedEventType', idp: string, protocol: string, triggering_user_id: string, triggering_user_name: string, cap_value: number, dropped_count: number, dropped_claims: Array<string>, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
+        | { __typename: 'GroupAutoCreateRejectedEventType', idp: string, protocol: string, triggering_user_id: string, triggering_user_name: string, rejected_claim_value: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
+        | { __typename: 'GroupAutoCreatedEventType', idp: string, protocol: string, triggering_user_id: string, triggering_user_name: string, group_id: string, group_name: string, source_pattern: string, origin_value: string, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'GroupEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, ancestors: Array<{ __typename: 'RelatedNode', id: string, kind: string }>, members: Array<{ __typename: 'RelatedNode', id: string, kind: string }>, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'NodeMutatedEvent', payload: any, id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, attributes: Array<{ __typename: 'InfrahubMutatedAttribute', action: DiffAction, kind: string, name: string, value: string | null, value_previous: string | null }>, relationships: Array<{ __typename: 'InfrahubMutatedRelationship', action: DiffAction, name: string, peer: { __typename: 'RelatedNode', id: string, kind: string } }>, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
         | { __typename: 'ProposedChangeApprovalsRevokedEvent', id: string, event: string, branch: string | null, occurred_at: any, level: number, account_id: string | null, has_children: boolean, primary_node: { __typename: 'RelatedNode', id: string, kind: string } | null, related_nodes: Array<{ __typename: 'RelatedNode', id: string, kind: string }> }
@@ -37857,15 +38013,6 @@ export type DropdownAddMutationVariables = Exact<{
 
 export type DropdownAddMutation = { SchemaDropdownAdd: { __typename: 'SchemaDropdownAdd', ok: boolean | null, object: { __typename: 'DropdownFields', value: string | null, label: string | null, color: string | null, description: string | null } | null } | null };
 
-export type DropdownDeleteMutationVariables = Exact<{
-  kind: Scalars['String']['input'];
-  attribute: Scalars['String']['input'];
-  dropdown: Scalars['String']['input'];
-}>;
-
-
-export type DropdownDeleteMutation = { SchemaDropdownRemove: { __typename: 'SchemaDropdownRemove', ok: boolean | null } | null };
-
 export type EnumAddMutationVariables = Exact<{
   kind: Scalars['String']['input'];
   attribute: Scalars['String']['input'];
@@ -37874,6 +38021,15 @@ export type EnumAddMutationVariables = Exact<{
 
 
 export type EnumAddMutation = { SchemaEnumAdd: { __typename: 'SchemaEnumAdd', ok: boolean | null } | null };
+
+export type DropdownDeleteMutationVariables = Exact<{
+  kind: Scalars['String']['input'];
+  attribute: Scalars['String']['input'];
+  dropdown: Scalars['String']['input'];
+}>;
+
+
+export type DropdownDeleteMutation = { SchemaDropdownRemove: { __typename: 'SchemaDropdownRemove', ok: boolean | null } | null };
 
 export type EnumDeleteMutationVariables = Exact<{
   kind: Scalars['String']['input'];
@@ -37912,6 +38068,23 @@ export type Task_CountQueryVariables = Exact<{
 
 export type Task_CountQuery = { InfrahubTask: { __typename: 'Tasks', count: number } };
 
+export type Get_Task_DetailsQueryVariables = Exact<{
+  ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
+  branch?: InputMaybe<Scalars['String']['input']>;
+  workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
+  relatedNodes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
+}>;
+
+
+export type Get_Task_DetailsQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', id: string, title: string, branch: string | null, related_node: string | null, state: StateType | null, progress: number | null, created_at: string, updated_at: string, related_nodes: Array<{ __typename: 'TaskRelatedNode', id: string, kind: string } | null> | null, logs: { __typename: 'TaskLogEdge', edges: Array<{ __typename: 'TaskLogNodes', node: { __typename: 'TaskLog', id: string | null, message: string, severity: string, timestamp: string } | null }> } | null } | null }> } };
+
+export type Get_Task_Details_Title_QueryQueryVariables = Exact<{
+  ids?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
+}>;
+
+
+export type Get_Task_Details_Title_QueryQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', title: string } | null }> } };
+
 export type Get_Task_ListQueryVariables = Exact<{
   offset?: InputMaybe<Scalars['Int']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
@@ -37932,23 +38105,6 @@ export type Get_Tasks_HomepageQueryVariables = Exact<{
 
 
 export type Get_Tasks_HomepageQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', id: string, branch: string | null, title: string, updated_at: string, state: StateType | null, related_nodes: Array<{ __typename: 'TaskRelatedNode', id: string, kind: string } | null> | null } | null }> } };
-
-export type Task_DetailsQueryVariables = Exact<{
-  ids?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  branch?: InputMaybe<Scalars['String']['input']>;
-  workflow?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-  relatedNodes?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>> | InputMaybe<Scalars['String']['input']>>;
-}>;
-
-
-export type Task_DetailsQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', id: string, title: string, related_node: string | null, state: StateType | null, progress: number | null, created_at: string, updated_at: string, related_nodes: Array<{ __typename: 'TaskRelatedNode', id: string, kind: string } | null> | null, logs: { __typename: 'TaskLogEdge', edges: Array<{ __typename: 'TaskLogNodes', node: { __typename: 'TaskLog', id: string | null, message: string, severity: string, timestamp: string } | null }> } | null } | null }> } };
-
-export type Get_Task_Details_TitleQueryVariables = Exact<{
-  ids?: InputMaybe<Array<Scalars['String']['input']> | Scalars['String']['input']>;
-}>;
-
-
-export type Get_Task_Details_TitleQuery = { InfrahubTask: { __typename: 'Tasks', count: number, edges: Array<{ __typename: 'TaskNodes', node: { __typename: 'TaskNode', title: string } | null }> } };
 
 export type InfrahubAccountTokenCreateMutationVariables = Exact<{
   tokenName: Scalars['String']['input'];

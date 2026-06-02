@@ -3492,7 +3492,7 @@ interface CoreGenericRepository {
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """A Git Repository integrated with Infrahub"""
@@ -5546,7 +5546,7 @@ type CoreReadOnlyRepository implements CoreGenericRepository & CoreNode & CoreTa
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """
@@ -5700,7 +5700,7 @@ type CoreRepository implements CoreGenericRepository & CoreNode & CoreTaskTarget
   """Current synchronization status of the repository"""
   sync_status: Dropdown
   tags(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedBuiltinTag!
-  transformations(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
+  transformations(dependencies__is_protected: Boolean, dependencies__owner__id: ID, dependencies__source__id: ID, dependencies__value: GenericScalar, dependencies__values: [GenericScalar], dependencies_complete__is_protected: Boolean, dependencies_complete__owner__id: ID, dependencies_complete__source__id: ID, dependencies_complete__value: Boolean, dependencies_complete__values: [Boolean], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, timeout__is_protected: Boolean, timeout__owner__id: ID, timeout__source__id: ID, timeout__value: BigInt, timeout__values: [BigInt]): NestedPaginatedCoreTransformation!
 }
 
 """A Git Repository integrated with Infrahub"""
@@ -6808,6 +6808,14 @@ input CoreThreadUpdateInput {
 
 """A file rendered from a Jinja2 template"""
 type CoreTransformJinja2 implements CoreNode & CoreTransformation {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -6834,6 +6842,14 @@ type CoreTransformJinja2Create {
 }
 
 input CoreTransformJinja2CreateInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeCreate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeCreate
   description: TextAttributeCreate
   id: String
   label: TextAttributeCreate
@@ -6861,6 +6877,14 @@ type CoreTransformJinja2Update {
 }
 
 input CoreTransformJinja2UpdateInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -6884,6 +6908,14 @@ type CoreTransformJinja2Upsert {
 }
 
 input CoreTransformJinja2UpsertInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -6906,6 +6938,14 @@ type CoreTransformPython implements CoreNode & CoreTransformation {
   class_name: TextAttribute
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttribute
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
   """Path to the Python file in the repository (required)"""
@@ -6936,6 +6976,14 @@ input CoreTransformPythonCreateInput {
   class_name: TextAttributeCreate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeCreate
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeCreate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeCreate
   description: TextAttributeCreate
   """Path to the Python file in the repository"""
   file_path: TextAttributeCreate
@@ -6967,6 +7015,14 @@ input CoreTransformPythonUpdateInput {
   class_name: TextAttributeUpdate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeUpdate
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   """Path to the Python file in the repository"""
   file_path: TextAttributeUpdate
@@ -6994,6 +7050,14 @@ input CoreTransformPythonUpsertInput {
   class_name: TextAttributeUpdate
   """Whether to convert the GraphQL response to SDK objects"""
   convert_query_response: CheckboxAttributeUpdate
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   """Path to the Python file in the repository"""
   file_path: TextAttributeUpdate
@@ -7012,6 +7076,14 @@ input CoreTransformPythonUpsertInput {
 
 """Generic Transformation Object."""
 interface CoreTransformation {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttribute
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttribute
   description: TextAttribute
   display_label: String
   """Human friendly identifier"""
@@ -7036,6 +7108,14 @@ type CoreTransformationUpdate {
 }
 
 input CoreTransformationUpdateInput {
+  """
+  Canonical repo-relative paths feeding this transform's output. Null falls back to legacy file gate.
+  """
+  dependencies: ListAttributeUpdate
+  """
+  True when the dependency closure can be trusted. False when auto-detection found unresolved references.
+  """
+  dependencies_complete: CheckboxAttributeUpdate
   description: TextAttributeUpdate
   hfid: [String]
   id: String
@@ -14138,6 +14218,16 @@ type Query {
     targets__name__source__id: ID
     targets__name__value: String
     targets__name__values: [String]
+    transformation__dependencies__is_protected: Boolean
+    transformation__dependencies__owner__id: ID
+    transformation__dependencies__source__id: ID
+    transformation__dependencies__value: GenericScalar
+    transformation__dependencies__values: [GenericScalar]
+    transformation__dependencies_complete__is_protected: Boolean
+    transformation__dependencies_complete__owner__id: ID
+    transformation__dependencies_complete__source__id: ID
+    transformation__dependencies_complete__value: Boolean
+    transformation__dependencies_complete__values: [Boolean]
     transformation__description__is_protected: Boolean
     transformation__description__owner__id: ID
     transformation__description__source__id: ID
@@ -15550,6 +15640,16 @@ type Query {
     transformation__convert_query_response__source__id: ID
     transformation__convert_query_response__value: Boolean
     transformation__convert_query_response__values: [Boolean]
+    transformation__dependencies__is_protected: Boolean
+    transformation__dependencies__owner__id: ID
+    transformation__dependencies__source__id: ID
+    transformation__dependencies__value: GenericScalar
+    transformation__dependencies__values: [GenericScalar]
+    transformation__dependencies_complete__is_protected: Boolean
+    transformation__dependencies_complete__owner__id: ID
+    transformation__dependencies_complete__source__id: ID
+    transformation__dependencies_complete__value: Boolean
+    transformation__dependencies_complete__values: [Boolean]
     transformation__description__is_protected: Boolean
     transformation__description__owner__id: ID
     transformation__description__source__id: ID
@@ -17892,6 +17992,16 @@ type Query {
     tags__name__source__id: ID
     tags__name__value: String
     tags__name__values: [String]
+    transformations__dependencies__is_protected: Boolean
+    transformations__dependencies__owner__id: ID
+    transformations__dependencies__source__id: ID
+    transformations__dependencies__value: GenericScalar
+    transformations__dependencies__values: [GenericScalar]
+    transformations__dependencies_complete__is_protected: Boolean
+    transformations__dependencies_complete__owner__id: ID
+    transformations__dependencies_complete__source__id: ID
+    transformations__dependencies_complete__value: Boolean
+    transformations__dependencies_complete__values: [Boolean]
     transformations__description__is_protected: Boolean
     transformations__description__owner__id: ID
     transformations__description__source__id: ID
@@ -21374,6 +21484,16 @@ type Query {
     tags__name__source__id: ID
     tags__name__value: String
     tags__name__values: [String]
+    transformations__dependencies__is_protected: Boolean
+    transformations__dependencies__owner__id: ID
+    transformations__dependencies__source__id: ID
+    transformations__dependencies__value: GenericScalar
+    transformations__dependencies__values: [GenericScalar]
+    transformations__dependencies_complete__is_protected: Boolean
+    transformations__dependencies_complete__owner__id: ID
+    transformations__dependencies_complete__source__id: ID
+    transformations__dependencies_complete__value: Boolean
+    transformations__dependencies_complete__values: [Boolean]
     transformations__description__is_protected: Boolean
     transformations__description__owner__id: ID
     transformations__description__source__id: ID
@@ -21699,6 +21819,16 @@ type Query {
     tags__name__source__id: ID
     tags__name__value: String
     tags__name__values: [String]
+    transformations__dependencies__is_protected: Boolean
+    transformations__dependencies__owner__id: ID
+    transformations__dependencies__source__id: ID
+    transformations__dependencies__value: GenericScalar
+    transformations__dependencies__values: [GenericScalar]
+    transformations__dependencies_complete__is_protected: Boolean
+    transformations__dependencies_complete__owner__id: ID
+    transformations__dependencies_complete__source__id: ID
+    transformations__dependencies_complete__value: Boolean
+    transformations__dependencies_complete__values: [Boolean]
     transformations__description__is_protected: Boolean
     transformations__description__owner__id: ID
     transformations__description__source__id: ID
@@ -23235,6 +23365,18 @@ type Query {
     any__source__id: ID
     any__value: String
     any__values: [String]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -23434,6 +23576,18 @@ type Query {
     convert_query_response__source__id: ID
     convert_query_response__value: Boolean
     convert_query_response__values: [Boolean]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
@@ -23621,6 +23775,18 @@ type Query {
     any__source__id: ID
     any__value: String
     any__values: [String]
+    dependencies__is_protected: Boolean
+    dependencies__isnull: Boolean
+    dependencies__owner__id: ID
+    dependencies__source__id: ID
+    dependencies__value: GenericScalar
+    dependencies__values: [GenericScalar]
+    dependencies_complete__is_protected: Boolean
+    dependencies_complete__isnull: Boolean
+    dependencies_complete__owner__id: ID
+    dependencies_complete__source__id: ID
+    dependencies_complete__value: Boolean
+    dependencies_complete__values: [Boolean]
     description__is_protected: Boolean
     description__isnull: Boolean
     description__owner__id: ID
