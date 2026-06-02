@@ -82,7 +82,7 @@
     "prismjs": "^1.30.0",
     "react": "^19.2.7",
     "react-aria-components": "^1.18.0",
-    "react-datepicker": "9.1.0",
+    "react-datepicker": "8.1.0",
     "react-diff-view": "^3.3.3",
     "react-dom": "^19.2.7",
     "react-error-boundary": "^6.1.2",
