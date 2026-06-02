@@ -5,7 +5,7 @@ from graphql import GraphQLResolveInfo
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
-from infrahub.auth import AuthType
+from infrahub.auth.types import AuthType
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager

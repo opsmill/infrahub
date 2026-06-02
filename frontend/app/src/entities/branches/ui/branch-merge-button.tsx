@@ -24,7 +24,7 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
   const { navigateToPage } = useNavigateAfterBranchRemoval();
   const [isMergeRequested, setIsMergeRequested] = useState(false);
 
-  const { isPending, data, refetch } = useGetBranchActionState({
+  const { isPending, data } = useGetBranchActionState({
     branchName: branch.name,
     workflow: [BRANCH_MERGE_WORKFLOW],
     state: TASK_ONGOING_STATES,
@@ -60,8 +60,8 @@ export const BranchMergeButton = ({ branch }: BranchMergeButtonProps) => {
       if (deleteBranchAfterMerge) {
         navigateToPage("/branches", branch.name);
       }
-
-      await refetch();
+      // No manual refetch needed: `useMergeBranch` invalidates
+      // `branchesQueryKeys.all`, which covers the action-state query above.
     } catch (error) {
       console.error(error);
       setIsMergeRequested(false);

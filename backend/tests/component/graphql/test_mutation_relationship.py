@@ -5,7 +5,8 @@ from uuid import uuid4
 
 from infrahub_sdk.uuidt import UUIDT
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch

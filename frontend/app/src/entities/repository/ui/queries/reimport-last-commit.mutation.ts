@@ -11,6 +11,9 @@ interface ReimportLastCommitProps extends MutationConfig<typeof reimportLastComm
 
 export const REIMPORT_LAST_COMMIT_MUTATION_KEY = ["repository", "reimport-last-commit"] as const;
 
+// invalidation-at-callsite: this hook intentionally accepts a `config` argument
+// so each caller chooses which queries to invalidate (e.g.
+// repository-menu-section.tsx invalidates `objectQueryKeys.all` on success).
 export function useReimportLastCommitMutation(
   config?: Omit<ReimportLastCommitProps, "mutationFn">
 ) {

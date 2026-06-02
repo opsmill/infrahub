@@ -3,6 +3,13 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class GeneratorInstanceNode(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    status: str
+
+
 class RequestGeneratorRun(BaseModel):
     """Runs a generator."""
 

@@ -3,7 +3,7 @@ from typer.testing import CliRunner
 
 from infrahub.git_credential.askpass import app
 
-runner = CliRunner(mix_stderr=False)
+runner = CliRunner()
 
 
 def test_askpass_username(

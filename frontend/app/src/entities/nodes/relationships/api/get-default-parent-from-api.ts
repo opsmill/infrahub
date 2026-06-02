@@ -4,7 +4,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 import type { FormRelationshipValue } from "@/shared/components/form/type";
 
-import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
+import { getRelationshipParent } from "@/entities/nodes/relationships/api/get-relationship-parent.query";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 
 interface GetDefaultParentFromApiParams extends ContextParams {

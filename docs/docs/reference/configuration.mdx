@@ -204,6 +204,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_SECURITY_SSO_USER_DEFAULT_GROUP` | Name of the group to which users authenticated via SSO will belong if not provided by identity provider | None | None |
 | `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_FILTER` | Regex(es) that decide which external identity-provider group claims become Infrahub groups. Accepts one regex or a list; the first matching pattern wins. Use a named capture group `(?P<name>...)` to set the group name; otherwise the full claim is used. Leave empty to disable auto-creation. | None | None |
 | `INFRAHUB_SECURITY_AUTO_CREATE_GROUPS_MAX_PER_LOGIN` | Maximum number of groups that can be auto-created during a single login. Once reached, further new groups are skipped (with a warning) but the login still succeeds. Adding the user to groups that already exist is not limited. | integer | 50 |
+| `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` | When enabled, an SSO login that has no linked identity and matches an existing account by display name claims that account, as long as it has not already been linked to another identity. When disabled, such a login always provisions a separate account instead of reusing an existing one. | boolean | True |
 
 ### INFRAHUB_SECURITY_OAUTH2_PROVIDER_SETTINGS
 
@@ -250,6 +251,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_GOOGLE_DISPLAY_LABEL` | None | string | Google |
 | `INFRAHUB_OIDC_GOOGLE_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_GOOGLE_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OIDC_GOOGLE_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_GOOGLE_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_GOOGLE_DISCOVERY_URL` | None | string | https://accounts.google.com/.well-known/openid-configuration |
@@ -260,6 +262,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER1_DISPLAY_LABEL` | None | string | Single Sign on |
 | `INFRAHUB_OIDC_PROVIDER1_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER1_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER1_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER1_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER1_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -268,6 +271,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_OIDC_PROVIDER2_DISPLAY_LABEL` | None | string | Single Sign on |
 | `INFRAHUB_OIDC_PROVIDER2_USERINFO_METHOD` | None | string (post, get) | get |
 | `INFRAHUB_OIDC_PROVIDER2_PKCE_ENABLED` | Enable PKCE (RFC 7636) with S256 method for authorization code flow | boolean | True |
+| `INFRAHUB_OIDC_PROVIDER2_ID_TOKEN_VERIFY_SIGNATURE` | Verify the cryptographic signature, audience and issuer of the OIDC id_token. | boolean | True |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_ID` | Client ID of the application created in the auth provider | string | None |
 | `INFRAHUB_OIDC_PROVIDER2_CLIENT_SECRET` | Client secret as defined in auth provider | None | None |
 | `INFRAHUB_OIDC_PROVIDER2_DISCOVERY_URL` | The OIDC discovery URL xyz/.well-known/openid-configuration | string | None |
@@ -286,7 +290,6 @@ LDAP authentication configuration.
 | `INFRAHUB_LDAP_USER_SEARCH_BASE` | Distinguished name of the directory subtree where user entries are stored, e.g. `OU=Users,DC=corp,DC=example,DC=com`. | None | None |
 | `INFRAHUB_LDAP_USER_SEARCH_FILTER` | LDAP filter used to locate a user entry by their sign-in name. The `{username}` placeholder is substituted at sign-in time with the user-supplied login name and is safely escaped to prevent filter injection. If left empty, a default is generated from the configured username attribute (`attribute_username`), so changing the username attribute keeps the filter aligned automatically. | None | None |
 | `INFRAHUB_LDAP_ATTRIBUTE_USERNAME` | Name of the LDAP attribute that holds a user's sign-in name. Defaults to `sAMAccountName` (typical on Active Directory); `uid` is typical on OpenLDAP. | string | sAMAccountName |
-| `INFRAHUB_LDAP_ATTRIBUTE_EMAIL` | Name of the LDAP attribute that holds a user's email address. | string | mail |
 | `INFRAHUB_LDAP_ATTRIBUTE_DISPLAY_NAME` | Name of the LDAP attribute that holds a user's human-readable display name. | string | displayName |
 | `INFRAHUB_LDAP_ATTRIBUTE_DISABLED` | Name of an LDAP attribute that signals whether an account is disabled. Defaults to `userAccountControl` (Active Directory's mechanism). Leave empty for directories that do not expose an equivalent attribute; the disabled-account check is then skipped. | None | userAccountControl |
 | `INFRAHUB_LDAP_ATTRIBUTE_DISABLED_BITMASK` | When `attribute_disabled` is set, the integer value of that attribute is treated as a bitmask; the account is considered disabled if any of these bits are set. Default `0x2` matches Active Directory's standard 'account disabled' flag. | integer | 2 |

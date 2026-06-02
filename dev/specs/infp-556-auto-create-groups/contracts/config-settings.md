@@ -108,6 +108,6 @@ class SecuritySettings(BaseSettings):
 **Type**: `int`
 **Default**: `50`
 **Required**: No
-**Behavior**: Soft cap on the number of *new* group creations attempted within a single login (FR-020). Membership additions to already-existing groups are uncounted. When the cap is reached mid-login, remaining matching claims are dropped, a single `GroupAutoCreateCapBreachEvent` is emitted carrying the cap value, the verbatim length-truncated dropped claim values, and the dropped count; the login completes successfully.
+**Behavior**: Soft cap on the number of *new* group creations attempted within a single login (FR-020). Membership additions to already-existing groups are uncounted. When the cap is reached mid-login, remaining matching claims are dropped, a single `GroupAutoCreateCappedEvent` is emitted carrying the cap value, the verbatim length-truncated dropped claim values, and the dropped count; the login completes successfully.
 
 **Validation**: Must be `>= 1`. Configuration with `0` or negative is rejected at startup.

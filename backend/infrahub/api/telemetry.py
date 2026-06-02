@@ -13,7 +13,7 @@ from infrahub.telemetry.constants import RemoteSendStatus  # noqa: TC001  (Pydan
 from infrahub.telemetry.repository import TelemetrySnapshotRepository
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.database import InfrahubDatabase
     from infrahub.permissions.manager import PermissionManager
     from infrahub.telemetry.snapshot import TelemetrySnapshot

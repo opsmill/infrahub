@@ -5,7 +5,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from infrahub import config
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
 from infrahub.core.branch import Branch

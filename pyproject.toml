@@ -27,7 +27,7 @@ dependencies = [
     "email-validator>=2.1,<2.2",
     "redis[hiredis]==6.0.0",
     "typer==0.19.2",
-    "click==8.1.7",
+    "click>=8.3,<9",
     "prefect==3.6.13",
     "prefect-redis==0.2.8",
     "ujson>=5,<6",
@@ -66,7 +66,7 @@ dependencies = [
     "dulwich==0.24.7",
     "whenever==0.9.3",
     "netutils==1.12.0",
-    "ariadne-codegen==0.15.3",
+    "ariadne-codegen==0.18.0",
 ]
 
 [project.optional-dependencies]
@@ -325,7 +325,6 @@ disable_error_code = [
 [[tool.mypy.overrides]]
 module = "infrahub.core.schema.schema_branch"
 disable_error_code = [
-    "arg-type",
     "assignment",
     "attr-defined",
     "index",
@@ -634,6 +633,10 @@ allow-dunder-method-names = [
     "UP035",    # `typing.List` is deprecated, use `list` instead
 ]
 
+"**/graphql_queries/*.py" = [
+    "E501",  # ruff check --fix produces a long single-line union before ruff format wraps it
+]
+
 "backend/infrahub/cli/db.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
@@ -708,6 +711,13 @@ allow-dunder-method-names = [
 ]
 
 "backend/infrahub/graphql/manager.py" = [
+    ##################################################################################################
+    # Refactor code and remove the ignore rule
+    ##################################################################################################
+    "PLR0915", # Too many statements
+]
+
+"backend/infrahub/graphql/mutations/main.py" = [
     ##################################################################################################
     # Refactor code and remove the ignore rule
     ##################################################################################################

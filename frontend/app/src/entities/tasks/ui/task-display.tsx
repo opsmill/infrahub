@@ -1,13 +1,11 @@
-import useQuery from "@/shared/api/graphql/useQuery";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Badge } from "@/shared/components/ui/badge";
-import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
-import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
+import { useGetTaskDetails } from "@/entities/tasks/ui/queries/get-task-details.query";
 
 import { getSeverityBadge, type tLog } from "./logs";
 
@@ -83,24 +81,24 @@ interface TaskDisplayProps {
 }
 
 export function TaskDisplay({ branch, workflow, relatedNode }: TaskDisplayProps) {
-  const { loading, error, data } = useQuery(TASK_DETAILS, {
-    variables: {
+  const { isLoading, error, data } = useGetTaskDetails(
+    {
       branch,
       workflow,
       relatedNodes: relatedNode ? [relatedNode] : undefined,
     },
-    pollInterval: 5000,
-  });
+    { refetchInterval: 5000 }
+  );
 
   if (error) {
     return <ErrorScreen message="An error occurred while retrieving the task details." />;
   }
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 
-  const tasks = data[TASK_OBJECT].edges?.map(({ node }) => node) ?? [];
+  const tasks = data ?? [];
 
   if (tasks.length === 0) {
     return (

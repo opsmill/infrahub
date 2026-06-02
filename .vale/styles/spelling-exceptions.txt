@@ -134,6 +134,7 @@ menu_placement
 metadata
 microservices
 middleware
+misconfigured
 mixin
 modeline
 modularization
@@ -165,6 +166,7 @@ partial_match
 passthrough
 performant
 pluggable
+pnpm
 pre
 prebuilt
 precomputed
@@ -270,5 +272,8 @@ QRadar
 rsyslog
 sourcetype
 Splunk
+stderr
+stdin
+stdout
 syslog
 Syslog

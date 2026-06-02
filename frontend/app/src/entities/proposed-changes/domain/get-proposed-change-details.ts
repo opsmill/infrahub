@@ -6,7 +6,7 @@ import {
 
 export type GetProposedChangeDetailsParams = ProposedChangeDetailsFromApiParams;
 
-export type GetProposedChangeDetailsResponse = Awaited<ReturnType<typeof getProposedChangeDetails>>;
+export type GetProposedChangeDetailsResult = Awaited<ReturnType<typeof getProposedChangeDetails>>;
 
 export const getProposedChangeDetails = async (params: GetProposedChangeDetailsParams) => {
   const { data, errors } = await getProposedChangeDetailsFromApi(params);

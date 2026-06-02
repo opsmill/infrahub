@@ -18,7 +18,8 @@ from prefect.testing.utilities import prefect_test_harness
 from pytest_httpx import HTTPXMock
 
 from infrahub import config
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core import registry
 from infrahub.core.attribute import (
     Boolean,

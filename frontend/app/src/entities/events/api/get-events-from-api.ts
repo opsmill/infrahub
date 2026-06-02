@@ -127,6 +127,32 @@ const EVENTS_QUERY = graphql(`
             client_ip
             user_agent
           }
+          ... on GroupAutoCreatedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            group_id
+            group_name
+            source_pattern
+            origin_value
+          }
+          ... on GroupAutoCreateRejectedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            rejected_claim_value
+          }
+          ... on GroupAutoCreateCappedEventType {
+            idp
+            protocol
+            triggering_user_id
+            triggering_user_name
+            cap_value
+            dropped_count
+            dropped_claims
+          }
         }
       }
     }

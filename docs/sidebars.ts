@@ -113,6 +113,7 @@ const sidebars: SidebarsConfig = {
           items: [
             { type: 'doc', id: 'schema/create-and-load', label: 'Create and load schema' },
             { type: 'doc', id: 'schema/migration', label: 'Schema migration' },
+            { type: 'doc', id: 'schema/marketplace/index', label: 'Marketplace' },
           ],
         },
         // ── Advanced schema features ──────────────────────────
@@ -256,7 +257,7 @@ const sidebars: SidebarsConfig = {
 
     {
       type: 'category',
-      label: 'Automation & Outputs',
+      label: 'Design & Integrate',
       collapsible: false,
       collapsed: false,
       link: { type: 'generated-index', slug: 'automation-and-outputs' },

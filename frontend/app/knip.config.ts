@@ -1,7 +1,7 @@
 import type { KnipConfig } from "knip";
 
 const config: KnipConfig = {
-  project: ["src/**/*.{ts,tsx}"],
+  project: ["src/**/*.{ts,tsx}", "scripts/**/*.{ts,mjs}"],
 
   ignore: [
     // Generated files

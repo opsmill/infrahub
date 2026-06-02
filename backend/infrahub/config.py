@@ -27,6 +27,7 @@ from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
 from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.log import get_logger
 from infrahub.tls.context_builder import TlsContextBuilder
 
 if TYPE_CHECKING:
@@ -34,6 +35,8 @@ if TYPE_CHECKING:
     from infrahub.services.adapters.message_bus import InfrahubMessageBus
     from infrahub.services.adapters.workflow import InfrahubWorkflow
 
+
+log = get_logger()
 
 VALID_DATABASE_NAME_REGEX = r"^[a-z][a-z0-9\.]+$"
 THIRTY_DAYS_IN_SECONDS = 3600 * 24 * 30
@@ -602,6 +605,19 @@ class SecurityOIDCBaseSettings(BaseSettings):
     pkce_enabled: bool = Field(
         default=True, description="Enable PKCE (RFC 7636) with S256 method for authorization code flow"
     )
+    id_token_verify_signature: bool = Field(
+        default=True,
+        description="Verify the cryptographic signature, audience and issuer of the OIDC id_token.",
+    )
+
+    @model_validator(mode="after")
+    def warn_when_signature_verification_disabled(self) -> Self:
+        if not self.id_token_verify_signature:
+            log.warning(
+                "OIDC id_token verification is disabled; any token presented to the callback will be trusted.",
+                provider=self.__class__.__name__,
+            )
+        return self
 
 
 class SecurityOIDCSettings(SecurityOIDCBaseSettings):
@@ -841,6 +857,16 @@ class SecuritySettings(BaseSettings):
     def auto_create_groups_enabled(self) -> bool:
         """True iff at least one usable filter pattern is configured."""
         return len(self._auto_create_groups_filter_patterns) > 0
+
+    sso_account_name_fallback: bool = Field(
+        default=True,
+        description=(
+            "When enabled, an SSO login that has no linked identity and matches an existing account by "
+            "display name claims that account, as long as it has not already been linked to another "
+            "identity. When disabled, such a login always provisions a separate account instead of "
+            "reusing an existing one."
+        ),
+    )
 
     @model_validator(mode="after")
     def check_oauth2_provider_settings(self) -> Self:
@@ -1221,10 +1247,6 @@ class LDAPSettings(BaseSettings):
             "Defaults to `sAMAccountName` (typical on Active Directory); "
             "`uid` is typical on OpenLDAP."
         ),
-    )
-    attribute_email: str = Field(
-        default="mail",
-        description="Name of the LDAP attribute that holds a user's email address.",
     )
     attribute_display_name: str = Field(
         default="displayName",

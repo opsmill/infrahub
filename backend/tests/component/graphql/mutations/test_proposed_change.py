@@ -5,7 +5,8 @@ from fast_depends import Provider
 from infrahub_sdk import InfrahubClient
 from prefect.client.orchestration import get_client
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.components import ComponentType
 from infrahub.core import registry
 from infrahub.core.account import GlobalPermission

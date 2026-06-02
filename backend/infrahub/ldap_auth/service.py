@@ -8,7 +8,7 @@ from infrahub.exceptions import EnterpriseRequiredError
 if TYPE_CHECKING:
     from fastapi import Request
 
-    from infrahub.auth import AuthResult
+    from infrahub.auth.auth import AuthResult
     from infrahub.database import InfrahubDatabase
 
 

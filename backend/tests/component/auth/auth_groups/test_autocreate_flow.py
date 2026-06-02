@@ -1,5 +1,3 @@
-"""Component tests for the auto-creation flow under `signin_sso_account`."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -7,11 +5,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 from infrahub import config
-from infrahub.auth import ExternalAuthProtocol, ExternalIdentity, signin_sso_account
+from infrahub.auth.auth import signin_sso_account
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup
+from tests.helpers.identities import make_identity
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -84,18 +83,6 @@ def sso_user_default_group_unset() -> Iterator[None]:
         config.SETTINGS.security.sso_user_default_group = original
 
 
-def _make_identity(
-    sub: str, *, provider_name: str = "AzureAD-corp", display_name: str = "Alice Auto"
-) -> ExternalIdentity:
-    return ExternalIdentity(
-        sub=sub,
-        provider_name=provider_name,
-        protocol=ExternalAuthProtocol.OIDC,
-        display_name=display_name,
-        email=f"{display_name.lower().replace(' ', '.')}@example.com",
-    )
-
-
 class TestAutoCreationWhenFilterEnabled:
     """Behavior of the SSO sign-in path when `auto_create_groups_filter` is configured."""
 
@@ -110,7 +97,7 @@ class TestAutoCreationWhenFilterEnabled:
 
         `origin` is set to the configured provider name and the user is added as a member.
         """
-        identity = _make_identity(sub="sub-autocreate-001", provider_name="AzureAD-corp")
+        identity = make_identity(sub="sub-autocreate-001", provider_name="AzureAD-corp")
 
         await signin_sso_account(db=db, external_identity=identity, sso_groups=["LDAP/group/network-engineering-a"])
 
@@ -137,10 +124,10 @@ class TestAutoCreationWhenFilterEnabled:
         autocreate_filter_enabled: None,
     ) -> None:
         """Second user's login on the same claim reuses the existing group without re-writing `origin`."""
-        identity_a = _make_identity(
+        identity_a = make_identity(
             sub="sub-autocreate-shared-1", provider_name="AzureAD-corp", display_name="Carol Auto"
         )
-        identity_b = _make_identity(sub="sub-autocreate-shared-2", provider_name="OktaProd", display_name="Dave Auto")
+        identity_b = make_identity(sub="sub-autocreate-shared-2", provider_name="OktaProd", display_name="Dave Auto")
 
         await signin_sso_account(db=db, external_identity=identity_a, sso_groups=["LDAP/group/network-engineering-b"])
         await signin_sso_account(db=db, external_identity=identity_b, sso_groups=["LDAP/group/network-engineering-b"])
@@ -170,7 +157,7 @@ class TestAutoCreationWhenFilterEnabled:
         autocreate_filter_no_named_capture: None,
     ) -> None:
         """A pattern without a `name` named capture group uses the full claim string as the local group name."""
-        identity = _make_identity(sub="sub-autocreate-fullclaim", display_name="Eve Auto")
+        identity = make_identity(sub="sub-autocreate-fullclaim", display_name="Eve Auto")
         await signin_sso_account(db=db, external_identity=identity, sso_groups=["network-eng-c"])
 
         groups = await NodeManager.query(db=db, schema=CoreAccountGroup, filters={"name__value": "network-eng-c"})
@@ -185,7 +172,7 @@ class TestAutoCreationWhenFilterEnabled:
         autocreate_filter_enabled: None,
     ) -> None:
         """Two claims resolving to the same effective name within one login produce one group and one membership."""
-        identity = _make_identity(sub="sub-autocreate-dedup-001", display_name="Frank Auto")
+        identity = make_identity(sub="sub-autocreate-dedup-001", display_name="Frank Auto")
 
         # Both claims match the filter and resolve to the same captured name `dedup-target-1`.
         await signin_sso_account(
@@ -205,7 +192,7 @@ class TestAutoCreationWhenFilterEnabled:
         autocreate_filter_enabled: None,
     ) -> None:
         """Non-matching claims are silently skipped; only matching claims drive group creation."""
-        identity = _make_identity(sub="sub-non-matching-001", display_name="Hugo Auto")
+        identity = make_identity(sub="sub-non-matching-001", display_name="Hugo Auto")
 
         await signin_sso_account(
             db=db,
@@ -237,7 +224,7 @@ class TestAutoCreationWhenFilterDisabled:
         The legacy exact-name-lookup-and-add path is used instead; no group is auto-created
         from a claim that has no matching pre-existing group.
         """
-        identity = _make_identity(sub="sub-legacy-noop-001", display_name="Greta Legacy")
+        identity = make_identity(sub="sub-legacy-noop-001", display_name="Greta Legacy")
 
         await signin_sso_account(db=db, external_identity=identity, sso_groups=["LDAP/group/should-not-be-created-x"])
 
@@ -272,7 +259,7 @@ class TestDefaultGroupFallback:
         await default_group.new(db=db, name=sso_user_default_group_configured)
         await default_group.save(db=db)
 
-        identity = _make_identity(sub="sub-default-fallback-1", display_name="Iris Default")
+        identity = make_identity(sub="sub-default-fallback-1", display_name="Iris Default")
 
         await signin_sso_account(
             db=db,
@@ -306,7 +293,7 @@ class TestDefaultGroupFallback:
         await default_group.new(db=db, name=sso_user_default_group_configured)
         await default_group.save(db=db)
 
-        identity = _make_identity(sub="sub-default-fallback-empty", display_name="Jules Default")
+        identity = make_identity(sub="sub-default-fallback-empty", display_name="Jules Default")
 
         await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
@@ -329,7 +316,7 @@ class TestDefaultGroupFallback:
 
         Locks down that "no default" is not treated as an error.
         """
-        identity = _make_identity(sub="sub-no-fallback-1", display_name="Kai NoDefault")
+        identity = make_identity(sub="sub-no-fallback-1", display_name="Kai NoDefault")
 
         auth_result = await signin_sso_account(db=db, external_identity=identity, sso_groups=["slack/general-w"])
 
@@ -349,7 +336,7 @@ class TestDefaultGroupFallback:
         await default_group.new(db=db, name=sso_user_default_group_configured)
         await default_group.save(db=db)
 
-        identity = _make_identity(sub="sub-match-precedence-1", display_name="Lea Match")
+        identity = make_identity(sub="sub-match-precedence-1", display_name="Lea Match")
 
         await signin_sso_account(
             db=db,
@@ -394,7 +381,7 @@ class TestDefaultGroupFallback:
         await default_group.new(db=db, name=sso_user_default_group_configured)
         await default_group.save(db=db)
 
-        identity = _make_identity(sub="sub-legacy-default-1", display_name="Mira Legacy")
+        identity = make_identity(sub="sub-legacy-default-1", display_name="Mira Legacy")
 
         await signin_sso_account(db=db, external_identity=identity, sso_groups=[])
 
@@ -419,7 +406,7 @@ class TestPerLoginCap:
     ) -> None:
         """A login over the cap creates exactly `cap` groups, completes, and silently drops the surplus."""
         cap = autocreate_filter_with_low_cap  # 2
-        identity = _make_identity(sub="sub-cap-001", display_name="Nora Cap")
+        identity = make_identity(sub="sub-cap-001", display_name="Nora Cap")
 
         auth_result = await signin_sso_account(
             db=db,
@@ -471,7 +458,7 @@ class TestPerLoginCap:
         await preexisting.new(db=db, name="cap-test-preexisting")
         await preexisting.save(db=db)
 
-        identity = _make_identity(sub="sub-cap-002", display_name="Oscar Cap")
+        identity = make_identity(sub="sub-cap-002", display_name="Oscar Cap")
 
         await signin_sso_account(
             db=db,

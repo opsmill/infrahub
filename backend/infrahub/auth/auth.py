@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 import bcrypt
 import jwt
 from pydantic import BaseModel
 
 from infrahub import config, lock, models
-from infrahub.auth.auth_groups import AutoCreatedGroupsService, ClaimFilter
+from infrahub.auth.auth_groups import (
+    AutoCreatedGroupsService,
+    AutoCreateEventEmitter,
+    ClaimFilter,
+    DisabledAutoCreateEventEmitter,
+    LiveAutoCreateEventEmitter,
+)
 from infrahub.auth.session import AccountSession
 from infrahub.auth.types import AuthType
 from infrahub.config import (
@@ -18,12 +24,14 @@ from infrahub.config import (
     SecurityOIDCGoogle,
     SecurityOIDCSettings,
 )
+from infrahub.context import InfrahubContext
 from infrahub.core.account import validate_token
 from infrahub.core.constants import AccountStatus, AccountType, InfrahubKind
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.protocols import CoreAccount, CoreAccountGroup, CoreAccountRole, CoreGenericAccount
 from infrahub.core.registry import registry
+from infrahub.events.models import EventMeta
 from infrahub.exceptions import AuthorizationError, GatewayError, NodeNotFoundError, ProcessingError
 from infrahub.external_protocols import ExternalAuthProtocol  # noqa: TC001
 from infrahub.log import get_logger
@@ -33,6 +41,7 @@ if TYPE_CHECKING:
 
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
+    from infrahub.services.adapters.event import InfrahubEventService
 
 log = get_logger()
 
@@ -88,7 +97,7 @@ class ExternalIdentity(BaseModel):
     provider_name: str  # as configured in Infrahub, e.g. "google", "provider1"
     protocol: ExternalAuthProtocol
     display_name: str  # user_info["name"] — used as label and as name on creation (if no conflict)
-    email: str  # user_info["email"] — fallback for name when display_name is already taken
+    email: str | None = None  # optional fallback name on display-name collision; not all providers expose it
 
 
 async def validate_active_account(db: InfrahubDatabase, account_id: str) -> None:
@@ -179,7 +188,10 @@ async def create_fresh_access_token(
 
 
 async def signin_sso_account(
-    db: InfrahubDatabase, external_identity: ExternalIdentity, sso_groups: list[str]
+    db: InfrahubDatabase,
+    external_identity: ExternalIdentity,
+    sso_groups: list[str],
+    event_service: InfrahubEventService | None = None,
 ) -> AuthResult:
     existing_identity = await _find_existing_identity(db=db, external_identity=external_identity)
     if existing_identity is not None:
@@ -189,7 +201,13 @@ async def signin_sso_account(
     else:
         account = await _create_account_for_new_identity(db=db, external_identity=external_identity)
 
-    await _assign_group_memberships(db=db, account=account, external_identity=external_identity, sso_groups=sso_groups)
+    await _assign_group_memberships(
+        db=db,
+        account=account,
+        external_identity=external_identity,
+        sso_groups=sso_groups,
+        event_service=event_service,
+    )
     return await _build_signin_result(db=db, account=account)
 
 
@@ -211,14 +229,16 @@ async def _find_existing_identity(*, db: InfrahubDatabase, external_identity: Ex
 
 async def _account_from_existing_identity(
     *, db: InfrahubDatabase, identity_node: Node, external_identity: ExternalIdentity
-) -> Node:
+) -> CoreAccount:
     """Return the account linked to an existing identity, refreshing its label when stale."""
-    account = await identity_node.get_relationship(name="account").get_peer(db=db, raise_on_error=True)
+    account = await identity_node.get_relationship(name="account").get_peer(
+        db=db, peer_type=CoreAccount, raise_on_error=True
+    )
     await _set_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
     return account
 
 
-async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_identity: ExternalIdentity) -> Node:
+async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_identity: ExternalIdentity) -> CoreAccount:
     """Resolve or create the account for a never-before-seen external identity.
 
     Serialized through the `external-identity-account` lock so concurrent first-logins for the
@@ -232,12 +252,18 @@ async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_ide
     - No account by that name → create a new account with `display_name` as its `name`.
     """
     lock_key = f"{external_identity.protocol}:{external_identity.provider_name}:{external_identity.sub}"
+    name_fallback_enabled = config.SETTINGS.security.sso_account_name_fallback
+
     async with lock.registry.get(name=lock_key, namespace="external-identity-account"):
         account_by_name = await NodeManager.get_one_by_default_filter(
-            db=db, id=external_identity.display_name, kind=InfrahubKind.ACCOUNT
+            db=db, id=external_identity.display_name, kind=CoreAccount
         )
 
-        if account_by_name is not None and not await _account_has_identity(db=db, account=account_by_name):
+        if (
+            name_fallback_enabled
+            and account_by_name is not None
+            and not await _account_has_identity(db=db, account=account_by_name)
+        ):
             return await _link_unclaimed_account(db=db, account=account_by_name, external_identity=external_identity)
 
         account_name = await _pick_account_name(
@@ -248,7 +274,7 @@ async def _create_account_for_new_identity(*, db: InfrahubDatabase, external_ide
         )
 
 
-async def _account_has_identity(*, db: InfrahubDatabase, account: Node) -> bool:
+async def _account_has_identity(*, db: InfrahubDatabase, account: CoreAccount) -> bool:
     identities = await NodeManager.query(
         db=db,
         schema=InfrahubKind.EXTERNALIDENTITY,
@@ -258,7 +284,9 @@ async def _account_has_identity(*, db: InfrahubDatabase, account: Node) -> bool:
     return bool(identities)
 
 
-async def _link_unclaimed_account(*, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity) -> Node:
+async def _link_unclaimed_account(
+    *, db: InfrahubDatabase, account: CoreAccount, external_identity: ExternalIdentity
+) -> CoreAccount:
     """Attach the new external identity to an existing local-only account."""
     await _create_identity_node(db=db, account=account, external_identity=external_identity)
     await _set_label_if_stale(db=db, account=account, display_name=external_identity.display_name)
@@ -269,15 +297,22 @@ async def _pick_account_name(*, db: InfrahubDatabase, external_identity: Externa
     """Pick the `name` for a new account, falling back to email on display-name collision.
 
     Raises:
-        ProcessingError: When both `display_name` and `email` are already in use as account names.
+        ProcessingError: When the display name is taken and no email fallback is available, or
+            when both `display_name` and `email` are already in use as account names.
 
     """
     if not name_collision:
         return external_identity.display_name
 
-    existing_by_email = await NodeManager.get_one_by_default_filter(
-        db=db, id=external_identity.email, kind=InfrahubKind.ACCOUNT
-    )
+    if external_identity.email is None:
+        raise ProcessingError(
+            message=(
+                f"Cannot create account: '{external_identity.display_name}' is already in use "
+                "and the identity provider did not supply an email to derive a fallback name."
+            )
+        )
+
+    existing_by_email = await NodeManager.get_one_by_default_filter(db=db, id=external_identity.email, kind=CoreAccount)
     if existing_by_email is not None:
         raise ProcessingError(
             message=(
@@ -290,8 +325,8 @@ async def _pick_account_name(*, db: InfrahubDatabase, external_identity: Externa
 
 async def _create_account_with_identity(
     *, db: InfrahubDatabase, account_name: str, external_identity: ExternalIdentity
-) -> Node:
-    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+) -> CoreAccount:
+    account = await Node.init(db=db, schema=CoreAccount)
     await account.new(
         db=db,
         name=account_name,
@@ -304,7 +339,9 @@ async def _create_account_with_identity(
     return account
 
 
-async def _create_identity_node(*, db: InfrahubDatabase, account: Node, external_identity: ExternalIdentity) -> None:
+async def _create_identity_node(
+    *, db: InfrahubDatabase, account: CoreAccount, external_identity: ExternalIdentity
+) -> None:
     identity_node = await Node.init(db=db, schema=InfrahubKind.EXTERNALIDENTITY)
     await identity_node.new(
         db=db,
@@ -316,7 +353,7 @@ async def _create_identity_node(*, db: InfrahubDatabase, account: Node, external
     await identity_node.save(db=db)
 
 
-async def _set_label_if_stale(*, db: InfrahubDatabase, account: Node, display_name: str) -> None:
+async def _set_label_if_stale(*, db: InfrahubDatabase, account: CoreAccount, display_name: str) -> None:
     label = account.get_attribute(name="label")
     if label.value == display_name:
         return
@@ -327,9 +364,10 @@ async def _set_label_if_stale(*, db: InfrahubDatabase, account: Node, display_na
 async def _assign_group_memberships(
     *,
     db: InfrahubDatabase,
-    account: Node,
+    account: CoreAccount,
     external_identity: ExternalIdentity,
     sso_groups: list[str],
+    event_service: InfrahubEventService | None = None,
 ) -> None:
     """Attach the account to local groups derived from the external claims.
 
@@ -342,24 +380,31 @@ async def _assign_group_memberships(
          group.
       3. Otherwise, the legacy exact-name lookup runs against the raw `sso_groups`.
     """
+    effective_groups = sso_groups
     if config.SETTINGS.security.auto_create_groups_enabled:
+        emitter = await _build_auto_create_event_emitter(
+            db=db,
+            account=account,
+            event_service=event_service,
+            protocol=external_identity.protocol,
+            provider_name=external_identity.provider_name,
+        )
         granted = await AutoCreatedGroupsService(
             db=db,
             account=account,
             provider_name=external_identity.provider_name,
             lock_registry=lock.registry,
             max_per_login=config.SETTINGS.security.auto_create_groups_max_per_login,
+            emitter=emitter,
         ).assign(
             claims=sso_groups,
             claim_filter=ClaimFilter(patterns=config.SETTINGS.security.auto_create_groups_filter_patterns),
         )
         if granted:
             return
-        # Filter active but produced nothing: non-matching claims are silently skipped, so
-        # the only remaining path is the default-group fallback.
-        sso_groups = []
+        effective_groups = []
 
-    if not sso_groups:
+    if not effective_groups:
         default_name = config.SETTINGS.security.sso_user_default_group
         if not default_name:
             return
@@ -368,37 +413,68 @@ async def _assign_group_memberships(
             provider_name=external_identity.provider_name,
             default_group=default_name,
         )
-        sso_groups = [default_name]
+        effective_groups = [default_name]
 
     infrahub_groups = await NodeManager.query(
         db=db,
         schema=CoreAccountGroup,
-        filters={"name__values": sso_groups},
+        filters={"name__values": effective_groups},
         prefetch_relationships=True,
     )
     for group in infrahub_groups:
         members_rel = group.get_relationship(name="members")
-        members = await members_rel.get_peers(db=db, branch_agnostic=True, peer_type=CoreAccount)
-        if account.id in members:
-            continue
-        await members_rel.add(db=db, data=account)
-        await members_rel.save(db=db)
+        if await members_rel.add(db=db, data={"id": account.id}):
+            await members_rel.save(db=db)
 
 
-async def _build_signin_result(*, db: InfrahubDatabase, account: Node) -> AuthResult:
+async def _build_auto_create_event_emitter(
+    *,
+    db: InfrahubDatabase,
+    account: CoreAccount,
+    event_service: InfrahubEventService | None,
+    protocol: ExternalAuthProtocol,
+    provider_name: str,
+) -> AutoCreateEventEmitter:
+    """Build the emitter the auto-create service uses to emit audit events.
+
+    Returns the disabled no-op variant when no event service is supplied.
+    """
+    if event_service is None:
+        return DisabledAutoCreateEventEmitter()
+
+    branch = await registry.get_branch(db=db)
+    account_session = AccountSession(
+        auth_type=AuthType.JWT,
+        authenticated=True,
+        account_id=account.id,
+    )
+    event_context = InfrahubContext.init(branch=branch, account=account_session).to_event_context()
+
+    def factory() -> EventMeta:
+        return EventMeta(branch=branch, context=event_context, account_id=account_session.account_id)
+
+    return LiveAutoCreateEventEmitter(
+        account=account,
+        provider_name=provider_name,
+        event_service=event_service,
+        event_meta_factory=factory,
+        protocol=protocol,
+    )
+
+
+async def _build_signin_result(*, db: InfrahubDatabase, account: CoreAccount) -> AuthResult:
     refresh_expires = datetime.now(tz=UTC) + timedelta(seconds=config.SETTINGS.security.refresh_token_lifetime)
     session_id = await create_db_refresh_token(db=db, account_id=account.id, expiration=refresh_expires)
     access_token = generate_access_token(account_id=account.id, session_id=session_id)
     refresh_token = generate_refresh_token(account_id=account.id, session_id=session_id, expiration=refresh_expires)
 
     groups, roles = await fetch_account_groups_and_roles(db=db, account_id=account.id)
-    typed_account = cast("CoreAccount", account)
 
     return AuthResult(
         token=models.UserToken(access_token=access_token, refresh_token=refresh_token),
         account_id=account.id,
-        account_name=typed_account.name.value,
-        account_type=typed_account.account_type.value,
+        account_name=account.name.value,
+        account_type=account.account_type.value,
         session_id=session_id,
         groups=groups,
         roles=roles,

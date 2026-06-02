@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import uuid
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import InfrahubContext
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
