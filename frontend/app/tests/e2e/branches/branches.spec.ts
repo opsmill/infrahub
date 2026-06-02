@@ -67,12 +67,13 @@ test.describe("Branches creation and deletion", () => {
       await modalDelete.getByRole("button", { name: "Delete" }).click();
 
       // we should stay on the branch
+      await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
-      await page.getByRole("button", { name: BRANCH_NAME_2 }).click();
 
+      await page.getByTestId("branch-selector-trigger").click();
       await expect(page.getByLabel("branch list")).toContainText(BRANCH_NAME_1);
       await expect(page.getByLabel("branch list")).not.toContainText(BRANCH_NAME_2);
-      await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
+
       expect(page.url()).toContain(`/branches?branch=${BRANCH_NAME_1}`);
     });
 

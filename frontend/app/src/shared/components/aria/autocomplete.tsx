@@ -42,11 +42,11 @@ export function Autocomplete({
   );
 }
 
-export interface SearchInputProps extends AriaSearchFieldProps {
+interface SearchInputProps extends AriaSearchFieldProps {
   placeholder?: AriaInputProps["placeholder"];
 }
 
-export function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
+function AutocompleteSearchField({ className, placeholder, ...props }: SearchInputProps) {
   return (
     <AriaSearchField
       className={classNames("group flex items-center text-sm", className)}

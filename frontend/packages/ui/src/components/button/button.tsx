@@ -20,7 +20,7 @@ const buttonVariants = tv({
     "transition-all duration-150 ease-out",
     "data-disabled:pointer-events-none data-disabled:cursor-default data-disabled:opacity-60 data-disabled:shadow-none",
     "data-pending:cursor-default data-pending:select-none",
-    "data-pressed:scale-95 data-pressed:shadow-none data-pressed:duration-75",
+    "data-pressed:scale-97 data-pressed:shadow-none data-pressed:duration-75",
     "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   ],
   variants: {
