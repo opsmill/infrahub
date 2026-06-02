@@ -2299,7 +2299,35 @@ class SchemaBranch:
                 for item_name in relationships_to_delete:
                     rel = node_copy.get_relationship(name=item_name)
                     rel.state = HashableModelState.ABSENT
+                self._strip_removed_paths_from_identity_fields(
+                    node=node_copy, removed_names=attributes_to_delete + relationships_to_delete
+                )
                 self.set(name=name, schema=node_copy)
+
+    @staticmethod
+    def _strip_removed_paths_from_identity_fields(node: NodeSchema, removed_names: list[str]) -> None:
+        """Drop any path-based identity entry that points at a removed attribute or relationship.
+
+        Locally-defined identity fields are stripped alongside inherited ones, matching the
+        rename handler's existing behavior. A `uniqueness_constraints` group is dropped in
+        full when any of its paths is stale, so the reloaded schema can never enforce a
+        stricter constraint than the user originally declared.
+        """
+
+        def is_stale(path: str) -> bool:
+            return any(path == n or path.startswith(f"{n}__") for n in removed_names)
+
+        if node.uniqueness_constraints:
+            kept_groups = [group for group in node.uniqueness_constraints if not any(is_stale(p) for p in group)]
+            node.uniqueness_constraints = kept_groups or None
+        if node.human_friendly_id:
+            node.human_friendly_id = [p for p in node.human_friendly_id if not is_stale(p)] or None
+        if node.order_by:
+            node.order_by = [p for p in node.order_by if not is_stale(p)] or None
+        if node.display_labels:
+            node.display_labels = [p for p in node.display_labels if not is_stale(p)] or None
+        if node.default_filter and is_stale(node.default_filter):
+            node.default_filter = None
 
     def add_groups(self) -> None:
         if not self.has(name=InfrahubKind.GENERICGROUP):
