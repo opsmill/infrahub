@@ -500,13 +500,12 @@ def _validate_optional_remove(
     rel_schema: RelationshipSchema,
     existing_peers: dict[str, RelationshipPeerData],
 ) -> None:
-    if rel_schema.optional is False:
-        peers_to_remove = {node_data.get("id") for node_data in data.get("nodes") if node_data.get("id")}
-        remaining = set(existing_peers.keys()) - peers_to_remove
-        if not remaining:
-            raise ValidationError(
-                {"name": f"'{rel_schema.name}' is a mandatory relationship and cannot be fully removed"}
-            )
+    if rel_schema.optional is True:
+        return
+    peers_to_remove = {node_data.get("id") for node_data in data.get("nodes") if node_data.get("id")}
+    remaining = set(existing_peers.keys()) - peers_to_remove
+    if not remaining:
+        raise ValidationError({"name": f"'{rel_schema.name}' is a mandatory relationship and cannot be fully removed"})
 
 
 def _get_group_event_type(

@@ -11,14 +11,21 @@ from infrahub.core import registry
 from infrahub.core.account import ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipCardinalityManyChangelog
-from infrahub.core.constants import InfrahubKind, MetadataOptions, PermissionAction, PermissionDecision, SchemaPathType
+from infrahub.core.constants import (
+    InfrahubKind,
+    MetadataOptions,
+    PermissionAction,
+    PermissionDecision,
+    RelationshipCardinality,
+    SchemaPathType,
+)
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.schema.node_kind_update import NodeKindUpdateMigration
 from infrahub.core.migrations.shared import MigrationInput
 from infrahub.core.node import Node
 from infrahub.core.path import SchemaPath
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, NodeSchema, RelationshipSchema, SchemaRoot
 from infrahub.core.schema.definitions.core.group import core_group, core_standard_group
 from infrahub.database import InfrahubDatabase
 from infrahub.events.group_action import GroupMemberAddedEvent, GroupMemberRemovedEvent
@@ -295,27 +302,6 @@ async def test_relationship_wrong_name(
     )
     assert result.errors
     assert result.errors[0].message == "'notvalid' is not a valid relationship for 'TestPerson' at name"
-
-    # Cardinality-one relationship: first add is allowed
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"id": person_jack_main.id, "name": "primary_tag", "node_id": tag_blue_main.id},
-    )
-    assert result.errors is None
-
-    # Cardinality-one relationship: second add is rejected (peer already exists)
-    result = await graphql(
-        schema=gql_params.schema,
-        source=query,
-        context_value=gql_params.context,
-        root_value=None,
-        variable_values={"id": person_jack_main.id, "name": "primary_tag", "node_id": tag_red_main.id},
-    )
-    assert result.errors
-    assert result.errors[0].message == "'primary_tag' is a cardinality-one relationship and already has a peer"
 
 
 async def test_relationship_wrong_node(
@@ -1618,6 +1604,7 @@ async def test_relationship_add_cardinality_one_rejected(
     default_branch.update_schema_hash()
     gql_params = await prepare_graphql_params(db=db, branch=default_branch)
 
+    # adding to empty relationship succeeds
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1627,10 +1614,11 @@ async def test_relationship_add_cardinality_one_rejected(
     )
     assert result.errors is None
     refreshed = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=default_branch)
-    primary_tag = await refreshed.primary_tag.get_peer(db=db)
+    primary_tag = await refreshed.get_relationship("primary_tag").get_peer(db=db)
     assert primary_tag is not None
     assert primary_tag.id == tag_blue_main.id
 
+    # adding to cardinality-one relationship with peer is rejected
     result = await graphql(
         schema=gql_params.schema,
         source=query,
@@ -1640,6 +1628,11 @@ async def test_relationship_add_cardinality_one_rejected(
     )
     assert result.errors
     assert result.errors[0].message == "'primary_tag' is a cardinality-one relationship and already has a peer"
+
+    refreshed = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=default_branch)
+    primary_tag = await refreshed.get_relationship("primary_tag").get_peer(db=db)
+    assert primary_tag is not None
+    assert primary_tag.id == tag_blue_main.id
 
 
 class TestRelationshipRemoveMandatory:
@@ -1651,48 +1644,44 @@ class TestRelationshipRemoveMandatory:
         node_group_schema: None,
         data_schema: None,
     ) -> SchemaBranch:
-        raw_schema = {
-            "version": "1.0",
-            "nodes": [
-                {
-                    "name": "Label",
-                    "namespace": "Test",
-                    "attributes": [{"name": "name", "kind": "Text", "optional": False}],
-                },
-                {
-                    "name": "Item",
-                    "namespace": "Test",
-                    "attributes": [{"name": "name", "kind": "Text", "optional": False}],
-                    "relationships": [
-                        {
-                            "name": "labels",
-                            "peer": "TestLabel",
-                            "cardinality": "many",
-                            "optional": False,
-                        }
+        schema = SchemaRoot(
+            version="1.0",
+            nodes=[
+                NodeSchema(
+                    name="Label",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                ),
+                NodeSchema(
+                    name="Item",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                    relationships=[
+                        RelationshipSchema(
+                            name="labels", peer="TestLabel", cardinality=RelationshipCardinality.MANY, optional=False
+                        )
                     ],
-                },
-                {
-                    "name": "Category",
-                    "namespace": "Test",
-                    "attributes": [{"name": "name", "kind": "Text", "optional": False}],
-                },
-                {
-                    "name": "Product",
-                    "namespace": "Test",
-                    "attributes": [{"name": "name", "kind": "Text", "optional": False}],
-                    "relationships": [
-                        {
-                            "name": "categories",
-                            "peer": "TestCategory",
-                            "cardinality": "many",
-                            "optional": False,
-                        }
+                ),
+                NodeSchema(
+                    name="Category",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                ),
+                NodeSchema(
+                    name="Product",
+                    namespace="Test",
+                    attributes=[AttributeSchema(name="name", kind="Text", optional=False)],
+                    relationships=[
+                        RelationshipSchema(
+                            name="categories",
+                            peer="TestCategory",
+                            cardinality=RelationshipCardinality.MANY,
+                            optional=False,
+                        )
                     ],
-                },
+                ),
             ],
-        }
-        schema = SchemaRoot(**raw_schema)
+        )
         return registry.schema.register_schema(schema=schema, branch=default_branch.name)
 
     async def test_rejected(
@@ -1737,6 +1726,11 @@ class TestRelationshipRemoveMandatory:
 
         assert result.errors
         assert result.errors[0].message == "'labels' is a mandatory relationship and cannot be fully removed at name"
+
+        refreshed = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
+        remaining = await refreshed.get_relationship("labels").get_relationships(db=db)
+        assert len(remaining) == 1
+        assert remaining[0].peer_id == label.id
 
     async def test_partial_allowed(
         self,
@@ -1785,6 +1779,6 @@ class TestRelationshipRemoveMandatory:
         assert result.errors is None
 
         refreshed = await NodeManager.get_one(db=db, id=node.id, branch=default_branch)
-        remaining = await refreshed.categories.get(db=db)
+        remaining = await refreshed.get_relationship("categories").get_relationships(db=db)
         assert len(remaining) == 1
         assert remaining[0].peer_id == cat2.id
