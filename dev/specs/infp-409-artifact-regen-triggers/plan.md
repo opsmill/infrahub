@@ -2,7 +2,6 @@
 
 **Branch**: `artifact-regen-triggers-infp-409` | **Date**: 2026-06-01 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `dev/specs/infp-409-artifact-regen-triggers/spec.md`
-**Source investigation**: [`dev/specs/infp-409-artifact-regeneration-investigation.md`](../infp-409-artifact-regeneration-investigation.md)
 **Jira**: [INFP-409](https://opsmill.atlassian.net/browse/INFP-409)
 
 ## Summary

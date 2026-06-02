@@ -1,6 +1,6 @@
 # Phase 0 Research
 
-This document resolves the technical unknowns that informed the spec and the plan. The source investigation (`dev/specs/infp-409-artifact-regeneration-investigation.md`) is the authoritative deep-dive; this file records the choices and the alternatives weighed.
+This document resolves the technical unknowns that informed the spec and the plan.
 
 There are no remaining `NEEDS CLARIFICATION` markers — the investigation pre-resolved them.
 

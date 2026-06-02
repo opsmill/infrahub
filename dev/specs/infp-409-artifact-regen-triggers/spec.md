@@ -4,7 +4,6 @@
 **Created**: 2026-06-01
 **Status**: Draft
 **Jira**: [INFP-409](https://opsmill.atlassian.net/browse/INFP-409)
-**Source investigation**: [`dev/specs/infp-409-artifact-regeneration-investigation.md`](../infp-409-artifact-regeneration-investigation.md)
 **Input**: User description: *"Refactor when artifacts are re-generated with regards to changes in a git repo."*
 
 ## Background

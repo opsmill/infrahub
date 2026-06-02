@@ -37,6 +37,5 @@
 
 ## Notes
 
-- This feature builds on a detailed investigation captured at [`dev/specs/infp-409-artifact-regeneration-investigation.md`](../../infp-409-artifact-regeneration-investigation.md). The investigation is the authoritative source for the technical design (closure builder mechanics, schema attribute placement, pipeline check signatures, normalization rules). The spec is the user-facing distillation suitable for planning and stakeholder review.
 - Phase 3 (cross-branch fingerprint compare) appears in the investigation but is excluded from this feature's scope. The investigation states it is "optional, very possibly deferred to an upcoming release."
 - Items marked incomplete (none currently) would require spec updates before `/speckit-clarify` or `/speckit-plan`.
