@@ -77,7 +77,12 @@ from ... import config
 from ..constants.schema import PARENT_CHILD_IDENTIFIER, RESOURCE_POOL_REL_SUFFIX
 from .constants import INTERNAL_SCHEMA_NODE_KINDS, SchemaNamespace
 from .node_inheritance_handler import NodeInheritanceHandler
-from .order_by import is_metadata_order_by_entry, parse_order_by_entry
+from .order_by import (
+    ParsedAttributeOrderBy,
+    ParsedRelationshipAttributeOrderBy,
+    parse_order_by_entry,
+    strip_order_direction_suffix,
+)
 from .schema_branch_computed import ComputedAttributes
 from .schema_branch_display import DisplayLabels
 from .schema_branch_hfid import HFIDs
@@ -996,20 +1001,30 @@ class SchemaBranch:
             if not node_schema.order_by:
                 continue
 
+            seen_targets: dict[tuple[str, ...], str] = {}
             for order_by_entry in node_schema.order_by:
-                if is_metadata_order_by_entry(order_by_entry):
-                    try:
-                        parse_order_by_entry(entry=order_by_entry, node_schema=node_schema)
-                    except ValueError as exc:
-                        raise ValueError(f"{node_schema.kind}.order_by: {exc}") from exc
-                    continue
+                try:
+                    parsed = parse_order_by_entry(entry=order_by_entry, node_schema=node_schema)
+                except ValueError as exc:
+                    raise ValueError(f"{node_schema.kind}.order_by: {exc}") from exc
 
-                self.validate_schema_path(
-                    node_schema=node_schema,
-                    path=order_by_entry,
-                    allowed_path_types=allowed_types,
-                    element_name="order_by",
-                )
+                if isinstance(parsed, (ParsedAttributeOrderBy, ParsedRelationshipAttributeOrderBy)):
+                    self.validate_schema_path(
+                        node_schema=node_schema,
+                        path=strip_order_direction_suffix(order_by_entry),
+                        allowed_path_types=allowed_types,
+                        element_name="order_by",
+                    )
+
+                # ensure targets are not duplicated. ie. [name__value__asc, name__value__desc]
+                if parsed.target_key in seen_targets:
+                    previous = seen_targets[parsed.target_key]
+                    target_label = ".".join(parsed.target_key[1:])
+                    raise ValueError(
+                        f"{node_schema.kind}.order_by: target {target_label!r} appears in order_by more than once "
+                        f"(entries: {previous!r}, {parsed.raw!r}). Each target may appear at most once."
+                    )
+                seen_targets[parsed.target_key] = parsed.raw
 
     def validate_default_filters(self) -> None:
         for name in self.all_names:

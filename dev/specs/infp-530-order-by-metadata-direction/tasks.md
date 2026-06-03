@@ -113,7 +113,7 @@ description: "Task list for schema-level order_by for node metadata and directio
 
 ### Tests for User Story 3
 
-- [ ] T024 [P] [US3] Add to `backend/tests/component/core/schema_manager/test_manager_schema.py` parametrized rejection cases for `validate_order_by`:
+- [X] T024 [P] [US3] Add to `backend/tests/component/core/schema_manager/test_manager_schema.py` parametrized rejection cases for `validate_order_by`:
   - Unsupported metadata field (`node_metadata__created_by`, `node_metadata__deleted_at`).
   - Malformed direction (`name__value__descending`, `name__value__ASC`, `name__value__`).
   - Cardinality-many relationship in `order_by`.
@@ -121,7 +121,7 @@ description: "Task list for schema-level order_by for node metadata and directio
   - Empty string entry (`""`).
   - Non-string entry (handled at Pydantic deserialization — verify the error surfaces).
   Each case asserts that the raised error message contains the node kind, the offending raw entry, and the remediation hint from `contracts/errors.md`.
-- [ ] T025 [P] [US3] Add a duplicate-detection test to the same file:
+- [X] T025 [P] [US3] Add a duplicate-detection test to the same file:
   - Same target twice with identical directions (`["name__value", "name__value__asc"]`).
   - Same target twice with conflicting directions (`["name__value__asc", "name__value__desc"]`).
   - Same metadata target twice (`["node_metadata__created_at", "node_metadata__created_at__desc"]`).
@@ -129,9 +129,9 @@ description: "Task list for schema-level order_by for node metadata and directio
 
 ### Implementation for User Story 3
 
-- [ ] T026 [US3] In `backend/infrahub/core/schema/schema_branch.py`, extend `validate_order_by()` to collect parsed entries into a dict keyed by `target_key` and raise on duplicate `target_key`. Error message template per `contracts/errors.md`: cites the node kind, both raw entries, and "Each target may appear at most once."
-- [ ] T027 [US3] In `backend/infrahub/core/schema/order_by.py`, finalize the `parse_order_by_entry` error messages to match `contracts/errors.md` verbatim for each rejection case. The error MUST name the offending raw entry and a remediation hint specific to the failure. The error MUST NOT mention internal types (no `ParsedOrderByEntry`, `OrderByTargetKind`).
-- [ ] T028 [US3] Confirm the cardinality-many rejection path lives in `validate_schema_path` (the existing validator already rejects `REL_MANY_*` for `order_by`) and that its error message satisfies FR-011. If the message does not name the offending entry, adjust the wrapping at `validate_order_by` so it does.
+- [X] T026 [US3] In `backend/infrahub/core/schema/schema_branch.py`, extend `validate_order_by()` to collect parsed entries into a dict keyed by `target_key` and raise on duplicate `target_key`. Error message template per `contracts/errors.md`: cites the node kind, both raw entries, and "Each target may appear at most once."
+- [X] T027 [US3] In `backend/infrahub/core/schema/order_by.py`, finalize the `parse_order_by_entry` error messages to match `contracts/errors.md` verbatim for each rejection case. The error MUST name the offending raw entry and a remediation hint specific to the failure. The error MUST NOT mention internal types (no `ParsedOrderByEntry`, `OrderByTargetKind`).
+- [X] T028 [US3] Confirm the cardinality-many rejection path lives in `validate_schema_path` (the existing validator already rejects `REL_MANY_*` for `order_by`) and that its error message satisfies FR-011. If the message does not name the offending entry, adjust the wrapping at `validate_order_by` so it does.
 
 **Checkpoint**: All US3 tests pass; every rejection case in `contracts/errors.md` is exercised and yields an actionable, schema-author-facing error.
 
@@ -139,12 +139,12 @@ description: "Task list for schema-level order_by for node metadata and directio
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-- [ ] T029 [P] Run `uv run invoke backend.generate` to regenerate `backend/infrahub/core/schema/generated/` and `backend/infrahub/core/protocols.py`. Confirm the only diff is the field description (if updated) on `order_by` and any byproducts of the reserved-name change. Commit regenerated files as a separate logical change.
-- [ ] T030 [P] Add a changelog fragment under `changelog/` using the Towncrier convention (`.feature.md` / `.fix.md` per project guideline; do not embed the Jira ticket ID in the file body). The fragment MUST describe (a) the new metadata + direction `order_by` syntax, (b) the precedence change (query-time replaces schema, no stacking), and (c) the new reserved name `node_metadata`.
-- [ ] T031 [P] Run the manual `quickstart.md` walkthrough end-to-end (or codify it as a component test in `backend/tests/component/graphql/` that wires Steps 1–9 into a single test session). Confirm all nine steps produce the expected output.
-- [ ] T032 [P] Run `uv run invoke format` and `uv run invoke lint` from the repo root. Address any reported issues. Do not add `# noqa` or `# type: ignore` without justification.
-- [ ] T033 [P] Run the full backend unit suite `uv run invoke backend.test-unit` and the targeted component suites touched by this feature (`backend/tests/component/core/schema_manager/`, `backend/tests/component/core/test_node_get_list_query.py`, `backend/tests/component/core/test_relationship_get_list_query.py`, `backend/tests/component/core/test_node_get_hierarchy_query.py`, `backend/tests/component/graphql/metadata/`). All must pass.
-- [ ] T034 Update user-facing documentation in `docs/` if the existing schema authoring pages reference `order_by`. Add the new grammar (metadata entries + direction suffix), the implicit-ascending default, and the precedence rule. If no existing page references `order_by`, do not create a new page — work from the documentation backlog separately.
+- [X] T029 [P] Run `uv run invoke backend.generate` to regenerate `backend/infrahub/core/schema/generated/` and `backend/infrahub/core/protocols.py`. Confirm the only diff is the field description (if updated) on `order_by` and any byproducts of the reserved-name change. Commit regenerated files as a separate logical change.
+- [X] T030 [P] Add a changelog fragment under `changelog/` using the Towncrier convention (`.feature.md` / `.fix.md` per project guideline; do not embed the Jira ticket ID in the file body). The fragment MUST describe (a) the new metadata + direction `order_by` syntax, (b) the precedence change (query-time replaces schema, no stacking), and (c) the new reserved name `node_metadata`.
+- [X] T031 [P] Run the manual `quickstart.md` walkthrough end-to-end (or codify it as a component test in `backend/tests/component/graphql/` that wires Steps 1–9 into a single test session). Confirm all nine steps produce the expected output.
+- [X] T032 [P] Run `uv run invoke format` and `uv run invoke lint` from the repo root. Address any reported issues. Do not add `# noqa` or `# type: ignore` without justification.
+- [X] T033 [P] Run the full backend unit suite `uv run invoke backend.test-unit` and the targeted component suites touched by this feature (`backend/tests/component/core/schema_manager/`, `backend/tests/component/core/test_node_get_list_query.py`, `backend/tests/component/core/test_relationship_get_list_query.py`, `backend/tests/component/core/test_node_get_hierarchy_query.py`, `backend/tests/component/graphql/metadata/`). All must pass.
+- [X] T034 Update user-facing documentation in `docs/` if the existing schema authoring pages reference `order_by`. Add the new grammar (metadata entries + direction suffix), the implicit-ascending default, and the precedence rule. If no existing page references `order_by`, do not create a new page — work from the documentation backlog separately.
 
 ---
 
