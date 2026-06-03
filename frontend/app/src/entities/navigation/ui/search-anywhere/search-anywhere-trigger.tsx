@@ -1,28 +1,28 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, type ButtonProps } from "@infrahub/ui";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
+import { Row } from "@/shared/components/container";
+import { useSidebar } from "@/shared/components/layout/sidebar";
 import Kbd from "@/shared/components/ui/kbd";
 import { classNames } from "@/shared/utils/common";
 
-import { CollapsedSidebarMenuItem } from "@/entities/navigation/ui/sidebar/collapsed-sidebar-menu-item";
+export function SearchAnywhereTrigger({ className, ...props }: ButtonProps) {
+  const { isCollapsed } = useSidebar();
 
-export interface SearchAnywhereTriggerButtonProps extends ButtonProps {
-  isCollapsed?: boolean;
-}
-
-export function SearchAnywhereTrigger({
-  className,
-  isCollapsed,
-  ...props
-}: SearchAnywhereTriggerButtonProps) {
   if (isCollapsed) {
     return (
-      <CollapsedSidebarMenuItem
-        tooltipContent="Search anywhere"
-        icon="mdi:search"
-        data-testid="search-anywhere-trigger"
-        {...props}
-      />
+      <Tooltip message="Search anywhere" placement="right">
+        <Button
+          variant="outline"
+          shape="square"
+          aria-label="Search anywhere"
+          data-testid="search-anywhere-trigger"
+          {...props}
+        >
+          <Icon icon="mdi:magnify" aria-hidden="true" className="text-base" />
+        </Button>
+      </Tooltip>
     );
   }
 
@@ -30,22 +30,17 @@ export function SearchAnywhereTrigger({
 
   return (
     <Button
-      variant="ghost"
-      className={classNames(
-        "justify-between gap-3 bg-neutral-100 px-3 py-2 text-neutral-800 shadow-none",
-        className
-      )}
+      variant="outline"
+      className={classNames("px-2 shadow-none", className)}
       data-testid="search-anywhere-trigger"
       {...props}
     >
-      <div className="flex items-center gap-2 overflow-hidden">
-        <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
-        <span className="truncate text-neutral-700 text-sm transition-all group-data-[collapsed=true]/sidebar:hidden">
-          Search
-        </span>
-      </div>
+      <Row className="grow overflow-hidden">
+        <Icon icon="mdi:magnify" aria-hidden="true" className="text-base" />
+        <span className="truncate text-stone-700 group-data-[state=collapsed]:hidden">Search</span>
+      </Row>
 
-      <Kbd keys={command} className="transition-all group-data-[collapsed=true]/sidebar:hidden">
+      <Kbd keys={command} className="group-data-[state=collapsed]:hidden">
         K
       </Kbd>
     </Button>

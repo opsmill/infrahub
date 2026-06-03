@@ -3,6 +3,7 @@ import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { useSidebar } from "@/shared/components/layout/sidebar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -57,43 +58,42 @@ const ExpandedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
     <span className="truncate text-sm">{item.label}</span>
     <Icon
       icon="mdi:arrow-top-right"
-      className="m-1 ml-auto text-sm opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
+      className="m-1 ml-auto text-sm opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100 group-data-[state=open]/menu-item:opacity-100"
     />
   </Link>
 );
 
-const DropdownMenuTriggerButton: React.FC<{ item: MenuItem; isCollapsed: boolean }> = ({
-  item,
-  isCollapsed,
-}) => (
-  <DropdownMenuTrigger
-    className={classNames(menuNavigationItemStyle, isCollapsed && "p-0")}
-    asChild={isCollapsed}
-  >
-    {isCollapsed ? (
-      <CollapsedSidebarMenuItem tooltipContent={item.label} icon={item.icon} />
-    ) : (
-      <>
-        <Icon icon={item.icon} className="size-4" />
-        <span className="truncate text-sm">{item.label}</span>
-        <Icon
-          icon="mdi:dots-vertical"
-          className="m-1 ml-auto opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-data-[state=open]:opacity-100"
-        />
-      </>
-    )}
-  </DropdownMenuTrigger>
-);
+const DropdownMenuTriggerButton: React.FC<{ item: MenuItem }> = ({ item }) => {
+  const { isCollapsed } = useSidebar();
+
+  return (
+    <DropdownMenuTrigger
+      className={classNames(menuNavigationItemStyle, isCollapsed && "p-0")}
+      asChild={isCollapsed}
+    >
+      {isCollapsed ? (
+        <CollapsedSidebarMenuItem tooltipContent={item.label} icon={item.icon} />
+      ) : (
+        <>
+          <Icon icon={item.icon} className="size-4" />
+          <span className="truncate text-sm">{item.label}</span>
+          <Icon
+            icon="mdi:dots-vertical"
+            className="m-1 ml-auto opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100 group-data-[state=open]/menu-item:opacity-100"
+          />
+        </>
+      )}
+    </DropdownMenuTrigger>
+  );
+};
 
 export interface SidebarMenuSectionInternalProps {
   items: MenuItem[];
-  isCollapsed?: boolean;
 }
 
-export function SidebarMenuSectionInternal({
-  items,
-  isCollapsed,
-}: SidebarMenuSectionInternalProps) {
+export function SidebarMenuSectionInternal({ items }: SidebarMenuSectionInternalProps) {
+  const { isCollapsed } = useSidebar();
+
   return (
     <div className="mb-auto flex flex-col">
       {items.map((item) => {
@@ -107,7 +107,7 @@ export function SidebarMenuSectionInternal({
 
         return (
           <DropdownMenu key={item.identifier}>
-            <DropdownMenuTriggerButton item={item} isCollapsed={!!isCollapsed} />
+            <DropdownMenuTriggerButton item={item} />
             <DropdownMenuContent side="left" align="start" className="min-w-[200px]">
               {item.children.map((childItem) => (
                 <RecursiveInternalMenuItem key={childItem.identifier} item={childItem} />
