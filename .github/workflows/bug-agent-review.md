@@ -2,7 +2,7 @@
 description: Review bug pipeline test and fix PRs (triggered on PR open/synchronize)
 on:
   pull_request:
-    types: [opened, synchronize, edited, reopened]
+    types: [opened, synchronize, reopened]
     branches: [stable]
     paths-ignore:
       - "**/*.md"
