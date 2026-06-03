@@ -5,7 +5,6 @@ query GET_PROFILE_DETAILS {
   AccountProfile {
     id
     display_label
-    is_externally_managed
     {{#each attributes}}
       {{this.name}} {
           value
