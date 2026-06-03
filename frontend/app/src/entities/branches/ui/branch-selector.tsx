@@ -55,7 +55,7 @@ export function BranchSelector() {
       <Button
         variant="outline"
         size="sm"
-        className="w-64 px-2 data-pressed:scale-100"
+        className="w-64 data-pressed:scale-100"
         data-testid="branch-selector-trigger"
       >
         <Row className="grow gap-1.5 overflow-hidden">
@@ -68,7 +68,7 @@ export function BranchSelector() {
 
         <Separator orientation="vertical" />
 
-        <ChevronsUpDownIcon />
+        <ChevronsUpDownIcon className="ml-0.5" />
       </Button>
 
       <Popover className="w-(--trigger-width)">
