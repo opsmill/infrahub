@@ -25,14 +25,13 @@ async def work_pool_and_deployment(prefect_test_fixture: None) -> None:
 
 
 async def test_execute_workflow_raises_when_no_worker_available(
-    prefect_test_fixture: None,
     work_pool_and_deployment: None,
 ) -> None:
     """execute_workflow must raise when no worker picks up the submitted flow run within the timeout."""
     service = WorkflowWorkerExecution(tls_registry=TlsContextRegistry())
 
     with pytest.raises(FlowRunWaitTimeout):
-        await service.execute_workflow(  # type: ignore[call-overload]
+        await service.execute_workflow(
             workflow=DUMMY_FLOW,
             parameters={"data": DummyInput(firstname="Test", lastname="User")},
             timeout=1.0,

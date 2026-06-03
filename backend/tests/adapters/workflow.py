@@ -18,13 +18,14 @@ class WorkflowRecorder(InfrahubWorkflow):
         self.execute_calls: list[dict[str, Any]] = []
         self.submit_calls: list[dict[str, Any]] = []
 
-    async def execute_workflow(
+    async def execute_workflow(  # noqa: PLR0913, PLR0917
         self,
         workflow: WorkflowDefinition,
         expected_return: type | None = None,
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        timeout: float | None = None,  # noqa: ASYNC109
     ) -> Any:
         self.execute_calls.append({"workflow": workflow, "parameters": parameters or {}})
         if expected_return is ValidatorConclusion:
