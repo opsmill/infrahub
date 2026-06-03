@@ -304,6 +304,10 @@ export const router = createBrowserRouter([
                 ],
               },
               {
+                path: "/path-traversal",
+                lazy: () => import("@/pages/path-traversal"),
+              },
+              {
                 path: "/schema",
                 lazy: () => import("@/pages/schema/layout"),
                 children: [

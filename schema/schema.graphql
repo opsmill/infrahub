@@ -11939,6 +11939,80 @@ type PaginatedProfileIpamNamespace {
   permissions: PaginatedObjectPermission!
 }
 
+type PathHopType {
+  """Node visited at this hop"""
+  node: PathNodeType!
+  """
+  Relationship traversed to reach this node from the previous hop. Null on the first hop.
+  """
+  relationship: PathRelationshipType
+}
+
+type PathNodeType {
+  """Human-readable display label"""
+  display_label: String!
+  """Human friendly identifier"""
+  hfid: [String!]!
+  """Node UUID"""
+  id: String!
+  """Schema kind"""
+  kind: String!
+  """Schema label for the node's kind"""
+  label: String!
+}
+
+type PathRelationshipType {
+  """Relationship label on the source side of the hop"""
+  from_label: String!
+  """Relationship name on the source side of the hop"""
+  from_rel: String!
+  """Relationship kind (e.g. Component, Generic)"""
+  kind: String!
+  """Relationship label on the destination side of the hop"""
+  to_label: String!
+  """Relationship name on the destination side of the hop"""
+  to_rel: String!
+}
+
+type PathResultType {
+  """Number of edges in this path"""
+  depth: Int!
+  """Ordered hops from source to destination"""
+  hops: [PathHopType!]!
+}
+
+input PathTraversalInput {
+  """UUID of the end node"""
+  destination_id: String!
+  """Specific node kinds to exclude from traversal paths."""
+  excluded_kinds: [String!]
+  """
+  Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input.
+  """
+  excluded_namespaces: [String!]
+  """Filter to only traverse through nodes of these kinds"""
+  kind_filter: [String!]
+  """Maximum number of node hops (default: 5, max: 20)"""
+  max_depth: Int = 5
+  """Maximum number of paths to return (default: 10, max: 100)"""
+  max_paths: Int = 10
+  """Filter to only follow relationships with these names"""
+  relationship_filter: [String!]
+  """UUID of the start node"""
+  source_id: String!
+}
+
+type PathTraversalResultType {
+  """Total number of paths discovered"""
+  count: Int!
+  """The end node"""
+  destination: PathNodeType!
+  """Paths found, ordered shortest first"""
+  paths: [PathResultType!]!
+  """The start node"""
+  source: PathNodeType!
+}
+
 type PermissionType {
   update_value: BranchRelativePermissionDecision
 }
@@ -24598,7 +24672,11 @@ type Query {
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
+  """Find all shortest paths between two nodes in the graph"""
+  InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
+  """Find all nodes of specified kinds reachable from a source node"""
+  InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
@@ -25388,6 +25466,43 @@ type Query {
     subscriber_of_groups__name__values: [String]
   ): PaginatedProfileIpamNamespace!
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
+}
+
+type ReachableNodeType {
+  """Hops from source node"""
+  depth: Int!
+  """Reachable node"""
+  node: PathNodeType!
+  """Full path from source to this node"""
+  path: PathResultType!
+}
+
+input ReachableNodesInput {
+  """Maximum traversal depth (default: 5, max: 20)"""
+  max_depth: Int = 5
+  """
+  Maximum total paths returned across all discovered terminals (default: 500, max: 5000)
+  """
+  max_paths: Int = 500
+  """
+  Maximum number of distinct terminal nodes to discover (default: 50, max: 200)
+  """
+  max_results: Int = 50
+  """UUID of the source node"""
+  source_id: String!
+  """Node kinds to search for"""
+  target_kinds: [String!]!
+}
+
+type ReachableNodesResultType {
+  """Number of dependency entries returned"""
+  count: Int!
+  """
+  Reachable nodes of the requested kinds, one entry per (node, path) pair
+  """
+  dependencies: [ReachableNodeType!]!
+  """The source node"""
+  source: PathNodeType!
 }
 
 type ReadOnlyRepositoryImportLastCommit {
