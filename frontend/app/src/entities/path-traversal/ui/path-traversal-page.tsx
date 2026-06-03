@@ -1,7 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import Content from "@/shared/components/layout/content";
 
 import { DependenciesModeMain } from "./dependencies-mode/dependencies-mode-main";
@@ -64,28 +66,32 @@ export function PathTraversalPage() {
                 <h2 className="font-semibold text-lg">{meta.title}</h2>
                 <p className="mt-1 text-gray-500 text-sm">{meta.description}</p>
               </div>
-              <button
-                type="button"
-                onClick={toggleParameters}
-                className="-mt-1 -mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                title="Close panel"
-              >
-                <Icon icon="mdi:close" className="text-lg" />
-              </button>
+              <Tooltip message="Close panel">
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  shape="square"
+                  onPress={toggleParameters}
+                  className="-mt-1 -mr-1 text-gray-400"
+                >
+                  <Icon icon="mdi:close" className="text-lg" />
+                </Button>
+              </Tooltip>
             </div>
 
             <div className="mt-2 flex gap-1">
               {MODES.map((m) => (
-                <button
+                <Button
                   key={m}
-                  type="button"
-                  onClick={() => setMode(m)}
-                  className={`flex-1 rounded px-2 py-1 font-medium text-xs ${
-                    mode === m ? MODE_META[m].activeClass : "text-gray-500 hover:bg-gray-100"
+                  variant="ghost"
+                  size="xs"
+                  onPress={() => setMode(m)}
+                  className={`flex-1 font-medium text-xs ${
+                    mode === m ? MODE_META[m].activeClass : "text-gray-500"
                   }`}
                 >
                   {MODE_LABELS[m]}
-                </button>
+                </Button>
               ))}
             </div>
           </div>

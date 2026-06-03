@@ -1,5 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { Command } from "cmdk";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import { classNames } from "@/shared/utils/common";
 
@@ -66,14 +68,16 @@ export function PathResultsList({
       <div className={classNames("mb-3 flex items-center justify-between", v.headerBanner)}>
         <h3 className={classNames("font-medium text-sm", v.headerText)}>{countLabel}</h3>
         {paths.length > 0 && copyAllText && (
-          <button
-            type="button"
-            onClick={() => copyToClipboard(copyAllText())}
-            className="rounded px-2 py-0.5 text-blue-600 text-xs hover:bg-blue-50"
-            title="Copy all to clipboard"
-          >
-            {isCopied ? "Copied!" : "Copy all"}
-          </button>
+          <Tooltip message="Copy all to clipboard">
+            <Button
+              variant="ghost"
+              size="xs"
+              onPress={() => copyToClipboard(copyAllText())}
+              className="px-2 py-0.5 text-blue-600 text-xs data-hovered:bg-blue-50"
+            >
+              {isCopied ? "Copied!" : "Copy all"}
+            </Button>
+          </Tooltip>
         )}
       </div>
 
