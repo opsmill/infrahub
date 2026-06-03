@@ -2,6 +2,8 @@ import { Icon } from "@iconify-icon/react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
 
+import Content from "@/shared/components/layout/content";
+
 import { DependenciesModeMain } from "./dependencies-mode/dependencies-mode-main";
 import { DependenciesModeSidebar } from "./dependencies-mode/dependencies-mode-sidebar";
 import { PathModeMain } from "./path-mode/path-mode-main";
@@ -55,7 +57,7 @@ export function PathTraversalPage() {
       </main>
 
       {parametersOpen && (
-        <aside className="absolute top-4 right-4 bottom-4 z-10 flex w-80 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+        <Content.Card className="absolute top-4 right-4 bottom-4 z-10 flex w-80 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
           <div className="border-gray-200 border-b p-4">
             <div className="flex items-start justify-between gap-2">
               <div>
@@ -91,7 +93,7 @@ export function PathTraversalPage() {
           <div className="flex-1 overflow-y-auto">
             {mode === "path" ? <PathModeSidebar /> : <DependenciesModeSidebar />}
           </div>
-        </aside>
+        </Content.Card>
       )}
     </div>
   );
