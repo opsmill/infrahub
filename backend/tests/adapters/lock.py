@@ -3,9 +3,15 @@ from __future__ import annotations
 import itertools
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from infrahub import lock
 from infrahub.lock import InfrahubLock, InfrahubLockRegistry
+
+if TYPE_CHECKING:
+    import redis.asyncio as redis
+
+    from infrahub.services import InfrahubServices
 
 
 class LockAction(StrEnum):
@@ -100,8 +106,16 @@ class LockTimeline:
 class RecordingLock(InfrahubLock):
     """A local lock that logs its real (non-re-entrant) acquire/release boundaries to a timeline."""
 
-    def __init__(self, *args: object, timeline: LockTimeline, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+    def __init__(
+        self,
+        name: str,
+        connection: redis.Redis | InfrahubServices | None = None,
+        in_multi: bool = False,
+        metrics: bool = True,
+        *,
+        timeline: LockTimeline,
+    ) -> None:
+        super().__init__(name=name, connection=connection, in_multi=in_multi, metrics=metrics)
         self._timeline = timeline
 
     async def acquire(self) -> None:
