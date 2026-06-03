@@ -61,6 +61,10 @@ Configure your identity provider application to include group information in the
 Refer to your provider's documentation for instructions on "group claims" or "configuring OAuth2/OIDC group mappings".
 :::
 
+:::warning
+For OIDC, the `id_token` is verified (signature, audience and issuer) by default before its claims are used. Setting `INFRAHUB_OIDC_<SLOT>_ID_TOKEN_VERIFY_SIGNATURE=false` disables this and makes Infrahub trust any token presented to the callback; use it only as a temporary workaround for a misconfigured provider.
+:::
+
 ### Step 2: Create corresponding groups in Infrahub
 
 Create groups in Infrahub that match the groups sent by your identity provider.
