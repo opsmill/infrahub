@@ -16,6 +16,8 @@ permissions:
 tools:
   github:
     toolsets: [default]
+    min-integrity: approved
+    approval-labels: [state/ai-pipeline-ready]
 network: defaults
 checkout:
   fetch-depth: 0
