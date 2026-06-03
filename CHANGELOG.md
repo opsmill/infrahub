@@ -13,6 +13,10 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ## [Infrahub - v1.9.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.9.7) - 2026-06-03
 
+### Breaking Changes
+
+- Schema attribute and relationship names containing `__` are now rejected at load time, since `__` is reserved as the schema path separator. Any existing schema using such names will fail to load after upgrading — rename the affected attributes or relationships in your schema files (and remove or rename the corresponding data) before upgrading. ([#9209](https://github.com/opsmill/infrahub/issues/9209))
+
 ### Security
 
 - Added the `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` setting (enabled by default) to control whether an SSO login without a linked identity may adopt a pre-existing account that matches by display name. This transitional behavior supports upgrades; disabling it once all SSO users have completed their first login is recommended as a hardening step. The fallback is deprecated and will be removed in a future release.
@@ -21,7 +25,7 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 ### Fixed
 
-- Prefix pools no longer allocate the same prefix multiple times when the pool resource has the same prefix length as the requested allocation size. Prefix pools can now correctly allocate a prefix that uses an entire linked resource. ([#prefix-resource-pool-duplication](https://github.com/opsmill/infrahub/issues/prefix-resource-pool-duplication))
+- Prefix pools no longer allocate the same prefix multiple times when the pool resource has the same prefix length as the requested allocation size. Prefix pools can now correctly allocate a prefix that uses an entire linked resource.
 - Fix schema processing crashing with `'NodeSchema' object has no attribute 'get'` when a node defines a single-element relationship-only `uniqueness_constraints` entry (e.g. `[["parent"]]`). ([#4483](https://github.com/opsmill/infrahub/issues/4483))
 - The 'Manage Groups' dropdown and the bulk 'Add to groups' toolbar now hide groups whose `group_type` is `internal`, so only user-assignable groups appear in the selector. ([#4872](https://github.com/opsmill/infrahub/issues/4872))
 - RelationshipAdd now allows setting a cardinality-one relationship (previously, any attempt was rejected). A second add is rejected when a peer is already present. RelationshipRemove now enforces mandatory constraints on cardinality-many relationships and rejects removals that would leave a mandatory relationship with no peers. ([#5794](https://github.com/opsmill/infrahub/issues/5794))
@@ -29,7 +33,6 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 - Artifact diffs no longer show spurious changes for artifacts whose schema kind was renamed or moved to a different namespace on a branch. ([#7490](https://github.com/opsmill/infrahub/issues/7490))
 - Fixed unique constraints not being enforced on computed attributes, and the violation message now names the input attributes to change. ([#7924](https://github.com/opsmill/infrahub/issues/7924))
 - Fix user-check failure logs being emitted one character per line in the proposed change task output — each log entry from `self.log_error(...)` is now rendered as a single warning line. ([#8224](https://github.com/opsmill/infrahub/issues/8224))
-- Schema attribute and relationship names containing `__` are now rejected at load time, since `__` is reserved as the schema path separator. **Breaking change:** any existing schema using such names will fail to load after upgrading — rename the affected attributes or relationships in your schema files (and remove or rename the corresponding data) before upgrading. ([#9209](https://github.com/opsmill/infrahub/issues/9209))
 - Honor `INFRAHUB_CACHE_TLS_ENABLED`, `INFRAHUB_CACHE_TLS_INSECURE`, and `INFRAHUB_CACHE_TLS_CA_FILE` for the Prefect result storage block. Background flows previously hung in `RUNNING` against TLS-only Redis because `setup_blocks()` constructed the block via a code path that ignored every TLS setting. The block now uses a `redis://` or `rediss://` connection string that propagates all three TLS knobs through `redis.Redis.from_url`, bringing the block into parity with the cache adapter and distributed lock. ([#9217](https://github.com/opsmill/infrahub/issues/9217))
 - Fixed git repository sync where multiple task workers could diverge on different commits if upstream advanced during fan-out. ([#9349](https://github.com/opsmill/infrahub/issues/9349))
 - Fixed S3 object storage failing with `AuthorizationHeaderMalformed` when no static AWS credentials are configured. When both `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` are unset, Infrahub now falls back to the default AWS credential provider chain, so S3 storage works with IRSA, EC2 instance profiles, and ECS task roles in addition to static access keys. Configuring only one of the two now raises a clear configuration error. ([#9429](https://github.com/opsmill/infrahub/issues/9429))
