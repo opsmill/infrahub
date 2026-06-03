@@ -2303,7 +2303,7 @@ class SchemaBranch:
                     rel = node_copy.get_relationship(name=item_name)
                     rel.state = HashableModelState.ABSENT
                 # Expects that field renames are handled elsewhere
-                node_copy._apply_schema_path_updates(
+                node_copy.apply_schema_path_updates(
                     deleted_field_names=set(attributes_to_delete) | set(relationships_to_delete),
                     renamed_field_name_map={},
                 )

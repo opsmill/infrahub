@@ -35,10 +35,12 @@ class RemoveFieldTestCase:
     removed_relationships: dict[str, list[str]] = field(default_factory=dict)
     # kind -> expected exact uniqueness_constraints value (use None to assert it is unset)
     expected_uniqueness_constraints: dict[str, list[list[str]] | None] = field(default_factory=dict)
-    # kind -> expected exact human_friendly_id / display_labels / order_by value (omit a kind to skip the check)
+    # kind -> expected exact human_friendly_id / display_labels / order_by / default_filter value
+    # (omit a kind to skip the check)
     expected_hfid: dict[str, list[str] | None] = field(default_factory=dict)
     expected_display_labels: dict[str, list[str] | None] = field(default_factory=dict)
     expected_order_by: dict[str, list[str] | None] = field(default_factory=dict)
+    expected_default_filter: dict[str, str | None] = field(default_factory=dict)
 
 
 def _peer_owner() -> NodeSchema:
@@ -59,6 +61,7 @@ def _generic_initial_with_two_attrs_and_two_constraints() -> GenericSchema:
         human_friendly_id=["name__value", "identifier__value"],
         display_labels=["name__value", "identifier__value"],
         order_by=["name__value", "identifier__value"],
+        default_filter="identifier__value",
         attributes=[
             AttributeSchema(name="identifier", kind="Number", optional=True),
             AttributeSchema(name="name", kind="Text", optional=True),
@@ -75,6 +78,7 @@ def _generic_initial_with_compound_constraint() -> GenericSchema:
         human_friendly_id=["identifier__value", "name__value"],
         display_labels=["identifier__value", "name__value"],
         order_by=["identifier__value", "name__value"],
+        default_filter="identifier__value",
         attributes=[
             AttributeSchema(name="identifier", kind="Number", optional=True),
             AttributeSchema(name="name", kind="Text", optional=True),
@@ -90,6 +94,7 @@ def _generic_initial_with_rel_in_constraint() -> GenericSchema:
         uniqueness_constraints=[["name__value", "owner"]],
         human_friendly_id=["name__value", "owner__name__value"],
         order_by=["name__value", "owner__name__value"],
+        default_filter="name__value",
         attributes=[AttributeSchema(name="name", kind="Text", optional=True)],
         relationships=[
             RelationshipSchema(
@@ -112,6 +117,7 @@ def _node_initial_with_two_attrs_and_two_constraints() -> NodeSchema:
         human_friendly_id=["name__value", "identifier__value"],
         display_labels=["name__value", "identifier__value"],
         order_by=["name__value", "identifier__value"],
+        default_filter="identifier__value",
         attributes=[
             AttributeSchema(name="identifier", kind="Number", optional=True),
             AttributeSchema(name="name", kind="Text", optional=True),
@@ -128,6 +134,7 @@ def _node_initial_with_compound_constraint() -> NodeSchema:
         human_friendly_id=["identifier__value", "name__value"],
         display_labels=["identifier__value", "name__value"],
         order_by=["identifier__value", "name__value"],
+        default_filter="identifier__value",
         attributes=[
             AttributeSchema(name="identifier", kind="Number", optional=True),
             AttributeSchema(name="name", kind="Text", optional=True),
@@ -143,6 +150,7 @@ def _node_initial_with_rel_in_constraint() -> NodeSchema:
         uniqueness_constraints=[["name__value", "owner"]],
         human_friendly_id=["name__value", "owner__name__value"],
         order_by=["name__value", "owner__name__value"],
+        default_filter="name__value",
         attributes=[AttributeSchema(name="name", kind="Text", optional=True)],
         relationships=[
             RelationshipSchema(
@@ -165,6 +173,7 @@ def _generic_with_attrs_for_inheritance() -> GenericSchema:
         human_friendly_id=["name__value", "identifier__value"],
         display_labels=["name__value", "identifier__value"],
         order_by=["name__value", "identifier__value"],
+        default_filter="identifier__value",
         attributes=[
             AttributeSchema(name="identifier", kind="Number", optional=True),
             AttributeSchema(name="name", kind="Text", optional=True),
@@ -223,6 +232,7 @@ TESTCASES: list[RemoveFieldTestCase] = [
         expected_hfid={"TestingSandwich": ["name__value"]},
         expected_display_labels={"TestingSandwich": ["name__value"]},
         expected_order_by={"TestingSandwich": ["name__value"]},
+        expected_default_filter={"TestingSandwich": None},
     ),
     RemoveFieldTestCase(
         name="generic_remove_attr_in_compound_constraint_strips_path",
@@ -246,6 +256,7 @@ TESTCASES: list[RemoveFieldTestCase] = [
         expected_hfid={"TestingSandwich": ["name__value"]},
         expected_display_labels={"TestingSandwich": ["name__value"]},
         expected_order_by={"TestingSandwich": ["name__value"]},
+        expected_default_filter={"TestingSandwich": None},
     ),
     RemoveFieldTestCase(
         name="generic_remove_relationship_in_compound_constraint_strips_path",
@@ -273,6 +284,7 @@ TESTCASES: list[RemoveFieldTestCase] = [
         expected_uniqueness_constraints={"TestingSandwich": [["name__value"]]},
         expected_hfid={"TestingSandwich": ["name__value"]},
         expected_order_by={"TestingSandwich": ["name__value"]},
+        expected_default_filter={"TestingSandwich": "name__value"},
     ),
     RemoveFieldTestCase(
         name="node_remove_attr_strips_from_all_schema_path_properties",
@@ -296,6 +308,7 @@ TESTCASES: list[RemoveFieldTestCase] = [
         expected_hfid={"TestingSandwich": ["name__value"]},
         expected_display_labels={"TestingSandwich": ["name__value"]},
         expected_order_by={"TestingSandwich": ["name__value"]},
+        expected_default_filter={"TestingSandwich": None},
     ),
     RemoveFieldTestCase(
         name="node_remove_attr_in_compound_constraint_strips_path",
@@ -319,6 +332,7 @@ TESTCASES: list[RemoveFieldTestCase] = [
         expected_hfid={"TestingSandwich": ["name__value"]},
         expected_display_labels={"TestingSandwich": ["name__value"]},
         expected_order_by={"TestingSandwich": ["name__value"]},
+        expected_default_filter={"TestingSandwich": None},
     ),
     RemoveFieldTestCase(
         name="node_remove_relationship_in_compound_constraint_strips_path",
@@ -346,6 +360,7 @@ TESTCASES: list[RemoveFieldTestCase] = [
         expected_uniqueness_constraints={"TestingSandwich": [["name__value"]]},
         expected_hfid={"TestingSandwich": ["name__value"]},
         expected_order_by={"TestingSandwich": ["name__value"]},
+        expected_default_filter={"TestingSandwich": "name__value"},
     ),
     # Inherited deletions — Generic loses a field; Node inherits constraints/attrs from Generic
     RemoveFieldTestCase(
@@ -384,6 +399,10 @@ TESTCASES: list[RemoveFieldTestCase] = [
         expected_order_by={
             "TestingSandwich": ["name__value"],
             "TestingCheeseSandwich": ["name__value"],
+        },
+        expected_default_filter={
+            "TestingSandwich": None,
+            "TestingCheeseSandwich": None,
         },
     ),
     RemoveFieldTestCase(
@@ -461,3 +480,9 @@ def test_remove_field_referenced_by_uniqueness_constraint(test_case: RemoveField
     for kind, expected_ob in test_case.expected_order_by.items():
         schema = branch.get(name=kind, duplicate=False)
         assert schema.order_by == expected_ob, f"{kind} order_by {schema.order_by!r} != expected {expected_ob!r}"
+
+    for kind, expected_df in test_case.expected_default_filter.items():
+        schema = branch.get(name=kind, duplicate=False)
+        assert schema.default_filter == expected_df, (
+            f"{kind} default_filter {schema.default_filter!r} != expected {expected_df!r}"
+        )
