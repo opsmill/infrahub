@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { parseAsStringEnum, useQueryState } from "nuqs";
+import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
 
 import { DependenciesModeMain } from "./dependencies-mode/dependencies-mode-main";
@@ -31,7 +31,7 @@ const MODE_LABELS: Record<Mode, string> = {
 export function PathTraversalPage() {
   const [mode, setMode] = useQueryState(
     "mode",
-    parseAsStringEnum<Mode>(MODES as unknown as Mode[]).withDefault("path")
+    parseAsStringLiteral<Mode>(MODES as unknown as Mode[]).withDefault("path")
   );
   const [parametersOpen, setParametersOpen] = useState(true);
 
