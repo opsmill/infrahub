@@ -90,9 +90,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         """Run the git working-copy side of a sync and return the imports it produced.
 
         Performs the on-disk git mutations (fetch, branch creation, pull, commit-worktree pinning)
-        and returns one entry per branch whose objects must be imported. Leaving the import to the
-        caller lets it run after the repository lock is released; each entry points at the immutable
-        per-commit worktree pinned here.
+        and returns one entry per branch whose objects must be imported.
 
         Raises:
             GraphQLError: When creating a branch in the graph fails for a reason other than the branch already existing.

@@ -3,8 +3,19 @@ from uuid import uuid4
 from infrahub.core.branch import Branch
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
-from infrahub.git.tasks import sync_repository
+from infrahub.git.repository import BranchImport
+from infrahub.git.sync import RepositoryImporter, RepositorySyncer
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
+
+
+class _RecordingImporter(RepositoryImporter):
+    """Records a timeline checkpoint instead of importing, to capture the lock state at the import call."""
+
+    def __init__(self, timeline: LockTimeline) -> None:
+        self._timeline = timeline
+
+    async def import_branch(self, repo: InfrahubRepository, branch_import: BranchImport) -> None:
+        self._timeline.checkpoint("import")
 
 
 async def test_repository_lock_released_before_import(
@@ -20,11 +31,10 @@ async def test_repository_lock_released_before_import(
     registry.branch[branch.name] = branch
 
     timeline = LockTimeline()
-    lock_registry = RecordingLockRegistry(timeline=timeline)
+    syncer = RepositorySyncer(
+        lock_registry=RecordingLockRegistry(timeline=timeline), importer=_RecordingImporter(timeline)
+    )
 
-    async def recording_import(**kwargs: object) -> None:
-        timeline.checkpoint("import")
-
-    await sync_repository(git_repo_04, lock_registry=lock_registry, import_objects=recording_import)
+    await syncer.sync(git_repo_04)
 
     timeline.assert_held_at_checkpoint(f"repository.{git_repo_04.name}", "import", expected=False)

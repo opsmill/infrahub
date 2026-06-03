@@ -1,4 +1,3 @@
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 from git.exc import InvalidGitRepositoryError
@@ -63,6 +62,7 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from .sync import RepositoryFileImporter, RepositorySyncer
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
@@ -208,29 +208,6 @@ async def delete_git_branch(branch: str) -> None:
         pass
 
 
-async def sync_repository(
-    repo: InfrahubRepository,
-    lock_registry: lock.InfrahubLockRegistry,
-    staging_branch: str | None = None,
-    import_objects: Callable[..., Awaitable[None]] | None = None,
-) -> None:
-    """Sync a repository, holding the repository lock only for the git working-copy mutations.
-
-    The object import for each synced branch runs after the lock is released; it reads from the
-    per-commit worktree pinned during the locked phase, so it does not need the lock that
-    serializes git working-copy mutations. The import callable is injectable for testing.
-    """
-    do_import: Callable[..., Awaitable[None]] = import_objects or repo.import_objects_from_files
-    async with lock_registry.get(name=repo.name, namespace="repository"):
-        pending_imports = await repo.collect_pending_imports(staging_branch=staging_branch)
-    for pending in pending_imports:
-        await do_import(
-            infrahub_branch_name=pending.infrahub_branch_name,
-            git_branch_name=pending.git_branch_name,
-            commit=pending.commit,
-        )
-
-
 @flow(name="sync-git-repo-with-origin", flow_run_name="Sync git repo with origin")
 async def sync_git_repo_with_origin_and_tag_on_failure(
     client: InfrahubClient,
@@ -252,8 +229,9 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         default_branch_name=default_branch_name,
     )
 
+    syncer = RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter())
     try:
-        await sync_repository(repo, lock_registry=lock.registry, staging_branch=staging_branch)
+        await syncer.sync(repo, staging_branch=staging_branch)
     except RepositoryError:
         if operational_status == RepositoryOperationalStatus.ONLINE.value:
             params: dict[str, Any] = {
@@ -287,9 +265,7 @@ async def sync_remote_repositories() -> None:
 
         infrahub_branch = staging_branch or registry.default_branch
 
-        # Hold the repository lock only for the local git initialization. The default-branch
-        # import below and the origin sync that follows manage their own narrow lock scope and
-        # run their object imports after releasing it, so a slow import no longer keeps the lock
+        # Hold the repository lock only for the local git initialization, so a slow import no longer keeps the lock
         # reserved.
         default_import_git_branch: str | None = None
         async with lock.registry.get(name=repo_name, namespace="repository"):
