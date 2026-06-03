@@ -26,7 +26,7 @@ const PROFILE_TABS = {
   PASSWORD: "password",
 };
 
-const tabs = [
+const baseTabs = [
   {
     label: "Profile",
     name: PROFILE_TABS.PROFILE,
@@ -35,11 +35,12 @@ const tabs = [
     label: "Tokens",
     name: PROFILE_TABS.TOKENS,
   },
-  {
-    label: "Password",
-    name: PROFILE_TABS.PASSWORD,
-  },
 ];
+
+const passwordTab = {
+  label: "Password",
+  name: PROFILE_TABS.PASSWORD,
+};
 
 const renderContent = (tab: string | null | undefined) => {
   switch (tab) {
@@ -89,6 +90,8 @@ export function UserProfilePage() {
   if (!profile) {
     return <NoDataFound message="No profile found" />;
   }
+
+  const tabs = profile.is_externally_managed ? baseTabs : [...baseTabs, passwordTab];
 
   return (
     <Content.Card>

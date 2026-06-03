@@ -474,9 +474,9 @@ exports[`fix ts error`] = {
     "src/entities/user-profile/ui/account-token-item.tsx:2728937805": [
       [2, 38, 40, "tsc: Cannot find module \'@/shared/api/graphql/generated/graphql\' or its corresponding type declarations.", "3357561780"]
     ],
-    "src/entities/user-profile/ui/tab-update-password.tsx:2681424166": [
-      [43, 11, 18, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; } | { name: string; label: string; rules: { required: true; validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'FormFieldProps\'.", "913787886"],
-      [54, 11, 18, "tsc: Property \'attribute\' is missing in type \'\\"Passwords don | \\"Required\\"; isSamePassword: ({ value }: any, fieldValues: FieldValues) => true | { name: string; label: string; rules: { required: true; validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\'t match\\"; }; }; }\' but required in type \'FormFieldProps\'.", "913787886"]
+    "src/entities/user-profile/ui/tab-update-password.tsx:2629185002": [
+      [74, 11, 18, "tsc: Property \'attribute\' is missing in type \'\\"Required\\"; }; }; } | { name: string; label: string; rules: { required: true; validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\' but required in type \'FormFieldProps\'.", "913787886"],
+      [85, 11, 18, "tsc: Property \'attribute\' is missing in type \'\\"Passwords don | \\"Required\\"; isSamePassword: ({ value }: any, fieldValues: FieldValues) => true | { name: string; label: string; rules: { required: true; validate: { required: ({ value }: Pick<FormFieldValue, \\"value\\">) => true\'t match\\"; }; }; }\' but required in type \'FormFieldProps\'.", "913787886"]
     ],
     "src/pages/ipam/ipam-layout.tsx:1547056464": [
       [44, 71, 5, "tsc: \'error\' is of type \'unknown\'.", "165548477"]

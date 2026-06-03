@@ -1,3 +1,4 @@
+import { gql, useQuery } from "@apollo/client";
 import { toast } from "react-toastify";
 
 import { useMutation } from "@/shared/api/graphql/useQuery";
@@ -9,7 +10,15 @@ import { Card } from "@/shared/components/ui/card";
 import { Form, FormSubmit } from "@/shared/components/ui/form";
 
 import { UPDATE_ACCOUNT_PASSWORD } from "@/entities/user-profile/api/updateAccountPassword";
-import { useGetAccountProfile } from "@/entities/user-profile/ui/queries/get-account-profile.query";
+
+const GET_ACCOUNT_PROFILE_PASSWORD_MANAGEMENT = gql`
+  query GET_ACCOUNT_PROFILE_PASSWORD_MANAGEMENT {
+    AccountProfile {
+      id
+      is_externally_managed
+    }
+  }
+`;
 
 type UpdatePasswordFormData = {
   newPassword: string;
@@ -17,7 +26,8 @@ type UpdatePasswordFormData = {
 };
 
 export default function TabUpdatePassword() {
-  const { data: account, isPending } = useGetAccountProfile();
+  const { data, loading } = useQuery(GET_ACCOUNT_PROFILE_PASSWORD_MANAGEMENT);
+  const account = data?.AccountProfile;
   const [updateAccountPassword] = useMutation(UPDATE_ACCOUNT_PASSWORD);
 
   const onSubmit = async ({ newPassword }: UpdatePasswordFormData) => {
@@ -30,7 +40,7 @@ export default function TabUpdatePassword() {
     }
   };
 
-  if (isPending) {
+  if (loading) {
     return <LoadingIndicator className="h-full" />;
   }
 
