@@ -53,12 +53,12 @@ const CollapsedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
 );
 
 const ExpandedMenuItemLink: React.FC<{ item: MenuItem }> = ({ item }) => (
-  <Link to={constructPath(item.path)} className={classNames(menuNavigationItemStyle, "h-10")}>
+  <Link to={constructPath(item.path)} className={menuNavigationItemStyle}>
     <Icon icon={item.icon} className="size-4" />
     <span className="truncate text-sm">{item.label}</span>
     <Icon
       icon="mdi:arrow-top-right"
-      className="m-1 ml-auto text-sm opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100 group-data-[state=open]/menu-item:opacity-100"
+      className="m-1 ml-auto opacity-0 group-hover/menu-item:opacity-100 group-focus/menu-item:opacity-100 group-data-[state=open]/menu-item:opacity-100"
     />
   </Link>
 );
