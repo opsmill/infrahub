@@ -13,20 +13,20 @@ from infrahub.database import InfrahubDatabase
 async def test_use_percentage(db: InfrahubDatabase, default_branch: Branch, ip_dataset_01: dict[str, Node]) -> None:
     net240 = ip_dataset_01["net240"]
     net240.member_type.value = PrefixMemberType.ADDRESS.value
-    utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net240])
+    utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net240], branch=default_branch)
     percentage = await utilization.get_use_percentage()
 
     assert percentage == 0.0
 
     net240.member_type.value = PrefixMemberType.PREFIX.value
-    utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net240])
+    utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[net240], branch=default_branch)
     percentage = await utilization.get_use_percentage()
 
     assert percentage == 0.2197265625
 
 
 async def test_use_percentage_no_prefixes(db: InfrahubDatabase, default_branch: Branch) -> None:
-    utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[])
+    utilization = PrefixUtilizationGetter(db=db, ip_prefixes=[], branch=default_branch)
     percentage = await utilization.get_use_percentage()
 
     assert percentage == 0.0

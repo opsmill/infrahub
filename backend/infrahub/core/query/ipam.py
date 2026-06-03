@@ -1006,9 +1006,6 @@ class IPPrefixUtilizationResult:
     prefixlen: int
     """Prefix length of the child IP value."""
 
-    branch: str
-    """Branch name where this allocation exists."""
-
     @classmethod
     def from_db(cls, result: QueryResult) -> IPPrefixUtilizationResult:
         """Convert raw QueryResult to typed dataclass."""
@@ -1022,98 +1019,84 @@ class IPPrefixUtilizationResult:
             child_labels=tuple(child.labels),
             ip_value=av.get("value"),
             prefixlen=av.get("prefixlen"),
-            branch=str(result.get("branch")),
         )
 
 
 class IPPrefixUtilization(Query):
+    """Counts child allocations of one or more parent prefixes from the perspective of a single branch."""
+
     name = "ipprefix_utilization_prefix"
     type = QueryType.READ
-    branch: Branch | None = None  # type: ignore[assignment]
 
-    def __init__(self, ip_prefixes: list[str], allocated_kinds: list[str], **kwargs) -> None:
+    def __init__(self, ip_prefixes: list[Node], allocated_kinds: list[str], branch: Branch, **kwargs) -> None:
         self.ip_prefixes = ip_prefixes
-        self.allocated_kinds: list[str] = []
-        self.allocated_kinds_rel: list[str] = []
-
-        for kind in sorted(allocated_kinds):
-            self.allocated_kinds.append(f'"{kind}"')
-            self.allocated_kinds_rel.append(
-                {InfrahubKind.IPADDRESS: '"ip_prefix__ip_address"', InfrahubKind.IPPREFIX: '"parent__child"'}[kind]
-            )
-
-        super().__init__(**kwargs)
+        self.allocated_kinds = sorted(allocated_kinds)
+        self.allocated_kinds_rel = [
+            {InfrahubKind.IPADDRESS: "ip_prefix__ip_address", InfrahubKind.IPPREFIX: "parent__child"}[kind]
+            for kind in self.allocated_kinds
+        ]
+        super().__init__(branch=branch, **kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
+        self.params["allocated_kinds"] = self.allocated_kinds
+        self.params["allocated_kinds_rel"] = self.allocated_kinds_rel
 
-        branch = self.branch
-        if branch is not None and not self.branch_agnostic:
-            branches_times = branch.get_branches_and_times_to_query_global(at=self.at)
-            for idx, (branch_names, time_to_query) in enumerate(branches_times.items()):
-                self.params[f"util_branch{idx}"] = list(branch_names)
-                self.params[f"util_time{idx}"] = time_to_query
-            num_branches = len(branches_times)
+        def rel_filter(variable_name: str) -> str:
+            filter_str, filter_params = self.branch.get_query_filter_path(
+                at=self.at.to_string(),
+                branch_agnostic=self.branch_agnostic,
+                variable_name=variable_name,
+            )
+            self.params.update(filter_params)
+            return filter_str
 
-            def rel_filter(rel_name: str) -> str:
-                parts = [
-                    f"({rel_name}.branch IN $util_branch{idx} AND {rel_name}.from <= $util_time{idx} "
-                    f"AND ({rel_name}.to IS NULL OR {rel_name}.to >= $util_time{idx}))"
-                    for idx in range(num_branches)
-                ]
-                return " OR ".join(parts)
-        else:
-            self.params["time_at"] = self.at.to_string()
-
-            def rel_filter(rel_name: str) -> str:
-                return f"{rel_name}.from <= $time_at AND ({rel_name}.to IS NULL OR {rel_name}.to >= $time_at)"
-
-        query = f"""
+        query = """
         MATCH (pfx:Node)
         WHERE pfx.uuid IN $ids
-        CALL (pfx) {{
+        CALL (pfx) {
             MATCH (pfx)-[r_rel1:IS_RELATED]-(rl:Relationship)<-[r_rel2:IS_RELATED]-(child:Node)
-            WHERE rl.name IN [{", ".join(self.allocated_kinds_rel)}]
-            AND any(l IN labels(child) WHERE l IN [{", ".join(self.allocated_kinds)}])
-            AND ({rel_filter("r_rel1")})
-            AND ({rel_filter("r_rel2")})
+            WHERE rl.name IN $allocated_kinds_rel
+            AND any(l IN labels(child) WHERE l IN $allocated_kinds)
+            AND %(rel1_filter)s
+            AND %(rel2_filter)s
             RETURN r_rel1, rl, r_rel2, child
-        }}
+        }
         WITH pfx, r_rel1, rl, r_rel2, child
         MATCH path = (
             (pfx)-[r_1:IS_RELATED]-(rl:Relationship)-[r_2:IS_RELATED]-(child:Node)
             -[r_attr:HAS_ATTRIBUTE]->(attr:Attribute)
-            -[r_attr_val:HAS_VALUE]->(av:{PREFIX_ATTRIBUTE_LABEL}|{ADDRESS_ATTRIBUTE_LABEL})
+            -[r_attr_val:HAS_VALUE]->(av:%(prefix_label)s|%(address_label)s)
         )
-        WHERE %(id_func)s(r_1) = %(id_func)s(r_rel1)
-        AND %(id_func)s(r_2) = %(id_func)s(r_rel2)
-        AND ({rel_filter("r_attr")})
-        AND ({rel_filter("r_attr_val")})
+        WHERE elementId(r_1) = elementId(r_rel1)
+        AND elementId(r_2) = elementId(r_rel2)
+        AND %(attr_filter)s
+        AND %(attr_val_filter)s
         AND attr.name IN ["prefix", "address"]
         WITH
             path,
             pfx,
             child,
             av,
-            reduce(br_lvl = 0, r in relationships(path) | br_lvl + r.branch_level) AS sum_branch_level,
-            all(r in relationships(path) WHERE r.status = "active") AS is_active,
-            [r_attr_val.from, r_attr.from, r_2.from, r_1.from] AS from_times,
-            reduce(
-                b_details = [0, null], r in relationships(path) |
-                CASE WHEN r.branch_level > b_details[0] THEN [r.branch_level, r.branch] ELSE b_details END
-            ) as deepest_branch_details
+            reduce(br_lvl = 0, r IN relationships(path) | br_lvl + r.branch_level) AS sum_branch_level,
+            all(r IN relationships(path) WHERE r.status = "active") AS is_active,
+            [r_attr_val.from, r_attr.from, r_2.from, r_1.from] AS from_times
         ORDER BY pfx.uuid, child.uuid, av.uuid, sum_branch_level DESC, from_times[3] DESC, from_times[2] DESC, from_times[1] DESC, from_times[0] DESC
         WITH
             pfx,
             child,
             av,
-            head(collect(deepest_branch_details[1])) AS branch,
             head(collect(is_active)) AS is_latest_active
         WHERE is_latest_active = TRUE
         """ % {
-            "id_func": db.get_id_function_name(),
+            "rel1_filter": rel_filter("r_rel1"),
+            "rel2_filter": rel_filter("r_rel2"),
+            "attr_filter": rel_filter("r_attr"),
+            "attr_val_filter": rel_filter("r_attr_val"),
+            "prefix_label": PREFIX_ATTRIBUTE_LABEL,
+            "address_label": ADDRESS_ATTRIBUTE_LABEL,
         }
-        self.return_labels = ["pfx", "child", "av", "branch"]
+        self.return_labels = ["pfx", "child", "av"]
         self.add_to_query(query)
 
     def get_data(self) -> list[IPPrefixUtilizationResult]:

@@ -218,7 +218,7 @@ class TestIpamUtilization(TestIpam):
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix2 = initial_dataset["prefix2"]
-        getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix2])
+        getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix2], branch=default_branch)
 
         assert await getter.get_use_percentage(ip_prefixes=[container]) == 100 / 8
         assert await getter.get_use_percentage(ip_prefixes=[prefix2]) == 0
@@ -360,20 +360,18 @@ class TestIpamUtilization(TestIpam):
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
         prefix2_branch = step_02_dataset["prefix2_branch"]
-        getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix_branch, prefix2_branch])
+        prefixes = [container, prefix, prefix_branch, prefix2_branch]
+        main_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=default_branch)
+        branch_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=branch2)
 
-        assert await getter.get_use_percentage(ip_prefixes=[container]) == 25.0
-        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[branch2.name]) == 12.5
-        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[default_branch.name]) == 12.5
-        assert await getter.get_use_percentage(ip_prefixes=[prefix2_branch]) == 0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix2_branch], branch_names=[branch2.name]) == 0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix2_branch], branch_names=[default_branch.name]) == 0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 100.0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[branch2.name]) == 100.0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[default_branch.name]) == 0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 100.0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[branch2.name]) == 50.0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == 50.0
+        assert await branch_getter.get_use_percentage(ip_prefixes=[container]) == 25.0
+        assert await main_getter.get_use_percentage(ip_prefixes=[container]) == 12.5
+        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix2_branch]) == 0
+        assert await main_getter.get_use_percentage(ip_prefixes=[prefix2_branch]) == 0
+        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 100.0
+        assert await main_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 0
+        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix]) == 100.0
+        assert await main_getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
 
     async def test_step02_graphql_prefix_pool_branch_utilization(
         self,
@@ -386,8 +384,8 @@ class TestIpamUtilization(TestIpam):
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
         prefix_pool = initial_dataset["prefix_pool"]
-        default_branch.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -426,8 +424,6 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        branch2.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -465,8 +461,8 @@ class TestIpamUtilization(TestIpam):
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
         address_pool = initial_dataset["address_pool"]
-        default_branch.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -505,8 +501,6 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        branch2.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -545,21 +539,21 @@ class TestIpamUtilization(TestIpam):
         container = initial_dataset["container"]
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
-        getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix_branch])
+        prefixes = [container, prefix, prefix_branch]
+        main_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=default_branch)
+        branch_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=branch2)
 
-        assert await getter.get_use_percentage(ip_prefixes=[container]) == 12.5
-        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[branch2.name]) == 100 / 16
-        assert await getter.get_use_percentage(ip_prefixes=[container], branch_names=[default_branch.name]) == 100 / 16
-        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch]) == (13 / 14) * 100
-        assert (
-            await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[branch2.name]) == (13 / 14) * 100
-        )
-        assert await getter.get_use_percentage(ip_prefixes=[prefix_branch], branch_names=[default_branch.name]) == 0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix]) == (12 / 14) * 100
-        assert await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[branch2.name]) == (6 / 14) * 100
-        assert (
-            await getter.get_use_percentage(ip_prefixes=[prefix], branch_names=[default_branch.name]) == (6 / 14) * 100
-        )
+        # main now sees only prefix under container; main's prefix2 deletion is invisible to the
+        # isolated branch, which still counts prefix + prefix2 plus its own live prefix_branch.
+        assert await main_getter.get_use_percentage(ip_prefixes=[container]) == 100 / 16
+        assert await branch_getter.get_use_percentage(ip_prefixes=[container]) == 18.75
+        # prefix_branch only exists on branch2; one of its 14 addresses was deleted on branch2.
+        assert await main_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 0
+        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == (13 / 14) * 100
+        # prefix on main lost one of its 7 addresses; branch2 still sees those 7 (isolation)
+        # plus its own 7 minus the one deleted on branch2.
+        assert await main_getter.get_use_percentage(ip_prefixes=[prefix]) == (6 / 14) * 100
+        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix]) == (13 / 14) * 100
 
     async def test_step03_graphql_prefix_pool_delete_utilization(
         self,
@@ -573,8 +567,8 @@ class TestIpamUtilization(TestIpam):
         container = initial_dataset["container"]
         container_branch = step_02_dataset["container_branch"]
         prefix_pool = initial_dataset["prefix_pool"]
-        default_branch.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -586,18 +580,21 @@ class TestIpamUtilization(TestIpam):
         assert result.data
         pool_data = result.data["InfrahubResourcePoolUtilization"]
         assert pool_data["count"] == 2
-        assert pool_data["utilization"] == 100 / 16
-        assert pool_data["utilization_default_branch"] == 100 / 32
-        assert pool_data["utilization_branches"] == 100 / 32
+        # Pool space = 2 * 256 = 512. On branch2 (isolated) container shows prefix + prefix2
+        # (main's prefix2 deletion is invisible to the branch) plus prefix_branch alive on the
+        # branch, totalling 48/512. On main only prefix survives: 16/512.
+        assert pool_data["utilization"] == (48 / 512) * 100
+        assert pool_data["utilization_default_branch"] == (16 / 512) * 100
+        assert pool_data["utilization_branches"] == (32 / 512) * 100
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
                 "display_label": await container.get_display_label(db=db),
                 "id": container.id,
                 "kind": "IpamIPPrefix",
-                "utilization": 12.5,
+                "utilization": 18.75,
                 "utilization_default_branch": 100 / 16,
-                "utilization_branches": 100 / 16,
+                "utilization_branches": 12.5,
                 "weight": 256,
             }
         } in prefix_details_list
@@ -613,8 +610,6 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        branch2.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
@@ -653,8 +648,8 @@ class TestIpamUtilization(TestIpam):
         prefix = initial_dataset["prefix"]
         prefix_branch = step_02_dataset["prefix_branch"]
         address_pool = initial_dataset["address_pool"]
-        default_branch.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+        branch2.update_schema_hash()
+        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=POOL_UTILIZATION_QUERY,
@@ -666,18 +661,21 @@ class TestIpamUtilization(TestIpam):
         assert result.data
         pool_data = result.data["InfrahubResourcePoolUtilization"]
         assert pool_data["count"] == 2
-        assert pool_data["utilization"] == (25 / 28) * 100
+        # On branch2 prefix sees 13 addresses (the 7 originally on main, untouched by main's
+        # later deletion thanks to isolation, plus 7 from branch2 minus the one removed there);
+        # prefix_branch sees 13 of its 14. Total 26 over a 28-address pool.
+        assert pool_data["utilization"] == (26 / 28) * 100
         assert pool_data["utilization_default_branch"] == (6 / 28) * 100
-        assert pool_data["utilization_branches"] == (19 / 28) * 100
+        assert pool_data["utilization_branches"] == (20 / 28) * 100
         prefix_details_list = pool_data["edges"]
         assert {
             "node": {
                 "display_label": await prefix.get_display_label(db=db),
                 "id": prefix.id,
                 "kind": "IpamIPPrefix",
-                "utilization": (12 / 14) * 100,
+                "utilization": (13 / 14) * 100,
                 "utilization_default_branch": (6 / 14) * 100,
-                "utilization_branches": (6 / 14) * 100,
+                "utilization_branches": (13 / 14) * 100 - (6 / 14) * 100,
                 "weight": 14,
             }
         } in prefix_details_list
@@ -693,8 +691,6 @@ class TestIpamUtilization(TestIpam):
             }
         } in prefix_details_list
 
-        branch2.update_schema_hash()
-        gql_params = await prepare_graphql_params(db=db, branch=branch2)
         result = await graphql(
             schema=gql_params.schema,
             source=PREFIX_UTILIZATION_QUERY,
