@@ -21,41 +21,74 @@ from .catalogue import WORKER_POOLS, get_workflows
 from .constants import WorkflowPriority
 from .models import TASK_RESULT_STORAGE_NAME
 
+REDIS_DATA_PORT = 6379
+
+
+def _redis_url(*, scheme: str, host: str, port: int, db: int, conn: dict[str, object]) -> str:
+    """Assemble a redis://|rediss:// URL with redis-py-native ssl_* query params."""
+    userinfo = ""
+    username = conn.get("username")
+    password = conn.get("password")
+    if username and password:
+        userinfo = f"{quote(str(username), safe='')}:{quote(str(password), safe='')}@"
+    elif password:
+        userinfo = f":{quote(str(password), safe='')}@"
+
+    query: dict[str, str] = {}
+    if conn.get("ssl"):
+        if conn.get("ssl_cert_reqs") == "none":
+            query["ssl_cert_reqs"] = "none"
+        if conn.get("ssl_check_hostname") is False:
+            query["ssl_check_hostname"] = "False"
+        if conn.get("ssl_ca_certs"):
+            query["ssl_ca_certs"] = str(conn["ssl_ca_certs"])
+
+    qs = f"?{urlencode(query)}" if query else ""
+    return f"{scheme}://{userinfo}{host}:{port}/{db}{qs}"
+
 
 def build_cache_connection_string(cache: CacheSettings) -> str:
-    """Build a redis:// or rediss:// URL from cache settings.
+    """Build a redis:// or rediss:// URL for Prefect's Redis result storage from cache settings.
 
-    All TLS knobs propagate through redis.Redis.from_url: the scheme selects
-    SSLConnection, and ssl_cert_reqs / ssl_check_hostname / ssl_ca_certs query
-    params are passed through to the connection. This keeps the Prefect result
-    storage block in parity with lock.py and the cache adapter, which read the
-    same INFRAHUB_CACHE_TLS_* settings directly.
+    Prefect's Redis client has no Sentinel support, so a redis+sentinel:// cache URL is reduced to a
+    best-effort direct connection to the first member on the standard data port (6379); making
+    Prefect's result storage highly available is tracked as a separate follow-up. A single-node
+    redis://|rediss:// cache URL is rebuilt with redis-py-native ssl_* query params, and when no URL
+    is set the scalar connection settings are used. All TLS knobs propagate through
+    redis.Redis.from_url: the scheme selects SSLConnection and ssl_cert_reqs / ssl_check_hostname /
+    ssl_ca_certs are passed through to the connection.
 
     Raises:
         ValueError: When ``INFRAHUB_CACHE_USERNAME`` is set without ``INFRAHUB_CACHE_PASSWORD``.
 
     """
+    if cache.url is not None:
+        # Imported lazily to avoid pulling the redis connection builder at module import time.
+        from infrahub.services.adapters.cache.connection import parse_redis_url
+
+        parsed = parse_redis_url(cache.url.get_secret_value())
+        scheme = "rediss" if parsed.connection_kwargs.get("ssl") else "redis"
+        if parsed.is_sentinel:
+            host, port = parsed.sentinels[0][0], REDIS_DATA_PORT
+        else:
+            assert parsed.host is not None
+            assert parsed.port is not None
+            host, port = parsed.host, parsed.port
+        return _redis_url(scheme=scheme, host=host, port=port, db=parsed.db, conn=parsed.connection_kwargs)
+
     if cache.username and not cache.password:
         raise ValueError("INFRAHUB_CACHE_USERNAME is set but INFRAHUB_CACHE_PASSWORD is not. Both are required.")
 
     scheme = "rediss" if cache.tls_enabled else "redis"
-
-    userinfo = ""
-    if cache.username and cache.password:
-        userinfo = f"{quote(cache.username, safe='')}:{quote(cache.password, safe='')}@"
-    elif cache.password:
-        userinfo = f":{quote(cache.password, safe='')}@"
-
-    query: dict[str, str] = {}
-    if cache.tls_enabled:
-        if cache.tls_insecure:
-            query["ssl_cert_reqs"] = "none"
-            query["ssl_check_hostname"] = "False"
-        if cache.tls_ca_file:
-            query["ssl_ca_certs"] = cache.tls_ca_file
-
-    qs = f"?{urlencode(query)}" if query else ""
-    return f"{scheme}://{userinfo}{cache.address}:{cache.service_port}/{cache.database}{qs}"
+    conn: dict[str, object] = {
+        "username": cache.username,
+        "password": cache.password,
+        "ssl": cache.tls_enabled,
+        "ssl_cert_reqs": "none" if cache.tls_insecure else "optional",
+        "ssl_check_hostname": not cache.tls_insecure,
+        "ssl_ca_certs": cache.tls_ca_file,
+    }
+    return _redis_url(scheme=scheme, host=cache.address, port=cache.service_port, db=cache.database, conn=conn)
 
 
 @task(name="task-manager-setup-worker-pools", task_run_name="Setup Worker pools", cache_policy=NONE)
