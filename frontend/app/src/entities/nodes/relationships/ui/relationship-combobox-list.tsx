@@ -57,7 +57,7 @@ export const RelationshipComboboxList = ({
       ref={ref}
       onValueChange={(newValue) => setSearchDebounced(newValue)}
       shouldFilter={false}
-      placeholder="Search by name or UUID..."
+      placeholder="Search by value or UUID..."
       {...props}
     >
       {isPending ? (

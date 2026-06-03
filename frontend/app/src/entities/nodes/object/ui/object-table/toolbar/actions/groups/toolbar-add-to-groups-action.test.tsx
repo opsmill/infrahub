@@ -59,7 +59,7 @@ describe("ToolbarAddToGroupsAction Component", () => {
 
     // THEN
     await expect.element(component.getByRole("dialog", { name: "Add to groups" })).toBeVisible();
-    await expect.element(component.getByPlaceholder("Search by name or UUID...")).toBeVisible();
+    await expect.element(component.getByPlaceholder("Search by value or UUID...")).toBeVisible();
     await expect.element(component.getByRole("option", { name: "Test Group 1" })).toBeVisible();
     await expect.element(component.getByRole("option", { name: "Test Group 2" })).toBeVisible();
   });
