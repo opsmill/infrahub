@@ -1,6 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, LinkButton } from "@infrahub/ui";
-import { ArrowUpRightIcon, ChevronsUpDownIcon, LoaderIcon, PlusIcon } from "lucide-react";
+import {
+  ArrowUpRightIcon,
+  CheckIcon,
+  ChevronsUpDownIcon,
+  LoaderIcon,
+  PlusIcon,
+} from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
 import {
@@ -101,7 +107,7 @@ interface BranchListProps {
 function BranchList({ closePopover, openCreateForm }: BranchListProps) {
   const { data, hasNextPage, fetchNextPage, isFetchingNextPage, isPending } =
     useGetBranchesPaginated();
-  const { setCurrentBranch } = useCurrentBranch();
+  const { currentBranch, setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
   const { contains } = useFilter({ sensitivity: "base" });
   const { isAuthenticated } = useAuth();
@@ -150,6 +156,9 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
                   </span>
 
                   <Row className="ml-auto">
+                    {currentBranch.name === branch.name && (
+                      <CheckIcon className="size-4 shrink-0" />
+                    )}
                     {branch.is_default && <BranchDefaultBadge />}
                     <BranchStatusBadge status={branch.status} />
                     {branch.sync_with_git && <Icon icon="mdi:source-branch-sync" />}
