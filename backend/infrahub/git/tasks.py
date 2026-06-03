@@ -89,9 +89,6 @@ async def add_git_repository(model: GitRepositoryAdd, importer: RepositoryImport
     importer = importer or RepositoryFileImporter()
     await add_tags(branches=[model.infrahub_branch_name], nodes=[model.repository_id])
 
-    # The repository lock only needs to cover the local clone and pinning its default-branch
-    # commit worktree (the git working-copy mutations). The object import and the origin sync
-    # below run after the lock is released.
     async with lock.registry.get(name=model.repository_name, namespace="repository"):
         repo = await InfrahubRepository.new(
             id=model.repository_id,
