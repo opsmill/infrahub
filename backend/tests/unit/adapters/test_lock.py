@@ -53,7 +53,7 @@ async def test_assert_never_overlap(recording_lock_timeline: LockTimeline) -> No
     async with lock.registry.get(name="repo-b", namespace="repository"):
         pass
 
-    recording_lock_timeline.assert_never_overlap("repository.repo-a", "repository.repo-b")
+    recording_lock_timeline.assert_never_overlap(["repository.repo-a", "repository.repo-b"])
 
 
 async def test_fixture_swaps_registry_and_exposes_timeline(recording_lock_timeline: LockTimeline) -> None:

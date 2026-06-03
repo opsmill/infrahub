@@ -9,6 +9,8 @@ from infrahub import lock
 from infrahub.lock import InfrahubLock, InfrahubLockRegistry
 
 if TYPE_CHECKING:
+    from collections.abc import Collection
+
     import redis.asyncio as redis
 
     from infrahub.services import InfrahubServices
@@ -92,13 +94,21 @@ class LockTimeline:
                     f"Held at that point: {sorted(self.held_at(seq))}"
                 )
 
-    def assert_never_overlap(self, lock_a: str, lock_b: str) -> None:
+    def assert_never_overlap(self, lock_names: Collection[str]) -> None:
+        """Assert that no two of ``lock_names`` were ever held at the same time.
+
+        Raises:
+            AssertionError: if two or more of ``lock_names`` were held simultaneously.
+
+        """
+        watched = set(lock_names)
         held: set[str] = set()
         for event in self.events:
             if event.action == LockAction.ACQUIRE:
                 held.add(event.name)
-                if lock_a in held and lock_b in held:
-                    raise AssertionError(f"Locks {lock_a!r} and {lock_b!r} were held simultaneously")
+                overlap = held & watched
+                if len(overlap) > 1:
+                    raise AssertionError(f"Locks {sorted(overlap)} were held simultaneously")
             elif event.action == LockAction.RELEASE:
                 held.discard(event.name)
 
