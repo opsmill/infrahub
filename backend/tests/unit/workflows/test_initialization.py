@@ -134,6 +134,46 @@ class ConnectionStringCase:
             ),
             id="tls_disabled_ignores_tls_options",
         ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node",
+                cache_kwargs={"url": "redis://cache:6380/2"},
+                expected_url="redis://cache:6380/2",
+            ),
+            id="url_single_node",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node_with_auth",
+                cache_kwargs={"url": "redis://user:secret@cache:6379/0"},
+                expected_url="redis://user:secret@cache:6379/0",
+            ),
+            id="url_single_node_with_auth",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_single_node_tls_insecure_native_params",
+                cache_kwargs={"url": "rediss://cache:6379?tls_insecure=true"},
+                expected_url="rediss://cache:6379/0?ssl_cert_reqs=none&ssl_check_hostname=False",
+            ),
+            id="url_single_node_tls_insecure_native_params",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_sentinel_best_effort_first_member_data_port",
+                cache_kwargs={"url": "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster/1"},
+                expected_url="redis://sentinel-a:6379/1",
+            ),
+            id="url_sentinel_best_effort_first_member_data_port",
+        ),
+        pytest.param(
+            ConnectionStringCase(
+                name="url_sentinel_tls_and_auth_best_effort",
+                cache_kwargs={"url": "rediss+sentinel://user:secret@sentinel-a:26379/mymaster"},
+                expected_url="rediss://user:secret@sentinel-a:6379/0",
+            ),
+            id="url_sentinel_tls_and_auth_best_effort",
+        ),
     ],
 )
 def test_build_cache_connection_string(case: ConnectionStringCase) -> None:

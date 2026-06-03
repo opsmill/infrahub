@@ -5,11 +5,13 @@ from dataclasses import dataclass
 from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 
 from infrahub.config import (
     SETTINGS,
     ApiSettings,
+    CacheDriver,
+    CacheSettings,
     DatabaseSettings,
     GitSettings,
     MainSettings,
@@ -376,3 +378,33 @@ def test_fixture_loaded_providers_have_expected_groups_claim(helper: TestHelper)
     assert config.security.get_oauth2_provider("provider2").groups_claim == "groups"
     assert config.security.get_oidc_provider("provider1").groups_claim == "roles"
     assert config.security.get_oidc_provider("provider2").groups_claim == "groups"
+
+
+def test_cache_url_rejects_scalar_connection_fields() -> None:
+    with pytest.raises(ValidationError, match="cannot be combined with scalar connection settings"):
+        CacheSettings(url=SecretStr("redis://cache:6379/0"), address="other")
+
+
+def test_cache_url_coexists_with_redis_driver() -> None:
+    settings = CacheSettings(url=SecretStr("redis://cache:6379/0"), driver=CacheDriver.Redis)
+    assert settings.driver is CacheDriver.Redis
+    assert settings.url is not None
+
+
+def test_cache_url_rejects_invalid_url() -> None:
+    with pytest.raises(ValidationError, match="requires a service name"):
+        CacheSettings(url=SecretStr("redis+sentinel://sentinel-a:26379"))
+
+
+def test_cache_url_validation_error_redacts_secret() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        CacheSettings(url=SecretStr("redis+sentinel://user:topsecret@sentinel-a:26379"))
+    assert "topsecret" not in str(exc_info.value)
+
+
+def test_cache_url_environment_variable() -> None:
+    url = "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster"
+    with patch.dict(os.environ, {"INFRAHUB_CACHE_URL": url}):
+        settings = CacheSettings()
+    assert settings.url is not None
+    assert settings.url.get_secret_value() == url

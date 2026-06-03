@@ -17,6 +17,7 @@ from pydantic import (
     EmailStr,
     Field,
     PrivateAttr,
+    SecretStr,
     ValidationError,
     computed_field,
     field_validator,
@@ -26,7 +27,7 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 from typing_extensions import Self
 
 from infrahub.constants.database import DatabaseType
-from infrahub.exceptions import InitializationError, ProcessingError
+from infrahub.exceptions import InitializationError, ProcessingError, RedisUrlError
 from infrahub.log import get_logger
 from infrahub.tls.context_builder import TlsContextBuilder
 
@@ -486,8 +487,15 @@ class BrokerSettings(BaseSettings):
         return self.port or default_ports[self.tls_enabled]
 
 
+CACHE_URL_EXCLUSIVE_FIELDS = frozenset(
+    {"address", "port", "database", "username", "password", "tls_enabled", "tls_insecure", "tls_ca_file"}
+)
+
+
 class CacheSettings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_")
+    # hide_input_in_errors keeps a connection URL (which may embed credentials) out of any
+    # ValidationError raised for this section.
+    model_config = SettingsConfigDict(env_prefix="INFRAHUB_CACHE_", hide_input_in_errors=True)
     address: str = "localhost"
     port: int | None = Field(
         default=None, ge=1, le=65535, description="Specified if running on a non default port (6379)"
@@ -496,6 +504,15 @@ class CacheSettings(BaseSettings):
     driver: CacheDriver = CacheDriver.Redis
     username: str = ""
     password: str = ""
+    url: SecretStr | None = Field(
+        default=None,
+        description=(
+            "Full Redis connection URL, authoritative over the scalar connection settings when set. "
+            "Supports the redis://, rediss://, redis+sentinel:// and rediss+sentinel:// schemes; the "
+            "Sentinel schemes accept a comma-separated list of members and a master group name, e.g. "
+            "redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. Ignored when driver is not redis."
+        ),
+    )
     tls_enabled: bool = Field(default=False, description="Indicates if TLS is enabled for the connection")
     tls_insecure: bool = Field(default=False, description="Indicates if TLS certificates are verified")
     tls_ca_file: str | None = Field(default=None, description="File path to CA cert or bundle in PEM format")
@@ -520,6 +537,25 @@ class CacheSettings(BaseSettings):
         if self.driver == CacheDriver.NATS:
             return self.port or 4222
         return self.port or default_ports
+
+    @model_validator(mode="after")
+    def validate_url_exclusivity(self) -> Self:
+        if self.url is None:
+            return self
+        explicit = self.model_fields_set & CACHE_URL_EXCLUSIVE_FIELDS
+        if explicit:
+            raise ValueError(
+                f"INFRAHUB_CACHE_URL cannot be combined with scalar connection settings; "
+                f"remove: {', '.join(sorted(explicit))}"
+            )
+        # Imported lazily to keep this low-level settings module free of the services package.
+        from infrahub.services.adapters.cache.connection import parse_redis_url
+
+        try:
+            parse_redis_url(self.url.get_secret_value())
+        except RedisUrlError as exc:
+            raise ValueError(exc.message) from exc
+        return self
 
 
 class WorkflowSettings(BaseSettings):
@@ -1890,6 +1926,10 @@ class ConfiguredSettings:
 class Settings(BaseSettings):
     """Main Settings Class for the project."""
 
+    # hide_input_in_errors keeps provided secrets (e.g. a cache connection URL) out of the
+    # input echoed by a ValidationError raised while loading any nested section.
+    model_config = SettingsConfigDict(hide_input_in_errors=True)
+
     main: MainSettings = MainSettings()
     api: ApiSettings = ApiSettings()
     git: GitSettings = GitSettings()
@@ -1897,7 +1937,10 @@ class Settings(BaseSettings):
     http: HTTPSettings = HTTPSettings()
     database: DatabaseSettings = DatabaseSettings()
     broker: BrokerSettings = BrokerSettings()
-    cache: CacheSettings = CacheSettings()
+    # Built via a factory so the default is constructed when Settings is instantiated (at load
+    # time) rather than at class-definition time; its URL validator imports the redis connection
+    # builder, which must not be pulled in while this settings module is still importing.
+    cache: CacheSettings = Field(default_factory=CacheSettings)
     workflow: WorkflowSettings = WorkflowSettings()
     miscellaneous: MiscellaneousSettings = MiscellaneousSettings()
     logging: LoggingSettings = LoggingSettings()

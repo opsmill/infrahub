@@ -163,6 +163,7 @@ Configuration settings for the message bus.
 | `INFRAHUB_CACHE_DRIVER` | None | string (redis, nats) | redis |
 | `INFRAHUB_CACHE_USERNAME` | None | string |  |
 | `INFRAHUB_CACHE_PASSWORD` | None | string |  |
+| `INFRAHUB_CACHE_URL` | Full Redis connection URL, authoritative over the scalar connection settings when set. Supports the redis://, rediss://, redis+sentinel:// and rediss+sentinel:// schemes; the Sentinel schemes accept a comma-separated list of members and a master group name, e.g. redis+sentinel://sentinel-a:26379,sentinel-b:26379/mymaster. Ignored when driver is not redis. | None | None |
 | `INFRAHUB_CACHE_TLS_ENABLED` | Indicates if TLS is enabled for the connection | boolean | False |
 | `INFRAHUB_CACHE_TLS_INSECURE` | Indicates if TLS certificates are verified | boolean | False |
 | `INFRAHUB_CACHE_TLS_CA_FILE` | File path to CA cert or bundle in PEM format | None | None |

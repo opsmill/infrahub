@@ -92,6 +92,14 @@ class LockError(Error):
     pass
 
 
+class RedisUrlError(Error):
+    """Raised when a Redis connection URL cannot be parsed into a valid connection."""
+
+    def __init__(self, message: str) -> None:
+        self.message = message
+        super().__init__(self.message)
+
+
 class GraphQLQueryError(Error):
     HTTP_CODE = 502
 
