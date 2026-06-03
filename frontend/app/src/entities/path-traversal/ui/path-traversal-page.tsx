@@ -57,7 +57,7 @@ export function PathTraversalPage() {
       </main>
 
       {parametersOpen && (
-        <Content.Card className="absolute top-4 right-4 bottom-4 z-10 flex w-80 flex-col overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl">
+        <Content.Card className="absolute top-4 right-4 bottom-4 z-10 flex w-80 flex-col overflow-hidden shadow-xl">
           <div className="border-gray-200 border-b p-4">
             <div className="flex items-start justify-between gap-2">
               <div>
