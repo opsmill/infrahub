@@ -22,7 +22,7 @@ class WorkflowLocalExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,  # noqa: ARG002
-        timeout: float | None = None,  # noqa: ARG002
+        timeout: float | None = None,  # noqa: ARG002, ASYNC109
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}  # avoid mutating input parameters

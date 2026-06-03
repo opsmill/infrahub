@@ -47,7 +47,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout: float | None = ...,
+        timeout: float | None = ...,  # noqa: ASYNC109
     ) -> Return: ...
 
     @overload
@@ -58,7 +58,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
-        timeout: float | None = ...,
+        timeout: float | None = ...,  # noqa: ASYNC109
     ) -> Any: ...
 
     # TODO Make expected_return mandatory and remove above overloads.
@@ -69,7 +69,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
-        timeout: float | None = None,
+        timeout: float | None = None,  # noqa: ASYNC109
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
@@ -82,9 +82,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
             raise RuntimeError("Unable to read state from the response")
 
         if timeout is not None and not response.state.is_final():
-            raise FlowRunWaitTimeout(
-                f"Flow run with ID {response.id} exceeded wait timeout of {timeout} seconds"
-            )
+            raise FlowRunWaitTimeout(f"Flow run with ID {response.id} exceeded wait timeout of {timeout} seconds")
 
         if response.state.type == StateType.CRASHED:
             raise RuntimeError(response.state.message)
