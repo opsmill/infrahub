@@ -110,7 +110,7 @@ class TestProposedChangePipelineConflict(TestInfrahubApp):
     @pytest.fixture(scope="class")
     async def happy_data_branch(self, db: InfrahubDatabase, initial_dataset: None, client: InfrahubClient) -> str:
         branch_name = f"conflict_free-{uuid4()}"
-        branch1 = await client.branch.create(branch_name=branch_name)
+        branch1 = await client.branch.create(branch_name=branch_name, sync_with_git=True)
         richard = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
         await richard.new(db=db, name="Richard", height=180, description="The less famous Richard Doe")
         await richard.save(db=db)
