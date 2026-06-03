@@ -66,9 +66,24 @@ QUERY_CHANGED_CASES: list[QueryChangedCase] = [
         expected=False,
     ),
     QueryChangedCase(
-        name="matching_query_id_is_true",
-        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery")],
+        name="updated_query_is_true",
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="updated")],
         expected=True,
+    ),
+    QueryChangedCase(
+        name="added_query_is_true",
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="added")],
+        expected=True,
+    ),
+    QueryChangedCase(
+        name="unchanged_action_is_false",
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="unchanged")],
+        expected=False,
+    ),
+    QueryChangedCase(
+        name="removed_action_is_false",
+        diff=[_node_diff(node_id=QUERY_ID, kind="CoreGraphQLQuery", action="removed")],
+        expected=False,
     ),
     QueryChangedCase(
         name="mismatched_id_is_false",
@@ -89,25 +104,6 @@ QUERY_CHANGED_CASES: list[QueryChangedCase] = [
         ],
         expected=True,
     ),
-    QueryChangedCase(
-        name="fragment_edit_surfaces_as_query_node_modification",
-        diff=[
-            _node_diff(
-                node_id=QUERY_ID,
-                kind="CoreGraphQLQuery",
-                action="updated",
-                elements=[
-                    NodeDiffElement(
-                        action="updated",
-                        element_type="ATTRIBUTE",
-                        name="query",
-                        summary={"added": 0, "updated": 1, "removed": 0},
-                    )
-                ],
-            ),
-        ],
-        expected=True,
-    ),
 ]
 
 
@@ -120,6 +116,11 @@ def test_query_changed(case: QueryChangedCase) -> None:
     referenced fragment surfaces as a modification of the same ``CoreGraphQLQuery``
     node. Selecting on the node id is therefore sufficient and avoids tracking
     fragment topology separately.
+
+    Only ``added`` and ``updated`` actions trigger the predicate. ``unchanged``
+    entries appear as parent context in enriched diffs and must not fire; ``removed``
+    entries describe a deleted query that leaves the definition broken and offers
+    nothing to regenerate against.
     """
     definition = _build_definition()
     assert _query_changed(definition=definition, diff_summary=case.diff) is case.expected
@@ -149,91 +150,24 @@ DEFINITION_CHANGED_CASES: list[DefinitionChangedCase] = [
         expected=False,
     ),
     DefinitionChangedCase(
-        name="attribute_change_on_definition",
-        diff=[
-            _node_diff(
-                node_id=DEFINITION_ID,
-                kind="CoreArtifactDefinition",
-                action="updated",
-                elements=[
-                    NodeDiffElement(
-                        action="updated",
-                        element_type="ATTRIBUTE",
-                        name="artifact_name",
-                        summary={"added": 0, "updated": 1, "removed": 0},
-                    )
-                ],
-            ),
-        ],
+        name="updated_definition_is_true",
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="updated")],
         expected=True,
     ),
     DefinitionChangedCase(
-        name="targets_relationship_repoint",
-        diff=[
-            _node_diff(
-                node_id=DEFINITION_ID,
-                kind="CoreArtifactDefinition",
-                action="updated",
-                elements=[
-                    NodeDiffElement(
-                        action="updated",
-                        element_type="RELATIONSHIP_ONE",
-                        name="targets",
-                        summary={"added": 1, "updated": 0, "removed": 1},
-                    )
-                ],
-            ),
-        ],
+        name="added_definition_is_true",
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="added")],
         expected=True,
     ),
     DefinitionChangedCase(
-        name="transformation_relationship_repoint",
-        diff=[
-            _node_diff(
-                node_id=DEFINITION_ID,
-                kind="CoreArtifactDefinition",
-                action="updated",
-                elements=[
-                    NodeDiffElement(
-                        action="updated",
-                        element_type="RELATIONSHIP_ONE",
-                        name="transformation",
-                        summary={"added": 1, "updated": 0, "removed": 1},
-                    )
-                ],
-            ),
-        ],
-        expected=True,
+        name="unchanged_action_is_false",
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="unchanged")],
+        expected=False,
     ),
     DefinitionChangedCase(
-        name="query_relationship_repoint",
-        diff=[
-            _node_diff(
-                node_id=DEFINITION_ID,
-                kind="CoreArtifactDefinition",
-                action="updated",
-                elements=[
-                    NodeDiffElement(
-                        action="updated",
-                        element_type="RELATIONSHIP_ONE",
-                        name="query",
-                        summary={"added": 1, "updated": 0, "removed": 1},
-                    )
-                ],
-            ),
-        ],
-        expected=True,
-    ),
-    DefinitionChangedCase(
-        name="definition_added",
-        diff=[
-            _node_diff(
-                node_id=DEFINITION_ID,
-                kind="CoreArtifactDefinition",
-                action="added",
-            ),
-        ],
-        expected=True,
+        name="removed_action_is_false",
+        diff=[_node_diff(node_id=DEFINITION_ID, kind="CoreArtifactDefinition", action="removed")],
+        expected=False,
     ),
     DefinitionChangedCase(
         name="definition_match_among_other_entries",
@@ -251,11 +185,15 @@ DEFINITION_CHANGED_CASES: list[DefinitionChangedCase] = [
 def test_definition_changed(case: DefinitionChangedCase) -> None:
     """The predicate fires exactly when the definition node itself is modified.
 
-    Any attribute change on ``CoreArtifactDefinition``, or any repoint of one of
-    its relationships (``targets``, ``transformation``, ``query``), surfaces as
-    a modification of the definition's own node id in the diff summary. A single
-    id-based check therefore covers every shape of definition-level change
-    uniformly, without enumerating attribute names.
+    Any attribute change or relationship repoint on ``CoreArtifactDefinition``
+    surfaces as a modification of the definition's own node id in the diff
+    summary, so a single id-based check covers every shape of definition-level
+    change uniformly.
+
+    Only ``added`` and ``updated`` actions trigger the predicate. ``unchanged``
+    entries appear as parent context in enriched diffs and must not fire;
+    ``removed`` definitions cannot reach this predicate because the artifact
+    definition list is sourced from the source branch's current state.
     """
     definition = _build_definition()
     assert _definition_changed(definition=definition, diff_summary=case.diff) is case.expected
