@@ -19,9 +19,10 @@ class PrefixChildDetails:
 
 
 class PrefixUtilizationGetter:
-    """Single-branch utilization: counts allocations visible from ``branch``.
+    """Counts allocations visible from a single branch.
 
-    To compare two branches, e.g. main against a feature branch for a pool view, instantiate one getter per branch and subtract.
+    Use one instance per branch and combine the results externally if a
+    cross-branch comparison is required.
     """
 
     def __init__(

@@ -207,6 +207,8 @@ class PoolUtilization(ObjectType):
         branch_getter = PrefixUtilizationGetter(
             db=db, ip_prefixes=resources, branch=graphql_context.branch, at=graphql_context.at
         )
+        # Reuse the single-branch query when the request is already on the default branch,
+        # otherwise the two getters cache independent result sets.
         default_branch_getter = (
             branch_getter
             if graphql_context.branch.name == default_branch.name
@@ -233,7 +235,9 @@ class PoolUtilization(ObjectType):
                 if default_branch_utilization is not None
                 else await default_branch_getter.get_use_percentage()
             )
-            response["utilization_branches"] = total_utilization - default_branch_utilization
+            # Clamp at 0: deletions on the branch can make its view smaller than the default
+            # branch's, but this field is exposed as a non-negative percentage.
+            response["utilization_branches"] = max(0.0, total_utilization - default_branch_utilization)
         if "edges" in fields:
             response["edges"] = []
             if "node" in fields["edges"]:
@@ -269,7 +273,7 @@ class PoolUtilization(ObjectType):
                             if default_branch_total is not None
                             else await default_branch_getter.get_use_percentage(ip_prefixes=[resource_node])
                         )
-                        node_response["utilization_branches"] = resource_total - default_branch_total
+                        node_response["utilization_branches"] = max(0.0, resource_total - default_branch_total)
                     response["edges"].append({"node": node_response})
 
         return response

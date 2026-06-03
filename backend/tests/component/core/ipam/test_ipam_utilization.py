@@ -49,7 +49,7 @@ async def test_graphql_utilization_inherited_on_new_branch(
     assert isinstance(branch_prefix, BuiltinIPPrefix)
     branch_response = await branch_prefix.to_graphql(db=db, fields={"utilization": None})
 
-    assert branch_response["utilization"] == main_response["utilization"]
+    assert branch_response["utilization"] == {"value": 3}
 
 
 async def test_graphql_utilization_branch_addition(
