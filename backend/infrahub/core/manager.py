@@ -388,6 +388,7 @@ class NodeManager:
         limit: int | None = None,
         at: Timestamp | str | None = None,
         branch: Branch | str | None = None,
+        order: OrderModel | None = None,
     ) -> dict[str, Node]:
         branch = await registry.get_branch(branch=branch, db=db)
         at = Timestamp(at)
@@ -402,6 +403,7 @@ class NodeManager:
             limit=limit,
             at=at,
             branch=branch,
+            order=order,
         )
         await query.execute(db=db)
 

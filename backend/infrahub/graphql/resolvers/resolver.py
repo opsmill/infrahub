@@ -352,12 +352,15 @@ async def hierarchy_resolver(
     # Extract only the filters from the kwargs and prepend the name of the field to the filters
     offset = kwargs.pop("offset", None)
     limit = kwargs.pop("limit", None)
+    order = kwargs.pop("order", None)
 
     filters = {
         f"{info.field_name}__{key}": value
         for key, value in kwargs.items()
         if ("__" in key and value) or key in ["id", "ids"]
     }
+
+    order_model = deserialize_order_input(input_data=order)
 
     response: dict[str, Any] = {"edges": [], "count": None}
 
@@ -387,6 +390,7 @@ async def hierarchy_resolver(
             limit=limit,
             at=graphql_context.at,
             branch=graphql_context.branch,
+            order=order_model,
         )
 
         if not objs:
