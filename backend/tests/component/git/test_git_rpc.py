@@ -5,12 +5,14 @@ from unittest.mock import ANY, AsyncMock, patch
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+    from pathlib import Path
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.uuidt import UUIDT
 from typing_extensions import Self
 
+from infrahub import lock
 from infrahub.auth import AccountSession, AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -23,7 +25,8 @@ from infrahub.git.models import (
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
 )
-from infrahub.git.repository import InfrahubReadOnlyRepository
+from infrahub.git.repository import BranchImport, InfrahubReadOnlyRepository
+from infrahub.git.sync import RepositoryImporter
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
@@ -31,6 +34,7 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_client, build_message_bus, build_workflow
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
+from tests.adapters.lock import LockTimeline, install_recording_lock_registry
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.test_client import dummy_async_request
 
@@ -92,7 +96,9 @@ class TestAddRepository:
             internal_status="active",
         )
 
+        self.mock_repo.name = git_upstream_repo_01["name"]
         self.mock_repo.import_objects_from_files = AsyncMock()
+        self.mock_repo.collect_pending_imports = AsyncMock(return_value=[])
 
         with (
             patch("infrahub.git.tasks.lock") as mock_infra_lock,
@@ -102,9 +108,7 @@ class TestAddRepository:
             mock_repo_class.new.return_value = self.mock_repo
             await add_git_repository(model=model)
 
-            mock_infra_lock.registry.get.assert_called_once_with(
-                name=git_upstream_repo_01["name"], namespace="repository"
-            )
+            mock_infra_lock.registry.get.assert_any_call(name=git_upstream_repo_01["name"], namespace="repository")
 
             mock_repo_class.new.assert_awaited_once_with(
                 id=repo_id,
@@ -116,9 +120,10 @@ class TestAddRepository:
                 default_branch_name=self.default_branch_name,
             )
             self.mock_repo.import_objects_from_files.assert_awaited_once_with(
-                infrahub_branch_name=self.default_branch_name, git_branch_name=self.default_branch_name
+                infrahub_branch_name=self.default_branch_name,
+                git_branch_name=self.default_branch_name,
+                commit="0123456789abcdef0123456789abcdef01234567",
             )
-            self.mock_repo.sync.assert_awaited_once_with()
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
@@ -380,3 +385,43 @@ class TestPullReadOnly:
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
+
+
+class _RecordingImporter(RepositoryImporter):
+    """Records a timeline checkpoint instead of importing, to capture the lock state at the import call."""
+
+    def __init__(self, timeline: LockTimeline) -> None:
+        self._timeline = timeline
+
+    async def import_branch(self, repo: InfrahubRepository, branch_import: BranchImport) -> None:
+        self._timeline.checkpoint("import")
+
+
+async def test_add_git_repository_releases_lock_before_import(
+    prefect_test_fixture: None,
+    dependency_provider: Provider,
+    git_upstream_repo_01: dict[str, str],
+    git_repos_dir: Path,
+) -> None:
+    """The default-branch import must run after the repository lock held for the clone is released."""
+    original_registry = lock.registry
+    timeline = install_recording_lock_registry()
+    importer = _RecordingImporter(timeline)
+    client = InfrahubClient(config=Config(requester=dummy_async_request))
+    model = GitRepositoryAdd(
+        repository_id=str(UUIDT()),
+        repository_name=git_upstream_repo_01["name"],
+        location=str(git_upstream_repo_01["path"]),
+        default_branch_name="main",
+        infrahub_branch_name="main",
+        infrahub_branch_id=str(UUIDT()),
+        internal_status=RepositoryInternalStatus.INACTIVE.value,
+    )
+
+    try:
+        with dependency_provider.scope(build_client, lambda: client):
+            await add_git_repository(model=model, importer=importer)
+    finally:
+        lock.registry = original_registry
+
+    timeline.assert_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "import", expected=False)
