@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, overload
 from prefect.client.schemas.objects import StateType
 from prefect.context import AsyncClientContext
 from prefect.deployments import run_deployment
+from prefect.exceptions import FlowRunWaitTimeout
 
 from infrahub import config, lock
 from infrahub.workers.utils import inject_context_parameter
@@ -46,6 +47,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        timeout: float | None = ...,
     ) -> Return: ...
 
     @overload
@@ -56,6 +58,7 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        timeout: float | None = ...,
     ) -> Any: ...
 
     # TODO Make expected_return mandatory and remove above overloads.
@@ -66,16 +69,22 @@ class WorkflowWorkerExecution(InfrahubWorkflow):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        timeout: float | None = None,
     ) -> Any:
         flow_func = workflow.load_function()
         parameters = dict(parameters) if parameters is not None else {}
         inject_context_parameter(func=flow_func, parameters=parameters, context=context)
 
         response: FlowRun = await run_deployment(
-            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags
+            name=workflow.full_name, poll_interval=1, parameters=parameters or {}, tags=tags, timeout=timeout
         )  # type: ignore[return-value, misc]
         if not response.state:
             raise RuntimeError("Unable to read state from the response")
+
+        if timeout is not None and not response.state.is_final():
+            raise FlowRunWaitTimeout(
+                f"Flow run with ID {response.id} exceeded wait timeout of {timeout} seconds"
+            )
 
         if response.state.type == StateType.CRASHED:
             raise RuntimeError(response.state.message)

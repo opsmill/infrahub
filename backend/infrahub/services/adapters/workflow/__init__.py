@@ -22,6 +22,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        timeout: float | None = ...,
     ) -> Return: ...
 
     @overload
@@ -32,6 +33,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | None = ...,
         parameters: dict[str, Any] | None = ...,
         tags: list[str] | None = ...,
+        timeout: float | None = ...,
     ) -> Any: ...
 
     @abstractmethod
@@ -42,6 +44,7 @@ class InfrahubWorkflow(ABC):
         context: InfrahubContext | None = None,
         parameters: dict[str, Any] | None = None,
         tags: list[str] | None = None,
+        timeout: float | None = None,
     ) -> Any:
         raise NotImplementedError()
 
