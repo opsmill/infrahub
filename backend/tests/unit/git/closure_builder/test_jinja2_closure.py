@@ -207,6 +207,32 @@ def test_unreadable_entry_template_is_recorded_as_unresolved(tmp_path: Path) -> 
     )
 
 
+def test_entry_path_escaping_the_worktree_is_rejected(tmp_path: Path) -> None:
+    """A `template_path` that resolves outside the worktree is rejected before any read.
+
+    The entry path is user-controlled via `.infrahub.yml`. Without an early
+    boundary check, a `template_path` like ``../../../etc/passwd`` would resolve
+    outside the worktree and be read by the closure walker. The boundary check
+    on the entry path mirrors the one applied to transitively-discovered
+    references and short-circuits the walk before any I/O.
+    """
+    outside_dir = tmp_path.parent / "outside_worktree_entry"
+    outside_dir.mkdir(exist_ok=True)
+    (outside_dir / "secret.j2").write_text("secret\n", encoding="utf-8")
+
+    worktree = tmp_path / "worktree"
+    worktree.mkdir()
+
+    result = Jinja2Closure().build(
+        transform_config=_config(name="device", template_path="../outside_worktree_entry/secret.j2"),
+        worktree_root=worktree,
+    )
+
+    assert result.dependencies == ()
+    assert result.complete is False
+    assert any("entry path escapes worktree" in ref.location for ref in result.unresolved)
+
+
 def test_reference_escaping_the_worktree_is_recorded_as_unresolved(tmp_path: Path) -> None:
     """A reference that resolves outside the worktree root is recorded and not followed.
 

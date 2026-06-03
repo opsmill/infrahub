@@ -37,6 +37,14 @@ class Jinja2Closure:
 
         entry_path = canonicalize_path(str(transform_config.template_path))
 
+        entry_real = (worktree_root / entry_path).resolve()
+        if entry_real != worktree_real and not entry_real.is_relative_to(worktree_real):
+            return ClosureResult(
+                dependencies=(),
+                complete=False,
+                unresolved=(UnresolvedRef(file=entry_path, location="entry path escapes worktree"),),
+            )
+
         visited: set[str] = set()
         unresolved: list[UnresolvedRef] = []
         queue: deque[str] = deque([entry_path])
