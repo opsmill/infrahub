@@ -52,6 +52,8 @@ class Jinja2Closure:
             try:
                 source = source_path.read_text(encoding="utf-8")
             except OSError:
+                complete = False
+                unresolved.append(UnresolvedRef(file=current, location="template not readable"))
                 continue
 
             try:

@@ -185,6 +185,28 @@ def test_missing_template_referenced_is_recorded_but_walk_continues(tmp_path: Pa
     )
 
 
+def test_unreadable_entry_template_is_recorded_as_unresolved(tmp_path: Path) -> None:
+    """An entry template that cannot be read is recorded as unresolved and flips `complete=False`.
+
+    Silently dropping an unreadable entry template would leave the closure
+    containing only the entry path with `complete=True`, which the regeneration
+    gate trusts. The result would be a transform whose closure is missing every
+    real dependency yet still gates on a single file. Recording the failure flips
+    the trust bit so the pipeline falls back to the coarser gate.
+    """
+    result = Jinja2Closure().build(
+        transform_config=_config(name="device", template_path="templates/missing_entry.j2"),
+        worktree_root=tmp_path,
+    )
+
+    assert result.dependencies == ("templates/missing_entry.j2",)
+    assert result.complete is False
+    assert any(
+        ref.file == "templates/missing_entry.j2" and ref.location == "template not readable"
+        for ref in result.unresolved
+    )
+
+
 def test_reference_escaping_the_worktree_is_recorded_as_unresolved(tmp_path: Path) -> None:
     """A reference that resolves outside the worktree root is recorded and not followed.
 

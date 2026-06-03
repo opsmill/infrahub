@@ -156,6 +156,30 @@ def test_repo_root_transform_collapses_to_entry_file(tmp_path: Path) -> None:
     assert result.complete is True
 
 
+def test_git_enumeration_failure_flips_complete_false(tmp_path: Path) -> None:
+    """When git cannot enumerate tracked files, the closure falls back with `complete=False`.
+
+    The package-directory floor relies on `git ls-files` to enumerate. If the
+    worktree is not a git repository (or the command fails), returning a trusted
+    one-file closure would cause the regeneration gate to silently skip
+    regenerations for any real sibling change. Flipping the trust bit forces the
+    pipeline to fall back to the coarser file-change gate.
+    """
+    _write(tmp_path, "transforms/network/main.py", "")
+
+    result = PythonClosure().build(
+        transform_config=_config(name="net", file_path="transforms/network/main.py"),
+        worktree_root=tmp_path,
+    )
+
+    assert result.dependencies == ("transforms/network/main.py",)
+    assert result.complete is False
+    assert any(
+        ref.file == "transforms/network/main.py" and ref.location == "git enumeration failed"
+        for ref in result.unresolved
+    )
+
+
 def test_dependencies_are_sorted(tmp_path: Path) -> None:
     """Returned dependencies are lexicographically sorted for byte-stable storage."""
     repo = _init_repo(tmp_path)

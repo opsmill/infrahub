@@ -6,7 +6,7 @@ from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
 
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
-from infrahub.git.closure_builder.result import ClosureResult
+from infrahub.git.closure_builder.result import ClosureResult, UnresolvedRef
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -39,7 +39,11 @@ class PythonClosure:
             repo = Repo(worktree_root)
             output = repo.git.ls_files(package_dir)
         except (InvalidGitRepositoryError, GitCommandError):
-            return ClosureResult(dependencies=(entry_path,), complete=True, unresolved=())
+            return ClosureResult(
+                dependencies=(entry_path,),
+                complete=False,
+                unresolved=(UnresolvedRef(file=entry_path, location="git enumeration failed"),),
+            )
 
         dependencies: list[str] = []
         for line in output.splitlines():
