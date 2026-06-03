@@ -35,6 +35,7 @@ from infrahub.core.branch import Branch
 from infrahub.core.branch.tasks import merge_branch
 from infrahub.core.constants import (
     CheckType,
+    DiffAction,
     GeneratorInstanceStatus,
     InfrahubKind,
     RepositoryInternalStatus,
@@ -802,9 +803,13 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             f"Artifact definition {artifact_definition.name.value} has no applicable node changes. Existing artifacts will not be re-rendered."
         )
 
-    managed_branch = model.source_branch_sync_with_git and model.branch_diff.has_file_modifications
+    managed_branch = (
+        _query_changed(definition=model.artifact_definition, diff_summary=diff_summary)
+        or _definition_changed(definition=model.artifact_definition, diff_summary=diff_summary)
+        or (model.source_branch_sync_with_git and model.branch_diff.has_file_modifications)
+    )
     if managed_branch:
-        log.info("Source branch is synced with Git repositories with updates, all artifacts will be processed")
+        log.info("Query, definition or repository file change detected, all artifacts will be processed")
 
     checks = []
 
@@ -1169,10 +1174,58 @@ def _run_generator(instance_id: str | None, managed_branch: bool, impacted_insta
     return instance_id in impacted_instances
 
 
+_TRIGGERING_DIFF_ACTIONS = {DiffAction.ADDED.value, DiffAction.UPDATED.value}
+
+
+def _query_changed(
+    definition: ProposedChangeArtifactDefinition,
+    diff_summary: list[NodeDiff],
+) -> bool:
+    """Return True when the definition's GraphQL query node is modified in the diff.
+
+    The SDK inlines every fragment body into the stored query text before persisting,
+    so any edit to the primary ``.gql`` file or any transitively referenced fragment
+    surfaces as a single ``CoreGraphQLQuery`` node modification. A node-id match is
+    therefore sufficient.
+
+    Entries with ``action=unchanged`` are ignored because the diff system enriches
+    the tree with parent context nodes that are not themselves modified, and entries
+    with ``action=removed`` are ignored because a query deleted on the source branch
+    leaves the definition broken and there is nothing to regenerate against.
+    """
+    return any(
+        entry["id"] == definition.query_id and entry["action"] in _TRIGGERING_DIFF_ACTIONS for entry in diff_summary
+    )
+
+
+def _definition_changed(
+    definition: ProposedChangeArtifactDefinition,
+    diff_summary: list[NodeDiff],
+) -> bool:
+    """Return True when the ``CoreArtifactDefinition`` node itself is modified in the diff.
+
+    Any attribute change or relationship repoint (``targets``, ``transformation``,
+    ``query``) on the definition surfaces as a modification of the definition's own
+    node id, so a single id-based check covers every shape of definition-level
+    change uniformly.
+
+    Entries with ``action=unchanged`` are ignored because the diff system enriches
+    the tree with parent context nodes that are not themselves modified, and entries
+    with ``action=removed`` cannot occur in practice here because the definition list
+    is fetched from the source branch's current state.
+    """
+    return any(
+        entry["id"] == definition.definition_id and entry["action"] in _TRIGGERING_DIFF_ACTIONS
+        for entry in diff_summary
+    )
+
+
 class DefinitionSelect(IntFlag):
     NONE = 0
     MODIFIED_KINDS = 1
     FILE_CHANGES = 2
+    QUERY_CHANGED = 4
+    DEFINITION_CHANGED = 8
 
     @staticmethod
     def add_flag(current: DefinitionSelect, flag: DefinitionSelect, condition: bool) -> DefinitionSelect:
@@ -1185,6 +1238,12 @@ class DefinitionSelect(IntFlag):
         change_types = []
         if DefinitionSelect.MODIFIED_KINDS in self:
             change_types.append("data changes within relevant object kinds")
+
+        if DefinitionSelect.QUERY_CHANGED in self:
+            change_types.append("changes to the GraphQL query")
+
+        if DefinitionSelect.DEFINITION_CHANGED in self:
+            change_types.append("changes to the artifact definition")
 
         if DefinitionSelect.FILE_CHANGES in self:
             change_types.append("file modifications in Git repositories")
@@ -1354,13 +1413,17 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
     modified_kinds = get_modified_kinds(diff_summary=diff_summary, branch=model.source_branch)
 
     for artifact_definition in artifact_definitions:
-        # Request artifact definition checks if the source branch that is managed in combination
-        # to the Git repository containing modifications which could indicate changes to the transforms
-        # in code
-        # Alternatively if the queries used touches models that have been modified in the path
-        # impacted artifact definitions will be included for consideration
-
         select = DefinitionSelect.NONE
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.QUERY_CHANGED,
+            condition=_query_changed(definition=artifact_definition, diff_summary=diff_summary),
+        )
+        select = select.add_flag(
+            current=select,
+            flag=DefinitionSelect.DEFINITION_CHANGED,
+            condition=_definition_changed(definition=artifact_definition, diff_summary=diff_summary),
+        )
         select = select.add_flag(
             current=select,
             flag=DefinitionSelect.FILE_CHANGES,
