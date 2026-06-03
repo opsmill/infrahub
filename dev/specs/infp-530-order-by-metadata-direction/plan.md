@@ -62,15 +62,17 @@ dev/specs/infp-530-order-by-metadata-direction/
 
 ```text
 backend/infrahub/core/
-├── constants/__init__.py                       # add "node_metadata" to RESERVED_ATTR_REL_NAMES
+├── constants/__init__.py                       # add "node_metadata" to RESERVED_ATTR_REL_NAMES (via NODE_METADATA_PREFIX)
 ├── schema/
-│   ├── order_by.py                              # NEW: parser, ParsedOrderByEntry, enums
+│   ├── order_by.py                              # NEW: parser, ParsedOrderByEntry variants, enums, helpers
 │   ├── schema_branch.py                         # use parser in validate_order_by() + duplicate detection
 │   └── node_inheritance_handler.py              # guard rename helper to skip METADATA entries
 └── query/
     ├── node.py                                  # NodeGetListQuery direction + precedence + UUID tiebreaker;
     │                                            # NodeGetHierarchyQuery direction + metadata + UUID tiebreaker
-    └── relationship.py                          # RelationshipGetListQuery direction + metadata + UUID tiebreaker
+    ├── relationship.py                          # RelationshipGetListQuery direction + metadata + UUID tiebreaker;
+    │                                            # adds requested_order plumbing for the peer path
+    └── subquery.py                              # NEW build_subquery_order_metadata helper, shared by peer/hierarchy paths
 
 backend/tests/component/core/
 ├── schema_manager/test_manager_schema.py        # extend: new validation cases (grammar, duplicates, reserved name)
@@ -83,7 +85,7 @@ backend/tests/component/graphql/
 └── queries/                                     # add: relationship-peer + hierarchy default-newest-first
 
 changelog/
-└── <issue>.feature.md                           # changelog fragment
+└── +order-by-metadata-direction.added.md        # changelog fragment
 ```
 
 **Structure Decision**: Existing backend layout. The single new file is `backend/infrahub/core/schema/order_by.py`, which owns the parser, the dataclass, and the two new enums. Placing it under `core/schema/` keeps it adjacent to `schema_branch.py` (its primary caller) and follows the project convention of co-locating schema-layer helpers with the validator.
