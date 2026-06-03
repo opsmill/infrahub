@@ -2594,13 +2594,13 @@ class NodeGetHierarchyQuery(Query):
             return
 
         if self.requested_order and self.requested_order.order_by:
-            entries = [
+            entries: list[ParsedOrderByEntry] = [
                 parse_order_by_entry(entry=entry, node_schema=hierarchy_schema)
                 for entry in self.requested_order.order_by
             ]
         elif self.requested_order and self.requested_order.node_metadata:
             nm = self.requested_order.node_metadata
-            entries: list[ParsedOrderByEntry] = []
+            entries = []
             if nm.created_at:
                 entries.append(
                     ParsedMetadataOrderBy(
