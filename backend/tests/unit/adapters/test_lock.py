@@ -24,8 +24,8 @@ async def test_held_at_checkpoint(recording_lock_timeline: LockTimeline) -> None
         recording_lock_timeline.checkpoint("inside")
     recording_lock_timeline.checkpoint("outside")
 
-    recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "inside", expected=True)
-    recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "outside", expected=False)
+    recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "inside")
+    recording_lock_timeline.assert_not_held_at_checkpoint("repository.repo-a", "outside")
 
 
 async def test_reentrant_acquire_records_single_boundary(recording_lock_timeline: LockTimeline) -> None:
@@ -36,7 +36,7 @@ async def test_reentrant_acquire_records_single_boundary(recording_lock_timeline
 
     assert recording_lock_timeline.acquire_sequence() == ["repository.repo-a"]
     assert [event.action for event in recording_lock_timeline.events].count(LockAction.RELEASE) == 1
-    recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "nested", expected=True)
+    recording_lock_timeline.assert_held_at_checkpoint("repository.repo-a", "nested")
 
 
 async def test_multi_lock_records_each_member(recording_lock_timeline: LockTimeline) -> None:

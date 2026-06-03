@@ -80,9 +80,15 @@ class LockTimeline:
     def checkpoint_seqs(self, label: str) -> list[int]:
         return [event.seq for event in self.events if event.action == LockAction.CHECKPOINT and event.label == label]
 
-    # --- assertion helpers ---
+    def assert_held_at_checkpoint(self, lock_name: str, label: str) -> None:
+        """Assert that ``lock_name`` was held at every checkpoint named ``label``."""
+        self._assert_held_at_checkpoint(lock_name, label, expected=True)
 
-    def assert_held_at_checkpoint(self, lock_name: str, label: str, *, expected: bool) -> None:
+    def assert_not_held_at_checkpoint(self, lock_name: str, label: str) -> None:
+        """Assert that ``lock_name`` was not held at any checkpoint named ``label``."""
+        self._assert_held_at_checkpoint(lock_name, label, expected=False)
+
+    def _assert_held_at_checkpoint(self, lock_name: str, label: str, *, expected: bool) -> None:
         seqs = self.checkpoint_seqs(label)
         if not seqs:
             raise AssertionError(f"No checkpoint named {label!r} was recorded")
@@ -144,9 +150,9 @@ class RecordingLock(InfrahubLock):
 class RecordingLockRegistry(InfrahubLockRegistry):
     """Local-only lock registry that hands out ``RecordingLock`` instances backed by a shared timeline."""
 
-    def __init__(self, timeline: LockTimeline | None = None) -> None:
+    def __init__(self, timeline: LockTimeline) -> None:
         super().__init__(local_only=True)
-        self.timeline = timeline or LockTimeline()
+        self.timeline = timeline
 
     def get(
         self,
@@ -170,6 +176,6 @@ class RecordingLockRegistry(InfrahubLockRegistry):
 
 def install_recording_lock_registry(timeline: LockTimeline | None = None) -> LockTimeline:
     """Replace the global lock registry with a recording one and return its timeline."""
-    registry = RecordingLockRegistry(timeline=timeline)
-    lock.registry = registry
-    return registry.timeline
+    timeline = timeline or LockTimeline()
+    lock.registry = RecordingLockRegistry(timeline=timeline)
+    return timeline
