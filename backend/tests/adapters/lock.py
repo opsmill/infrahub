@@ -25,12 +25,7 @@ class LockEvent:
 
 
 class LockTimeline:
-    """Ordered, monotonic log of lock transitions shared by every recorder in a test.
-
-    asyncio is cooperative, so each ``record`` call is atomic with respect to the lock
-    operation that triggers it: there is no ``await`` between releasing/acquiring a lock
-    and writing its event, which keeps the ordering of the log faithful to reality.
-    """
+    """Ordered, monotonic log of lock transitions shared by every recorder in a test."""
 
     def __init__(self) -> None:
         self.events: list[LockEvent] = []
