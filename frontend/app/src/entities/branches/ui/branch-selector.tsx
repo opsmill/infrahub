@@ -1,19 +1,12 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, LinkButton } from "@infrahub/ui";
-import {
-  ArrowUpRightIcon,
-  CheckIcon,
-  ChevronsUpDownIcon,
-  LoaderIcon,
-  PlusIcon,
-} from "lucide-react";
+import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import React from "react";
 import {
   type ButtonProps as AriaButtonProps,
   Collection,
   ListLayout,
-  useFilter,
   Virtualizer,
 } from "react-aria-components";
 
@@ -25,6 +18,7 @@ import { Separator } from "@/shared/components/aria/separator";
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Row } from "@/shared/components/container";
 import { QSP } from "@/shared/config/qsp";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
@@ -105,14 +99,15 @@ interface BranchListProps {
 }
 
 function BranchList({ closePopover, openCreateForm }: BranchListProps) {
-  const { data, hasNextPage, fetchNextPage, isFetchingNextPage, isPending } =
-    useGetBranchesPaginated();
   const { currentBranch, setCurrentBranch } = useCurrentBranch();
   const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
-  const { contains } = useFilter({ sensitivity: "base" });
   const { isAuthenticated } = useAuth();
   const [search, setSearch] = React.useState("");
   const trimmedSearch = search.trim();
+  const debouncedSearch = useDebounce(trimmedSearch, 300);
+  const { data, fetchNextPage, isFetchingNextPage, isPending } = useGetBranchesPaginated({
+    filters: debouncedSearch ? [{ name: "any__value", value: debouncedSearch }] : undefined,
+  });
   const branches = data?.pages.flat() ?? [];
 
   function handleBranchChange(branch: BranchListItem) {
@@ -126,9 +121,6 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
       <Autocomplete
         inputValue={search}
         onInputChange={setSearch}
-        filter={(textValue, input) =>
-          textValue === CREATE_BRANCH_ITEM_VALUE || contains(textValue, input)
-        }
         suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
         <Virtualizer
@@ -139,11 +131,7 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
             aria-label="branch list"
             className="max-h-125"
             renderEmptyState={() =>
-              isPending ? (
-                <Row className="p-2 text-sm text-stone-500">
-                  <LoaderIcon className="size-3.5 animate-spin" /> Loading...
-                </Row>
-              ) : (
+              !isPending && (
                 <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
               )
             }
@@ -167,6 +155,11 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
               )}
             </Collection>
 
+            <ListBoxLoadMoreItem
+              isLoading={isPending || isFetchingNextPage}
+              onLoadMore={fetchNextPage}
+            />
+
             {isAuthenticated && trimmedSearch && (
               <ListBoxItem
                 textValue={CREATE_BRANCH_ITEM_VALUE}
@@ -175,10 +168,6 @@ function BranchList({ closePopover, openCreateForm }: BranchListProps) {
               >
                 Create branch <span className="truncate font-semibold">{trimmedSearch}</span>
               </ListBoxItem>
-            )}
-
-            {hasNextPage && (
-              <ListBoxLoadMoreItem isLoading={isFetchingNextPage} onLoadMore={fetchNextPage} />
             )}
           </ListBox>
         </Virtualizer>
