@@ -14,8 +14,7 @@ infrahub:
         INFRAHUB_DB_ADDRESS: infrahub-headless.infrahub.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
-        INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
-        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_CACHE_URL: redis+sentinel://cache-redis:26379/mymaster # connect directly to the Sentinel nodes; Infrahub follows master failover
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server
         INFRAHUB_WORKFLOW_PORT: 4200
         PREFECT_API_URL: "http://prefect-server:4200/api"
@@ -48,8 +47,7 @@ infrahub:
         INFRAHUB_DB_ADDRESS: infrahub-headless.infrahub.svc.cluster.local # use FQDN to match neo4j's Helm cluster domain so that client-side routing is used
         INFRAHUB_DB_PROTOCOL: neo4j # required for client-side routing
         INFRAHUB_BROKER_ADDRESS: messagequeue-rabbitmq
-        INFRAHUB_CACHE_ADDRESS: redis-sentinel-proxy
-        INFRAHUB_CACHE_PORT: 6379
+        INFRAHUB_CACHE_URL: redis+sentinel://cache-redis:26379/mymaster # connect directly to the Sentinel nodes; Infrahub follows master failover
         INFRAHUB_WORKFLOW_ADDRESS: prefect-server
         INFRAHUB_WORKFLOW_PORT: 4200
         PREFECT_API_URL: "http://prefect-server:4200/api"
@@ -93,7 +91,10 @@ infrahub:
     backgroundServices:
       messaging:
         redis:
-          host: "redis-sentinel-proxy"
+          # NOTE: prefect_redis has no Sentinel support, so it cannot follow master failover on its
+          # own. It points at the Sentinel-managed Redis service directly; making Prefect's messaging
+          # Redis highly available is tracked as a separate follow-up.
+          host: "cache-redis"
       affinity:
         podAntiAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
