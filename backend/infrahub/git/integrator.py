@@ -60,7 +60,7 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
-from infrahub.git.closure_builder.dispatcher import build_transform_closure
+from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
@@ -284,10 +284,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.error(exc.message)
                 continue
 
-            closure = build_transform_closure(
+            closure = build_default_closure_builder(logger=log).build(
                 transform_config=config_transform,
                 worktree_root=Path(worktree.directory),
-                logger=log,
             )
 
             transform = InfrahubRepositoryJinja2(
@@ -875,10 +874,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.warning(f"{self.name}, file={transform.file_path.as_posix()} error={str(exc)}")
                 raise
 
-            closure = build_transform_closure(
+            closure = build_default_closure_builder(logger=log).build(
                 transform_config=transform,
                 worktree_root=Path(branch_wt.directory),
-                logger=log,
             )
 
             transforms.extend(

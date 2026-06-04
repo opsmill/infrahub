@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from git import Repo
 from git.exc import GitCommandError, InvalidGitRepositoryError
+from infrahub_sdk.schema.repository import InfrahubPythonTransformConfig
 
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.closure_builder.result import ClosureResult, UnresolvedRef
@@ -11,7 +12,7 @@ from infrahub.git.closure_builder.result import ClosureResult, UnresolvedRef
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from infrahub_sdk.schema.repository import InfrahubPythonTransformConfig
+    from infrahub.git.closure_builder.protocols import TransformConfig
 
 
 class PythonClosure:
@@ -22,6 +23,9 @@ class PythonClosure:
     A transform that sits at the repository root collapses to its own file
     instead of pulling in the entire repository.
     """
+
+    def supports(self, transform_config: TransformConfig) -> bool:
+        return isinstance(transform_config, InfrahubPythonTransformConfig)
 
     def build(
         self,

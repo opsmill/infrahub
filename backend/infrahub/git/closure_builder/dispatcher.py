@@ -1,24 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, assert_never
+from typing import TYPE_CHECKING, Any
 
 from git.exc import GitCommandError
-from infrahub_sdk.schema.repository import (
-    InfrahubJinja2TransformConfig,
-    InfrahubPythonTransformConfig,
-)
 from jinja2 import TemplateError
 
 from infrahub.git.closure_builder.jinja2_closure import Jinja2Closure
+from infrahub.git.closure_builder.jinja2_reference_resolver import Jinja2ReferenceResolver
 from infrahub.git.closure_builder.post_processing import append_manifest_path
 from infrahub.git.closure_builder.python_closure import PythonClosure
 from infrahub.git.closure_builder.result import ClosureResult
 
 if TYPE_CHECKING:
     import logging
+    from collections.abc import Sequence
     from pathlib import Path
 
-    from infrahub.git.closure_builder.protocols import TransformConfig
+    from infrahub.git.closure_builder.protocols import ClosureBuilder, TransformConfig
 
 ISOLATED_FAILURES: tuple[type[BaseException], ...] = (
     ValueError,
@@ -28,30 +26,54 @@ ISOLATED_FAILURES: tuple[type[BaseException], ...] = (
 )
 
 
-def build_transform_closure(
-    *,
-    transform_config: TransformConfig,
-    worktree_root: Path,
-    logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
-) -> ClosureResult:
-    """Compute a transform's stored dependency closure with the manifest path included.
+class AggregatedTransformClosureBuilder:
+    """Select the closure builder that supports a transform config and run it with failure isolation.
 
-    Returns a `ClosureResult` whose `dependencies` always include the canonical
-    manifest path. Failures listed in `ISOLATED_FAILURES` produce a fallback
-    result with `complete=False` and `dependencies=()`; anything outside that
-    set propagates.
+    Tries each injected builder in order and delegates to the first whose
+    `supports` returns True. Failures in `ISOLATED_FAILURES` produce a fallback
+    `ClosureResult` with `complete=False` so a single broken transform does not
+    abort import of the rest of the repository. The canonical manifest path is
+    always merged into a successful result.
     """
-    try:
-        match transform_config:
-            case InfrahubJinja2TransformConfig():
-                raw = Jinja2Closure().build(transform_config=transform_config, worktree_root=worktree_root)
-            case InfrahubPythonTransformConfig():
-                raw = PythonClosure().build(transform_config=transform_config, worktree_root=worktree_root)
-            case _:
-                assert_never(transform_config)
-    except ISOLATED_FAILURES:
-        if logger is not None:
-            logger.exception(f"Closure builder failed for transform {transform_config.name!r}")
-        return ClosureResult(dependencies=(), complete=False, unresolved=())
 
-    return append_manifest_path(result=raw)
+    def __init__(
+        self,
+        *,
+        builders: Sequence[ClosureBuilder[Any]],
+        logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
+    ) -> None:
+        self._builders = builders
+        self._logger = logger
+
+    def build(self, *, transform_config: TransformConfig, worktree_root: Path) -> ClosureResult:
+        try:
+            builder = self._select(transform_config=transform_config)
+            raw = builder.build(transform_config=transform_config, worktree_root=worktree_root)
+        except ISOLATED_FAILURES:
+            if self._logger is not None:
+                self._logger.exception(f"Closure builder failed for transform {transform_config.name!r}")
+            return ClosureResult(dependencies=(), complete=False, unresolved=())
+
+        return append_manifest_path(result=raw)
+
+    def _select(self, *, transform_config: TransformConfig) -> ClosureBuilder[Any]:
+        for builder in self._builders:
+            if builder.supports(transform_config):
+                return builder
+        raise NotImplementedError(
+            f"No closure builder supports transform {transform_config.name!r} of type {type(transform_config).__name__}"
+        )
+
+
+def build_default_closure_builder(
+    *,
+    logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
+) -> AggregatedTransformClosureBuilder:
+    """Wire the standard per-language closure builders into an aggregator."""
+    return AggregatedTransformClosureBuilder(
+        builders=(
+            Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()),
+            PythonClosure(),
+        ),
+        logger=logger,
+    )

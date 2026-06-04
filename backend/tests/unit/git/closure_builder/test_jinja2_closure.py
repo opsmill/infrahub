@@ -5,6 +5,7 @@ from pathlib import Path
 from infrahub_sdk.schema.repository import InfrahubJinja2TransformConfig
 
 from infrahub.git.closure_builder.jinja2_closure import Jinja2Closure
+from infrahub.git.closure_builder.jinja2_reference_resolver import Jinja2ReferenceResolver
 
 
 def _config(*, name: str, template_path: str) -> InfrahubJinja2TransformConfig:
@@ -42,7 +43,7 @@ def test_static_includes_imports_and_extends_are_resolved_transitively(tmp_path:
     _write(tmp_path, "templates/footer.j2", "{% import 'templates/macros.j2' as m %}\n")
     _write(tmp_path, "templates/macros.j2", "macro body\n")
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="templates/device.j2"),
         worktree_root=tmp_path,
     )
@@ -71,7 +72,7 @@ def test_dynamic_include_produces_unresolved_and_marks_incomplete(tmp_path: Path
         "{% include some_var %}\n",
     )
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="templates/device.j2"),
         worktree_root=tmp_path,
     )
@@ -100,7 +101,7 @@ def test_multiple_unresolved_sites_are_all_recorded(tmp_path: Path) -> None:
         "{% include third_var %}\n",
     )
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="templates/device.j2"),
         worktree_root=tmp_path,
     )
@@ -125,7 +126,7 @@ def test_paths_are_canonicalized(tmp_path: Path) -> None:
     )
     _write(tmp_path, "templates/header.j2", "header\n")
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="./templates/device.j2"),
         worktree_root=tmp_path,
     )
@@ -147,7 +148,7 @@ def test_dependencies_are_sorted_lexicographically(tmp_path: Path) -> None:
     _write(tmp_path, "templates/zeta.j2", "z")
     _write(tmp_path, "templates/alpha.j2", "a")
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="templates/device.j2"),
         worktree_root=tmp_path,
     )
@@ -171,7 +172,7 @@ def test_missing_template_referenced_is_recorded_but_walk_continues(tmp_path: Pa
     )
     _write(tmp_path, "templates/present.j2", "present\n")
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="templates/device.j2"),
         worktree_root=tmp_path,
     )
@@ -194,7 +195,7 @@ def test_unreadable_entry_template_is_recorded_as_unresolved(tmp_path: Path) -> 
     real dependency yet still gates on a single file. Recording the failure flips
     the trust bit so the pipeline falls back to the coarser gate.
     """
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="templates/missing_entry.j2"),
         worktree_root=tmp_path,
     )
@@ -216,14 +217,14 @@ def test_entry_path_escaping_the_worktree_is_rejected(tmp_path: Path) -> None:
     on the entry path mirrors the one applied to transitively-discovered
     references and short-circuits the walk before any I/O.
     """
-    outside_dir = tmp_path.parent / "outside_worktree_entry"
-    outside_dir.mkdir(exist_ok=True)
+    outside_dir = tmp_path / "outside_worktree_entry"
+    outside_dir.mkdir()
     (outside_dir / "secret.j2").write_text("secret\n", encoding="utf-8")
 
     worktree = tmp_path / "worktree"
     worktree.mkdir()
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="../outside_worktree_entry/secret.j2"),
         worktree_root=worktree,
     )
@@ -252,7 +253,7 @@ def test_reference_escaping_the_worktree_is_recorded_as_unresolved(tmp_path: Pat
         "{% include '../../outside_worktree/secret.j2' %}\n",
     )
 
-    result = Jinja2Closure().build(
+    result = Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()).build(
         transform_config=_config(name="device", template_path="templates/device.j2"),
         worktree_root=worktree,
     )

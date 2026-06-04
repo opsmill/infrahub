@@ -3,16 +3,17 @@ from __future__ import annotations
 from collections import deque
 from typing import TYPE_CHECKING
 
+from infrahub_sdk.schema.repository import InfrahubJinja2TransformConfig
 from jinja2 import Environment, FileSystemLoader, TemplateSyntaxError, meta
 
 from infrahub.git.closure_builder.canonicalizer import canonicalize_path
-from infrahub.git.closure_builder.jinja2_reference_resolver import Jinja2ReferenceResolver
 from infrahub.git.closure_builder.result import ClosureResult, UnresolvedRef
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from infrahub_sdk.schema.repository import InfrahubJinja2TransformConfig
+    from infrahub.git.closure_builder.jinja2_reference_resolver import Jinja2ReferenceResolver
+    from infrahub.git.closure_builder.protocols import TransformConfig
 
 
 class Jinja2Closure:
@@ -26,8 +27,11 @@ class Jinja2Closure:
     The returned `ClosureResult` is sorted, canonicalized, and deduplicated.
     """
 
-    def __init__(self, reference_resolver: Jinja2ReferenceResolver | None = None) -> None:
-        self._reference_resolver = reference_resolver or Jinja2ReferenceResolver()
+    def __init__(self, reference_resolver: Jinja2ReferenceResolver) -> None:
+        self._reference_resolver = reference_resolver
+
+    def supports(self, transform_config: TransformConfig) -> bool:
+        return isinstance(transform_config, InfrahubJinja2TransformConfig)
 
     def build(
         self,

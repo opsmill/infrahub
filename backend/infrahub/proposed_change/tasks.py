@@ -1253,7 +1253,7 @@ def _transform_changed(
         except ValueError:
             continue
 
-    return not closure.isdisjoint(changed_files)
+    return bool(closure & changed_files)
 
 
 def _repo_diff_or_none(branch_diff: ProposedChangeBranchDiff, repository_id: str) -> ProposedChangeRepository | None:

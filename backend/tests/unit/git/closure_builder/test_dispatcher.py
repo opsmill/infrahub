@@ -10,7 +10,7 @@ from infrahub_sdk.schema.repository import (
     InfrahubPythonTransformConfig,
 )
 
-from infrahub.git.closure_builder.dispatcher import build_transform_closure
+from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 
 if TYPE_CHECKING:
     import pytest
@@ -37,7 +37,7 @@ def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
         template_path=Path("templates/device.j2"),
     )
 
-    result = build_transform_closure(transform_config=config, worktree_root=tmp_path)
+    result = build_default_closure_builder().build(transform_config=config, worktree_root=tmp_path)
 
     assert "templates/device.j2" in result.dependencies
     assert ".infrahub.yml" in result.dependencies
@@ -57,7 +57,7 @@ def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
         file_path=Path("transforms/network/main.py"),
     )
 
-    result = build_transform_closure(transform_config=config, worktree_root=tmp_path)
+    result = build_default_closure_builder().build(transform_config=config, worktree_root=tmp_path)
 
     assert "transforms/network/main.py" in result.dependencies
     assert "transforms/network/helpers.py" in result.dependencies
@@ -83,15 +83,16 @@ def test_jinja2_failure_is_isolated_and_logged(
 
     logger = logging.getLogger("test_dispatcher")
     with caplog.at_level(logging.ERROR, logger="test_dispatcher"):
-        result = build_transform_closure(
+        result = build_default_closure_builder(logger=logger).build(
             transform_config=config,
             worktree_root=tmp_path,
-            logger=logger,
         )
 
     assert result.complete is False
     assert result.dependencies == ()
-    assert any("missing-entry" in record.message for record in caplog.records)
+    assert [record.getMessage() for record in caplog.records] == [
+        "Closure builder failed for transform 'missing-entry'"
+    ]
 
 
 def test_no_logger_is_safe(tmp_path: Path) -> None:
@@ -106,6 +107,6 @@ def test_no_logger_is_safe(tmp_path: Path) -> None:
         template_path=Path(),
     )
 
-    result = build_transform_closure(transform_config=config, worktree_root=tmp_path, logger=None)
+    result = build_default_closure_builder(logger=None).build(transform_config=config, worktree_root=tmp_path)
 
     assert result.complete is False
