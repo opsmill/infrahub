@@ -13,7 +13,7 @@ from pydantic import Field
 
 from infrahub import config
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus, RepositoryOperationalStatus
-from infrahub.exceptions import RepositoryError
+from infrahub.exceptions import RepositoryConnectionError, RepositoryCredentialsError, RepositoryError
 from infrahub.git.integrator import InfrahubRepositoryIntegrator
 from infrahub.log import get_logger
 
@@ -65,8 +65,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         By default the sync will focus only on the branches pulled from origin that have some differences with the local one.
 
+        A failure scoped to a single branch does not prevent the synchronization of the remaining branches.
+
         Raises:
-            GraphQLError: When creating a branch in the graph fails for a reason other than the branch already existing.
+            RepositoryConnectionError: When the remote repository is unreachable.
+            RepositoryCredentialsError: When the credentials for the remote repository are invalid.
+            RepositoryError: When the synchronization of one or more branches failed.
 
         """
         log.info("Starting the synchronization.", repository=self.name)
@@ -80,6 +84,8 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
 
+        failed_branches: list[str] = []
+
         # TODO need to handle properly the situation when a branch is not valid.
         if self.internal_status == RepositoryInternalStatus.ACTIVE.value:
             for branch_name in new_branches:
@@ -87,41 +93,74 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 if not is_valid:
                     continue
 
-                infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
                 try:
-                    branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
-                except GraphQLError as exc:
-                    if "already exist" not in exc.errors[0]["message"]:
-                        raise
-                    branch = await self.sdk.branch.get(branch_name=infrahub_branch)
-
-                await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
-
-                commit = self.get_commit_value(branch_name=branch_name, remote=False)
-                self.create_commit_worktree(commit=commit)
-                await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
-
-                await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit)
+                    await self._sync_new_branch(branch_name=branch_name)
+                except (RepositoryConnectionError, RepositoryCredentialsError):
+                    raise
+                except Exception as exc:
+                    log.warning(
+                        f"Unable to synchronize the new branch: {exc}", repository=self.name, branch=branch_name
+                    )
+                    failed_branches.append(branch_name)
 
             for branch_name in updated_branches:
                 is_valid = self.validate_remote_branch(branch_name=branch_name)
                 if not is_valid:
                     continue
 
-                infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-
-                commit_after = await self.pull(branch_name=branch_name)
-                if isinstance(commit_after, str):
-                    await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit_after)
-
-                elif commit_after is True:
+                try:
+                    await self._sync_updated_branch(branch_name=branch_name)
+                except (RepositoryConnectionError, RepositoryCredentialsError):
+                    raise
+                except Exception as exc:
                     log.warning(
-                        f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                        repository=self.name,
-                        branch=branch_name,
+                        f"Unable to synchronize the updated branch: {exc}", repository=self.name, branch=branch_name
                     )
+                    failed_branches.append(branch_name)
 
         await self._sync_staging(staging_branch=staging_branch, updated_branches=updated_branches)
+
+        if failed_branches:
+            raise RepositoryError(
+                identifier=self.name,
+                message=(
+                    f"Unable to synchronize the following branches of repository {self.name}: "
+                    f"{', '.join(failed_branches)}"
+                ),
+            )
+
+    async def _sync_new_branch(self, branch_name: str) -> None:
+        """Create a branch pulled from origin in the graph and in the local repository, then import its objects."""
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+        try:
+            branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
+        except GraphQLError as exc:
+            if "already exist" not in exc.errors[0]["message"]:
+                raise
+            branch = await self.sdk.branch.get(branch_name=infrahub_branch)
+
+        await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
+
+        commit = self.get_commit_value(branch_name=branch_name, remote=False)
+        self.create_commit_worktree(commit=commit)
+        await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
+
+        await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit)
+
+    async def _sync_updated_branch(self, branch_name: str) -> None:
+        """Pull the latest commit of a branch updated in origin, then import its objects."""
+        infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+
+        commit_after = await self.pull(branch_name=branch_name)
+        if isinstance(commit_after, str):
+            await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit_after)
+
+        elif commit_after is True:
+            log.warning(
+                f"An update was detected but the commit remained the same after pull() ({commit_after}).",
+                repository=self.name,
+                branch=branch_name,
+            )
 
     async def _sync_staging(self, staging_branch: str | None, updated_branches: list[str]) -> None:
         if (
