@@ -35,3 +35,4 @@ export {
   TreeItemLoader,
   type TreeItemProps,
 } from "./components/tree/tree";
+export { useDismiss } from "./hooks/use-dismiss";
