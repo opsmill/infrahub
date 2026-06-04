@@ -714,7 +714,8 @@ jobs:
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          # https://github.com/microsoft/playwright/issues/41000
+          node-version: 24.15.0
           cache: 'npm'
           cache-dependency-path: frontend/app/package-lock.json
       - name: "Install frontend"
@@ -988,7 +989,8 @@ jobs:
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          # https://github.com/microsoft/playwright/issues/41000
+          node-version: 24.15.0
           cache: 'npm'
           cache-dependency-path: frontend/app/package-lock.json
       - name: Set up Python
