@@ -1087,11 +1087,11 @@ class IPPrefixUtilization(Query):
             r_rel2.from AS r_rel2_from,
             r_attr.from AS r_attr_from,
             r_attr_val.from AS r_attr_val_from
-        ORDER BY pfx.uuid, child.uuid, av.uuid, sum_branch_level DESC, r_rel1_from DESC, r_rel2_from DESC, r_attr_from DESC, r_attr_val_from DESC
+        ORDER BY pfx.uuid, child.uuid, sum_branch_level DESC, r_rel1_from DESC, r_rel2_from DESC, r_attr_from DESC, r_attr_val_from DESC
         WITH
             pfx,
             child,
-            av,
+            head(collect(av)) AS av,
             head(collect(is_active)) AS is_latest_active
         WHERE is_latest_active = TRUE
         """ % {
