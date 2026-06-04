@@ -40,7 +40,7 @@ class AggregatedTransformClosureBuilder:
         self,
         *,
         builders: Sequence[ClosureBuilder[Any]],
-        logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
+        logger: logging.Logger | logging.LoggerAdapter[logging.Logger],
     ) -> None:
         self._builders = builders
         self._logger = logger
@@ -50,8 +50,7 @@ class AggregatedTransformClosureBuilder:
             builder = self._select(transform_config=transform_config)
             raw = builder.build(transform_config=transform_config, worktree_root=worktree_root)
         except ISOLATED_FAILURES:
-            if self._logger is not None:
-                self._logger.exception(f"Closure builder failed for transform {transform_config.name!r}")
+            self._logger.exception(f"Closure builder failed for transform {transform_config.name!r}")
             return ClosureResult(dependencies=(), complete=False, unresolved=())
 
         return append_manifest_path(result=raw)
@@ -67,12 +66,12 @@ class AggregatedTransformClosureBuilder:
 
 def build_default_closure_builder(
     *,
-    logger: logging.Logger | logging.LoggerAdapter[logging.Logger] | None = None,
+    logger: logging.Logger | logging.LoggerAdapter[logging.Logger],
 ) -> AggregatedTransformClosureBuilder:
     """Wire the standard per-language closure builders into an aggregator."""
     return AggregatedTransformClosureBuilder(
         builders=(
-            Jinja2Closure(reference_resolver=Jinja2ReferenceResolver()),
+            Jinja2Closure(reference_resolver=Jinja2ReferenceResolver(), logger=logger),
             PythonClosure(),
         ),
         logger=logger,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+from dataclasses import dataclass
 from enum import IntFlag
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -808,11 +809,11 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
         branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
     )
     managed_branch = (
-        _query_changed(definition=model.artifact_definition, diff_summary=diff_summary)
-        or _definition_changed(definition=model.artifact_definition, diff_summary=diff_summary)
+        _query_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
+        or _definition_changed(definition=model.artifact_definition, diff_summary=diff_summary).matched
         or (
             repo_diff_for_definition is not None
-            and _transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition)
+            and _transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition).matched
         )
     )
     if managed_branch:
@@ -1184,11 +1185,26 @@ def _run_generator(instance_id: str | None, managed_branch: bool, impacted_insta
 _TRIGGERING_DIFF_ACTIONS = {DiffAction.ADDED.value, DiffAction.UPDATED.value}
 
 
+@dataclass(frozen=True, kw_only=True, slots=True)
+class PredicateOutcome:
+    """The verdict of a regeneration predicate plus the diagnostic explaining it.
+
+    ``matched`` drives the selection gate; ``reason`` carries the human-readable
+    line the gate emits to the task log when the predicate fires. Keeping the
+    explanation on the verdict lets the predicate stay a pure function - it is
+    computed where the triggering field/file is known - while logging is the
+    caller's responsibility.
+    """
+
+    matched: bool
+    reason: str | None = None
+
+
 def _query_changed(
     definition: ProposedChangeArtifactDefinition,
     diff_summary: list[NodeDiff],
-) -> bool:
-    """Return True when the definition's GraphQL query node is modified in the diff.
+) -> PredicateOutcome:
+    """Match when the definition's GraphQL query node is modified in the diff.
 
     The SDK inlines every fragment body into the stored query text before persisting,
     so any edit to the primary ``.gql`` file or any transitively referenced fragment
@@ -1200,50 +1216,103 @@ def _query_changed(
     with ``action=removed`` are ignored because a query deleted on the source branch
     leaves the definition broken and there is nothing to regenerate against.
     """
-    return any(
+    matched = any(
         entry["id"] == definition.query_id and entry["action"] in _TRIGGERING_DIFF_ACTIONS for entry in diff_summary
+    )
+    if not matched:
+        return PredicateOutcome(matched=False)
+
+    return PredicateOutcome(
+        matched=True,
+        reason=(
+            f"Definition {definition.definition_name} ({definition.definition_id}): "
+            f"GraphQL query {definition.query_name} ({definition.query_id}) was modified - "
+            f"all artifacts of this definition will regenerate."
+        ),
     )
 
 
 def _definition_changed(
     definition: ProposedChangeArtifactDefinition,
     diff_summary: list[NodeDiff],
-) -> bool:
-    """Return True when the ``CoreArtifactDefinition`` node itself is modified in the diff.
+) -> PredicateOutcome:
+    """Match when the ``CoreArtifactDefinition`` node itself is modified in the diff.
 
     Any attribute change or relationship repoint (``targets``, ``transformation``,
     ``query``) on the definition surfaces as a modification of the definition's own
     node id, so a single id-based check covers every shape of definition-level
-    change uniformly.
+    change uniformly. The reason names the changed attributes or relationships read
+    from the matching entry's per-field detail.
 
     Entries with ``action=unchanged`` are ignored because the diff system enriches
     the tree with parent context nodes that are not themselves modified, and entries
     with ``action=removed`` cannot occur in practice here because the definition list
     is fetched from the source branch's current state.
     """
-    return any(
-        entry["id"] == definition.definition_id and entry["action"] in _TRIGGERING_DIFF_ACTIONS
-        for entry in diff_summary
+    matched_entry = next(
+        (
+            entry
+            for entry in diff_summary
+            if entry["id"] == definition.definition_id and entry["action"] in _TRIGGERING_DIFF_ACTIONS
+        ),
+        None,
+    )
+    if matched_entry is None:
+        return PredicateOutcome(matched=False)
+
+    changed_fields = ", ".join(
+        element["name"] for element in matched_entry["elements"] if element["action"] in _TRIGGERING_DIFF_ACTIONS
+    )
+    detail = f"definition node was modified ({changed_fields})" if changed_fields else "definition node was modified"
+    return PredicateOutcome(
+        matched=True,
+        reason=(
+            f"Definition {definition.definition_name} ({definition.definition_id}): {detail} - "
+            f"all artifacts of this definition will regenerate."
+        ),
     )
 
 
 def _transform_changed(
     definition: ProposedChangeArtifactDefinition,
     repo_diff: ProposedChangeRepository,
-) -> bool:
-    """Return True when the transform's stored dependency closure intersects this repo's file diff.
+) -> PredicateOutcome:
+    """Match when the transform's stored dependency closure intersects this repo's file diff.
 
     Falls back to "any file changed in the repository" when the closure cannot
     be trusted. On the precise path, both sides are canonicalized before the
     set intersection so the comparison matches git's diff output regardless
     of input separator or leading prefix.
+
+    The two fallback paths are distinguished so each reports the reason it could
+    not use the precise closure: a pre-feature node (``dependencies=null``)
+    self-heals on its next re-import, while an incomplete closure
+    (``dependencies_complete=False``) names the cause as the safety fallback. The
+    precise path names the intersecting file(s).
     """
-    closure_trusted = definition.dependencies is not None and definition.dependencies_complete is True
-    if not closure_trusted:
-        return repo_diff.has_modifications
+    if definition.dependencies is None:
+        legacy_reason = (
+            f"Definition {definition.definition_name}: transform was imported before this feature deployed "
+            f"(dependencies=null) - falling back to regenerate-on-any-file-change. The next re-import of this "
+            f"transform will populate its dependency closure."
+        )
+        return PredicateOutcome(
+            matched=repo_diff.has_modifications,
+            reason=legacy_reason if repo_diff.has_modifications else None,
+        )
+
+    if definition.dependencies_complete is not True:
+        incomplete_reason = (
+            f"Definition {definition.definition_name}: transform dependency closure is incomplete "
+            f"(dependencies_complete=False) - falling back to regenerate-on-any-file-change."
+        )
+        return PredicateOutcome(
+            matched=repo_diff.has_modifications,
+            reason=incomplete_reason if repo_diff.has_modifications else None,
+        )
 
     if not definition.dependencies:
-        return False
+        return PredicateOutcome(matched=False)
 
     closure = {canonicalize_path(entry) for entry in definition.dependencies}
     changed_files: set[str] = set()
@@ -1253,7 +1322,18 @@ def _transform_changed(
         except ValueError:
             continue
 
-    return bool(closure & changed_files)
+    intersection = closure & changed_files
+    if not intersection:
+        return PredicateOutcome(matched=False)
+
+    files = ", ".join(sorted(intersection))
+    return PredicateOutcome(
+        matched=True,
+        reason=(
+            f"Definition {definition.definition_name}: file {files} changed and is in this transform's "
+            f"dependency closure - all artifacts will regenerate."
+        ),
+    )
 
 
 def _repo_diff_or_none(branch_diff: ProposedChangeBranchDiff, repository_id: str) -> ProposedChangeRepository | None:
@@ -1457,28 +1537,27 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
 
     for artifact_definition in artifact_definitions:
         select = DefinitionSelect.NONE
-        select = select.add_flag(
-            current=select,
-            flag=DefinitionSelect.QUERY_CHANGED,
-            condition=_query_changed(definition=artifact_definition, diff_summary=diff_summary),
-        )
-        select = select.add_flag(
-            current=select,
-            flag=DefinitionSelect.DEFINITION_CHANGED,
-            condition=_definition_changed(definition=artifact_definition, diff_summary=diff_summary),
-        )
+        for outcome, flag in (
+            (_query_changed(definition=artifact_definition, diff_summary=diff_summary), DefinitionSelect.QUERY_CHANGED),
+            (
+                _definition_changed(definition=artifact_definition, diff_summary=diff_summary),
+                DefinitionSelect.DEFINITION_CHANGED,
+            ),
+        ):
+            select = select.add_flag(current=select, flag=flag, condition=outcome.matched)
+            if outcome.reason is not None:
+                log.info(outcome.reason)
+
         repo_diff_for_definition = _repo_diff_or_none(
             branch_diff=model.branch_diff, repository_id=artifact_definition.repository_id
         )
         if repo_diff_for_definition is not None:
+            transform_outcome = _transform_changed(definition=artifact_definition, repo_diff=repo_diff_for_definition)
             select = select.add_flag(
-                current=select,
-                flag=DefinitionSelect.FILE_CHANGES,
-                condition=_transform_changed(
-                    definition=artifact_definition,
-                    repo_diff=repo_diff_for_definition,
-                ),
+                current=select, flag=DefinitionSelect.FILE_CHANGES, condition=transform_outcome.matched
             )
+            if transform_outcome.reason is not None:
+                log.info(transform_outcome.reason)
 
         for changed_model in modified_kinds:
             condition = False
