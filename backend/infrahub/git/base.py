@@ -909,7 +909,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         if has_conflicts:
             get_run_logger().warning(
-                f"Remote branch {branch_name} conflicts with {self.default_branch} and will be rejected on merge until the conflict is resolved upstream"
+                f"Remote branch {branch_name} conflicts with {self.default_branch}; "
+                "the merge will be rejected until the conflict is resolved upstream"
             )
 
         return True
