@@ -64,10 +64,7 @@ describe("BottomToolbar", () => {
   test("renders PNG and SVG export menu items when export menu is opened", async () => {
     const { component } = await setup();
 
-    // The export button is the last button in the toolbar (icon-only, no accessible name yet)
-    const allButtons = component.getByRole("button");
-    const count = allButtons.elements().length;
-    await allButtons.nth(count - 1).click();
+    await component.getByRole("button", { name: "Export diagram" }).click();
 
     await expect.element(component.getByRole("button", { name: /PNG/i })).toBeVisible();
     await expect.element(component.getByRole("button", { name: /SVG/i })).toBeVisible();
@@ -76,9 +73,7 @@ describe("BottomToolbar", () => {
   test("onExport is called with 'png' when PNG is clicked", async () => {
     const { props, component } = await setup();
 
-    const allButtons = component.getByRole("button");
-    const count = allButtons.elements().length;
-    await allButtons.nth(count - 1).click();
+    await component.getByRole("button", { name: "Export diagram" }).click();
 
     // Menu popup may be above the test viewport; dispatch click directly
     const pngBtn = component.getByRole("button", { name: /PNG/i }).elements()[0];
@@ -90,9 +85,7 @@ describe("BottomToolbar", () => {
   test("onExport is called with 'svg' when SVG is clicked", async () => {
     const { props, component } = await setup();
 
-    const allButtons = component.getByRole("button");
-    const count = allButtons.elements().length;
-    await allButtons.nth(count - 1).click();
+    await component.getByRole("button", { name: "Export diagram" }).click();
 
     // Menu popup may be above the test viewport; dispatch click directly
     const svgBtn = component.getByRole("button", { name: /SVG/i }).elements()[0];
@@ -102,30 +95,33 @@ describe("BottomToolbar", () => {
   });
 
   test("onParametersClick fires when parameters button is clicked", async () => {
-    // With onReload provided: zoom-out(0) fit(1) zoom-in(2) edge-style(3)
-    // layout-lr(4) layout-tb(5) parameters(6) reload(7) export-trigger(8)
     const { props, component } = await setup({ isParametersOpen: false });
 
-    const allButtons = component.getByRole("button");
-    const count = allButtons.elements().length;
-    // parameters is 3rd from end: [count-3] (before reload and export-trigger)
-    await allButtons.nth(count - 3).click();
+    await component.getByRole("button", { name: "Show parameters" }).click();
 
     expect(props.onParametersClick).toHaveBeenCalled();
   });
 
+  test("isParametersOpen=true shows 'Hide parameters' button", async () => {
+    const { component } = await setup({ isParametersOpen: true });
+    await expect
+      .element(component.getByRole("button", { name: "Hide parameters" }))
+      .toBeVisible();
+  });
+
   test("onLayout fires with 'LR' when horizontal layout button is clicked", async () => {
     const { props, component } = await setup();
-    // zoom-out(0) fit(1) zoom-in(2) edge-style(3) layout-lr(4) ...
-    const allButtons = component.getByRole("button");
-    await allButtons.nth(4).click();
+
+    await component.getByRole("button", { name: "Auto-layout horizontal" }).click();
+
     expect(props.onLayout).toHaveBeenCalledWith("LR");
   });
 
   test("onLayout fires with 'TB' when vertical layout button is clicked", async () => {
     const { props, component } = await setup();
-    const allButtons = component.getByRole("button");
-    await allButtons.nth(5).click();
+
+    await component.getByRole("button", { name: "Auto-layout vertical" }).click();
+
     expect(props.onLayout).toHaveBeenCalledWith("TB");
   });
 });
