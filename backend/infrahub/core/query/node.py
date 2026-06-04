@@ -37,8 +37,10 @@ from infrahub.core.query.subquery import build_subquery_filter, build_subquery_o
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
 from infrahub.core.schema.order_by import (
+    OrderByMetadataField,
     OrderByTargetKind,
     ParsedAttributeOrderBy,
+    ParsedMetadataOrderBy,
     ParsedOrderByEntry,
     ParsedRelationshipAttributeOrderBy,
     parse_order_by_entry,
@@ -1703,6 +1705,10 @@ class NodeGetListQuery(Query):
         return False
 
     def _get_parsed_schema_order_by(self) -> list[ParsedOrderByEntry]:
+        if self.requested_order and self.requested_order.order_by:
+            return [
+                parse_order_by_entry(entry=entry, node_schema=self.schema) for entry in self.requested_order.order_by
+            ]
         query_time_order_overrides_schema = bool(self.requested_order)
         if query_time_order_overrides_schema:
             return []
@@ -1904,7 +1910,9 @@ WITH %(tracked_vars)s,
 
         # Determine ordering behavior
         disable_order = bool(self.requested_order and self.requested_order.disable)
-        has_any_order = bool(self.schema.order_by) or bool(self.requested_order and self.requested_order.node_metadata)
+        has_any_order = bool(self.schema.order_by) or (
+            self.requested_order is not None and self.requested_order.has_explicit_entries
+        )
 
         # needs ordering or filter if...
         needs_order_or_filter = bool(
@@ -2462,6 +2470,7 @@ class NodeGetHierarchyQuery(Query):
         node_schema: NodeSchema | GenericSchema,
         filters: dict | None = None,
         hierarchical_ordering: bool = False,
+        order: OrderModel | None = None,
         **kwargs: Any,
     ) -> None:
         self.filters = filters or {}
@@ -2469,6 +2478,7 @@ class NodeGetHierarchyQuery(Query):
         self.node_id = node_id
         self.node_schema = node_schema
         self.hierarchical_ordering = hierarchical_ordering
+        self.requested_order = order
 
         super().__init__(**kwargs)
 
@@ -2580,12 +2590,41 @@ class NodeGetHierarchyQuery(Query):
     async def _add_peer_order_by(
         self, db: InfrahubDatabase, hierarchy_schema: NodeSchema | GenericSchema, branch_filter: str
     ) -> None:
-        if not (hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by):
+        if self.requested_order and self.requested_order.disable:
             return
 
-        for order_cnt, order_by_value in enumerate(hierarchy_schema.order_by, start=1):
-            parsed = parse_order_by_entry(entry=order_by_value, node_schema=hierarchy_schema)
+        if self.requested_order and self.requested_order.order_by:
+            entries: list[ParsedOrderByEntry] = [
+                parse_order_by_entry(entry=entry, node_schema=hierarchy_schema)
+                for entry in self.requested_order.order_by
+            ]
+        elif self.requested_order and self.requested_order.node_metadata:
+            nm = self.requested_order.node_metadata
+            entries = []
+            if nm.created_at:
+                entries.append(
+                    ParsedMetadataOrderBy(
+                        raw=f"{_NODE_METADATA_PREFIX}__{METADATA_CREATED_AT}",
+                        direction=nm.created_at,
+                        metadata_field=OrderByMetadataField.CREATED_AT,
+                    )
+                )
+            if nm.updated_at:
+                entries.append(
+                    ParsedMetadataOrderBy(
+                        raw=f"{_NODE_METADATA_PREFIX}__{METADATA_UPDATED_AT}",
+                        direction=nm.updated_at,
+                        metadata_field=OrderByMetadataField.UPDATED_AT,
+                    )
+                )
+        elif hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
+            entries = [
+                parse_order_by_entry(entry=entry, node_schema=hierarchy_schema) for entry in hierarchy_schema.order_by
+            ]
+        else:
+            return
 
+        for order_cnt, parsed in enumerate(entries, start=1):
             if parsed.kind is OrderByTargetKind.METADATA:
                 subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
                     metadata_field=parsed.metadata_field.value,

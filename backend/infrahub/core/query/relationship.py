@@ -17,7 +17,7 @@ from infrahub.core.constants.database import DatabaseEdgeType
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT, OrderModel
 from infrahub.core.query import Query, QueryResult, QueryType
 from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
-from infrahub.core.schema.order_by import OrderByTargetKind, parse_order_by_entry
+from infrahub.core.schema.order_by import OrderByTargetKind, ParsedOrderByEntry, parse_order_by_entry
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import extract_field_filters
 from infrahub.log import get_logger
@@ -862,8 +862,19 @@ RETURN updated_at, updated_by
         if self.requested_order and self.requested_order.disable:
             return
 
-        query_time_order_overrides_schema = bool(self.requested_order)
-        if query_time_order_overrides_schema:
+        if self.requested_order and self.requested_order.order_by:
+            await self._emit_peer_order_entries(
+                db=db,
+                peer_schema=peer_schema,
+                branch_filter=branch_filter,
+                entries=[
+                    parse_order_by_entry(entry=entry, node_schema=peer_schema)
+                    for entry in self.requested_order.order_by
+                ],
+            )
+            return
+
+        if self.requested_order and self.requested_order.node_metadata:
             for order_cnt, (metadata_field, direction) in enumerate(
                 self._get_requested_metadata_order_fields(), start=1
             ):
@@ -883,9 +894,21 @@ RETURN updated_at, updated_by
         if not (hasattr(peer_schema, "order_by") and peer_schema.order_by):
             return
 
-        for order_cnt, order_by_value in enumerate(peer_schema.order_by, start=1):
-            parsed = parse_order_by_entry(entry=order_by_value, node_schema=peer_schema)
+        await self._emit_peer_order_entries(
+            db=db,
+            peer_schema=peer_schema,
+            branch_filter=branch_filter,
+            entries=[parse_order_by_entry(entry=entry, node_schema=peer_schema) for entry in peer_schema.order_by],
+        )
 
+    async def _emit_peer_order_entries(
+        self,
+        db: InfrahubDatabase,
+        peer_schema: MainSchemaTypes,
+        branch_filter: str,
+        entries: list[ParsedOrderByEntry],
+    ) -> None:
+        for order_cnt, parsed in enumerate(entries, start=1):
             if parsed.kind is OrderByTargetKind.METADATA:
                 subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
                     metadata_field=parsed.metadata_field.value,

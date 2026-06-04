@@ -8977,6 +8977,18 @@ type MacAddress implements AttributeInterface {
   version: Int
 }
 
+"""
+Order input restricted to node metadata fields.
+
+Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
+string grammar or a `disable` toggle.
+"""
+input MetadataOrderInput {
+  """Order settings for branch metadata"""
+  node_metadata: InfrahubNodeMetadataOrder = null
+}
+
 type Mutation {
   BranchCreate(background_execution: Boolean @deprecated(reason: "Please use `wait_until_completion` instead"), context: ContextInput, data: BranchCreateInput!, wait_until_completion: Boolean): BranchCreate
   BranchDelete(context: ContextInput, data: BranchDeleteInput!, wait_until_completion: Boolean): BranchDelete
@@ -11225,6 +11237,10 @@ input OrderInput {
   disable: Boolean
   """Order settings for branch metadata"""
   node_metadata: InfrahubNodeMetadataOrder = null
+  """
+  Ordering overrides support attributes (`name__value__desc`), relationship attributes (`owner__name__value`), or node metadata (`node_metadata__created_at__desc`). The trailing `__asc`/`__desc` is optional (default is ascending). When provided, fully replaces the schema's `order_by`. Cannot be combined with `node_metadata` in the same input.
+  """
+  order_by: [String!]
 }
 
 """IPv4 or IPv6 address"""
@@ -24553,7 +24569,7 @@ type Query {
     node_metadata__updated_at__before: DateTime
     offset: Int
     """Define ordering of results for branch queries."""
-    order: OrderInput
+    order: MetadataOrderInput
     partial_match: Boolean = false
     """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
     status__value: BranchStatus

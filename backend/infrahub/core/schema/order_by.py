@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal
 from infrahub.constants.enums import OrderDirection
 from infrahub.core.constants import NODE_METADATA_PREFIX
 from infrahub.core.order import METADATA_CREATED_AT, METADATA_UPDATED_AT
+from infrahub.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from infrahub.core.schema.basenode_schema import BaseNodeSchema
@@ -81,12 +82,12 @@ def is_metadata_order_by_entry(entry: str) -> bool:
 
 def parse_order_by_entry(entry: str, node_schema: BaseNodeSchema) -> ParsedOrderByEntry:
     if not entry:
-        raise ValueError(f"order_by entries must be non-empty strings (entry: {entry!r}).")
+        raise ValidationError(f"order_by entries must be non-empty strings (entry: {entry!r}).")
 
     parts = entry.split("__")
 
     if any(not part for part in parts):
-        raise ValueError(f"invalid entry (entry: {entry!r}). Entry segments must be non-empty.")
+        raise ValidationError(f"invalid entry (entry: {entry!r}). Entry segments must be non-empty.")
 
     if is_metadata_order_by_entry(entry):
         return _parse_metadata(entry=entry, parts=parts)
@@ -101,13 +102,13 @@ def _consume_direction(entry: str, parts: list[str], path_length: int) -> OrderD
         token = parts[-1]
         if token in _DIRECTION_TOKENS:
             return OrderDirection(token.upper())
-        raise ValueError(f"invalid direction (entry: {entry!r}). Direction must be 'asc' or 'desc'.")
-    raise ValueError(f"invalid entry (entry: {entry!r}). Unexpected number of segments.")
+        raise ValidationError(f"invalid direction (entry: {entry!r}). Direction must be 'asc' or 'desc'.")
+    raise ValidationError(f"invalid entry (entry: {entry!r}). Unexpected number of segments.")
 
 
 def _parse_metadata(entry: str, parts: list[str]) -> ParsedMetadataOrderBy:
     if len(parts) < 2:
-        raise ValueError(
+        raise ValidationError(
             f"invalid {NODE_METADATA_PREFIX} entry (entry: {entry!r}). "
             f"Expected '{NODE_METADATA_PREFIX}__<field>' "
             f"or '{NODE_METADATA_PREFIX}__<field>__<direction>'."
@@ -118,7 +119,9 @@ def _parse_metadata(entry: str, parts: list[str]) -> ParsedMetadataOrderBy:
         metadata_field = OrderByMetadataField(field_token)
     except ValueError as exc:
         supported = ", ".join(field.value for field in OrderByMetadataField)
-        raise ValueError(f"unknown metadata field (entry: {entry!r}). Supported metadata fields: {supported}.") from exc
+        raise ValidationError(
+            f"unknown metadata field (entry: {entry!r}). Supported metadata fields: {supported}."
+        ) from exc
 
     direction = _consume_direction(entry=entry, parts=parts, path_length=2)
 
@@ -132,13 +135,13 @@ def _parse_path(
 
     if first in node_schema.relationship_names:
         if len(parts) < 3:
-            raise ValueError(
+            raise ValidationError(
                 f"invalid relationship path (entry: {entry!r}). "
                 f"Expected '<relationship>__<attribute>__<property>' "
                 f"with an optional direction suffix."
             )
         if len(parts) == 3 and parts[2] in _DIRECTION_TOKENS:
-            raise ValueError(
+            raise ValidationError(
                 f"invalid relationship path (entry: {entry!r}). "
                 f"Property segment is missing; "
                 f"direction token {parts[2]!r} cannot be used as a property name."
@@ -154,12 +157,12 @@ def _parse_path(
 
     if first in node_schema.attribute_names:
         if len(parts) < 2:
-            raise ValueError(
+            raise ValidationError(
                 f"invalid attribute path (entry: {entry!r}). "
                 f"Expected '<attribute>__<property>' with an optional direction suffix."
             )
         if len(parts) == 2 and parts[1] in _DIRECTION_TOKENS:
-            raise ValueError(
+            raise ValidationError(
                 f"invalid attribute path (entry: {entry!r}). "
                 f"Property segment is missing; "
                 f"direction token {parts[1]!r} cannot be used as a property name."
@@ -172,4 +175,4 @@ def _parse_path(
             property_name=parts[1],
         )
 
-    raise ValueError(f"attribute {first!r} not defined on this schema (entry: {entry!r}).")
+    raise ValidationError(f"attribute {first!r} not defined on this schema (entry: {entry!r}).")
