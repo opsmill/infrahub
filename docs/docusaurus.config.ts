@@ -140,44 +140,12 @@ const config: Config = {
           className: "header-github-link",
           "aria-label": "GitHub repository",
         },
-        {
-          href: "https://opsmill.com",
-          label: "opsmill.com",
-          position: "right",
-        },
       ],
     },
     metadata: [
       { property: "og:site_name", content: "OpsMill" },
     ],
     footer: {
-      links: [
-        {
-          title: "Docs",
-          items: [
-            { label: "Overview", to: "/overview" },
-            { label: "Quick Start", to: "/overview/quickstart" },
-            { label: "Key Concepts", to: "/overview/concepts" },
-          ],
-        },
-        {
-          title: "OpsMill",
-          items: [
-            { label: "About", href: "https://opsmill.com/about-us" },
-            { label: "Solutions", href: "https://opsmill.com/solutions/" },
-            { label: "Pricing", href: "https://opsmill.com/pricing/" },
-            { label: "Blog", href: "https://opsmill.com/blog/" },
-          ],
-        },
-        {
-          title: "Community",
-          items: [
-            { label: "GitHub", href: "https://github.com/opsmill/infrahub" },
-            { label: "Discord", href: "https://discord.gg/opsmill" },
-            { label: "Book a meeting", href: "https://cal.com/team/opsmill/meet" },
-          ],
-        },
-      ],
       copyright: `Copyright © ${new Date().getFullYear()} - <b>Infrahub</b> by <a href="https://opsmill.com">OpsMill</a>.`,
     },
     prism: {
