@@ -1082,12 +1082,8 @@ class IPPrefixUtilization(Query):
             child,
             av,
             r_rel1.branch_level + r_rel2.branch_level + r_attr.branch_level + r_attr_val.branch_level AS sum_branch_level,
-            all(r IN [r_rel1, r_rel2, r_attr, r_attr_val] WHERE r.status = "active") AS is_active,
-            r_rel1.from AS r_rel1_from,
-            r_rel2.from AS r_rel2_from,
-            r_attr.from AS r_attr_from,
-            r_attr_val.from AS r_attr_val_from
-        ORDER BY pfx.uuid, child.uuid, sum_branch_level DESC, r_rel1_from DESC, r_rel2_from DESC, r_attr_from DESC, r_attr_val_from DESC
+            all(r IN [r_rel1, r_rel2, r_attr, r_attr_val] WHERE r.status = "active") AS is_active
+        ORDER BY pfx.uuid, child.uuid, sum_branch_level DESC, r_rel1.from DESC, r_rel2.from DESC, r_attr.from DESC, r_attr_val.from DESC
         WITH
             pfx,
             child,
