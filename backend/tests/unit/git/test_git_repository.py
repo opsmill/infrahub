@@ -1,6 +1,6 @@
 import logging
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any
 from unittest.mock import patch
 
 import pytest
@@ -18,7 +18,7 @@ PREFECT_LOGGER_NAME = "infrahub.git.base"
 
 
 @pytest.fixture
-def patch_prefect_logger() -> Any:
+def patch_prefect_logger() -> Iterator[None]:
     """Replace Prefect's `get_run_logger` with a stdlib logger so calls outside a flow context succeed."""
     with patch(
         "infrahub.git.base.get_run_logger",
@@ -51,7 +51,7 @@ def _build_source_with_conflicting_branches(source_dir: Path) -> None:
 
 
 async def _build_repository_with_conflict(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, name: str
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, name: str = "conflicting-repo"
 ) -> InfrahubRepository:
     """Build an `InfrahubRepository` whose remote has `main` and a divergent `change1`.
 
@@ -87,7 +87,7 @@ async def test_create_branch_in_git_with_conflicting_remote_lands_at_remote_tip(
     The local branch should land at the remote tip so that downstream merge attempts can
     surface the conflict at merge time, rather than aborting the entire import.
     """
-    repository = await _build_repository_with_conflict(tmp_path, monkeypatch, name="conflicting-import")
+    repository = await _build_repository_with_conflict(tmp_path, monkeypatch)
 
     remote_branches = repository.get_branches_from_remote()
     expected_commit = remote_branches["change1"].commit
@@ -102,14 +102,14 @@ async def test_create_branch_in_git_with_conflicting_remote_lands_at_remote_tip(
 async def test_validate_remote_branch_allows_conflicting_branch(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    patch_prefect_logger: Any,
+    patch_prefect_logger: None,
 ) -> None:
     """validate_remote_branch must accept a branch that conflicts with the default branch.
 
     Skipping the branch would prevent it from being imported. The conflict is surfaced at
     merge time instead.
     """
-    repository = await _build_repository_with_conflict(tmp_path, monkeypatch, name="conflicting-validate")
+    repository = await _build_repository_with_conflict(tmp_path, monkeypatch)
     assert repository.validate_remote_branch(branch_name="change1") is True
 
 
