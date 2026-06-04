@@ -1042,45 +1042,45 @@ class IPPrefixUtilization(Query):
         self.params["allocated_kinds"] = self.allocated_kinds
         self.params["allocated_kinds_rel"] = self.allocated_kinds_rel
 
-        def rel_filter(variable_name: str) -> str:
-            filter_str, filter_params = self.branch.get_query_filter_path(
-                at=self.at.to_string(),
-                branch_agnostic=self.branch_agnostic,
-                variable_name=variable_name,
-            )
-            self.params.update(filter_params)
-            return filter_str
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at.to_string(), branch_agnostic=self.branch_agnostic
+        )
+        self.params.update(branch_params)
 
         query = """
         MATCH (pfx:Node)
         WHERE pfx.uuid IN $ids
         CALL (pfx) {
-            MATCH (pfx)-[r_rel1:IS_RELATED]-(rl:Relationship)<-[r_rel2:IS_RELATED]-(child:Node)
+            MATCH (pfx)-[r:IS_RELATED]-(rl:Relationship)
             WHERE rl.name IN $allocated_kinds_rel
-            AND any(l IN labels(child) WHERE l IN $allocated_kinds)
-            AND %(rel1_filter)s
-            AND %(rel2_filter)s
-            RETURN r_rel1, rl, r_rel2, child
+            AND %(branch_filter)s
+            RETURN r AS r_rel1, rl
         }
-        WITH pfx, r_rel1, rl, r_rel2, child
-        MATCH path = (
-            (pfx)-[r_1:IS_RELATED]-(rl:Relationship)-[r_2:IS_RELATED]-(child:Node)
-            -[r_attr:HAS_ATTRIBUTE]->(attr:Attribute)
-            -[r_attr_val:HAS_VALUE]->(av:%(prefix_label)s|%(address_label)s)
-        )
-        WHERE elementId(r_1) = elementId(r_rel1)
-        AND elementId(r_2) = elementId(r_rel2)
-        AND %(attr_filter)s
-        AND %(attr_val_filter)s
-        AND attr.name IN ["prefix", "address"]
+        CALL (rl, r_rel1) {
+            MATCH (rl)<-[r:IS_RELATED]-(child:Node)
+            WHERE any(l IN labels(child) WHERE l IN $allocated_kinds)
+            AND elementId(r) <> elementId(r_rel1)
+            AND %(branch_filter)s
+            RETURN r AS r_rel2, child
+        }
+        CALL (child) {
+            MATCH (child)-[r:HAS_ATTRIBUTE]->(attr:Attribute)
+            WHERE attr.name IN ["prefix", "address"]
+            AND %(branch_filter)s
+            RETURN r AS r_attr, attr
+        }
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:%(prefix_label)s|%(address_label)s)
+            WHERE %(branch_filter)s
+            RETURN r AS r_attr_val, av
+        }
         WITH
-            path,
             pfx,
             child,
             av,
-            reduce(br_lvl = 0, r IN relationships(path) | br_lvl + r.branch_level) AS sum_branch_level,
-            all(r IN relationships(path) WHERE r.status = "active") AS is_active,
-            [r_attr_val.from, r_attr.from, r_2.from, r_1.from] AS from_times
+            reduce(br_lvl = 0, r IN [r_rel1, r_rel2, r_attr, r_attr_val] | br_lvl + r.branch_level) AS sum_branch_level,
+            all(r IN [r_rel1, r_rel2, r_attr, r_attr_val] WHERE r.status = "active") AS is_active,
+            [r_attr_val.from, r_attr.from, r_rel2.from, r_rel1.from] AS from_times
         ORDER BY pfx.uuid, child.uuid, av.uuid, sum_branch_level DESC, from_times[3] DESC, from_times[2] DESC, from_times[1] DESC, from_times[0] DESC
         WITH
             pfx,
@@ -1089,10 +1089,7 @@ class IPPrefixUtilization(Query):
             head(collect(is_active)) AS is_latest_active
         WHERE is_latest_active = TRUE
         """ % {
-            "rel1_filter": rel_filter("r_rel1"),
-            "rel2_filter": rel_filter("r_rel2"),
-            "attr_filter": rel_filter("r_attr"),
-            "attr_val_filter": rel_filter("r_attr_val"),
+            "branch_filter": branch_filter,
             "prefix_label": PREFIX_ATTRIBUTE_LABEL,
             "address_label": ADDRESS_ATTRIBUTE_LABEL,
         }
