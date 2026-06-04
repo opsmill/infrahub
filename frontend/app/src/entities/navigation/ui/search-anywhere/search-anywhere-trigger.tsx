@@ -4,48 +4,23 @@ import { Button, type ButtonProps } from "@infrahub/ui";
 import Kbd from "@/shared/components/ui/kbd";
 import { classNames } from "@/shared/utils/common";
 
-import { CollapsedSidebarMenuItem } from "@/entities/navigation/ui/sidebar/collapsed-sidebar-menu-item";
-
-export interface SearchAnywhereTriggerButtonProps extends ButtonProps {
-  isCollapsed?: boolean;
-}
-
-export function SearchAnywhereTrigger({
-  className,
-  isCollapsed,
-  ...props
-}: SearchAnywhereTriggerButtonProps) {
-  if (isCollapsed) {
-    return (
-      <CollapsedSidebarMenuItem
-        tooltipContent="Search anywhere"
-        icon="mdi:search"
-        data-testid="search-anywhere-trigger"
-        {...props}
-      />
-    );
-  }
-
+export function SearchAnywhereTrigger({ className, ...props }: ButtonProps) {
   const command = navigator.userAgent.includes("Macintosh") ? "command" : "ctrl";
 
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       className={classNames(
-        "justify-between gap-3 bg-neutral-100 px-3 py-2 text-neutral-800 shadow-none",
+        "justify-start px-2 shadow-none group-data-[state=collapsed]:px-2.5",
         className
       )}
       data-testid="search-anywhere-trigger"
       {...props}
     >
-      <div className="flex items-center gap-2 overflow-hidden">
-        <Icon icon="mdi:magnify" aria-hidden="true" className="text-xl" />
-        <span className="truncate text-neutral-700 text-sm transition-all group-data-[collapsed=true]/sidebar:hidden">
-          Search
-        </span>
-      </div>
+      <Icon icon="mdi:magnify" aria-hidden="true" className="text-base" />
+      <span className="truncate text-stone-700 group-data-[state=collapsed]:hidden">Search</span>
 
-      <Kbd keys={command} className="transition-all group-data-[collapsed=true]/sidebar:hidden">
+      <Kbd keys={command} className="ml-auto group-data-[state=collapsed]:hidden">
         K
       </Kbd>
     </Button>

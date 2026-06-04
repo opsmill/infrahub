@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import { Button, LinkButton, Spinner } from "@infrahub/ui";
+import { EllipsisVerticalIcon } from "lucide-react";
 import React from "react";
 import { Link, useLocation } from "react-router";
 
@@ -96,17 +97,18 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
     <DropdownMenu>
       <LinkButton
         variant="ghost"
-        className="h-auto w-full shrink-0 gap-2 overflow-hidden rounded-lg p-2 data-hovered:bg-indigo-50"
+        size="sm"
+        className="h-10 justify-stretch gap-2 data-pressed:scale-100"
         href="/login"
         routerOptions={{ state: { from: location } }}
       >
-        <div className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-indigo-50">
-          <Icon icon="mdi:user" className="relative top-1 text-5xl text-neutral-600" />
+        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-200">
+          <Icon icon="mdi:user" className="relative top-1 text-3xl text-stone-600" />
         </div>
 
-        <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">
-          <div className="truncate font-semibold text-sm">Log in</div>
-          <div className="truncate text-neutral-500 text-xs">anonymous</div>
+        <div className="overflow-hidden group-data-[state=collapsed]:hidden">
+          <div className="truncate font-medium leading-4">Log in</div>
+          <div className="truncate text-stone-500 text-xs">anonymous</div>
         </div>
 
         <DropdownMenuTrigger
@@ -118,10 +120,11 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
           <Button
             variant="ghost"
             shape="square"
+            size="xs"
             data-testid="unauthenticated-menu-trigger"
-            className="ml-auto shrink-0 data-hovered:bg-indigo-100 group-data-[collapsed=true]/sidebar:hidden"
+            className="ml-auto data-hovered:bg-stone-300 group-data-[state=collapsed]:hidden"
           >
-            <Icon icon="mdi:dots-vertical" className="text-lg" />
+            <EllipsisVerticalIcon />
           </Button>
         </DropdownMenuTrigger>
       </LinkButton>
@@ -170,19 +173,17 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-auto w-full shrink-0 justify-start gap-2 overflow-hidden rounded-lg p-2 text-left data-hovered:bg-indigo-50"
+          size="sm"
+          className="h-10 justify-stretch gap-2 data-pressed:scale-100"
           data-testid="authenticated-menu-trigger"
         >
-          <Avatar name={profile?.name?.value} className="size-9 shrink-0" />
+          <Avatar name={profile?.name?.value} className="size-6 shrink-0" />
 
-          <div className="overflow-hidden group-data-[collapsed=true]/sidebar:hidden">
-            <div className="truncate font-semibold text-sm">{profile?.label?.value}</div>
+          <div className="overflow-hidden group-data-[state=collapsed]:hidden">
+            <div className="truncate font-medium text-sm">{profile?.label?.value}</div>
           </div>
 
-          <Icon
-            icon="mdi:dots-vertical"
-            className="m-2 ml-auto text-lg transition-all group-data-[collapsed=true]/sidebar:hidden"
-          />
+          <EllipsisVerticalIcon className="ml-auto group-data-[state=collapsed]:hidden" />
         </Button>
       </DropdownMenuTrigger>
 
@@ -209,13 +210,9 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
 
 const AccountMenuSkeleton = () => {
   return (
-    <div className="flex shrink-0 items-center gap-2 border border-transparent p-2">
-      <Skeleton className="size-9 rounded-full" />
-
-      <div className="grow space-y-2 group-data-[collapsed=true]/sidebar:hidden">
-        <Skeleton className="h-4 w-4/5" />
-        <Skeleton className="h-2 w-3/5" />
-      </div>
+    <div className="flex h-10 shrink-0 items-center gap-2 px-2">
+      <Skeleton className="size-6 shrink-0 rounded-full" />
+      <Skeleton className="h-4 grow group-data-[state=collapsed]:hidden" />
     </div>
   );
 };

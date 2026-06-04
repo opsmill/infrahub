@@ -1,1 +1,1 @@
-export const SIDEBAR_COLLAPSED_KEY = "sidebar_collapsed";
+export const SIDEBAR_STATE_KEY = "sidebar_state";

@@ -3,6 +3,7 @@ import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { useSidebar } from "@/shared/components/layout/sidebar";
 import {
   DropdownMenu,
   DropdownMenuAccordion,
@@ -12,25 +13,24 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { classNames } from "@/shared/utils/common";
 
 import type { MenuItem } from "@/entities/navigation/types";
+import { CollapsedSidebarMenuItem } from "@/entities/navigation/ui/sidebar/collapsed-sidebar-menu-item";
 import { SidebarMenuItemAvatar } from "@/entities/navigation/ui/sidebar/sidebar-menu-item-avatar";
 import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles";
 
 const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
-    return <Icon icon={item.icon} className="m-1 size-4 text-md" />;
+    return <Icon icon={item.icon} className="size-4" />;
   }
   return <SidebarMenuItemAvatar name={item.label} />;
 };
 
 const RecursiveObjectMenuItem: React.FC<{
   item: MenuItem;
-  isCollapsed?: boolean;
   level?: number;
-}> = ({ item, isCollapsed, level = 0 }) => {
+}> = ({ item, level = 0 }) => {
   if (!item.children?.length) {
     return (
       <DropdownMenuItem className={menuNavigationItemStyle} asChild>
@@ -66,12 +66,7 @@ const RecursiveObjectMenuItem: React.FC<{
         className="border-neutral-200 border-l"
       >
         {item.children.map((child) => (
-          <RecursiveObjectMenuItem
-            key={child.identifier}
-            item={child}
-            isCollapsed={isCollapsed}
-            level={level + 1}
-          />
+          <RecursiveObjectMenuItem key={child.identifier} item={child} level={level + 1} />
         ))}
       </DropdownMenuAccordionContent>
     </DropdownMenuAccordion>
@@ -80,13 +75,14 @@ const RecursiveObjectMenuItem: React.FC<{
 
 const TopLevelMenuItem: React.FC<{
   item: MenuItem;
-  isCollapsed?: boolean;
-}> = ({ item, isCollapsed }) => {
+}> = ({ item }) => {
+  const { isCollapsed } = useSidebar();
+
   if (!item.children?.length) {
     return (
       <Link
         to={constructPath(item.path)}
-        className={classNames(menuNavigationItemStyle, isCollapsed ? "p-2" : "w-[224px]")}
+        className={classNames(menuNavigationItemStyle, isCollapsed ? "p-2" : "w-full")}
       >
         <MenuItemIcon item={item} />
         <span className={classNames("text-sm", isCollapsed && "hidden")}>{item.label}</span>
@@ -97,27 +93,26 @@ const TopLevelMenuItem: React.FC<{
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
-        className={classNames(menuNavigationItemStyle, isCollapsed ? "p-2" : "w-[224px]")}
+        className={classNames(menuNavigationItemStyle, isCollapsed ? "p-2" : "w-full")}
+        asChild={isCollapsed}
       >
-        <Tooltip enabled={isCollapsed} content={item.label} side="right">
-          <span className="flex">
+        {isCollapsed ? (
+          <CollapsedSidebarMenuItem tooltipContent={item.label} icon={item.icon} />
+        ) : (
+          <>
             <MenuItemIcon item={item} />
-          </span>
-        </Tooltip>
-
-        <span className={classNames("truncate text-sm", isCollapsed && "hidden")}>
-          {item.label}
-        </span>
+            <span className="truncate text-sm">{item.label}</span>
+          </>
+        )}
       </DropdownMenuTrigger>
 
       <DropdownMenuContent
         side="left"
         align="start"
-        sideOffset={isCollapsed ? 6 : 12}
         className="max-h-[calc(100vh-7rem)] min-w-60 overflow-auto"
       >
         {item.children.map((child) => (
-          <RecursiveObjectMenuItem key={child.identifier} item={child} isCollapsed={isCollapsed} />
+          <RecursiveObjectMenuItem key={child.identifier} item={child} />
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -126,11 +121,8 @@ const TopLevelMenuItem: React.FC<{
 
 export interface SidebarMenuSectionObjectProps {
   items: MenuItem[];
-  isCollapsed?: boolean;
 }
 
-export function SidebarMenuSectionObject({ isCollapsed, items }: SidebarMenuSectionObjectProps) {
-  return items.map((item) => (
-    <TopLevelMenuItem key={item.identifier} item={item} isCollapsed={isCollapsed} />
-  ));
+export function SidebarMenuSectionObject({ items }: SidebarMenuSectionObjectProps) {
+  return items.map((item) => <TopLevelMenuItem key={item.identifier} item={item} />);
 }

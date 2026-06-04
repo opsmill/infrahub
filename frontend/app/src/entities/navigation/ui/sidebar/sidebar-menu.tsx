@@ -7,11 +7,7 @@ import { useMenu } from "@/entities/navigation/ui/queries/get-menu.query";
 import { SidebarMenuSectionInternal } from "@/entities/navigation/ui/sidebar/sidebar-menu-section-internal";
 import { SidebarMenuSectionObject } from "@/entities/navigation/ui/sidebar/sidebar-menu-section-object";
 
-export interface SidebarMenuProps {
-  isCollapsed?: boolean;
-}
-
-export default function SidebarMenu({ isCollapsed }: SidebarMenuProps) {
+export function SidebarMenu() {
   const { data: menu, isPending, error } = useMenu();
 
   if (isPending) return <Spinner className="mx-auto grow p-4" />;
@@ -23,10 +19,12 @@ export default function SidebarMenu({ isCollapsed }: SidebarMenuProps) {
   return (
     <>
       <ScrollArea>
-        <SidebarMenuSectionObject items={menu.sections.object} isCollapsed={isCollapsed} />
+        <div className="p-2">
+          <SidebarMenuSectionObject items={menu.sections.object} />
+        </div>
       </ScrollArea>
       <Separator />
-      <SidebarMenuSectionInternal items={menu.sections.internal} isCollapsed={isCollapsed} />
+      <SidebarMenuSectionInternal items={menu.sections.internal} />
     </>
   );
 }
