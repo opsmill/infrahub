@@ -37,3 +37,4 @@ export {
 } from "./components/tree/tree";
 export { useDismiss } from "./hooks/use-dismiss";
 export { IconButton, type IconButtonProps } from "./components/icon-button/icon-button";
+export { Toolbar, type ToolbarProps } from "./components/toolbar/toolbar";
