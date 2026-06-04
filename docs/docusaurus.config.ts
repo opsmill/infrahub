@@ -33,6 +33,35 @@ const config: Config = {
   onBrokenAnchors: "throw",
   onDuplicateRoutes: "throw",
 
+  // Structured data so search engines and LLM crawlers associate Infrahub with OpsMill.
+  headTags: [
+    {
+      tagName: "script",
+      attributes: { type: "application/ld+json" },
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Infrahub",
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Linux, Docker",
+        url: "https://docs.infrahub.app/",
+        description:
+          "Infrahub is a graph-based infrastructure data management platform with built-in version control, CI workflows, and API access.",
+        publisher: {
+          "@type": "Organization",
+          name: "OpsMill",
+          url: "https://opsmill.com/",
+          sameAs: [
+            "https://opsmill.com/",
+            "https://github.com/opsmill",
+            "https://www.linkedin.com/company/opsmill",
+            "https://x.com/opsmill",
+          ],
+        },
+      }),
+    },
+  ],
+
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
@@ -111,10 +140,45 @@ const config: Config = {
           className: "header-github-link",
           "aria-label": "GitHub repository",
         },
+        {
+          href: "https://opsmill.com",
+          label: "opsmill.com",
+          position: "right",
+        },
       ],
     },
+    metadata: [
+      { property: "og:site_name", content: "OpsMill" },
+    ],
     footer: {
-      copyright: `Copyright © ${new Date().getFullYear()} - <b>Infrahub</b> by OpsMill.`,
+      links: [
+        {
+          title: "Docs",
+          items: [
+            { label: "Overview", to: "/overview" },
+            { label: "Quick Start", to: "/overview/quickstart" },
+            { label: "Key Concepts", to: "/overview/concepts" },
+          ],
+        },
+        {
+          title: "OpsMill",
+          items: [
+            { label: "About", href: "https://opsmill.com/about-us" },
+            { label: "Solutions", href: "https://opsmill.com/solutions/" },
+            { label: "Pricing", href: "https://opsmill.com/pricing/" },
+            { label: "Blog", href: "https://opsmill.com/blog/" },
+          ],
+        },
+        {
+          title: "Community",
+          items: [
+            { label: "GitHub", href: "https://github.com/opsmill/infrahub" },
+            { label: "Discord", href: "https://discord.gg/opsmill" },
+            { label: "Book a meeting", href: "https://cal.com/team/opsmill/meet" },
+          ],
+        },
+      ],
+      copyright: `Copyright © ${new Date().getFullYear()} - <b>Infrahub</b> by <a href="https://opsmill.com">OpsMill</a>.`,
     },
     prism: {
       theme: prismThemes.oneDark,
