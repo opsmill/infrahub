@@ -678,7 +678,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -802,7 +802,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -936,7 +936,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1043,7 +1043,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1568,7 +1568,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1999,7 +1999,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**

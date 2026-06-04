@@ -25,6 +25,8 @@ DEFAULT_IP_NAMESPACE = "default"
 
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
 
+NODE_METADATA_PREFIX = "node_metadata"
+
 RESERVED_ATTR_REL_NAMES = [
     "any",
     "attribute",
@@ -38,6 +40,7 @@ RESERVED_ATTR_REL_NAMES = [
     "save",
     "hfid",
     "process_pools",
+    NODE_METADATA_PREFIX,
 ]
 
 RESERVED_ATTR_REL_HIERARCHICAL_NAMES = [

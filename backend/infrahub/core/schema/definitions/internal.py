@@ -341,7 +341,10 @@ base_node_schema = SchemaNode(
             name="order_by",
             kind="List",
             internal_kind=str,
-            description="List of attributes to use to order the results by default",
+            description=(
+                "List of entries to order results by. Supports attributes, relationship attributes, "
+                "and node_metadata with __asc/__desc."
+            ),
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),

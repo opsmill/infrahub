@@ -1,8 +1,8 @@
 # Feature Specification: Schema-level `order_by` for node metadata and direction
 
-**Feature Branch**: `wvd-20260516-infp-530-spec`
+**Feature Branch**: `infp-530-schema-order-by-metadata`
 **Created**: 2026-05-08
-**Status**: Draft
+**Status**: Implemented
 **Input**: User description: "Enable order_by schema attribute to support node metadata fields with explicit sort direction"
 **Source ticket**: [INFP-530](https://opsmill.atlassian.net/browse/INFP-530)
 **Customer**: University of Melbourne

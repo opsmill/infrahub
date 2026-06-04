@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 
 from infrahub.constants.enums import OrderDirection
@@ -1277,3 +1279,196 @@ async def test_query_NodeGetListQuery_metadata_branch_agnostic(
     )
     await query.execute(db=db)
     assert set(query.get_node_ids()) == {person.id}
+
+
+@dataclass
+class MetadataOrderByCase:
+    name: str
+    order_by_entry: str
+    expected_indices: list[int]
+
+
+METADATA_ORDER_BY_CASES = [
+    MetadataOrderByCase(
+        name="created_at_desc",
+        order_by_entry="node_metadata__created_at__desc",
+        expected_indices=[3, 2, 1, 0],
+    ),
+    MetadataOrderByCase(
+        name="created_at_implicit_asc",
+        order_by_entry="node_metadata__created_at",
+        expected_indices=[0, 1, 2, 3],
+    ),
+    MetadataOrderByCase(
+        name="created_at_explicit_asc",
+        order_by_entry="node_metadata__created_at__asc",
+        expected_indices=[0, 1, 2, 3],
+    ),
+]
+
+
+async def test_NodeGetListQuery_order_by_metadata_with_direction(
+    db: InfrahubDatabase,
+    criticality_schema: NodeSchema,
+    branch: Branch,
+) -> None:
+    nodes = []
+    for idx in range(4):
+        node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+        await node.new(db=db, name=f"meta-direction-{idx}", level=idx)
+        await node.save(db=db)
+        nodes.append(node)
+
+    for case in METADATA_ORDER_BY_CASES:
+        criticality_schema.order_by = [case.order_by_entry]
+
+        query = await NodeGetListQuery.init(db=db, branch=branch, schema=criticality_schema)
+        await query.execute(db=db)
+        assert query.get_node_ids() == [nodes[i].id for i in case.expected_indices], (
+            f"order_by={case.order_by_entry!r} produced wrong order"
+        )
+
+
+async def test_NodeGetListQuery_order_by_metadata_updated_at_desc(
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
+) -> None:
+    criticality_schema.order_by = ["node_metadata__updated_at__desc"]
+
+    nodes = []
+    for idx in range(3):
+        node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+        await node.new(db=db, name=f"updated-{idx}", level=idx)
+        await node.save(db=db)
+        nodes.append(node)
+
+    node0_updated = await NodeManager.get_one(db=db, branch=branch, id=nodes[0].id)
+    node0_updated.get_attribute("level").value = 99
+    await node0_updated.save(db=db)
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=criticality_schema)
+    await query.execute(db=db)
+    assert query.get_node_ids() == [nodes[0].id, nodes[2].id, nodes[1].id]
+
+
+async def test_NodeGetListQuery_order_by_uuid_tiebreaker(
+    db: InfrahubDatabase, criticality_schema: NodeSchema, default_branch: Branch
+) -> None:
+    criticality_schema.order_by = ["level__value__asc"]
+
+    nodes = []
+    for idx in range(4):
+        node = await Node.init(db=db, branch=default_branch, schema=criticality_schema)
+        await node.new(db=db, name=f"tie-{idx}", level=5)
+        await node.save(db=db)
+        nodes.append(node)
+
+    query = await NodeGetListQuery.init(db=db, branch=default_branch, schema=criticality_schema)
+    await query.execute(db=db)
+
+    returned = query.get_node_ids()
+    expected = sorted(node.id for node in nodes)
+    assert returned == expected
+
+
+async def test_NodeGetListQuery_order_by_attribute_desc(
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
+) -> None:
+    criticality_schema.order_by = ["name__value__desc"]
+
+    names_in_creation_order = ["alpha-letter", "bravo-letter", "charlie-letter"]
+    nodes = []
+    for n in names_in_creation_order:
+        node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+        await node.new(db=db, name=n, level=1)
+        await node.save(db=db)
+        nodes.append(node)
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=criticality_schema)
+    await query.execute(db=db)
+    assert query.get_node_ids() == [nodes[2].id, nodes[1].id, nodes[0].id]
+
+
+async def test_NodeGetListQuery_order_by_multi_field_mixed_direction(
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
+) -> None:
+    criticality_schema.order_by = ["level__value__desc", "name__value"]
+
+    specs = [
+        ("alpha-multi", 1),
+        ("bravo-multi", 2),
+        ("charlie-multi", 1),
+        ("delta-multi", 2),
+    ]
+    nodes_by_name: dict[str, Node] = {}
+    for name, level in specs:
+        node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+        await node.new(db=db, name=name, level=level)
+        await node.save(db=db)
+        nodes_by_name[name] = node
+
+    query = await NodeGetListQuery.init(db=db, branch=branch, schema=criticality_schema)
+    await query.execute(db=db)
+    assert query.get_node_ids() == [
+        nodes_by_name["bravo-multi"].id,
+        nodes_by_name["delta-multi"].id,
+        nodes_by_name["alpha-multi"].id,
+        nodes_by_name["charlie-multi"].id,
+    ]
+
+
+@dataclass
+class MixedDirectionWithMetadataCase:
+    name: str
+    order_by: list[str]
+    expected_indices: list[int]
+
+
+# Creation order: 0=alpha(level=1), 1=bravo(level=2), 2=charlie(level=1), 3=delta(level=2).
+# created_at strictly increases with index.
+MIXED_DIRECTION_WITH_METADATA_CASES_NODE = [
+    MixedDirectionWithMetadataCase(
+        name="level_desc_then_metadata_created_desc",
+        order_by=["level__value__desc", "node_metadata__created_at__desc"],
+        expected_indices=[3, 1, 2, 0],
+    ),
+    MixedDirectionWithMetadataCase(
+        name="level_desc_then_metadata_created_asc",
+        order_by=["level__value__desc", "node_metadata__created_at"],
+        expected_indices=[1, 3, 0, 2],
+    ),
+    MixedDirectionWithMetadataCase(
+        name="metadata_created_desc_then_level_asc",
+        order_by=["node_metadata__created_at__desc", "level__value"],
+        expected_indices=[3, 2, 1, 0],
+    ),
+    MixedDirectionWithMetadataCase(
+        name="metadata_created_asc_then_name_desc",
+        order_by=["node_metadata__created_at", "name__value__desc"],
+        expected_indices=[0, 1, 2, 3],
+    ),
+]
+
+
+async def test_NodeGetListQuery_order_by_multi_field_mixed_direction_with_metadata(
+    db: InfrahubDatabase, criticality_schema: NodeSchema, branch: Branch
+) -> None:
+    specs = [
+        ("alpha-mfm", 1),
+        ("bravo-mfm", 2),
+        ("charlie-mfm", 1),
+        ("delta-mfm", 2),
+    ]
+    nodes: list[Node] = []
+    for name, level in specs:
+        node = await Node.init(db=db, branch=branch, schema=criticality_schema)
+        await node.new(db=db, name=name, level=level)
+        await node.save(db=db)
+        nodes.append(node)
+
+    for case in MIXED_DIRECTION_WITH_METADATA_CASES_NODE:
+        criticality_schema.order_by = case.order_by
+        query = await NodeGetListQuery.init(db=db, branch=branch, schema=criticality_schema)
+        await query.execute(db=db)
+        assert query.get_node_ids() == [nodes[i].id for i in case.expected_indices], (
+            f"order_by={case.order_by!r} produced wrong order"
+        )

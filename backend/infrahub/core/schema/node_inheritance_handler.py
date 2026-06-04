@@ -2,6 +2,7 @@ from infrahub.core.constants import OBJECT_TEMPLATE_RELATIONSHIP_NAME, PROFILES_
 
 from .generic_schema import GenericSchema
 from .node_schema import NodeSchema
+from .order_by import is_metadata_order_by_entry
 
 
 class NodeInheritanceHandler:
@@ -136,6 +137,9 @@ class NodeInheritanceHandler:
         updated_attrs_data = []
         for data in attr_data:
             updated_attr_data = data
+            if is_metadata_order_by_entry(data):
+                updated_attrs_data.append(updated_attr_data)
+                continue
             for old_name, new_name in renamed_attrs.items():
                 if data == old_name or data.startswith(f"{old_name}__"):
                     updated_attr_data = new_name + data[len(old_name) :]
