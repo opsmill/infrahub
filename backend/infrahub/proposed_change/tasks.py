@@ -58,6 +58,7 @@ from infrahub.events import EventMeta, ProposedChangeMergedEvent
 from infrahub.exceptions import MergeFailedError, SchemaNotFoundError, ValidationError
 from infrahub.generators.models import ProposedChangeGeneratorDefinition
 from infrahub.git.base import extract_repo_file_information
+from infrahub.git.closure_builder.canonicalizer import canonicalize_path
 from infrahub.git.models import TriggerRepositoryInternalChecks, TriggerRepositoryUserChecks
 from infrahub.git.repository import InfrahubRepository, get_initialized_repo
 from infrahub.git.utils import fetch_artifact_definition_targets, fetch_proposed_change_generator_definition_targets
@@ -803,10 +804,16 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
             f"Artifact definition {artifact_definition.name.value} has no applicable node changes. Existing artifacts will not be re-rendered."
         )
 
+    repo_diff_for_definition = _repo_diff_or_none(
+        branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
+    )
     managed_branch = (
         _query_changed(definition=model.artifact_definition, diff_summary=diff_summary)
         or _definition_changed(definition=model.artifact_definition, diff_summary=diff_summary)
-        or (model.source_branch_sync_with_git and model.branch_diff.has_file_modifications)
+        or (
+            repo_diff_for_definition is not None
+            and _transform_changed(definition=model.artifact_definition, repo_diff=repo_diff_for_definition)
+        )
     )
     if managed_branch:
         log.info("Query, definition or repository file change detected, all artifacts will be processed")
@@ -1220,6 +1227,42 @@ def _definition_changed(
     )
 
 
+def _transform_changed(
+    definition: ProposedChangeArtifactDefinition,
+    repo_diff: ProposedChangeRepository,
+) -> bool:
+    """Return True when the transform's stored dependency closure intersects this repo's file diff.
+
+    Falls back to "any file changed in the repository" when the closure cannot
+    be trusted. On the precise path, both sides are canonicalized before the
+    set intersection so the comparison matches git's diff output regardless
+    of input separator or leading prefix.
+    """
+    closure_trusted = definition.dependencies is not None and definition.dependencies_complete is True
+    if not closure_trusted:
+        return repo_diff.has_modifications
+
+    if not definition.dependencies:
+        return False
+
+    closure = {canonicalize_path(entry) for entry in definition.dependencies}
+    changed_files: set[str] = set()
+    for raw in (*repo_diff.files_added, *repo_diff.files_changed, *repo_diff.files_removed):
+        try:
+            changed_files.add(canonicalize_path(raw))
+        except ValueError:
+            continue
+
+    return bool(closure & changed_files)
+
+
+def _repo_diff_or_none(branch_diff: ProposedChangeBranchDiff, repository_id: str) -> ProposedChangeRepository | None:
+    try:
+        return branch_diff.get_repository(repository_id)
+    except NodeNotFoundError:
+        return None
+
+
 class DefinitionSelect(IntFlag):
     NONE = 0
     MODIFIED_KINDS = 1
@@ -1246,7 +1289,7 @@ class DefinitionSelect(IntFlag):
             change_types.append("changes to the artifact definition")
 
         if DefinitionSelect.FILE_CHANGES in self:
-            change_types.append("file modifications in Git repositories")
+            change_types.append("file changes affecting the transform's dependencies")
 
         if self:
             return f"Requesting generation due to {' and '.join(change_types)}"
@@ -1424,11 +1467,18 @@ async def refresh_artifacts(model: RequestProposedChangeRefreshArtifacts, contex
             flag=DefinitionSelect.DEFINITION_CHANGED,
             condition=_definition_changed(definition=artifact_definition, diff_summary=diff_summary),
         )
-        select = select.add_flag(
-            current=select,
-            flag=DefinitionSelect.FILE_CHANGES,
-            condition=model.source_branch_sync_with_git and model.branch_diff.has_file_modifications,
+        repo_diff_for_definition = _repo_diff_or_none(
+            branch_diff=model.branch_diff, repository_id=artifact_definition.repository_id
         )
+        if repo_diff_for_definition is not None:
+            select = select.add_flag(
+                current=select,
+                flag=DefinitionSelect.FILE_CHANGES,
+                condition=_transform_changed(
+                    definition=artifact_definition,
+                    repo_diff=repo_diff_for_definition,
+                ),
+            )
 
         for changed_model in modified_kinds:
             condition = False
@@ -1482,6 +1532,12 @@ query GatherArtifactDefinitions {
             __typename
             timeout {
                 value
+            }
+            dependencies {
+              value
+            }
+            dependencies_complete {
+              value
             }
             query {
               node {
@@ -1702,27 +1758,28 @@ def _parse_artifact_definitions(definitions: list[dict]) -> list[ProposedChangeA
     """
     parsed = []
     for definition in definitions:
+        transformation = definition["node"]["transformation"]["node"]
         artifact_definition = ProposedChangeArtifactDefinition(
             definition_id=definition["node"]["id"],
             definition_name=definition["node"]["name"]["value"],
             artifact_name=definition["node"]["artifact_name"]["value"],
             content_type=definition["node"]["content_type"]["value"],
-            timeout=definition["node"]["transformation"]["node"]["timeout"]["value"],
-            query_name=definition["node"]["transformation"]["node"]["query"]["node"]["name"]["value"],
-            query_id=definition["node"]["transformation"]["node"]["query"]["node"]["id"],
-            query_models=definition["node"]["transformation"]["node"]["query"]["node"]["models"]["value"] or [],
-            query_payload=definition["node"]["transformation"]["node"]["query"]["node"]["query"]["value"],
-            repository_id=definition["node"]["transformation"]["node"]["repository"]["node"]["id"],
-            transform_kind=definition["node"]["transformation"]["node"]["__typename"],
+            timeout=transformation["timeout"]["value"],
+            query_name=transformation["query"]["node"]["name"]["value"],
+            query_id=transformation["query"]["node"]["id"],
+            query_models=transformation["query"]["node"]["models"]["value"] or [],
+            query_payload=transformation["query"]["node"]["query"]["value"],
+            repository_id=transformation["repository"]["node"]["id"],
+            transform_kind=transformation["__typename"],
+            dependencies=transformation["dependencies"]["value"],
+            dependencies_complete=transformation["dependencies_complete"]["value"],
         )
         if artifact_definition.transform_kind == InfrahubKind.TRANSFORMJINJA2:
-            artifact_definition.template_path = definition["node"]["transformation"]["node"]["template_path"]["value"]
+            artifact_definition.template_path = transformation["template_path"]["value"]
         elif artifact_definition.transform_kind == InfrahubKind.TRANSFORMPYTHON:
-            artifact_definition.class_name = definition["node"]["transformation"]["node"]["class_name"]["value"]
-            artifact_definition.file_path = definition["node"]["transformation"]["node"]["file_path"]["value"]
-            artifact_definition.convert_query_response = definition["node"]["transformation"]["node"][
-                "convert_query_response"
-            ]["value"]
+            artifact_definition.class_name = transformation["class_name"]["value"]
+            artifact_definition.file_path = transformation["file_path"]["value"]
+            artifact_definition.convert_query_response = transformation["convert_query_response"]["value"]
 
         parsed.append(artifact_definition)
 
