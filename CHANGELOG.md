@@ -11,6 +11,19 @@ This project uses [*towncrier*](https://towncrier.readthedocs.io/) and the chang
 
 <!-- towncrier release notes start -->
 
+## [Infrahub - v1.8.7](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.7) - 2026-06-04
+
+### Security
+
+- Added the `INFRAHUB_SECURITY_SSO_ACCOUNT_NAME_FALLBACK` setting (enabled by default) to control whether an SSO login without a linked identity may adopt a pre-existing account that matches by display name. This transitional behavior supports upgrades; disabling it once all SSO users have completed their first login is recommended as a hardening step. The fallback is deprecated and will be removed in a future release.
+- Enable cryptographic verification of the OIDC `id_token` (signature, audience and issuer) by default when reading group claims. This can be disabled through `INFRAHUB_OIDC_<PROVIDER>_ID_TOKEN_VERIFY_SIGNATURE`.
+- Local password changes are now refused for accounts that authenticate through an external directory (LDAP, OIDC, OAuth2). The self-service form is hidden in the UI and the GraphQL mutation rejects the request, preventing a user from bypassing directory-side revocation by setting a local password.
+
+### Fixed
+
+- A failed OIDC `id_token` verification — invalid signature, audience, issuer, or an unresolvable signing key — now returns an authorization error (HTTP 401) instead of an unhandled server error.
+- Improve SVG artifact handling: allow scrolling in the preview so oversized content is no longer clipped, and fix the download action so the saved file contains the raw SVG content.
+
 ## [Infrahub - v1.8.6](https://github.com/opsmill/infrahub/tree/infrahub-v1.8.6) - 2026-04-21
 
 ### Changed
