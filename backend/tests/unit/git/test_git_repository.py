@@ -27,7 +27,7 @@ def patch_prefect_logger() -> Any:
         yield
 
 
-def _build_source_with_conflicting_branches(source_dir: Path) -> Repo:
+def _build_source_with_conflicting_branches(source_dir: Path) -> None:
     """Initialize a git source repo with `main` and `change1` whose tips edit the same lines."""
     source = Repo.init(source_dir, initial_branch="main")
     with source.config_writer() as cfg:
@@ -48,17 +48,15 @@ def _build_source_with_conflicting_branches(source_dir: Path) -> Repo:
     target.write_text("main version\nline 2\nline 3\n", encoding="utf-8")
     source.index.add(["data.txt"])
     source.index.commit("change on main")
-    return source
 
 
-async def test_create_branch_in_git_with_conflicting_remote_lands_at_remote_tip(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A remote branch that conflicts with the default branch must still be imported locally.
+async def _build_repository_with_conflict(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, name: str
+) -> InfrahubRepository:
+    """Build an `InfrahubRepository` whose remote has `main` and a divergent `change1`.
 
-    The local branch should land at the remote tip so that downstream merge attempts can
-    surface the conflict at merge time, rather than aborting the entire import.
+    Asserts the pre-condition that the two branches actually conflict so a helper drift
+    fails loudly instead of silently making downstream assertions meaningless.
     """
     repos_dir = tmp_path / "repositories"
     repos_dir.mkdir()
@@ -71,14 +69,25 @@ async def test_create_branch_in_git_with_conflicting_remote_lands_at_remote_tip(
 
     repository = await InfrahubRepository.new(
         id=UUIDT.new(),
-        name="conflicting-import",
+        name=name,
         location=str(source_dir),
         default_branch_name="main",
         client=InfrahubClient(config=Config(requester=dummy_async_request)),
     )
-
-    # Pre-condition: the two branches must actually conflict for this test to be meaningful
     assert repository.has_conflicting_changes(target_branch="main", source_branch="change1")
+    return repository
+
+
+async def test_create_branch_in_git_with_conflicting_remote_lands_at_remote_tip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A remote branch that conflicts with the default branch must still be imported locally.
+
+    The local branch should land at the remote tip so that downstream merge attempts can
+    surface the conflict at merge time, rather than aborting the entire import.
+    """
+    repository = await _build_repository_with_conflict(tmp_path, monkeypatch, name="conflicting-import")
 
     remote_branches = repository.get_branches_from_remote()
     expected_commit = remote_branches["change1"].commit
@@ -100,24 +109,7 @@ async def test_validate_remote_branch_allows_conflicting_branch(
     Skipping the branch would prevent it from being imported. The conflict is surfaced at
     merge time instead.
     """
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-    monkeypatch.setattr(registry, "_default_branch", "main")
-    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
-
-    source_dir = tmp_path / "source-repo"
-    source_dir.mkdir()
-    _build_source_with_conflicting_branches(source_dir)
-
-    repository = await InfrahubRepository.new(
-        id=UUIDT.new(),
-        name="conflicting-validate",
-        location=str(source_dir),
-        default_branch_name="main",
-        client=InfrahubClient(config=Config(requester=dummy_async_request)),
-    )
-
-    assert repository.has_conflicting_changes(target_branch="main", source_branch="change1")
+    repository = await _build_repository_with_conflict(tmp_path, monkeypatch, name="conflicting-validate")
     assert repository.validate_remote_branch(branch_name="change1") is True
 
 
@@ -125,11 +117,7 @@ async def test_has_conflicting_changes_no_false_positive(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """has_conflicting_changes() should not report false positives when.
-
-    file content contains conflict marker characters like '======='.
-
-    """
+    """has_conflicting_changes() must not flag a diff that only adds lines containing '======='."""
     repos_dir = tmp_path / "repositories"
     repos_dir.mkdir()
     monkeypatch.setattr(registry, "_default_branch", "main")

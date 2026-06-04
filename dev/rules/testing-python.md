@@ -32,6 +32,7 @@ Acceptable exceptions only:
 
 - External HTTP APIs with no test mode: use `httpx_mock` or `responses`
 - Time-dependent behavior: `freezegun`
+- Prefect's `get_run_logger`: when calling a Prefect-decorated function via `.fn` outside a flow context, patch `get_run_logger` to return a stdlib `logging.getLogger(...)` so `caplog` can capture output. See `dev/knowledge/backend/testing.md` for the full pattern.
 
 ## Parametrized tests
 
