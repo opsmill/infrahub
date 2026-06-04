@@ -1,4 +1,3 @@
-import logging
 import os
 import time
 from contextlib import asynccontextmanager
@@ -9,7 +8,6 @@ from typing import AsyncGenerator, Awaitable, Callable
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
 from fastapi import FastAPI, Request, Response
-from fastapi.logger import logger
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -141,9 +139,10 @@ FRONTEND_FAVICONS_DIRECTORY = FRONTEND_DIRECTORY / "dist" / "favicons"
 DOCS_DIRECTORY = Path(os.environ.get("INFRAHUB_DOCS_DIRECTORY", Path("docs").resolve()))
 DOCS_BUILD_DIRECTORY = DOCS_DIRECTORY / "build"
 
+# Initialise the app's structlog logger. (The previous gunicorn.error handler
+# wiring was removed with the gunicorn glue — the API is served by
+# pingora-granian/Granian now, which manages its own logging.)
 log = get_logger()
-gunicorn_logger = logging.getLogger("gunicorn.error")
-logger.handlers = gunicorn_logger.handlers
 
 app.include_router(api)
 

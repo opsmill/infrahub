@@ -38,6 +38,25 @@ RUN apt-get update && \
 FROM docker.io/node:${NODE_VER}-slim AS node-base
 
 # ****************************************************************
+# STAGE : pingora-granian builder  (FR-010)
+#   Compiles the pure-Rust supervisor/gateway that serves the API in place of
+#   gunicorn — default features, no libpython linkage (subprocess backend). It
+#   lives in its own repo; override the repo/ref with build args once a release
+#   ref is available (the default tracks `main`).
+# ****************************************************************
+ARG RUST_VER=1
+FROM docker.io/rust:${RUST_VER}-slim AS pingora-granian-builder
+ARG PINGORA_GRANIAN_REPO=https://github.com/opsmill/pingora-granian.git
+ARG PINGORA_GRANIAN_REF=main
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y git pkg-config libssl-dev build-essential perl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+WORKDIR /build
+RUN git clone "${PINGORA_GRANIAN_REPO}" . && git checkout "${PINGORA_GRANIAN_REF}"
+RUN cargo build --release
+# Produces /build/target/release/pingora-granian
+
+# ****************************************************************
 # STAGE : Frontend
 # ****************************************************************
 FROM node-base AS frontend
@@ -127,6 +146,14 @@ RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
 # Import Frontend & Documentation builds last so frontend/docs edits don't invalidate any uv sync layer
 COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
 COPY --from=docs /docs/build/ /opt/infrahub/docs/build
+
+# --------------------------------------------
+# Bundle the pingora-granian supervisor + its launcher (replaces the gunicorn
+# command). `granian` is on PATH via the venv below (FR-010).
+# --------------------------------------------
+COPY --from=pingora-granian-builder /build/target/release/pingora-granian /usr/local/bin/pingora-granian
+COPY development/infrahub-serve.sh /usr/local/bin/infrahub-serve
+RUN chmod +x /usr/local/bin/pingora-granian /usr/local/bin/infrahub-serve
 
 ENV PATH="/.venv/bin:$PATH"
 ENTRYPOINT ["tini", "-g", "--"]

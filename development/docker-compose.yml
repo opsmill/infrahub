@@ -191,8 +191,10 @@ services:
       INFRAHUB_DB_PORT: 7687
       INFRAHUB_DB_PROTOCOL: bolt
       INFRAHUB_STORAGE_DRIVER: local
-      # INFRAHUB_SERVER_COMMAND is defined while running with reload option as it requires to run server using `uvicorn`.
-      COMMAND: ${INFRAHUB_SERVER_COMMAND:- gunicorn --config backend/infrahub/serve/gunicorn_config.py -w ${WEB_CONCURRENCY:-4} --logger-class infrahub.serve.log.GunicornLogger infrahub.server:app}
+      # API served by the pingora-granian supervisor (interactive + automation
+      # tiers). INFRAHUB_SERVER_COMMAND overrides it for the reload dev path,
+      # which still uses `uvicorn` (see tasks/dev.py).
+      COMMAND: ${INFRAHUB_SERVER_COMMAND:-infrahub-serve}
     command: >
       sh -c "$$COMMAND"
     depends_on:

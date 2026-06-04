@@ -40,7 +40,8 @@ dependencies = [
     "fastapi==0.136.3",
     "fastapi-storages>=0.3,<0.4",
     "graphene>=3.4,<3.5",
-    "gunicorn>=23.0.0,<24",
+    "granian>=2.7,<3", # ASGI server for the per-tier worker pools under pingora-granian
+    "gunicorn>=23.0.0,<24", # runs the Prefect server (the Infrahub API now uses granian)
     "lunr>=0.7.0.post1,<0.8",
     "starlette-exporter>=0.23,<0.24",
     "python-multipart==0.0.27", # Required by FastAPI to upload large files
@@ -744,10 +745,6 @@ allow-dunder-method-names = [
     # Refactor code and remove the ignore rule
     ##################################################################################################
     "PLR0915", # Too many statements
-]
-
-"backend/infrahub/serve/log.py" = [
-    "LOG004",  # `.exception()` call outside exception handlers
 ]
 
 "backend/infrahub/tls/context_builder.py" = [

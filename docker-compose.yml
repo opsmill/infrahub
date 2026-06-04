@@ -278,11 +278,9 @@ services:
   infrahub-server:
     image: "${INFRAHUB_DOCKER_IMAGE:-registry.opsmill.io/opsmill/infrahub}:${VERSION:-1.10.0}"
     restart: unless-stopped
-    command: >
-      gunicorn --config backend/infrahub/serve/gunicorn_config.py
-      -w ${WEB_CONCURRENCY:-4}
-      --logger-class infrahub.serve.log.GunicornLogger
-      infrahub.server:app
+    # API served by the pingora-granian supervisor (interactive + automation
+    # tiers); topology is rendered from env (WEB_CONCURRENCY, PG_DRAIN_GRACE, …).
+    command: infrahub-serve
     depends_on:
       database:
         condition: service_healthy
