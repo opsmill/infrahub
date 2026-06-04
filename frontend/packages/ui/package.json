@@ -20,7 +20,9 @@
     "lint": "oxlint",
     "lint:fix": "oxlint --fix",
     "preview": "vite preview",
-    "storybook": "storybook dev -p 6006"
+    "storybook": "storybook dev -p 6006",
+    "test": "vitest run",
+    "test:watch": "vitest watch"
   },
   "dependencies": {
     "@radix-ui/react-scroll-area": "^1.2.10",
@@ -37,6 +39,11 @@
   },
   "devDependencies": {
     "@storybook/react-vite": "^10.3.6",
+    "@vitest/browser": "^4.1.5",
+    "@vitest/browser-playwright": "^4.1.5",
+    "playwright": "^1.48.0",
+    "vitest": "^4.1.5",
+    "vitest-browser-react": "^2.2.0",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
