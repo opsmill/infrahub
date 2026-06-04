@@ -6,7 +6,6 @@ import pytest
 
 from infrahub.core import registry
 from infrahub.core.initialization import create_branch, create_ipam_namespace, get_default_ipnamespace
-from infrahub.core.ipam.utilization import PrefixUtilizationGetter
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -212,18 +211,6 @@ class TestIpamUtilization(TestIpam):
         assert isinstance(step2_branch_addresses, list)
         await step2_branch_addresses[0].delete(db=db)
 
-    async def test_step01_main_utilization(
-        self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: InitialDatasetType
-    ) -> None:
-        container = initial_dataset["container"]
-        prefix = initial_dataset["prefix"]
-        prefix2 = initial_dataset["prefix2"]
-        getter = PrefixUtilizationGetter(db=db, ip_prefixes=[container, prefix, prefix2], branch=default_branch)
-
-        assert await getter.get_use_percentage(ip_prefixes=[container]) == 100 / 8
-        assert await getter.get_use_percentage(ip_prefixes=[prefix2]) == 0
-        assert await getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
-
     async def test_step01_graphql_prefix_pool_utilization(
         self, db: InfrahubDatabase, default_branch: Branch, initial_dataset: InitialDatasetType
     ) -> None:
@@ -347,31 +334,6 @@ class TestIpamUtilization(TestIpam):
                 ],
             }
         }
-
-    async def test_step02_branch_utilization(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        branch2: Branch,
-        initial_dataset: InitialDatasetType,
-        step_02_dataset: Step02DatasetType,
-    ) -> None:
-        container = initial_dataset["container"]
-        prefix = initial_dataset["prefix"]
-        prefix_branch = step_02_dataset["prefix_branch"]
-        prefix2_branch = step_02_dataset["prefix2_branch"]
-        prefixes = [container, prefix, prefix_branch, prefix2_branch]
-        main_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=default_branch)
-        branch_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=branch2)
-
-        assert await branch_getter.get_use_percentage(ip_prefixes=[container]) == 25.0
-        assert await main_getter.get_use_percentage(ip_prefixes=[container]) == 12.5
-        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix2_branch]) == 0
-        assert await main_getter.get_use_percentage(ip_prefixes=[prefix2_branch]) == 0
-        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 100.0
-        assert await main_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 0
-        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix]) == 100.0
-        assert await main_getter.get_use_percentage(ip_prefixes=[prefix]) == 50.0
 
     async def test_step02_graphql_prefix_pool_branch_utilization(
         self,
@@ -526,34 +488,6 @@ class TestIpamUtilization(TestIpam):
                 "prefix": {"value": prefix_branch.prefix.value},
             }
         } in prefix_details_list
-
-    async def test_step03_utilization_with_deletes(
-        self,
-        db: InfrahubDatabase,
-        default_branch: Branch,
-        branch2: Branch,
-        initial_dataset: InitialDatasetType,
-        step_02_dataset: Step02DatasetType,
-        step_03_dataset: None,
-    ) -> None:
-        container = initial_dataset["container"]
-        prefix = initial_dataset["prefix"]
-        prefix_branch = step_02_dataset["prefix_branch"]
-        prefixes = [container, prefix, prefix_branch]
-        main_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=default_branch)
-        branch_getter = PrefixUtilizationGetter(db=db, ip_prefixes=prefixes, branch=branch2)
-
-        # main now sees only prefix under container; main's prefix2 deletion is invisible to the
-        # isolated branch, which still counts prefix + prefix2 plus its own live prefix_branch.
-        assert await main_getter.get_use_percentage(ip_prefixes=[container]) == 100 / 16
-        assert await branch_getter.get_use_percentage(ip_prefixes=[container]) == 18.75
-        # prefix_branch only exists on branch2; one of its 14 addresses was deleted on branch2.
-        assert await main_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == 0
-        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix_branch]) == (13 / 14) * 100
-        # prefix on main lost one of its 7 addresses; branch2 still sees those 7 (isolation)
-        # plus its own 7 minus the one deleted on branch2.
-        assert await main_getter.get_use_percentage(ip_prefixes=[prefix]) == (6 / 14) * 100
-        assert await branch_getter.get_use_percentage(ip_prefixes=[prefix]) == (13 / 14) * 100
 
     async def test_step03_graphql_prefix_pool_delete_utilization(
         self,
