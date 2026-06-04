@@ -1,3 +1,4 @@
+import contextlib
 import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -560,6 +561,26 @@ async def test_sync_updated_branch(prefect_test_fixture: None, git_repo_04: Infr
         mock_import.assert_awaited()
 
     assert repo.get_commit_value(branch_name="branch01") == str(commit)
+
+
+async def test_sync_continues_after_branch_pull_failure(
+    prefect_test_fixture: None, git_repo_07: InfrahubRepository
+) -> None:
+    """A branch whose pull fails must not prevent the synchronization of the remaining branches."""
+    repo = git_repo_07
+
+    for branch_name in ["branch01", "branch02"]:
+        branch = Branch(name=branch_name, uuid=uuid4())
+        registry.branch[branch.name] = branch
+
+    remote_commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=True)
+    assert repo.get_commit_value(branch_name="branch02", remote=False) != str(remote_commit_branch02)
+
+    # A branch failure may surface as an error once all branches have been processed.
+    with contextlib.suppress(RepositoryError):
+        await repo.sync()
+
+    assert repo.get_commit_value(branch_name="branch02", remote=False) == str(remote_commit_branch02)
 
 
 async def test_render_jinja2_template_success(prefect_test_fixture: None, git_repo_jinja: InfrahubRepository) -> None:
