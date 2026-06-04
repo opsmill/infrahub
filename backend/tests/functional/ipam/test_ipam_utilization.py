@@ -580,9 +580,9 @@ class TestIpamUtilization(TestIpam):
         assert result.data
         pool_data = result.data["InfrahubResourcePoolUtilization"]
         assert pool_data["count"] == 2
-        # Pool space = 2 * 256 = 512. On branch2 (isolated) container shows prefix + prefix2
-        # (main's prefix2 deletion is invisible to the branch) plus prefix_branch alive on the
-        # branch, totalling 48/512. On main only prefix survives: 16/512.
+        # Pool space = 2 * 256 = 512. On branch2 container shows prefix + prefix2 (main's
+        # prefix2 deletion is invisible to the branch) plus prefix_branch alive on the branch,
+        # totalling 48/512. On main only prefix survives: 16/512.
         assert pool_data["utilization"] == (48 / 512) * 100
         assert pool_data["utilization_default_branch"] == (16 / 512) * 100
         assert pool_data["utilization_branches"] == (32 / 512) * 100
