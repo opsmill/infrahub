@@ -1,7 +1,7 @@
-import React from "react";
+import type React from "react";
 import { describe, expect, test, vi } from "vitest";
-import { render } from "../../../../tests/components/render";
 
+import { render } from "../../../../tests/components/render";
 import { BottomToolbar } from "./bottom-toolbar";
 
 vi.mock("@xyflow/react", () => ({
@@ -104,9 +104,7 @@ describe("BottomToolbar", () => {
 
   test("isParametersOpen=true shows 'Hide parameters' button", async () => {
     const { component } = await setup({ isParametersOpen: true });
-    await expect
-      .element(component.getByRole("button", { name: "Hide parameters" }))
-      .toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Hide parameters" })).toBeVisible();
   });
 
   test("onLayout fires with 'LR' when horizontal layout button is clicked", async () => {
