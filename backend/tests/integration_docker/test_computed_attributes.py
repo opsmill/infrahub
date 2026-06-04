@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from asyncio import sleep
+from copy import deepcopy
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,7 +14,10 @@ from infrahub_sdk.task.models import TaskFilter, TaskState
 from infrahub_sdk.testing.docker import TestInfrahubDockerClient
 from infrahub_sdk.testing.repository import GitRepo
 
-from infrahub.workflows.catalogue import COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE
+from infrahub.workflows.catalogue import (
+    COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE,
+    TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES,
+)
 from tests.helpers.constants import PREFECT_EVENT_WAIT_SECONDS
 
 if TYPE_CHECKING:
@@ -274,3 +278,177 @@ class TestComputedAttributes(TestInfrahubDockerClient):
 
         # The computed attribute of type Jinja2 should be updated on the sites but NOT on the continents
         assert nbr_task_after_related == nbr_task_after_not_related + 2
+
+    async def test_jinja2_scoped_recompute_on_read_field_change(
+        self, client: InfrahubClient, schema_computed_tshirt: dict
+    ) -> None:
+        """A Jinja2 attribute recomputes when a field it reads across a relationship changes.
+
+        TestingTShirt.description reads color__name__value, so a schema change to TestingColor.name
+        recomputes it, while a change to a field no template reads recomputes nothing — the template
+        itself is untouched in both cases (this is the read-field path, not a definition edit).
+        """
+        jinja2_before = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+        )
+
+        # Unrelated: re-order a LocationSite field that no template reads -> no recompute.
+        schema_computed_tshirt["nodes"][4]["attributes"][1]["order_weight"] = 8500  # LocationSite.address
+        unrelated = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
+        assert unrelated.schema_updated
+        assert await client.schema.in_sync()
+
+        await sleep(1)
+        await wait_for_all_tasks_to_be_completed(client)
+        jinja2_after_unrelated = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+        )
+        assert jinja2_after_unrelated == jinja2_before
+
+        # Related: re-order TestingColor.name, which TestingTShirt.description reads via the color relationship.
+        schema_computed_tshirt["nodes"][0]["attributes"][0]["order_weight"] = 8800  # TestingColor.name
+        related = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
+        assert related.schema_updated
+        assert await client.schema.in_sync()
+
+        jinja2_after_related = jinja2_after_unrelated
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            jinja2_after_related = await client.task.count(
+                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name])
+            )
+            if jinja2_after_related > jinja2_after_unrelated:
+                break
+
+        assert jinja2_after_related > jinja2_after_unrelated
+
+    async def test_python_scoped_recompute_on_read_field_change(
+        self, client: InfrahubClient, schema_computed_tshirt: dict
+    ) -> None:
+        """A Python-transform attribute recomputes only when a field its query reads changes.
+
+        The DeviceNameAttribute query reads InfraDevice.device_type, so a schema change to that field
+        recomputes InfraDevice.name, while a change to a field the query does not read recomputes nothing.
+        """
+        python_before = await client.task.count(
+            filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name])
+        )
+
+        # Unrelated: re-order a LocationSite field the transform query does not read -> no recompute.
+        schema_computed_tshirt["nodes"][4]["attributes"][2]["order_weight"] = 8600  # LocationSite.contact
+        unrelated = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
+        assert unrelated.schema_updated
+        assert await client.schema.in_sync()
+
+        await sleep(1)
+        await wait_for_all_tasks_to_be_completed(client)
+        python_after_unrelated = await client.task.count(
+            filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name])
+        )
+        assert python_after_unrelated == python_before
+
+        # Related: re-order InfraDevice.device_type, which the DeviceNameAttribute query reads.
+        schema_computed_tshirt["nodes"][5]["attributes"][0]["order_weight"] = 8700  # InfraDevice.device_type
+        related = await client.schema.load(schemas=[schema_computed_tshirt], wait_until_converged=True)
+        assert related.schema_updated
+        assert await client.schema.in_sync()
+
+        python_after_related = python_after_unrelated
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            python_after_related = await client.task.count(
+                filters=TaskFilter(workflow=[TRIGGER_UPDATE_PYTHON_COMPUTED_ATTRIBUTES.name])
+            )
+            if python_after_related > python_after_unrelated:
+                break
+
+        assert python_after_related > python_after_unrelated
+
+    async def test_branch_isolation_scopes_recompute_to_changed_branch(
+        self, client: InfrahubClient, schema_computed_tshirt: dict
+    ) -> None:
+        """A schema change on one branch recomputes only that branch's attributes.
+
+        Changing a Jinja2 template on an isolated branch recomputes that branch's objects but
+        must not recompute anything on the default branch — branch scoping is applied before and
+        independently of changed-element scoping, so a change on one branch never broadens
+        recompute onto another.
+        """
+        branch = await client.branch.create(branch_name="scope-isolation")
+
+        main_before = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
+        )
+        branch_before = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch=branch.name)
+        )
+
+        # Change the LocationSite.slug template only on the isolated branch.
+        branch_schema = deepcopy(schema_computed_tshirt)
+        branch_schema["nodes"][4]["attributes"][3]["computed_attribute"]["jinja2_template"] = (
+            "Isolated branch: {{ name__value }}"
+        )
+        loaded = await client.schema.load(schemas=[branch_schema], branch=branch.name, wait_until_converged=True)
+        assert loaded.schema_updated
+
+        branch_after = branch_before
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            await sleep(1)
+            await wait_for_all_tasks_to_be_completed(client)
+            branch_after = await client.task.count(
+                filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch=branch.name)
+            )
+            if branch_after > branch_before:
+                break
+
+        main_after = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
+        )
+
+        # The changed branch recomputed; the default branch was left untouched.
+        assert branch_after > branch_before
+        assert main_after == main_before
+
+    async def test_merge_does_not_trigger_schema_scoped_recompute(
+        self, client: InfrahubClient, schema_computed_tshirt: dict
+    ) -> None:
+        """Merging a branch's schema change does not run this feature's schema-scoped recompute.
+
+        Merge and rebase emit branch and node events, not a schema-update event, so the
+        computed-attribute setup flow is not triggered on merge. A schema-only change applied by a
+        merge (no object-data change) therefore does not recompute on the target branch; merged
+        data changes are recomputed by the separate data-change path. This characterizes the
+        boundary and confirms a merge never broadens recompute onto the default branch.
+        """
+        branch = await client.branch.create(branch_name="merge-scope")
+
+        # Schema-only change on the branch (a Jinja2 template edit); no object data is touched.
+        branch_schema = deepcopy(schema_computed_tshirt)
+        branch_schema["nodes"][1]["attributes"][1]["computed_attribute"]["jinja2_template"] = (
+            "Merged template: {{ name__value }}"  # TestingTShirt.description
+        )
+        loaded = await client.schema.load(schemas=[branch_schema], branch=branch.name, wait_until_converged=True)
+        assert loaded.schema_updated
+
+        await sleep(1)
+        await wait_for_all_tasks_to_be_completed(client)
+        main_before = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
+        )
+
+        merged = await client.branch.merge(branch_name=branch.name)
+        assert merged
+
+        # Give any merge-driven work time to surface, then confirm no schema-scoped recompute ran.
+        await sleep(2)
+        await wait_for_all_tasks_to_be_completed(client)
+        main_after = await client.task.count(
+            filters=TaskFilter(workflow=[COMPUTED_ATTRIBUTE_JINJA2_UPDATE_VALUE.name], branch="main")
+        )
+
+        assert main_after == main_before

@@ -3,13 +3,21 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from infrahub.core.schema import AttributeSchema  # noqa: TC001
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
+
     from infrahub.core.schema import NodeSchema
+    from infrahub.graphql.analyzer import GraphQLQueryReport
+
+# Reads of these computed/derived fields cannot be mapped back to a precise set of
+# backing schema elements, so an attribute that reads them must be recomputed on any
+# schema change.
+IMPRECISE_READ_FIELDS = frozenset({"display_label", "hfid"})
 
 
 @dataclass
@@ -20,6 +28,48 @@ class PythonDefinition:
     @property
     def key_name(self) -> str:
         return f"{self.kind}_{self.attribute.name}"
+
+
+@dataclass(frozen=True)
+class TransformReadSet:
+    """The schema elements a transform's GraphQL query reads.
+
+    ``depends_on_everything`` is set when the read set cannot be mapped precisely
+    (an unanalyzable query, or a read of a derived field such as the display label).
+    """
+
+    read_kinds: frozenset[str] = frozenset()
+    read_fields: dict[str, frozenset[str]] = field(default_factory=dict)
+    depends_on_everything: bool = False
+
+    @classmethod
+    def imprecise(cls) -> TransformReadSet:
+        return cls(depends_on_everything=True)
+
+    @classmethod
+    def from_read_fields(cls, read_fields_by_kind: Mapping[str, Iterable[str]]) -> TransformReadSet:
+        """Build the read set from a kind to read-field-names mapping.
+
+        The set is marked imprecise when a read cannot be mapped to concrete backing
+        elements: a read of a derived field (such as the display label), or a read
+        kind that contributes no mappable field at all. The latter covers a query
+        that selects only a value with no concrete schema element behind it (such as
+        a human-friendly id), which would otherwise look like a precise read of
+        nothing and be skipped on every change.
+        """
+        read_fields: dict[str, frozenset[str]] = {}
+        for kind, names in read_fields_by_kind.items():
+            fields = frozenset(names)
+            if not fields or fields & IMPRECISE_READ_FIELDS:
+                return cls.imprecise()
+            read_fields[kind] = fields
+
+        return cls(read_kinds=frozenset(read_fields), read_fields=read_fields)
+
+    @classmethod
+    def from_query_report(cls, report: GraphQLQueryReport) -> TransformReadSet:
+        """Map an analyzed GraphQL query into the kinds and fields it reads."""
+        return cls.from_read_fields({kind: access.fields for kind, access in report.requested_read.items()})
 
 
 class PythonTransformRegistry:
