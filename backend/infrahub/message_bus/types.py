@@ -62,6 +62,19 @@ class ProposedChangeRepository(BaseModel):
         return False
 
     @property
+    def has_file_diff(self) -> bool:
+        """Indicates a file diff can be computed for this repository, managed or read-only.
+
+        Unlike has_diff this is not restricted to managed repositories and does not depend on the
+        source branch's sync_with_git flag: read-only repositories diff their per-branch pinned
+        commits, and a managed repository whose tracked tips did not move simply has equal commits
+        and yields an empty diff. It also requires destination_commit to be set, whereas has_diff is
+        True for a repository present only on the source branch so that merge-conflict validation
+        still runs; do not collapse the two.
+        """
+        return bool(self.source_commit and self.destination_commit and self.source_commit != self.destination_commit)
+
+    @property
     def is_staging(self) -> bool:
         """Indicates if the repository is in staging mode."""
         if self.internal_status == RepositoryInternalStatus.STAGING.value:
