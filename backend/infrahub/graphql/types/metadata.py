@@ -20,6 +20,18 @@ _ORDER_BY_DESCRIPTION = (
 )
 
 
+class MetadataOrderInput(InputObjectType):
+    """Order input restricted to node metadata fields.
+
+    Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+    surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
+    string grammar.
+    """
+
+    disable = Boolean(required=False)
+    node_metadata = Field(InfrahubNodeMetadataOrder, required=False, description="Order settings for branch metadata")
+
+
 class OrderInput(InputObjectType):
     disable = Boolean(required=False)
     node_metadata = Field(InfrahubNodeMetadataOrder, required=False, description="Order settings for branch metadata")

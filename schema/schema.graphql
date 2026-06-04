@@ -11181,6 +11181,19 @@ type NumberAttribute implements AttributeInterface {
   value: BigInt
 }
 
+"""
+Order input restricted to node metadata fields.
+
+Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
+string grammar.
+"""
+input MetadataOrderInput {
+  disable: Boolean
+  """Order settings for branch metadata"""
+  node_metadata: InfrahubNodeMetadataOrder = null
+}
+
 input NumberAttributeCreate {
   from_pool: GenericPoolInput = null
   is_protected: Boolean
@@ -24557,7 +24570,7 @@ type Query {
     node_metadata__updated_at__before: DateTime
     offset: Int
     """Define ordering of results for branch queries."""
-    order: OrderInput
+    order: MetadataOrderInput
     partial_match: Boolean = false
     """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
     status__value: BranchStatus
