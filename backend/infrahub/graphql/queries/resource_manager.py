@@ -235,8 +235,8 @@ class PoolUtilization(ObjectType):
                 if default_branch_utilization is not None
                 else await default_branch_getter.get_use_percentage()
             )
-            # Clamp at 0: deletions on the branch can make its view smaller than the default
-            # branch's, but this field is exposed as a non-negative percentage.
+            # Deletions on the branch can make its view smaller than the default branch's;
+            # this field is exposed as a non-negative percentage.
             response["utilization_branches"] = max(0.0, total_utilization - default_branch_utilization)
         if "edges" in fields:
             response["edges"] = []
