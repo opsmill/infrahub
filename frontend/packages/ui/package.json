@@ -8,7 +8,11 @@
     ".": "./src/index.ts",
     "./card": "./src/components/card/card.tsx",
     "./modal": "./src/components/modal/modal.tsx",
-    "./styles.css": "./src/index.css"
+    "./styles.css": "./src/index.css",
+    "./icon-button": "./src/components/icon-button/icon-button.tsx",
+    "./toolbar": "./src/components/toolbar/toolbar.tsx",
+    "./floating-panel": "./src/components/floating-panel/floating-panel.tsx",
+    "./use-dismiss": "./src/hooks/use-dismiss.ts"
   },
   "scripts": {
     "build": "tsc -b && vite build",
