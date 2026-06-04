@@ -30,9 +30,10 @@ async function setup(overrides: Partial<Props> = {}) {
 }
 
 describe("BottomToolbar", () => {
-  test("renders without crashing", async () => {
+  test("renders zoom controls by accessible name", async () => {
     const { component } = await setup();
-    await expect.element(component.getByRole("button", { name: /Smooth/i })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Zoom in" })).toBeVisible();
+    await expect.element(component.getByRole("button", { name: "Zoom out" })).toBeVisible();
   });
 
   test("edge-style button shows 'Smooth' text when edgeStyle is bezier", async () => {
@@ -74,10 +75,7 @@ describe("BottomToolbar", () => {
     const { props, component } = await setup();
 
     await component.getByRole("button", { name: "Export diagram" }).click();
-
-    // Menu popup may be above the test viewport; dispatch click directly
-    const pngBtn = component.getByRole("button", { name: /PNG/i }).elements()[0];
-    pngBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    component.getByRole("button", { name: /PNG/i }).element().click();
 
     expect(props.onExport).toHaveBeenCalledWith("png");
   });
@@ -86,10 +84,7 @@ describe("BottomToolbar", () => {
     const { props, component } = await setup();
 
     await component.getByRole("button", { name: "Export diagram" }).click();
-
-    // Menu popup may be above the test viewport; dispatch click directly
-    const svgBtn = component.getByRole("button", { name: /SVG/i }).elements()[0];
-    svgBtn?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    component.getByRole("button", { name: /SVG/i }).element().click();
 
     expect(props.onExport).toHaveBeenCalledWith("svg");
   });
@@ -121,5 +116,16 @@ describe("BottomToolbar", () => {
     await component.getByRole("button", { name: "Auto-layout vertical" }).click();
 
     expect(props.onLayout).toHaveBeenCalledWith("TB");
+  });
+
+  test("reload button is absent when onReload is undefined, present and callable when provided", async () => {
+    const { component: withoutReload } = await setup({ onReload: undefined });
+    expect(withoutReload.getByRole("button", { name: "Reload" }).elements()).toHaveLength(0);
+
+    const onReload = vi.fn();
+    const { component: withReload } = await setup({ onReload });
+    await expect.element(withReload.getByRole("button", { name: "Reload" })).toBeVisible();
+    await withReload.getByRole("button", { name: "Reload" }).click();
+    expect(onReload).toHaveBeenCalled();
   });
 });
