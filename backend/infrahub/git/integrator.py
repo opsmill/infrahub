@@ -270,6 +270,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         # Process the list of local Jinja2 Transforms to organize them by name
         log.info(f"Found {len(config_file.jinja2_transforms)} Jinja2 transforms in the repository")
 
+        closure_builder = build_default_closure_builder(logger=log)
+
         for config_transform in config_file.jinja2_transforms:
             try:
                 self.sdk.schema.validate_data_against_schema(
@@ -284,7 +286,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.error(exc.message)
                 continue
 
-            closure = build_default_closure_builder(logger=log).build(
+            closure = closure_builder.build(
                 transform_config=config_transform,
                 worktree_root=Path(worktree.directory),
             )
@@ -860,6 +862,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         transforms: list[TransformPythonInformation] = []
         log.info(f"Found {len(config_file.python_transforms)} Python transforms in the repository")
 
+        closure_builder = build_default_closure_builder(logger=log)
+
         for transform in config_file.python_transforms:
             log.debug(f"{self.name}, file={transform.file_path}")
 
@@ -874,7 +878,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.warning(f"{self.name}, file={transform.file_path.as_posix()} error={str(exc)}")
                 raise
 
-            closure = build_default_closure_builder(logger=log).build(
+            closure = closure_builder.build(
                 transform_config=transform,
                 worktree_root=Path(branch_wt.directory),
             )
