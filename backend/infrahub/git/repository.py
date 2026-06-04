@@ -130,7 +130,12 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             )
 
     async def _sync_new_branch(self, branch_name: str) -> None:
-        """Create a branch pulled from origin in the graph and in the local repository, then import its objects."""
+        """Create a branch pulled from origin in the graph and in the local repository, then import its objects.
+
+        Raises:
+            GraphQLError: When creating the branch in the graph fails for a reason other than the branch already existing.
+
+        """
         infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
         try:
             branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
