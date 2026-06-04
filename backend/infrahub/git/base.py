@@ -695,7 +695,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         br_repo.head.reference.set_tracking_branch(remote_branch)
         self.create_commit_worktree(str(br_repo.head.reference.commit))
         log.debug(
-            f"Branch {branch_name} created in Git, tracking remote branch {remote_branch}.",
+            f"Branch {branch_name} created in Git, tracking remote branch {remote_branch.name}.",
             repository=self.name,
             branch=branch_name,
         )
@@ -875,8 +875,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         """Process a remote branch to validate that we can use it safely.
 
         - Make sure that the branch name won't conflict with infrahub's default branch
-        - Make sure that a representation if the branch can be created in the database
-        - Make sure that there are no conflicts that would prevent it from being merged
+        - Make sure that a representation of the branch can be created in the database
+        - Warn (but do not block) when the branch would conflict with the default branch on merge
         """
         if branch_name == registry.default_branch and branch_name != self.default_branch:
             # If the default branch of Infrahub and the git repository differs we map the repository
