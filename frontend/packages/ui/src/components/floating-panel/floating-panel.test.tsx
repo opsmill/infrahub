@@ -28,8 +28,8 @@ describe("FloatingPanel", () => {
     );
 
     // THEN
-    expect(component.container.textContent).not.toContain("Filters");
-    expect(component.container.textContent).not.toContain("Body content");
+    expect(component.container.querySelector('[role="heading"]')).toBeNull();
+    expect(component.container.querySelector("p")).toBeNull();
   });
 
   test("calls onClose when the close button is pressed", async () => {

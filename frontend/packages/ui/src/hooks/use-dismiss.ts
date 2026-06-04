@@ -1,5 +1,9 @@
 import { type RefObject, useEffect, useRef } from "react";
 
+/**
+ * Calls `onDismiss` on outside pointer-down (mousedown) or Escape keypress.
+ * Listeners are only attached while `active` is true (default: true).
+ */
 export function useDismiss(
   ref: RefObject<HTMLElement | null>,
   onDismiss: () => void,

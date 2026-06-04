@@ -2,7 +2,7 @@ import type { HTMLAttributes } from "react";
 import { cn } from "tailwind-variants";
 
 export interface ToolbarProps extends HTMLAttributes<HTMLDivElement> {
-  "aria-label"?: string;
+  "aria-label": string;
 }
 
 export function Toolbar({ className, ...props }: ToolbarProps) {
@@ -18,7 +18,9 @@ export function Toolbar({ className, ...props }: ToolbarProps) {
   );
 }
 
-function ToolbarDivider({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+export type ToolbarDividerProps = HTMLAttributes<HTMLDivElement>;
+
+function ToolbarDivider({ className, ...props }: ToolbarDividerProps) {
   return (
     <div
       role="separator"
