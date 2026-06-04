@@ -146,7 +146,7 @@ def test_query_changed(case: QueryChangedCase) -> None:
     nothing to regenerate against.
     """
     definition = _build_definition()
-    assert _query_changed(definition=definition, diff_summary=case.diff) is case.expected
+    assert _query_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -219,7 +219,7 @@ def test_definition_changed(case: DefinitionChangedCase) -> None:
     definition list is sourced from the source branch's current state.
     """
     definition = _build_definition()
-    assert _definition_changed(definition=definition, diff_summary=case.diff) is case.expected
+    assert _definition_changed(definition=definition, diff_summary=case.diff).matched is case.expected
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -332,4 +332,4 @@ def test_transform_changed(case: TransformChangedCase) -> None:
         files_changed=case.files_changed,
         files_removed=case.files_removed,
     )
-    assert _transform_changed(definition=definition, repo_diff=repo_diff) is case.expected
+    assert _transform_changed(definition=definition, repo_diff=repo_diff).matched is case.expected

@@ -15,6 +15,8 @@ from infrahub.git.closure_builder.dispatcher import build_default_closure_builde
 if TYPE_CHECKING:
     import pytest
 
+LOGGER = logging.getLogger(__name__)
+
 
 def _write(root: Path, rel: str, content: str = "") -> None:
     path = root / rel
@@ -37,7 +39,7 @@ def test_jinja2_config_dispatches_to_jinja2_closure(tmp_path: Path) -> None:
         template_path=Path("templates/device.j2"),
     )
 
-    result = build_default_closure_builder().build(transform_config=config, worktree_root=tmp_path)
+    result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
 
     assert "templates/device.j2" in result.dependencies
     assert ".infrahub.yml" in result.dependencies
@@ -57,7 +59,7 @@ def test_python_config_dispatches_to_python_closure(tmp_path: Path) -> None:
         file_path=Path("transforms/network/main.py"),
     )
 
-    result = build_default_closure_builder().build(transform_config=config, worktree_root=tmp_path)
+    result = build_default_closure_builder(logger=LOGGER).build(transform_config=config, worktree_root=tmp_path)
 
     assert "transforms/network/main.py" in result.dependencies
     assert "transforms/network/helpers.py" in result.dependencies
@@ -81,9 +83,8 @@ def test_jinja2_failure_is_isolated_and_logged(
         template_path=Path(),
     )
 
-    logger = logging.getLogger("test_dispatcher")
-    with caplog.at_level(logging.ERROR, logger="test_dispatcher"):
-        result = build_default_closure_builder(logger=logger).build(
+    with caplog.at_level(logging.ERROR, logger=LOGGER.name):
+        result = build_default_closure_builder(logger=LOGGER).build(
             transform_config=config,
             worktree_root=tmp_path,
         )
@@ -95,18 +96,31 @@ def test_jinja2_failure_is_isolated_and_logged(
     ]
 
 
-def test_no_logger_is_safe(tmp_path: Path) -> None:
-    """Failure isolation works without a logger - the integrator may pass None on first-call paths.
+def test_closure_failure_does_not_poison_well_formed_siblings(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A broken transform falls back to an incomplete closure without affecting a sibling's.
 
-    The signature must not force callers to instantiate a logger they may not
-    have at hand; a silent fallback is the documented behavior.
+    The integrator builds each transform's closure with its own ``build`` call, so a
+    single transform whose source cannot be analyzed must yield an incomplete fallback
+    and an error log while the rest of the repository's transforms still produce fully
+    populated closures - the regression guard behind the safe per-transform rollout.
     """
-    config = InfrahubJinja2TransformConfig(
-        name="dangling",
-        query="any-query",
-        template_path=Path(),
+    _write(tmp_path, "templates/device.j2", "static body\n")
+    builder = build_default_closure_builder(logger=LOGGER)
+
+    broken = InfrahubJinja2TransformConfig(name="broken", query="any-query", template_path=Path())
+    healthy = InfrahubJinja2TransformConfig(
+        name="healthy", query="any-query", template_path=Path("templates/device.j2")
     )
 
-    result = build_default_closure_builder(logger=None).build(transform_config=config, worktree_root=tmp_path)
+    with caplog.at_level(logging.ERROR, logger=LOGGER.name):
+        broken_result = builder.build(transform_config=broken, worktree_root=tmp_path)
+        healthy_result = builder.build(transform_config=healthy, worktree_root=tmp_path)
 
-    assert result.complete is False
+    assert broken_result.complete is False
+    assert broken_result.dependencies == ()
+    assert healthy_result.complete is True
+    assert "templates/device.j2" in healthy_result.dependencies
+    assert [record.getMessage() for record in caplog.records] == ["Closure builder failed for transform 'broken'"]
