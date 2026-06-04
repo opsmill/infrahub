@@ -1024,7 +1024,6 @@ class IPPrefixUtilization(Query):
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = [p.get_id() for p in self.ip_prefixes]
-        self.params["allocated_kinds"] = self.allocated_kinds
         self.params["allocated_kinds_rel"] = self.allocated_kinds_rel
 
         branch_filter, branch_params = self.branch.get_query_filter_path(
@@ -1042,9 +1041,8 @@ class IPPrefixUtilization(Query):
             RETURN r AS r_rel1, rl
         }
         CALL (rl, pfx) {
-            MATCH (rl)<-[r:IS_RELATED]-(child:Node)
-            WHERE any(l IN labels(child) WHERE l IN $allocated_kinds)
-            AND child <> pfx
+            MATCH (rl)<-[r:IS_RELATED]-(child:%(allocated_labels)s)
+            WHERE child <> pfx
             AND %(branch_filter)s
             RETURN r AS r_rel2, child
         }
@@ -1078,6 +1076,7 @@ class IPPrefixUtilization(Query):
         WHERE is_latest_active = TRUE
         """ % {
             "branch_filter": branch_filter,
+            "allocated_labels": "|".join(self.allocated_kinds),
             "prefix_label": PREFIX_ATTRIBUTE_LABEL,
             "address_label": ADDRESS_ATTRIBUTE_LABEL,
         }
