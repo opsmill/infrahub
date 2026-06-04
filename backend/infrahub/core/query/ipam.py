@@ -1041,10 +1041,10 @@ class IPPrefixUtilization(Query):
             AND %(branch_filter)s
             RETURN r AS r_rel1, rl
         }
-        CALL (rl, r_rel1) {
+        CALL (rl, pfx) {
             MATCH (rl)<-[r:IS_RELATED]-(child:Node)
             WHERE any(l IN labels(child) WHERE l IN $allocated_kinds)
-            AND elementId(r) <> elementId(r_rel1)
+            AND child <> pfx
             AND %(branch_filter)s
             RETURN r AS r_rel2, child
         }
