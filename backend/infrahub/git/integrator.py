@@ -60,6 +60,7 @@ from infrahub.exceptions import (
     TransformError,
 )
 from infrahub.git.base import InfrahubRepositoryBase, extract_repo_file_information
+from infrahub.git.closure_builder.dispatcher import build_default_closure_builder
 from infrahub.log import get_logger
 from infrahub.workers.dependencies import get_event_service
 from infrahub.workflows.utils import add_tags
@@ -85,6 +86,8 @@ class ArtifactGenerateResult(BaseModel):
 
 class InfrahubRepositoryJinja2(InfrahubJinja2TransformConfig):
     repository: str
+    dependencies: list[str] = Field(default_factory=list)
+    dependencies_complete: bool = False
 
 
 class CheckDefinitionInformation(BaseModel):
@@ -143,6 +146,9 @@ class TransformPythonInformation(BaseModel):
 
     description: str | None = None
     """Description of the Transform"""
+
+    dependencies: list[str] = Field(default_factory=list)
+    dependencies_complete: bool = False
 
 
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
@@ -244,12 +250,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_jinja2_transforms(
         self,
         branch_name: str,
-        commit: str,  # noqa: ARG002
+        commit: str,
         config_file: InfrahubRepositoryConfig,
     ) -> None:
         log = get_run_logger()
 
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMJINJA2, branch=branch_name)
+        worktree = self.get_worktree(identifier=commit or branch_name)
 
         transforms_in_graph = {
             transform.name.value: transform
@@ -262,6 +269,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         # Process the list of local Jinja2 Transforms to organize them by name
         log.info(f"Found {len(config_file.jinja2_transforms)} Jinja2 transforms in the repository")
+
+        closure_builder = build_default_closure_builder(logger=log)
 
         for config_transform in config_file.jinja2_transforms:
             try:
@@ -277,7 +286,17 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.error(exc.message)
                 continue
 
-            transform = InfrahubRepositoryJinja2(repository=str(self.id), **config_transform.model_dump())
+            closure = closure_builder.build(
+                transform_config=config_transform,
+                worktree_root=Path(worktree.directory),
+            )
+
+            transform = InfrahubRepositoryJinja2(
+                repository=str(self.id),
+                dependencies=list(closure.dependencies),
+                dependencies_complete=closure.complete,
+                **config_transform.model_dump(),
+            )
 
             # Query the GraphQL query and (eventually) replace the name with the ID
             graphql_query = await self.sdk.get(
@@ -326,6 +345,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             existing_transform.description.value != local_transform.description
             or existing_transform.template_path.value != local_transform.template_path
             or existing_transform.query.id != local_transform.query
+            or existing_transform.dependencies.value != local_transform.dependencies
+            or existing_transform.dependencies_complete.value != local_transform.dependencies_complete
         ):
             return False
 
@@ -342,6 +363,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
         if existing_transform.template_path.value != local_transform.template_path_value:
             existing_transform.template_path.value = local_transform.template_path_value
+
+        if existing_transform.dependencies.value != local_transform.dependencies:
+            existing_transform.dependencies.value = local_transform.dependencies
+
+        if existing_transform.dependencies_complete.value != local_transform.dependencies_complete:
+            existing_transform.dependencies_complete.value = local_transform.dependencies_complete
 
         await existing_transform.save()
 
@@ -835,6 +862,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         transforms: list[TransformPythonInformation] = []
         log.info(f"Found {len(config_file.python_transforms)} Python transforms in the repository")
 
+        closure_builder = build_default_closure_builder(logger=log)
+
         for transform in config_file.python_transforms:
             log.debug(f"{self.name}, file={transform.file_path}")
 
@@ -849,12 +878,19 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                 log.warning(f"{self.name}, file={transform.file_path.as_posix()} error={str(exc)}")
                 raise
 
+            closure = closure_builder.build(
+                transform_config=transform,
+                worktree_root=Path(branch_wt.directory),
+            )
+
             transforms.extend(
                 await self.get_python_transforms(
                     branch_name=branch_name,
                     module=module,
                     file_path=file_info.relative_path_file,
                     transform=transform,
+                    dependencies=list(closure.dependencies),
+                    dependencies_complete=closure.complete,
                 )  # type: ignore[call-overload]
             )
 
@@ -1011,7 +1047,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
 
     @task(name="python-transform-get", task_run_name="Get Python Transform", cache_policy=NONE)
     async def get_python_transforms(
-        self, branch_name: str, module: types.ModuleType, file_path: str, transform: InfrahubPythonTransformConfig
+        self,
+        branch_name: str,
+        module: types.ModuleType,
+        file_path: str,
+        transform: InfrahubPythonTransformConfig,
+        dependencies: list[str],
+        dependencies_complete: bool,
     ) -> list[TransformPythonInformation]:
         log = get_run_logger()
         if transform.class_name not in dir(module):
@@ -1034,6 +1076,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     timeout=transform_class.timeout,
                     convert_query_response=transform.convert_query_response,
                     description=transform.description,
+                    dependencies=dependencies,
+                    dependencies_complete=dependencies_complete,
                 )
             )
 
@@ -1176,6 +1220,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             "class_name": transform.class_name,
             "timeout": transform.timeout,
             "convert_query_response": transform.convert_query_response,
+            "dependencies": transform.dependencies,
+            "dependencies_complete": transform.dependencies_complete,
         }
         create_payload = self.sdk.schema.generate_payload_create(
             schema=schema,
@@ -1205,6 +1251,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         if existing_transform.convert_query_response.value != local_transform.convert_query_response:
             existing_transform.convert_query_response.value = local_transform.convert_query_response
 
+        if existing_transform.dependencies.value != local_transform.dependencies:
+            existing_transform.dependencies.value = local_transform.dependencies
+
+        if existing_transform.dependencies_complete.value != local_transform.dependencies_complete:
+            existing_transform.dependencies_complete.value = local_transform.dependencies_complete
+
         await existing_transform.save()
 
     @classmethod
@@ -1217,6 +1269,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
             or existing_transform.convert_query_response.value != local_transform.convert_query_response
+            or existing_transform.dependencies.value != local_transform.dependencies
+            or existing_transform.dependencies_complete.value != local_transform.dependencies_complete
         ):
             return False
         return True
