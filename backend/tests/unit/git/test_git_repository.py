@@ -1,4 +1,7 @@
+import logging
 from pathlib import Path
+from typing import Any
+from unittest.mock import patch
 
 import pytest
 from git import Repo
@@ -11,23 +14,21 @@ from infrahub.git import InfrahubRepository
 from tests.helpers.file_repo import MultipleStagesFileRepo
 from tests.helpers.test_client import dummy_async_request
 
+PREFECT_LOGGER_NAME = "infrahub.git.base"
 
-async def test_create_branch_in_git_imports_branch_conflicting_with_default(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A remote branch that conflicts with the default branch must still be imported locally.
 
-    The local branch should land at the remote tip so that downstream merge attempts can
-    surface the conflict at merge time, rather than aborting the entire import.
-    """
-    repos_dir = tmp_path / "repositories"
-    repos_dir.mkdir()
-    monkeypatch.setattr(registry, "_default_branch", "main")
-    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+@pytest.fixture
+def patch_prefect_logger() -> Any:
+    """Replace Prefect's `get_run_logger` with a stdlib logger so calls outside a flow context succeed."""
+    with patch(
+        "infrahub.git.base.get_run_logger",
+        return_value=logging.getLogger(PREFECT_LOGGER_NAME),
+    ):
+        yield
 
-    source_dir = tmp_path / "source-repo"
-    source_dir.mkdir()
+
+def _build_source_with_conflicting_branches(source_dir: Path) -> Repo:
+    """Initialize a git source repo with `main` and `change1` whose tips edit the same lines."""
     source = Repo.init(source_dir, initial_branch="main")
     with source.config_writer() as cfg:
         cfg.set_value("user", "name", "Test")
@@ -47,6 +48,26 @@ async def test_create_branch_in_git_imports_branch_conflicting_with_default(
     target.write_text("main version\nline 2\nline 3\n", encoding="utf-8")
     source.index.add(["data.txt"])
     source.index.commit("change on main")
+    return source
+
+
+async def test_create_branch_in_git_with_conflicting_remote_lands_at_remote_tip(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A remote branch that conflicts with the default branch must still be imported locally.
+
+    The local branch should land at the remote tip so that downstream merge attempts can
+    surface the conflict at merge time, rather than aborting the entire import.
+    """
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+
+    source_dir = tmp_path / "source-repo"
+    source_dir.mkdir()
+    _build_source_with_conflicting_branches(source_dir)
 
     repository = await InfrahubRepository.new(
         id=UUIDT.new(),
@@ -62,11 +83,42 @@ async def test_create_branch_in_git_imports_branch_conflicting_with_default(
     remote_branches = repository.get_branches_from_remote()
     expected_commit = remote_branches["change1"].commit
 
-    await repository.create_branch_in_git(branch_name="change1", branch_id=str(UUIDT.new()), push_origin=False)
+    await repository.create_branch_in_git(branch_name="change1", branch_id=str(UUIDT.new()))
 
     local_branches = repository.get_branches_from_local(include_worktree=False)
     assert "change1" in local_branches
     assert local_branches["change1"].commit == expected_commit
+
+
+async def test_validate_remote_branch_allows_conflicting_branch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    patch_prefect_logger: Any,
+) -> None:
+    """validate_remote_branch must accept a branch that conflicts with the default branch.
+
+    Skipping the branch would prevent it from being imported. The conflict is surfaced at
+    merge time instead.
+    """
+    repos_dir = tmp_path / "repositories"
+    repos_dir.mkdir()
+    monkeypatch.setattr(registry, "_default_branch", "main")
+    monkeypatch.setattr(config.SETTINGS.git, "repositories_directory", str(repos_dir))
+
+    source_dir = tmp_path / "source-repo"
+    source_dir.mkdir()
+    _build_source_with_conflicting_branches(source_dir)
+
+    repository = await InfrahubRepository.new(
+        id=UUIDT.new(),
+        name="conflicting-validate",
+        location=str(source_dir),
+        default_branch_name="main",
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert repository.has_conflicting_changes(target_branch="main", source_branch="change1")
+    assert repository.validate_remote_branch(branch_name="change1") is True
 
 
 async def test_has_conflicting_changes_no_false_positive(
