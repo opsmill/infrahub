@@ -11,6 +11,7 @@ from infrahub.core.schema.order_by import (
     ParsedMetadataOrderBy,
     parse_order_by_entry,
 )
+from infrahub.exceptions import ValidationError
 
 
 @pytest.fixture
@@ -202,5 +203,5 @@ REJECTION_CASES = [
 
 @pytest.mark.parametrize("case", REJECTION_CASES, ids=lambda c: c.name)
 def test_parse_order_by_entry_rejection(case: RejectionCase, node_schema: NodeSchema) -> None:
-    with pytest.raises(ValueError, match=case.match):
+    with pytest.raises(ValidationError, match=case.match):
         parse_order_by_entry(entry=case.entry, node_schema=node_schema)

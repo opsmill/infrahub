@@ -1005,8 +1005,8 @@ class SchemaBranch:
             for order_by_entry in node_schema.order_by:
                 try:
                     parsed = parse_order_by_entry(entry=order_by_entry, node_schema=node_schema)
-                except ValueError as exc:
-                    raise ValueError(f"{node_schema.kind}.order_by: {exc}") from exc
+                except ValidationError as exc:
+                    raise ValueError(f"{node_schema.kind}.order_by: {exc.message}") from exc
 
                 if isinstance(parsed, (ParsedAttributeOrderBy, ParsedRelationshipAttributeOrderBy)):
                     self.validate_schema_path(
