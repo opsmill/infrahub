@@ -1006,21 +1006,6 @@ class IPPrefixUtilizationResult:
     prefixlen: int
     """Prefix length of the child IP value."""
 
-    @classmethod
-    def from_db(cls, result: QueryResult) -> IPPrefixUtilizationResult:
-        """Convert raw QueryResult to typed dataclass."""
-        pfx = result.get_node("pfx")
-        child = result.get_node("child")
-        av = result.get_node("av")
-        return cls(
-            prefix_uuid=str(pfx.get("uuid")),
-            child_uuid=str(child.get("uuid")),
-            child_kind=child.get("kind"),
-            child_labels=tuple(child.labels),
-            ip_value=av.get("value"),
-            prefixlen=av.get("prefixlen"),
-        )
-
 
 class IPPrefixUtilization(Query):
     """Counts child allocations of one or more parent prefixes from the perspective of a single branch."""
@@ -1097,13 +1082,23 @@ class IPPrefixUtilization(Query):
         self.add_to_query(query)
 
     def get_data(self) -> list[IPPrefixUtilizationResult]:
-        """Return results as typed dataclass instances.
-
-        Returns:
-            List of IPPrefixUtilizationResult containing prefix child allocation data.
-
-        """
-        return [IPPrefixUtilizationResult.from_db(result) for result in self.get_results()]
+        """Return results as typed dataclass instances."""
+        results: list[IPPrefixUtilizationResult] = []
+        for result in self.get_results():
+            pfx = result.get_node("pfx")
+            child = result.get_node("child")
+            av = result.get_node("av")
+            results.append(
+                IPPrefixUtilizationResult(
+                    prefix_uuid=str(pfx.get("uuid")),
+                    child_uuid=str(child.get("uuid")),
+                    child_kind=child.get("kind"),
+                    child_labels=tuple(child.labels),
+                    ip_value=av.get("value"),
+                    prefixlen=av.get("prefixlen"),
+                )
+            )
+        return results
 
 
 @dataclass(frozen=True)
