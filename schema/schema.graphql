@@ -8977,6 +8977,18 @@ type MacAddress implements AttributeInterface {
   version: Int
 }
 
+"""
+Order input restricted to node metadata fields.
+
+Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
+string grammar or a `disable` toggle.
+"""
+input MetadataOrderInput {
+  """Order settings for branch metadata"""
+  node_metadata: InfrahubNodeMetadataOrder = null
+}
+
 type Mutation {
   BranchCreate(background_execution: Boolean @deprecated(reason: "Please use `wait_until_completion` instead"), context: ContextInput, data: BranchCreateInput!, wait_until_completion: Boolean): BranchCreate
   BranchDelete(context: ContextInput, data: BranchDeleteInput!, wait_until_completion: Boolean): BranchDelete
@@ -11179,19 +11191,6 @@ type NumberAttribute implements AttributeInterface {
   updated_at: DateTime
   updated_by: CoreGenericAccount
   value: BigInt
-}
-
-"""
-Order input restricted to node metadata fields.
-
-Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
-surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
-string grammar.
-"""
-input MetadataOrderInput {
-  disable: Boolean
-  """Order settings for branch metadata"""
-  node_metadata: InfrahubNodeMetadataOrder = null
 }
 
 input NumberAttributeCreate {

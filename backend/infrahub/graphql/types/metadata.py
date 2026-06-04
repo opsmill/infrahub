@@ -25,10 +25,9 @@ class MetadataOrderInput(InputObjectType):
 
     Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
     surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
-    string grammar.
+    string grammar or a `disable` toggle.
     """
 
-    disable = Boolean(required=False)
     node_metadata = Field(InfrahubNodeMetadataOrder, required=False, description="Order settings for branch metadata")
 
 
