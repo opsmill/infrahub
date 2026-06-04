@@ -137,7 +137,6 @@ class ProposedChangeArtifactDefinition(BaseModel):
 
 class ProposedChangeBranchDiff(BaseModel):
     repositories: list[ProposedChangeRepository] = Field(default_factory=list)
-    subscribers: list[ProposedChangeSubscriber] = Field(default_factory=list)
     pipeline_id: uuid.UUID = Field(..., description="The unique ID of the execution of this pipeline")
 
     def get_repository(self, repository_id: str) -> ProposedChangeRepository:
@@ -145,9 +144,6 @@ class ProposedChangeBranchDiff(BaseModel):
             if repository_id == repository.repository_id:
                 return repository
         raise NodeNotFoundError(node_type="Repository", identifier=repository_id)
-
-    def get_subscribers_ids(self, kind: str) -> list[str]:
-        return [subscriber.subscriber_id for subscriber in self.subscribers if subscriber.kind == kind]
 
     @property
     def has_file_modifications(self) -> bool:

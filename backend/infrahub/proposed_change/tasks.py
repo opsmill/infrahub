@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
-from dataclasses import dataclass
-from enum import IntFlag
+from dataclasses import dataclass, field
+from enum import Enum, IntFlag
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -76,7 +76,6 @@ from infrahub.message_bus.types import (
 from infrahub.proposed_change.branch_diff import (
     GitRepositoryFileDiffer,
     RepositoryFileDiffPopulator,
-    get_modified_node_ids,
     has_data_changes,
     has_node_changes,
     set_diff_summary_cache,
@@ -118,6 +117,7 @@ from .checker import verify_proposed_change_is_mergeable
 
 if TYPE_CHECKING:
     import logging
+    from uuid import UUID
 
     from infrahub_sdk.client import InfrahubClient
     from infrahub_sdk.diff import NodeDiff
@@ -358,6 +358,7 @@ async def run_generators(model: RequestProposedChangeRunGenerators, context: Inf
             file_path=generator.file_path.value,
             query_name=generator.query.peer.name.value,
             query_models=generator.query.peer.models.value,
+            query_payload=generator.query.peer.query.value,
             repository_id=generator.repository.peer.id,
             parameters=generator.parameters.value,
             group_id=generator.targets.peer.id,
@@ -683,6 +684,103 @@ async def run_proposed_change_user_tests(model: RequestProposedChangeUserTests) 
             log.info(msg=f"repository_tests_completed return_code={return_code}")
 
 
+class ImpactScope(Enum):
+    """How a data change maps onto the subscribers (artifacts or generator instances) to process."""
+
+    ALL = "all"  # the change cannot be mapped to specific targets; every target must be processed
+    NONE = "none"  # no queried field changed; no target needs processing
+    SPECIFIC = "specific"  # only the subscribers in `ids` are affected
+
+
+@dataclass
+class ImpactedSubscribers:
+    scope: ImpactScope
+    ids: list[str] = field(default_factory=list)
+
+
+def _relevant_node_changes(
+    diff_summary: list[NodeDiff], source_branch: str, readable_fields_by_kind: dict[str, set[str]]
+) -> list[str]:
+    """Return ids of nodes whose modified fields intersect the fields a query reads.
+
+    A change is relevant only when at least one modified field is also read by the query, so a
+    node whose only change is to a field the query ignores -- or whose kind the query never reads
+    -- is excluded. `readable_fields_by_kind` maps each kind the query reads to the set of its
+    attribute and relationship names that the query selects.
+    """
+    relevant_node_ids: list[str] = []
+    for node_diff in diff_summary:
+        if node_diff["branch"] != source_branch:
+            continue
+        readable_fields = readable_fields_by_kind.get(node_diff["kind"])
+        if not readable_fields:
+            continue
+        updated_fields = {element["name"] for element in node_diff["elements"]}
+        if updated_fields & readable_fields:
+            relevant_node_ids.append(node_diff["id"])
+    return relevant_node_ids
+
+
+async def get_field_level_impacted_subscribers(
+    query_payload: str,
+    source_branch: str,
+    pipeline_id: UUID,
+    subscriber_kind: str,
+    client: InfrahubClient,
+) -> ImpactedSubscribers:
+    """Map data changes in a branch to the subscribers a GraphQL query actually depends on.
+
+    A change is relevant only when at least one field that was modified is also read by the
+    query. This lets us skip regeneration when, for example, only a `description` field changed
+    but the query only reads `name` and `color`.
+
+    Returns an `ImpactedSubscribers` whose scope is:
+        SPECIFIC -- the query guarantees unique targets, so `ids` lists exactly the subscribers of
+                    `subscriber_kind` linked to the changed nodes (possibly empty).
+        ALL      -- the query does not guarantee unique targets but a relevant field changed, so the
+                    caller cannot map the change to specific targets and must process every target.
+        NONE     -- no node of a queried kind had any of its queried fields modified; nothing to do.
+    """
+    source_schema_branch = registry.schema.get_schema_branch(name=source_branch)
+    source_branch_obj = registry.get_branch_from_registry(branch=source_branch)
+
+    graphql_params = await prepare_graphql_params(db=await get_database(), branch=source_branch)
+    query_report = InfrahubGraphQLQueryAnalyzer(
+        query=query_payload,
+        branch=source_branch_obj,
+        schema_branch=source_schema_branch,
+        schema=graphql_params.schema,
+        document=cached_parse(query_payload),
+    ).query_report
+
+    diff_summary = await get_diff_summary_cache(pipeline_id=pipeline_id)
+    readable_fields_by_kind = {kind: access.fields for kind, access in query_report.requested_read.items()}
+    changed_node_ids = _relevant_node_changes(
+        diff_summary=diff_summary, source_branch=source_branch, readable_fields_by_kind=readable_fields_by_kind
+    )
+
+    # only_has_unique_targets is True when the query is guaranteed to return results for a
+    # specific set of nodes -- e.g. it uses an `ids` argument or a uniqueness constraint. When
+    # False, the query may return any number of nodes and we cannot map a changed node back to a
+    # specific subscriber without re-processing every target.
+    if query_report.only_has_unique_targets:
+        # The query targets specific nodes by id or unique constraint, so we can look up exactly
+        # which subscribers are linked to the changed nodes and limit processing to only those.
+        subscribers = await _get_subscribers_for_nodes(node_ids=changed_node_ids, branch=source_branch, client=client)
+        ids = [subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == subscriber_kind]
+        return ImpactedSubscribers(scope=ImpactScope.SPECIFIC, ids=ids)
+
+    if changed_node_ids:
+        # The query does not guarantee unique targets, so we cannot determine which specific
+        # subscribers are affected. At least one relevant field changed, so the caller must fall
+        # back to processing all targets to be safe.
+        return ImpactedSubscribers(scope=ImpactScope.ALL)
+
+    # No node of a queried kind had any of its queried fields modified, so no subscriber can be
+    # stale regardless of query targeting capability.
+    return ImpactedSubscribers(scope=ImpactScope.NONE)
+
+
 @flow(
     name="artifacts-generation-validation",
     flow_run_name="Validating generation of artifacts for {model.artifact_definition.definition_name}",
@@ -747,66 +845,30 @@ async def validate_artifacts_generation(model: RequestArtifactDefinitionCheck, c
 
     repository = model.branch_diff.get_repository(repository_id=model.artifact_definition.repository_id)
 
-    source_schema_branch = registry.schema.get_schema_branch(name=model.source_branch)
-    source_branch = registry.get_branch_from_registry(branch=model.source_branch)
-
-    graphql_params = await prepare_graphql_params(db=await get_database(), branch=model.source_branch)
-    query_analyzer = InfrahubGraphQLQueryAnalyzer(
-        query=model.artifact_definition.query_payload,
-        branch=source_branch,
-        schema_branch=source_schema_branch,
-        schema=graphql_params.schema,
-        document=cached_parse(model.artifact_definition.query_payload),
+    impacted = await get_field_level_impacted_subscribers(
+        query_payload=model.artifact_definition.query_payload,
+        source_branch=model.source_branch,
+        pipeline_id=model.branch_diff.pipeline_id,
+        subscriber_kind=InfrahubKind.ARTIFACT,
+        client=client,
     )
-
-    # only_has_unique_targets is True when the query is guaranteed to return results
-    # for a specific set of nodes — e.g. it uses an `ids` argument or a uniqueness
-    # constraint. When False, the query may return any number of nodes and we cannot
-    # map a changed node back to a specific artifact without re-running every target.
-    only_has_unique_targets = query_analyzer.query_report.only_has_unique_targets
-
-    # Collect the IDs of nodes whose changes are actually relevant to this query.
-    # A change is relevant only when at least one field that was modified is also
-    # read by the query. This lets us skip regeneration when, for example, only a
-    # `description` field changed but the query only reads `name` and `color`.
-    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
-    relevant_node_changes = []
-    for node_diff in diff_summary:
-        if (
-            node_diff["branch"] == model.source_branch
-            and node_diff["kind"] in query_analyzer.query_report.requested_read
-        ):
-            updated_fields = {element["name"] for element in node_diff["elements"]}
-            relevant_fields = set(query_analyzer.query_report.fields_by_kind(node_diff["kind"]))
-            if updated_fields & relevant_fields:
-                relevant_node_changes.append(node_diff["id"])
-
-    if only_has_unique_targets:
-        # The query targets specific nodes by ID or unique constraint, so we can
-        # look up exactly which artifacts are linked to the changed nodes and limit
-        # regeneration to only those artifacts.
-        subscribers = await _get_subscribers_for_nodes(
-            node_ids=relevant_node_changes, branch=model.source_branch, client=client
-        )
-        impacted_artifacts = [
-            subscriber.subscriber_id for subscriber in subscribers if subscriber.kind == InfrahubKind.ARTIFACT
-        ]
-    elif relevant_node_changes:
-        # The query does not guarantee unique targets, so we cannot determine which
-        # specific artifacts are affected. At least one relevant field changed, so we
-        # must fall back to regenerating all artifacts for this definition to be safe.
+    if impacted.scope is ImpactScope.ALL:
+        # The query does not guarantee unique targets but a relevant field changed, so we must
+        # fall back to regenerating all artifacts for this definition to be safe.
         impacted_artifacts = list(artifacts_by_member.values())
         log.warning(
             f"Artifact definition {artifact_definition.name.value} query does not guarantee unique targets. All targets will be processed."
         )
-    else:
-        # No node of a queried kind had any of its queried fields modified, so no
-        # artifact can be stale regardless of query targeting capability.
+    elif impacted.scope is ImpactScope.NONE:
+        # No node of a queried kind had any of its queried fields modified.
         impacted_artifacts = []
         log.info(
             f"Artifact definition {artifact_definition.name.value} has no applicable node changes. Existing artifacts will not be re-rendered."
         )
+    else:
+        impacted_artifacts = impacted.ids
 
+    diff_summary = await get_diff_summary_cache(pipeline_id=model.branch_diff.pipeline_id)
     repo_diff_for_definition = _repo_diff_or_none(
         branch_diff=model.branch_diff, repository_id=model.artifact_definition.repository_id
     )
@@ -1118,7 +1180,30 @@ async def request_generator_definition_check(model: RequestGeneratorDefinitionCh
 
     repository = model.branch_diff.get_repository(repository_id=model.generator_definition.repository_id)
     requested_instances = 0
-    impacted_instances = model.branch_diff.get_subscribers_ids(kind=InfrahubKind.GENERATORINSTANCE)
+
+    impacted = await get_field_level_impacted_subscribers(
+        query_payload=model.generator_definition.query_payload,
+        source_branch=model.source_branch,
+        pipeline_id=model.branch_diff.pipeline_id,
+        subscriber_kind=InfrahubKind.GENERATORINSTANCE,
+        client=client,
+    )
+    definition_name = model.generator_definition.definition_name
+    if impacted.scope is ImpactScope.ALL:
+        # The query does not guarantee unique targets but a relevant field changed, so we cannot
+        # map the change to specific instances and must run every existing instance to be safe.
+        impacted_instances = list(instance_by_member.values())
+        log.warning(
+            f"Generator definition {definition_name} query does not guarantee unique targets. All targets will be processed."
+        )
+    elif impacted.scope is ImpactScope.NONE:
+        # No node of a queried kind had any of its queried fields modified.
+        impacted_instances = []
+        log.info(
+            f"Generator definition {definition_name} has no applicable node changes. Existing instances will not be re-run."
+        )
+    else:
+        impacted_instances = impacted.ids
 
     check_generator_run_models: list[RunGeneratorAsCheckModel] = []
     for relationship in group.members.peers:
@@ -1421,9 +1506,6 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
     diff_summary = await client.get_diff_summary(branch=model.source_branch)
     await set_diff_summary_cache(pipeline_id=model.pipeline_id, diff_summary=diff_summary, cache=await get_cache())
     branch_diff = ProposedChangeBranchDiff(pipeline_id=model.pipeline_id, repositories=repositories)
-    branch_diff.subscribers.extend(
-        await _get_subscribers_from_diff(diff_summary=diff_summary, branch=model.source_branch, client=client)
-    )
 
     if model.check_type is CheckType.ARTIFACT:
         request_refresh_artifact_model = RequestProposedChangeRefreshArtifacts(
@@ -1933,13 +2015,3 @@ async def _get_subscribers_for_nodes(
                 ProposedChangeSubscriber(subscriber_id=subscriber["node"]["id"], kind=subscriber["node"]["__typename"])
             )
     return subscribers
-
-
-async def _get_subscribers_from_diff(
-    diff_summary: list[NodeDiff], branch: str, client: InfrahubClient
-) -> list[ProposedChangeSubscriber]:
-    return await _get_subscribers_for_nodes(
-        node_ids=get_modified_node_ids(diff_summary=diff_summary, branch=branch),
-        branch=branch,
-        client=client,
-    )

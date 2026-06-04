@@ -251,7 +251,7 @@ class TestProposedChange(TestInfrahubApp):
             source_branch_sync_with_git=True,
             destination_branch="main",
             proposed_change=prepare_proposed_change,
-            branch_diff=ProposedChangeBranchDiff(pipeline_id=pipeline_id, repositories=[], subscribers=[]),
+            branch_diff=ProposedChangeBranchDiff(pipeline_id=pipeline_id, repositories=[]),
             refresh_artifacts=True,
             do_repository_checks=True,
         )
