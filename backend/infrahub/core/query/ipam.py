@@ -1035,6 +1035,16 @@ class IPPrefixUtilization(Query):
         MATCH (pfx:Node)
         WHERE pfx.uuid IN $ids
         CALL (pfx) {
+            MATCH (pfx)-[r:IS_PART_OF]-(:Root)
+            WHERE %(branch_filter)s
+            RETURN r AS pfx_root
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH pfx, pfx_root
+        WHERE pfx_root.status = "active"
+        WITH pfx
+        CALL (pfx) {
             MATCH (pfx)-[r:IS_RELATED]-(rl:Relationship)
             WHERE rl.name IN $allocated_kinds_rel
             AND %(branch_filter)s
@@ -1046,6 +1056,16 @@ class IPPrefixUtilization(Query):
             AND %(branch_filter)s
             RETURN r AS r_rel2, child
         }
+        CALL (child) {
+            MATCH (child)-[r:IS_PART_OF]-(:Root)
+            WHERE %(branch_filter)s
+            RETURN r AS child_root
+            ORDER BY r.branch_level DESC, r.from DESC
+            LIMIT 1
+        }
+        WITH pfx, r_rel1, rl, r_rel2, child, child_root
+        WHERE child_root.status = "active"
+        WITH pfx, r_rel1, rl, r_rel2, child
         CALL (child) {
             MATCH (child)-[r:HAS_ATTRIBUTE]->(attr:Attribute)
             WHERE attr.name IN ["prefix", "address"]
