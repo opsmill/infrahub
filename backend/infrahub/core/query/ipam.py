@@ -1089,7 +1089,7 @@ class IPPrefixUtilization(Query):
             child,
             head(collect(av)) AS av,
             head(collect(is_active)) AS is_latest_active
-        WHERE is_latest_active = TRUE
+        WHERE is_latest_active
         """ % {
             "branch_filter": branch_filter,
             "allocated_labels": "|".join(self.allocated_kinds),
