@@ -97,17 +97,18 @@ const UnauthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void
     <DropdownMenu>
       <LinkButton
         variant="ghost"
-        className="h-10 items-center px-2 pr-1.5 data-pressed:scale-100"
+        size="sm"
+        className="h-10 justify-stretch gap-2 data-pressed:scale-100"
         href="/login"
         routerOptions={{ state: { from: location } }}
       >
-        <div className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white bg-stone-200">
-          <Icon icon="mdi:user" className="relative top-1 text-3xl text-neutral-600" />
+        <div className="flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full bg-stone-200">
+          <Icon icon="mdi:user" className="relative top-1 text-3xl text-stone-600" />
         </div>
 
         <div className="overflow-hidden group-data-[state=collapsed]:hidden">
           <div className="truncate font-medium leading-4">Log in</div>
-          <div className="truncate text-neutral-500 text-xs">anonymous</div>
+          <div className="truncate text-stone-500 text-xs">anonymous</div>
         </div>
 
         <DropdownMenuTrigger
@@ -172,7 +173,8 @@ const AuthenticatedAccountMenu = ({ onAboutClick }: { onAboutClick: () => void }
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="h-10 data-pressed:scale-100"
+          size="sm"
+          className="h-10 justify-stretch gap-2 data-pressed:scale-100"
           data-testid="authenticated-menu-trigger"
         >
           <Avatar name={profile?.name?.value} className="size-6 shrink-0" />

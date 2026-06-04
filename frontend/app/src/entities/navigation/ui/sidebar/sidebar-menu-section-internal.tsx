@@ -3,6 +3,7 @@ import type React from "react";
 import { Link } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Col } from "@/shared/components/container";
 import { useSidebar } from "@/shared/components/layout/sidebar";
 import {
   DropdownMenu,
@@ -67,10 +68,7 @@ const DropdownMenuTriggerButton: React.FC<{ item: MenuItem }> = ({ item }) => {
   const { isCollapsed } = useSidebar();
 
   return (
-    <DropdownMenuTrigger
-      className={classNames(menuNavigationItemStyle, isCollapsed && "p-0")}
-      asChild={isCollapsed}
-    >
+    <DropdownMenuTrigger className={classNames(menuNavigationItemStyle)} asChild={isCollapsed}>
       {isCollapsed ? (
         <CollapsedSidebarMenuItem tooltipContent={item.label} icon={item.icon} />
       ) : (
@@ -95,7 +93,7 @@ export function SidebarMenuSectionInternal({ items }: SidebarMenuSectionInternal
   const { isCollapsed } = useSidebar();
 
   return (
-    <div className="mb-auto flex flex-col">
+    <Col className={classNames("gap-0 p-2", isCollapsed && "items-start")}>
       {items.map((item) => {
         if (!item.children?.length) {
           return isCollapsed ? (
@@ -108,7 +106,7 @@ export function SidebarMenuSectionInternal({ items }: SidebarMenuSectionInternal
         return (
           <DropdownMenu key={item.identifier}>
             <DropdownMenuTriggerButton item={item} />
-            <DropdownMenuContent side="left" align="start" className="min-w-[200px]">
+            <DropdownMenuContent side="left" align="start" className="min-w-50">
               {item.children.map((childItem) => (
                 <RecursiveInternalMenuItem key={childItem.identifier} item={childItem} />
               ))}
@@ -116,6 +114,6 @@ export function SidebarMenuSectionInternal({ items }: SidebarMenuSectionInternal
           </DropdownMenu>
         );
       })}
-    </div>
+    </Col>
   );
 }

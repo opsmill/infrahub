@@ -24,9 +24,7 @@ export function SidebarMenu() {
         </div>
       </ScrollArea>
       <Separator />
-      <div className="p-2">
-        <SidebarMenuSectionInternal items={menu.sections.internal} />
-      </div>
+      <SidebarMenuSectionInternal items={menu.sections.internal} />
     </>
   );
 }

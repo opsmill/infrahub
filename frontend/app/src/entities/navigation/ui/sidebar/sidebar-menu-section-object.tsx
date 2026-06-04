@@ -22,7 +22,7 @@ import { menuNavigationItemStyle } from "@/entities/navigation/ui/sidebar/styles
 
 const MenuItemIcon: React.FC<{ item: MenuItem }> = ({ item }) => {
   if (item.icon) {
-    return <Icon icon={item.icon} className="m-1 size-4 text-md" />;
+    return <Icon icon={item.icon} className="size-4" />;
   }
   return <SidebarMenuItemAvatar name={item.label} />;
 };
