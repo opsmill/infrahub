@@ -1063,7 +1063,7 @@ class IPPrefixUtilization(Query):
             pfx,
             child,
             av,
-            reduce(br_lvl = 0, r IN [r_rel1, r_rel2, r_attr, r_attr_val] | br_lvl + r.branch_level) AS sum_branch_level,
+            r_rel1.branch_level + r_rel2.branch_level + r_attr.branch_level + r_attr_val.branch_level AS sum_branch_level,
             all(r IN [r_rel1, r_rel2, r_attr, r_attr_val] WHERE r.status = "active") AS is_active,
             r_rel1.from AS r_rel1_from,
             r_rel2.from AS r_rel2_from,
