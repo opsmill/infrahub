@@ -14,6 +14,7 @@ import {
 import { cn } from "tailwind-variants";
 
 import { focusVisibleStyle } from "../../styles/focus-visible";
+import { composeAriaClassName } from "../../utils/compose-aria-class-name";
 import { Spinner } from "../spinner/spinner";
 
 const ITEM_INDENT_PX = 23;
@@ -47,10 +48,12 @@ export interface TreeItemProps extends AriaTreeItemProps {}
 export function TreeItem({ className, ...props }: TreeItemProps) {
   return (
     <AriaTreeItem
-      className={cn(
-        focusVisibleStyle,
-        "cursor-pointer rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
-        className,
+      className={composeAriaClassName(className, (resolvedClassName) =>
+        cn(
+          focusVisibleStyle,
+          "cursor-pointer rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
+          resolvedClassName,
+        ),
       )}
       {...props}
     />
