@@ -205,7 +205,7 @@ async def trigger_update_python_computed_attributes(
     if not object_ids:
         return
 
-    chunk_size = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500"))
+    chunk_size = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500")) / 2
     for chunk in _chunk_ids(object_ids, chunk_size):
         await get_workflow().submit_workflow(
             workflow=COMPUTED_ATTRIBUTE_PROCESS_TRANSFORM,
