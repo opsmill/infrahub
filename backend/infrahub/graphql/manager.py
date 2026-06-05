@@ -53,6 +53,7 @@ from .resolvers.resolver import (
     default_paginated_list_resolver,
     default_resolver,
     descendants_resolver,
+    is_externally_managed_resolver,
     many_relationship_resolver,
     parent_field_name_resolver,
     single_relationship_resolver,
@@ -507,8 +508,24 @@ class GraphQLSchemaManager:
                 required=True,
                 **node_filters,
             )
-            if node_name == InfrahubKind.GENERICACCOUNT:
+            if node_name == InfrahubKind.GENERICACCOUNT and isinstance(node_schema, GenericSchema):
                 node_type = self.get_type(name=InfrahubKind.GENERICACCOUNT)
+                is_externally_managed_field = graphene.Field(
+                    graphene.Boolean,
+                    required=True,
+                    description=(
+                        "True when the account is linked to an external identity provider "
+                        "(LDAP, OIDC, OAuth2). Local password changes are refused for such accounts."
+                    ),
+                    resolver=is_externally_managed_resolver,
+                )
+                node_type._meta.fields["is_externally_managed"] = is_externally_managed_field
+                # Mirror the field on every concrete schema that inherits from
+                # CoreGenericAccount so graphene's interface contract holds.
+                for implementer_kind in node_schema.used_by:
+                    self.get_type(name=implementer_kind)._meta.fields["is_externally_managed"] = (
+                        is_externally_managed_field
+                    )
                 class_attrs["AccountProfile"] = graphene.Field(node_type, resolver=account_resolver)
 
         return type("QueryMixin", (object,), class_attrs)
