@@ -22,13 +22,12 @@ claim any existing, never-linked account whose name matches the SSO `name` claim
 who can provision an identity-provider user with the **display name of a privileged Infrahub
 user** can therefore log in and take over that privileged account.
 
-This was reported as a security advisory and partially fixed in 1.8.6. The fix removed the
-exposure for **new** setups but, to avoid breaking **existing** SSO deployments mid-migration,
-kept the old behavior available behind this flag. Disabling the flag (and, from 1.11, its
-removal) closes the exposure completely.
+This was identified as a security vulnerability and partially fixed in 1.8.6. The fix removed
+the exposure for **new** setups but, to avoid breaking **existing** SSO deployments
+mid-migration, kept the old behavior available behind this flag. Disabling the flag (and, from
+1.11, its removal) closes the exposure completely.
 
-- Security advisory: a link to the security publication will be added here once it is available.
-- Implementing PR: [#8774](https://github.com/opsmill/infrahub/pull/8774)
+The change is implemented in [PR #8774](https://github.com/opsmill/infrahub/pull/8774).
 
 ### When you are exposed
 
@@ -203,6 +202,5 @@ takeover.
 
 ## Related resources
 
-- Security publication: link to be added once it is available.
 - [PR #8774](https://github.com/opsmill/infrahub/pull/8774)
 - [Release notes for Infrahub](https://github.com/opsmill/infrahub/releases)
