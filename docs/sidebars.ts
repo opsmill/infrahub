@@ -755,6 +755,7 @@ const sidebars: SidebarsConfig = {
               },
               items: [
                 'release-notes/deprecation-guides/display_labels',
+                'release-notes/deprecation-guides/sso-account-name-fallback',
               ],
             },
           ],
