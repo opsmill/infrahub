@@ -90,7 +90,7 @@ cd docs && npm run build              # Build documentation
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
-- `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events}.mdx`, `docs/reference/configuration.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
+- `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events,configuration}.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
 
 Regenerate backend (offline): `uv run invoke backend.generate`
 Export GraphQL schema: `uv run invoke schema.generate-graphqlschema`
