@@ -354,11 +354,11 @@ exports[`fix ts error`] = {
       [45, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"],
       [68, 30, 8, "tsc: Argument of type \'null | { id: string; } | { id: string; }[]\' is not assignable to parameter of type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n  Type \'{ id: string; }\' is not assignable to type \'NodeCore | NodeCore[] | boolean | null | number | string | string[]\'.\\n    Property \'__typename\' is missing in type \'{ id: string; }\' but required in type \'NodeCore\'.", "288015442"]
     ],
-    "src/shared/components/inputs/dropdown.tsx:1690186097": [
-      [205, 24, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
+    "src/shared/components/inputs/dropdown.tsx:2675385293": [
+      [208, 24, 14, "tsc: \'formData.value\' is possibly \'undefined\'.", "945600486"]
     ],
-    "src/shared/components/inputs/enum.tsx:3817540666": [
-      [132, 33, 13, "tsc: \'formData.enum\' is possibly \'undefined\'.", "1980161662"]
+    "src/shared/components/inputs/enum.tsx:942422563": [
+      [137, 33, 13, "tsc: \'formData.enum\' is possibly \'undefined\'.", "1980161662"]
     ],
     "src/shared/components/inputs/list.test.tsx:3096980043": [
       [112, 7, 7, "tsc: Property \'locator\' does not exist on type \'Locator\'.", "3986352749"]

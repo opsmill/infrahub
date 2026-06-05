@@ -1458,6 +1458,8 @@ export type CoreAccount = CoreGenericAccount & CoreNode & LineageOwner & Lineage
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Scalars['String']['output'];
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
@@ -6905,6 +6907,8 @@ export type CoreGenericAccount = {
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Maybe<Scalars['String']['output']>;
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
@@ -18694,6 +18698,18 @@ export type MacAddress = AttributeInterface & {
   version: Maybe<Scalars['Int']['output']>;
 };
 
+/**
+ * Order input restricted to node metadata fields.
+ *
+ * Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+ * surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
+ * string grammar or a `disable` toggle.
+ */
+export type MetadataOrderInput = {
+  /** Order settings for branch metadata */
+  node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
+};
+
 export type Mutation = {
   __typename: 'Mutation';
   BranchCreate: Maybe<BranchCreate>;
@@ -22802,6 +22818,8 @@ export type OrderInput = {
   disable?: InputMaybe<Scalars['Boolean']['input']>;
   /** Order settings for branch metadata */
   node_metadata?: InputMaybe<InfrahubNodeMetadataOrder>;
+  /** Ordering overrides support attributes (`name__value__desc`), relationship attributes (`owner__name__value`), or node metadata (`node_metadata__created_at__desc`). The trailing `__asc`/`__desc` is optional (default is ascending). When provided, fully replaces the schema's `order_by`. Cannot be combined with `node_metadata` in the same input. */
+  order_by?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 /** IPv4 or IPv6 address */
@@ -23628,7 +23646,7 @@ export type PathTraversalInput = {
   destination_id: Scalars['String']['input'];
   /** Specific node kinds to exclude from traversal paths. */
   excluded_kinds?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Namespaces to exclude from traversal. Pass empty list to include all. */
+  /** Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input. */
   excluded_namespaces?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Filter to only traverse through nodes of these kinds */
   kind_filter?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -36231,7 +36249,7 @@ export type QueryInfrahubBranchArgs = {
   node_metadata__updated_at__after?: InputMaybe<Scalars['DateTime']['input']>;
   node_metadata__updated_at__before?: InputMaybe<Scalars['DateTime']['input']>;
   offset?: InputMaybe<Scalars['Int']['input']>;
-  order?: InputMaybe<OrderInput>;
+  order?: InputMaybe<MetadataOrderInput>;
   partial_match?: InputMaybe<Scalars['Boolean']['input']>;
   status__value?: InputMaybe<BranchStatus>;
 };
@@ -37065,7 +37083,9 @@ export type ReachableNodeType = {
 export type ReachableNodesInput = {
   /** Maximum traversal depth (default: 5, max: 20) */
   max_depth?: InputMaybe<Scalars['Int']['input']>;
-  /** Maximum results (default: 50, max: 200) */
+  /** Maximum total paths returned across all discovered terminals (default: 500, max: 5000) */
+  max_paths?: InputMaybe<Scalars['Int']['input']>;
+  /** Maximum number of distinct terminal nodes to discover (default: 50, max: 200) */
   max_results?: InputMaybe<Scalars['Int']['input']>;
   /** UUID of the source node */
   source_id: Scalars['String']['input'];
