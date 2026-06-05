@@ -87,6 +87,62 @@ Implement regular database backups to prevent data loss in case of hardware fail
 Test your backup and restore process periodically to ensure it works as expected.
 :::
 
+## Least-privilege database and cache credentials
+
+:::note
+This section is informational and optional. Infrahub works with administrative database and cache credentials, but it does not require them. The privileges below let you run Infrahub with restricted users if your security policy calls for it.
+:::
+
+Infrahub never administers its own data stores: it does not manage users, roles, databases, or server configuration. The privileges it actually uses are the following.
+
+### Neo4j
+
+Infrahub reads and writes graph data, declares new labels, relationship types and property names, and manages its own indexes and constraints. The matching privileges are:
+
+- `ACCESS` to the database, plus read (`MATCH`) and `WRITE` on the graph
+- `NAME MANAGEMENT` to declare new labels, relationship types, and property names
+- `INDEX MANAGEMENT` and `CONSTRAINT MANAGEMENT` for the indexes and constraints it maintains
+
+:::info
+Restricting privileges per user requires Neo4j Enterprise (role-based access control). Neo4j Community supports only the built-in `neo4j` user.
+:::
+
+A dedicated role and user, created by an administrator against the `system` database:
+
+```cypher
+CREATE ROLE infrahub IF NOT EXISTS;
+
+GRANT ACCESS ON DATABASE neo4j TO infrahub;
+GRANT MATCH {*} ON GRAPH neo4j TO infrahub;
+GRANT WRITE ON GRAPH neo4j TO infrahub;
+GRANT NAME MANAGEMENT ON DATABASE neo4j TO infrahub;
+GRANT INDEX MANAGEMENT ON DATABASE neo4j TO infrahub;
+GRANT CONSTRAINT MANAGEMENT ON DATABASE neo4j TO infrahub;
+
+CREATE USER infrahub IF NOT EXISTS SET PLAINTEXT PASSWORD '<strong-database-password>' CHANGE NOT REQUIRED;
+GRANT ROLE infrahub TO infrahub;
+```
+
+Replace `neo4j` with the database name you set in `INFRAHUB_DB_DATABASE` if you use a dedicated database. Infrahub creates that database on first start if it does not exist, which requires the `CREATE DATABASE` privilege, so pre-create it as an administrator to keep the application user restricted. If you collect telemetry, also `GRANT SHOW SERVERS ON DBMS` and `GRANT EXECUTE PROCEDURE dbms.queryJmx ON DBMS`, otherwise telemetry logs a harmless permission error.
+
+### Redis
+
+Infrahub uses Redis for caching and distributed locks, so the user needs read and write access to keys, the connection commands used to authenticate, and the scripting commands used by the locks. It does not need administrative or destructive commands. With a Redis ACL file:
+
+```text title="users.acl"
+user default off
+user infrahub on ><strong-cache-password> ~* resetchannels +@read +@write +@connection +@scripting -@dangerous
+```
+
+### Point Infrahub at the restricted users
+
+```shell title=".env"
+INFRAHUB_DB_USERNAME=infrahub
+INFRAHUB_DB_PASSWORD=<strong-database-password>
+INFRAHUB_CACHE_USERNAME=infrahub
+INFRAHUB_CACHE_PASSWORD=<strong-cache-password>
+```
+
 ## Operations and maintenance
 
 ### Upgrading Infrahub
