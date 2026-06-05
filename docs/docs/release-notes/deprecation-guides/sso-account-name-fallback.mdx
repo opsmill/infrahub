@@ -18,9 +18,10 @@ You must disable it yourself once linking is complete.
 ## Why this change exists
 
 When the account-name fallback is enabled, a *first* SSO login with no linked identity will
-claim any existing, never-linked account whose name matches the SSO `name` claim. An attacker
-who can provision an identity-provider user with the **display name of a privileged Infrahub
-user** can therefore log in and take over that privileged account.
+claim any existing, never-linked account whose name matches the SSO `name` claim. If your
+identity provider lets users set or change their own display name, anyone who can authenticate
+through it can set their display name to **the name of a privileged Infrahub account** and, on
+first login, take that account over.
 
 This was identified as a security vulnerability and partially fixed in 1.8.6. The fix removed
 the exposure for **new** setups but, to avoid breaking **existing** SSO deployments
