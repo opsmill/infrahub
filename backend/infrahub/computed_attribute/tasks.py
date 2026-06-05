@@ -547,7 +547,7 @@ async def query_transform_targets(
                 key = (subscriber.kind, computed_attribute.name)
                 batches.setdefault(key, []).append(subscriber.object_id)
 
-    chunk_size = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500"))
+    chunk_size = int(os.environ.get("PREFECT_SERVER_EVENTS_MAXIMUM_RELATED_RESOURCES", "500")) / 2
     for (kind, attribute_name), batch_object_ids in batches.items():
         for chunk in _chunk_ids(batch_object_ids, chunk_size):
             await get_workflow().submit_workflow(
