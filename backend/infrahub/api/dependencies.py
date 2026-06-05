@@ -81,7 +81,11 @@ async def get_branch_params(
     branch = await registry.get_branch(db=db, branch=branch_name)
     request.state.branch_name = branch.name
 
-    return BranchParams(branch=branch, at=Timestamp(at))
+    at_ts = Timestamp(at)
+    if at is not None:
+        branch.validate_query_time(at_ts)
+
+    return BranchParams(branch=branch, at=at_ts)
 
 
 async def get_branch_dep(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import pytest
@@ -14,6 +15,12 @@ if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.node import Node
     from infrahub.database import InfrahubDatabase
+
+
+@dataclass
+class AtBeforeCreationCase:
+    name: str
+    query_branch_name: str | None
 
 
 async def test_graphql_endpoint_with_timestamp(
@@ -68,6 +75,72 @@ async def test_graphql_endpoint_with_timestamp(
     names = [result["node"]["name"]["value"] for result in result["TestPerson"]["edges"]]
 
     assert sorted(names) == ["Jane", "John"]
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        pytest.param(c, id=c.name)
+        for c in [
+            AtBeforeCreationCase(name="default_branch", query_branch_name=None),
+            AtBeforeCreationCase(name="user_branch_origin_main", query_branch_name="user-branch"),
+        ]
+    ],
+)
+async def test_graphql_endpoint_at_before_branch_creation(
+    case: AtBeforeCreationCase,
+    db: InfrahubDatabase,
+    client: TestClient,
+    admin_headers: dict[str, str],
+    default_branch: Branch,
+    create_test_admin: Node,
+    car_person_data: dict[str, Node],
+) -> None:
+    """Querying with an `at` earlier than the branch's effective lifetime must produce a clear, user-facing error.
+
+    The error always references the floor branch — the default branch itself for default-branch queries, and the
+    origin branch (`main`) for user-branch queries — never the user branch's own `created_at` or `branched_from`.
+    """
+    if case.query_branch_name is not None:
+        user_branch = await create_branch(branch_name=case.query_branch_name, db=db)
+        assert user_branch.get_created_at() != default_branch.get_created_at(), (
+            "Test precondition: the user branch must be created at a distinct time from its origin "
+            "so the boundary lookup picks a different value in each parametrized case"
+        )
+
+    at_before_creation = Timestamp("2000-01-01T00:00:00Z")
+    assert at_before_creation < Timestamp(default_branch.get_created_at()), (
+        "Test precondition: the chosen `at` must be earlier than the (origin) branch's created_at"
+    )
+
+    query = """
+    query {
+        TestPerson {
+            edges {
+                node {
+                    name {
+                        value
+                    }
+                }
+            }
+        }
+    }
+    """
+
+    url_branch_suffix = f"/{case.query_branch_name}" if case.query_branch_name else ""
+    with client:
+        response = client.post(
+            f"/graphql{url_branch_suffix}?at={at_before_creation.to_string()}",
+            json={"query": query},
+            headers=admin_headers,
+        )
+
+    expected_message = (
+        f"Requested time '{at_before_creation.to_string()}' is before "
+        f"branch '{default_branch.name}' was created at '{default_branch.get_created_at()}'."
+    )
+    assert response.status_code == 422
+    assert response.json()["errors"][0]["message"] == expected_message
 
 
 @pytest.mark.xfail(reason="Need to investigate, Currently working alone but failing when it's part of the test suite")

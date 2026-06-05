@@ -96,6 +96,27 @@ class Branch(StandardNode):
             raise RuntimeError(f"created_at not set for branch {self.name}")
         return self.created_at
 
+    def validate_query_time(self, at: Timestamp) -> None:
+        """Validate that `at` falls within this branch's effective lifetime.
+
+        Raises:
+            ValidationError: When `at` is earlier than the branch's effective creation time.
+
+        """
+        if self.is_default or self.is_global or self.origin_branch == self.name:
+            boundary_branch_name = self.name
+            boundary_created_at = self.get_created_at()
+        else:
+            origin = registry.get_branch_from_registry(branch=self.origin_branch)
+            boundary_branch_name = origin.name
+            boundary_created_at = origin.get_created_at()
+
+        if at < Timestamp(boundary_created_at):
+            raise ValidationError(
+                f"Requested time '{at.to_string()}' is before "
+                f"branch '{boundary_branch_name}' was created at '{boundary_created_at}'."
+            )
+
     @property
     def is_terminal(self) -> bool:
         return self.status in TERMINAL_BRANCH_STATUSES
