@@ -75,7 +75,7 @@ describe("BottomToolbar", () => {
     const { props, component } = await setup();
 
     await component.getByRole("button", { name: "Export diagram" }).click();
-    component.getByRole("button", { name: /PNG/i }).element().click();
+    (component.getByRole("button", { name: /PNG/i }).element() as HTMLElement).click();
 
     expect(props.onExport).toHaveBeenCalledWith("png");
   });
@@ -84,7 +84,7 @@ describe("BottomToolbar", () => {
     const { props, component } = await setup();
 
     await component.getByRole("button", { name: "Export diagram" }).click();
-    component.getByRole("button", { name: /SVG/i }).element().click();
+    (component.getByRole("button", { name: /SVG/i }).element() as HTMLElement).click();
 
     expect(props.onExport).toHaveBeenCalledWith("svg");
   });
