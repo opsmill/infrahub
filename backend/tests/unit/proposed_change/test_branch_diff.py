@@ -1,6 +1,6 @@
 from infrahub.core.constants import InfrahubKind
 from infrahub.message_bus.types import ProposedChangeRepository
-from infrahub.proposed_change.branch_diff import RepositoryFileDiff, populate_repository_file_diffs
+from infrahub.proposed_change.branch_diff import RepositoryFileDiff, RepositoryFileDiffPopulator
 from tests.adapters.repository_file_diff import RecordingRepositoryFileDiffer
 
 
@@ -34,7 +34,7 @@ async def test_managed_repository_diff_computed_from_commits_only() -> None:
         results={"managed-1": RepositoryFileDiff(files_changed=["templates/foo.j2"])}
     )
 
-    await populate_repository_file_diffs(repositories=[repo], differ=differ)
+    await RepositoryFileDiffPopulator(differ=differ).populate(repositories=[repo])
 
     assert len(differ.requests) == 1
     request = differ.requests[0]
@@ -49,7 +49,7 @@ async def test_managed_repository_unmoved_tips_yields_no_diff() -> None:
     repo = _repository(repository_id="managed-1", read_only=False, source_commit="aaaa", destination_commit="aaaa")
     differ = RecordingRepositoryFileDiffer()
 
-    await populate_repository_file_diffs(repositories=[repo], differ=differ)
+    await RepositoryFileDiffPopulator(differ=differ).populate(repositories=[repo])
 
     assert differ.requests == []
     assert repo.files_changed == []
@@ -62,7 +62,7 @@ async def test_managed_repository_missing_destination_commit_skipped() -> None:
     repo = _repository(repository_id="managed-1", read_only=False, source_commit="aaaa", destination_commit="")
     differ = RecordingRepositoryFileDiffer()
 
-    await populate_repository_file_diffs(repositories=[repo], differ=differ)
+    await RepositoryFileDiffPopulator(differ=differ).populate(repositories=[repo])
 
     assert differ.requests == []
 
@@ -78,7 +78,7 @@ async def test_readonly_repository_diff_uses_pinned_commits() -> None:
         results={"readonly-1": RepositoryFileDiff(files_added=["queries/example.gql"])}
     )
 
-    await populate_repository_file_diffs(repositories=[repo], differ=differ)
+    await RepositoryFileDiffPopulator(differ=differ).populate(repositories=[repo])
 
     assert len(differ.requests) == 1
     request = differ.requests[0]
@@ -93,7 +93,7 @@ async def test_readonly_repository_equal_pinned_commits_yields_no_diff() -> None
     repo = _repository(repository_id="readonly-1", read_only=True, source_commit="cccc", destination_commit="cccc")
     differ = RecordingRepositoryFileDiffer()
 
-    await populate_repository_file_diffs(repositories=[repo], differ=differ)
+    await RepositoryFileDiffPopulator(differ=differ).populate(repositories=[repo])
 
     assert differ.requests == []
     assert repo.files_added == []
@@ -110,7 +110,7 @@ async def test_managed_and_readonly_repositories_diffed_together() -> None:
         }
     )
 
-    await populate_repository_file_diffs(repositories=[managed, readonly], differ=differ)
+    await RepositoryFileDiffPopulator(differ=differ).populate(repositories=[managed, readonly])
 
     assert {request.repository_id for request in differ.requests} == {"managed-1", "readonly-1"}
     assert managed.files_changed == ["a.py"]

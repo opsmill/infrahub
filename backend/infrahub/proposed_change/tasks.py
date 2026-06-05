@@ -74,10 +74,10 @@ from infrahub.message_bus.types import (
 )
 from infrahub.proposed_change.branch_diff import (
     GitRepositoryFileDiffer,
+    RepositoryFileDiffPopulator,
     get_modified_node_ids,
     has_data_changes,
     has_node_changes,
-    populate_repository_file_diffs,
     set_diff_summary_cache,
 )
 from infrahub.proposed_change.constants import ProposedChangeState
@@ -1322,7 +1322,8 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
                 )
         return
 
-    await populate_repository_file_diffs(repositories=repositories, differ=GitRepositoryFileDiffer(client=client))
+    file_diff_populator = RepositoryFileDiffPopulator(differ=GitRepositoryFileDiffer(client=client))
+    await file_diff_populator.populate(repositories=repositories)
 
     database = await get_database()
     async with database.start_session() as dbs:

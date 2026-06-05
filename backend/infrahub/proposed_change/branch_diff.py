@@ -81,28 +81,32 @@ class GitRepositoryFileDiffer:
         return RepositoryFileDiff(files_changed=files_changed, files_added=files_added, files_removed=files_removed)
 
 
-async def populate_repository_file_diffs(
-    repositories: list[ProposedChangeRepository], differ: RepositoryFileDiffer
-) -> None:
-    """Populate files_added/changed/removed for every linked repository with a non-empty commit diff.
+class RepositoryFileDiffPopulator:
+    """Populates the per-repository file diff on a set of proposed-change repositories."""
 
-    The diff is computed per repository and per branch pair for both managed and read-only
-    repositories, independent of the source branch's sync_with_git flag. A repository whose source
-    and destination commits match has no file changes and is left untouched.
-    """
-    for repo in repositories:
-        if not repo.has_file_diff:
-            continue
-        diff = await differ.calculate_diff(
-            repository_id=repo.repository_id,
-            repository_name=repo.repository_name,
-            repository_kind=repo.kind,
-            source_commit=repo.source_commit,
-            destination_commit=repo.destination_commit,
-        )
-        repo.files_changed = diff.files_changed
-        repo.files_added = diff.files_added
-        repo.files_removed = diff.files_removed
+    def __init__(self, differ: RepositoryFileDiffer) -> None:
+        self._differ = differ
+
+    async def populate(self, repositories: list[ProposedChangeRepository]) -> None:
+        """Populate files_added/changed/removed for every linked repository with a non-empty commit diff.
+
+        The diff is computed per repository and per branch pair for both managed and read-only
+        repositories, independent of the source branch's sync_with_git flag. A repository whose source
+        and destination commits match has no file changes and is left untouched.
+        """
+        for repo in repositories:
+            if not repo.has_file_diff:
+                continue
+            diff = await self._differ.calculate_diff(
+                repository_id=repo.repository_id,
+                repository_name=repo.repository_name,
+                repository_kind=repo.kind,
+                source_commit=repo.source_commit,
+                destination_commit=repo.destination_commit,
+            )
+            repo.files_changed = diff.files_changed
+            repo.files_added = diff.files_added
+            repo.files_removed = diff.files_removed
 
 
 def has_data_changes(diff_summary: list[NodeDiff], branch: str) -> bool:
