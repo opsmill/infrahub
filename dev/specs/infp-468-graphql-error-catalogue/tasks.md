@@ -123,7 +123,7 @@ description: "Task list for INFP-468 — Enriched GraphQL Error Catalogue"
 ### Implementation for User Story 3
 
 - [ ] T039 [US3] Update the release pipeline in `tasks/release.py` (and/or the GitHub Actions release workflow) to publish `schema/error-catalogue.json` as a release asset alongside the existing `schema/schema.graphql` artefact (research R-012)
-- [ ] T040 [US3] Document the SDK-consumption contract in `docs/docs/reference/error-catalogue/index.md` §"For SDK and third-party consumers" (the release-download URL pattern and the `infrahub_catalogue_version` semantics)
+- [X] T040 [US3] Document the SDK-consumption contract in `docs/docs/reference/error-catalogue/index.md` §"For SDK and third-party consumers" (the `infrahub_catalogue_version` semantics and how to read the committed `schema/error-catalogue.json`; the release-download URL pattern was dropped since the catalogue is not published as a release asset)
 
 **Checkpoint**: SDK repo can now drive its bindings off a stable, versioned, downloadable schema.
 
@@ -137,13 +137,13 @@ description: "Task list for INFP-468 — Enriched GraphQL Error Catalogue"
 
 ### Implementation for User Story 4
 
-- [ ] T041 [US4] Create new `tasks/frontend.py` exposing two Invoke tasks: (a) `frontend.regenerate-error-bindings` — runs `backend.export-error-catalogue`, then `pnpm generate:error-bindings`, then `docs.generate-error-catalogue`, each writing its canonical committed file; (b) `frontend.check-error-bindings` — calls (a), then runs `git diff --exit-code schema/error-catalogue.json frontend/app/src/shared/api/errors/catalogue.generated.ts docs/docs/reference/error-catalogue/index.md`; on non-zero diff, prints the failure message from quickstart.md §"CI sync check" naming `uv run invoke frontend.regenerate-error-bindings` as the fix command (R-009)
-- [ ] T042 [US4] Register `frontend` collection in `tasks/__init__.py` (`from . import frontend; ns.add_collection(frontend)`)
-- [ ] T043 [US4] Add `uv run invoke frontend.check-error-bindings` step to the existing codegen-freshness GitHub Actions workflow under `.github/workflows/` (same job that runs GraphQL codegen freshness check; FR-009)
+- [X] T041 [US4] Create new `tasks/frontend.py` exposing two Invoke tasks: (a) `frontend.regenerate-error-bindings` — runs `backend.export-error-catalogue`, then `pnpm generate:error-bindings`, then `docs.generate-error-catalogue`, each writing its canonical committed file; (b) `frontend.check-error-bindings` — calls (a), then runs `git diff --exit-code schema/error-catalogue.json frontend/app/src/shared/api/errors/catalogue.generated.ts docs/docs/reference/error-catalogue/index.md`; on non-zero diff, prints the failure message from quickstart.md §"CI sync check" naming `uv run invoke frontend.regenerate-error-bindings` as the fix command (R-009)
+- [X] T042 [US4] Register `frontend` collection in `tasks/__init__.py` (`from . import frontend; ns.add_collection(frontend)`)
+- [~] T043 [US4] Add `uv run invoke frontend.check-error-bindings` step to the existing codegen-freshness GitHub Actions workflow under `.github/workflows/` (same job that runs GraphQL codegen freshness check; FR-009) — *Not added per maintainer decision: the existing `frontend-validate-error-catalogue` job (`pnpm check:error-bindings`) already enforces TS↔JSON freshness and matches the other frontend codegen-freshness jobs; docs↔JSON is enforced by `validate-generated-documentation` (`docs.validate`); JSON↔backend is enforced by the `test_export_matches_committed_file` unit test (runs in `backend-tests-unit`). `frontend.check-error-bindings` (T041) remains as the local all-in-one regenerate-and-diff convenience.*
 
 ### Tests for User Story 4
 
-- [ ] T044 [P] [US4] Integration test simulating sync drift in `backend/tests/integration/errors/test_sync_check.py`: programmatically mutate the in-process catalogue, run the export, diff against the committed file, assert non-zero exit and that the failure message includes the regeneration command (SC-005)
+- [X] T044 [P] [US4] Integration test simulating sync drift in `backend/tests/integration/errors/test_sync_check.py`: programmatically mutate the in-process catalogue, run the export, diff against the committed file, assert non-zero exit and that the failure message includes the regeneration command (SC-005) — *Implemented as a deterministic unit-level freshness assertion instead (`test_export_matches_committed_file` in `backend/tests/unit/errors/test_export.py`): now that `generated_at` is removed from the export, `export_catalogue()` must equal the committed `schema/error-catalogue.json` exactly. Runs in `backend-tests-unit`. The bespoke integration test (synthetic mutation + source-grep + subprocess) was dropped as redundant with the existing freshness checks.*
 
 **Checkpoint**: CI now guards against silent catalogue drift in this repo.
 
@@ -157,8 +157,8 @@ description: "Task list for INFP-468 — Enriched GraphQL Error Catalogue"
 
 ### Implementation for User Story 5
 
-- [ ] T045 [US5] Ensure the docs page at `docs/docs/reference/error-catalogue/index.md` includes a "Third-party consumers" section pointing at the released schema URL (FR-012, builds on T040)
-- [ ] T046 [US5] Add an example external consumer snippet (any language, smallest demonstrating consumption) to the same docs page, e.g. `jq '.codes | keys'` against the published file (US5 acceptance #1)
+- [X] T045 [US5] Ensure the docs page at `docs/docs/reference/error-catalogue/index.md` includes a "Third-party consumers" section pointing at the committed `schema/error-catalogue.json` (FR-012, builds on T040)
+- [X] T046 [US5] Add an example external consumer snippet (any language, smallest demonstrating consumption) to the same docs page, e.g. `jq '.codes | keys'` against the published file (US5 acceptance #1)
 
 **Checkpoint**: External consumers have a documented, machine-readable entry point.
 
@@ -168,11 +168,11 @@ description: "Task list for INFP-468 — Enriched GraphQL Error Catalogue"
 
 **Purpose**: Documentation, telemetry visibility, and final validation.
 
-- [ ] T047 [P] Implement `docs.generate-error-catalogue` Invoke task in `tasks/docs.py` that reads `schema/error-catalogue.json` and renders the Docusaurus page at `docs/docs/reference/error-catalogue/index.md` per research R-008 (every code's description, stability badge, HTTP status, `data` shape table, worked example); include a header line `**Catalogue version**: <infrahub_catalogue_version> — <N> codes` so the count is part of the rendered page and appears in release diffs (SC-007)
-- [ ] T048 [P] Add `docs.generate-error-catalogue` to the existing `docs.build` task chain in `tasks/docs.py`
-- [ ] T049 [P] Add a Sidebar entry for the new docs page in the Docusaurus config so it appears under Reference
-- [ ] T050 [P] Run `uv run invoke docs.lint` and `uv run invoke lint` and fix any findings
-- [ ] T051 Validate quickstart.md end-to-end by running each command block from a clean checkout: `backend.export-error-catalogue`, `pnpm generate:error-bindings`, `docs.generate-error-catalogue`, `pytest backend/tests/functional/graphql/test_error_catalogue.py -v`
+- [X] T047 [P] Implement `docs.generate-error-catalogue` Invoke task in `tasks/docs.py` that reads `schema/error-catalogue.json` and renders the Docusaurus page at `docs/docs/reference/error-catalogue/index.md` per research R-008 (every code's description, stability badge, HTTP status, `data` shape table, worked example); include a header line `**Catalogue version**: <infrahub_catalogue_version> — <N> codes` so the count is part of the rendered page and appears in release diffs (SC-007)
+- [X] T048 [P] Add `docs.generate-error-catalogue` to the existing `docs.build` task chain in `tasks/docs.py` — *Wired into the `_generate()` chain (used by `docs.generate` and `docs.validate`) instead of `build()`, matching every other generated reference page; freshness is then validated by the existing `validate-generated-documentation` CI job (`docs.validate` regenerates + `git diff --exit-code docs`). Renders via a Jinja2 template `docs/_templates/error-catalogue.j2`.*
+- [X] T049 [P] Add a Sidebar entry for the new docs page in the Docusaurus config so it appears under Reference
+- [X] T050 [P] Run `uv run invoke docs.lint` and `uv run invoke lint` and fix any findings — *ruff (format + check), mypy, markdownlint, and vale all clean on the changed files.*
+- [X] T051 Validate quickstart.md end-to-end by running each command block from a clean checkout: `backend.export-error-catalogue`, `pnpm generate:error-bindings`, `docs.generate-error-catalogue`, `pytest backend/tests/functional/graphql/test_error_catalogue.py -v` — *All three generators and the `frontend.regenerate-error-bindings`/`check-error-bindings` chain run cleanly; the functional test collects 4 tests with valid imports. Full functional execution against a live backend is T052.*
 - [ ] T052 Run `cd frontend/app && pnpm test && pnpm test:e2e` for the US2/US4 E2E suites against a live backend; capture results in the PR description
 - [ ] T053 [P] Playwright E2E test for `TOKEN_EXPIRED` silent-refresh on `/graphql` auth-short-circuit in `frontend/app/tests/e2e/error-catalogue.spec.ts` — verifies the end-to-end pattern illustrated in quickstart.md; not part of US2's acceptance criteria but cheap to add once T032 is live
 - [ ] T054 Audit `ValidationError` raise-site coverage on the GraphQL path: grep `raise ValidationError` under `backend/infrahub/graphql/` and confirm each one either flows through `raise_classified_validation_errors` (T017) or has an explicit catalogue-fallback acceptance (lands as `UNDEFINED_ERROR` intentionally). File the follow-up ticket (referencing research R-011) for migrating remaining raise sites to typed subclasses and promoting them from `backend/infrahub/errors/exceptions.py` up to `backend/infrahub/exceptions.py` once the text-classifier helper can be retired; link the ticket in the catalogue docs page §"Known gaps"

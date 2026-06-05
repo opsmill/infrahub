@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 from .catalogue import CATALOGUE
@@ -32,7 +31,6 @@ def export_catalogue() -> dict[str, Any]:
     return {
         "$schema": JSON_SCHEMA_VERSION,
         "infrahub_catalogue_version": CATALOGUE_VERSION,
-        "generated_at": datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "codes": codes,
     }
 

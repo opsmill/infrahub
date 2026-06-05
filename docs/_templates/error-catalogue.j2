@@ -1,0 +1,58 @@
+---
+title: Error Catalogue
+---
+
+{# Generated from schema/error-catalogue.json — do not edit by hand. #}
+{# Regenerate with: uv run invoke docs.generate-error-catalogue #}
+# Error Catalogue
+
+**Catalogue version**: {{ version }} — {{ code_count }} codes
+
+Every GraphQL error response carries an `extensions` block with a stable string `code`, the logical `http_status`, and a typed `data` payload. Switch on `code` rather than parsing the human-readable `message`, which is not part of the stable contract.
+
+## Codes
+
+{% for code in codes %}
+### {{ code.code }}
+
+{{ code.description }}
+
+- **Stability**: `{{ code.stability }}`
+- **HTTP status**: `{{ code.http_status }}`
+
+{% if code.fields %}
+**`data` payload**
+
+| Field | Type | Required |
+|-------|------|----------|
+{% for field in code.fields -%}
+| `{{ field.name }}` | {{ field.type }} | {{ "yes" if field.required else "no" }} |
+{% endfor %}
+
+{% else %}
+This code carries no `data` payload; `data` is always `{}`.
+
+{% endif %}
+**Example response**
+
+```json
+{{ code.example }}
+```
+
+{% endfor %}
+## For SDK and third-party consumers
+
+The catalogue is a machine-readable JSON Schema document committed to the repository at `schema/error-catalogue.json`. Consumers read it from a checkout of the desired Infrahub version. The top-level `infrahub_catalogue_version` field tracks the wrapper shape. Within a single wrapper version, codes may be added and existing codes may gain additive optional `data` fields; consumers MUST treat any unrecognised code as `UNDEFINED_ERROR`. A wrapper-version bump signals an incompatible change to the envelope itself and follows the same deprecation policy as removing a code.
+
+## Third-party consumers
+
+External integrators can generate their own bindings or validators directly from `schema/error-catalogue.json`. For example, to list every published code with `jq`:
+
+```bash
+jq '.codes | keys' schema/error-catalogue.json
+```
+
+## Known gaps
+
+- `BRANCH_NOT_FOUND` and `SCHEMA_NOT_FOUND` currently mirror their existing REST `http_status` values (`400`/`422`) rather than a semantically correct `404`. Aligning them is deferred to a dedicated deprecation-cycle release that bundles the REST status change, the catalogue update, and a changelog fragment.
+- Not every `ValidationError` raise site on the GraphQL path has been migrated to the typed `ATTRIBUTE_*` subclasses yet. Un-migrated sites surface as `UNDEFINED_ERROR` until the remaining raise sites are promoted to typed exceptions.

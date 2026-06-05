@@ -584,6 +584,7 @@ const sidebars: SidebarsConfig = {
           ],
         },
         { type: 'doc', id: 'reference/message-bus-events', label: 'Message Bus Events' },
+        { type: 'doc', id: 'reference/error-catalogue', label: 'Error Catalogue' },
       ],
     },
 
