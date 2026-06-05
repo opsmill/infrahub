@@ -614,11 +614,17 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
     for name, definition in schema["$defs"].items():
         for property, value in definition["properties"].items():
-            definitions[name]["properties"][property]["required"] = property in definition["required"]
+            definitions[name]["properties"][property]["required"] = property in definition.get("required", [])
             if "anyOf" in value:
-                definitions[name]["properties"][property]["type"] = ", ".join(
-                    [i["type"] for i in value["anyOf"] if i["type"] != "null"]
-                )
+                type_names = []
+                for option in value["anyOf"]:
+                    if option.get("type") == "null":
+                        continue
+                    if "$ref" in option:
+                        type_names.append(option["$ref"].split("/")[-1])
+                    elif "type" in option:
+                        type_names.append(option["type"])
+                definitions[name]["properties"][property]["type"] = ", ".join(type_names)
 
     print(" - Generate Infrahub repository configuration documentation")
 
