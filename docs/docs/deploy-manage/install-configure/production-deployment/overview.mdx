@@ -127,12 +127,16 @@ Replace `neo4j` with the database name you set in `INFRAHUB_DB_DATABASE` if you 
 
 ### Redis
 
-Infrahub uses Redis for caching and distributed locks, so the user needs read and write access to keys, the connection commands used to authenticate, and the scripting commands used by the locks. It does not need administrative or destructive commands. With a Redis ACL file:
+Infrahub uses Redis for caching and distributed locks, and in distributed deployments the task manager also uses it for workflow coordination. The user needs read and write access to keys, the connection commands used to authenticate, the scripting commands used by the locks, and transactions (`MULTI`/`EXEC`) used by the task manager. It does not need administrative or destructive commands. With a Redis ACL file:
 
 ```text title="users.acl"
 user default off
-user infrahub on ><strong-cache-password> ~* resetchannels +@read +@write +@connection +@scripting -@dangerous
+user infrahub on ><strong-cache-password> ~* resetchannels +@read +@write +@connection +@scripting +@transaction -@dangerous
 ```
+
+:::note
+`+@transaction` is only exercised when the task manager is backed by Redis (distributed or high-availability deployments). It is harmless to grant otherwise.
+:::
 
 ### Point Infrahub at the restricted users
 
