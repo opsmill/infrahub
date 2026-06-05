@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Collection, type TreeProps } from "react-aria-components";
+import { Collection } from "react-aria-components";
 
-import { Tree, TreeItem, TreeItemContent, TreeItemLoader } from "./tree";
+import { Tree, TreeItem, TreeItemContent } from "./tree";
 
 type FolderNode = {
   id: string;
@@ -68,53 +68,6 @@ function DefaultRender() {
   );
 }
 
-function WithLoaderRender() {
-  return (
-    <Tree
-      aria-label="Project files (loading)"
-      items={TREE_DATA}
-      defaultExpandedKeys={["docs", "src"]}
-      className="w-72"
-    >
-      {(item) => (
-        <TreeItem id={item.id} textValue={item.name}>
-          <TreeItemContent>{item.name}</TreeItemContent>
-          <Collection items={item.children ?? []}>{renderItem}</Collection>
-          {item.id === "src" && <TreeItemLoader />}
-        </TreeItem>
-      )}
-    </Tree>
-  );
-}
-
-function PlaygroundRender(args: Omit<TreeProps<FolderNode>, "children" | "items">) {
-  return (
-    <Tree {...args} items={TREE_DATA} className="w-72">
-      {renderItem}
-    </Tree>
-  );
-}
-
 export const Default: Story = {
   render: DefaultRender,
-};
-
-export const WithLoader: Story = {
-  render: WithLoaderRender,
-};
-
-export const Playground: Story = {
-  args: {
-    "aria-label": "Project files",
-    selectionMode: "single",
-    defaultExpandedKeys: ["docs", "src"],
-  },
-  argTypes: {
-    "aria-label": { control: "text" },
-    selectionMode: {
-      control: "select",
-      options: ["none", "single", "multiple"],
-    },
-  },
-  render: PlaygroundRender,
 };

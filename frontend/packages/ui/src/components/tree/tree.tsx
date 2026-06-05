@@ -1,5 +1,6 @@
-import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
+
+import { ChevronRightIcon } from "lucide-react";
 import {
   Tree as AriaTree,
   TreeItem as AriaTreeItem,
@@ -49,7 +50,7 @@ export function TreeItem({ className, ...props }: TreeItemProps) {
       className={cn(
         focusVisibleStyle,
         "cursor-pointer rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
-        className
+        className,
       )}
       {...props}
     />
@@ -76,7 +77,7 @@ export function TreeItemContent({ onExpandedChange, children, ...props }: TreeIt
                 onPress={onExpandedChange}
                 className={cn(
                   "inline-flex size-8 shrink-0 items-center justify-center duration-200",
-                  isExpanded && "rotate-90"
+                  isExpanded && "rotate-90",
                 )}
               >
                 <ChevronRightIcon className="size-4" />
@@ -100,7 +101,7 @@ export function TreeItemLoader(props: AriaTreeLoadMoreItemProps) {
     <AriaTreeLoadMoreItem {...props}>
       {({ level }) => (
         <div
-          className="flex h-8 items-center justify-start gap-2 text-gray-500 text-sm"
+          className="flex h-8 items-center justify-start gap-2 text-neutral-500 text-sm"
           style={{ paddingLeft: level * LOADER_INDENT_PX }}
         >
           <Spinner />
