@@ -1,5 +1,6 @@
-import { ChevronRightIcon } from "lucide-react";
 import type React from "react";
+
+import { ChevronRightIcon } from "lucide-react";
 import {
   Tree as AriaTree,
   TreeItem as AriaTreeItem,
@@ -10,22 +11,22 @@ import {
   type TreeLoadMoreItemProps as AriaTreeLoadMoreItemProps,
   Button,
 } from "react-aria-components";
+import { cn } from "tailwind-variants";
 
-import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
-import { Row } from "@/shared/components/container";
-import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { classNames } from "@/shared/utils/common";
+import { focusVisibleStyle } from "../../styles/focus-visible";
+import { Spinner } from "../spinner/spinner";
 
 export const Tree = AriaTree;
 
 export interface TreeItemProps extends AriaTreeItemProps {}
+
 export const TreeItem = ({ className, ...props }: TreeItemProps) => {
   return (
     <AriaTreeItem
-      className={classNames(
+      className={cn(
         focusVisibleStyle,
         "cursor-pointer rounded-md border border-transparent text-sm mix-blend-multiply hover:bg-neutral-100",
-        className
+        className,
       )}
       {...props}
     />
@@ -35,20 +36,21 @@ export const TreeItem = ({ className, ...props }: TreeItemProps) => {
 export interface TreeItemContentProps extends AriaTreeItemContentProps {
   onExpandedChange?: () => void;
 }
+
 export const TreeItemContent = ({ onExpandedChange, children, ...props }: TreeItemContentProps) => {
   return (
     <AriaTreeItemContent {...props}>
       {(contentProps) => {
         const { hasChildItems, isExpanded, level } = contentProps;
         return (
-          <Row className="gap-0" style={{ paddingLeft: (level - 1) * 23 }}>
+          <div className="flex items-center gap-0" style={{ paddingLeft: (level - 1) * 23 }}>
             {hasChildItems ? (
               <Button
                 slot="chevron"
                 onPress={onExpandedChange}
-                className={classNames(
+                className={cn(
                   "inline-flex size-8 shrink-0 items-center justify-center duration-200",
-                  isExpanded && "rotate-90"
+                  isExpanded && "rotate-90",
                 )}
               >
                 <ChevronRightIcon className="size-4" />
@@ -60,7 +62,7 @@ export const TreeItemContent = ({ onExpandedChange, children, ...props }: TreeIt
             )}
 
             {typeof children === "function" ? children(contentProps) : children}
-          </Row>
+          </div>
         );
       }}
     </AriaTreeItemContent>
@@ -71,10 +73,13 @@ export function TreeItemLoader(props: AriaTreeLoadMoreItemProps) {
   return (
     <AriaTreeLoadMoreItem {...props}>
       {({ level }) => (
-        <LoadingIndicator
-          className="h-8 justify-start text-sm"
+        <div
+          className="flex h-8 items-center justify-start gap-2 text-gray-500 text-sm"
           style={{ paddingLeft: level * 32 }}
-        />
+        >
+          <Spinner />
+          <span>Loading...</span>
+        </div>
       )}
     </AriaTreeLoadMoreItem>
   );
