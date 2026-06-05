@@ -1,6 +1,5 @@
 import { Icon } from "@iconify-icon/react";
 
-import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 import { InfoButton } from "@/shared/components/buttons/info-button";
 import Accordion from "@/shared/components/display/accordion";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -9,6 +8,8 @@ import { List } from "@/shared/components/table/list";
 import { Link } from "@/shared/components/ui/link";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
 import { Tooltip } from "@/shared/components/ui/tooltip";
+
+import { getObjectDetailsUrl } from "@/entities/nodes/utils";
 
 import { ValidatorDetails } from "./validator-details";
 
@@ -129,10 +130,7 @@ export const Validator = ({ validator }: tValidatorProps) => {
       <DurationDisplay date={started_at.value} endDate={completed_at.value} />
 
       {artifactDefinition && (
-        <Tooltip
-          content={`Open Artifact Definition: ${artifactDefinition.display_label}`}
-          enabled
-        >
+        <Tooltip content={`Open Artifact Definition: ${artifactDefinition.display_label}`} enabled>
           <Link
             to={getObjectDetailsUrl("CoreArtifactDefinition", artifactDefinition.id)}
             onClick={(e) => e.stopPropagation()}
