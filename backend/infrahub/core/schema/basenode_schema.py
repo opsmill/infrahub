@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Literal, NoReturn, ov
 from infrahub_sdk.utils import compare_lists, intersection
 from pydantic import ConfigDict, ValidationError, field_validator
 
+from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core.constants import HashableModelState, RelationshipCardinality, RelationshipKind
 from infrahub.core.models import HashableModel, HashableModelDiff
 
@@ -42,10 +43,11 @@ OPTIONAL_TEXT_FIELDS = [
 
 
 def _json_schema_extra(schema: JsonDict) -> None:
-    """
-    Mutate the generated JSON Schema in place to:
-      - allow `null` for `display_labels`
-      - mark the non-null branch as deprecated
+    """Mutate the generated JSON Schema in place to:
+
+    - allow `null` for `display_labels`
+    - mark the non-null branch as deprecated.
+
     """
     props = schema.get("properties")
     if not isinstance(props, dict):
@@ -75,7 +77,12 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     @staticmethod
     def _enhance_attribute_validation_error(exc: ValidationError, attr_name: str, idx: int) -> NoReturn:
-        """Enhance validation error with attribute name and correct index in location path."""
+        """Enhance validation error with attribute name and correct index in location path.
+
+        Raises:
+            from_exception_data: ValidationError rebuilt with enriched location and input metadata derived from the original error.
+
+        """
         errors = []
         for error in exc.errors():
             error_copy = error.copy()
@@ -132,7 +139,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def __hash__(self) -> int:
         """Return a hash of the object.
-        Be careful hash generated from hash() have a salt by default and they will not be the same across run"""
+
+        Be careful hash generated from hash() have a salt by default and they will not be the same across run.
+        """
         return hash(self.get_hash())
 
     @field_validator("attributes", mode="before")
@@ -180,7 +189,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def get_hash(self, display_values: bool = False) -> str:
         """Extend the Hash Calculation to account for attributes and relationships."""
-
         md5hash = hashlib.md5(usedforsecurity=False)
         md5hash.update(super().get_hash(display_values=display_values).encode())
 
@@ -194,7 +202,6 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
 
     def diff(self, other: Self) -> HashableModelDiff:
         """Extend the Diff Calculation to account for attributes and relationships."""
-
         node_diff = super().diff(other=other)
 
         # Attribute
@@ -226,8 +233,9 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         get_map_func: Callable,
         obj_type: type[AttributeSchema | RelationshipSchema],
     ) -> HashableModelDiff:
-        """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff
-        The logic is the same for both, except that the functions we are using to access these objects are differents
+        """The goal of this function is to reduce the amount of code duplicated between Attribute and Relationship to calculate a diff.
+
+        The logic is the same for both, except that the functions we are using to access these objects are differents.
 
         To map elements from the local and other objects together, we are using a combinasion of ID and name
         If the same id is present on both we'll use the ID to match the elements on both side
@@ -368,7 +376,7 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         raise ValueError(f"Unable to find the relationship {id}")
 
     def get_relationships_by_identifier(self, id: str) -> list[RelationshipSchema]:
-        """Return a list of relationship instead of a single one"""
+        """Return a list of relationship instead of a single one."""
         rels: list[RelationshipSchema] = []
         for item in self.relationships:
             if item.identifier == id:
@@ -461,27 +469,37 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
         return fields
 
     def generate_fields_for_display_label(self) -> dict | None:
-        """Generate a dictionary containing the list of fields that are required
+        """Generate a dictionary containing the list of fields that are required.
+
         to generate the display_label.
 
-        If display_labels is not defined, we return None which equal to everything.
+        If neither display_label nor display_labels is defined, we return None which equal to everything.
         """
+        fields: dict[str, str | dict[str, None] | None] = {}
 
-        if not self.display_labels:
+        if self.display_labels:
+            for item in self.display_labels:
+                fields.update(self.convert_path_to_graphql_fields(path=item))
+            return fields
+
+        if not self.display_label:
             return None
 
-        fields: dict[str, str | dict[str, None] | None] = {}
-        for item in self.display_labels:
-            fields.update(self.convert_path_to_graphql_fields(path=item))
-        return fields
+        if "{{" in self.display_label:
+            for var in InfrahubJinja2Template(template=self.display_label).get_variables():
+                fields.update(self.convert_path_to_graphql_fields(path=var))
+        else:
+            fields.update(self.convert_path_to_graphql_fields(path=self.display_label))
+
+        return fields or None
 
     def generate_fields_for_hfid(self) -> dict | None:
-        """Generate a dictionary containing the list of fields that are required
+        """Generate a dictionary containing the list of fields that are required.
+
         to generate the hfid.
 
         If display_labels is not defined, we return None which equal to everything.
         """
-
         if not self.human_friendly_id:
             return None
 
@@ -601,9 +619,10 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
     def _update_schema_paths(
         self, schema_paths_list: list[str], field_name_update_map: dict[str, str], deleted_field_names: set[str]
     ) -> list[str]:
-        """
-        For each schema_path (eg name__value, device__name_value), update the field name if the current name is
-        in field_name_update_map, remove the path if the field name is in deleted_field_names
+        """For each schema_path (eg name__value, device__name_value), update the field name or remove the path.
+
+        Updates the field name if the current name is in field_name_update_map. Removes the path
+        if the field name is in deleted_field_names.
         """
         updated_element_list = []
         for schema_path in schema_paths_list:
@@ -686,6 +705,21 @@ class BaseNodeSchema(GeneratedBaseNodeSchema):
                 setattr(self, field_name, None)
 
         return self
+
+    def _check_attr_in_uniqueness_constraint(self, attr: str) -> bool:
+        """Return True if ``attr`` appears in any uniqueness constraint path."""
+        if not self.uniqueness_constraints:
+            return False
+        for constraint_paths in self.uniqueness_constraints:
+            for constraint_path in constraint_paths:
+                if constraint_path.startswith(f"{attr}__") or constraint_path == attr:
+                    return True
+        return False
+
+    def check_if_attr_supports_profiles(self, attribute_schema: AttributeSchema) -> bool:
+        return attribute_schema.support_profiles and not self._check_attr_in_uniqueness_constraint(
+            attr=attribute_schema.name
+        )
 
 
 @dataclass

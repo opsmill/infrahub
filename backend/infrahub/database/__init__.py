@@ -140,7 +140,7 @@ class DatabaseSchemaManager:
 
 
 class InfrahubDatabase:
-    """Base class for database access"""
+    """Base class for database access."""
 
     def __init__(
         self,
@@ -187,11 +187,11 @@ class InfrahubDatabase:
         return False
 
     def get_context(self) -> dict[str, Any]:
-        """
-        This method is meant to be overridden by subclasses in order to fill in subclass attributes
-        to methods returning a copy of this object using self.__class__ constructor.
-        """
+        """This method is meant to be overridden by subclasses in order to fill in subclass attributes.
 
+        to methods returning a copy of this object using self.__class__ constructor.
+
+        """
         return {}
 
     def add_schema(self, schema: SchemaBranch, name: str | None = None) -> None:
@@ -473,8 +473,11 @@ async def validate_database(
         database_name (str): Name of the database in Neo4j
         retry (int, optional): Number of retry before raising an exception. Defaults to 0.
         retry_interval (int, optional): Time between retries in second. Defaults to 1.
-    """
 
+    Raises:
+        ClientError: When the database query fails and retries are exhausted.
+
+    """
     try:
         session = driver.session(database=database_name)
         await session.run("SHOW TRANSACTIONS")
@@ -507,6 +510,8 @@ async def get_db(retry: int = 0) -> AsyncDriver:
         trusted_certificates=trusted_certificates,
         notifications_disabled_classifications=[
             NotificationDisabledClassification.UNRECOGNIZED,
+            # Suppress spurious warnings for optional relationship types not yet in DB schema (HAS_OWNER, HAS_SOURCE, etc.)
+            NotificationDisabledClassification.SCHEMA,
         ],
         notifications_min_severity=NotificationMinimumSeverity.WARNING,
     )

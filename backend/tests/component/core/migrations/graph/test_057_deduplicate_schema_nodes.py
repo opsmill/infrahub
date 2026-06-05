@@ -9,6 +9,7 @@ from infrahub.core.migrations.graph.m057_deduplicate_schema_nodes import (
     Migration057,
 )
 from infrahub.core.migrations.shared import MigrationInput
+from infrahub.core.models import HashableModelDiff
 from infrahub.core.schema import AttributeSchema, NodeSchema, SchemaRoot, internal_schema
 from infrahub.core.schema.manager import SchemaManager
 from infrahub.core.timestamp import Timestamp
@@ -54,7 +55,15 @@ class TestMigration057:
             for rel in item.relationships:
                 if not rel.inherited:
                     rel.id = None
-            await manager.load_node_to_db(node=item, branch=branch, db=db, at=Timestamp(), user_id="migration-test")
+            # Use create_node_in_db (pure INSERT, no existence check) to intentionally write a
+            # duplicate row for this migration test.
+            await manager.create_node_in_db(
+                node=item,
+                branch=branch,
+                db=db,
+                at=Timestamp(),
+                user_id="migration-test",
+            )
 
     async def test_basic_deduplication(
         self,
@@ -129,8 +138,14 @@ class TestMigration057:
 
         # Update description on the original so its HAS_VALUE.from is the latest
         original.description = "Updated description on original TestConflictCar"
-        await manager.update_node_in_db(
-            db=db, node=original, user_id="migration-test", at=Timestamp(), branch=default_branch_scope_class
+        diff = HashableModelDiff(changed={"description": None})
+        await manager.update_node_in_db_based_on_diff(
+            db=db,
+            node=original,
+            diff=diff,
+            user_id="migration-test",
+            at=Timestamp(),
+            branch=default_branch_scope_class,
         )
 
         # Verify duplicates exist and query designates the original as keep_uuid
@@ -196,7 +211,15 @@ class TestMigration057:
         branch2_schema = manager.get_schema_branch(name=branch2.name)
         car = branch2_schema.get(name="TestBranchCar", duplicate=True)
         car.description = "Branch2 modified car"
-        await manager.update_node_in_db(db=db, node=car, user_id="migration-test", at=Timestamp(), branch=branch2)
+        diff = HashableModelDiff(changed={"description": None})
+        await manager.update_node_in_db_based_on_diff(
+            db=db,
+            node=car,
+            diff=diff,
+            user_id="migration-test",
+            at=Timestamp(),
+            branch=branch2,
+        )
 
         # Create duplicates on default branch
         await self._duplicate_schemas(db=db, branch=default_branch_scope_class, kind_names=["TestBranchCar"])

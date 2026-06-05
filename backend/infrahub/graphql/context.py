@@ -13,7 +13,12 @@ if TYPE_CHECKING:
 
 
 async def apply_external_context(graphql_context: GraphqlContext, context_input: ContextInput | None) -> None:
-    """Applies context provided by an external mutation to the GraphQL context"""
+    """Applies context provided by an external mutation to the GraphQL context.
+
+    Raises:
+        ValidationError: When the requested account override does not exist.
+
+    """
     if not context_input or not context_input.account or not context_input.account.id:
         return
 
@@ -36,4 +41,4 @@ async def apply_external_context(graphql_context: GraphqlContext, context_input:
     except NodeNotFoundError as exc:
         raise ValidationError(input_value="Unable to set context for account that doesn't exist") from exc
 
-    graphql_context.active_account_session.account_id = account.id
+    graphql_context.active_account_session.override_account(account_id=account.id)

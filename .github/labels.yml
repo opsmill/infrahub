@@ -151,6 +151,14 @@
   description: "This issue is ready and needs to be tested."
   color: "cccccc"
 
+- name: "state/needs-human-fix"
+  description: "The bug agent pipeline could not fix this issue automatically"
+  color: "e34918"
+
+- name: "state/needs-human-test"
+  description: "The bug agent pipeline could not write a test for this issue automatically"
+  color: "e34918"
+
 - name: "state/backlog"
   description: "This issue is part of the backlog"
   color: "eeeeee"

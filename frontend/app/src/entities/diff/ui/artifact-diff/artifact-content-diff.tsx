@@ -1,5 +1,3 @@
-import { gql, useQuery } from "@apollo/client";
-import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "react-aria-components";
@@ -20,12 +18,11 @@ import {
 
 import { useGetArtifactFile } from "@/entities/artifacts/ui/queries/get-artifact-file.query";
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import { useGetArtifactContentDiff } from "@/entities/diff/ui/queries/get-artifact-content-diff.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import { getProposedChangesArtifactsThreads } from "@/entities/proposed-changes/api/getProposedChangesArtifactsThreads";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
 import "react-diff-view/style/index.css";
 
@@ -95,7 +92,6 @@ interface ArtifactContentDiffProps {
 export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactContentDiffProps) => {
   const { proposedChangeId } = useParams();
   const { isAuthenticated } = useAuth();
-  const [schemaList] = useAtom(nodeSchemasAtom);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
@@ -117,18 +113,17 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     { enabled: !!itemNew?.storage_id }
   );
 
-  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_ARTIFACT_THREAD_OBJECT);
+  const {
+    isLoading: isThreadsLoading,
+    error,
+    data,
+    refetch,
+  } = useGetArtifactContentDiff(
+    { proposedChangeId: proposedChangeId ?? "" },
+    { enabled: !!proposedChangeId }
+  );
 
-  const queryString = getProposedChangesArtifactsThreads({
-    id: proposedChangeId,
-    kind: schemaData?.kind,
-  });
-
-  const { loading, error, data, refetch } = useQuery(gql(queryString), {
-    skip: !schemaData || !proposedChangeId,
-  });
-
-  if (loading || isPreviousLoading || isNewLoading) {
+  if (isThreadsLoading || isPreviousLoading || isNewLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 
@@ -140,8 +135,7 @@ export const ArtifactContentDiff = ({ itemPrevious, itemNew, id }: ArtifactConte
     return null;
   }
 
-  const threads =
-    data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const threads = data?.threads ?? [];
 
   const handleCloseComment = () => {
     setDisplayAddComment({});

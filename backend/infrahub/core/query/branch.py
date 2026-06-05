@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.branch.enums import TERMINAL_BRANCH_STATUSES, BranchStatus
 from infrahub.core.branch.filters import BranchListFilters
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.query import Query, QueryType
@@ -88,7 +88,7 @@ CALL (vertex_id) {
 
 
 class RebaseBranchQuery(Query):
-    """Rebase a branch onto the default branch by updating edge timestamps
+    """Rebase a branch onto the default branch by updating edge timestamps.
 
     For every edge on this branch
         if it has a from time before $at and no to time, update it to $at
@@ -159,11 +159,15 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
     def __init__(
         self,
         exclude_global: bool = False,
+        exclude_default: bool = False,
+        exclude_terminal: bool = False,
         branch_filters: BranchListFilters | None = None,
         **kwargs: Any,
     ) -> None:
         self.branch_filters = branch_filters or BranchListFilters()
         self.exclude_global = exclude_global
+        self.exclude_default = exclude_default
+        self.exclude_terminal = exclude_terminal
 
         # Temporary storage for filter params (will be merged after super().__init__)
         self._branch_filter_params: dict[str, Any] = {}
@@ -186,11 +190,18 @@ class BranchNodeGetListQuery(StandardNodeGetListQuery):
         """Build Cypher WHERE clause conditions from branch_filters."""
         conditions: list[str] = []
 
-        # Always exclude DELETING branches
-        conditions.append(f"n.status <> '{BranchStatus.DELETING.value}'")
+        if self.exclude_terminal:
+            terminal_values = ", ".join(f"'{status.value}'" for status in TERMINAL_BRANCH_STATUSES)
+            conditions.append(f"NOT n.status IN [{terminal_values}]")
+        else:
+            # Always exclude DELETING branches
+            conditions.append(f"n.status <> '{BranchStatus.DELETING.value}'")
 
         if self.exclude_global:
-            conditions.append(f"n.name <> '{GLOBAL_BRANCH_NAME}'")
+            conditions.append("n.is_global = false")
+
+        if self.exclude_default:
+            conditions.append("n.is_default = false")
 
         if self.branch_filters.status:
             param_name = "filter_status"

@@ -1,5 +1,6 @@
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import { nodeCoreFragment } from "@/shared/api/graphql/fragments";
 import { addAttributesToRequest, addRelationshipsToRequest } from "@/shared/api/graphql/utils";
 import { getRelationshipsForForm } from "@/shared/components/form/utils/getRelationshipsForForm";
 
@@ -10,9 +11,11 @@ import { isTemplateSchema } from "@/entities/schema/utils/is-template-schema";
 export const generateObjectEditFormQuery = ({
   schema,
   objectId,
+  extraRelationshipNames = [],
 }: {
   schema: NodeSchema | ProfileSchema;
   objectId: string;
+  extraRelationshipNames?: string[];
 }): string => {
   let objectSchema = schema;
   if (isTemplateSchema(schema)) {
@@ -21,6 +24,12 @@ export const generateObjectEditFormQuery = ({
       objectSchema = nodeSchemaOfTemplate;
     }
   }
+
+  const formRelationships = getRelationshipsForForm(schema, true);
+  const extraRelationships = (schema.relationships ?? []).filter(
+    (r) =>
+      extraRelationshipNames.includes(r.name) && !formRelationships.some((fr) => fr.name === r.name)
+  );
 
   const request = {
     query: {
@@ -31,14 +40,12 @@ export const generateObjectEditFormQuery = ({
         },
         edges: {
           node: {
-            id: true,
-            hfid: true,
-            display_label: true,
+            ...nodeCoreFragment,
             ...addAttributesToRequest(schema.attributes ?? [], {
               withMetadata: true,
               withPermissions: true,
             }),
-            ...addRelationshipsToRequest(getRelationshipsForForm(schema, true), {
+            ...addRelationshipsToRequest([...formRelationships, ...extraRelationships], {
               withMetadata: true,
             }),
             ...("generate_profile" in objectSchema && objectSchema.generate_profile
@@ -46,8 +53,7 @@ export const generateObjectEditFormQuery = ({
                   profiles: {
                     edges: {
                       node: {
-                        display_label: true,
-                        id: true,
+                        ...nodeCoreFragment,
                         profile_priority: {
                           value: true,
                         },

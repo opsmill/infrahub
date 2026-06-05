@@ -1,10 +1,13 @@
-from infrahub.context import InfrahubContext
+from typing import TYPE_CHECKING, cast
+
 from infrahub.core.branch import Branch
 from infrahub.core.changelog.models import RelationshipChangelogGetter
 from infrahub.core.constants import InfrahubKind, MutationAction
 from infrahub.core.node import Node
-from infrahub.core.protocols import CoreProposedChange
 from infrahub.database import InfrahubDatabase
+
+if TYPE_CHECKING:
+    from infrahub.core.protocols import CoreThread
 from infrahub.events.node_action import (
     NodeCreatedEvent,
     NodeDeletedEvent,
@@ -15,7 +18,7 @@ from infrahub.events.node_action import (
 from infrahub.groups.parsers import GroupNodeMutationParser
 from infrahub.worker import WORKER_IDENTITY
 
-from .models import EventMeta, InfrahubEvent
+from .models import EventContext, EventMeta, InfrahubEvent
 from .proposed_change_action import ProposedChangeThreadCreatedEvent, ProposedChangeThreadUpdatedEvent
 
 
@@ -24,13 +27,13 @@ async def generate_node_mutation_events(
     deleted_nodes: list[Node],
     db: InfrahubDatabase,
     branch: Branch,
-    context: InfrahubContext,
+    context: EventContext,
     request_id: str,
     action: MutationAction,
     side_effect_nodes: list[Node] | None = None,
 ) -> list[InfrahubEvent]:
     meta = EventMeta(
-        account_id=context.account.account_id,
+        account_id=context.account_id,
         initiator_id=WORKER_IDENTITY,
         request_id=request_id,
         branch=branch,
@@ -99,21 +102,22 @@ async def generate_node_mutation_events(
         InfrahubKind.ARTIFACTTHREAD,
         InfrahubKind.FILETHREAD,
     ]:
-        proposed_change: CoreProposedChange = await node.change.get_peer(db=db, peer_type=CoreProposedChange)  # type: ignore[attr-defined]
-        action_to_event_map = {
-            MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
-            MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,
-        }
-        if action in action_to_event_map:
-            specific_events.append(
-                action_to_event_map[action](
-                    proposed_change_id=proposed_change.id,
-                    proposed_change_name=proposed_change.name.value,
-                    proposed_change_state=proposed_change.state.value,
-                    thread_id=node.id,
-                    thread_kind=kind,
-                    meta=EventMeta.from_context(context=context),
+        proposed_change = await cast("CoreThread", node).change.get_peer(db=db)
+        if proposed_change:
+            action_to_event_map = {
+                MutationAction.CREATED: ProposedChangeThreadCreatedEvent,
+                MutationAction.UPDATED: ProposedChangeThreadUpdatedEvent,
+            }
+            if action in action_to_event_map:
+                specific_events.append(
+                    action_to_event_map[action](
+                        proposed_change_id=proposed_change.id,
+                        proposed_change_name=proposed_change.name.value,
+                        proposed_change_state=proposed_change.state.value,
+                        thread_id=node.id,
+                        thread_kind=kind,
+                        meta=EventMeta.from_context(context=context),
+                    )
                 )
-            )
 
     return events + side_effect_events + group_events + specific_events

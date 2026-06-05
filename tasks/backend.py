@@ -23,7 +23,6 @@ NAMESPACE = "BACKEND"
 
 def _format_ruff(context: Context) -> None:
     """Run ruff to format all Python files."""
-
     print(f" - [{NAMESPACE}] Format code with ruff")
     exec_cmd = f"uv run ruff format {MAIN_DIRECTORY} &&"
     exec_cmd += f"uv run ruff check --fix {MAIN_DIRECTORY}"
@@ -33,8 +32,7 @@ def _format_ruff(context: Context) -> None:
 
 @task(name="format")
 def format_all(context: Context) -> None:
-    """This will run all formatter."""
-
+    """Format all backend Python files with ruff."""
     _format_ruff(context)
 
     print(f" - [{NAMESPACE}] All formatters have been executed!")
@@ -45,8 +43,7 @@ def format_all(context: Context) -> None:
 # ----------------------------------------------------------------------------
 @task
 def ruff(context: Context) -> None:
-    """Run ruff to check that Python files adherence to ruff standards."""
-
+    """Run ruff linter against backend Python files."""
     print(f" - [{NAMESPACE}] Check code with ruff")
     exec_cmd = f"uv run ruff check --diff {MAIN_DIRECTORY}"
 
@@ -61,7 +58,6 @@ def ruff(context: Context) -> None:
 @task
 def ty(context: Context) -> None:
     """Run ty type checker against project files."""
-
     print(f" - [{NAMESPACE}] Check code with ty")
     exec_cmd = "uv run ty check ."
 
@@ -71,8 +67,7 @@ def ty(context: Context) -> None:
 
 @task
 def mypy(context: Context) -> None:
-    """This will run mypy for the specified name and Python version."""
-
+    """Run mypy type checking against backend Python files."""
     print(f" - [{NAMESPACE}] Check code with mypy")
     exec_cmd = f"uv run mypy --show-error-codes {MAIN_DIRECTORY}"
 
@@ -82,7 +77,7 @@ def mypy(context: Context) -> None:
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linters."""
+    """Run all backend linters (ruff, ty, mypy)."""
     ruff(context)
     ty(context)
     mypy(context)
@@ -92,8 +87,9 @@ def lint(context: Context) -> None:
 
 @task(optional=["database"])
 def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend component tests."""
     with context.cd(ESCAPED_REPO_PATH):
-        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component"
+        exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub --durations=20 {MAIN_DIRECTORY}/tests/component"
         if database == "neo4j":
             exec_cmd += " --neo4j"
         print(f"{exec_cmd}")
@@ -102,6 +98,7 @@ def test_component(context: Context, database: str = INFRAHUB_DATABASE) -> Resul
 
 @task
 def test_unit(context: Context) -> Result | None:
+    """Run backend unit tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest --cov=infrahub {MAIN_DIRECTORY}/tests/unit"
         print(f"{exec_cmd}")
@@ -110,6 +107,7 @@ def test_unit(context: Context) -> Result | None:
 
 @task(optional=["database"])
 def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend core component tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/component/core"
         if database == "neo4j":
@@ -120,6 +118,7 @@ def test_core(context: Context, database: str = INFRAHUB_DATABASE) -> Result | N
 
 @task(optional=["database"])
 def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend integration tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/integration"
         if database == "neo4j":
@@ -130,6 +129,7 @@ def test_integration(context: Context, database: str = INFRAHUB_DATABASE) -> Res
 
 @task(optional=["database"])
 def test_functional(context: Context, database: str = INFRAHUB_DATABASE) -> Result | None:
+    """Run backend functional tests."""
     with context.cd(ESCAPED_REPO_PATH):
         exec_cmd = f"uv run pytest -n {NBR_WORKERS} -v --cov=infrahub {MAIN_DIRECTORY}/tests/functional"
         if database == "neo4j":
@@ -149,6 +149,7 @@ def test_scale(
     rels: int | None = None,
     changes: int | None = None,
 ) -> Result | None:
+    """Run backend scale/performance tests."""
     args = []
     if stager:
         args.extend(["--stager", stager])
@@ -180,6 +181,7 @@ def test_scale(
 
 @task(default=True)
 def format_and_lint(context: Context) -> None:
+    """Format and lint all backend Python files."""
     format_all(context)
     lint(context)
 
@@ -196,10 +198,31 @@ def generate(context: Context) -> None:
     _generate_protocols(context=context)
 
 
+GRAPHQL_QUERY_FILES = [
+    "backend/infrahub/generators/graphql_queries/generator_instance_fetch.gql",
+    "backend/infrahub/computed_attribute/graphql_queries/transform_fetch.gql",
+]
+
+
+def _generate_custom_graphql_types(context: Context) -> None:
+    for gql_file in GRAPHQL_QUERY_FILES:
+        execute_command(
+            context=context,
+            command=f"uv run infrahubctl graphql generate-return-types {gql_file} --schema schema/schema.graphql",
+        )
+        execute_command(context=context, command=f"uv run ruff check --fix {Path(gql_file).parent}")
+        execute_command(context=context, command=f"uv run ruff format {Path(gql_file).parent}")
+
+
+@task
+def generate_custom_graphql_types(context: Context) -> None:
+    """Generate Pydantic models from .gql query files using infrahubctl."""
+    _generate_custom_graphql_types(context=context)
+
+
 @task
 def validate_generated(context: Context, docker: bool = False) -> None:  # noqa: ARG001
-    """Validate that the generated documentation is committed to Git."""
-
+    """Validate that generated schemas and protocols are committed to Git."""
     _generate_schemas(context=context)
     exec_cmd = "git diff --exit-code backend/infrahub/core/schema/generated"
     with context.cd(ESCAPED_REPO_PATH):
@@ -209,6 +232,24 @@ def validate_generated(context: Context, docker: bool = False) -> None:  # noqa:
     exec_cmd = "git diff --exit-code backend/infrahub/core/protocols.py backend/tests/protocols.py"
     with context.cd(ESCAPED_REPO_PATH):
         context.run(exec_cmd)
+
+    _generate_custom_graphql_types(context=context)
+    exec_cmd = "git diff --exit-code backend/infrahub/generators/graphql_queries/ backend/infrahub/computed_attribute/graphql_queries/"
+    with context.cd(ESCAPED_REPO_PATH):
+        context.run(exec_cmd)
+
+
+@task(name="export-error-catalogue")
+def export_error_catalogue(context: Context, output: str = "schema/error-catalogue.json") -> None:  # noqa: ARG001
+    """Export the Infrahub error catalogue to a JSON Schema artefact."""
+    from infrahub.errors.export import write_catalogue
+
+    destination = Path(output)
+    if not destination.is_absolute():
+        destination = Path(ESCAPED_REPO_PATH) / destination
+
+    written = write_catalogue(destination)
+    print(f" - [{NAMESPACE}] Wrote error catalogue to {written}")
 
 
 def _generate_schemas(context: Context) -> None:
@@ -286,6 +327,14 @@ def _jinja2_filter_render_attribute(value: dict[str, Any], use_python_primitive:
     return f"{attr_name}: {value}"
 
 
+def _jinja2_filter_render_relationship(value: dict[str, Any]) -> str:
+    peer = value.get("peer", "")
+    name = value["name"]
+    if peer:
+        return f"{name}: RelationshipManager[{peer}]"
+    return f"{name}: RelationshipManager"
+
+
 def _sort_and_filter_models(
     models: list[dict[str, Any]], filters: list[tuple[str, str]] | None = None
 ) -> list[dict[str, Any]]:
@@ -318,6 +367,7 @@ def _generate_protocols(context: Context) -> None:
     env = Environment(loader=FileSystemLoader(f"{ESCAPED_REPO_PATH}/backend/templates"), undefined=StrictUndefined)
     env.filters["inheritance"] = _jinja2_filter_inheritance
     env.filters["render_attribute"] = _jinja2_filter_render_attribute
+    env.filters["render_relationship"] = _jinja2_filter_render_relationship
 
     # Export protocols for backend code use
     generated = f"{ESCAPED_REPO_PATH}/backend/infrahub/core"

@@ -21,6 +21,7 @@ from .account import (
     core_generic_account,
     core_password_credential,
     core_refresh_token,
+    internal_external_identity,
 )
 from .artifact import core_artifact, core_artifact_definition, core_artifact_target
 from .builtin import builtin_tag
@@ -90,6 +91,7 @@ from .propose_change_validator import (
 from .repository import core_generic_repository, core_read_only_repository, core_repository
 from .resource_pool import (
     core_ip_address_pool,
+    core_ip_pool,
     core_ip_prefix_pool,
     core_number_pool,
     core_resource_pool,
@@ -131,6 +133,7 @@ core_models_mixed: CoreModelsMixedType = {
         builtin_ip_address,
         core_resource_pool,
         core_weighted_pool_resource,
+        core_ip_pool,
         core_generic_account,
         core_base_permission,
         core_credential,
@@ -199,6 +202,7 @@ core_models_mixed: CoreModelsMixedType = {
         core_account_group,
         internal_ipam_ip_prefix_available,
         internal_ipam_ip_range_available,
+        internal_external_identity,
     ],
 }
 

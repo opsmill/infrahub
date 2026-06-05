@@ -18,6 +18,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.dependencies.registry import get_component_registry
 from infrahub.proposed_change.constants import ProposedChangeState
 from tests.constants import TestKind
+from tests.helpers.db_validation import verify_graph
 from tests.helpers.schema import CAR_SCHEMA, load_schema
 from tests.helpers.test_app import TestInfrahubApp
 
@@ -251,8 +252,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         diff_on_deleted_branch: EnrichedDiffRoot,
         client: InfrahubClient,
     ) -> None:
-        """Validate if the diff is properly created the first time"""
-
+        """Validate if the diff is properly created the first time."""
         result = await client.execute_graphql(query=DIFF_UPDATE_QUERY, variables={"branch_name": BRANCH_NAME})
         assert result["DiffUpdate"]["ok"]
 
@@ -265,8 +265,7 @@ class TestDiffUpdateConflict(TestInfrahubApp):
     async def test_diff_second_update(
         self, db: InfrahubDatabase, initial_dataset: dict[str, Node], create_diff: None, client: InfrahubClient
     ) -> None:
-        """Validate if the diff is properly updated the second time"""
-
+        """Validate if the diff is properly updated the second time."""
         branch1 = registry.get_branch_from_registry(branch=BRANCH_NAME)
 
         bob = await Node.init(schema=TestKind.PERSON, db=db, branch=branch1.name)
@@ -1218,3 +1217,5 @@ class TestDiffUpdateConflict(TestInfrahubApp):
         # validate diff not updated for deleted branch
         fresh_deleted_branch_diff = await self.get_branch_diff(db=db, branch=deleted_branch)
         assert fresh_deleted_branch_diff.to_time == diff_on_deleted_branch.to_time
+
+        await verify_graph(db=db)

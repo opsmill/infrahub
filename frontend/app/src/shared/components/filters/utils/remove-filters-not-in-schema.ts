@@ -18,6 +18,8 @@ export const removeFiltersNotInSchema = (filters: Filter[], schema: ModelSchema 
   return filters.filter((filter) => {
     if (isIpamSchema && filter.name === AVAILABLE_IP_FILTER_NAME) return true;
 
+    if (filter.name.startsWith("node_metadata__")) return true;
+
     const [fieldName] = filter.name.split("__");
     return (
       schema.attributes?.some((attr) => attr.name === fieldName) ||

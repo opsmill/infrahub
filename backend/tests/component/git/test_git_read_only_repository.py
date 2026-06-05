@@ -61,10 +61,14 @@ async def test_new_invalid_branch(
         )
 
 
-async def test_get_commit_value(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
+async def test_get_commit_value(
+    git_repo_01_read_only: InfrahubReadOnlyRepository, git_upstream_repo_01: dict[str, str | Path]
+) -> None:
     repo = git_repo_01_read_only
-    assert repo.get_commit_value(branch_name="does_not_matter") == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
-    assert repo.get_commit_value(branch_name="branch02", remote=True) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
+    upstream = Repo(git_upstream_repo_01["path"])
+    branch01_commit = str(upstream.commit("branch01"))
+    assert repo.get_commit_value(branch_name="does_not_matter") == branch01_commit
+    assert repo.get_commit_value(branch_name="branch02", remote=True) == branch01_commit
 
 
 async def test_get_branches_from_local(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
@@ -77,33 +81,41 @@ async def test_get_branches_from_local(git_repo_01_read_only: InfrahubReadOnlyRe
 
 @patch("infrahub.git.integrator.InfrahubRepositoryIntegrator.import_objects_from_files", new_callable=AsyncMock)
 async def test_sync_from_remote_new_ref(
-    mock_import_objects: AsyncMock, git_repo_01_read_only: InfrahubReadOnlyRepository
+    mock_import_objects: AsyncMock,
+    git_repo_01_read_only: InfrahubReadOnlyRepository,
+    git_upstream_repo_01: dict[str, str | Path],
 ) -> None:
     repo = git_repo_01_read_only
     repo.ref = "branch02"
-    branch_02_head_commit = "4e2fd98a5fd1fb61dc53150c778e22ee35f26191"
+    upstream = Repo(git_upstream_repo_01["path"])
+    branch01_commit = str(upstream.commit("branch01"))
+    branch02_commit = str(upstream.commit("branch02"))
     mock_client = AsyncMock(InfrahubClient)
     repo.client = mock_client
 
     await repo.sync_from_remote()
 
     worktree_commits = {wt.identifier for wt in repo.get_worktrees()}
-    assert worktree_commits == {"main", "30e911e25ef9e4fad9f9d00fe05395031f90d460", branch_02_head_commit}
+    assert worktree_commits == {"main", branch01_commit, branch02_commit}
     mock_client.repository_update_commit.assert_awaited_once_with(
-        branch_name="main", repository_id=repo.id, commit=branch_02_head_commit, is_read_only=True
+        branch_name="main", repository_id=repo.id, commit=branch02_commit, is_read_only=True
     )
 
 
-async def test_sync_from_remote_existing_ref(git_repo_01_read_only: InfrahubReadOnlyRepository) -> None:
+async def test_sync_from_remote_existing_ref(
+    git_repo_01_read_only: InfrahubReadOnlyRepository, git_upstream_repo_01: dict[str, str | Path]
+) -> None:
     repo = git_repo_01_read_only
     repo.ref = "branch01"
+    upstream = Repo(git_upstream_repo_01["path"])
+    branch01_commit = str(upstream.commit("branch01"))
     mock_client = AsyncMock(InfrahubClient)
     repo.client = mock_client
 
     await repo.sync_from_remote()
 
     worktree_commits = {wt.identifier for wt in repo.get_worktrees()}
-    assert worktree_commits == {"main", "30e911e25ef9e4fad9f9d00fe05395031f90d460"}
+    assert worktree_commits == {"main", branch01_commit}
     mock_client.repository_update_commit.assert_not_awaited()
 
 

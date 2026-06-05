@@ -22,7 +22,7 @@ class GraphQLFieldExtractor:
         return fields or {}
 
     def _extract_fields(self, selection_set: SelectionSetNode | None) -> dict[str, dict] | None:
-        """This function extract all the requested fields in a tree of Dict from a SelectionSetNode
+        """This function extract all the requested fields in a tree of Dict from a SelectionSetNode.
 
         The goal of this function is to limit the fields that we need to query from the backend.
 
@@ -32,7 +32,6 @@ class GraphQLFieldExtractor:
 
         In the future we'll probably need to redesign how we read GraphQL queries to generate better Database query.
         """
-
         if not selection_set:
             return None
 

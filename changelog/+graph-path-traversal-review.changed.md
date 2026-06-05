@@ -1,0 +1,1 @@
+Refined graph path traversal API: renamed `InfrahubDependencies` to `InfrahubReachableNodes`, renamed `node_filter` input to `kind_filter`, added generic-kind support in filters, and hardened default-branch edge filtering.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import operator
 from collections import defaultdict
 from dataclasses import dataclass, field
 from enum import Enum
@@ -37,7 +38,6 @@ def sort_results_by_time(results: list[QueryResult], rel_label: str) -> list[Que
         We are adding more weight (500) to the record for which the last action was to set "from"
          versus a record with "from" and "to" set.
     """
-
     results_dict = {}
 
     for result in results:
@@ -144,7 +144,8 @@ class QueryType(Enum):
 
 def cleanup_return_labels(labels: list[str]) -> list[str]:
     """Cleanup a list of return labels by checking if there is an alias defined.
-    if an alias is defined with `value AS alias` we extract just the alias from the label
+
+    if an alias is defined with `value AS alias` we extract just the alias from the label.
     """
     clean_labels = []
     for label in labels:
@@ -174,7 +175,8 @@ class QueryResult:
 
     def calculate_branch_score(self) -> None:
         """The branch score is a simple way to order and classify multiple responses for the same branch.
-        If the branch name is not the default branch it will get a higher score
+
+        If the branch name is not the default branch it will get a higher score.
         """
         self.branch_score = 0
 
@@ -187,9 +189,7 @@ class QueryResult:
             self.branch_score += branch_level
 
     def calculate_time_score(self) -> None:
-        """The time score look into the to and from time all relationships
-        if the 'to' field is not defined
-        """
+        """The time score look into the to and from time all relationships if the 'to' field is not defined."""
         self.time_score = 0
 
         for rel in self.get_rels():
@@ -206,7 +206,7 @@ class QueryResult:
                 self.time_score += 2
 
     def check_rels_status(self) -> None:
-        """Check if some relationships have the status deleted and update the flag `has_deleted_rels`"""
+        """Check if some relationships have the status deleted and update the flag `has_deleted_rels`."""
         for rel in self.get_rels():
             if rel.get("status", None) == "deleted":
                 self.has_deleted_rels = True
@@ -249,6 +249,24 @@ class QueryResult:
 
         return return_type(item)
 
+    def get_as_list_of_type(self, label: str, return_type: Callable[..., RETURN_TYPE]) -> list[RETURN_TYPE]:
+        """Return a label whose value is a Cypher-projected list of maps.
+
+        Each map is constructed into ``return_type`` via keyword arguments,
+        so ``return_type`` is typically a ``TypedDict`` (or a dataclass)
+        describing the projection's field shape:
+
+            .get_as_list_of_type(label="hops", return_type=HopRow)
+
+        Raises:
+            ValueError: when the label's value is not a list.
+
+        """
+        entry = self._get(label=label)
+        if not isinstance(entry, list):
+            raise ValueError(f"{label} is not a list")
+        return [return_type(**item) for item in entry]
+
     def get_node_collection(self, label: str) -> list[Neo4jNode]:
         entry = self._get(label=label)
         if isinstance(entry, list):
@@ -275,7 +293,6 @@ class QueryResult:
 
     def get_rels(self) -> Generator[Neo4jRelationship, None, None]:
         """Return all relationships."""
-
         for item in self.data:
             if isinstance(item, Neo4jRelationship):
                 yield item
@@ -415,7 +432,9 @@ class Query:
 
     def get_context(self) -> dict[str, str]:
         """Provide additional context for this query, beyond the name.
-        Right now it's mainly used to add more labels to the metrics."""
+
+        Right now it's mainly used to add more labels to the metrics.
+        """
         return {}
 
     @staticmethod
@@ -427,8 +446,8 @@ class Query:
         """Add a new section at the end of the query.
 
         A string with multiple lines will be broken down into multiple entries in self.query_lines
-        Trailing and leading spaces per line will be removed."""
-
+        Trailing and leading spaces per line will be removed.
+        """
         if isinstance(query, list):
             for item in query:
                 self.add_to_query(query=item)
@@ -520,11 +539,11 @@ class Query:
 
     def _get_params_for_neo4j_shell(self) -> str:
         """Generate string to define some parameters in Neo4j browser interface.
+
         It's especially useful to later execute a query that includes some variables.
 
         The params string must be executed on its own window in Neo4j, before executing the query.
         """
-
         params = []
 
         for key, value in self.params.items():
@@ -596,9 +615,15 @@ class Query:
 
     async def count(self, db: InfrahubDatabase) -> int:
         """Count the number of results matching a READ query.
-        OFFSET and LIMIT are automatically excluded when counting.
-        """
 
+        OFFSET and LIMIT are automatically excluded when counting.
+
+        Raises:
+            TypeError: When the query is a WRITE query.
+            ValueError: When the query type is not READ.
+            QueryError: When the count query returns no results and `raise_error_if_empty` is True.
+
+        """
         if self.type == QueryType.WRITE:
             raise TypeError("Unable to count the number of response on a Write query.")
         if self.type != QueryType.READ:
@@ -615,7 +640,6 @@ class Query:
 
     def get_result(self) -> QueryResult | None:
         """Return a single Result."""
-
         if not self.has_been_executed:
             return None
 
@@ -629,12 +653,11 @@ class Query:
 
     def get_results(self) -> Generator[QueryResult, None, None]:
         """Get all the results sorted by score."""
-
         score_idx = {}
         for idx, result in enumerate(self.results):
             score_idx[idx] = result.branch_score
 
-        for idx, _ in sorted(score_idx.items(), key=lambda x: x[1], reverse=True):
+        for idx, _ in sorted(score_idx.items(), key=operator.itemgetter(1), reverse=True):
             yield self.results[idx]
 
     def get_results_group_by(self, *args: Any) -> Generator[QueryResult, None, None]:
@@ -642,8 +665,8 @@ class Query:
 
         Examples:
             get_results_group_by(("n", "uuid"), ("a", "name")):
-        """
 
+        """
         attrs_info = defaultdict(list)
 
         # Extract all attrname and relationships on all branches
@@ -665,9 +688,7 @@ class Query:
             attrs_info[tuple(identifier)].append(info)
 
         for values in attrs_info.values():
-            attr_info = sorted(
-                values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]), reverse=True
-            )[0]
+            attr_info = max(values, key=lambda i: (i["branch_score"], i["time_score"], not i["deleted"]))
             if attr_info["deleted"]:
                 continue
 

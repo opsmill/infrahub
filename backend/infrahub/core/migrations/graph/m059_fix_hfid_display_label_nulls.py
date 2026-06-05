@@ -12,11 +12,11 @@ from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME
 from infrahub.core.initialization import get_root_node
 from infrahub.core.manager import NodeManager
+from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
 from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 from infrahub.core.node.node_property_attribute import DisplayLabel, HumanFriendlyIdentifier
 from infrahub.core.query import Query, QueryType
@@ -24,17 +24,15 @@ from infrahub.core.query.node import AttributeFromDB
 from infrahub.core.schema import GenericSchema, SchemaNotFoundError
 
 from .load_schema_branch import get_or_load_schema_branch
-from .m047_backfill_or_null_display_label import UpdateAttributeValuesQuery
 
 if TYPE_CHECKING:
+    from rich.console import Console
+
     from infrahub.core.node import Node
     from infrahub.core.schema import NodeSchema, ProfileSchema, TemplateSchema
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-console = get_migration_console()
 
 
 @dataclass
@@ -150,6 +148,7 @@ class Migration059(MigrationRequiringRebase):
         db: InfrahubDatabase,
         schema: NodeSchema | ProfileSchema | TemplateSchema,
         node: Node,
+        console: Console,
     ) -> str | None:
         """Compute the correct display_label value for a node."""
         if schema.display_label:
@@ -186,6 +185,7 @@ class Migration059(MigrationRequiringRebase):
         db: InfrahubDatabase,
         schema: NodeSchema | ProfileSchema | TemplateSchema,
         node: Node,
+        console: Console,
     ) -> str | None:
         """Compute the correct human_friendly_id value for a node, JSON-encoded."""
         if not schema.human_friendly_id:
@@ -211,6 +211,7 @@ class Migration059(MigrationRequiringRebase):
         schema: NodeSchema | ProfileSchema | TemplateSchema,
         batch: list[BadNodeInfo],
         errors: list[str],
+        console: Console,
     ) -> tuple[dict[str, str], dict[str, str]]:
         """Load nodes and compute corrected display_label/HFID values for a batch.
 
@@ -230,7 +231,7 @@ class Migration059(MigrationRequiringRebase):
 
             if "display_label" in bad_attrs and (schema.display_label or schema.display_labels):
                 try:
-                    value = await self._compute_display_label(db=db, schema=schema, node=node)
+                    value = await self._compute_display_label(db=db, schema=schema, node=node, console=console)
                     if value is not None:
                         dl_values[node_uuid] = value
                 except Exception as exc:
@@ -239,7 +240,7 @@ class Migration059(MigrationRequiringRebase):
 
             if "human_friendly_id" in bad_attrs and schema.human_friendly_id:
                 try:
-                    value = await self._compute_hfid(db=db, schema=schema, node=node)
+                    value = await self._compute_hfid(db=db, schema=schema, node=node, console=console)
                     if value is not None:
                         hfid_values[node_uuid] = value
                 except Exception as exc:
@@ -256,6 +257,7 @@ class Migration059(MigrationRequiringRebase):
         schema_branch: SchemaBranch,
         bad_nodes: list[BadNodeInfo],
         at: Timestamp,
+        console: Console,
         progress: Progress | None = None,
         progress_task: TaskID | None = None,
     ) -> MigrationResult:
@@ -288,7 +290,7 @@ class Migration059(MigrationRequiringRebase):
                 batch = nodes[batch_start : batch_start + self.update_batch_size]
 
                 dl_values, hfid_values = await self._compute_values_for_batch(
-                    db=db, load_branch=load_branch, schema=schema, batch=batch, errors=errors
+                    db=db, load_branch=load_branch, schema=schema, batch=batch, errors=errors, console=console
                 )
 
                 if dl_values:
@@ -318,6 +320,7 @@ class Migration059(MigrationRequiringRebase):
         return MigrationResult(errors=errors)
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
         at = migration_input.at
         root_node = await get_root_node(db=db, initialize=False)
@@ -328,7 +331,7 @@ class Migration059(MigrationRequiringRebase):
         result = MigrationResult()
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 # Fix bad values on default branch (branch-aware nodes)
                 bad_nodes_default = await self._find_bad_nodes(db=db, value_branch_names=[default_branch_name])
                 if bad_nodes_default:
@@ -343,6 +346,7 @@ class Migration059(MigrationRequiringRebase):
                         schema_branch=schema_branch,
                         bad_nodes=bad_nodes_default,
                         at=at,
+                        console=console,
                         progress=progress,
                         progress_task=task,
                     )
@@ -365,6 +369,7 @@ class Migration059(MigrationRequiringRebase):
                         schema_branch=schema_branch,
                         bad_nodes=bad_nodes_global,
                         at=at,
+                        console=console,
                         progress=progress,
                         progress_task=task,
                     )
@@ -378,6 +383,7 @@ class Migration059(MigrationRequiringRebase):
         return result
 
     async def execute_against_branch(self, migration_input: MigrationInput, branch: Branch) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
         at = migration_input.at
         schema_branch = await get_or_load_schema_branch(db=db, branch=branch)
@@ -394,7 +400,7 @@ class Migration059(MigrationRequiringRebase):
             return MigrationResult()
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 task = progress.add_task(
                     f"Fixing {len(bad_nodes)} nodes with bad display_label/HFID on branch {branch.name}",
                     total=len(bad_nodes),
@@ -406,6 +412,7 @@ class Migration059(MigrationRequiringRebase):
                     schema_branch=schema_branch,
                     bad_nodes=bad_nodes,
                     at=at,
+                    console=console,
                     progress=progress,
                     progress_task=task,
                 )

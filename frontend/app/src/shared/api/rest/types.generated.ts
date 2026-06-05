@@ -89,6 +89,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/auth/ldap/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Login Ldap */
+        post: operations["login_ldap_api_auth_ldap_login_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/diff/files": {
         parameters: {
             query?: never;
@@ -133,6 +150,10 @@ export interface paths {
         /**
          * Get File
          * @description Retrieve a file from a git repository.
+         *
+         *     Raises:
+         *         CommitNotFoundError: When no commit is provided and the repository has no commits.
+         *         PropagatedFromWorkerError: When the worker returns an error response while reading the file.
          */
         get: operations["get_file_api_file__repository_id___file_path__get"];
         put?: never;
@@ -413,6 +434,9 @@ export interface paths {
          *     Requires `VIEW` permission on the FileObject node.
          *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
          *     filename.
+         *
+         *     Raises:
+         *         HTTPException: When the requested kind does not inherit from the FileObject schema.
          */
         get: operations["download_file_object_by_hfid_api_storage_files_by_hfid__kind__get"];
         put?: never;
@@ -437,6 +461,9 @@ export interface paths {
          *     Requires `VIEW` permission on the FileObject node.
          *     Returns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original
          *     filename.
+         *
+         *     Raises:
+         *         NodeNotFoundError: When no FileObject node matches the provided storage_id.
          */
         get: operations["download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get"];
         put?: never;
@@ -516,6 +543,23 @@ export interface paths {
         put?: never;
         /** Upload File */
         post: operations["upload_file_api_storage_upload_file_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/telemetry/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Telemetry Snapshots */
+        get: operations["get_telemetry_snapshots_api_telemetry_snapshots_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -651,7 +695,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -775,7 +819,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -909,7 +953,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1016,7 +1060,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1329,10 +1373,7 @@ export interface components {
         };
         /** Body_upload_file_api_storage_upload_file_post */
         Body_upload_file_api_storage_upload_file_post: {
-            /**
-             * File
-             * Format: binary
-             */
+            /** File */
             file: string;
         };
         /** BranchDiffArtifact */
@@ -1416,6 +1457,7 @@ export interface components {
             analytics: components["schemas"]["AnalyticsSettings"];
             experimental_features: components["schemas"]["ExperimentalFeaturesSettings"];
             sso: components["schemas"]["SSOInfo"];
+            ldap: components["schemas"]["LDAPInfo"];
             /** Installation Type */
             installation_type: string;
             policy: components["schemas"]["PolicySettings"];
@@ -1456,6 +1498,18 @@ export interface components {
             color?: string | null;
             /** Label */
             label?: string | null;
+        };
+        /** EnterpriseRequiredResponse */
+        EnterpriseRequiredResponse: {
+            /**
+             * Error Code
+             * @default ENTERPRISE_REQUIRED
+             */
+            error_code: string;
+            /** Feature */
+            feature: string;
+            /** Message */
+            message?: string | null;
         };
         /**
          * ErrorCategory
@@ -1553,7 +1607,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -1692,6 +1746,53 @@ export interface components {
             additionalProperties?: boolean | {
                 [key: string]: unknown;
             } | null;
+        };
+        /** LDAPAuthErrorResponse */
+        LDAPAuthErrorResponse: {
+            /** Error Code */
+            error_code: string;
+            /** Message */
+            message?: string | null;
+        };
+        /** LDAPCollisionResponse */
+        LDAPCollisionResponse: {
+            /**
+             * Error Code
+             * @default LDAP_ACCOUNT_COLLISION
+             */
+            error_code: string;
+            /** Account Name */
+            account_name: string;
+            /** Message */
+            message?: string | null;
+        };
+        /** LDAPCredentials */
+        LDAPCredentials: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
+        /** LDAPInfo */
+        LDAPInfo: {
+            /**
+             * Enabled
+             * @description True when LDAP sign-in is available on this deployment, meaning it has been configured and the running edition supports it.
+             * @default false
+             */
+            enabled: boolean;
+            /**
+             * Display Label
+             * @description Text shown on the LDAP sign-in button on the login page.
+             * @default Sign in with LDAP
+             */
+            display_label: string;
+            /**
+             * Icon
+             * @description Icon shown on the LDAP sign-in button on the login page.
+             * @default mdi:account-key-outline
+             */
+            icon: string;
         };
         /**
          * ListAttributeParameters
@@ -1948,7 +2049,7 @@ export interface components {
             icon?: string | null;
             /**
              * Order By
-             * @description List of attributes to use to order the results by default
+             * @description List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.
              */
             order_by?: string[] | null;
             /**
@@ -2246,6 +2347,11 @@ export interface components {
             /** Git Agent Dsn */
             git_agent_dsn?: string | null;
         };
+        /**
+         * RemoteSendStatus
+         * @enum {string}
+         */
+        RemoteSendStatus: "pending" | "sent" | "skipped" | "failed";
         /** SSOInfo */
         SSOInfo: {
             /** Providers */
@@ -2376,7 +2482,7 @@ export interface components {
             warnings?: components["schemas"]["SchemaWarning"][];
             /**
              * Schema Updated
-             * @description Indicates if the loading of the schema changed the existing schema
+             * @description Indicates if the loading of the schema changed the existing schema.
              */
             readonly schema_updated: boolean;
         };
@@ -2417,6 +2523,35 @@ export interface components {
         SchemasLoadAPI: {
             /** Schemas */
             schemas: components["schemas"]["SchemaLoadAPI"][];
+        };
+        /** TelemetrySnapshotListResponse */
+        TelemetrySnapshotListResponse: {
+            /** Count */
+            count: number;
+            /** Snapshots */
+            snapshots: components["schemas"]["TelemetrySnapshotResponse"][];
+        };
+        /** TelemetrySnapshotResponse */
+        TelemetrySnapshotResponse: {
+            /** Id */
+            id: string;
+            /** Created At */
+            created_at: string;
+            /** Kind */
+            kind: string;
+            /** Payload Format */
+            payload_format: string;
+            /** Deployment Id */
+            deployment_id: string;
+            /** Infrahub Version */
+            infrahub_version: string;
+            /** Data */
+            data: {
+                [key: string]: unknown;
+            };
+            /** Checksum */
+            checksum: string;
+            remote_send_status: components["schemas"]["RemoteSendStatus"];
         };
         /** TextAttributeParameters */
         TextAttributeParameters: {
@@ -2491,6 +2626,10 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
         };
     };
     responses: never;
@@ -2646,6 +2785,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                };
+            };
+        };
+    };
+    login_ldap_api_auth_ldap_login_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LDAPCredentials"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserToken"];
+                };
+            };
+            /** @description Authentication failed. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPAuthErrorResponse"];
+                };
+            };
+            /** @description Enterprise runtime not active. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseRequiredResponse"];
+                };
+            };
+            /** @description Username collides with an existing local-only account. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPCollisionResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description LDAP directory unavailable. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LDAPAuthErrorResponse"];
                 };
             };
         };
@@ -3495,6 +3703,48 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["UploadResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_telemetry_snapshots_api_telemetry_snapshots_get: {
+        parameters: {
+            query?: {
+                /** @description Include snapshots created on or after this date (ISO 8601) */
+                start_date?: string | null;
+                /** @description Include snapshots created on or before this date (ISO 8601) */
+                end_date?: string | null;
+                /** @description Maximum number of snapshots to return */
+                limit?: number;
+                /** @description Number of snapshots to skip */
+                offset?: number;
+                /** @description Name of the branch to use for the query */
+                branch?: string | null;
+                /** @description Time to use for the query, in absolute or relative format */
+                at?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TelemetrySnapshotListResponse"];
                 };
             };
             /** @description Validation Error */

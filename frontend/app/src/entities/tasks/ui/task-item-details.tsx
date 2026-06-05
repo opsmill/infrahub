@@ -1,22 +1,19 @@
-import { useQueryState } from "nuqs";
-import { forwardRef, useImperativeHandle, useState } from "react";
+import React from "react";
 import { useParams } from "react-router";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { DateDisplay } from "@/shared/components/display/date-display";
 import { InlineDisplay } from "@/shared/components/display/inline-display";
 import ErrorScreen from "@/shared/components/errors/error-screen";
+import { SearchInput } from "@/shared/components/inputs/search-input";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { List } from "@/shared/components/table/list";
 import { Badge } from "@/shared/components/ui/badge";
 import { Id } from "@/shared/components/ui/id";
 import { Link } from "@/shared/components/ui/link";
-import { SearchInput } from "@/shared/components/ui/search-input";
-import { TASK_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
 import { getObjectDetailsUrl } from "@/entities/nodes/utils";
-import { TASK_DETAILS } from "@/entities/tasks/api/getTasksItemDetails";
+import { useGetTaskDetails } from "@/entities/tasks/ui/queries/get-task-details.query";
 
 import { Logs, type tLog } from "./logs";
 
@@ -32,30 +29,30 @@ export const getStateBadge: { [key: string]: any } = {
   CANCELLING: <Badge variant={"gray"}>CANCELLING</Badge>,
 };
 
-export const TaskItemDetails = forwardRef((_, ref) => {
-  const [idFromQsp] = useQueryState(QSP.TASK_ID);
-  const [search, setSearch] = useState("");
+interface TaskItemDetailsProps {
+  ref?: React.Ref<{ refetch: () => void }>;
+}
 
-  const { task: idFromParams } = useParams();
+export const TaskItemDetails = ({ ref }: TaskItemDetailsProps) => {
+  const [search, setSearch] = React.useState("");
 
-  const ids = idFromParams || idFromQsp ? [idFromParams || idFromQsp] : undefined;
+  const { taskId } = useParams();
+  const ids = taskId ? [taskId] : undefined;
 
-  const { loading, error, data = {}, refetch } = useQuery(TASK_DETAILS, { variables: { ids } });
+  const { isLoading, error, data, refetch } = useGetTaskDetails({ ids });
 
   // Provide refetch function to parent
-  useImperativeHandle(ref, () => ({ refetch }));
+  React.useImperativeHandle(ref, () => ({ refetch }));
 
   if (error) {
     return <ErrorScreen message="Something went wrong when fetching list." />;
   }
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingIndicator message="Loading task..." className="h-[400px]" />;
   }
 
-  const result = data ? (data[TASK_OBJECT] ?? {}) : {};
-
-  const { edges = [] } = result;
+  const edges = data ?? [];
 
   const columns = [
     {
@@ -84,32 +81,36 @@ export const TaskItemDetails = forwardRef((_, ref) => {
     },
   ];
 
-  const object = edges[0].node;
+  const object = edges[0];
+
+  if (!object) {
+    return <ErrorScreen message="Task not found." />;
+  }
 
   const row = {
     values: {
       id: object.id,
       title: object.title,
-      state: getStateBadge[object.state],
+      state: object.state ? getStateBadge[object.state] : null,
       related_nodes: (
         <InlineDisplay
-          items={object.related_nodes}
+          items={(object.related_nodes ?? []).filter((node) => !!node)}
           render={(item) => {
             if (typeof item === "string") return null;
 
-            if (!item.id) return null;
+            if (!item.id || !item.kind) return null;
 
             return (
               <Link
                 key={item.id}
-                to={getObjectDetailsUrl(item.kind!, item.id, [
-                  { name: QSP.BRANCH, value: object.branch },
+                to={getObjectDetailsUrl(item.kind, item.id, [
+                  { name: QSP.BRANCH, value: object.branch ?? undefined },
                 ])}
               >
                 <Id
                   id={item.id}
                   kind={item.kind}
-                  branch={object.branch}
+                  branch={object.branch ?? undefined}
                   date={new Date(object.updated_at)}
                   preventCopy
                 />
@@ -123,7 +124,7 @@ export const TaskItemDetails = forwardRef((_, ref) => {
     },
   };
 
-  const logs = object.logs.edges
+  const logs = (object.logs?.edges ?? [])
     .map((edge: any) => edge.node)
     .filter((log: tLog) => {
       if (!search) return true;
@@ -147,7 +148,7 @@ export const TaskItemDetails = forwardRef((_, ref) => {
 
           <div className="flex flex-1 justify-end">
             <SearchInput
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
               placeholder="Search logs from message or severity"
               className="min-w-96"
             />
@@ -158,4 +159,4 @@ export const TaskItemDetails = forwardRef((_, ref) => {
       </div>
     </div>
   );
-});
+};

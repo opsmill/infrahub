@@ -25,8 +25,8 @@ log = get_logger()
 
 
 class Migration031(InternalSchemaMigration):
-    """
-    Some nodes with invalid number attributes may have been created as min/max/excluded_values were not working properly.
+    """Some nodes with invalid number attributes may have been created as min/max/excluded_values were not working properly.
+
     This migration indicates corrupted nodes. If strict mode is disabled, both this migration and min/max/excludes_values constraints are disabled,
     so that users can carry one with their corrupted data without any failure.
     """
@@ -36,9 +36,11 @@ class Migration031(InternalSchemaMigration):
     migrations: Sequence[SchemaMigration] = []
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
-        """Retrieve all number attributes that have a min/max/excluded_values
-        For any of these attributes, check if corresponding existing nodes are valid."""
+        """Retrieve all number attributes that have a min/max/excluded_values.
 
+        For any of these attributes, check if corresponding existing nodes are valid.
+
+        """
         if not config.SETTINGS.main.schema_strict_mode:
             return MigrationResult()
 
@@ -99,5 +101,4 @@ class Migration031(InternalSchemaMigration):
         return MigrationResult(errors=[error_str] + errors_messages)
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
-        result = MigrationResult()
-        return result
+        return MigrationResult()

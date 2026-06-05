@@ -168,7 +168,6 @@ class StandardNode(BaseModel):
 
     async def save(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
         """Create or Update the Node in the database."""
-
         if self.id:
             return await self.update(db=db, user_id=user_id)
 
@@ -176,12 +175,16 @@ class StandardNode(BaseModel):
 
     async def delete(self, db: InfrahubDatabase) -> None:
         """Delete the Node in the database."""
-
         query: Query = await StandardNodeDeleteQuery.init(db=db, node=self)
         await query.execute(db=db)
 
     async def create(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
-        """Create a new node in the database."""
+        """Create a new node in the database.
+
+        Raises:
+            Error: When the create query does not return a result.
+
+        """
         self.created_by = user_id
         self.updated_by = self.created_by
         self.updated_at = self.created_at
@@ -199,7 +202,12 @@ class StandardNode(BaseModel):
         return True
 
     async def update(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID) -> bool:
-        """Update the node in the database if needed."""
+        """Update the node in the database if needed.
+
+        Raises:
+            Error: When the update query does not return a result.
+
+        """
         self.updated_by = user_id
         self.updated_at = current_timestamp()
         query: Query = await StandardNodeUpdateQuery.init(db=db, node=self)
@@ -214,7 +222,6 @@ class StandardNode(BaseModel):
     @classmethod
     async def get(cls, id: str, db: InfrahubDatabase) -> Optional[Self]:
         """Get a node from the database identified by its ID."""
-
         node = await cls._get_item_raw(id=id, db=db)
         if node:
             return cls.from_db(node)
@@ -222,7 +229,7 @@ class StandardNode(BaseModel):
         return None
 
     @classmethod
-    async def _get_item_raw(cls, id: str, db: InfrahubDatabase) -> Neo4jNode:
+    async def _get_item_raw(cls, id: str, db: InfrahubDatabase) -> Neo4jNode | None:
         query: Query = await StandardNodeGetItemQuery.init(db=db, node_id=id, node_type=cls.get_type())
         await query.execute(db=db)
 
@@ -230,20 +237,20 @@ class StandardNode(BaseModel):
         if not result:
             return None
 
-        return result.get("n")
+        return result.get_node("n")
 
     @classmethod
     def from_db(cls, node: Neo4jNode, extras: Optional[dict[str, Any]] = None) -> Self:
-        """Convert a Neo4j Node to a Infrahub StandardNode
+        """Convert a Neo4j Node to a Infrahub StandardNode.
 
         Args:
             node (neo4j.graph.Node): Neo4j Node object
 
         Returns:
             StandardNode: Proper StandardNode object
-        """
 
-        attrs = {}
+        """
+        attrs: dict[str, Any] = {}
         node_data = dict(node)
         extras = extras or {}
         node_data.update(extras)
@@ -301,15 +308,23 @@ class StandardNode(BaseModel):
         cls,
         db: InfrahubDatabase,
         limit: int = 1000,
+        offset: int | None = None,
         ids: list[str] | None = None,
         name: str | None = None,
         node_ordering: StandardNodeOrdering | None = None,
-        **kwargs: dict[str, Any],
+        **kwargs: Any,
     ) -> list[Self]:
         node_ordering = node_ordering or StandardNodeOrdering()
         query: Query = await StandardNodeGetListQuery.init(
-            db=db, node_class=cls, ids=ids, node_name=name, limit=limit, node_ordering=node_ordering, **kwargs
+            db=db,
+            node_class=cls,
+            ids=ids,
+            node_name=name,
+            limit=limit,
+            offset=offset,
+            node_ordering=node_ordering,
+            **kwargs,
         )
         await query.execute(db=db)
 
-        return [cls.from_db(result.get("n")) for result in query.get_results()]
+        return [cls.from_db(result.get_node("n")) for result in query.get_results()]

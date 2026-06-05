@@ -5,11 +5,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from infrahub.events import InfrahubEvent
-    from infrahub.log_forwarding.models import SyslogMessage
+    from infrahub.exceptions import ForwardableError
+    from infrahub.log_forwarding.models import LogForwardingContext, SyslogMessage
 
 
 class LogForwardingService(ABC):
-    """Abstract base for log forwarding"""
+    """Abstract base for log forwarding."""
 
     @abstractmethod
     async def start(self) -> None:
@@ -24,12 +25,16 @@ class LogForwardingService(ABC):
         """Convert an InfrahubEvent to a syslog message and enqueue it. Should not block."""
 
     @abstractmethod
+    def forward_exception(self, exception: ForwardableError, context: LogForwardingContext) -> None:
+        """Convert a ForwardableError to a syslog message and enqueue it. Should not block."""
+
+    @abstractmethod
     async def shutdown(self) -> None:
         """Signal consumers to drain queues, then force close."""
 
 
 class LogForwardingServiceCommunity(LogForwardingService):
-    """No-op stub for community edition"""
+    """No-op stub for community edition."""
 
     async def start(self) -> None:
         pass
@@ -38,6 +43,9 @@ class LogForwardingServiceCommunity(LogForwardingService):
         pass
 
     def forward_event(self, event: InfrahubEvent) -> None:
+        pass
+
+    def forward_exception(self, exception: ForwardableError, context: LogForwardingContext) -> None:
         pass
 
     async def shutdown(self) -> None:

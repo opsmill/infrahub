@@ -1,5 +1,4 @@
 import { Icon } from "@iconify-icon/react";
-import { useFilter } from "react-aria-components";
 import { useParams } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
@@ -10,10 +9,11 @@ import { MenuTrigger } from "@/shared/components/aria/menu";
 import { Popover, PopoverDialog } from "@/shared/components/aria/popover";
 
 import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
+import { getBranchDetailsUrl } from "@/entities/branches/utils";
 import { BreadcrumbSelectorTrigger } from "@/entities/navigation/ui/breadcrumbs/items/breadcrumb-selector-trigger";
 
 export function BreadcrumbBranches() {
-  const { "*": branchName } = useParams();
+  const { branchName } = useParams();
 
   return (
     <Breadcrumbs data-testid="breadcrumb-branches">
@@ -29,17 +29,15 @@ interface BreadcrumbBranchSelectorProps {
 
 export function BreadcrumbBranchSelector({ currentBranchName }: BreadcrumbBranchSelectorProps) {
   const { data: branches = [] } = useGetBranches();
-  const { contains } = useFilter({ sensitivity: "base" });
-
   return (
     <Breadcrumb>
       <MenuTrigger>
         <BreadcrumbSelectorTrigger>{currentBranchName}</BreadcrumbSelectorTrigger>
 
-        <Popover className="bg-stone-100/50 backdrop-blur">
+        <Popover>
           <PopoverDialog aria-label="Branch selector">
             {({ close }) => (
-              <Autocomplete filter={contains}>
+              <Autocomplete>
                 <ListBox
                   items={branches}
                   emptyMessage="No branches found."
@@ -47,10 +45,7 @@ export function BreadcrumbBranchSelector({ currentBranchName }: BreadcrumbBranch
                   onAction={close}
                 >
                   {(branch) => (
-                    <ListBoxItem
-                      textValue={branch.name}
-                      href={constructPath(`/branches/${branch.name}`)}
-                    >
+                    <ListBoxItem textValue={branch.name} href={getBranchDetailsUrl(branch.name)}>
                       <Icon icon="mdi:source-branch" /> {branch.name}
                     </ListBoxItem>
                   )}

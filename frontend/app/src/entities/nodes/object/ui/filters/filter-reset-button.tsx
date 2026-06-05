@@ -1,9 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { Button } from "react-aria-components";
+import { Button } from "@infrahub/ui";
 
-import { focusVisibleStyle } from "@/shared/components/aria/style-rac";
 import useFilters from "@/shared/hooks/useFilters";
-import { classNames } from "@/shared/utils/common";
 
 export const FilterResetButton = () => {
   const [, setFilters] = useFilters();
@@ -14,14 +12,13 @@ export const FilterResetButton = () => {
 
   return (
     <Button
-      className={classNames(
-        focusVisibleStyle,
-        "inline-flex items-center whitespace-nowrap rounded-full border border-transparent px-2 py-0.5 text-neutral-800 text-sm",
-        "data-hovered:bg-gray-100"
-      )}
+      variant="outline"
+      size="xs"
+      className="sticky right-0 z-10 h-auto rounded-full py-0.5"
       onPress={handleResetFilters}
+      data-testid="filter-reset-button"
     >
-      <Icon icon="mdi:filter-variant-remove" className="mr-1 text-base" />
+      <Icon icon="mdi:filter-variant-remove" className="text-base" />
       Clear filters
     </Button>
   );

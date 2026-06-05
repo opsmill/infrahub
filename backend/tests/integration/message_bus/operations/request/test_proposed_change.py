@@ -7,7 +7,8 @@ from unittest.mock import ANY, call, patch
 import pytest
 
 from infrahub import config
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.node import Node
@@ -104,7 +105,7 @@ class TestProposedChange(TestInfrahubApp):
 
     @pytest.fixture(scope="class")
     async def context(self, user_account: Node) -> InfrahubContext:
-        """Placeholder context for now, would be good to implement some auth and permissions here"""
+        """Placeholder context for now, would be good to implement some auth and permissions here."""
         return InfrahubContext(
             account=AccountSession(authenticated=False, account_id=user_account.get_id(), auth_type=AuthType.NONE),
             branch=BranchContext(name="main", id="placeholder"),

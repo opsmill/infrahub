@@ -222,7 +222,7 @@ async def car_person_data_generic_diff(
     # Time After the changes
     time30 = Timestamp()
 
-    params = {
+    return {
         "branch": branch2,
         "time0": time0,
         "time10": time10,
@@ -241,8 +241,6 @@ async def car_person_data_generic_diff(
         "p3": p3.id,
         "r1": repo01.id,
     }
-
-    return params
 
 
 @pytest.fixture
@@ -428,7 +426,7 @@ async def data_diff_attribute(
     # Time After the changes
     time30 = Timestamp()
 
-    params = {
+    return {
         "branch": branch2,
         "time0": time0,
         "time12": time12,
@@ -444,5 +442,3 @@ async def data_diff_attribute(
         "p2": persons["Jane"].id,
         "r1": repo01.id,
     }
-
-    return params

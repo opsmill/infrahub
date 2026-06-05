@@ -11,6 +11,7 @@ from infrahub.core.constraint.node.runner import NodeConstraintRunner
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.node.constraints.grouped_uniqueness import NodeGroupedUniquenessConstraint
+from infrahub.core.node.constraints.uniqueness_violation_message import UniquenessViolationMessageBuilder
 from infrahub.core.node.ipam import BuiltinIPPrefix
 from infrahub.core.node.resource_manager.ip_address_pool import CoreIPAddressPool
 from infrahub.core.node.resource_manager.number_pool import CoreNumberPool
@@ -414,8 +415,11 @@ class TestTemplateResourcePoolExclusiveConstraint:
 
 
 class TestNodeConstraintRunnerPoolFilterExpansion:
-    """Tests that NodeConstraintRunner expands field_filters to include _from_resource_pool
-    relationships when an attribute is being updated on a template."""
+    """Tests that NodeConstraintRunner expands field_filters to include _from_resource_pool.
+
+    relationships when an attribute is being updated on a template.
+
+    """
 
     async def test_runner_rejects_attribute_update_when_pool_is_set(
         self,
@@ -442,7 +446,13 @@ class TestNodeConstraintRunnerPoolFilterExpansion:
         runner = NodeConstraintRunner(
             db=db,
             branch=default_branch_scope_class,
-            uniqueness_constraint=NodeGroupedUniquenessConstraint(db=db, branch=default_branch_scope_class),
+            uniqueness_constraint=NodeGroupedUniquenessConstraint(
+                db=db,
+                branch=default_branch_scope_class,
+                message_builder=UniquenessViolationMessageBuilder(
+                    schema_branch=registry.schema.get_schema_branch(default_branch_scope_class.name)
+                ),
+            ),
             relationship_manager_constraints=[constraint],
         )
 
@@ -479,7 +489,13 @@ class TestNodeConstraintRunnerPoolFilterExpansion:
         runner = NodeConstraintRunner(
             db=db,
             branch=default_branch_scope_class,
-            uniqueness_constraint=NodeGroupedUniquenessConstraint(db=db, branch=default_branch_scope_class),
+            uniqueness_constraint=NodeGroupedUniquenessConstraint(
+                db=db,
+                branch=default_branch_scope_class,
+                message_builder=UniquenessViolationMessageBuilder(
+                    schema_branch=registry.schema.get_schema_branch(default_branch_scope_class.name)
+                ),
+            ),
             relationship_manager_constraints=[constraint],
         )
 

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 380" role="img" aria-labelledby="title desc">
+  <title id="title">Infrahub lifecycle: Unify, Generate, Deploy, Evolve</title>
+  <desc id="desc">A four-step workflow showing how infrastructure data flows through Infrahub — from unified inventory and intent, through automated generation of configurations, deployment via existing automation tools, to ongoing day-two evolution with idempotent re-runs.</desc>
+
+  <line x1="170" y1="190" x2="830" y2="190" stroke="#D1D5DB" stroke-width="2"/>
+
+  <g transform="translate(170, 0)">
+    <text x="0" y="105" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5" fill="#1D9E75">UNIFY</text>
+    <text x="0" y="155" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600" fill="#1F2937">Inventory &amp; intent</text>
+    <circle cx="0" cy="190" r="13" fill="#1D9E75"/>
+    <text x="0" y="245" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#4B5563">
+      <tspan x="0" dy="0">Devices, services, IPs, VLANs,</tspan>
+      <tspan x="0" dy="18">circuits, and business context</tspan>
+      <tspan x="0" dy="18">in one schema-driven,</tspan>
+      <tspan x="0" dy="18">graph-backed data layer.</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(390, 0)">
+    <text x="0" y="105" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5" fill="#378ADD">GENERATE</text>
+    <text x="0" y="155" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600" fill="#1F2937">Configs &amp; artifacts</text>
+    <circle cx="0" cy="190" r="13" fill="#378ADD"/>
+    <text x="0" y="245" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#4B5563">
+      <tspan x="0" dy="0">Generators read authoritative</tspan>
+      <tspan x="0" dy="18">data and produce configs,</tspan>
+      <tspan x="0" dy="18">queries, and artifacts</tspan>
+      <tspan x="0" dy="18">automatically — and testably.</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(610, 0)">
+    <text x="0" y="105" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5" fill="#7F77DD">DEPLOY</text>
+    <text x="0" y="155" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600" fill="#1F2937">Through your stack</text>
+    <circle cx="0" cy="190" r="13" fill="#7F77DD"/>
+    <text x="0" y="245" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#4B5563">
+      <tspan x="0" dy="0">Pushed via your existing</tspan>
+      <tspan x="0" dy="18">automation stack — Ansible,</tspan>
+      <tspan x="0" dy="18">Nornir, AVD, CI pipelines —</tspan>
+      <tspan x="0" dy="18">with Infrahub as the source.</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(830, 0)">
+    <text x="0" y="105" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5" fill="#BA7517">EVOLVE</text>
+    <text x="0" y="155" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600" fill="#1F2937">Day two</text>
+    <circle cx="0" cy="190" r="13" fill="#BA7517"/>
+    <text x="0" y="245" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="13" fill="#4B5563">
+      <tspan x="0" dy="0">Update the design, re-run</tspan>
+      <tspan x="0" dy="18">scoped to what changed.</tspan>
+      <tspan x="0" dy="18">Re-applying surfaces and</tspan>
+      <tspan x="0" dy="18">corrects deviations.</tspan>
+    </text>
+  </g>
+</svg>

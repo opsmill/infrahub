@@ -13,7 +13,7 @@ export const Component = () => {
   });
 
   return (
-    <Content.Card className="flex flex-col">
+    <Content.Card>
       <ProposedChangesManager schema={proposedChangeSchema as NodeSchema} />
     </Content.Card>
   );

@@ -46,6 +46,8 @@ from pydantic import ValidationError as PydanticValidationError
 from typing_extensions import Self
 
 from infrahub import config
+from infrahub.auth.session import AnonymousSession
+from infrahub.context import InfrahubContext
 from infrahub.core.constants import ArtifactStatus, ContentType, InfrahubKind, RepositoryObjects, RepositorySyncStatus
 from infrahub.core.registry import registry
 from infrahub.events.artifact_action import ArtifactCreatedEvent, ArtifactUpdatedEvent
@@ -139,10 +141,13 @@ class TransformPythonInformation(BaseModel):
         ..., description="Indicate if the transform should convert the query response to InfrahubNode objects"
     )
 
+    description: str | None = None
+    """Description of the Transform"""
+
 
 class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
-    """
-    This class provides interfaces to read and process information from .infrahub.yml files and can perform
+    """This class provides interfaces to read and process information from .infrahub.yml files and can perform.
+
     actions for objects defined within those files.
 
     This class will later be broken out from the "InfrahubRepository" based classes and instead be a separate
@@ -158,6 +163,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         except RepositoryInvalidFileSystemError:
             await self.ensure_location_is_defined()
             await self.create_locally(infrahub_branch_name=self.infrahub_branch_name, update_commit_value=False)
+            self.reinitialized = True
             log.info(f"Initialized the local directory for {self.name} because it was missing.")
 
         if commit:
@@ -195,6 +201,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         try:
             config_file = await self.get_repository_config(branch_name=infrahub_branch_name, commit=commit)  # type: ignore[call-overload]
             await self.import_schema_files(branch_name=infrahub_branch_name, commit=commit, config_file=config_file)  # type: ignore[call-overload]
+            if config_file.schemas:
+                await self.sdk.schema.all(branch=infrahub_branch_name, refresh=True)
             await self.import_all_graphql_query(
                 branch_name=infrahub_branch_name, commit=commit, config_file=config_file
             )  # type: ignore[call-overload]
@@ -221,13 +229,14 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             raise error
 
         infrahub_branch = registry.get_branch_from_registry(branch=infrahub_branch_name)
+        event_context = InfrahubContext.init(branch=infrahub_branch, account=AnonymousSession()).to_event_context()
         event_service = await get_event_service()
         await event_service.send(
             CommitUpdatedEvent(
                 commit=commit,
                 repository_name=self.name,
                 repository_id=str(self.id),
-                meta=EventMeta.with_dummy_context(branch=infrahub_branch),
+                meta=EventMeta(branch=infrahub_branch, context=event_context),
             )
         )
 
@@ -451,6 +460,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         Raises:
             RepositoryConfigurationError: If the configuration file is missing,
                 cannot be parsed as YAML, or has an invalid format.
+
         """
         branch_wt = self.get_worktree(identifier=commit or branch_name)
         log = get_run_logger()
@@ -579,7 +589,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def import_all_graphql_query(
         self, branch_name: str, commit: str, config_file: InfrahubRepositoryConfig
     ) -> None:
-        """Search for all .gql file and import them as GraphQL query."""
+        """Search for all .gql file and import them as GraphQL query.
+
+        Raises:
+            Error: When rendering a configured GraphQL query template fails (from infrahub_sdk).
+
+        """
         log = get_run_logger()
 
         commit_wt = self.get_worktree(identifier=commit)
@@ -891,8 +906,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         branch: str,
         file_type: type[InfrahubFile],
     ) -> None:
-        """Load one or multiple objects files into Infrahub."""
+        """Load one or multiple objects files into Infrahub.
 
+        Raises:
+            ValueError: When a referenced schema lacks both ``human_friendly_id`` and ``default_filter``.
+
+        """
         log = get_run_logger()
         files = await self._load_yamlfile_from_disk(paths=paths, file_type=file_type)
 
@@ -1014,6 +1033,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
                     query=str(graphql_query.id),
                     timeout=transform_class.timeout,
                     convert_query_response=transform.convert_query_response,
+                    description=transform.description,
                 )
             )
 
@@ -1128,8 +1148,11 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def compare_python_check_definition(
         cls, check: CheckDefinitionInformation, existing_check: CoreCheckDefinition
     ) -> bool:
-        """Compare an existing Python Check Object with a Check Class
-        and identify if we need to update the object in the database."""
+        """Compare an existing Python Check Object with a Check Class.
+
+        and identify if we need to update the object in the database.
+
+        """
         if (
             existing_check.query.id != check.query
             or existing_check.file_path.value != check.file_path
@@ -1146,6 +1169,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         schema = await self.sdk.schema.get(kind=InfrahubKind.TRANSFORMPYTHON, branch=branch_name)
         data = {
             "name": transform.name,
+            "description": transform.description,
             "repository": transform.repository,
             "query": transform.query,
             "file_path": transform.file_path,
@@ -1166,6 +1190,9 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
     async def update_python_transform(
         self, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> None:
+        if existing_transform.description.value != local_transform.description:
+            existing_transform.description.value = local_transform.description
+
         if existing_transform.query.id != local_transform.query:
             existing_transform.query = {"id": local_transform.query, "source": str(self.id), "is_protected": True}
 
@@ -1185,7 +1212,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         cls, existing_transform: CoreTransformPython, local_transform: TransformPythonInformation
     ) -> bool:
         if (
-            existing_transform.query.id != local_transform.query
+            existing_transform.description.value != local_transform.description
+            or existing_transform.query.id != local_transform.query
             or existing_transform.file_path.value != local_transform.file_path
             or existing_transform.timeout.value != local_transform.timeout
             or existing_transform.convert_query_response.value != local_transform.convert_query_response
@@ -1235,7 +1263,12 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         client: InfrahubClient,
         params: dict | None = None,
     ) -> InfrahubCheck:
-        """Execute A Python Check stored in the repository."""
+        """Execute A Python Check stored in the repository.
+
+        Raises:
+            CheckError: When the check module cannot be loaded, the class is missing or running the check raises an unexpected exception.
+
+        """
         log = get_run_logger()
 
         commit_worktree = self.get_commit_worktree(commit=commit)
@@ -1294,7 +1327,13 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         convert_query_response: bool,
         data: dict | None = None,
     ) -> Any:
-        """Execute A Python Transform stored in the repository."""
+        """Execute A Python Transform stored in the repository.
+
+        Raises:
+            ValueError: When ``location`` does not contain the expected ``module::class`` separator.
+            TransformError: When the transform module cannot be loaded, the class is missing or running the transform raises an unexpected exception.
+
+        """
         log = get_run_logger()
 
         if "::" not in location:
@@ -1473,6 +1512,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         await artifact.save(request_context=message.context.to_request_context())
 
         event_class = ArtifactCreatedEvent if artifact_created else ArtifactUpdatedEvent
+        event_context = message.context.to_event_context()
 
         event = event_class(
             node_id=artifact.id,
@@ -1480,7 +1520,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             target_kind=message.target_kind,
             artifact_definition_id=message.artifact_definition,
             artifact_definition_name=message.artifact_definition_name,
-            meta=EventMeta.from_context(context=message.context, branch=branch),
+            meta=EventMeta.from_context(context=event_context, branch=branch),
             checksum=checksum,
             checksum_previous=previous_checksum,
             storage_id=storage_id,

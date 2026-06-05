@@ -1282,9 +1282,10 @@ async def test_node_update_local_attrs_with_metadata(
 async def test_update_related_node(
     db: InfrahubDatabase, data_schema: None, default_branch: Branch, use_branch: bool
 ) -> None:
-    """
-    This test has been written to troubleshoot a specific issue
+    """This test has been written to troubleshoot a specific issue.
+
     where a relationship between 2 nodes was being deleted when one of the node was getting updated.
+
     """
     # ----------------------------------------------------------------
     # Define specific schema

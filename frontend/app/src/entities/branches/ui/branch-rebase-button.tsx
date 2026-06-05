@@ -1,15 +1,13 @@
-import { useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { TASK_OBJECT } from "@/shared/config/constants";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
-import { GET_BRANCH_ACTION_STATE } from "@/entities/branches/api/getBranchActionState";
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import type { BranchDetail } from "@/entities/branches/domain/branch.mappers";
+import { useGetBranchActionState } from "@/entities/branches/ui/queries/get-branch-action-state.query";
 import { useRebaseBranch } from "@/entities/branches/ui/queries/rebase-branch.mutation";
 import { BRANCH_REBASE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
 
@@ -21,22 +19,18 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
   const { isAuthenticated } = useAuth();
   const rebaseBranchMutation = useRebaseBranch();
 
-  const { loading, data, refetch } = useQuery(GET_BRANCH_ACTION_STATE, {
-    variables: {
-      branch: branch.name,
-      workflow: [BRANCH_REBASE_WORKFLOW],
-      state: TASK_ONGOING_STATES,
-    },
-    pollInterval: 5000,
+  const { isPending, data, refetch } = useGetBranchActionState({
+    branchName: branch.name,
+    workflow: [BRANCH_REBASE_WORKFLOW],
+    state: TASK_ONGOING_STATES,
   });
 
-  const taskData = data?.[TASK_OBJECT];
-  const hasOngoingTask = !!taskData?.count && taskData.count > 0;
+  const hasOngoingTask = (data?.ongoingTaskCount ?? 0) > 0;
   const isDisabled =
     !isAuthenticated ||
-    loading ||
+    isPending ||
     !!branch.is_default ||
-    branch.status === BRANCH_STATUS.MERGED ||
+    branch.status === BranchStatus.MERGED ||
     hasOngoingTask;
 
   const handleRebase = () => {
@@ -64,8 +58,8 @@ export const BranchRebaseButton = ({ branch }: BranchRebaseButtonProps) => {
 
   return (
     <Button
-      disabled={isDisabled}
-      onClick={handleRebase}
+      isDisabled={isDisabled}
+      onPress={handleRebase}
       variant="outline"
       className="flex items-center gap-2"
     >

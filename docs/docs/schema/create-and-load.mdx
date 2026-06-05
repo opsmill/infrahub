@@ -1,0 +1,148 @@
+---
+title: Create and load schema
+---
+
+import CodeBlock from "@theme/CodeBlock";
+import import_infrastructureExtensionRackYaml from '!!raw-loader!../../../models/examples/extension_rack.yml';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+
+Schemas are defined in YAML format and follow a strict structure. Splitting a schema into multiple smaller files is recommended to keep it maintainable as it grows.
+
+:::note
+
+Enable [schema validation](../reference/schema-validation) in your editor to catch errors while writing schema files.
+
+:::
+
+Once a schema file is ready, you can check it against a running Infrahub instance to verify it is valid and won't break existing data, then load it to apply the changes. Schema operations should always be performed on a branch to avoid directly affecting the main branch.
+
+## Schema file
+
+Most schema files use some combination of these top-level keys:
+
+```yaml
+---
+version: '1.0'
+generics:
+    - <new generics are defined here>
+nodes:
+    - <new nodes are defined here>
+extensions:
+  nodes:
+    - <node extensions are defined here>
+```
+
+For a full reference of all available properties, see [Nodes & attributes](./nodes-and-attributes), [Relationships](./relationships), and [Generics & inheritance](./generics-and-inheritance).
+
+By convention, store schema files in a `schemas` folder at the root of your repository.
+
+## Check a schema
+
+During development, you can validate a schema file and preview the changes it would apply:
+
+```shell
+infrahubctl schema check <path to schema file or a directory> [--branch <branch_name>]
+```
+
+The `check` command returns a summary of the changes that would be applied if the schema were loaded. No changes are made to the database.
+
+## Load a schema file
+
+Schema files can be loaded into Infrahub with the `infrahubctl` command or directly via the Git integration.
+
+:::info
+
+Use `infrahubctl` for development and testing. The git integration option is better suited for production.
+
+:::
+
+<Tabs groupId="method" queryString>
+  <TabItem value="infrahubctl" label="infrahubctl" default>
+
+The `infrahubctl` command can be used to load individual schema files or multiple files as part of a directory.
+
+```shell
+infrahubctl schema load <path to schema file or a directory> <path to schema file or a directory> [--branch <branch_name>]
+```
+
+:::info
+
+The `infrahubctl schema load` command can be used to both upload a new schema and update an existing one.
+
+:::
+
+  </TabItem>
+  <TabItem value="git" label="Git integration">
+
+You can define a schema in an [external repository](../git-integration/overview).
+The schemas that should be loaded must be declared in the `.infrahub.yml` file, under `schemas`.
+
+Individual files and directories are both supported.
+
+```yaml
+---
+schemas:
+  - schemas/demo_edge_fabric.yml
+```
+
+  </TabItem>
+</Tabs>
+
+## Troubleshooting
+
+### Input should be a valid string (string_type)
+
+When loading a schema, you may encounter the error "Input should be a valid string (string_type)". This typically occurs when YAML interprets certain unquoted values as booleans instead of strings.
+
+YAML automatically converts unquoted `on`, `off`, `yes`, `no`, `true`, and `false` values to boolean types. When these values appear in fields expecting strings (like choice names), schema validation fails.
+
+**Example of the problem:**
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Stuff
+    namespace: Random
+    attributes:
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: on  # Interpreted as boolean true
+            label: On
+          - name: off  # Interpreted as boolean false
+            label: Off
+```
+
+**Solution:**
+
+Quote all boolean-like string values in your schema:
+
+```yaml
+---
+version: "1.0"
+nodes:
+  - name: Stuff
+    namespace: Random
+    attributes:
+      - name: status
+        kind: Dropdown
+        choices:
+          - name: "on"  # Properly interpreted as string
+            label: "On"
+          - name: "off"
+            label: "Off"
+```
+
+This issue commonly appears in:
+
+- Dropdown choice names
+- Attribute names
+
+## Related concepts
+
+- [Schema extensions](./extensions) — Add attributes and relationships to existing nodes
+- [Schema migration](./migration) — How Infrahub handles schema updates and data migrations
+- [Schema validation](../reference/schema-validation) — Editor validation for schema YAML files
+- [Build your first schema](../academy/tutorials/build-your-first-schema) — Step-by-step tutorial for creating a schema from scratch

@@ -1,0 +1,151 @@
+# Public-symbol baseline for `infrahub.git`
+# Captured: 2026-05-19 (T003, branch git-solid-refactor-infp-546)
+# Source: Python AST of each module in backend/infrahub/git/
+#
+# This file is the FR-013 reference point. Every PR in this refactor MUST
+# verify that every name listed below is still importable from the same path
+# with the same name after the change. New public names may be added freely;
+# removing or renaming any existing public name is forbidden.
+
+================================================================================
+backend/infrahub/git/__init__.py
+================================================================================
+__all__ = ['InfrahubReadOnlyRepository', 'InfrahubRepository', 'initialize_repositories_directory']
+
+================================================================================
+backend/infrahub/git/base.py
+================================================================================
+var        log                              (line 46)
+class      RepoFileInformation              (line 49)
+class      RepoChangedFiles                 (line 75)
+def        extract_repo_file_information    (line 84)
+class      BranchInGraph                    (line 125)
+class      BranchInRemote                   (line 132)
+class      BranchInLocal                    (line 137)
+class      InfrahubRepositoryBase           (line 143)
+
+================================================================================
+backend/infrahub/git/constants.py
+================================================================================
+var        COMMITS_DIRECTORY_NAME           (line 1)
+var        BRANCHES_DIRECTORY_NAME          (line 2)
+var        TEMPORARY_DIRECTORY_NAME         (line 3)
+
+================================================================================
+backend/infrahub/git/directory.py
+================================================================================
+var        log                              (line 6)
+def        get_repositories_directory       (line 9)
+def        initialize_repositories_directory (line 14)
+
+================================================================================
+backend/infrahub/git/integrator.py
+================================================================================
+class      ArtifactGenerateResult           (line 77)
+class      InfrahubRepositoryJinja2         (line 84)
+class      CheckDefinitionInformation       (line 88)
+class      TransformPythonInformation       (line 116)
+class      InfrahubRepositoryIntegrator     (line 146)
+def        repo_object_type_to_file_type    (line 1531)
+
+================================================================================
+backend/infrahub/git/models.py
+================================================================================
+class      RequestArtifactDefinitionGenerate  (line 9)
+class      RequestArtifactGenerate            (line 21)
+class      GitRepositoryAdd                   (line 50)
+class      GitRepositoryAddReadOnly           (line 63)
+class      GitRepositoryPullReadOnly          (line 76)
+class      GitRepositoryMerge                 (line 88)
+class      GitRepositoryImportObjects         (line 101)
+class      GitReadOnlyRepositoryImportCommit  (line 111)
+class      GitDiffNamesOnly                   (line 121)
+class      GitDiffNamesOnlyResponse           (line 131)
+class      UserCheckDefinitionData            (line 137)
+class      UserCheckData                      (line 153)
+class      TriggerRepositoryUserChecks        (line 175)
+class      TriggerRepositoryInternalChecks    (line 189)
+class      CheckRepositoryMergeConflicts      (line 198)
+class      RepositoryBranchInfo               (line 211)
+class      RepositoryData                     (line 215)
+
+================================================================================
+backend/infrahub/git/repository.py
+================================================================================
+var        log                              (line 23)
+class      InfrahubRepository               (line 26)
+class      InfrahubReadOnlyRepository       (line 214)
+async def  get_initialized_repo             (line 320)
+
+# Private (underscore-prefixed) — not part of the public surface but listed
+# for reference; these MAY be renamed/restructured without breaking FR-013:
+async def  _get_initialized_repo            (line 299)
+
+================================================================================
+backend/infrahub/git/tasks.py
+================================================================================
+async def  add_git_repository                          (line 71)
+async def  add_git_repository_read_only                (line 108)
+async def  create_branch                               (line 139)
+async def  delete_git_branch                           (line 164)
+async def  sync_git_repo_with_origin_and_tag_on_failure (line 183)
+async def  sync_remote_repositories                    (line 216)
+async def  git_branch_create                           (line 312)
+async def  git_branch_delete                           (line 348)
+async def  generate_artifact_definition                (line 383)
+async def  generate_artifact                           (line 400)
+async def  generate_request_artifact_definition        (line 429)
+async def  pull_read_only                              (line 524)
+async def  merge_git_repository                        (line 576)
+async def  import_objects_from_git_repository          (line 643)
+async def  import_read_only_repository_last_commit     (line 661)
+async def  git_repository_diff_names_only              (line 685)
+async def  trigger_repository_user_checks_definitions  (line 712)
+async def  trigger_user_checks                         (line 823)
+async def  trigger_internal_checks                     (line 861)
+async def  run_check_merge_conflicts                   (line 934)
+async def  run_user_check                              (line 1017)
+
+================================================================================
+backend/infrahub/git/utils.py
+================================================================================
+async def  get_repositories_commit_per_branch                  (line 27)
+async def  fetch_artifact_definition_targets                   (line 151)
+async def  fetch_check_definition_targets                      (line 161)
+async def  fetch_proposed_change_generator_definition_targets  (line 171)
+def        branch_name_in_import_sync_branches                 (line 181)
+
+================================================================================
+backend/infrahub/git/worktree.py
+================================================================================
+class      Worktree                         (line 12)
+
+================================================================================
+FR-013 invariant check
+================================================================================
+
+Counts by module:
+  __init__.py     -  3 names in __all__
+  base.py         -  8 public names (1 var, 5 classes, 1 def, 1 module logger)
+  constants.py    -  3 constants
+  directory.py    -  3 names (1 var, 2 defs)
+  integrator.py   -  6 public names (5 classes, 1 def) — note: InfrahubRepositoryJinja2
+                     and repo_object_type_to_file_type were NOT enumerated in
+                     research.md; baseline corrects this.
+  models.py       - 17 Pydantic model classes
+  repository.py   -  4 public names (1 var, 2 classes, 1 async def) + 1 private
+  tasks.py        - 21 workflow-decorated public functions
+  utils.py        -  5 public names (4 async def, 1 def)
+  worktree.py     -  1 class
+
+Total public symbols across all modules: 71
+
+Across-PR invariant: every public name above MUST remain importable from the
+same path with the same name. Adding new public names is permitted (e.g.,
+ReadOnlyRepositoryProtocol, RepositoryProtocol in Story 3). Removing or
+renaming any existing name is a regression — SC-004 verifies this.
+
+Spec note: The Story 5 split (FR-008, FR-021) introduces underscored `_impl`
+sibling methods on the integrator class. These are PRIVATE (single underscore)
+and do NOT count toward the FR-013 public-surface invariant. The public
+decorated wrapper method names listed under integrator.py remain unchanged.

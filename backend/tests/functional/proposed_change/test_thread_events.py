@@ -33,9 +33,7 @@ class TestProposedChangeThreadEvents(TestInfrahubApp):
         unprivileged_client: InfrahubClient,
         prefect_client: PrefectClient,
     ) -> None:
-        """
-        Create a proposed change thread and then mark it as resolved all of this while asserting that events are being fired.
-        """
+        """Create a proposed change thread and then mark it as resolved all of this while asserting that events are being fired."""
         source_branch = await create_branch(branch_name="branch-proposed-change", db=db)
         proposed_change = await client.create(
             kind=PROPOSEDCHANGE,

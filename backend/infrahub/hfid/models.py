@@ -44,10 +44,7 @@ class HFIDTriggerDefinition(TriggerBranchDefinition):
         hfids: HFIDs,
         branches_out_of_scope: list[str] | None = None,
     ) -> list[HFIDTriggerDefinition]:
-        """
-        This function is used to create a trigger definition for a display labels of type Jinja2.
-        """
-
+        """This function is used to create a trigger definition for a display labels of type Jinja2."""
         definitions: list[HFIDTriggerDefinition] = []
 
         for node_kind, hfid_definition in hfids.get_template_nodes().items():
@@ -203,7 +200,13 @@ class HFIDGraphQL(BaseModel):
                 if relationship.cardinality == RelationshipCardinality.ONE:
                     if field_name not in output:
                         output[field_name] = {"node": {}}
-                    output[field_name]["node"][related_attribute] = {related_value: None}
+                    if relationship.hierarchical and relationship.peer != relationship.hierarchical:
+                        fragment_key = f"... on {relationship.peer}"
+                        if fragment_key not in output[field_name]["node"]:
+                            output[field_name]["node"][fragment_key] = {}
+                        output[field_name]["node"][fragment_key][related_attribute] = {related_value: None}
+                    else:
+                        output[field_name]["node"][related_attribute] = {related_value: None}
         return output
 
     def parse_response(self, response: dict[str, Any]) -> list[HFIDGraphQLResponse]:

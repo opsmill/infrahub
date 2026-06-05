@@ -1,7 +1,7 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 import { BookTextIcon, EllipsisVertical } from "lucide-react";
-import { Pressable } from "react-aria-components";
 
 import TasksStatusIcon from "@/assets/icons/tasks-status.svg?react";
 
@@ -10,11 +10,10 @@ import {
   CopyToClipboardMenuItem,
   Menu,
   MenuItem,
-  MenuPopover,
   MenuSection,
   MenuTrigger,
 } from "@/shared/components/aria/menu";
-import { Button } from "@/shared/components/ui/button";
+import { Popover } from "@/shared/components/aria/popover";
 import { INFRAHUB_DOC_LOCAL } from "@/shared/config/config";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
@@ -30,13 +29,11 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
   const { schema } = useSchema(ARTIFACT_OBJECT);
   return (
     <MenuTrigger>
-      <Pressable>
-        <Button variant="ghost" size="square" data-testid="object-details-menu">
-          <EllipsisVertical className="size-4" />
-        </Button>
-      </Pressable>
+      <Button variant="ghost" size="sm" shape="square" data-testid="object-details-menu">
+        <EllipsisVertical className="size-4" />
+      </Button>
 
-      <MenuPopover placement="bottom end">
+      <Popover placement="bottom end">
         <Menu>
           <MenuSection title="Actions">
             <CopyToClipboardMenuItem textToCopy={artifact.id}>Copy ID</CopyToClipboardMenuItem>
@@ -119,7 +116,7 @@ export function ArtifactDetailsMenu({ artifact }: ArtifactDetailsMenuProps) {
             )}
           </MenuSection>
         </Menu>
-      </MenuPopover>
+      </Popover>
     </MenuTrigger>
   );
 }

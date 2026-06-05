@@ -8,6 +8,7 @@ from infrahub.core.initialization import initialization
 from infrahub.core.ipam.reconciler import IpamReconciler
 from infrahub.core.manager import NodeManager
 from infrahub.core.migrations.shared import MigrationInput, MigrationResult
+from infrahub.core.protocols import BuiltinIPPrefix
 from infrahub.lock import initialize_lock
 from infrahub.log import get_logger
 
@@ -20,9 +21,9 @@ log = get_logger()
 
 
 class Migration038(InternalSchemaMigration):
-    """
-    Re-run migration 026 after Migration037 updates AttributeValueIndexed vertices correctly so that the call to
-    NodeManager.query will work
+    """Re-run migration 026 after Migration037 updates AttributeValueIndexed vertices correctly.
+
+    Required so that the call to NodeManager.query will work.
 
     If someone is upgrading from 1.2.4 (release before migration 026) or earlier to 1.4.x or later, then migration 026
     fail to find any 0.0.0.0 prefix nodes even if they exist. So we run it again here after migration 037 makes the
@@ -45,7 +46,7 @@ class Migration038(InternalSchemaMigration):
 
         for branch in await Branch.get_list(db=db):
             prefix_0000s = await NodeManager.query(
-                db=db, schema="BuiltinIPPrefix", branch=branch, filters={"prefix__values": ["0.0.0.0/0", "::/0"]}
+                db=db, schema=BuiltinIPPrefix, branch=branch, filters={"prefix__values": ["0.0.0.0/0", "::/0"]}
             )
             if not prefix_0000s:
                 continue

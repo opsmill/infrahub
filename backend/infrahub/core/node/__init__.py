@@ -23,6 +23,7 @@ from infrahub.core.constants.schema import RESOURCE_POOL_REL_SUFFIX, SchemaEleme
 from infrahub.core.metadata.interface import MetadataInterface
 from infrahub.core.metadata.model import MetadataInfo
 from infrahub.core.protocols import CoreNumberPool, CoreObjectTemplate
+from infrahub.core.protocols_base import CoreNode
 from infrahub.core.query.node import NodeCheckIDQuery, NodeCreateAllQuery, NodeDeleteQuery, NodeUpdateMetadataQuery
 from infrahub.core.schema import (
     AttributeSchema,
@@ -150,7 +151,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         return self._schema.kind
 
     def get_id(self) -> str:
-        """Return the ID of the node"""
+        """Return the ID of the node.
+
+        Raises:
+            InitializationError: When the node has not been saved yet and doesn't have an id.
+
+        """
         if self.id:
             return self.id
 
@@ -218,12 +224,17 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         await self._human_friendly_id.compute(db=db, node=self)
 
     async def get_display_label(self, db: InfrahubDatabase) -> str:
-        if self._display_label and (value := self._display_label.get_value(node=self, at=self._at)):
-            return value
+        if self._display_label is not None:
+            if value := self._display_label.get_value(node=self, at=self._at):
+                return value
+            # Stored value is empty do not compute on the fly to avoid recomputation trigger issues
+            if self._schema.display_label:
+                return ""
 
         if not self._schema.display_label:
             return repr(self)
 
+        # This should only happens for "virtual" nodes (that never exist inside the db)
         display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
         await display_label.compute(db=db, node=self)
         return display_label.get_value(node=self, at=self._at) or ""
@@ -238,7 +249,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._display_label = DisplayLabel(node_schema=self._schema, template=self._schema.display_label)
         await self._display_label.compute(db=db, node=self)
 
-    async def get_path_value(self, db: InfrahubDatabase, path: str) -> str:
+    async def get_path_value(self, db: InfrahubDatabase, path: str) -> Any:
         schema_path = self._schema.parse_schema_path(
             path=path, schema=db.schema.get_schema_branch(name=self._branch.name)
         )
@@ -265,9 +276,14 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             attr = getattr(node, schema_path.attribute_schema.name)
             return getattr(attr, schema_path.attribute_property_name)
 
+        raise ValueError(f"Unable to retrieve value for unsupported schema path type {path!r} on {self.get_kind()!r}")
+
     def get_labels(self) -> list[str]:
-        """Return the labels for this object, composed of the kind
-        and the list of Generic this object is inheriting from."""
+        """Return the labels for this object, composed of the kind.
+
+        and the list of Generic this object is inheriting from.
+
+        """
         labels: list[str] = []
         if isinstance(self._schema, NodeSchema):
             labels = [self.get_kind()] + self._schema.inherit_from
@@ -279,17 +295,18 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             return labels
 
         if isinstance(self._schema, ProfileSchema | TemplateSchema):
-            labels = [self.get_kind()] + self._schema.inherit_from
-            return labels
+            return [self.get_kind()] + self._schema.inherit_from
 
         return [self.get_kind()]
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Returns:
             Branch:
+
         """
         if self._schema.branch == BranchSupportType.AGNOSTIC:
             return registry.get_global_branch()
@@ -347,7 +364,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         elif isinstance(schema, str):
             # TODO need to raise a proper exception for this, right now it will raise a generic ValueError
             attrs["schema"] = db.schema.get(name=schema, branch=branch)
-        elif hasattr(schema, "_is_runtime_protocol") and schema._is_runtime_protocol:
+        elif isinstance(schema, type) and issubclass(schema, CoreNode):
             attrs["schema"] = db.schema.get(name=schema.__name__, branch=branch)
         else:
             raise ValueError(
@@ -365,7 +382,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         attribute: BaseAttribute,
         allocate_resources: bool = True,
     ) -> None:
-        """Evaluate if a resource has been requested from a pool and apply the resource
+        """Evaluate if a resource has been requested from a pool and apply the resource.
 
         This method only works on number pools, currently Integer is the only type that has the from_pool
         within the create code.
@@ -373,6 +390,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         Supports two cases:
         1. Schema-defined NumberPool attributes (kind="NumberPool" with number_pool_id in parameters)
         2. User-specified from_pool (user explicitly passes {"from_pool": {"id": pool_id}} to a Number attribute)
+
+        Raises:
+            ValidationError: When `from_pool` is used on a template, when no pool ID is provided,
+                when the pool cannot be used for the attribute, or when the pool is exhausted.
+            NodeNotFoundError: When the requested number pool cannot be located by id or name.
+
         """
         number_pool_id: str | None = None
         # Templates must use _from_resource_pool relationships, not from_pool
@@ -880,7 +903,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         data: Any,
         db: InfrahubDatabase,
     ) -> RelationshipManager:
-        rm = await RelationshipManager.init(
+        return await RelationshipManager.init(
             db=db,
             data=data,
             schema=schema,
@@ -888,8 +911,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             at=self._at,
             node=self,
         )
-
-        return rm
 
     async def _generate_attribute_default(
         self,
@@ -1062,7 +1083,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self, db: InfrahubDatabase, user_id: str, at: Timestamp | None = None, fields: list[str] | None = None
     ) -> NodeChangelog:
         """Update the node in the database if needed."""
-
         update_at = Timestamp(at)
         node_changelog = NodeChangelog(node_id=self.get_id(), node_kind=self.get_kind(), display_label="")
 
@@ -1143,7 +1163,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def delete(self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None) -> None:
         """Delete the Node in the database."""
-
         delete_at = Timestamp(at)
 
         node_changelog = NodeChangelog(
@@ -1199,12 +1218,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         permissions: dict | None = None,
         include_properties: bool = True,
     ) -> dict:
-        """Generate GraphQL Payload for all attributes
+        """Generate GraphQL Payload for all attributes.
 
         Returns:
             (dict): Return GraphQL Payload
-        """
 
+        """
         response: dict[str, Any] = {"id": self.id, KIND_GRAPHQL_FIELD_NAME: self.get_kind()}
 
         if related_node_ids is not None:
@@ -1302,7 +1321,6 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
         """Update object from a GraphQL payload."""
-
         changed = False
 
         for key, value in data.items():
@@ -1331,7 +1349,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
         self._display_label.set_value(value=value, manually_assigned=True)
 
     def _get_parent_relationship_name(self) -> str | None:
-        """Return the name of the parent relationship is one is present"""
+        """Return the name of the parent relationship is one is present."""
         for relationship in self._schema.relationships:
             if relationship.kind == RelationshipKind.PARENT:
                 return relationship.name
@@ -1340,9 +1358,7 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
 
     async def get_object_template(self, db: InfrahubDatabase) -> CoreObjectTemplate | None:
         object_template: RelationshipManager | None = getattr(self, OBJECT_TEMPLATE_RELATIONSHIP_NAME, None)
-        return (
-            await object_template.get_peer(db=db, peer_type=CoreObjectTemplate) if object_template is not None else None
-        )
+        return await object_template.get_peer(db=db) if object_template is not None else None
 
     def get_relationships(
         self, kind: RelationshipKind, exclude: Sequence[str] | None = None
@@ -1363,7 +1379,12 @@ class Node(BaseNode, MetadataInterface, metaclass=BaseNodeMeta):
             relm.validate()
 
     async def get_parent_relationship_peer(self, db: InfrahubDatabase, name: str) -> Node | None:
-        """When a node has a parent relationship of a given name, this method returns the peer of that relationship."""
+        """When a node has a parent relationship of a given name, this method returns the peer of that relationship.
+
+        Raises:
+            ValueError: When the relationship is not of kind 'parent'.
+
+        """
         relationship = self.get_schema().get_relationship(name=name)
         if relationship.kind != RelationshipKind.PARENT:
             raise ValueError(f"Relationship '{name}' is not of kind 'parent'")

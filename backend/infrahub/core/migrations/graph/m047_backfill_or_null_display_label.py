@@ -4,27 +4,31 @@ from typing import TYPE_CHECKING, Any
 
 from rich.progress import Progress, TaskID
 
-from infrahub.computed_attribute.jinja2 import InfrahubJinja2Template
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GLOBAL_BRANCH_NAME, NULL_VALUE, BranchSupportType
 from infrahub.core.initialization import get_root_node
-from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
-from infrahub.core.migrations.shared import (
-    MigrationInput,
-    MigrationRequiringRebase,
-    MigrationResult,
-    get_migration_console,
+from infrahub.core.migrations.helpers.display_label import (
+    extract_jinja2_variables,
+    is_jinja2_template,
+    render_display_label,
 )
-from infrahub.core.query import Query, QueryType
-
-from .load_schema_branch import get_or_load_schema_branch
-from .m044_backfill_hfid_display_label_in_db import (
+from infrahub.core.migrations.query.path_details import (
+    SCHEMA_KINDS_TO_SKIP,
     DefaultBranchNodeCount,
     GetPathDetailsBranchQuery,
     GetPathDetailsDefaultBranch,
     GetResultMapQuery,
 )
+from infrahub.core.migrations.query.update_attribute_values import UpdateAttributeValuesQuery
+from infrahub.core.migrations.shared import (
+    MigrationInput,
+    MigrationRequiringRebase,
+    MigrationResult,
+)
+from infrahub.core.query import Query, QueryType
+
+from .load_schema_branch import get_or_load_schema_branch
 
 if TYPE_CHECKING:
     from infrahub.core.schema import AttributeSchema, MainSchemaTypes
@@ -32,26 +36,6 @@ if TYPE_CHECKING:
     from infrahub.core.schema.schema_branch import SchemaBranch
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
-
-
-console = get_migration_console()
-
-
-def _is_jinja2_template(display_label: str) -> bool:
-    return any(c in display_label for c in "{}")
-
-
-def _extract_jinja2_variables(template_str: str) -> list[str]:
-    return InfrahubJinja2Template(template=template_str).get_variables()
-
-
-async def _render_display_label(display_label: str, variable_names: list[str], values: list[Any]) -> str | None:
-    if not _is_jinja2_template(display_label):
-        return values[0] if values and values[0] is not None else None
-
-    variables = dict(zip(variable_names, values, strict=False))
-    jinja_template = InfrahubJinja2Template(template=display_label)
-    return await jinja_template.render(variables=variables)
 
 
 class GetNodesWithoutDisplayLabelQuery(Query):
@@ -232,10 +216,11 @@ CREATE (a)-[:IS_VISIBLE { branch: $branch, branch_level: $branch_level, status: 
 
 
 class Migration047(MigrationRequiringRebase):
-    """
-    Backfill `display_label` attributes for all nodes:
+    """Backfill `display_label` attributes for all nodes:
+
     - If schema does not define display_label OR attribute doesn't exist: insert NULL value
-    - If schema defines display_label: compute and store the value, invalidate NULL value if exists
+    - If schema defines display_label: compute and store the value, invalidate NULL value if exists.
+
     """
 
     name: str = "047_backfill_or_null_display_label"
@@ -243,7 +228,7 @@ class Migration047(MigrationRequiringRebase):
     update_batch_size: int = 1000
     # skip these b/c the attributes on these schema-related nodes are used to define the values included in
     # the display_label attributes on instances of these schema, so should not be updated
-    kinds_to_skip: list[str] = ["SchemaNode", "SchemaAttribute", "SchemaRelationship", "SchemaGeneric"]
+    kinds_to_skip: list[str] = SCHEMA_KINDS_TO_SKIP
 
     async def validate_migration(self, db: InfrahubDatabase) -> MigrationResult:  # noqa: ARG002
         return MigrationResult()
@@ -258,12 +243,12 @@ class Migration047(MigrationRequiringRebase):
         if not schema.display_label:
             return []
 
-        if not _is_jinja2_template(schema.display_label):
+        if not is_jinja2_template(schema.display_label):
             schema_path = schema.parse_schema_path(path=schema.display_label, schema=schema_branch)
             return [schema_path]
 
         schema_paths = []
-        for variable in _extract_jinja2_variables(schema.display_label):
+        for variable in extract_jinja2_variables(schema.display_label):
             schema_path = schema.parse_schema_path(path=variable, schema=schema_branch)
             schema_paths.append(schema_path)
 
@@ -320,7 +305,7 @@ class Migration047(MigrationRequiringRebase):
                 if not v:
                     continue
 
-                rendered_value = await _render_display_label(
+                rendered_value = await render_display_label(
                     display_label=schema.display_label,
                     variable_names=[s.attribute_path_as_str for s in schema_paths],
                     values=v,
@@ -388,7 +373,7 @@ class Migration047(MigrationRequiringRebase):
             backfill_count = count_query.get_num_nodes()
 
         try:
-            with Progress(console=console) as progress:
+            with Progress(console=migration_input.console) as progress:
                 # Create NULL display_label
                 if nodes_without_display_label:
                     null_task = progress.add_task(

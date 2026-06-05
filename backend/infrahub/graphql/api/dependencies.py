@@ -11,7 +11,9 @@ from ..auth.query_permission_checker.object_permission_checker import (
     PermissionManagerPermissionChecker,
     RepositoryManagerPermissionChecker,
 )
+from ..auth.query_permission_checker.rebase_operation_checker import RebaseBranchPermissionChecker
 from ..auth.query_permission_checker.super_admin_checker import SuperAdminPermissionChecker
+from ..error_formatter import catalogue_error_formatter
 
 
 def get_anonymous_access_setting() -> bool:
@@ -26,6 +28,7 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
             SuperAdminPermissionChecker(),
             DefaultBranchPermissionChecker(),
             MergeBranchPermissionChecker(),
+            RebaseBranchPermissionChecker(),
             AccountManagerPermissionChecker(),
             RepositoryManagerPermissionChecker(),
             PermissionManagerPermissionChecker(),
@@ -35,4 +38,7 @@ def build_graphql_query_permission_checker() -> GraphQLQueryPermissionChecker:
 
 
 def build_graphql_app() -> InfrahubGraphQLApp:
-    return InfrahubGraphQLApp(build_graphql_query_permission_checker())
+    return InfrahubGraphQLApp(
+        build_graphql_query_permission_checker(),
+        error_formatter=catalogue_error_formatter,
+    )

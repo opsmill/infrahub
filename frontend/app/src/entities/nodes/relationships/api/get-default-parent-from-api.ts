@@ -4,7 +4,7 @@ import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import type { ContextParams } from "@/shared/api/types";
 import type { FormRelationshipValue } from "@/shared/components/form/type";
 
-import { getRelationshipParent } from "@/entities/nodes/api/getRelationshipParent";
+import { getRelationshipParent } from "@/entities/nodes/relationships/api/get-relationship-parent.query";
 import { getSchema } from "@/entities/schema/domain/get-schema";
 
 interface GetDefaultParentFromApiParams extends ContextParams {
@@ -61,12 +61,12 @@ export const getDefaultParentFromApi = ({
     getRelationshipParent({
       kind: parentRelationship?.peer,
       attribute: `${parentRelationshipAttribute?.name}__ids`,
-      id,
     })
   );
 
   return graphqlClient.query({
     query,
+    variables: { ids: id ? [id] : undefined },
     context: {
       branch: branchName,
       date: atDate,

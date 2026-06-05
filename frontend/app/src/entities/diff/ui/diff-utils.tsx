@@ -1,9 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton } from "@infrahub/ui";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { LinkButton } from "@/shared/components/ui/button";
 import { NODE_PATH_EXCLUDELIST } from "@/shared/config/constants";
-import { QSP } from "@/shared/config/qsp";
 
 import { NodeLabel } from "@/entities/nodes/object/ui/node-label";
 
@@ -13,7 +12,7 @@ function extractNodeId(path: string) {
   return match?.[1] ?? null;
 }
 
-function extractNodeProperty(path: string) {
+function extractNodeProperty(path?: string) {
   // Split and drop empty parts to support "/data/..." and "data/..."
   const parts = path?.split("/").filter(Boolean) ?? [];
   // Find "data" segment and drop "data/<id>"
@@ -25,17 +24,8 @@ function extractNodeProperty(path: string) {
   return label;
 }
 
-export const getThreadLabel = (node?: any, currentBranch?: string, path?: string) => {
-  // Get main object name
-  const objectName = node?.display_label && currentBranch && node?.display_label[currentBranch];
-
-  const nodeLabel = extractNodeProperty(path);
-
-  if (objectName) {
-    return `${objectName} > ${nodeLabel}`;
-  }
-
-  return nodeLabel;
+export const getThreadLabel = (path?: string) => {
+  return extractNodeProperty(path);
 };
 
 // Get thread title from the thread or a defined label
@@ -51,16 +41,14 @@ export const getThreadTitle = (thread?: any, label?: string) => {
       return null;
     }
 
+    const proposedChangePath = pathname.match(/^(\/proposed-changes\/[^/]+)/)?.[1] ?? pathname;
+
     return (
       <div className="flex items-center gap-2 text-sm">
         <Badge variant={"gray-outline"}>Object</Badge>
 
         <LinkButton
-          to={{
-            pathname,
-            search: `?${QSP.PROPOSED_CHANGES_TAB}=data`,
-            hash: `#${nodeId}`,
-          }}
+          href={`${proposedChangePath}/data#${nodeId}`}
           className="flex items-center gap-2 px-1"
           variant={"ghost"}
         >

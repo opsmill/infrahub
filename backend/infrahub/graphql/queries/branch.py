@@ -13,7 +13,7 @@ from infrahub.exceptions import ValidationError
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.graphql.types import BranchType, InfrahubBranch, InfrahubBranchType
 from infrahub.graphql.types.enums import InfrahubBranchStatus
-from infrahub.graphql.types.metadata import OrderInput
+from infrahub.graphql.types.metadata import MetadataOrderInput
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -21,8 +21,8 @@ if TYPE_CHECKING:
     from graphql import GraphQLResolveInfo
 
 
-def standard_node_ordering_from_order_input(order: OrderInput | None = None) -> StandardNodeOrdering:
-    """Create a StandardNodeOrdering from an OrderInput.
+def standard_node_ordering_from_order_input(order: MetadataOrderInput | None = None) -> StandardNodeOrdering:
+    """Create a StandardNodeOrdering from a MetadataOrderInput.
 
     Args:
         order: Optional ordering specification from GraphQL input.
@@ -31,7 +31,8 @@ def standard_node_ordering_from_order_input(order: OrderInput | None = None) -> 
         StandardNodeOrdering with the specified field and direction, or defaults to ID with no direction.
 
     Raises:
-        ValidationError: If both created_at and updated_at are specified.
+        ValidationError: when both `created_at` and `updated_at` are specified.
+
     """
     if order is None or not order.node_metadata:
         return StandardNodeOrdering()
@@ -80,7 +81,7 @@ async def infrahub_branch_resolver(
     name__value: str | None = None,
     ids: list[str] | None = None,
     partial_match: bool = False,
-    order: OrderInput | None = None,
+    order: MetadataOrderInput | None = None,
     status__value: str | None = None,
     node_metadata__created_by__id: str | None = None,
     branched_from__after: datetime | None = None,
@@ -155,7 +156,7 @@ InfrahubBranchQueryList = Field(
     ids=List(ID),
     partial_match=Boolean(default_value=False),
     order=Argument(
-        OrderInput,
+        MetadataOrderInput,
         required=False,
         description="Define ordering of results for branch queries.",
     ),

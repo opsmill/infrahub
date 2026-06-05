@@ -1,6 +1,10 @@
 import type { SelectProps } from "react-aria-components";
 
-import { Select, SelectItem, SelectList, SelectTrigger } from "@/shared/components/aria/select";
+import { ListBox, ListBoxItem } from "@/shared/components/aria/list-box";
+import { Popover } from "@/shared/components/aria/popover";
+import { Select, SelectTrigger } from "@/shared/components/aria/select";
+
+import type { FilterDefinition } from "@/entities/nodes/object/domain/filter-definition";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -11,6 +15,7 @@ export const FILTER_CONDITION = {
   IS_NOT_EMPTY: "is not empty",
   BEFORE: "before",
   AFTER: "after",
+  BETWEEN: "between",
 } as const;
 
 export type FilterCondition = (typeof FILTER_CONDITION)[keyof typeof FILTER_CONDITION];
@@ -28,25 +33,52 @@ export const ATTRIBUTE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; l
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
 ];
 
-export const DATE_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; label: string }> = [
-  { key: FILTER_CONDITION.BEFORE, label: "before" },
-  { key: FILTER_CONDITION.AFTER, label: "after" },
+export const PERMISSION_DECISION_FILTER_CONDITION_OPTIONS: Array<{
+  key: FilterCondition;
+  label: string;
+}> = [
+  { key: FILTER_CONDITION.CONTAINS, label: "is" },
   { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
   { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
 ];
 
+export const DATETIME_FILTER_CONDITION_OPTIONS: Array<{ key: FilterCondition; label: string }> = [
+  { key: FILTER_CONDITION.IS_EMPTY, label: "is empty" },
+  { key: FILTER_CONDITION.IS_NOT_EMPTY, label: "is not empty" },
+];
+
+export const METADATA_DATE_FILTER_CONDITION_OPTIONS: Array<{
+  key: FilterCondition;
+  label: string;
+}> = [
+  { key: FILTER_CONDITION.BEFORE, label: "before" },
+  { key: FILTER_CONDITION.AFTER, label: "after" },
+  { key: FILTER_CONDITION.BETWEEN, label: "between" },
+];
+
+export const METADATA_USER_FILTER_CONDITION_OPTIONS: Array<{
+  key: FilterCondition;
+  label: string;
+}> = [{ key: FILTER_CONDITION.IS_ANY_OF, label: "is any of" }];
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-export interface FilterConditionSelectProps extends SelectProps {
-  filterType: "attribute" | "relationship" | "date";
+export interface FilterConditionSelectProps extends SelectProps<string> {
+  filterType: FilterDefinition["type"] | "datetime";
 }
 
 function getFilterConditionOptions(filterType: FilterConditionSelectProps["filterType"]) {
   switch (filterType) {
     case "relationship":
       return RELATIONSHIP_FILTER_CONDITION_OPTIONS;
-    case "date":
-      return DATE_FILTER_CONDITION_OPTIONS;
+    case "permission-decision":
+      return PERMISSION_DECISION_FILTER_CONDITION_OPTIONS;
+    case "datetime":
+      return DATETIME_FILTER_CONDITION_OPTIONS;
+    case "metadata-date":
+      return METADATA_DATE_FILTER_CONDITION_OPTIONS;
+    case "metadata-user":
+      return METADATA_USER_FILTER_CONDITION_OPTIONS;
     default:
       return ATTRIBUTE_FILTER_CONDITION_OPTIONS;
   }
@@ -61,11 +93,13 @@ export function FilterConditionSelect({ filterType, ...props }: FilterConditionS
       isRequired
       {...props}
     >
-      <SelectTrigger className="w-33" />
+      <SelectTrigger className="h-auto min-h-auto border-transparent bg-transparent px-1 py-0" />
 
-      <SelectList items={getFilterConditionOptions(filterType)}>
-        {(item) => <SelectItem>{item.label}</SelectItem>}
-      </SelectList>
+      <Popover>
+        <ListBox items={getFilterConditionOptions(filterType)} className="p-1">
+          {(item) => <ListBoxItem>{item.label}</ListBoxItem>}
+        </ListBox>
+      </Popover>
     </Select>
   );
 }

@@ -50,6 +50,12 @@ exceptions:
   - VLAN
   - WebUI
   - IDE
+  - TCP
+  - TLS
+  - UDP
+  - RFC
+  - SIEM
+  - PRI
 
   # Technical terms that should keep their case
   - Python

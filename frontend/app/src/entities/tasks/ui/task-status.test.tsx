@@ -1,10 +1,10 @@
-import { NetworkStatus } from "@apollo/client";
 import { describe, expect, test, vi } from "vitest";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
 import { getBranchTaskStatusFromApi } from "@/entities/tasks/api/get-branch-task-status-from-api";
 
 import { render } from "../../../../tests/components/render";
+import { initPointerTracking } from "../../../../tests/components/utils";
 import { generateBranch } from "../../../../tests/fake/branch";
 import { TaskStatus } from "./task-status";
 
@@ -21,15 +21,13 @@ describe("TaskStatus", () => {
     useCurrentBranchMock.mockReturnValue({ currentBranch: branch, setCurrentBranch: () => {} });
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: { InfrahubTaskBranchStatus: { count: 1 } },
-      loading: false,
-      networkStatus: NetworkStatus.ready,
-    });
+    } as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
 
     // WHEN
     const component = await render(<TaskStatus />);
 
     // THEN
-    const taskButton = component.getByRole("link");
+    const taskButton = component.getByRole("link", { name: "Tasks running on this branch" });
     await expect.element(taskButton).toBeVisible();
     await expect
       .element(taskButton)
@@ -38,6 +36,7 @@ describe("TaskStatus", () => {
       .element(taskButton)
       .toHaveAttribute("href", expect.stringContaining(encodeURIComponent(branch.name)));
     await expect.element(component.getByTestId("pulse")).toBeVisible();
+    await initPointerTracking(component.locator);
     await taskButton.hover();
     await expect
       .element(component.getByRole("tooltip", { name: "Tasks running on this branch" }))
@@ -52,9 +51,7 @@ describe("TaskStatus", () => {
     });
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: { InfrahubTaskBranchStatus: { count: 0 } },
-      loading: false,
-      networkStatus: NetworkStatus.ready,
-    });
+    } as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
 
     // WHEN
     const component = await render(<TaskStatus />);
@@ -62,6 +59,7 @@ describe("TaskStatus", () => {
     // THEN
     const taskButton = component.getByRole("link", { name: "View branch tasks" });
     await expect.element(taskButton).toBeVisible();
+    await initPointerTracking(component.locator);
     await taskButton.hover();
     await expect
       .element(component.getByRole("tooltip", { name: "View branch tasks" }))
@@ -78,9 +76,7 @@ describe("TaskStatus", () => {
     getBranchTaskStatusFromApiMock.mockResolvedValue({
       data: null!,
       error: {} as any,
-      loading: false,
-      networkStatus: NetworkStatus.error,
-    });
+    } as unknown as Awaited<ReturnType<typeof getBranchTaskStatusFromApi>>);
 
     // WHEN
     const component = await render(<TaskStatus />);

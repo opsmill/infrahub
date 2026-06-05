@@ -1,6 +1,6 @@
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
-import * as React from "react";
+import React from "react";
 
 import { classNames } from "@/shared/utils/common";
 
@@ -10,10 +10,18 @@ export const PopoverTrigger = PopoverPrimitive.Trigger;
 
 export const PopoverAnchor = PopoverPrimitive.Anchor;
 
-export const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof PopoverPrimitive.Content>,
-  PopoverPrimitive.PopoverContentProps & { portal?: boolean }
->(({ className, align = "center", sideOffset = 4, portal = true, ...props }, ref) => {
+interface PopoverContentProps extends React.ComponentProps<typeof PopoverPrimitive.Content> {
+  portal?: boolean;
+}
+
+export const PopoverContent = ({
+  className,
+  align = "center",
+  sideOffset = 4,
+  portal = true,
+  ref,
+  ...props
+}: PopoverContentProps) => {
   const Wrapper = portal ? PopoverPrimitive.Portal : React.Fragment;
 
   return (
@@ -33,14 +41,13 @@ export const PopoverContent = React.forwardRef<
       />
     </Wrapper>
   );
-});
+};
 
 export const PopoverTabs = TabsPrimitive.Root;
 
-export const PopoverTabsList = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.List>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
->(({ className, ...props }, ref) => (
+interface PopoverTabsListProps extends React.ComponentProps<typeof TabsPrimitive.List> {}
+
+export const PopoverTabsList = ({ className, ref, ...props }: PopoverTabsListProps) => (
   <TabsPrimitive.List
     ref={ref}
     className={classNames(
@@ -49,12 +56,11 @@ export const PopoverTabsList = React.forwardRef<
     )}
     {...props}
   />
-));
+);
 
-export const PopoverTabsTrigger = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
->(({ className, ...props }, ref) => (
+interface PopoverTabsTriggerProps extends React.ComponentProps<typeof TabsPrimitive.Trigger> {}
+
+export const PopoverTabsTrigger = ({ className, ref, ...props }: PopoverTabsTriggerProps) => (
   <TabsPrimitive.Trigger
     ref={ref}
     className={classNames(
@@ -66,16 +72,15 @@ export const PopoverTabsTrigger = React.forwardRef<
     )}
     {...props}
   />
-));
+);
 
-export const PopoverTabsContent = React.forwardRef<
-  React.ElementRef<typeof TabsPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>
->(({ className, ...props }, ref) => (
+interface PopoverTabsContentProps extends React.ComponentProps<typeof TabsPrimitive.Content> {}
+
+export const PopoverTabsContent = ({ className, ref, ...props }: PopoverTabsContentProps) => (
   <TabsPrimitive.Content
     ref={ref}
     tabIndex={-1}
     className={classNames("outline-hidden", className)}
     {...props}
   />
-));
+);

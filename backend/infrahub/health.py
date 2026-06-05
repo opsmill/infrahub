@@ -3,11 +3,10 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel
 
-from infrahub import config
 from infrahub.exceptions import InitializationError
 
 if TYPE_CHECKING:
@@ -65,9 +64,11 @@ def classify_error(exc: Exception) -> ErrorCategory:
     return ErrorCategory.UNKNOWN_ERROR
 
 
-async def check_dependency(name: DependencyName, probe: Callable[[], Awaitable[bool]]) -> DependencyHealth:
+async def check_dependency(
+    name: DependencyName, probe: Callable[[], Awaitable[bool]], *, timeout_seconds: float
+) -> DependencyHealth:
     try:
-        healthy = await asyncio.wait_for(probe(), timeout=config.SETTINGS.health.check_timeout)
+        healthy = await asyncio.wait_for(probe(), timeout=timeout_seconds)
     except Exception as exc:
         return DependencyHealth(name=name, status=DependencyStatus.DOWN, error=classify_error(exc))
     if healthy:
@@ -75,44 +76,67 @@ async def check_dependency(name: DependencyName, probe: Callable[[], Awaitable[b
     return DependencyHealth(name=name, status=DependencyStatus.DOWN, error=ErrorCategory.UNKNOWN_ERROR)
 
 
-def determine_status(checks: list[DependencyHealth]) -> OverallStatus:
-    """Determine the overall health status from individual dependency checks.
+class HealthStatusEvaluator(Protocol):
+    """Aggregates individual dependency checks into a single overall status.
 
-    Returns HEALTHY when all dependencies are up, UNHEALTHY otherwise.
-    Enterprise deployments can override this to support degraded states."""
-    if all(check.status == DependencyStatus.UP for check in checks):
-        return OverallStatus.HEALTHY
-    return OverallStatus.UNHEALTHY
+    Implementations choose the aggregation policy. The default treats any DOWN
+    dependency as UNHEALTHY; an alternative implementation can introduce a
+    degraded state without changing how the dependencies themselves are probed.
+    """
 
-
-async def get_health_checks(service: InfrahubServices, db: InfrahubDatabase) -> list[DependencyHealth]:
-    # Wrap service attribute accesses in inner async functions so that
-    # InitializationError from a partially-initialized service is caught by
-    # check_dependency and reported as DOWN instead of bubbling up as a 500.
-    async def probe_message_bus() -> bool:
-        return await service.message_bus.is_healthy()
-
-    async def probe_cache() -> bool:
-        return await service.cache.is_healthy()
-
-    async def probe_workflow() -> bool:
-        return await service.workflow.is_healthy()
-
-    checks = await asyncio.gather(
-        check_dependency(DependencyName.DATABASE, db.is_healthy),
-        check_dependency(DependencyName.MESSAGE_BUS, probe_message_bus),
-        check_dependency(DependencyName.CACHE, probe_cache),
-        check_dependency(DependencyName.TASK_MANAGER, probe_workflow),
-        return_exceptions=False,
-    )
-    return list(checks)
+    def evaluate(self, checks: list[DependencyHealth]) -> OverallStatus: ...
 
 
-async def health_report(service: InfrahubServices, db: InfrahubDatabase) -> HealthResponse:
-    checks = await get_health_checks(service=service, db=db)
-    status = determine_status(checks)
-    return HealthResponse(
-        status=status,
-        checks=checks,
-        timestamp=datetime.now(tz=UTC),
-    )
+class DefaultHealthStatusEvaluator:
+    """Overall status is HEALTHY only when every dependency reports UP."""
+
+    def evaluate(self, checks: list[DependencyHealth]) -> OverallStatus:
+        if all(check.status == DependencyStatus.UP for check in checks):
+            return OverallStatus.HEALTHY
+        return OverallStatus.UNHEALTHY
+
+
+class HealthChecker:
+    """Probes the backing services Infrahub needs to serve traffic and reports their health."""
+
+    def __init__(
+        self,
+        db: InfrahubDatabase,
+        service: InfrahubServices,
+        *,
+        check_timeout: float,
+        status_evaluator: HealthStatusEvaluator | None = None,
+    ) -> None:
+        self._db = db
+        self._service = service
+        self._check_timeout = check_timeout
+        self._status_evaluator = status_evaluator or DefaultHealthStatusEvaluator()
+
+    async def report(self) -> HealthResponse:
+        checks = await self._run_checks()
+        return HealthResponse(
+            status=self._status_evaluator.evaluate(checks),
+            checks=checks,
+            timestamp=datetime.now(tz=UTC),
+        )
+
+    async def _run_checks(self) -> list[DependencyHealth]:
+        # Service attribute access is deferred into inner coroutines so that an
+        # error raised by a partially-initialized service is caught per dependency
+        # and reported as DOWN instead of failing the whole report.
+        async def probe_message_bus() -> bool:
+            return await self._service.message_bus.is_healthy()
+
+        async def probe_cache() -> bool:
+            return await self._service.cache.is_healthy()
+
+        async def probe_workflow() -> bool:
+            return await self._service.workflow.is_healthy()
+
+        checks = await asyncio.gather(
+            check_dependency(DependencyName.DATABASE, self._db.is_healthy, timeout_seconds=self._check_timeout),
+            check_dependency(DependencyName.MESSAGE_BUS, probe_message_bus, timeout_seconds=self._check_timeout),
+            check_dependency(DependencyName.CACHE, probe_cache, timeout_seconds=self._check_timeout),
+            check_dependency(DependencyName.TASK_MANAGER, probe_workflow, timeout_seconds=self._check_timeout),
+        )
+        return list(checks)

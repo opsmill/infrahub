@@ -34,6 +34,12 @@ export const InternalGroupsFilterTag = ({ ...props }: TagProps) => {
   }
 
   return (
-    <FilterTag id={SHOW_INTERNAL_GROUPS_ID} label="internal groups" value="hidden" {...props} />
+    <FilterTag
+      id={SHOW_INTERNAL_GROUPS_ID}
+      label="internal groups"
+      condition="is"
+      value="hidden"
+      {...props}
+    />
   );
 };

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from graphene import Boolean, Field, InputField, InputObjectType, Int, List, Mutation, String
-from graphene.types.generic import GenericScalar
 from typing_extensions import Self
 
 from infrahub.core import protocols, registry
@@ -14,6 +13,7 @@ from infrahub.core.schema import NodeSchema
 from infrahub.core.schema.attribute_parameters import NumberAttributeParameters
 from infrahub.database import retry_db_transaction
 from infrahub.exceptions import QueryValidationError, SchemaNotFoundError, ValidationError
+from infrahub.graphql.scalars import FixedGenericScalar
 from infrahub.pools.registration import get_branches_with_schema_number_pool
 
 from ..queries.resource_manager import PoolAllocatedNode
@@ -38,7 +38,9 @@ class IPPrefixPoolGetResourceInput(InputObjectType):
     prefix_length = InputField(Int(required=False), description="Size of the prefix to allocate")
     member_type = InputField(String(required=False), description="Type of members for the newly created prefix")
     prefix_type = InputField(String(required=False), description="Kind of prefix to allocate")
-    data = InputField(GenericScalar(required=False), description="Additional data to pass to the newly created prefix")
+    data = InputField(
+        FixedGenericScalar, required=False, description="Additional data to pass to the newly created prefix"
+    )
 
 
 class IPAddressPoolGetResourceInput(InputObjectType):
@@ -50,7 +52,7 @@ class IPAddressPoolGetResourceInput(InputObjectType):
     )
     address_type = InputField(String(required=False), description="Kind of IP address to allocate")
     data = InputField(
-        GenericScalar(required=False), description="Additional data to pass to the newly created IP address"
+        FixedGenericScalar, required=False, description="Additional data to pass to the newly created IP address"
     )
 
 
@@ -231,11 +233,22 @@ class InfrahubNumberPoolMutation(InfrahubMutationMixin, Mutation):
         database: InfrahubDatabase | None = None,  # noqa: ARG003
         node: Node | None = None,
     ) -> tuple[Node, Self]:
-        if (data.get("node") and data.get("node").value) or (
-            data.get("node_attribute") and data.get("node_attribute").value
-        ):
-            raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
         graphql_context: GraphqlContext = info.context
+        new_node_value = data.get("node") and data.get("node").value
+        new_node_attr_value = data.get("node_attribute") and data.get("node_attribute").value
+        if new_node_value or new_node_attr_value:
+            if node is None:
+                node = await NodeManager.find_object(
+                    db=graphql_context.db,
+                    kind=InfrahubKind.NUMBERPOOL,
+                    id=data.get("id"),
+                    hfid=data.get("hfid"),
+                    branch=branch,
+                )
+            if new_node_value and new_node_value != node.get_attribute("node").value:
+                raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
+            if new_node_attr_value and new_node_attr_value != node.get_attribute("node_attribute").value:
+                raise ValidationError(input_value="The fields 'node' or 'node_attribute' can't be changed.")
 
         async with graphql_context.db.start_transaction() as dbt:
             number_pool, result = await super().mutate_update(

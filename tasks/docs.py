@@ -43,6 +43,7 @@ def generate_schema(context: Context) -> None:  # noqa: ARG001
 
 @task
 def generate_config(context: Context) -> None:  # noqa: ARG001
+    """Generate documentation for Infrahub configuration settings."""
     _generate_infrahub_config_documentation()
 
 
@@ -106,7 +107,6 @@ def validate(context: Context) -> None:
 @task
 def serve(context: Context) -> None:
     """Run documentation server in development mode."""
-
     exec_cmd = "npm run serve"
 
     with context.cd(DOCUMENTATION_DIRECTORY):
@@ -133,6 +133,10 @@ def markdownlint(context: Context) -> None:
     """Lint markdown files with markdownlint-cli2.
 
     Uses .markdownlint-cli2.yaml for configuration, globs, and ignore patterns.
+
+    Raises:
+        SystemExit: When the markdownlint-cli2 command is not installed.
+
     """
     has_markdownlint = check_if_command_available(context=context, command_name="markdownlint-cli2")
 
@@ -158,20 +162,19 @@ def format_markdownlint(context: Context) -> None:
 
 @task
 def format(context: Context) -> None:
-    """This will run all formatter."""
+    """Format all documentation markdown files."""
     format_markdownlint(context)
 
 
 @task
 def lint(context: Context) -> None:
-    """This will run all linter."""
+    """Run all documentation linters (markdownlint, vale)."""
     markdownlint(context)
     vale(context)
 
 
 def _generate_infrahub_cli_documentation(context: Context) -> None:
     """Generate the documentation for infrahub cli using typer-cli."""
-
     CLI_COMMANDS = (
         ("infrahub.cli.db", "infrahub db", "infrahub-db"),
         ("infrahub.cli.server", "infrahub server", "infrahub-server"),
@@ -235,7 +238,7 @@ def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
 
 
 def _generate_infrahub_schema_documentation() -> None:
-    """Generate documentation for the schema"""
+    """Generate documentation for the schema."""
     import jinja2
 
     from infrahub.core.schema import internal, internal_schema
@@ -274,8 +277,7 @@ def _extract_nested_parameters(
     parent_default: dict | None = None,
     env_prefix: str | None = None,
 ) -> list["ConfigurationSectionParameter"]:
-    """
-    Recursively extract nested parameters for object-type config fields.
+    """Recursively extract nested parameters for object-type config fields.
 
     Args:
         prop_schema: The property schema dictionary.
@@ -287,6 +289,7 @@ def _extract_nested_parameters(
 
     Returns:
         List of ConfigurationSectionParameter objects for nested fields.
+
     """
     from infrahub import config
 
@@ -389,6 +392,7 @@ def _process_section_parameters(
 
     Returns:
         List of ConfigurationSectionParameter objects.
+
     """
     parameters = []
     for param_name, param_schema in section_schema["properties"].items():
@@ -535,7 +539,7 @@ def _get_env_vars() -> dict[str, str]:
 
 
 def _generate_infrahub_sdk_configuration_documentation() -> None:
-    """Generate documentation for the Infrahub SDK configuration"""
+    """Generate documentation for the Infrahub SDK configuration."""
     import jinja2
     from infrahub_sdk.config import ConfigBase
 
@@ -585,7 +589,7 @@ def _generate_infrahub_sdk_configuration_documentation() -> None:
 
 
 def _generate_infrahub_repository_configuration_documentation() -> None:
-    """Generate documentation for the Infrahub repository configuration file"""
+    """Generate documentation for the Infrahub repository configuration file."""
     from copy import deepcopy
 
     import jinja2
@@ -636,9 +640,9 @@ def _generate_infrahub_repository_configuration_documentation() -> None:
 
 
 def _generate_infrahub_bus_events_documentation() -> None:
-    """
-    Generate documentation for all classes in the event system into a single file
-    using a Jinja2 template. Accessible via `invoke generate_infrahub_events_documentation`.
+    """Generate documentation for all classes in the event system into a single file using a Jinja2 template.
+
+    Accessible via `invoke generate_infrahub_events_documentation`.
     """
     from infrahub.message_bus import InfrahubMessage, InfrahubResponse
 
@@ -646,9 +650,7 @@ def _generate_infrahub_bus_events_documentation() -> None:
         classes: dict[str, type[InfrahubMessage | InfrahubResponse]],
         priority_map: dict[str, int] | None = None,
     ) -> dict[str, dict[str, list[dict[str, any]]]]:
-        """
-        Group classes into a nested dictionary by primary and secondary categories, including priority.
-        """
+        """Group classes into a nested dictionary by primary and secondary categories, including priority."""
         grouped = defaultdict(lambda: defaultdict(list))
         for event_name, cls in classes.items():
             parts = event_name.split(".")
@@ -746,6 +748,7 @@ class ConfigurationSection:
         name: The name of the configuration section.
         description: The section's description.
         parameters: The list of parameters in this section.
+
     """
 
     name: str
@@ -754,9 +757,10 @@ class ConfigurationSection:
 
 
 def _generate_infrahub_events_documentation() -> None:
-    """
-    Generate documentation for all Infrahub events into a single MDX file
-    using a Jinja2 template. Accessible via `invoke generate_infrahub_event_documentation`.
+    """Generate per-category MDX files for all Infrahub events using a Jinja2 template.
+
+    Outputs one file per event category to docs/docs/reference/infrahub-events/.
+    Accessible via `invoke generate_infrahub_event_documentation`.
 
     Note: Ensure all event classes (like GroupMutatedEvent, CommitUpdatedEvent, etc.) are imported
     so that they appear in the introspection.
@@ -777,8 +781,8 @@ def _generate_infrahub_events_documentation() -> None:
             import_module(modname)
 
     def format_event_name(raw_name: str) -> str:
-        """
-        Insert spaces before capitals and remove a trailing "Event", if present.
+        """Insert spaces before capitals and remove a trailing "Event", if present.
+
         For example: "NodeCreatedEvent" becomes "Node Created Event".
         """
         formatted = re.sub(r"(?<!^)(?=[A-Z])", " ", raw_name)
@@ -833,7 +837,7 @@ def _generate_infrahub_events_documentation() -> None:
         return grouped
 
     template_file = DOCUMENTATION_DIRECTORY / "_templates" / "infrahub-events.j2"
-    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events.mdx"
+    output_dir = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "infrahub-events"
 
     print(" - Generating Infrahub Events documentation")
 
@@ -850,8 +854,8 @@ def _generate_infrahub_events_documentation() -> None:
     all_event_classes = get_all_events()
     event_groups = group_events_by_category(event_classes=all_event_classes)
 
-    rendered_doc = template.render(event_groups=event_groups)
-
-    output_file.parent.mkdir(exist_ok=True, parents=True)
-    output_file.write_text(rendered_doc, encoding="utf-8")
-    print(f"Docs saved to: {output_file}")
+    output_dir.mkdir(exist_ok=True, parents=True)
+    for category, events in event_groups.items():
+        output_file = output_dir / f"{category.lower()}.mdx"
+        output_file.write_text(template.render(title=category, events=events), encoding="utf-8")
+        print(f"Docs saved to: {output_file}")

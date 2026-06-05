@@ -1,0 +1,69 @@
+---
+title: Validator events
+---
+
+## Validator Failed Event
+
+**Type**: infrahub.validator.failed
+**Description**: Event generated when an validator within a pipeline has completed successfully.
+**Uses node_kind filter for webhooks**: `true`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the validator |
+| **kind** | The kind of the validator |
+| **proposed_change_id** | The ID of the proposed change |
+
+## Validator Passed Event
+
+**Type**: infrahub.validator.passed
+**Description**: Event generated when an validator within a pipeline has completed successfully.
+**Uses node_kind filter for webhooks**: `true`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the validator |
+| **kind** | The kind of the validator |
+| **proposed_change_id** | The ID of the proposed change |
+
+## Validator Started Event
+
+**Type**: infrahub.validator.started
+**Description**: Event generated when an validator within a pipeline has started.
+**Uses node_kind filter for webhooks**: `true`
+
+| Key | Description |
+|-----|-------------|
+| **meta.branch** | The branch on which originate this event |
+| **meta.request_id** | N/A |
+| **meta.account_id** | The ID of the account triggering this event |
+| **meta.initiator_id** | The worker identity of the initial sender of this message |
+| **meta.context** | The context used when originating this event |
+| **meta.level** | N/A |
+| **meta.has_children** | Indicates if this event might potentially have child events under it. |
+| **meta.id** | UUID of the event |
+| **meta.parent** | The UUID of the parent event if applicable |
+| **meta.ancestors** | Any event used to trigger this event |
+| **node_id** | The ID of the validator |
+| **kind** | The kind of the validator |
+| **proposed_change_id** | The ID of the proposed change |

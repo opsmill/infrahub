@@ -1,16 +1,15 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { Button } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
 import { CLOSE_STATE } from "@/entities/proposed-changes/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 
 import type { ProposedChangeActionButtonProps } from "./types";
@@ -18,7 +17,7 @@ import type { ProposedChangeActionButtonProps } from "./types";
 export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const { close } = usePcActionsContext();
 
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChangesDetails = useProposedChange();
 
   const { mutate, isPending } = useUpdateObjectMutation({
     onSuccess: async () => {
@@ -37,9 +36,7 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     },
   });
 
-  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
+  const handleAction = () => {
     mutate({
       data: {
         id: proposedChangesDetails.id,
@@ -51,18 +48,19 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     });
   };
 
-  const tooltipContent = close.unavailability_reason;
-  const tooltipEnabled = !close.available;
+  const tooltipMessage = close.unavailability_reason;
+  const isUnavailable = !close.available;
 
   return (
     <>
-      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+      <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
           className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
-          onClick={handleAction}
+          onPress={handleAction}
           variant={"danger"}
-          isLoading={isPending}
-          disabled={tooltipEnabled || isPending}
+          isPending={isPending}
+          isDisabled={isUnavailable || isPending}
+          isDisabledAndFocusable={isUnavailable && !isPending}
         >
           Close
         </Button>
@@ -72,13 +70,12 @@ export const CloseButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         className="h-full rounded-l-none border-l-0"
         variant={"danger"}
         size={"sm"}
-        onClick={() => {
+        onPress={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        isDisabled={isPending}
         data-testid="proposed-change-action-button-select"
         aria-label="More actions"
-        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

@@ -1,0 +1,117 @@
+# Graph Path Traversal - GraphQL Contract
+#
+# This query is registered as a top-level field on InfrahubBaseQuery,
+# following the pattern of InfrahubSearchAnywhere and DiffTreeQuery.
+
+# --- Input Types ---
+
+"""Configuration for path traversal constraints."""
+input PathTraversalInput {
+  """UUID of the start node."""
+  sourceId: ID!
+
+  """UUID of the end node."""
+  destinationId: ID!
+
+  """Maximum number of node hops (default: 20, max: 50)."""
+  maxDepth: Int = 20
+
+  """Maximum number of paths to return (default: 10, max: 100)."""
+  maxPaths: Int = 10
+
+  """Filter to only traverse through nodes of these kinds (empty = all)."""
+  nodeFilter: [String!]
+
+  """Filter to only follow relationships with these names (empty = all)."""
+  relationshipFilter: [String!]
+}
+
+# --- Response Types ---
+
+"""A node encountered during path traversal."""
+type PathNode {
+  """Node UUID."""
+  id: ID!
+
+  """Schema kind (e.g., InfraDevice, InfraInterface)."""
+  kind: String!
+
+  """Human-readable display label."""
+  displayLabel: String!
+}
+
+"""A relationship connecting two nodes in a path."""
+type PathRelationship {
+  """Relationship UUID."""
+  id: ID!
+
+  """Relationship name (e.g., interfaces, connected_to)."""
+  name: String!
+
+  """Direction relative to traversal: OUTBOUND or INBOUND."""
+  direction: PathDirection!
+}
+
+"""Direction of a relationship relative to the traversal path."""
+enum PathDirection {
+  OUTBOUND
+  INBOUND
+}
+
+"""A single path from source to destination."""
+type PathResult {
+  """Ordered nodes from source to destination (inclusive)."""
+  nodes: [PathNode!]!
+
+  """Ordered relationships connecting the nodes."""
+  relationships: [PathRelationship!]!
+
+  """Number of node hops in this path."""
+  depth: Int!
+}
+
+"""Result of a path traversal query."""
+type PathTraversalResult {
+  """Paths found, ordered shortest first."""
+  paths: [PathResult!]!
+
+  """The start node."""
+  source: PathNode!
+
+  """The end node."""
+  destination: PathNode!
+
+  """Total number of paths discovered (may exceed maxPaths)."""
+  totalPathsFound: Int!
+}
+
+# --- Query Registration ---
+# Added to InfrahubBaseQuery as:
+#
+#   InfrahubPathTraversal = Field(
+#       PathTraversalResult,
+#       data=PathTraversalInput(required=True),
+#       resolver=path_traversal_resolver,
+#       required=True,
+#   )
+#
+# Example query:
+#
+#   query {
+#     InfrahubPathTraversal(data: {
+#       sourceId: "uuid-1"
+#       destinationId: "uuid-2"
+#       maxDepth: 10
+#       maxPaths: 5
+#       nodeFilter: ["InfraDevice", "InfraInterface"]
+#     }) {
+#       paths {
+#         nodes { id kind displayLabel }
+#         relationships { id name direction }
+#         depth
+#       }
+#       source { id kind displayLabel }
+#       destination { id kind displayLabel }
+#       totalPathsFound
+#     }
+#   }

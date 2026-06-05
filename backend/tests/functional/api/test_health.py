@@ -26,7 +26,7 @@ class TestHealthEndpoint(TestInfrahubApp):
 
         for check in data["checks"]:
             assert check["status"] == "up"
-            assert check["error"] is None
+            assert check["error"] == "none"
 
     async def test_health_no_auth_required(
         self,

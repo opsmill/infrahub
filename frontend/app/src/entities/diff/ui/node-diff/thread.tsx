@@ -1,21 +1,16 @@
-import { gql, useQuery } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useAtom } from "jotai";
-import { use, useState } from "react";
+import { Button } from "@infrahub/ui";
+import { useState } from "react";
 import { useParams } from "react-router";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { SidePanelTitle } from "@/shared/components/display/sidepanel-title";
 import SlideOver from "@/shared/components/display/slide-over";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
-import { PROPOSED_CHANGES_OBJECT_THREAD_OBJECT } from "@/shared/config/constants";
 
 import { getThreadLabel, getThreadTitle } from "@/entities/diff/ui/diff-utils";
+import { useGetDiffThread } from "@/entities/diff/ui/queries/get-diff-thread.query";
 import { getPermission } from "@/entities/permission/utils";
-import { getProposedChangesObjectThreads } from "@/entities/proposed-changes/api/getProposedChangesObjectThreads";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 
-import { DiffContext } from ".";
 import { DiffComments } from "./comments";
 
 type tDiffThread = {
@@ -24,39 +19,24 @@ type tDiffThread = {
 
 export const DiffThread = ({ path }: tDiffThread) => {
   const { proposedChangeId } = useParams();
-  const [schemaList] = useAtom(nodeSchemasAtom);
-  const { node, currentBranch } = use(DiffContext);
   const [showThread, setShowThread] = useState(false);
 
-  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
+  const { isLoading, error, data, refetch } = useGetDiffThread(
+    { proposedChangeId: proposedChangeId ?? "", objectPath: path },
+    { enabled: !!proposedChangeId }
+  );
 
-  const queryString = schemaData
-    ? getProposedChangesObjectThreads({
-        id: proposedChangeId,
-        path,
-        kind: schemaData.kind,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
+  const thread = data?.thread;
 
-  const query = gql`
-    ${queryString}
-  `;
+  const permission = data && getPermission(data?.permissions?.edges);
 
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
-
-  const thread = data ? data[schemaData.kind]?.edges[0]?.node : {};
-
-  const permission = data && getPermission(data?.[schemaData.kind]?.permissions?.edges);
-
-  if (loading || error) {
+  if (!proposedChangeId || isLoading || error) {
     return null;
   }
 
   const title = (
     <SidePanelTitle title="Conversation" hideBranch>
-      {getThreadTitle(thread, getThreadLabel(node, currentBranch, path))}
+      {getThreadTitle(thread, getThreadLabel(path))}
     </SidePanelTitle>
   );
 
@@ -64,33 +44,28 @@ export const DiffThread = ({ path }: tDiffThread) => {
     <>
       <div className="flex cursor-pointer items-center">
         {thread?.comments?.count ? (
-          <Tooltip enabled content={"Add comment"}>
+          <Tooltip message={"Add comment"}>
             <Button
-              disabled={!permission?.create?.isAllowed}
-              onClick={(event) => {
-                event.stopPropagation();
-                setShowThread(true);
-              }}
-              className="h-6 rounded-full px-2"
-              variant={"dark"}
+              isDisabled={!permission?.create?.isAllowed}
+              onPress={() => setShowThread(true)}
+              className="h-6 rounded-full bg-gray-200 px-2 shadow-xs data-hovered:bg-gray-300"
+              variant={"ghost"}
               data-testid="data-diff-add-comment"
             >
-              <Icon icon="mdi:chat-outline" className="mr-1" />
+              <Icon icon="mdi:chat-outline" />
               {thread?.comments?.count}
             </Button>
           </Tooltip>
         ) : (
           <div className="hidden group-hover:block">
-            <Tooltip enabled content={"Add comment"}>
+            <Tooltip message={"Add comment"}>
               <Button
-                disabled={!permission?.create?.isAllowed}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setShowThread(true);
-                }}
+                isDisabled={!permission?.create?.isAllowed}
+                onPress={() => setShowThread(true)}
                 className="h-6 rounded-full p-0"
                 variant={"outline"}
-                size={"icon"}
+                size={"xs"}
+                shape={"circle"}
                 data-testid="data-diff-add-comment"
               >
                 <Icon icon={"mdi:plus"} />
@@ -104,7 +79,7 @@ export const DiffThread = ({ path }: tDiffThread) => {
         <DiffComments path={path} refetch={refetch} />
 
         <div className="flex items-center justify-end gap-x-6 border-gray-200 border-t py-3 pr-3">
-          <Button onClick={() => setShowThread(false)}>Close</Button>
+          <Button onPress={() => setShowThread(false)}>Close</Button>
         </div>
       </SlideOver>
     </>

@@ -170,7 +170,7 @@ class InfrahubRepositoryMutation(InfrahubMutationMixin, Mutation):
 
 
 def cleanup_payload(data: InputObjectType | dict[str, Any]) -> None:
-    """If the input payload contains an http URL that doesn't end in .git it will be added to the payload"""
+    """If the input payload contains an http URL that doesn't end in .git it will be added to the payload."""
     http_without_dotgit = r"^(https?://)(?!.*\.git$).*"
     if (
         data.get("location")
@@ -214,7 +214,9 @@ class ProcessRepository(Mutation):
             infrahub_branch_name=branch.name,
         )
         workflow = await graphql_context.active_service.workflow.submit_workflow(
-            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS, context=graphql_context.get_context(), parameters={"model": model}
+            workflow=GIT_REPOSITORIES_IMPORT_OBJECTS,
+            context=graphql_context.get_context(),
+            parameters={"model": model},
         )
         task = {"id": workflow.id}
         return cls(ok=True, task=task)

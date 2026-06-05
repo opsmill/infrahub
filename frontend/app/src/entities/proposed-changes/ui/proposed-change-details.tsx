@@ -1,8 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Card, CardContent, CardHeader } from "@infrahub/ui/card";
 import type { HTMLAttributes } from "react";
 import { useNavigate, useParams } from "react-router";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import Accordion from "@/shared/components/display/accordion";
 import { Avatar } from "@/shared/components/display/avatar";
@@ -10,44 +10,44 @@ import { DateDisplay } from "@/shared/components/display/date-display";
 import { MarkdownRender } from "@/shared/components/editor/markdown/markdown-render";
 import { type Property, PropertyList } from "@/shared/components/table/property-list";
 import { Badge } from "@/shared/components/ui/badge";
-import { Card, CardWithBorder } from "@/shared/components/ui/card";
 import { Tooltip } from "@/shared/components/ui/tooltip";
-import { TASK_OBJECT } from "@/shared/config/constants";
 import { classNames } from "@/shared/utils/common";
 
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import type { GetProposedChangeDetailsResponse } from "@/entities/proposed-changes/domain/get-proposed-change-details";
+import type { GetProposedChangeDetailsResult } from "@/entities/proposed-changes/domain/get-proposed-change-details";
 import { PcActionButton } from "@/entities/proposed-changes/ui/action-button/pc-action-button";
 import { PcReviewButton } from "@/entities/proposed-changes/ui/action-button/pc-review-button";
 import { Overview } from "@/entities/proposed-changes/ui/overview";
 import { ProposedChangeEditTrigger } from "@/entities/proposed-changes/ui/proposed-change-edit-trigger";
 import { getProposedChangesStateBadgeType } from "@/entities/proposed-changes/utils/proposed-changes";
-import { TASK_DETAILS_CHECK } from "@/entities/tasks/api/checkTasksItemDetails";
 import { PROPOSED_CHANGE_MERGE_WORKFLOW, TASK_ONGOING_STATES } from "@/entities/tasks/constants";
+import { useCheckTaskDetails } from "@/entities/tasks/ui/queries/check-task-details.query";
 import { TaskDisplay } from "@/entities/tasks/ui/task-display";
 
 interface ProposedChangeDetailsProps
   extends HTMLAttributes<HTMLDivElement>,
-    GetProposedChangeDetailsResponse {}
+    GetProposedChangeDetailsResult {}
 
 export const ProposedChangeDetails = ({
   proposedChangeData,
   metadata,
-  tasksCount,
   className,
   ...props
 }: ProposedChangeDetailsProps) => {
   const { proposedChangeId } = useParams();
   const navigate = useNavigate();
 
-  const { loading: loadingCheck, data: checkData } = useQuery(TASK_DETAILS_CHECK, {
-    variables: {
+  const { isPending: loadingCheck, data: checkCount } = useCheckTaskDetails(
+    {
       workflow: [PROPOSED_CHANGE_MERGE_WORKFLOW],
       state: TASK_ONGOING_STATES,
       relatedNodes: proposedChangeId ? [proposedChangeId] : undefined,
     },
-    pollInterval: 10_000,
-  });
+    {
+      refetchInterval: 10_000,
+      refetchIntervalInBackground: true,
+    }
+  );
 
   const rejectedBy = proposedChangeData?.rejected_by?.edges?.map((edge) => edge.node) ?? [];
   const approvedBy = proposedChangeData?.approved_by?.edges?.map((edge) => edge.node) ?? [];
@@ -170,24 +170,26 @@ export const ProposedChangeDetails = ({
 
   return (
     <div className="flex grow flex-col gap-2.5 bg-stone-50 p-2.5">
-      {!loadingCheck && checkData && !!checkData[TASK_OBJECT].count && (
+      {!loadingCheck && !!checkCount && (
         <Card>
-          <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
-            <div className="mt-2">
-              <TaskDisplay
-                relatedNode={proposedChangeId}
-                workflow={[PROPOSED_CHANGE_MERGE_WORKFLOW]}
-              />
-            </div>
-          </Accordion>
+          <CardContent>
+            <Accordion title={<div className="font-normal text-xs">Actions in progress</div>}>
+              <div className="mt-2">
+                <TaskDisplay
+                  relatedNode={proposedChangeId}
+                  workflow={[PROPOSED_CHANGE_MERGE_WORKFLOW]}
+                />
+              </div>
+            </Accordion>
+          </CardContent>
         </Card>
       )}
 
       <div className={classNames("grid grid-cols-3 items-start gap-2", className)} {...props}>
         <div className="col-start-1 col-end-3 space-y-2">
           {proposedChangeData?.description?.value && (
-            <CardWithBorder contentClassName="" data-testid="pc-description">
-              <CardWithBorder.Title className="flex items-center gap-2">
+            <Card data-testid="pc-description">
+              <CardHeader className="flex items-center gap-2">
                 <Avatar
                   name={metadata.created_by ? getNodeLabel(metadata.created_by) : ""}
                   size="sm"
@@ -199,17 +201,17 @@ export const ProposedChangeDetails = ({
                   date={proposedChangeData.description.updated_at}
                   className="ml-auto font-normal text-gray-600 text-xs"
                 />
-              </CardWithBorder.Title>
+              </CardHeader>
 
               <MarkdownRender markdownText={proposedChangeData.description.value} className="m-2" />
-            </CardWithBorder>
+            </Card>
           )}
 
           <Overview />
         </div>
 
-        <CardWithBorder className="col-start-3 col-end-4 min-w-[300px]">
-          <CardWithBorder.Title className="flex items-center justify-between">
+        <Card className="col-start-3 col-end-4 min-w-[300px]">
+          <CardHeader className="flex items-center justify-between">
             <div
               onClick={() => navigate(path)}
               className="cursor-pointer font-semibold text-base text-gray-900 leading-6 hover:underline"
@@ -218,15 +220,15 @@ export const ProposedChangeDetails = ({
             </div>
 
             <ProposedChangeEditTrigger proposedChangesDetails={proposedChangeData} />
-          </CardWithBorder.Title>
+          </CardHeader>
 
           <PropertyList properties={proposedChangeProperties} />
 
-          <div className="flex grow gap-2 p-2">
+          <div className="flex grow gap-2 border-gray-200 border-t p-2">
             <PcReviewButton />
             <PcActionButton />
           </div>
-        </CardWithBorder>
+        </Card>
       </div>
     </div>
   );

@@ -27,8 +27,12 @@ class DiffQuery(Query):
         diff_to: Timestamp | str = None,
         **kwargs,
     ) -> None:
-        """A diff is always in the context of a branch"""
+        """A diff is always in the context of a branch.
 
+        Raises:
+            ValueError: When `diff_from` is missing on the main branch or when `diff_to` is earlier than `diff_from`.
+
+        """
         if not diff_from and branch.is_default:
             raise ValueError("diff_from is mandatory when the diff is on the main branch.")
 
@@ -72,9 +76,8 @@ class DiffCountChanges(Query):
             "branch_names": self.branch_names,
         }
         query = """
-        MATCH (p)-[diff_rel]-(q)
-        WHERE any(l in labels(p) WHERE l in ["Node", "Attribute", "Relationship"])
-        AND diff_rel.branch in $branch_names
+        MATCH (p:Node|Attribute|Relationship)-[diff_rel]-(q)
+        WHERE diff_rel.branch in $branch_names
         AND (
             (diff_rel.from >= $from_time AND diff_rel.from < $to_time)
             OR (diff_rel.to >= $from_time AND diff_rel.to < $to_time)
@@ -140,10 +143,13 @@ CALL (diff_path) {
     // -------------------------------------
     WITH n, attr_rel, r_node, r_prop
     // 'base_n' instead of 'n' here to get previous value for node with a migrated kind/inheritance
-    OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF {branch: $base_branch_name}]
-        -(base_n {uuid: n.uuid})-[base_r_node {branch: $base_branch_name}]
-        -(attr_rel)-[base_r_prop {branch: $base_branch_name}]->(base_prop)
-    WHERE type(base_r_node) = type(r_node)
+    OPTIONAL MATCH latest_base_path = (:Root)<-[base_r_root:IS_PART_OF]
+        -(base_n {uuid: n.uuid})-[base_r_node]
+        -(attr_rel)-[base_r_prop]->(base_prop)
+    WHERE base_r_root.branch IN [$base_branch_name, $global_branch_name]
+    AND base_r_node.branch IN [$base_branch_name, $global_branch_name]
+    AND base_r_prop.branch IN [$base_branch_name, $global_branch_name]
+    AND type(base_r_node) = type(r_node)
     AND type(base_r_prop) = type(r_prop)
     AND [%(id_func)s(base_n), type(base_r_node)] <> [%(id_func)s(base_prop), type(base_r_prop)]
     AND all(
@@ -190,8 +196,6 @@ CALL (penultimate_path) {
     AND %(id_func)s(peer_r_node) = %(id_func)s(r_node)
     AND [%(id_func)s(n), type(peer_r_node)] <> [%(id_func)s(peer), type(r_peer)]
     AND r_peer.from < $to_time
-    // filter out paths where a base branch edge follows a branch edge
-    AND (peer_r_node.branch = $base_branch_name OR r_peer.branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
     AND (peer_r_node.status = "active" OR r_peer.status = "deleted")
     // require adjacent edge pairs to have overlapping times, but only if on the same branch
@@ -199,6 +203,16 @@ CALL (penultimate_path) {
         peer_r_node.branch <> r_peer.branch
         OR peer_r_node.to IS NULL
         OR peer_r_node.to >= r_peer.from
+    )
+    // ------------------------
+    // special handling for if a peer kind was migrated on the base branch after the diff branch forked
+    // if diffing across branches AND this edge is on the base branch,
+    // then make sure to pick the peer that was active before the branched_from time
+    // ------------------------
+    AND (
+        $branch_name = $base_branch_name
+        OR r_peer.branch = $branch_name
+        OR (r_peer.status = "active" AND r_peer.from <= $branch_from_time)
     )
     // ------------------------
     // special handling for nodes that had their kind updated,
@@ -253,27 +267,36 @@ class DiffNodePathsQuery(DiffCalculationQuery):
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         params_dict = self.get_params()
         self.params.update(params_dict)
-        self.params.update(
-            {
-                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
-                if self.new_node_field_specifiers
-                else None,
-                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
-                if self.current_node_field_specifiers
-                else None,
-            }
+        new_uuids = self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers else None
+        current_uuids = (
+            self.current_node_field_specifiers.get_uuids_list() if self.current_node_field_specifiers else None
         )
-        nodes_path_query = """
+        self.params.update({"new_node_ids_list": new_uuids, "current_node_ids_list": current_uuids})
+        if new_uuids is None and current_uuids is None:
+            entry_clause = """
+CALL () {
+    MATCH (q)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p)
+    RETURN q, diff_rel, p
+}
+"""
+        else:
+            entry_clause = """
+CALL () {
+MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
+WHERE p.uuid IN COALESCE($current_node_ids_list, []) + COALESCE($new_node_ids_list, [])
+RETURN q, diff_rel, p
+}
+"""
+        nodes_path_query = (
+            """
 // -------------------------------------
 // Identify nodes added/removed on branch
-// -------------------------------------
-MATCH (q:Root)<-[diff_rel:IS_PART_OF {branch: $branch_name}]-(p:Node)
-WHERE (
-    ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
-    OR ($current_node_ids_list IS NOT NULL AND p.uuid IN $current_node_ids_list)
-    OR ($new_node_ids_list IS NULL AND $current_node_ids_list IS NULL)
-)
-AND p.branch_support = $branch_aware
+// -------------------------------------"""
+            + entry_clause
+            + """
+WITH q, diff_rel, p
+MATCH (q)<-[diff_rel]-(p)
+WHERE p.branch_support = $branch_aware
 AND (
     (
         ($new_node_ids_list IS NOT NULL AND p.uuid IN $new_node_ids_list)
@@ -377,7 +400,9 @@ CALL (p, q, diff_rel, row_from_time) {
     WITH node, prop, type(r_prop) AS r_prop_type, type(r_node) AS r_node_type, head(collect(path)) AS diff_path
     RETURN diff_path
 }
-""" % {"id_func": db.get_id_function_name()}
+"""
+            % {"id_func": db.get_id_function_name()}
+        )
         self.add_to_query(nodes_path_query)
         self.add_to_query(self.get_previous_base_path_query(db=db))
         self.add_to_query(self.get_relationship_peer_side_query(db=db))
@@ -392,14 +417,14 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
         params_dict = self.get_params()
         self.params.update(params_dict)
 
+        new_uuids = self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers else None
+        current_uuids = (
+            self.current_node_field_specifiers.get_uuids_list() if self.current_node_field_specifiers else None
+        )
         self.params.update(
             {
-                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
-                if self.current_node_field_specifiers
-                else None,
-                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
-                if self.new_node_field_specifiers
-                else None,
+                "current_node_ids_list": current_uuids,
+                "new_node_ids_list": new_uuids,
                 "current_node_field_specifiers_map": self.current_node_field_specifiers.get_uuid_field_names_map()
                 if self.current_node_field_specifiers is not None
                 else None,
@@ -408,14 +433,28 @@ class DiffFieldPathsQuery(DiffCalculationQuery):
                 else None,
             }
         )
-        fields_path_query = """
+        if new_uuids is None and current_uuids is None:
+            entry_clause = """
+MATCH (p)-[:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
+WITH DISTINCT p
+"""
+        else:
+            entry_clause = """
+MATCH (p:Node)
+WHERE p.uuid IN COALESCE($current_node_ids_list, []) + COALESCE($new_node_ids_list, [])
+WITH p
+"""
+        fields_path_query = (
+            """
 // -------------------------------------
 // Identify attributes/relationships added/removed on branch
-// -------------------------------------
-MATCH (root:Root)<-[r_root:IS_PART_OF]-(p:Node)-[diff_rel {branch: $branch_name}]-(q)
+// -------------------------------------"""
+            + entry_clause
+            + """
+MATCH (root:Root)<-[r_root:IS_PART_OF]-(p)
+    -[diff_rel:HAS_ATTRIBUTE|IS_RELATED {branch: $branch_name}]-(q)
 // simple filters to start
-WHERE type(diff_rel) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
-AND ("Attribute" IN labels(q) OR "Relationship" IN labels(q))
+WHERE ("Attribute" IN labels(q) OR "Relationship" IN labels(q))
 AND r_root.branch IN [$branch_name, $base_branch_name, $global_branch_name]
 AND q.branch_support = $branch_aware
 AND r_root.status = "active"
@@ -571,7 +610,9 @@ CALL (q, rel_type, prop, row_from_time) {
 }
 WITH latest_prop_path AS diff_path, has_more_data, intra_branch_update
 WHERE intra_branch_update = FALSE
-        """ % {"id_func": db.get_id_function_name()}
+        """
+            % {"id_func": db.get_id_function_name()}
+        )
         self.add_to_query(fields_path_query)
         self.add_to_query(self.get_previous_base_path_query(db=db))
         self.add_to_query(self.get_relationship_peer_side_query(db=db))
@@ -586,14 +627,14 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
         params_dict = self.get_params()
         self.params.update(params_dict)
 
+        new_uuids = self.new_node_field_specifiers.get_uuids_list() if self.new_node_field_specifiers else None
+        current_uuids = (
+            self.current_node_field_specifiers.get_uuids_list() if self.current_node_field_specifiers else None
+        )
         self.params.update(
             {
-                "current_node_ids_list": self.current_node_field_specifiers.get_uuids_list()
-                if self.current_node_field_specifiers
-                else None,
-                "new_node_ids_list": self.new_node_field_specifiers.get_uuids_list()
-                if self.new_node_field_specifiers
-                else None,
+                "current_node_ids_list": current_uuids,
+                "new_node_ids_list": new_uuids,
                 "current_node_field_specifiers_map": self.current_node_field_specifiers.get_uuid_field_names_map()
                 if self.current_node_field_specifiers is not None
                 else None,
@@ -602,16 +643,29 @@ class DiffPropertyPathsQuery(DiffCalculationQuery):
                 else None,
             }
         )
-        properties_path_query = """
+        if new_uuids is None and current_uuids is None:
+            entry_clause = """
+MATCH (n)-[:HAS_ATTRIBUTE|IS_RELATED]-(p)
+    -[:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->()
+WITH DISTINCT n
+"""
+        else:
+            entry_clause = """
+MATCH (n:Node)
+WHERE n.uuid IN COALESCE($current_node_ids_list, []) + COALESCE($new_node_ids_list, [])
+WITH n
+"""
+        properties_path_query = (
+            """
 // -------------------------------------
 // Identify properties added/removed on branch
-// -------------------------------------
-MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n:Node)-[r_node]-(p)-[diff_rel {branch: $branch_name}]->(q)
+// -------------------------------------"""
+            + entry_clause
+            + """
+MATCH diff_rel_path = (root:Root)<-[r_root:IS_PART_OF]-(n)
+    -[r_node:HAS_ATTRIBUTE|IS_RELATED]-(p:Attribute|Relationship)
+    -[diff_rel:IS_PROTECTED|HAS_SOURCE|HAS_OWNER|HAS_VALUE {branch: $branch_name}]->(q:Boolean|Node|AttributeValue)
 WHERE p.branch_support = $branch_aware
-AND any(l in labels(p) WHERE l in ["Attribute", "Relationship"])
-AND type(diff_rel) IN ["IS_PROTECTED", "HAS_SOURCE", "HAS_OWNER", "HAS_VALUE"]
-AND any(l in labels(q) WHERE l in ["Boolean", "Node", "AttributeValue"])
-AND type(r_node) IN ["HAS_ATTRIBUTE", "IS_RELATED"]
 // node ID and field name filtering first pass
 AND (
     (
@@ -717,18 +771,23 @@ AND (
 AND ALL(
     r_pair IN [[r_root, r_node], [r_node, diff_rel]]
     // filter out paths where a base branch edge follows a branch edge
-    WHERE ((r_pair[0]).branch = $base_branch_name OR (r_pair[1]).branch = $branch_name)
+    WHERE ((r_pair[0]).branch IN [$base_branch_name, $global_branch_name] OR (r_pair[1]).branch = $branch_name)
     // filter out paths where an active edge follows a deleted edge
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "deleted")
     // filter out paths where an earlier from time follows a later from time
     AND (r_pair[0]).from <= (r_pair[1]).from
     // if both are deleted, then the deeper edge must have been deleted first
     AND ((r_pair[0]).status = "active" OR (r_pair[1]).status = "active" OR (r_pair[0]).from >= (r_pair[1].from))
+    // if only the deeper edge is deleted, shallower edge must have been active for the delete
     AND (
         (r_pair[0]).status = (r_pair[1]).status
         OR (
             (r_pair[0]).from <= (r_pair[1]).from
-            AND ((r_pair[0]).to IS NULL OR (r_pair[0]).to >= (r_pair[1]).from)
+            AND (
+                (r_pair[0]).to IS NULL
+                OR ((r_pair[0]).branch = $branch_name AND (r_pair[0]).to >= (r_pair[1]).from)
+                OR ((r_pair[0]).branch = $base_branch_name AND (r_pair[0]).to >= $branch_from_time)
+            )
         )
     )
     // require adjacent edge pairs to have overlapping times, but only if on the same branch
@@ -806,7 +865,9 @@ CALL (n, p, row_from_time){
 WITH n, p, diff_rel, diff_rel_path, has_more_data, node_or_field_deleted
 WHERE node_or_field_deleted = FALSE
 WITH n, p, type(diff_rel) AS drt, head(collect(diff_rel_path)) AS diff_path, has_more_data
-        """ % {"id_func": db.get_id_function_name()}
+        """
+            % {"id_func": db.get_id_function_name()}
+        )
         self.add_to_query(properties_path_query)
         self.add_to_query(self.get_previous_base_path_query(db=db))
         self.add_to_query(self.get_relationship_peer_side_query(db=db))

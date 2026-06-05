@@ -8,8 +8,8 @@ from infrahub import config, lock
 from infrahub.core.branch import Branch
 from infrahub.core.diff.coordinator import DiffCoordinator
 from infrahub.core.diff.diff_locker import DiffLocker
+from infrahub.core.diff.merger.exclusion_plan import MergeExclusionPlanBuilder
 from infrahub.core.diff.merger.merger import DiffMerger
-from infrahub.core.diff.merger.serializer import DiffMergeSerializer
 from infrahub.core.diff.repository.repository import DiffRepository
 from infrahub.core.initialization import create_branch
 from infrahub.core.merge import BranchMerger
@@ -189,7 +189,7 @@ class TestDiffCoordinatorLocks:
                 source_branch=diff_branch,
                 destination_branch=default_branch,
                 diff_repository=diff_repository,
-                serializer=DiffMergeSerializer(db=db, max_batch_size=50),
+                exclusion_plan_builder=MergeExclusionPlanBuilder(),
             ),
             diff_repository=diff_repository,
             source_branch=diff_branch,
@@ -200,11 +200,12 @@ class TestDiffCoordinatorLocks:
             diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
             branch_merger.merge(),
         )
-        assert len(results) == 2
-        assert results[0].to_time == results[1].to_time
-        assert results[0].uuid == results[1].uuid
-        assert results[0].partner_uuid == results[1].partner_uuid
-        assert results[0].tracking_id == results[1].tracking_id
+        diff_result = results[0]
+        merge_diff = await diff_repository.get_one(diff_branch_name=diff_branch.name)
+        assert diff_result.to_time == merge_diff.to_time
+        assert diff_result.uuid == merge_diff.uuid
+        assert diff_result.partner_uuid == merge_diff.partner_uuid
+        assert diff_result.tracking_id == merge_diff.tracking_id
 
     async def test_merge_blocks_diff_update(
         self,
@@ -231,7 +232,7 @@ class TestDiffCoordinatorLocks:
                 source_branch=diff_branch,
                 destination_branch=default_branch,
                 diff_repository=diff_repository_2,
-                serializer=DiffMergeSerializer(db=db2, max_batch_size=50),
+                exclusion_plan_builder=MergeExclusionPlanBuilder(),
             ),
             diff_repository=diff_repository_2,
             source_branch=diff_branch,
@@ -242,16 +243,18 @@ class TestDiffCoordinatorLocks:
             branch_merger.merge(),
             diff_coordinator.update_branch_diff(base_branch=default_branch, diff_branch=diff_branch),
         )
-        assert len(results) == 2
-        assert results[0].to_time == results[1].to_time
-        assert results[0].uuid == results[1].uuid
-        assert results[0].partner_uuid == results[1].partner_uuid
-        assert results[0].tracking_id == results[1].tracking_id
+        diff_result = results[1]
+        merge_diff = await diff_repository_2.get_one(diff_branch_name=diff_branch.name)
+        assert merge_diff.to_time == diff_result.to_time
+        assert merge_diff.uuid == diff_result.uuid
+        assert merge_diff.partner_uuid == diff_result.partner_uuid
+        assert merge_diff.tracking_id == diff_result.tracking_id
 
     async def test_proposed_change_linked_when_waiting_for_lock(
         self, db: InfrahubDatabase, default_branch: Branch, diff_repository: DiffRepository, branch_with_data: Branch
     ) -> None:
-        """Test that when a diff update with proposed_change_id waits for an in-progress update,
+        """Test that when a diff update with proposed_change_id waits for an in-progress update,.
+
         the proposed change still gets linked to the diff.
 
         This tests the race condition scenario:

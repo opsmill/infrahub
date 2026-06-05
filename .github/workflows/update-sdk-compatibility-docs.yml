@@ -1,0 +1,75 @@
+---
+# yamllint disable rule:truthy rule:line-length
+name: Update SDK Compatibility Docs
+
+on:
+  workflow_dispatch:
+  workflow_call:
+
+jobs:
+  update-compatibility-docs:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout SDK repository
+        uses: actions/checkout@v6
+        with:
+          repository: opsmill/infrahub-sdk-python
+          ref: stable
+          token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+
+      - name: Install dependencies
+        run: uv sync --all-groups --all-extras
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "npm"
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install npm dependencies
+        run: npm install
+        working-directory: ./docs
+
+      - name: Run compatibility update script
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+        run: uv run python docs/docs_generation/update_compatibility.py
+
+      - name: Regenerate documentation
+        run: uv run invoke docs-generate
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet && git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create pull request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GH_UPDATE_PACKAGE_OTTO }}
+          commit-message: "docs: update compatibility matrix"
+          title: "docs: update compatibility matrix"
+          body: |
+            Automated update of the SDK compatibility matrix after Infrahub release.
+
+            Triggered by: ${{ github.event_name == 'workflow_dispatch' && 'manual workflow_dispatch' || 'Infrahub release workflow' }}
+          branch: automated/update-compatibility-docs
+          base: stable
+          committer: opsmill-bot <github-bot@opsmill.com>
+          author: opsmill-bot <github-bot@opsmill.com>
+          delete-branch: true
+          team-reviewers: sa

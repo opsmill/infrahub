@@ -35,6 +35,7 @@ class SchemaNumberPoolSynchronizer:
         db: Database connection.
         log: Logger instance.
         schema_manager: Schema manager for looking up schemas.
+
     """
 
     def __init__(
@@ -54,6 +55,7 @@ class SchemaNumberPoolSynchronizer:
 
         Returns:
             Set of branch names where schema changes were persisted.
+
         """
         await self._sync_existing_pools_with_schema(user_id=user_id)
         return await self._process_all_branches(user_id=user_id)
@@ -105,6 +107,7 @@ class SchemaNumberPoolSynchronizer:
 
         Returns:
             Set of branch names where schema changes were persisted.
+
         """
         updated_branches: set[str] = set()
 
@@ -163,6 +166,7 @@ class SchemaNumberPoolSynchronizer:
             user_id: The user ID for any save operations.
 
         Returns a NodeSchema or GenericSchema if the schema was updated.
+
         """
         updated_schema: NodeSchema | GenericSchema | None = None
 

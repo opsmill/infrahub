@@ -24,7 +24,7 @@ function SchemaLayout() {
   const templates = useAtomValue(templateSchemasAtom);
 
   return (
-    <Content.Card className="flex h-[calc(100%-1rem)] flex-col">
+    <Content.Card className="h-[calc(100%-1rem)]">
       <Content.CardTitle
         title="Schema"
         badgeContent={nodes.length + generics.length + profiles.length + templates.length}

@@ -1,12 +1,12 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, LinkButton } from "@infrahub/ui";
 import { useAtomValue } from "jotai";
 import { parseAsNativeArrayOf, parseAsString, useQueryState } from "nuqs";
 import type { CSSProperties } from "react";
 import { TabList, Tabs } from "react-aria-components";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button, LinkButton } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 import { QSP } from "@/shared/config/qsp";
 import { classNames } from "@/shared/utils/common";
 
@@ -24,7 +24,7 @@ import { isProfileSchema } from "@/entities/schema/utils/is-profile-schema";
 import { AttributeDisplay } from "./attribute-display";
 import { RelationshipDisplay } from "./relationship-display";
 import { SchemaHelpMenu } from "./schema-help-menu";
-import { ModelDisplay, PropertyRow, TabPanelStyled, TabStyled } from "./styled";
+import { PropertyRow, SchemaKindDisplay, TabPanelStyled, TabStyled } from "./styled";
 
 export const SchemaViewerStack = ({ className = "" }: { className: string }) => {
   const [selectedKind, setKinds] = useQueryState(QSP.KIND, parseAsNativeArrayOf(parseAsString));
@@ -38,7 +38,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
   const schemas = [...nodes, ...generics, ...profiles, ...templates];
 
   return (
-    <div className={classNames("relative", className)}>
+    <div className={classNames("relative z-1", className)}>
       {selectedKind.map((kind, index) => {
         const position = selectedKind.length - index - 1;
         const schema = schemas.find((s) => s.kind === kind);
@@ -49,6 +49,9 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
             key={kind + index}
             className="absolute top-0 max-h-full w-full"
             schema={schema}
+            onKindClick={(clickedKind) => {
+              setKinds(selectedKind.length > 0 ? [...selectedKind, clickedKind] : [clickedKind]);
+            }}
             onClose={() => {
               const nextKinds = selectedKind.filter((_, i) => i !== index);
               setKinds(nextKinds);
@@ -68,6 +71,7 @@ export const SchemaViewerStack = ({ className = "" }: { className: string }) => 
 export const SchemaViewer = ({
   className = "",
   schema,
+  onKindClick,
   onClose,
   style,
   defaultTab = "properties",
@@ -75,6 +79,7 @@ export const SchemaViewer = ({
 }: {
   className?: string;
   schema: ModelSchema;
+  onKindClick?: (kind: string) => void;
   onClose: () => void;
   style?: CSSProperties;
   defaultTab?: "properties" | "attributes" | "relationships";
@@ -98,21 +103,28 @@ export const SchemaViewer = ({
 
         <div className="flex items-center gap-2 text-gray-600">
           {schema.kind && (
-            <Tooltip content="View in graph" enabled>
+            <Tooltip message="View in graph">
               <LinkButton
-                to={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
-                size="icon"
-                variant="ghost"
+                href={`/schema/graph?${QSP.HIGHLIGHT}=${encodeURIComponent(schema.kind)}`}
+                size="xs"
+                shape="circle"
+                variant="outline"
                 aria-label="View in graph"
               >
-                <Icon icon="mdi:graph-outline" className="text-xl" />
+                <Icon icon="mdi:graph-outline" />
               </LinkButton>
             </Tooltip>
           )}
 
           <SchemaHelpMenu schema={schema} />
 
-          <Button size="icon" variant="ghost" aria-label="Close schema viewer" onClick={onClose}>
+          <Button
+            size="xs"
+            shape="circle"
+            variant="ghost"
+            aria-label="Close schema viewer"
+            onPress={onClose}
+          >
             <Icon icon="mdi:close" className="text-xl" />
           </Button>
         </div>
@@ -120,7 +132,12 @@ export const SchemaViewer = ({
 
       <SchemaViewerTitle schema={schema} />
 
-      <SchemaViewerDetails schema={schema} defaultTab={defaultTab} targetField={targetField} />
+      <SchemaViewerDetails
+        schema={schema}
+        onKindClick={onKindClick}
+        defaultTab={defaultTab}
+        targetField={targetField}
+      />
     </section>
   );
 };
@@ -145,10 +162,12 @@ const SchemaViewerTitle = ({ schema }: { schema: ModelSchema }) => {
 
 const SchemaViewerDetails = ({
   schema,
+  onKindClick,
   defaultTab,
   targetField,
 }: {
   schema: ModelSchema;
+  onKindClick?: (kind: string) => void;
   defaultTab: "properties" | "attributes" | "relationships";
   targetField?: string;
 }) => {
@@ -161,15 +180,16 @@ const SchemaViewerDetails = ({
       </TabList>
 
       <TabPanelStyled id="properties">
-        <Properties schema={schema} />
+        <Properties schema={schema} onKindClick={onKindClick} />
       </TabPanelStyled>
 
       <TabPanelStyled id="attributes">
         {schema.attributes && schema.attributes.length > 0 ? (
           schema.attributes?.map((attribute) => (
             <AttributeDisplay
-              key={attribute.id}
+              key={attribute.name}
               attribute={attribute}
+              onKindClick={onKindClick}
               defaultOpen={attribute.name === targetField}
             />
           ))
@@ -182,8 +202,9 @@ const SchemaViewerDetails = ({
         {schema.relationships && schema.relationships.length > 0
           ? schema.relationships?.map((relationship) => (
               <RelationshipDisplay
-                key={relationship.id}
+                key={relationship.name}
                 relationship={relationship}
+                onKindClick={onKindClick}
                 defaultOpen={relationship.name === targetField}
               />
             ))
@@ -193,7 +214,13 @@ const SchemaViewerDetails = ({
   );
 };
 
-const Properties = ({ schema }: { schema: ModelSchema }) => {
+const Properties = ({
+  schema,
+  onKindClick,
+}: {
+  schema: ModelSchema;
+  onKindClick?: (kind: string) => void;
+}) => {
   return (
     <div className="divide-y divide-gray-200 p-2">
       <div>
@@ -210,7 +237,10 @@ const Properties = ({ schema }: { schema: ModelSchema }) => {
 
       {isGenericSchema(schema) && (
         <div>
-          <PropertyRow title="Used by" value={<ModelDisplay kinds={schema.used_by} />} />
+          <PropertyRow
+            title="Used by"
+            value={<SchemaKindDisplay kinds={schema.used_by} onKindClick={onKindClick} />}
+          />
           <PropertyRow title="Hierarchical" value={schema.hierarchical} />
           <PropertyRow title="Restricted namespaces" value={schema.restricted_namespaces} />
         </div>
@@ -218,20 +248,39 @@ const Properties = ({ schema }: { schema: ModelSchema }) => {
 
       {isNodeSchema(schema) && (
         <div>
-          <PropertyRow title="Inherit from" value={<ModelDisplay kinds={schema.inherit_from} />} />
+          <PropertyRow
+            title="Inherit from"
+            value={<SchemaKindDisplay kinds={schema.inherit_from} onKindClick={onKindClick} />}
+          />
           <PropertyRow
             title="Hierarchy"
             value={
-              schema.hierarchy ? <ModelDisplay kinds={[schema.hierarchy]} /> : schema.hierarchy
+              schema.hierarchy ? (
+                <SchemaKindDisplay kinds={[schema.hierarchy]} onKindClick={onKindClick} />
+              ) : (
+                schema.hierarchy
+              )
             }
           />
           <PropertyRow
             title="Parent"
-            value={schema.parent ? <ModelDisplay kinds={[schema.parent]} /> : schema.parent}
+            value={
+              schema.parent ? (
+                <SchemaKindDisplay kinds={[schema.parent]} onKindClick={onKindClick} />
+              ) : (
+                schema.parent
+              )
+            }
           />
           <PropertyRow
             title="Children"
-            value={schema.children ? <ModelDisplay kinds={[schema.children]} /> : schema.children}
+            value={
+              schema.children ? (
+                <SchemaKindDisplay kinds={[schema.children]} onKindClick={onKindClick} />
+              ) : (
+                schema.children
+              )
+            }
           />
         </div>
       )}

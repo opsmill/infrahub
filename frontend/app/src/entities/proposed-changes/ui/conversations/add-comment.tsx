@@ -1,26 +1,26 @@
-import { forwardRef, type ReactElement } from "react";
-import { useLocation } from "react-router";
+import { Button, LinkButton } from "@infrahub/ui";
+import type React from "react";
 
 import { constructPath } from "@/shared/api/rest/fetch";
+import { Row } from "@/shared/components/container";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import { isRequired } from "@/shared/components/form/utils/validation";
-import { Button, LinkButton } from "@/shared/components/ui/button";
 import { Form, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 
-type CommentFormData = {
+interface CommentFormData {
   comment: string;
-};
+}
 
-type tAddComment = {
+interface AddCommentProps {
+  ref?: React.Ref<FormRef>;
   onSubmit: ({ comment }: CommentFormData) => Promise<void>;
   onCancel?: () => void;
-  additionalButtons?: ReactElement;
-};
+  additionalButtons?: React.ReactElement;
+}
 
-export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel }, ref) => {
-  const location = useLocation();
+export const AddComment = ({ ref, onSubmit, onCancel }: AddCommentProps) => {
   const { isAuthenticated } = useAuth();
 
   if (isAuthenticated) {
@@ -45,29 +45,24 @@ export const AddComment = forwardRef<FormRef, tAddComment>(({ onSubmit, onCancel
           }}
         />
 
-        <div className="text-right">
+        <Row className="justify-end">
           {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
+            <Button variant="outline" onPress={onCancel}>
               Cancel
             </Button>
           )}
           <FormSubmit>Comment</FormSubmit>
-        </div>
+        </Row>
       </Form>
     );
   }
 
   return (
     <div>
-      <LinkButton
-        size="sm"
-        variant="primary"
-        to={constructPath("/login")}
-        state={{ from: location }}
-      >
+      <LinkButton size="sm" variant="primary" href={constructPath("/login")}>
         Login
       </LinkButton>{" "}
       to be able to add a comment.
     </div>
   );
-});
+};

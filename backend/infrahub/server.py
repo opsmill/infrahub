@@ -20,14 +20,15 @@ from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from infrahub import __version__, config
 from infrahub.api import router as api
-from infrahub.api.exception_handlers import generic_api_exception_handler
+from infrahub.api.exception_handlers import generic_api_exception_handler, log_forwarding_exception_handler
 from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.initialization import initialization
 from infrahub.database.graph import validate_graph_version
 from infrahub.dependencies.registry import build_component_registry
-from infrahub.exceptions import Error, ValidationError
+from infrahub.exceptions import Error, ForwardableError, ValidationError
 from infrahub.graphql.api.endpoints import router as graphql_router
+from infrahub.health import HealthChecker
 from infrahub.lock import initialize_lock
 from infrahub.log import clear_log_context, get_logger, set_log_data
 from infrahub.middleware import ConditionalGZipMiddleware, InfrahubCORSMiddleware
@@ -100,6 +101,11 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     await service.initialize_workflow(is_initial_setup=is_initial_setup)
 
     application.state.service = service
+    application.state.health_checker = HealthChecker(
+        db=database,
+        service=service,
+        check_timeout=config.SETTINGS.health.check_timeout,
+    )
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
 
     if enable_scheduler:
@@ -164,8 +170,7 @@ async def logging_middleware(request: Request, call_next: Callable[[Request], Aw
     if trace_id:
         set_log_data(key="trace_id", value=trace_id)
 
-    response = await call_next(request)
-    return response
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -210,6 +215,7 @@ app.add_middleware(
     ),
 )
 
+app.add_exception_handler(ForwardableError, log_forwarding_exception_handler)
 app.add_exception_handler(Error, generic_api_exception_handler)
 app.add_exception_handler(TimestampFormatError, partial(generic_api_exception_handler, http_code=400))
 app.add_exception_handler(ValidationError, partial(generic_api_exception_handler, http_code=400))

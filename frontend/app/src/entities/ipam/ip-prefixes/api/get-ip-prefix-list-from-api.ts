@@ -1,12 +1,14 @@
+import { gql } from "@apollo/client";
 import { jsonToGraphQLQuery } from "json-to-graphql-query";
 
+import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
 import {
   addAttributesToRequest,
   addFiltersToRequest,
   addRelationshipsToRequest,
   dropIncludeAvailableWhenFalse,
 } from "@/shared/api/graphql/utils";
-import type { PaginationParams } from "@/shared/api/types";
+import type { ContextParams, PaginationParams } from "@/shared/api/types";
 import type { Filter } from "@/shared/hooks/useFilters";
 
 import {
@@ -15,6 +17,48 @@ import {
   IP_PREFIX_GENERIC,
 } from "@/entities/ipam/constants";
 import type { AttributeSchema, RelationshipSchema } from "@/entities/schema/types";
+
+export interface GetIpPrefixListFromApiParams extends ContextParams, PaginationParams {
+  filters: Array<Filter>;
+  objectKind: string;
+  attributes: Array<AttributeSchema>;
+  relationships: Array<RelationshipSchema>;
+  excludeIpAvailability: boolean;
+}
+
+export async function getIpPrefixListFromApi({
+  limit,
+  offset,
+  branchName,
+  atDate,
+  filters,
+  objectKind,
+  attributes,
+  relationships,
+  excludeIpAvailability,
+}: GetIpPrefixListFromApiParams) {
+  const queryString = (
+    excludeIpAvailability
+      ? buildGetIpPrefixListWithoutAvailabilityQuery
+      : buildGetIpPrefixListWithAvailabilityQuery
+  )({
+    limit,
+    offset,
+    filters,
+    objectKind,
+    attributes,
+    relationships,
+  });
+
+  const query = gql(queryString);
+  return graphqlClient.query({
+    query,
+    context: {
+      branch: branchName,
+      date: atDate,
+    },
+  });
+}
 
 export interface BuildGetIpPrefixListQueryParams extends PaginationParams {
   filters?: Array<Filter>;

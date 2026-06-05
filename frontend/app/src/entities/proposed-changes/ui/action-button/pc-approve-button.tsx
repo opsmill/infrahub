@@ -1,15 +1,14 @@
 import { Icon } from "@iconify-icon/react";
-import { useAtomValue } from "jotai";
+import { Button } from "@infrahub/ui";
 import { toast } from "react-toastify";
 
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { Button } from "@/shared/components/ui/button";
-import { Tooltip } from "@/shared/components/ui/tooltip";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
 import { APPROVE_DECISION, CANCEL_APPROVE_DECISION } from "@/entities/proposed-changes/constants";
-import { proposedChangedState } from "@/entities/proposed-changes/stores/proposedChanges.atom";
+import { useProposedChange } from "@/entities/proposed-changes/ui/hooks/use-proposed-change";
 import { usePcActionsContext } from "@/entities/proposed-changes/ui/pc-actions-permissions-context";
 import { useUpdateProposedChangeReview } from "@/entities/proposed-changes/ui/queries/update-review.mutation";
 import { hasUserApprovedProposedChange } from "@/entities/proposed-changes/utils/has-user-approved-proposed-change";
@@ -20,7 +19,7 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
   const auth = useAuth();
   const { approve, cancelApprove } = usePcActionsContext();
 
-  const proposedChangesDetails = useAtomValue(proposedChangedState);
+  const proposedChangesDetails = useProposedChange();
 
   const hasApproved = auth.user && hasUserApprovedProposedChange(proposedChangesDetails, auth.user);
 
@@ -50,29 +49,28 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
     },
   });
 
-  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
+  const handleAction = () => {
     mutate({
       proposedChangeId: proposedChangesDetails.id,
       decision: hasApproved ? CANCEL_APPROVE_DECISION : APPROVE_DECISION,
     });
   };
 
-  const tooltipContent = hasApproved
+  const tooltipMessage = hasApproved
     ? cancelApprove.unavailability_reason
     : approve.unavailability_reason;
-  const tooltipEnabled = hasApproved ? !cancelApprove.available : !approve.available;
+  const isUnavailable = hasApproved ? !cancelApprove.available : !approve.available;
 
   return (
     <>
-      <Tooltip content={tooltipContent} enabled={tooltipEnabled} className="whitespace-pre">
+      <Tooltip message={isUnavailable ? tooltipMessage : undefined} className="whitespace-pre">
         <Button
           className="flex h-full grow flex-wrap gap-2 rounded-r-none border-r-white"
-          onClick={handleAction}
+          onPress={handleAction}
           variant={"primary"}
-          isLoading={isPending}
-          disabled={tooltipEnabled || isPending}
+          isPending={isPending}
+          isDisabled={isUnavailable || isPending}
+          isDisabledAndFocusable={isUnavailable && !isPending}
         >
           {hasApproved ? "Cancel Approve" : "Approve"}
         </Button>
@@ -82,13 +80,12 @@ export const ApproveButton = ({ setOpen }: ProposedChangeActionButtonProps) => {
         className="h-full rounded-l-none border-l-0"
         variant={"primary"}
         size={"sm"}
-        onClick={() => {
+        onPress={() => {
           setOpen(true);
         }}
-        disabled={isPending}
+        isDisabled={isPending}
         data-testid="proposed-change-action-button-select"
         aria-label="More actions"
-        type="button"
       >
         <Icon icon="mdi:unfold-more-horizontal" />
       </Button>

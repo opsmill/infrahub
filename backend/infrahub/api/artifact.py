@@ -26,7 +26,7 @@ from infrahub.permissions.constants import PermissionDecisionFlag
 from infrahub.workflows.catalogue import REQUEST_ARTIFACT_DEFINITION_GENERATE
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext
     from infrahub.permissions import PermissionManager
     from infrahub.services import InfrahubServices

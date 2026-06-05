@@ -1,6 +1,3 @@
-import { gql, useQuery } from "@apollo/client";
-import { useAtom } from "jotai";
-import { use } from "react";
 import { useParams } from "react-router";
 
 import {
@@ -9,14 +6,11 @@ import {
 } from "@/shared/config/constants";
 
 import { getThreadLabel } from "@/entities/diff/ui/diff-utils";
+import { useGetDiffComments } from "@/entities/diff/ui/queries/get-diff-comments.query";
 import { useCreateObjectMutation } from "@/entities/nodes/object/ui/queries/create-object.mutation";
 import { useDeleteObjectMutation } from "@/entities/nodes/object/ui/queries/delete-object.mutation";
-import { getProposedChangesObjectThreadComments } from "@/entities/proposed-changes/api/getProposedChangesObjectThreadComments";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
-
-import { DiffContext } from ".";
 
 type tDiffComments = {
   path: string;
@@ -27,38 +21,19 @@ export const DiffComments = (props: tDiffComments) => {
   const { path, refetch: parentRefetch } = props;
 
   const { proposedChangeId } = useParams();
-  const [schemaList] = useAtom(nodeSchemasAtom);
-  const { refetch: contextRefetch, node, currentBranch } = use(DiffContext);
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
 
-  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_OBJECT_THREAD_OBJECT);
-
-  const queryString = schemaData
-    ? getProposedChangesObjectThreadComments({
-        id: proposedChangeId,
-        path,
-        kind: schemaData.kind,
-      })
-    : // Empty query to make the gql parsing work
-      // TODO: Find another solution for queries while loading schemaData
-      "query { ok }";
-
-  const query = gql`
-    ${queryString}
-  `;
-
-  const { loading, error, data, refetch } = useQuery(query, { skip: !schemaData });
+  const { isLoading, error, data, refetch } = useGetDiffComments(
+    { proposedChangeId: proposedChangeId ?? "", objectPath: path },
+    { enabled: !!proposedChangeId }
+  );
 
   const handleRefetch = () => {
     refetch();
 
     if (parentRefetch) {
       parentRefetch();
-    }
-
-    if (contextRefetch) {
-      contextRefetch();
     }
   };
 
@@ -67,7 +42,7 @@ export const DiffComments = (props: tDiffComments) => {
       return;
     }
 
-    const label = getThreadLabel(node, currentBranch, path);
+    const label = getThreadLabel(path);
 
     const newThread = {
       change: {
@@ -128,9 +103,9 @@ export const DiffComments = (props: tDiffComments) => {
     );
   };
 
-  const thread = data ? data[PROPOSED_CHANGES_OBJECT_THREAD_OBJECT]?.edges[0]?.node : {};
+  const thread = data?.thread;
 
-  if (loading || error) {
+  if (!proposedChangeId || isLoading || error) {
     return null;
   }
 

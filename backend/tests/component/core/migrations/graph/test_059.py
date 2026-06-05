@@ -171,7 +171,6 @@ class TestMigration059(TestInfrahubApp):
         loaded_schemas: SchemaBranch,
     ) -> None:
         """Create data across default, global, and user branches, run migration, verify all fixes."""
-
         # --- Setup: default branch nodes ---
         role = await Node.init(db=db, schema="TestRole", branch=default_branch)
         await role.new(db=db, name="spine")

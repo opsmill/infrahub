@@ -1,11 +1,9 @@
-import { gql } from "@apollo/client";
+import { Button, Spinner } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React, { useEffect, useState } from "react";
+import React from "react";
 
-import { useLazyQuery } from "@/shared/api/graphql/useQuery";
 import type { PoolValue } from "@/shared/components/form/pool-selector";
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -15,15 +13,14 @@ import {
   ComboboxTrigger,
 } from "@/shared/components/ui/combobox";
 import type { PopoverTrigger } from "@/shared/components/ui/popover";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { inputStyle } from "@/shared/components/ui/style";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { classNames } from "@/shared/utils/common";
 
-import { generateRelationshipListQuery } from "@/entities/nodes/api/generateRelationshipListQuery";
-import type { Node, RelationshipManyType } from "@/entities/nodes/getObjectItemDisplayValue";
+import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 import { AddRelationshipAction } from "@/entities/nodes/relationships/ui/add-relationship-action";
+import { useRelationships } from "@/entities/nodes/relationships/ui/queries/get-relationships.query";
 
 export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value" | "onChange"> {
   className?: string;
@@ -32,56 +29,36 @@ export interface RelationshipInputProps extends Omit<PopoverTriggerProps, "value
   value: Node | PoolValue | null;
   options?: Array<Node>;
   parent?: { name?: string; value?: string };
+  ref?: React.Ref<React.ComponentRef<typeof PopoverTrigger>>;
 }
 
-const PAGINATION = 20;
-
-export const RelationshipInput = React.forwardRef<
-  React.ElementRef<typeof PopoverTrigger>,
-  RelationshipInputProps
->(({ className, value, onChange, options, peer, parent, ...props }, ref) => {
+export const RelationshipInput = ({
+  className,
+  value,
+  onChange,
+  options,
+  peer,
+  parent,
+  ref,
+  ...props
+}: RelationshipInputProps) => {
   const [open, setOpen] = React.useState(false);
-  const [count, setCount] = useState(0);
-  const [offset, setOffset] = useState(0);
-  const [results, setResults] = useState([]);
-  const [search, setSearch] = useState("");
-  const [shouldAggregate, setShouldAggregate] = useState(true);
+  const [search, setSearch] = React.useState("");
   const searchQuery = useDebounce(search, 500);
 
-  const [loadRelationshipList, { loading: isRelationshipListLoading, data: RelationshipListData }] =
-    useLazyQuery(
-      gql(
-        generateRelationshipListQuery({
-          peer,
-          parent,
-          limit: PAGINATION,
-          offset,
-          search: searchQuery,
-        })
-      )
-    );
+  const filterQuery =
+    parent?.name && parent?.value ? { [`${parent.name}__ids`]: [parent.value] } : undefined;
 
-  useEffect(() => {
-    const newResults =
-      RelationshipListData &&
-      (RelationshipListData[peer] as RelationshipManyType).edges.map((edge) => edge.node);
+  const {
+    isFetching: isRelationshipListLoading,
+    data,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useRelationships({ peer, search: searchQuery, filterQuery }, { enabled: open });
 
-    const dataCount =
-      RelationshipListData && (RelationshipListData[peer] as RelationshipManyType).count;
-
-    setCount(dataCount);
-
-    if (!shouldAggregate) {
-      setResults(newResults);
-      return;
-    }
-
-    if (!newResults) {
-      return;
-    }
-
-    setResults([...results, ...newResults]);
-  }, [RelationshipListData]);
+  const results = data?.pages.flat() ?? [];
 
   return (
     <Combobox open={open} onOpenChange={setOpen}>
@@ -104,31 +81,23 @@ export const RelationshipInput = React.forwardRef<
         {isRelationshipListLoading && <Spinner className="ml-auto" />}
       </ComboboxTrigger>
 
-      <ComboboxContent
-        onOpenAutoFocus={() => {
-          setOffset(0);
-          setShouldAggregate(false);
-          loadRelationshipList();
-        }}
-      >
+      <ComboboxContent>
         <ComboboxList
           shouldFilter={false}
           onValueChange={(newValue) => {
-            setOffset(0);
-            setShouldAggregate(false);
             setSearch(newValue);
           }}
         >
-          {!isRelationshipListLoading && <ComboboxEmpty>No results found</ComboboxEmpty>}
+          {!isRelationshipListLoading && !error && <ComboboxEmpty>No results found</ComboboxEmpty>}
 
-          {results?.map((relationship) => {
+          {results.map((relationship) => {
             return (
               <ComboboxItem
                 key={relationship.id}
                 value={relationship.id}
                 selectedValue={value?.id}
                 onSelect={() => {
-                  onChange(relationship.id === value?.id ? null : relationship);
+                  onChange(relationship.id === value?.id ? null : (relationship as Node));
                   setOpen(false);
                 }}
               >
@@ -157,17 +126,15 @@ export const RelationshipInput = React.forwardRef<
 
           {isRelationshipListLoading && <Spinner className="m-2 flex justify-center" />}
 
-          {results?.length < count && (
+          {hasNextPage && (
             <div className="pt-2">
               <Button
                 variant={"ghost"}
-                className="w-full border-custom-blue-500/10 font-normal text-custom-blue-700 enabled:hover:bg-custom-blue-500/10"
-                onClick={() => {
-                  setOffset(offset + PAGINATION);
-                  setShouldAggregate(true);
-                }}
+                className="w-full border-custom-blue-500/10 font-normal text-custom-blue-700 not-data-disabled:data-hovered:bg-custom-blue-500/10"
+                onPress={() => fetchNextPage()}
+                isDisabled={isFetchingNextPage}
               >
-                Load more
+                {isFetchingNextPage ? "Loading more..." : "Load more"}
               </Button>
             </div>
           )}
@@ -185,4 +152,4 @@ export const RelationshipInput = React.forwardRef<
       </ComboboxContent>
     </Combobox>
   );
-});
+};

@@ -1,0 +1,231 @@
+---
+title: Documentation restructure
+---
+
+## Why we reorganized
+
+The previous documentation was organized by **content type** — topics explained concepts, guides provided procedures, and reference pages listed specifications. This meant that everything about a single feature was spread across multiple sections: understanding Groups required visiting a topic page, a guide page, and potentially a reference page, each filed under a different top-level category.
+
+The new documentation is organized by **job** — what you are trying to accomplish with Infrahub. A feature's concept explanation, how-to steps, and operational detail now live together in one place. Finding what you need no longer requires knowing which content type to look in first.
+
+The reorganization keeps the [Diátaxis](https://diataxis.fr/) documentation framework at its core. Diátaxis distinguishes between tutorials, how-to guides, reference, and explanation — and those distinctions still govern how individual pages are written. What changed is the navigation layer: instead of sorting pages by content type at the top level, the sidebar sorts by job.
+
+## Why these groupings
+
+The three main feature sections map directly to the three core jobs Infrahub is built to deliver:
+
+- **Schema & Data** — Infrahub as the unified source of truth for infrastructure data: modeling your schema, managing objects, IPAM, and resource allocation.
+- **Branches & Change Control** — Infrahub's Git-like versioning layer: branching, proposed changes, checks, validation, and Git repository integration.
+- **Design & Integrate** — Infrahub as the design surface for your automation stack: generators, transformations, artifacts, events, webhooks, and integrations with tools like Ansible and Nornir.
+
+The remaining sections support those three jobs:
+
+- **Get started** — installation, hardware requirements, and the onboarding path for new users.
+- **Learn** — hands-on tutorials for building real skills with Infrahub, from schema design to generators.
+- **Deployment & Management** — everything needed to run Infrahub in production: configuration, observability, upgrades, backups, authentication, and access control.
+- **Development Resources** — interfaces and tools for building on top of Infrahub: GraphQL, Python SDK, MCP Server, and the infrahubctl CLI.
+- **Reference** — specification-level material: schema spec, CLI reference, configuration files, events catalog, and permissions.
+
+All previous URLs continue to resolve. Legacy paths redirect automatically.
+
+## Notable renames
+
+**Object Storage → Artifact & File Storage**
+
+The "Object Storage" section has been renamed to **Artifact & File Storage**. "Object storage" is a widely-used term for cloud blob storage services like S3 or GCS — not what this feature is. The new name describes what it actually stores: artifacts produced by generators and transformations, and files attached to schema nodes via the File Object kind.
+
+---
+
+## What moved
+
+### Get started
+
+All pages pre-existing and unchanged.
+
+---
+
+### Learn
+
+- **Build your first schema** · `academy/tutorials/build-your-first-schema` · from `guides/create-schema` — tutorial reframe; troubleshooting absorbed from the old Academy tutorial; internal links updated
+- **Groups tutorial** · `academy/tutorials/groups` · from `guides/groups` — tutorial reframe; procedural steps extracted to spokes under Schema & Data → Groups
+- **Build a check** · `academy/tutorials/build-a-check` · from `guides/check` — moved verbatim
+- **Build a Jinja2 transformation** · `academy/tutorials/transformations/build-a-jinja2-transformation` · from `guides/jinja2-transform` — moved verbatim
+- **Build a Python transformation** · `academy/tutorials/transformations/build-a-python-transformation` · from `guides/python-transform` — moved verbatim
+- **Build your first generator** · `academy/tutorials/generators/build-your-first-generator` · from `guides/generator` — moved verbatim
+- **Build chained generators** · `academy/tutorials/generators/build-chained-generators` · from `guides/chaining-generators` — moved verbatim
+
+---
+
+### Schema & Data
+
+- **About Schema** · `schema/` · from `topics/schema` — new hub; concept content split into spokes
+  - **Nodes & attributes** · `schema/nodes-and-attributes` · from `topics/schema` — split; new intro, Menu placement section, cross-refs to Profiles and Templates added
+  - **Relationships** · `schema/relationships` · from `topics/schema` — split
+  - **Generics & inheritance** · `schema/generics-and-inheritance` · from `topics/schema` — split; Reserved namespaces admonition moved here
+  - **Branch awareness** · `schema/branch-awareness` · from `topics/schema` — split
+  - **Hierarchy** · `schema/hierarchy` · from `topics/schema` — split
+  - **Schema extensions** · `schema/extensions` · from `topics/schema-extensions` — moved verbatim
+- **Schema operations**
+  - **Create and load** · `schema/create-and-load` · from `guides/import-schema` — merged with schema check command from `topics/schema` and troubleshooting from the old Academy tutorial
+  - **Schema migration** · `schema/migration` · from `topics/schema` — split; migration and strict mode sections
+- **Advanced schema features**
+  - **Computed attributes** · `computed-attributes/` · pre-existing — sidebar re-nesting only
+  - **Number pools** · `schema/number-pool` · from `topics/schema-attr-kind-number-pool` — moved verbatim
+  - **File objects** · `schema/file-object` · from `topics/file-object` — moved verbatim
+- **Display & presentation**
+  - **Field visibility** · `schema/field-visibility` · from `topics/schema-display` — moved verbatim
+  - **Display labels** · `schema/display_label` · from `topics/labels` — moved verbatim
+  - **Order weight** · `schema/order-weight` · from `topics/order-weight` — moved verbatim
+  - **Menu customization** · `menu/` · pre-existing — sidebar re-nesting only
+- **Objects** · `objects/` · net new hub — concept intro; branch-agnostic schema node nuance documented
+  - **Convert object kind** · `objects/convert-object-kind` · from `topics/object-conversion` — moved verbatim
+  - **Metadata & lineage** · `objects/metadata` · from `topics/metadata` — moved verbatim
+  - **Load data from YAML** · `objects/load-from-yaml` · from `guides/object-load` — prerequisite section converted to collapsible
+- **IPAM** · `ipam/` · net new hub — intro + video embed; content from `topics/ipam` distributed to spokes
+  - **IP Namespaces** · `ipam/ip-namespaces` · from `topics/ipam` — split
+  - **Building your IPAM schema** · `ipam/building-your-schema` · from `topics/ipam` — split
+  - **Automate with Resource Manager** · `ipam/automate-with-resource-manager` · net new — bridging page explaining IPAM ↔ Resource Manager relationship
+- **Resource Manager** · `resource-manager/` · from `topics/resource-manager` — promoted to hub
+  - **Allocate IP address** · `resource-manager/allocate-ip-address` · from `guides/resource-manager` — split
+  - **Allocate IP prefix** · `resource-manager/allocate-ip-prefix` · from `guides/resource-manager` — split
+  - **Allocate number** · `resource-manager/allocate-number` · from `guides/resource-manager` — split
+  - **Weighted allocation** · `resource-manager/weighted-allocation` · from `guides/resource-manager` — split
+- **Groups** · `groups/` · net new hub — concept intro; content from `topics/groups` distributed to spokes
+  - **Create** · `groups/create` · from `guides/groups` — split
+  - **Add members** · `groups/add-members` · from `guides/groups` — split
+  - **Remove members** · `groups/remove-members` · from `guides/groups` — split
+  - **Delete** · `groups/delete` · from `guides/groups` — split
+  - **Query members** · `groups/query-members` · from `guides/groups` — split
+  - **Use in automation** · `groups/use-in-automation` · from `guides/groups` — split
+- **Profiles** · `profiles/` · from `topics/profiles` — promoted to hub
+  - **Priority and inheritance** · `profiles/priority-and-inheritance` · from `topics/profiles` — split
+  - **Create** · `profiles/create` · from `guides/profiles` — split
+  - **Assign** · `profiles/assign` · from `guides/profiles` — split
+  - **Override values** · `profiles/override-values` · from `guides/profiles` — split
+  - **Update** · `profiles/update` · from `guides/profiles` — split
+  - **Use multiple profiles** · `profiles/use-multiple` · from `guides/profiles` — split
+- **Object Templates** · `object-templates/` · from `topics/object-template` — promoted to hub
+  - **Use templates** · `object-templates/use` · from `guides/object-template` — split
+  - **With profiles** · `object-templates/with-profiles` · from `guides/object-template` — split
+  - **Allocate resources from pools** · `object-templates/allocate-resources-from-pools` · from `guides/object-template` — split
+
+---
+
+### Branches & Change Control
+
+- **Immutable History** · `topics/version-control` · pre-existing — sidebar label updated
+- **Branches** · `branches/` · from `topics/branching` — concept sections promoted to hub; procedural content extracted to spokes
+  - **Create** · `branches/create` · net new
+  - **Merge** · `branches/merge` · net new
+  - **Rebase** · `branches/rebase` · net new
+  - **Delete** · `branches/delete` · net new
+  - **Resolve conflicts** · `branches/resolve-conflicts` · net new
+- **Proposed Changes** · `proposed-changes/` · from `topics/proposed-change` — concept sections promoted to hub
+  - **Lifecycle** · `proposed-changes/lifecycle` · from `topics/proposed-change` — split
+  - **Review and stamp** · `proposed-changes/review-and-stamp` · from `topics/proposed-change` — split
+  - **Resolve conflict** · `proposed-changes/resolve-conflict` · from `topics/proposed-change` — split
+- **Checks** · `checks/` · from `topics/check` — kept as hub; "Learn by doing" Academy link added
+- **Testing Framework** · `testing-framework/` · from `topics/resources-testing-framework` — moved verbatim
+- **Change Approval Workflow** · `change-approval/change-approval-workflow` · from `guides/change-approval-workflow` — step prefixes removed, named personas replaced with role placeholders
+- **Git Integration** · `git-integration/` · from `topics/repository` — promoted to hub; retitled
+  - **Connect a repository** · `git-integration/connect-repository` · from `guides/repository` — moved verbatim
+  - **infrahub.yml** · `git-integration/infrahub-yml` · from `topics/infrahub-yml` — moved verbatim
+  - **Branch synchronization** · `git-integration/branch-synchronization` · from `topics/branch-synchronization` — merged with `guides/selective-branch-sync`
+
+---
+
+### Design & Integrate
+
+- **Generators** · `generators/` · from `topics/generator` — moved as hub
+  - **Build a generator** · `generators/build` · net new — recipe-form how-to; replaces the 528-line tutorial moved to Academy
+  - **Modular generators** · `generators/modular` · from `topics/modular-generators` — moved verbatim
+  - **Modular generator best practices** · `generators/modular-best-practices` · from `guides/modular-generator-best-practices` — moved verbatim
+- **Transformations** · `transformations/` · from `topics/transformation` — moved as hub
+  - **Jinja2 transformation** · `transformations/jinja2` · net new — recipe-form how-to; replaces the 332-line tutorial moved to Academy
+  - **Python transformation** · `transformations/python` · net new
+- **Artifacts** · `artifacts/` · from `topics/artifact` — promoted to hub; "How Artifacts relate to other features" section added
+  - **Use artifacts** · `artifacts/use` · from `guides/artifact` — step prefixes dropped, action-named headings
+  - **Content composition** · `artifacts/content-composition` · from `guides/artifact-content-composition` — moved verbatim
+- **About storage** · `artifact-file-storage/` · from `topics/object-storage` — moved as hub; title updated from "Object Storage"
+  - **Configure storage** · `artifact-file-storage/configure` · from `guides/object-storage` — title and opening sentence updated
+- **Events** · `events/` · net new hub — introduces the three-component event system holistically
+  - **Event system** · `events/event-system` · from `topics/events` — expanded with net-new prose on how events are emitted
+  - **Event rules** · `events/event-rules` · from `guides/events-rules-actions` — split
+  - **Event actions** · `events/event-actions` · from `topics/event-actions` — merged with actions content from `guides/events-rules-actions`
+- **Webhooks** · `webhooks/` · from `topics/webhooks` — moved as hub
+  - **Create a webhook** · `webhooks/create` · from `guides/webhooks` — split
+  - **Custom transformation webhook** · `webhooks/custom-transformation` · from `guides/webhooks` — split; step prefixes dropped
+- **Integrations** · `integrations/` · net new landing page
+  - Ansible ↗, Nornir ↗, Infrahub Sync ↗ — external links; sidebar location updated
+
+---
+
+### Deployment & Management
+
+- **Install & configure**
+  - **Hardware requirements** · `deploy-manage/install-configure/hardware-requirements` · from `topics/hardware-requirements` — moved verbatim
+  - **Install** · `deploy-manage/install-configure/install/` · net new hub
+    - **Community** · `deploy-manage/install-configure/install/community` · from `guides/installation` — split
+    - **Enterprise** · `deploy-manage/install-configure/install/enterprise` · from `guides/installation` — split
+  - **Production deployment** · `deploy-manage/install-configure/production-deployment/` · from `guides/production-deployment` — moved as hub
+    - **High availability** · `deploy-manage/install-configure/production-deployment/high-availability` · from `guides/installation` — split; new "How HA works" intro added
+  - **Configure Infrahub** · `deploy-manage/install-configure/configure-infrahub` · from `guides/configuration-changes` — moved verbatim
+- **Run & observe**
+  - **Tasks** · `deploy-manage/run-observe/tasks` · from `topics/tasks` — moved verbatim
+  - **Telemetry** · `deploy-manage/run-observe/telemetry` · from `guides/telemetry` — moved verbatim
+  - **Activity log** · `deploy-manage/run-observe/activity-log` · from `topics/activity-log` — moved verbatim
+  - **Log Forwarding** · `deploy-manage/run-observe/log-forwarding/` · from `topics/log-forwarding` — moved as hub
+    - **Configure log forwarding** · `deploy-manage/run-observe/log-forwarding/configure-log-forwarding` · from `guides/log-forwarding` — moved verbatim
+- **Maintain & upgrade**
+  - **Database Backup** · `deploy-manage/maintain-upgrade/database-backup/` · from `topics/database-backup` — moved as hub
+    - **Backup and restore** · `deploy-manage/maintain-upgrade/database-backup/backup-and-restore` · from `guides/database-backup` — split
+    - **Cluster backup and restore** · `deploy-manage/maintain-upgrade/database-backup/cluster-backup-and-restore` · from `guides/database-backup` — split
+  - **Upgrade** · `deploy-manage/maintain-upgrade/upgrade/` · net new hub
+    - **Community** · `deploy-manage/maintain-upgrade/upgrade/community` · from `guides/upgrade` — split
+    - **Enterprise** · `deploy-manage/maintain-upgrade/upgrade/enterprise` · from `guides/upgrade` — split
+    - **Observability stack** · `deploy-manage/maintain-upgrade/upgrade/observability-stack` · from `guides/upgrade` — split
+- **User Management & Security**
+  - **Authentication** · `deploy-manage/user-management/authentication` · from `topics/authentication` — moved verbatim
+  - **SSO** · `deploy-manage/user-management/sso/` · net new hub
+    - **Configure SSO** · `deploy-manage/user-management/sso/configure-sso` · from `guides/sso` — split
+    - **Advanced SSO** · `deploy-manage/user-management/sso/advanced-sso` · from `guides/sso` — split
+  - **Permissions & Roles** · `deploy-manage/user-management/permissions-roles/` · from `topics/permissions-roles` — moved as hub
+    - **Manage accounts and permissions** · `deploy-manage/user-management/permissions-roles/manage-accounts-and-permissions` · from `guides/accounts-permissions` — moved; title updated
+  - **Managing API tokens** · `deploy-manage/user-management/managing-api-tokens` · from `guides/managing-api-tokens` — moved verbatim
+
+---
+
+### Development Resources
+
+- **Developer guide** · `development-resources/developer-guide` · from `topics/developer-guide` — moved verbatim
+- **GraphQL** · `development-resources/graphql/` · from `topics/graphql` — hub extracted from 586-line file
+  - **Queries & mutations** · `development-resources/graphql/queries-and-mutations` · from `topics/graphql` — split
+  - **Stored queries** · `development-resources/graphql/stored-queries` · from `topics/graphql` — split
+  - **Single-target queries** · `development-resources/graphql/single-target-queries` · from `topics/graphql` — split
+  - **Working with groups** · `development-resources/graphql/groups` · from `topics/graphql` — split
+- **GraphQL fragments** · `development-resources/graphql-fragments` · from `guides/graphql-fragment` — moved verbatim
+- Python SDK ↗, Infrahubctl CLI ↗, MCP Server ↗ — external links; sidebar location updated
+
+---
+
+### Reference
+
+Sidebar reordered and the events reference split into individual pages by event group.
+
+- **Schema Specification** · pre-existing — promoted to first position in sidebar
+- **CLI** · pre-existing — unchanged
+- **Configuration Files** · pre-existing — unchanged
+- **Events** · `reference/infrahub-events/` · from `reference/infrahub-events` — 844-line single page split into one page per event group
+  - **Account events** · `reference/infrahub-events/account` · split
+  - **Artifact events** · `reference/infrahub-events/artifact` · split
+  - **Branch events** · `reference/infrahub-events/branch` · split
+  - **Commit events** · `reference/infrahub-events/commit` · split
+  - **Group events** · `reference/infrahub-events/group` · split
+  - **Node events** · `reference/infrahub-events/node` · split
+  - **Proposed change events** · `reference/infrahub-events/proposed-change` · split
+  - **Schema events** · `reference/infrahub-events/schema` · split
+  - **Validator events** · `reference/infrahub-events/validator` · split
+- **Permissions** · pre-existing — unchanged
+- **Authentication** · pre-existing — unchanged
+- **Message Bus Events** · pre-existing — unchanged
+- **API reference** · removed from sidebar

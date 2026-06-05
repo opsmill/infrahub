@@ -1,247 +1,210 @@
 import { Icon } from "@iconify-icon/react";
-import { useCommandState } from "cmdk";
+import { Button, LinkButton } from "@infrahub/ui";
+import { ArrowUpRightIcon, CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { useRef, useState } from "react";
-
-import type { Branch } from "@/shared/api/graphql/generated/types";
-import { constructPath } from "@/shared/api/rest/fetch";
-import { Button, ButtonWithTooltip, LinkButton } from "@/shared/components/ui/button";
-import { ComboboxItem } from "@/shared/components/ui/combobox";
+import React from "react";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/shared/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/components/ui/popover";
+  type ButtonProps as AriaButtonProps,
+  Collection,
+  ListLayout,
+  Virtualizer,
+} from "react-aria-components";
+
+import { constructPath } from "@/shared/api/rest/fetch";
+import { Autocomplete } from "@/shared/components/aria/autocomplete";
+import { ListBox, ListBoxItem, ListBoxLoadMoreItem } from "@/shared/components/aria/list-box";
+import { Popover, PopoverDialog, PopoverTrigger } from "@/shared/components/aria/popover";
+import { Separator } from "@/shared/components/aria/separator";
+import { Tooltip } from "@/shared/components/aria/tooltip";
+import { Row } from "@/shared/components/container";
 import { QSP } from "@/shared/config/qsp";
-import { useIsTruncated } from "@/shared/hooks/useIsTruncated";
+import { useDebounce } from "@/shared/hooks/useDebounce";
 
 import { useAuth } from "@/entities/authentication/ui/useAuth";
+import type { BranchListItem } from "@/entities/branches/domain/branch.mappers";
 import BranchCreateForm from "@/entities/branches/ui/branch-create-form";
+import { BranchDefaultBadge } from "@/entities/branches/ui/branch-list-item/branch-default-badge";
 import { BranchStatusBadge } from "@/entities/branches/ui/branch-list-item/branch-status-badge";
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { useGetBranches } from "@/entities/branches/ui/queries/get-branches.query";
-import { branchesToSelectOptions } from "@/entities/branches/utils";
+import { useGetBranchesPaginated } from "@/entities/branches/ui/queries/get-branches.query";
 
-type DisplayForm = {
-  open: boolean;
-  defaultBranchName?: string;
-};
+// textValue for the "Create branch X" item.
+// Whitelisted by the Autocomplete filter so it remains visible regardless of the current search input.
+const CREATE_BRANCH_ITEM_VALUE = "__create_branch__";
 
-export default function BranchSelector() {
+export function BranchSelector() {
   const { currentBranch } = useCurrentBranch();
-  const [isOpen, setIsOpen] = useState(false);
-  const [displayForm, setDisplayForm] = useState<DisplayForm>({ open: false });
-  const triggerNameRef = useRef<HTMLSpanElement>(null);
-  const isTriggerTruncated = useIsTruncated(triggerNameRef);
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [initialBranchName, setInitialBranchName] = React.useState("");
+
+  function openCreateForm(name: string) {
+    setInitialBranchName(name);
+    setIsCreating(true);
+  }
+
+  function closeCreateForm() {
+    setIsCreating(false);
+  }
 
   return (
-    <Popover
-      open={isOpen}
+    <PopoverTrigger
       onOpenChange={(open) => {
-        setDisplayForm({ open: false });
-        setIsOpen(open);
+        if (open) closeCreateForm();
       }}
     >
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          className="h-8 w-60 rounded-lg border-neutral-200 p-0 shadow-none"
-          data-testid="branch-selector-trigger"
-          title={isTriggerTruncated ? currentBranch.name : undefined}
-        >
-          <div className="inline-flex h-full grow items-center justify-between gap-1.5 overflow-hidden border-gray-200 border-r px-3">
-            <div className="inline-flex min-w-0 items-center gap-1.5">
-              <Icon icon="mdi:source-branch" className="shrink-0" />
-              <span ref={triggerNameRef} className="truncate">
-                {currentBranch.name}
-              </span>
-            </div>
-            <BranchStatusBadge status={currentBranch.status} className="shrink-0" />
-          </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-64 data-pressed:scale-100"
+        data-testid="branch-selector-trigger"
+      >
+        <Row className="grow gap-1.5 overflow-hidden">
+          <Icon icon="mdi:source-branch" className="shrink-0" />
+          <span className="min-w-0 truncate" title={currentBranch.name}>
+            {currentBranch.name}
+          </span>
+          <BranchStatusBadge status={currentBranch.status} className="ml-auto shrink-0" />
+        </Row>
 
-          <Icon icon="mdi:chevron-down" className="px-3 text-2xl" />
-        </Button>
-      </PopoverTrigger>
+        <Separator orientation="vertical" />
 
-      <PopoverContent align="start">
-        {displayForm.open ? (
-          <BranchCreateForm
-            onCancel={() => setDisplayForm({ open: false })}
-            onSuccess={() => {
-              setDisplayForm({ open: false });
-              setIsOpen(false);
-            }}
-            defaultBranchName={displayForm.defaultBranchName}
-            data-testid="branch-create-form"
-          />
-        ) : (
-          <BranchSelect setPopoverOpen={setIsOpen} setFormOpen={setDisplayForm} />
-        )}
-      </PopoverContent>
-    </Popover>
+        <ChevronsUpDownIcon className="ml-0.5" />
+      </Button>
+
+      <Popover className="w-(--trigger-width)">
+        <PopoverDialog>
+          {({ close }) =>
+            isCreating ? (
+              <BranchCreateForm
+                onCancel={closeCreateForm}
+                onSuccess={() => {
+                  closeCreateForm();
+                  close();
+                }}
+                defaultBranchName={initialBranchName}
+              />
+            ) : (
+              <BranchList closePopover={close} openCreateForm={openCreateForm} />
+            )
+          }
+        </PopoverDialog>
+      </Popover>
+    </PopoverTrigger>
   );
 }
 
-function BranchSelect({
-  setPopoverOpen,
-  setFormOpen,
-}: {
-  setPopoverOpen: (open: boolean) => void;
-  setFormOpen: (displayForm: DisplayForm) => void;
-}) {
-  const { data: branches, isPending } = useGetBranches();
-  const { setCurrentBranch } = useCurrentBranch();
-  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
+interface BranchListProps {
+  closePopover: () => void;
+  openCreateForm: (name: string) => void;
+}
 
-  const handleBranchChange = (branch: Branch) => {
+function BranchList({ closePopover, openCreateForm }: BranchListProps) {
+  const { currentBranch, setCurrentBranch } = useCurrentBranch();
+  const [, setBranchInQueryString] = useQueryState(QSP.BRANCH);
+  const { isAuthenticated } = useAuth();
+  const [search, setSearch] = React.useState("");
+  const trimmedSearch = search.trim();
+  const debouncedSearch = useDebounce(trimmedSearch, 300);
+  const { data, fetchNextPage, isFetchingNextPage, isPending } = useGetBranchesPaginated({
+    filters: debouncedSearch ? [{ name: "any__value", value: debouncedSearch }] : undefined,
+  });
+  const branches = data?.pages.flat() ?? [];
+
+  function handleBranchChange(branch: BranchListItem) {
     setBranchInQueryString(branch.is_default ? null : branch.name);
     setCurrentBranch(branch);
-    setPopoverOpen(false);
-  };
+    closePopover();
+  }
 
   return (
     <>
-      <Command
-        style={{
-          minWidth: "var(--radix-popover-trigger-width)",
-          maxWidth: "320px",
-          maxHeight: "min(var(--radix-popover-content-available-height), 500px)",
-        }}
+      <Autocomplete
+        inputValue={search}
+        onInputChange={setSearch}
+        suffix={<BranchFormTriggerButton onPress={() => openCreateForm(trimmedSearch)} />}
       >
-        <div className="mb-2 flex gap-2">
-          <CommandInput
-            autoFocus
-            className="h-8 grow rounded-lg border-none bg-neutral-100 text-neutral-800"
-            placeholder="Search"
-            data-testid="branch-search-input"
-          />
-
-          <BranchFormTriggerButton setOpen={setFormOpen} />
-        </div>
-
-        <CommandList className="p-0" data-testid="branch-list">
-          <BranchNotFound
-            onSelect={(defaultBranchName) => setFormOpen({ open: true, defaultBranchName })}
-          />
-
-          {branches &&
-            branchesToSelectOptions(branches).map((branch) => (
-              <BranchOption
-                key={branch.name}
-                branch={branch}
-                onChange={() => handleBranchChange(branch)}
-              />
-            ))}
-
-          {isPending && (
-            <CommandItem disabled className="justify-center text-neutral-500">
-              Loading branches...
-            </CommandItem>
-          )}
-        </CommandList>
-      </Command>
-      <div className="-mx-2 mt-2 border-neutral-200 border-t p-2 pb-0">
-        <LinkButton
-          to={constructPath("/branches")}
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-xs"
-          onClick={() => setPopoverOpen(false)}
+        <Virtualizer
+          layout={ListLayout}
+          layoutOptions={{ rowHeight: 30, loaderHeight: 30, padding: 4 }}
         >
-          View all branches
-        </LinkButton>
-      </div>
+          <ListBox
+            aria-label="branch list"
+            className="max-h-125"
+            renderEmptyState={() =>
+              !isPending && (
+                <div className="px-2 py-1.5 text-neutral-600 text-sm">No branch found</div>
+              )
+            }
+          >
+            <Collection items={branches}>
+              {(branch) => (
+                <ListBoxItem textValue={branch.name} onAction={() => handleBranchChange(branch)}>
+                  <span className="truncate" title={branch.name}>
+                    {branch.name}
+                  </span>
+
+                  <Row className="ml-auto">
+                    {currentBranch.name === branch.name && (
+                      <CheckIcon className="size-4 shrink-0" />
+                    )}
+                    {branch.is_default && <BranchDefaultBadge />}
+                    <BranchStatusBadge status={branch.status} />
+                    {branch.sync_with_git && <Icon icon="mdi:source-branch-sync" />}
+                  </Row>
+                </ListBoxItem>
+              )}
+            </Collection>
+
+            <ListBoxLoadMoreItem
+              isLoading={isPending || isFetchingNextPage}
+              onLoadMore={fetchNextPage}
+            />
+
+            {isAuthenticated && trimmedSearch && (
+              <ListBoxItem
+                textValue={CREATE_BRANCH_ITEM_VALUE}
+                onAction={() => openCreateForm(trimmedSearch)}
+                className="gap-1 whitespace-nowrap"
+              >
+                Create branch <span className="truncate font-semibold">{trimmedSearch}</span>
+              </ListBoxItem>
+            )}
+          </ListBox>
+        </Virtualizer>
+      </Autocomplete>
+
+      <Separator />
+
+      <LinkButton
+        variant="ghost"
+        size="sm"
+        href={constructPath("/branches")}
+        className="m-1 flex grow justify-between"
+        onPress={closePopover}
+      >
+        View all branches
+        <ArrowUpRightIcon className="text-stone-500" />
+      </LinkButton>
     </>
   );
 }
 
-function BranchOption({ branch, onChange }: { branch: Branch; onChange: () => void }) {
-  const { currentBranch } = useCurrentBranch();
-  const nameRef = useRef<HTMLSpanElement>(null);
-  const isTruncated = useIsTruncated(nameRef);
+export function BranchFormTriggerButton({ ...props }: AriaButtonProps) {
+  const { isAuthenticated } = useAuth();
 
   return (
-    <ComboboxItem
-      className="p-2"
-      selectedValue={currentBranch.name}
-      onSelect={onChange}
-      value={branch.name}
-      title={isTruncated ? branch.name : undefined}
-    >
-      <div className="flex w-full items-center overflow-hidden">
-        <span ref={nameRef} className="truncate">
-          {branch.name}
-        </span>
-
-        <div className="ml-auto inline-flex items-center gap-1">
-          {branch.is_default && (
-            <span className="rounded-sm border border-gray-200 px-1.5 text-gray-400 text-xs">
-              default
-            </span>
-          )}
-          {branch.sync_with_git && (
-            <Icon icon="mdi:source-branch-sync" className="text-gray-400 text-sm" />
-          )}
-          <BranchStatusBadge status={branch.status} />
-        </div>
-      </div>
-    </ComboboxItem>
+    <Tooltip message={isAuthenticated ? "Create branch" : "You need to be authenticated."}>
+      <Button
+        variant="ghost"
+        shape="square"
+        size="xxs"
+        aria-label="Create branch"
+        isDisabledAndFocusable={!isAuthenticated}
+        data-testid="create-branch-button"
+        {...props}
+      >
+        <PlusIcon className="size-5 text-stone-500" />
+      </Button>
+    </Tooltip>
   );
 }
-
-export const BranchFormTriggerButton = ({
-  setOpen,
-}: {
-  setOpen: (displayForm: DisplayForm) => void;
-}) => {
-  const { isAuthenticated } = useAuth();
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setOpen({ open: true });
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.stopPropagation();
-      setOpen({ open: true });
-    }
-  };
-
-  return (
-    <ButtonWithTooltip
-      disabled={!isAuthenticated}
-      tooltipEnabled={!isAuthenticated}
-      tooltipContent="You need to be authenticated."
-      className="h-8 w-8 shadow-none"
-      onKeyDown={handleKeyDown}
-      onClick={handleClick}
-      data-testid="create-branch-button"
-    >
-      <Icon icon="mdi:plus" />
-    </ButtonWithTooltip>
-  );
-};
-
-const BranchNotFound = ({ onSelect }: { onSelect: (branchName: string) => void }) => {
-  const filteredCount = useCommandState((state) => state.filtered.count);
-  const search = useCommandState((state) => state.search);
-  const { isAuthenticated } = useAuth();
-
-  if (!isAuthenticated) return <CommandEmpty>No branch found</CommandEmpty>;
-  if (filteredCount !== 0) return null;
-
-  return (
-    <CommandItem
-      forceMount
-      value="create"
-      onSelect={() => onSelect(search)}
-      className="gap-1 truncate text-neutral-600"
-    >
-      Create branch <span className="font-semibold text-neutral-800">{search}</span>
-    </CommandItem>
-  );
-};

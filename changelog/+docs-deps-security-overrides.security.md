@@ -1,0 +1,1 @@
+Bumped transitive docs dependencies to address Dependabot advisories: `dompurify` >= 3.4.0, `follow-redirects` >= 1.16.0, `lodash` and `lodash-es` >= 4.18.0, `postcss` >= 8.5.10, and `uuid` (v11) >= 11.1.1.

@@ -16,7 +16,7 @@ from infrahub.core.diff.model.diff import (
 )
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.core.branch import Branch
     from infrahub.database import InfrahubDatabase
     from infrahub.services import InfrahubServices
@@ -76,5 +76,4 @@ async def get_diff_artifacts(
     artifact_diff_calculator = ArtifactDiffCalculator(db=db)
     target_branch = await registry.get_branch(db=db, branch=registry.default_branch)
     artifact_diffs = await artifact_diff_calculator.calculate(source_branch=branch, target_branch=target_branch)
-    response = {art_diff.id: art_diff for art_diff in artifact_diffs}
-    return response
+    return {art_diff.id: art_diff for art_diff in artifact_diffs}

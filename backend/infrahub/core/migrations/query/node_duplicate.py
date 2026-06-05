@@ -21,8 +21,8 @@ class SchemaNodeInfo(BaseModel):
 
 
 class NodeDuplicateQuery(Query):
-    """
-    Duplicates a Node to use a new kind or inheritance.
+    """Duplicates a Node to use a new kind or inheritance.
+
     Creates a copy of each affected Node and sets the new kind/inheritance.
     Adds duplicate edges to the new Node that match all the active edges on the old Node.
     Sets all the edges on the old Node to deleted.
@@ -44,7 +44,7 @@ class NodeDuplicateQuery(Query):
 
     def render_match(self) -> str:
         labels_str = ":".join(self.previous_node.labels)
-        query = """
+        return """
         // Find all the active nodes
         MATCH (node:%(labels_str)s)
         WITH DISTINCT node
@@ -64,8 +64,6 @@ class NodeDuplicateQuery(Query):
         }
         WITH node WHERE already_migrated = FALSE
         """ % {"labels_str": labels_str}
-
-        return query
 
     @staticmethod
     def _render_sub_query_per_rel_type(rel_name: str, rel_type: str, rel_dir: GraphRelDirection) -> str:
@@ -99,7 +97,6 @@ class NodeDuplicateQuery(Query):
                 SET deleted_edge.branch_level = CASE WHEN {rel_name}.branch = "-global-" THEN {rel_name}.branch_level ELSE $branch_level END
                 SET deleted_edge.hierarchy = COALESCE({rel_name}.hierarchy, NULL)
                 """)
-        subquery.append("RETURN peer_node as p2")
         return "\n".join(subquery)
 
     @classmethod
@@ -166,63 +163,68 @@ class NodeDuplicateQuery(Query):
         CALL (node) {
             MATCH (root:Root)<-[r:IS_PART_OF]-(node)
             WHERE %(branch_filter)s
-            RETURN node as n1, r as r1
+            RETURN node as active_node, r.status = "active" AS is_active
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n1 as active_node, r1 as rb
-        WHERE rb.status = "active"
+        WITH active_node
+        WHERE is_active = TRUE
         CREATE (new_node:Node:%(labels)s { uuid: active_node.uuid, kind: $new_node.kind, namespace: $new_node.namespace, branch_support: $new_node.branch_support })
         WITH active_node, new_node
         // Set metadata on new Node vertex
         CALL (active_node, new_node) {
             // always pass created_by/at from active node
             SET new_node.created_at = active_node.created_at, new_node.created_by = active_node.created_by
-            WITH new_node
+            WITH active_node, new_node
             // set updated_by/at if we're on the default/global branch
             WHERE $set_metadata
+            SET active_node.updated_at = $current_time, active_node.updated_by = $user_id
             SET new_node.updated_at = $current_time, new_node.updated_by = $user_id
         }
 
         // Process Outbound Relationship
-        MATCH (active_node)-[]->(peer)
-        WITH DISTINCT active_node, new_node, peer
-        CALL (active_node, peer) {
-            MATCH (active_node)-[r]->(peer)
+        MATCH (active_node)-[]->(peer_node)
+        WITH DISTINCT active_node, new_node, peer_node
+        CALL (active_node, peer_node) {
+            MATCH (active_node)-[r]->(peer_node)
             WHERE %(branch_filter)s
-            RETURN active_node as n1, r as rel_outband1, peer as p1
+            RETURN r as rel_outband
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n1 as active_node, rel_outband1 as rel_outband, p1 as peer_node, new_node
+        WITH active_node, rel_outband, peer_node, new_node
         WHERE rel_outband.status = "active" AND rel_outband.to IS NULL
         CALL (%(sub_query_out_args)s) {
             %(sub_query_out)s
         }
-        WITH p2 as peer_node, rel_outband, active_node, new_node
-        FOREACH (i in CASE WHEN rel_outband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
+        WITH peer_node, rel_outband, active_node, new_node
+        CALL (rel_outband) {
+            WITH rel_outband
+            WHERE rel_outband.branch IN ["-global-", $branch]
             SET rel_outband.to = $current_time, rel_outband.to_user_id = $user_id
-        )
+        }
         WITH DISTINCT active_node, new_node
         // Process Inbound Relationship
-        MATCH (active_node)<-[]-(peer)
-        WITH DISTINCT active_node, new_node, peer
-        CALL (active_node, peer) {
-            MATCH (active_node)<-[r]-(peer)
+        MATCH (active_node)<-[]-(peer_node)
+        WITH DISTINCT active_node, new_node, peer_node
+        CALL (active_node, peer_node) {
+            MATCH (active_node)<-[r]-(peer_node)
             WHERE %(branch_filter)s
-            RETURN active_node as n1, r as rel_inband1, peer as p1
+            RETURN r as rel_inband
             ORDER BY r.branch_level DESC, r.from DESC
             LIMIT 1
         }
-        WITH n1 as active_node, rel_inband1 as rel_inband, p1 as peer_node, new_node
+        WITH active_node, rel_inband, peer_node, new_node
         WHERE rel_inband.status = "active" AND rel_inband.to IS NULL
         CALL (%(sub_query_in_args)s) {
             %(sub_query_in)s
         }
-        WITH p2 as peer_node, rel_inband, active_node, new_node
-        FOREACH (i in CASE WHEN rel_inband.branch IN ["-global-", $branch] THEN [1] ELSE [] END |
+        WITH peer_node, rel_inband, active_node, new_node
+        CALL (rel_inband) {
+            WITH rel_inband
+            WHERE rel_inband.branch IN ["-global-", $branch]
             SET rel_inband.to = $current_time, rel_inband.to_user_id = $user_id
-        )
+        }
         RETURN DISTINCT new_node
         """ % {
             "branch_filter": branch_filter,

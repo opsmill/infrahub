@@ -1,17 +1,17 @@
 import { Icon } from "@iconify-icon/react";
+import { LinkButton, Spinner } from "@infrahub/ui";
+import { Card, CardContent } from "@infrahub/ui/card";
 import { useAtomValue } from "jotai";
 import { useQueryState } from "nuqs";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 
-import { useMutation } from "@/shared/api/graphql/useQuery";
+import { BranchStatus } from "@/shared/api/graphql/generated/types";
 import { constructPath } from "@/shared/api/rest/fetch";
 import { MarkdownEditor } from "@/shared/components/editor/markdown";
 import { RelationshipManyInput } from "@/shared/components/inputs/relationship-many";
 import { ALERT_TYPES, Alert } from "@/shared/components/ui/alert";
-import { LinkButton } from "@/shared/components/ui/button";
-import { Card } from "@/shared/components/ui/card";
 import {
   Combobox,
   ComboboxContent,
@@ -22,16 +22,14 @@ import {
 } from "@/shared/components/ui/combobox";
 import { Form, FormField, FormInput, FormLabel, FormMessage } from "@/shared/components/ui/form";
 import { Input } from "@/shared/components/ui/input";
-import { Spinner } from "@/shared/components/ui/spinner";
 import { PROPOSED_CHANGES_OBJECT } from "@/shared/config/constants";
 import { QSP } from "@/shared/config/qsp";
 
-import { BRANCH_STATUS } from "@/entities/branches/constants";
 import { branchesState } from "@/entities/branches/stores";
 import { branchesToSelectOptions } from "@/entities/branches/utils";
 import type { Node } from "@/entities/nodes/getObjectItemDisplayValue";
-import { CREATE_PROPOSED_CHANGE } from "@/entities/proposed-changes/api/createProposedChange";
 import { DRAFT_STATE, OPEN_STATE } from "@/entities/proposed-changes/constants";
+import { useCreateProposedChange } from "@/entities/proposed-changes/ui/queries/create-proposed-change.mutation";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 import { PcStateButton } from "./action-button/pc-state-button";
@@ -41,14 +39,14 @@ export const ProposedChangeCreateForm = () => {
   const branches = useAtomValue(branchesState);
   const defaultBranch = branches.find((branch) => branch.is_default);
   const sourceBranches = branches.filter(
-    (branch) => !branch.is_default && branch.status !== BRANCH_STATUS.MERGED
+    (branch) => !branch.is_default && branch.status !== BranchStatus.MERGED
   );
   const navigate = useNavigate();
   const [state, setState] = useState(OPEN_STATE);
 
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
 
-  const [createProposedChange, { error }] = useMutation(CREATE_PROPOSED_CHANGE);
+  const { mutateAsync: createProposedChange, error } = useCreateProposedChange();
 
   if (branches.length === 0 || !proposedChangeSchema) {
     return <Spinner className="flex justify-center" />;
@@ -57,100 +55,100 @@ export const ProposedChangeCreateForm = () => {
   return (
     <Form
       onSubmit={async ({ source_branch, destination_branch, name, description, reviewers }) => {
-        const { data } = await createProposedChange({
-          variables: {
-            source_branch,
-            destination_branch,
-            name,
-            description,
-            isDraft: state === DRAFT_STATE,
-            reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
-          },
+        const result = await createProposedChange({
+          source_branch,
+          destination_branch,
+          name,
+          description,
+          isDraft: state === DRAFT_STATE,
+          reviewers: reviewers?.map((node: Node) => ({ id: node.id })) || [],
         });
 
         toast(<Alert type={ALERT_TYPES.SUCCESS} message="Proposed change created" />, {
           toastId: "alert-success-CoreProposedChange-created",
         });
 
-        const url = constructPath(`/proposed-changes/${data.CoreProposedChangeCreate.object.id}`);
+        const url = constructPath(`/proposed-changes/${result.id}`);
         navigate(url);
       }}
     >
-      <Card className="flex w-full flex-wrap items-start justify-center gap-4 border-gray-300 shadow-xs md:flex-nowrap">
-        <FormField
-          name="source_branch"
-          defaultValue={sourceBranch}
-          rules={{
-            required: "Required",
-            validate: {
-              branchExists: (value: string) => {
-                if (sourceBranches.some((b) => b.name === value)) {
-                  return true;
-                }
+      <Card className="w-full border-gray-300 shadow-xs">
+        <CardContent className="flex flex-row flex-wrap items-start justify-center gap-4 md:flex-nowrap">
+          <FormField
+            name="source_branch"
+            defaultValue={sourceBranch}
+            rules={{
+              required: "Required",
+              validate: {
+                branchExists: (value: string) => {
+                  if (sourceBranches.some((b) => b.name === value)) {
+                    return true;
+                  }
 
-                if (branches.some((b) => b.name === value)) {
-                  return "Branch is not available (merged or default)";
-                }
+                  if (branches.some((b) => b.name === value)) {
+                    return "Branch is not available (merged or default)";
+                  }
 
-                return "Branch does not exist";
+                  return "Branch does not exist";
+                },
               },
-            },
-          }}
-          render={({ field }) => {
-            const fieldData: string | null = field.value;
+            }}
+            render={({ field }) => {
+              const fieldData: string | null = field.value;
 
-            return (
+              return (
+                <div className="relative mb-2 flex w-full flex-col">
+                  <FormLabel>Source Branch *</FormLabel>
+                  <Combobox>
+                    <FormInput>
+                      <ComboboxTrigger>{fieldData}</ComboboxTrigger>
+                    </FormInput>
+
+                    <ComboboxContent>
+                      <ComboboxList>
+                        <ComboboxEmpty>No branch found</ComboboxEmpty>
+
+                        {branchesToSelectOptions(sourceBranches).map(({ name }) => (
+                          <ComboboxItem
+                            key={name}
+                            value={name}
+                            selectedValue={fieldData}
+                            onSelect={() => field.onChange(name)}
+                          >
+                            {name}
+                          </ComboboxItem>
+                        ))}
+                      </ComboboxList>
+                    </ComboboxContent>
+                  </Combobox>
+                  <FormMessage />
+                </div>
+              );
+            }}
+          />
+
+          <Icon
+            icon="mdi:arrow-bottom"
+            className="shrink-0 text-gray-500 text-xl md:mt-8 md:-rotate-90"
+          />
+
+          <FormField
+            name="destination_branch"
+            defaultValue={defaultBranch?.name}
+            rules={{ required: "Required" }}
+            render={({ field }) => (
               <div className="relative mb-2 flex w-full flex-col">
-                <FormLabel>Source Branch *</FormLabel>
+                <FormLabel>Destination Branch *</FormLabel>
                 <Combobox>
                   <FormInput>
-                    <ComboboxTrigger>{fieldData}</ComboboxTrigger>
+                    <ComboboxTrigger disabled>{field.value}</ComboboxTrigger>
                   </FormInput>
-
-                  <ComboboxContent>
-                    <ComboboxList>
-                      <ComboboxEmpty>No branch found</ComboboxEmpty>
-
-                      {branchesToSelectOptions(sourceBranches).map(({ name }) => (
-                        <ComboboxItem
-                          key={name}
-                          value={name}
-                          selectedValue={fieldData}
-                          onSelect={() => field.onChange(name)}
-                        >
-                          {name}
-                        </ComboboxItem>
-                      ))}
-                    </ComboboxList>
-                  </ComboboxContent>
                 </Combobox>
                 <FormMessage />
               </div>
-            );
-          }}
-        />
-
-        <Icon
-          icon="mdi:arrow-bottom"
-          className="shrink-0 text-gray-500 text-xl md:mt-8 md:-rotate-90"
-        />
-
-        <FormField
-          name="destination_branch"
-          defaultValue={defaultBranch?.name}
-          rules={{ required: "Required" }}
-          render={({ field }) => (
-            <div className="relative mb-2 flex w-full flex-col">
-              <FormLabel>Destination Branch *</FormLabel>
-              <Combobox>
-                <FormInput>
-                  <ComboboxTrigger disabled>{field.value}</ComboboxTrigger>
-                </FormInput>
-              </Combobox>
-              <FormMessage />
-            </div>
-          )}
-        />
+            )}
+          />
+        </CardContent>
       </Card>
 
       <FormField
@@ -201,7 +199,7 @@ export const ProposedChangeCreateForm = () => {
       />
 
       <div className="flex w-full items-center justify-end gap-2">
-        <LinkButton variant="outline" to={constructPath("/proposed-changes")}>
+        <LinkButton variant="outline" href={constructPath("/proposed-changes")}>
           Cancel
         </LinkButton>
 
@@ -209,7 +207,9 @@ export const ProposedChangeCreateForm = () => {
       </div>
 
       {error && (
-        <div className="rounded-md bg-red-100 p-4 text-red-800 text-sm">{error.message}</div>
+        <div className="rounded-md bg-red-100 p-4 text-red-800 text-sm">
+          {(error as Error).message}
+        </div>
       )}
     </Form>
   );

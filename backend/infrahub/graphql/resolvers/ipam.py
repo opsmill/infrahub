@@ -35,7 +35,7 @@ if TYPE_CHECKING:
 
 
 def _ip_range_display_label(node: Node) -> str:
-    """Return a human friendly summary of an IP range"""
+    """Return a human friendly summary of an IP range."""
     size = int(node.last_address.obj) - int(node.address.obj) + 1
 
     if size == 1:
@@ -91,7 +91,7 @@ async def _resolve_available_address_nodes(
 ) -> list[Node]:
     """Annotate a list of IP addresses node with available ranges within a prefix."""
     ip_prefix: IPvAnyNetwork = prefix.prefix.obj
-    ip_namespace = await prefix.ip_namespace.get_peer(db=db, peer_type=BuiltinIPNamespace, raise_on_error=True)
+    ip_namespace = await prefix.ip_namespace.get_peer(db=db, raise_on_error=True)
     ip_range_schema = registry.get_node_schema(name=InfrahubKind.IPRANGEAVAILABLE, branch=branch)
 
     # Make sure nodes are ordered by addresses

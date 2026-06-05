@@ -5,13 +5,14 @@ import type { ContextParams } from "@/shared/api/types";
 import { datetimeAtom } from "@/shared/stores/time.atom";
 
 import { useCurrentBranch } from "@/entities/branches/ui/branches-provider";
-import { getNodeLabelFromApi } from "@/entities/nodes/object/api/get-display-label";
+import { getNodeLabelFromApi } from "@/entities/nodes/object/api/get-display-label-from-api";
 
 type NodeLabelProps = {
   objectId?: string | null;
   kind: string;
   enabled?: boolean;
   branch?: string | null;
+  atDate?: Date | null;
 };
 
 export function getNodeLabelQueryOptions({
@@ -35,7 +36,7 @@ export function getNodeLabelQueryOptions({
   });
 }
 
-export const useNodeLabel = ({ objectId, kind, enabled, branch }: NodeLabelProps) => {
+export const useNodeLabel = ({ objectId, kind, enabled, branch, atDate }: NodeLabelProps) => {
   const { currentBranch } = useCurrentBranch();
   const timeMachineDate = useAtomValue(datetimeAtom);
 
@@ -45,7 +46,7 @@ export const useNodeLabel = ({ objectId, kind, enabled, branch }: NodeLabelProps
       kind,
       enabled,
       branchName: branch ?? currentBranch.name,
-      atDate: timeMachineDate,
+      atDate: atDate ?? timeMachineDate,
     })
   );
 

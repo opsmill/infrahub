@@ -12,18 +12,20 @@ from opentelemetry import trace
 from infrahub import config, models
 from infrahub.api.dependencies import get_db
 from infrahub.api.event_builder import make_event_meta, make_login_event
-from infrahub.auth import (
-    AccountSession,
-    AuthType,
+from infrahub.auth.auth import (
+    ExternalIdentity,
     SSOStateCache,
     get_groups_from_provider,
     signin_sso_account,
     validate_auth_response,
 )
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.auth_pkce import compute_code_challenge, generate_code_verifier
 from infrahub.core import registry
 from infrahub.events.account_action import AuthMethod
 from infrahub.exceptions import ProcessingError
+from infrahub.external_protocols import ExternalAuthProtocol
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
 
@@ -152,13 +154,26 @@ async def token(
         body={"user_name": user_info.get("name"), "groups": sso_groups},
     )
 
-    if not sso_groups and config.SETTINGS.security.sso_user_default_group:
-        sso_groups = [config.SETTINGS.security.sso_user_default_group]
+    sub = user_info.get("sub")
+    if not sub:
+        raise ProcessingError(
+            message="SSO provider did not return a 'sub' claim. Ensure 'openid' is included in the configured scopes."
+        )
+
+    external_identity = ExternalIdentity(
+        sub=sub,
+        provider_name=provider_name,
+        protocol=ExternalAuthProtocol.OAUTH2,
+        display_name=user_info["name"],
+        email=user_info["email"],
+    )
 
     with trace.get_tracer(__name__).start_as_current_span("signin_sso_account") as span:
         span.set_attribute("account_name", ujson.dumps(userinfo_response.json()))
         span.set_attribute("sso_groups", sso_groups)
-        auth_result = await signin_sso_account(db=db, account_name=user_info["name"], sso_groups=sso_groups)
+        auth_result = await signin_sso_account(
+            db=db, external_identity=external_identity, sso_groups=sso_groups, event_service=service.event
+        )
 
     response.set_cookie(
         "access_token",

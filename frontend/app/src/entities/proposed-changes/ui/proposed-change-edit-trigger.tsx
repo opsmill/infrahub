@@ -1,12 +1,10 @@
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
-import graphqlClient from "@/shared/api/graphql/graphqlClientApollo";
-import useQuery from "@/shared/api/graphql/useQuery";
 import { queryClient } from "@/shared/api/rest/client";
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver from "@/shared/components/display/slide-over";
-import { ButtonWithTooltip } from "@/shared/components/ui/button";
 import {
   PROPOSED_CHANGES_EDITABLE_STATE,
   PROPOSED_CHANGES_OBJECT,
@@ -14,8 +12,7 @@ import {
 
 import { ObjectHelpButton } from "@/entities/nodes/object/ui/object-help-button";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
-import { getObjectPermissionsQuery } from "@/entities/permission/queries/getObjectPermissions";
-import { getPermission } from "@/entities/permission/utils";
+import { useGetObjectPermissions } from "@/entities/permission/ui/queries/get-object-permissions.query";
 import { ProposedChangeEditForm } from "@/entities/proposed-changes/ui/proposed-change-edit-form";
 import { proposedChangesQueryKeys } from "@/entities/proposed-changes/ui/queries/proposed-changes.query-keys";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -28,27 +25,31 @@ export const ProposedChangeEditTrigger = ({
   const { schema: proposedChangeSchema } = useSchema(PROPOSED_CHANGES_OBJECT);
   const [showEditDrawer, setShowEditDrawer] = useState(false);
 
-  const { loading, data } = useQuery(gql(getObjectPermissionsQuery(PROPOSED_CHANGES_OBJECT)));
-
-  const permission = getPermission(data?.[PROPOSED_CHANGES_OBJECT]?.permissions?.edges);
+  const { isPending, data: permission } = useGetObjectPermissions(PROPOSED_CHANGES_OBJECT);
 
   return (
     <>
-      <ButtonWithTooltip
-        disabled={
-          loading ||
-          !permission.update.isAllowed ||
-          !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails?.state?.value)
+      <Tooltip
+        message={
+          !permission?.update.isAllowed ? (permission?.update.message ?? undefined) : undefined
         }
-        variant="outline"
-        size="icon"
-        tooltipEnabled={!permission.update.isAllowed}
-        tooltipContent={permission.update.message ?? undefined}
-        onClick={() => setShowEditDrawer(true)}
-        data-testid="edit-button"
       >
-        <Icon icon="mdi:pencil" aria-hidden="true" />
-      </ButtonWithTooltip>
+        <Button
+          variant="outline"
+          size="xs"
+          shape="circle"
+          isDisabled={
+            isPending ||
+            !permission?.update.isAllowed ||
+            !PROPOSED_CHANGES_EDITABLE_STATE.includes(proposedChangesDetails?.state?.value)
+          }
+          isDisabledAndFocusable={!permission?.update.isAllowed}
+          onPress={() => setShowEditDrawer(true)}
+          data-testid="edit-button"
+        >
+          <Icon icon="mdi:pencil" aria-hidden="true" />
+        </Button>
+      </Tooltip>
 
       <SlideOver
         title={
@@ -81,7 +82,6 @@ export const ProposedChangeEditTrigger = ({
           initialData={proposedChangesDetails}
           onSuccess={async () => {
             setShowEditDrawer(false);
-            await graphqlClient.reFetchObservableQueries();
             await queryClient.invalidateQueries({ queryKey: proposedChangesQueryKeys.all });
           }}
         />

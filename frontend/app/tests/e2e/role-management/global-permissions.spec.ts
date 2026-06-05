@@ -39,17 +39,20 @@ test.describe("/role-management/global-permissions - Global Permissions CRUD", (
 
     await test.step("verify new permission in table", async () => {
       const row = getDataTableRow(page, "global:update_object_hfid_display_label:deny");
-      await expect(row.getByText("Deny", { exact: true })).toBeVisible();
       await expect(row.getByText("Update Object Hfid Display")).toBeVisible();
+      await expect(row.getByText("Deny", { exact: true })).toBeVisible();
       await expect(row.getByText("Anonymous User")).toBeVisible();
     });
 
-    await test.step("open edit form", async () => {
+    await test.step("open edit form and verify field values", async () => {
       await page.getByTestId("actions-cell-global:update_object_hfid_display_label:deny").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
+      await expect(page.getByLabel("Action *")).toContainText("Update Object Hfid Display");
+      await expect(page.getByLabel("Decision")).toContainText("Deny");
+      await expect(page.getByLabel("Roles").locator("..")).toContainText("Anonymous User");
     });
 
-    await test.step("change decision to Allow", async () => {
+    await test.step("change decision to Allow and save", async () => {
       await page.getByLabel("Decision").click();
       await page.getByRole("option", { name: "Allow" }).click();
       await page.getByRole("button", { name: "Save" }).click();
@@ -58,7 +61,9 @@ test.describe("/role-management/global-permissions - Global Permissions CRUD", (
 
     await test.step("verify updated permission in table", async () => {
       const row = getDataTableRow(page, "global:update_object_hfid_display_label:allow_all");
+      await expect(row.getByText("Update Object Hfid Display")).toBeVisible();
       await expect(row.getByText("Allow", { exact: true })).toBeVisible();
+      await expect(row.getByText("Anonymous User")).toBeVisible();
     });
 
     await test.step("delete the permission", async () => {

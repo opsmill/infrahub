@@ -13,7 +13,6 @@ from infrahub.core.migrations.shared import (
     MigrationInput,
     MigrationRequiringRebase,
     MigrationResult,
-    get_migration_console,
 )
 from infrahub.core.path import SchemaPath
 from infrahub.core.query import Query, QueryType
@@ -105,7 +104,7 @@ class Migration043(MigrationRequiringRebase):
                 ]
             )
 
-        with Progress(console=get_migration_console()) as progress:
+        with Progress(console=migration_input.console) as progress:
             update_task = progress.add_task("Adding HFID and display label to nodes", total=len(migrations))
 
             for migration in migrations:
@@ -155,7 +154,7 @@ class Migration043(MigrationRequiringRebase):
                 ]
             )
 
-        with Progress(console=get_migration_console()) as progress:
+        with Progress(console=migration_input.console) as progress:
             update_task = progress.add_task(
                 f"Adding HFID and display label to nodes on branch {branch.name}", total=len(migrations)
             )

@@ -1,22 +1,12 @@
-import { apiClient } from "@/shared/api/rest/client";
-
+import {
+  type LoginWithCredentialsFromApiParams,
+  loginWithCredentialsFromApi,
+} from "@/entities/authentication/api/login-with-credentials-from-api";
 import type { UserToken } from "@/entities/authentication/types";
-import { saveTokensInLocalStorage } from "@/entities/authentication/utils";
 
-export type LoginWithCredentialsParams = {
-  username: string;
-  password: string;
-};
+export type LoginWithCredentialsParams = LoginWithCredentialsFromApiParams;
 
 export type LoginWithCredentials = (params: LoginWithCredentialsParams) => Promise<UserToken>;
 
-export const loginWithCredentials: LoginWithCredentials = async (params) => {
-  const { data, error } = await apiClient.POST("/api/auth/login", {
-    body: params,
-  });
-
-  if (error) throw error;
-
-  saveTokensInLocalStorage(data);
-  return data;
-};
+export const loginWithCredentials: LoginWithCredentials = (params) =>
+  loginWithCredentialsFromApi(params);

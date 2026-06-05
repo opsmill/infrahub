@@ -163,7 +163,6 @@ type AnyAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -213,7 +212,6 @@ type ArtifactEvent implements EventNodeInterface {
 
 interface AttributeInterface {
   is_default: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   updated_at: DateTime
 }
@@ -325,6 +323,8 @@ type BranchDeletedEvent implements EventNodeInterface {
   payload: GenericScalar!
   """The primary Infrahub node this event is associated with."""
   primary_node: RelatedNode
+  """Proposed change ID if available"""
+  proposed_change_id: String
   """Related Infrahub nodes this event is associated with."""
   related_nodes: [RelatedNode!]!
 }
@@ -421,6 +421,7 @@ enum BranchRelativePermissionDecision {
 enum BranchStatus {
   DELETING
   MERGED
+  MERGING
   NEED_REBASE
   NEED_UPGRADE_REBASE
   OPEN
@@ -543,7 +544,7 @@ interface BuiltinIPPrefix {
   """The IP prefix in CIDR notation"""
   prefix: IPNetwork
   profiles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
-  resource_pool(default_address_type__is_protected: Boolean, default_address_type__owner__id: ID, default_address_type__source__id: ID, default_address_type__value: String, default_address_type__values: [String], default_prefix_length__is_protected: Boolean, default_prefix_length__owner__id: ID, default_prefix_length__source__id: ID, default_prefix_length__value: BigInt, default_prefix_length__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreIPAddressPool!
+  resource_pool(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreIPPool!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Percentage of the prefix that is allocated"""
   utilization: NumberAttribute
@@ -666,7 +667,6 @@ type CheckboxAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -794,6 +794,10 @@ type CoreAccountGroup implements CoreGroup & LineageOwner & LineageSource {
   label: TextAttribute
   members(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
   name: TextAttribute
+  """
+  Identity provider name that auto-created this group; null on manual / bootstrap / pre-upgrade groups.
+  """
+  origin: TextAttribute
   parent: NestedEdgedCoreGroup!
   roles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountRole!
   subscribers(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreNode!
@@ -869,7 +873,7 @@ input CoreAccountGroupUpsertInput {
 """A role defines a set of permissions to grant to a group of accounts"""
 type CoreAccountRole implements CoreNode {
   display_label: String
-  groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreAccountGroup!
+  groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput, origin__is_protected: Boolean, origin__owner__id: ID, origin__source__id: ID, origin__value: String, origin__values: [String]): NestedPaginatedCoreAccountGroup!
   """Human friendly identifier"""
   hfid: [String!]
   """Unique identifier"""
@@ -4082,7 +4086,7 @@ input CoreGroupUpdateInput {
 }
 
 """A pool of IP address resources"""
-type CoreIPAddressPool implements CoreNode & CoreResourcePool & LineageSource {
+type CoreIPAddressPool implements CoreIPPool & CoreNode & CoreResourcePool & LineageSource {
   """
   The object type to create when reserving a resource in the pool (required)
   """
@@ -4177,8 +4181,32 @@ input CoreIPAddressPoolUpsertInput {
   subscriber_of_groups: [RelatedNodeInput]
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+interface CoreIPPool {
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+}
+
+"""A pool of IP resources (prefixes or addresses)."""
+type CoreIPPoolUpdate {
+  object: CoreIPPool
+  ok: Boolean
+}
+
+input CoreIPPoolUpdateInput {
+  hfid: [String]
+  id: String
+  member_of_groups: [RelatedNodeInput]
+  subscriber_of_groups: [RelatedNodeInput]
+}
+
 """A pool of IP prefix resources"""
-type CoreIPPrefixPool implements CoreNode & CoreResourcePool & LineageSource {
+type CoreIPPrefixPool implements CoreIPPool & CoreNode & CoreResourcePool & LineageSource {
   """Default member type for allocated prefixes"""
   default_member_type: TextAttribute
   """
@@ -7476,7 +7504,6 @@ type Dropdown implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   label: String
   owner: LineageOwner
@@ -7777,6 +7804,12 @@ type EdgedCoreIPAddressPool {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+type EdgedCoreIPPool {
+  node: CoreIPPool
+  node_metadata: InfrahubNodeMetadata
+}
+
 """A pool of IP prefix resources"""
 type EdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
@@ -8031,6 +8064,12 @@ type EdgedInternalAccountToken {
   node_metadata: InfrahubNodeMetadata
 }
 
+"""External authentication provider identity linked to an account"""
+type EdgedInternalExternalIdentity {
+  node: InternalExternalIdentity
+  node_metadata: InfrahubNodeMetadata
+}
+
 """
 IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
@@ -8133,6 +8172,8 @@ input EventTypeFilter {
   branch_merged: BranchEventTypeFilter = null
   """Filters specific to infrahub.branch.rebased events"""
   branch_rebased: BranchEventTypeFilter = null
+  """Filters specific to "infrahub.group.auto_create[...]" events"""
+  group_auto_create: GroupAutoCreateEventTypeFilter = null
 }
 
 type Events {
@@ -8143,6 +8184,15 @@ type Events {
 type FieldsMapping {
   mapping: GenericScalar!
 }
+
+"""
+GenericScalar with correct variable substitution in parse_literal.
+
+graphene's GenericScalar.parse_literal does not forward _variables to
+recursive calls, so $variable references inside a nested object or list
+resolve to None instead of their supplied values.
+"""
+scalar FixedGenericScalar
 
 type GeneratorDefinitionRequestRun {
   ok: Boolean
@@ -8168,6 +8218,138 @@ GraphQL scalar value that could be:
 String, Boolean, Int, Float, List or Object.
 """
 scalar GenericScalar
+
+type GraphQLQueryReport {
+  """
+  True if every operation in the submitted query resolves to uniquely identifiable nodes (via a required ids argument or a required field matching the model uniqueness constraints). When true, Infrahub limits artifact regeneration to only the nodes that changed. When false, all artifacts for the definition are regenerated on any relevant node change.
+  """
+  targets_unique_nodes: Boolean!
+}
+
+type GroupAutoCreateCappedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """Configured per-login cap value"""
+  cap_value: Int!
+  """Verbatim, per-entry length-truncated dropped claims"""
+  dropped_claims: [String!]!
+  """Total count of dropped claims for this login"""
+  dropped_count: Int!
+  """The name of the event."""
+  event: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
+}
+
+input GroupAutoCreateEventTypeFilter {
+  """Filter by the configured identity-provider name"""
+  idp: [String!]
+  """Filter by authentication protocol"""
+  protocol: [String!]
+}
+
+type GroupAutoCreateRejectedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """The name of the event."""
+  event: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Verbatim, length-truncated rejected claim value"""
+  rejected_claim_value: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
+}
+
+type GroupAutoCreatedEventType implements EventNodeInterface {
+  """The account ID that triggered the event."""
+  account_id: String
+  """The branch where the event occurred."""
+  branch: String
+  """The name of the event."""
+  event: String!
+  """UUID of the newly created group"""
+  group_id: String!
+  """Local name of the new group"""
+  group_name: String!
+  """Indicates if the event is expected to have child events under it"""
+  has_children: Boolean!
+  """The ID of the event."""
+  id: String!
+  """Configured name of the originating identity provider"""
+  idp: String!
+  """
+  The level of the event 0 is a root level event, the child events will have 1 and grand children 2.
+  """
+  level: Int!
+  """The timestamp when the event occurred."""
+  occurred_at: DateTime!
+  """Configured provider name written to the group's origin attribute"""
+  origin_value: String!
+  """The event ID of the direct parent to this event."""
+  parent_id: String
+  payload: GenericScalar!
+  """The primary Infrahub node this event is associated with."""
+  primary_node: RelatedNode
+  """Authentication protocol used for the login"""
+  protocol: String!
+  """Related Infrahub nodes this event is associated with."""
+  related_nodes: [RelatedNode!]!
+  """Raw regex pattern from the configured filter that matched"""
+  source_pattern: String!
+  """UUID of the account whose login produced the event"""
+  triggering_user_id: String!
+  """Login identifier of the triggering account"""
+  triggering_user_name: String!
+}
 
 type GroupEvent implements EventNodeInterface {
   """The account ID that triggered the event."""
@@ -8211,7 +8393,7 @@ input IPAddressPoolGetResourceInput {
   """Kind of IP address to allocate"""
   address_type: String
   """Additional data to pass to the newly created IP address"""
-  data: GenericScalar
+  data: FixedGenericScalar
   """HFID of the pool to allocate from"""
   hfid: [String]
   """ID of the pool to allocate from"""
@@ -8236,7 +8418,6 @@ type IPHost implements AttributeInterface {
   ip: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   netmask: String
   owner: LineageOwner
@@ -8261,7 +8442,6 @@ type IPNetwork implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   netmask: String
   num_addresses: Int
@@ -8310,7 +8490,7 @@ type IPPrefixPoolGetResource {
 
 input IPPrefixPoolGetResourceInput {
   """Additional data to pass to the newly created prefix"""
-  data: GenericScalar
+  data: FixedGenericScalar
   """HFID of the pool to allocate from"""
   hfid: [String]
   """ID of the pool to allocate from"""
@@ -8513,6 +8693,28 @@ type InternalAccountToken implements CoreNode {
   token: TextAttribute
 }
 
+"""External authentication provider identity linked to an account"""
+type InternalExternalIdentity implements CoreNode {
+  account: NestedEdgedCoreGenericAccount!
+  display_label: String
+  """Human friendly identifier"""
+  hfid: [String!]
+  """Unique identifier"""
+  id: String!
+  member_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+  """
+  The authentication protocol used, e.g. 'oidc', 'oauth2', 'ldap' (required)
+  """
+  protocol: TextAttribute
+  """
+  The provider name as configured in Infrahub, e.g. 'google', 'provider1' (required)
+  """
+  provider_name: TextAttribute
+  """The provider-issued subject identifier (required)"""
+  sub: TextAttribute
+  subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
+}
+
 """
 IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
@@ -8547,7 +8749,7 @@ type InternalIPPrefixAvailable implements BuiltinIPPrefix & CoreNode {
   """The IP prefix in CIDR notation"""
   prefix: IPNetwork
   profiles(display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput, profile_name__is_protected: Boolean, profile_name__owner__id: ID, profile_name__source__id: ID, profile_name__value: String, profile_name__values: [String], profile_priority__is_protected: Boolean, profile_priority__owner__id: ID, profile_priority__source__id: ID, profile_priority__value: BigInt, profile_priority__values: [BigInt]): NestedPaginatedCoreProfile!
-  resource_pool(default_address_type__is_protected: Boolean, default_address_type__owner__id: ID, default_address_type__source__id: ID, default_address_type__value: String, default_address_type__values: [String], default_prefix_length__is_protected: Boolean, default_prefix_length__owner__id: ID, default_prefix_length__source__id: ID, default_prefix_length__value: BigInt, default_prefix_length__values: [BigInt], description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreIPAddressPool!
+  resource_pool(ids: [ID], include_descendants: Boolean, isnull: Boolean, limit: Int, offset: Int, order: OrderInput): NestedPaginatedCoreIPPool!
   subscriber_of_groups(description__is_protected: Boolean, description__owner__id: ID, description__source__id: ID, description__value: String, description__values: [String], display_label__isnull: Boolean, display_label__value: String, display_label__values: [String], group_type__is_protected: Boolean, group_type__owner__id: ID, group_type__source__id: ID, group_type__value: String, group_type__values: [String], ids: [ID], include_descendants: Boolean, isnull: Boolean, label__is_protected: Boolean, label__owner__id: ID, label__source__id: ID, label__value: String, label__values: [String], limit: Int, name__is_protected: Boolean, name__owner__id: ID, name__source__id: ID, name__value: String, name__values: [String], offset: Int, order: OrderInput): NestedPaginatedCoreGroup!
   """Percentage of the prefix that is allocated"""
   utilization: NumberAttribute
@@ -8667,7 +8869,6 @@ type JSONAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -8718,7 +8919,6 @@ type ListAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -8759,7 +8959,6 @@ type MacAddress implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   oui: String
   owner: LineageOwner
@@ -8776,6 +8975,18 @@ type MacAddress implements AttributeInterface {
   updated_by: CoreGenericAccount
   value: String
   version: Int
+}
+
+"""
+Order input restricted to node metadata fields.
+
+Used by GraphQL queries backed by StandardNode (e.g. Branch) where the underlying ordering
+surface is limited to `created_at` / `updated_at` and does not accept the broader `order_by`
+string grammar or a `disable` toggle.
+"""
+input MetadataOrderInput {
+  """Order settings for branch metadata"""
+  node_metadata: InfrahubNodeMetadataOrder = null
 }
 
 type Mutation {
@@ -9119,6 +9330,8 @@ type Mutation {
   CoreIPAddressPoolUpdate(context: ContextInput, data: CoreIPAddressPoolUpdateInput!): CoreIPAddressPoolUpdate
   """A pool of IP address resources"""
   CoreIPAddressPoolUpsert(context: ContextInput, data: CoreIPAddressPoolUpsertInput!): CoreIPAddressPoolUpsert
+  """A pool of IP resources (prefixes or addresses)."""
+  CoreIPPoolUpdate(context: ContextInput, data: CoreIPPoolUpdateInput!): CoreIPPoolUpdate
   """A pool of IP prefix resources"""
   CoreIPPrefixPoolCreate(context: ContextInput, data: CoreIPPrefixPoolCreateInput!): CoreIPPrefixPoolCreate
   """A pool of IP prefix resources"""
@@ -9802,6 +10015,14 @@ type NestedEdgedCoreIPAddressPool {
   relationship_metadata: InfrahubRelationshipMetadata
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+type NestedEdgedCoreIPPool {
+  node: CoreIPPool
+  node_metadata: InfrahubNodeMetadata!
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
 """A pool of IP prefix resources"""
 type NestedEdgedCoreIPPrefixPool {
   node: CoreIPPrefixPool
@@ -10131,6 +10352,14 @@ type NestedEdgedCoreWeightedPoolResource {
 """Token for User Account"""
 type NestedEdgedInternalAccountToken {
   node: InternalAccountToken
+  node_metadata: InfrahubNodeMetadata
+  properties: RelationshipProperty
+  relationship_metadata: InfrahubRelationshipMetadata
+}
+
+"""External authentication provider identity linked to an account"""
+type NestedEdgedInternalExternalIdentity {
+  node: InternalExternalIdentity
   node_metadata: InfrahubNodeMetadata
   properties: RelationshipProperty
   relationship_metadata: InfrahubRelationshipMetadata
@@ -10529,6 +10758,12 @@ type NestedPaginatedCoreIPAddressPool {
   permissions: PaginatedObjectPermission!
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+type NestedPaginatedCoreIPPool {
+  count: Int!
+  edges: [NestedEdgedCoreIPPool!]
+}
+
 """A pool of IP prefix resources"""
 type NestedPaginatedCoreIPPrefixPool {
   count: Int!
@@ -10808,6 +11043,13 @@ type NestedPaginatedInternalAccountToken {
   permissions: PaginatedObjectPermission!
 }
 
+"""External authentication provider identity linked to an account"""
+type NestedPaginatedInternalExternalIdentity {
+  count: Int!
+  edges: [NestedEdgedInternalExternalIdentity!]!
+  permissions: PaginatedObjectPermission!
+}
+
 """
 IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
@@ -10939,7 +11181,6 @@ type NumberAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType
@@ -10996,6 +11237,10 @@ input OrderInput {
   disable: Boolean
   """Order settings for branch metadata"""
   node_metadata: InfrahubNodeMetadataOrder = null
+  """
+  Ordering overrides support attributes (`name__value__desc`), relationship attributes (`owner__name__value`), or node metadata (`node_metadata__created_at__desc`). The trailing `__asc`/`__desc` is optional (default is ascending). When provided, fully replaces the schema's `order_by`. Cannot be combined with `node_metadata` in the same input.
+  """
+  order_by: [String!]
 }
 
 """IPv4 or IPv6 address"""
@@ -11322,6 +11567,13 @@ type PaginatedCoreIPAddressPool {
   permissions: PaginatedObjectPermission!
 }
 
+"""A pool of IP resources (prefixes or addresses)."""
+type PaginatedCoreIPPool {
+  count: Int!
+  edges: [EdgedCoreIPPool!]!
+  permissions: PaginatedObjectPermission!
+}
+
 """A pool of IP prefix resources"""
 type PaginatedCoreIPPrefixPool {
   count: Int!
@@ -11616,6 +11868,13 @@ type PaginatedInternalAccountToken {
   permissions: PaginatedObjectPermission!
 }
 
+"""External authentication provider identity linked to an account"""
+type PaginatedInternalExternalIdentity {
+  count: Int!
+  edges: [EdgedInternalExternalIdentity!]!
+  permissions: PaginatedObjectPermission!
+}
+
 """
 IPv4 or IPv6 prefix also referred as network which has not been allocated yet
 """
@@ -11694,6 +11953,80 @@ type PaginatedProfileIpamNamespace {
   count: Int!
   edges: [EdgedProfileIpamNamespace!]!
   permissions: PaginatedObjectPermission!
+}
+
+type PathHopType {
+  """Node visited at this hop"""
+  node: PathNodeType!
+  """
+  Relationship traversed to reach this node from the previous hop. Null on the first hop.
+  """
+  relationship: PathRelationshipType
+}
+
+type PathNodeType {
+  """Human-readable display label"""
+  display_label: String!
+  """Human friendly identifier"""
+  hfid: [String!]!
+  """Node UUID"""
+  id: String!
+  """Schema kind"""
+  kind: String!
+  """Schema label for the node's kind"""
+  label: String!
+}
+
+type PathRelationshipType {
+  """Relationship label on the source side of the hop"""
+  from_label: String!
+  """Relationship name on the source side of the hop"""
+  from_rel: String!
+  """Relationship kind (e.g. Component, Generic)"""
+  kind: String!
+  """Relationship label on the destination side of the hop"""
+  to_label: String!
+  """Relationship name on the destination side of the hop"""
+  to_rel: String!
+}
+
+type PathResultType {
+  """Number of edges in this path"""
+  depth: Int!
+  """Ordered hops from source to destination"""
+  hops: [PathHopType!]!
+}
+
+input PathTraversalInput {
+  """UUID of the end node"""
+  destination_id: String!
+  """Specific node kinds to exclude from traversal paths."""
+  excluded_kinds: [String!]
+  """
+  Additional namespaces to exclude from traversal. Unioned with the default excluded set (Core, Internal, Builtin, Lineage, Profile, Template); the defaults cannot be opted out of from this input.
+  """
+  excluded_namespaces: [String!]
+  """Filter to only traverse through nodes of these kinds"""
+  kind_filter: [String!]
+  """Maximum number of node hops (default: 5, max: 20)"""
+  max_depth: Int = 5
+  """Maximum number of paths to return (default: 10, max: 100)"""
+  max_paths: Int = 10
+  """Filter to only follow relationships with these names"""
+  relationship_filter: [String!]
+  """UUID of the start node"""
+  source_id: String!
+}
+
+type PathTraversalResultType {
+  """Total number of paths discovered"""
+  count: Int!
+  """The end node"""
+  destination: PathNodeType!
+  """Paths found, ordered shortest first"""
+  paths: [PathResultType!]!
+  """The start node"""
+  source: PathNodeType!
 }
 
 type PermissionType {
@@ -12942,31 +13275,8 @@ type Query {
     profiles__profile_priority__source__id: ID
     profiles__profile_priority__value: BigInt
     profiles__profile_priority__values: [BigInt]
-    resource_pool__default_address_type__is_protected: Boolean
-    resource_pool__default_address_type__owner__id: ID
-    resource_pool__default_address_type__source__id: ID
-    resource_pool__default_address_type__value: String
-    resource_pool__default_address_type__values: [String]
-    resource_pool__default_prefix_length__is_protected: Boolean
-    resource_pool__default_prefix_length__owner__id: ID
-    resource_pool__default_prefix_length__source__id: ID
-    resource_pool__default_prefix_length__value: BigInt
-    resource_pool__default_prefix_length__values: [BigInt]
-    resource_pool__description__is_protected: Boolean
-    resource_pool__description__owner__id: ID
-    resource_pool__description__source__id: ID
-    resource_pool__description__value: String
-    resource_pool__description__values: [String]
-    resource_pool__display_label__isnull: Boolean
-    resource_pool__display_label__value: String
-    resource_pool__display_label__values: [String]
     resource_pool__ids: [ID]
     resource_pool__isnull: Boolean
-    resource_pool__name__is_protected: Boolean
-    resource_pool__name__owner__id: ID
-    resource_pool__name__source__id: ID
-    resource_pool__name__value: String
-    resource_pool__name__values: [String]
     subscriber_of_groups__description__value: String
     subscriber_of_groups__description__values: [String]
     subscriber_of_groups__display_label__isnull: Boolean
@@ -13259,6 +13569,12 @@ type Query {
     node_metadata__updated_by__ids: [ID]
     offset: Int
     order: OrderInput
+    origin__is_protected: Boolean
+    origin__isnull: Boolean
+    origin__owner__id: ID
+    origin__source__id: ID
+    origin__value: String
+    origin__values: [String]
     parent__description__is_protected: Boolean
     parent__description__owner__id: ID
     parent__description__source__id: ID
@@ -13332,6 +13648,11 @@ type Query {
     groups__name__source__id: ID
     groups__name__value: String
     groups__name__values: [String]
+    groups__origin__is_protected: Boolean
+    groups__origin__owner__id: ID
+    groups__origin__source__id: ID
+    groups__origin__value: String
+    groups__origin__values: [String]
     hfid: [String]
     ids: [ID]
     limit: Int
@@ -18649,6 +18970,64 @@ type Query {
     subscriber_of_groups__name__value: String
     subscriber_of_groups__name__values: [String]
   ): PaginatedCoreIPAddressPool!
+  CoreIPPool(
+    any__is_protected: Boolean
+    any__owner__id: ID
+    any__source__id: ID
+    any__value: String
+    any__values: [String]
+    ids: [ID]
+    limit: Int
+    member_of_groups__description__value: String
+    member_of_groups__description__values: [String]
+    member_of_groups__display_label__isnull: Boolean
+    member_of_groups__display_label__value: String
+    member_of_groups__display_label__values: [String]
+    member_of_groups__group_type__value: String
+    member_of_groups__group_type__values: [String]
+    member_of_groups__ids: [ID]
+    member_of_groups__isnull: Boolean
+    member_of_groups__label__value: String
+    member_of_groups__label__values: [String]
+    member_of_groups__name__value: String
+    member_of_groups__name__values: [String]
+    """Filter by exact creation timestamp"""
+    node_metadata__created_at: DateTime
+    """Filter for objects created after this timestamp"""
+    node_metadata__created_at__after: DateTime
+    """Filter for objects created before this timestamp"""
+    node_metadata__created_at__before: DateTime
+    """Filter by exact creator account UUID"""
+    node_metadata__created_by__id: ID
+    """Filter by list of creator account UUIDs"""
+    node_metadata__created_by__ids: [ID]
+    """Filter by exact update timestamp"""
+    node_metadata__updated_at: DateTime
+    """Filter for objects updated after this timestamp"""
+    node_metadata__updated_at__after: DateTime
+    """Filter for objects updated before this timestamp"""
+    node_metadata__updated_at__before: DateTime
+    """Filter by exact updater account UUID"""
+    node_metadata__updated_by__id: ID
+    """Filter by list of updater account UUIDs"""
+    node_metadata__updated_by__ids: [ID]
+    offset: Int
+    order: OrderInput
+    partial_match: Boolean
+    subscriber_of_groups__description__value: String
+    subscriber_of_groups__description__values: [String]
+    subscriber_of_groups__display_label__isnull: Boolean
+    subscriber_of_groups__display_label__value: String
+    subscriber_of_groups__display_label__values: [String]
+    subscriber_of_groups__group_type__value: String
+    subscriber_of_groups__group_type__values: [String]
+    subscriber_of_groups__ids: [ID]
+    subscriber_of_groups__isnull: Boolean
+    subscriber_of_groups__label__value: String
+    subscriber_of_groups__label__values: [String]
+    subscriber_of_groups__name__value: String
+    subscriber_of_groups__name__values: [String]
+  ): PaginatedCoreIPPool!
   CoreIPPrefixPool(
     any__is_protected: Boolean
     any__owner__id: ID
@@ -24264,7 +24643,7 @@ type Query {
     node_metadata__updated_at__before: DateTime
     offset: Int
     """Define ordering of results for branch queries."""
-    order: OrderInput
+    order: MetadataOrderInput
     partial_match: Boolean = false
     """Filter branches by status (e.g., OPEN, NEED_REBASE)."""
     status__value: BranchStatus
@@ -24299,10 +24678,21 @@ type Query {
     """Search events until this timestamp, defaults the current time"""
     until: DateTime
   ): Events!
+  """
+  Analyze a GraphQL query string and return a report describing how Infrahub will interpret it.
+  """
+  InfrahubGraphQLQueryReport(
+    """The raw GraphQL query string to analyze."""
+    query: String!
+  ): GraphQLQueryReport!
   InfrahubIPAddressGetNextAvailable(prefix_id: String!, prefix_length: Int): IPAddressGetNextAvailable!
   InfrahubIPPrefixGetNextAvailable(prefix_id: String!, prefix_length: Int): IPPrefixGetNextAvailable!
   InfrahubInfo: Info!
+  """Find all shortest paths between two nodes in the graph"""
+  InfrahubPathTraversal(data: PathTraversalInput!): PathTraversalResultType!
   InfrahubPermissions: AccountPermissionsEdges!
+  """Find all nodes of specified kinds reachable from a source node"""
+  InfrahubReachableNodes(data: ReachableNodesInput!): ReachableNodesResultType!
   InfrahubResourcePoolAllocated(limit: Int, offset: Int, pool_id: String!, resource_id: String!): PoolAllocated!
   InfrahubResourcePoolUtilization(pool_id: String!): PoolUtilization!
   InfrahubSearchAnywhere(case_sensitive: Boolean, limit: Int, partial_match: Boolean, q: String!): NodeEdges!
@@ -25094,6 +25484,43 @@ type Query {
   Relationship(excluded_namespaces: [String], ids: [String!]!, limit: Int, offset: Int): Relationships!
 }
 
+type ReachableNodeType {
+  """Hops from source node"""
+  depth: Int!
+  """Reachable node"""
+  node: PathNodeType!
+  """Full path from source to this node"""
+  path: PathResultType!
+}
+
+input ReachableNodesInput {
+  """Maximum traversal depth (default: 5, max: 20)"""
+  max_depth: Int = 5
+  """
+  Maximum total paths returned across all discovered terminals (default: 500, max: 5000)
+  """
+  max_paths: Int = 500
+  """
+  Maximum number of distinct terminal nodes to discover (default: 50, max: 200)
+  """
+  max_results: Int = 50
+  """UUID of the source node"""
+  source_id: String!
+  """Node kinds to search for"""
+  target_kinds: [String!]!
+}
+
+type ReachableNodesResultType {
+  """Number of dependency entries returned"""
+  count: Int!
+  """
+  Reachable nodes of the requested kinds, one entry per (node, path) pair
+  """
+  dependencies: [ReachableNodeType!]!
+  """The source node"""
+  source: PathNodeType!
+}
+
 type ReadOnlyRepositoryImportLastCommit {
   ok: Boolean
   task: TaskInfo
@@ -25378,7 +25805,6 @@ type TextAttribute implements AttributeInterface {
   id: String
   is_default: Boolean
   is_from_profile: Boolean
-  is_inherited: Boolean
   is_protected: Boolean
   owner: LineageOwner
   permissions: PermissionType

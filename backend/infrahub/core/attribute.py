@@ -38,6 +38,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import convert_ip_to_binary_str
 from infrahub.exceptions import ValidationError
 from infrahub.helpers import hash_password
+from infrahub.log import get_logger
 
 from ..types import is_large_attribute_type
 from .constants.relationship_label import RELATIONSHIP_TO_NODE_LABEL, RELATIONSHIP_TO_VALUE_LABEL
@@ -50,16 +51,24 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 
+log = get_logger()
+
 # Use a more user-friendly threshold than Neo4j one (8167 bytes).
 MAX_STRING_LENGTH = 4096
 
 
 def validate_string_length(value: str | None) -> None:
-    """
-    Validates input string length does not exceed a given threshold, as Neo4J cannot index string values larger than 8167 bytes,
+    """Validates input string length does not exceed a given threshold.
+
+    Neo4J cannot index string values larger than 8167 bytes,
     see https://neo4j.com/developer/kb/index-limitations-and-workaround/.
+
     Note `value` parameter is optional as this function could be called from an attribute class
     with optional value such as StringOptional.
+
+    Raises:
+        ValidationError: When the string length exceeds the maximum allowed value.
+
     """
     if value is None:
         return
@@ -155,6 +164,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         if self.value is not None:
             self.validate(value=self.value, name=self.name, schema=self.schema)
+            self.value = self._normalize_value(self.value)
 
         if self.is_enum and self.value:
             self.value = self.schema.convert_value_to_enum(self.value)
@@ -167,11 +177,13 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return bool(self.schema.enum)
 
     def get_branch_based_on_support_type(self) -> Branch:
-        """If the attribute is branch aware, return the Branch object associated with this attribute
-        If the attribute is branch agnostic return the Global Branch
+        """If the attribute is branch aware, return the Branch object associated with this attribute.
+
+        If the attribute is branch agnostic return the Global Branch.
 
         Returns:
             Branch:
+
         """
         if self.schema.branch == BranchSupportType.AGNOSTIC:
             return registry.get_global_branch()
@@ -251,6 +263,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         Raises:
             ValidationError: Format of the attribute value is not valid
+
         """
         value_to_check = value
         if schema.enum and isinstance(value, Enum):
@@ -269,6 +282,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         Raises:
             ValidationError: Content of the attribute value is not valid
+
         """
         if regex := schema.get_regex():
             if schema.kind == "List":
@@ -359,11 +373,14 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         """Deserialize the value coming from the database."""
         return data.value
 
+    def _normalize_value(self, value: Any) -> Any:
+        """Return the canonical form of a value."""
+        return value
+
     async def save(
         self, db: InfrahubDatabase, user_id: str = SYSTEM_USER_ID, at: Timestamp | None = None
     ) -> AttributeChangelog | None:
         """Create or Update the Attribute in the database."""
-
         save_at = Timestamp(at)
 
         if not self.id:
@@ -379,6 +396,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
 
         Returns:
             Branch: The branch to use for the delete operation
+
         """
         if (
             self.schema.branch == BranchSupportType.AGNOSTIC
@@ -422,7 +440,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
          - If the value is different, create new node and update relationship
 
         """
-
         update_at = Timestamp(at)
 
         # Validate if the value is still correct, will raise a ValidationError if not
@@ -534,7 +551,6 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         include_properties: bool = True,
     ) -> dict:
         """Generate GraphQL Payload for this attribute."""
-
         response: dict[str, Any] = {"id": self.id}
 
         if fields and isinstance(fields, dict):
@@ -614,8 +630,7 @@ class BaseAttribute(FlagPropertyMixin, NodePropertyMixin, MetadataInterface):
         return value
 
     async def from_graphql(self, data: dict, db: InfrahubDatabase, process_pools: bool = True) -> bool:
-        """Update attr from GraphQL payload"""
-
+        """Update attr from GraphQL payload."""
         changed = False
         if "value" in data:
             if self.is_enum:
@@ -744,11 +759,15 @@ class Integer(BaseAttribute):
 
     @classmethod
     def validate_format(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        """
-        Make sure boolean objects are not accepted as value. Need to override `validate_format`
-        as `isinstance(True, int)` is True.
-        """
+        """Make sure boolean objects are not accepted as value.
 
+        Need to override `validate_format`
+        as `isinstance(True, int)` is True.
+
+        Raises:
+            ValidationError: When the value type does not match the expected type.
+
+        """
         value_to_check = value
         if schema.enum and isinstance(value, Enum):
             value_to_check = value.value
@@ -798,7 +817,7 @@ class Dropdown(BaseAttribute):
 
     @property
     def color(self) -> str:
-        """Return the color for the current value"""
+        """Return the color for the current value."""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
             if selected and selected[0].color:
@@ -808,7 +827,7 @@ class Dropdown(BaseAttribute):
 
     @property
     def description(self) -> str:
-        """Return the description for the current value"""
+        """Return the description for the current value."""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
             if selected and selected[0].description:
@@ -818,7 +837,7 @@ class Dropdown(BaseAttribute):
 
     @property
     def label(self) -> str:
-        """Return the label for the current value"""
+        """Return the label for the current value."""
         if self.schema.choices:
             selected = [choice for choice in self.schema.choices if choice.name == self.value]
             if selected and selected[0].label:
@@ -832,7 +851,12 @@ class Dropdown(BaseAttribute):
 
     @classmethod
     def validate_content(cls, value: Any, name: str, schema: AttributeSchema) -> None:
-        """Validate the content of the dropdown."""
+        """Validate the content of the dropdown.
+
+        Raises:
+            ValidationError: When the value is not one of the allowed dropdown choices.
+
+        """
         super().validate_content(value=value, name=name, schema=schema)
         values = [choice.name for choice in schema.choices]
         if value not in values:
@@ -880,7 +904,12 @@ class IPNetwork(BaseAttribute):
 
     @property
     def obj(self) -> ipaddress.IPv4Network | ipaddress.IPv6Network:
-        """Return an ipaddress interface object."""
+        """Return an ipaddress interface object.
+
+        Raises:
+            ValueError: When the IP network value has not been defined.
+
+        """
         if not self.value:
             raise ValueError("value for IPNetwork must be defined")
         return ipaddress.ip_network(str(self.value))
@@ -969,6 +998,7 @@ class IPNetwork(BaseAttribute):
 
         Raises:
             ValidationError: Format of the attribute value is not valid
+
         """
         super().validate_format(value=value, name=name, schema=schema)
 
@@ -977,10 +1007,8 @@ class IPNetwork(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def serialize_value(self) -> str:
-        """Serialize the value before storing it in the database. If network is an IPv6 network, it is converted to collapsed form."""
-
-        return ipaddress.ip_network(self.value).with_prefixlen
+    def _normalize_value(self, value: Any) -> str:
+        return ipaddress.ip_network(value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
@@ -1023,7 +1051,12 @@ class IPHost(BaseAttribute):
 
     @property
     def obj(self) -> ipaddress.IPv4Interface | ipaddress.IPv6Interface:
-        """Return the ip adress without a prefix or subnet mask."""
+        """Return the ip adress without a prefix or subnet mask.
+
+        Raises:
+            ValueError: When the IP host value has not been defined.
+
+        """
         if not self.value:
             raise ValueError("value for IPHost must be defined")
         return ipaddress.ip_interface(str(self.value))
@@ -1105,6 +1138,7 @@ class IPHost(BaseAttribute):
 
         Raises:
             ValidationError: Format of the attribute value is not valid
+
         """
         super().validate_format(value=value, name=name, schema=schema)
 
@@ -1113,10 +1147,8 @@ class IPHost(BaseAttribute):
         except ValueError as exc:
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"}) from exc
 
-    def serialize_value(self) -> str:
-        """Adds a prefix to address before storing it in the database. If address in an IPv6 address, it is converted to collapsed form."""
-
-        return ipaddress.ip_interface(self.value).with_prefixlen
+    def _normalize_value(self, value: Any) -> str:
+        return ipaddress.ip_interface(value).with_prefixlen
 
     def get_db_node_type(self) -> AttributeDBNodeType:
         if self.value is not None:
@@ -1144,7 +1176,12 @@ class MacAddress(BaseAttribute):
 
     @property
     def obj(self) -> netaddr.EUI:
-        """Return the MAC adress."""
+        """Return the MAC adress.
+
+        Raises:
+            ValueError: When the MAC address value has not been defined.
+
+        """
         if not self.value:
             raise ValueError("value for MAC address must be defined")
         return netaddr.EUI(addr=self.value)
@@ -1229,15 +1266,19 @@ class MacAddress(BaseAttribute):
 
         Raises:
             ValidationError: Format of the attribute value is not valid
+
         """
         super().validate_format(value=value, name=name, schema=schema)
 
         if not netaddr.valid_mac(addr=str(value)):
             raise ValidationError({name: f"{value} is not a valid {schema.kind}"})
 
+    def _normalize_value(self, value: Any) -> str:
+        return netaddr.EUI(addr=value).format(dialect=netaddr.mac_unix_expanded).upper()
+
     def serialize_value(self) -> str:
         """Serialize the value as standard EUI-48 or EUI-64 before storing it in the database."""
-        return str(netaddr.EUI(addr=self.value))
+        return self._normalize_value(self.value)
 
     @staticmethod
     def get_allowed_property_in_path() -> list[str]:
@@ -1294,6 +1335,35 @@ class ListAttribute(BaseAttribute):
 
 class ListAttributeOptional(ListAttribute):
     value: list[Any] | None
+
+
+class IndexedListAttribute(ListAttributeOptional):
+    """List attribute that is indexed in the database when within size limits.
+
+    Unlike regular List attributes, the serialized value receives the
+    AttributeValueIndexed label when it fits within Neo4j indexing limits.
+    Oversized values fall back to non-indexed storage with a warning.
+    """
+
+    def _is_within_index_limit(self) -> bool:
+        if self.value is None:
+            return True
+        serialized = self.serialize_value()
+        return not (isinstance(serialized, str) and 3 + len(serialized.encode("utf-8")) >= MAX_STRING_LENGTH)
+
+    def get_db_node_type(self) -> AttributeDBNodeType:
+        if self._is_within_index_limit():
+            return AttributeDBNodeType.INDEXED
+        return AttributeDBNodeType.DEFAULT
+
+    def to_db(self) -> dict[str, Any]:
+        data = super().to_db()
+        if not self._is_within_index_limit():
+            log.warning(
+                "List attribute value exceeds maximum indexed string length, storing without index",
+                attribute_name=self.name,
+            )
+        return data
 
 
 class JSONAttribute(BaseAttribute):

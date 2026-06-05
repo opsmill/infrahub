@@ -15,7 +15,7 @@ function ObjectItemsPage() {
   if (!schema) return <ErrorScreen message={`Schema ${objectKind} not found.`} />;
 
   return (
-    <Content.Card className="flex flex-col">
+    <Content.Card>
       <ObjectItemsHeader schema={schema} />
 
       <ObjectsManager schema={schema} />

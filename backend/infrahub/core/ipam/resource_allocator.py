@@ -17,7 +17,7 @@ from infrahub.core.query.ipam import (
 if TYPE_CHECKING:
     from infrahub.core.branch import Branch
     from infrahub.core.ipam.constants import IPAddressType, IPNetworkType
-    from infrahub.core.node import Node
+    from infrahub.core.protocols_base import CoreNode
     from infrahub.core.timestamp import Timestamp
     from infrahub.database import InfrahubDatabase
 
@@ -34,7 +34,7 @@ class IPAMResourceAllocator:
     def __init__(
         self,
         db: InfrahubDatabase,
-        namespace: Node | str | None = None,
+        namespace: CoreNode | str | None = None,
         branch: Branch | None = None,
         branch_agnostic: bool = False,
     ) -> None:
@@ -45,6 +45,7 @@ class IPAMResourceAllocator:
             namespace: IP namespace node or its ID. If None, uses the default namespace.
             branch: Branch to query. If None, uses the default branch.
             branch_agnostic: If True, queries across all branches.
+
         """
         self.db = db
         self.namespace = namespace
@@ -67,6 +68,7 @@ class IPAMResourceAllocator:
         Returns:
             The next available IPv4 prefix, or None if no space is available
             or if the target_prefix_length is invalid.
+
         """
         if target_prefix_length < 0 or target_prefix_length > 32:
             return None
@@ -107,6 +109,7 @@ class IPAMResourceAllocator:
         Returns:
             The next available IPv6 prefix, or None if no space is available
             or if the target_prefix_length is invalid.
+
         """
         if target_prefix_length < 0 or target_prefix_length > 128:
             return None
@@ -147,6 +150,7 @@ class IPAMResourceAllocator:
 
         Returns:
             The next available prefix, or None if no space is available.
+
         """
         if ip_prefix.version == 4:
             return await self._get_next_ipv4_prefix(
@@ -169,6 +173,7 @@ class IPAMResourceAllocator:
 
         Returns:
             The next available IP address, or None if no addresses are available.
+
         """
         # Use IPv6-specific query for IPv6 to avoid 64-bit integer overflow
         query_class = IPv6PrefixIPAddressFetchFree if ip_prefix.version == 6 else IPPrefixIPAddressFetchFree
@@ -193,6 +198,7 @@ class IPAMResourceAllocator:
 
         Returns:
             Iterable of IPPrefixData objects representing child subnets.
+
         """
         query = await IPPrefixSubnetFetch.init(
             db=self.db,
@@ -216,6 +222,7 @@ class IPAMResourceAllocator:
 
         Returns:
             Iterable of IPAddressData objects representing addresses in the prefix.
+
         """
         query = await IPPrefixIPAddressFetch.init(
             db=self.db,

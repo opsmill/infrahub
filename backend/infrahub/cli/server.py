@@ -12,9 +12,7 @@ app = typer.Typer()
 
 @app.callback()
 def callback() -> None:
-    """
-    Control the API Server.
-    """
+    """Control the API Server."""
 
 
 log_config = {
@@ -49,7 +47,6 @@ def start(
     debug: bool = typer.Option(False, help="Enable advanced logging and troubleshooting"),
 ) -> None:
     """Start Infrahub in Debug Mode with reload enabled."""
-
     # it's not possible to pass the location of the config file directly to uvicorn.run
     # so we must rely on the environment variable
 

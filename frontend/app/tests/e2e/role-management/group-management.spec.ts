@@ -40,9 +40,15 @@ test.describe("/role-management/groups - Group CRUD", () => {
       await expect(row.getByText("A test group")).toBeVisible();
     });
 
-    await test.step("edit the group description", async () => {
+    await test.step("open edit form and verify field values", async () => {
       await getDataTableRow(page, "test group").getByTestId("actions-cell-test group").click();
       await page.getByRole("menuitem", { name: "Edit" }).click();
+      await expect(page.getByRole("textbox", { name: "Name *" })).toHaveValue("test group");
+      await expect(page.getByRole("textbox", { name: "Label" })).toHaveValue("Test Group Label");
+      await expect(page.getByRole("textbox", { name: "Description" })).toHaveValue("A test group");
+    });
+
+    await test.step("update the group description and save", async () => {
       await page.getByRole("textbox", { name: "Description" }).fill("updated description");
       await page.getByRole("button", { name: "Save" }).click();
       await expect(page.getByText("Group updated!")).toBeVisible();

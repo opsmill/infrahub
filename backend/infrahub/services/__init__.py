@@ -59,10 +59,7 @@ class InfrahubServices:
         component: InfrahubComponent | None = None,
         log_forwarding: LogForwardingService | None = None,
     ) -> None:
-        """
-        This method should not be called directly, use `new` instead for a proper initialization.
-        """
-
+        """This method should not be called directly, use `new` instead for a proper initialization."""
         self._cache = cache
         self._client = client
         self._database = database
@@ -91,11 +88,11 @@ class InfrahubServices:
         http: InfrahubHTTP | None = None,
         log_forwarding: LogForwardingService | None = None,
     ) -> InfrahubServices:
-        """
-        Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular
-        dependency with InfrahubServices.
-        """
+        """Instantiate InfrahubServices object, and finalize initializations of underlying services having a circular.
 
+        dependency with InfrahubServices.
+
+        """
         component_type = component_type or ComponentType.NONE
 
         scheduler = InfrahubScheduler(component_type)
@@ -170,6 +167,10 @@ class InfrahubServices:
             raise InitializationError("Service is not initialized with a database")
 
         return self._database
+
+    @property
+    def log_forwarding(self) -> LogForwardingService | None:
+        return self._log_forwarding
 
     async def shutdown(self) -> None:
         if self._log_forwarding is not None:

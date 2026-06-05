@@ -21,7 +21,7 @@ from infrahub.exceptions import NodeNotFoundError
 from infrahub.workers.dependencies import get_installation_type
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
 
 router = APIRouter()
 
@@ -32,6 +32,7 @@ class ConfigAPI(BaseModel):
     analytics: AnalyticsSettings
     experimental_features: ExperimentalFeaturesSettings
     sso: config.SSOInfo
+    ldap: config.LDAPInfo
     installation_type: str
     policy: config.PolicySettings
 
@@ -49,6 +50,11 @@ async def get_config() -> ConfigAPI:
         analytics=config.SETTINGS.analytics,
         experimental_features=config.SETTINGS.experimental_features,
         sso=config.SETTINGS.security.public_sso_config,
+        ldap=config.LDAPInfo(
+            enabled=config.SETTINGS.ldap.admin_enabled,
+            display_label=config.SETTINGS.ldap.display_label,
+            icon=config.SETTINGS.ldap.icon,
+        ),
         installation_type=get_installation_type(),
         policy=config.SETTINGS.policy,
     )
@@ -66,9 +72,9 @@ class SearchDocs:
         self._heading_index: Index | None = None
 
     def _load_json(self) -> None:
-        """
-        The structure of search-index.json is organized into an array of 3 arrays representing indexes for:
-        [titleDocuments, headingDocuments, contentDocuments]
+        """The structure of search-index.json is organized into an array of 3 arrays representing indexes for:
+
+        [titleDocuments, headingDocuments, contentDocuments].
 
         For titleDocuments, it consists of an array of dictionaries with the following structure:
         {
@@ -96,8 +102,11 @@ class SearchDocs:
             h: section.hash,
             p: title_id,
         }
-        """
 
+        Raises:
+            NodeNotFoundError: When the documentation index file cannot be found on disk.
+
+        """
         try:
             with config.SETTINGS.main.docs_index_path.open(encoding="utf-8") as f:
                 search_index = ujson.loads(f.read())

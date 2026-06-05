@@ -25,6 +25,8 @@ DEFAULT_IP_NAMESPACE = "default"
 
 RESERVED_BRANCH_NAMES = [GLOBAL_BRANCH_NAME]
 
+NODE_METADATA_PREFIX = "node_metadata"
+
 RESERVED_ATTR_REL_NAMES = [
     "any",
     "attribute",
@@ -38,6 +40,7 @@ RESERVED_ATTR_REL_NAMES = [
     "save",
     "hfid",
     "process_pools",
+    NODE_METADATA_PREFIX,
 ]
 
 RESERVED_ATTR_REL_HIERARCHICAL_NAMES = [
@@ -69,6 +72,9 @@ class EventType(InfrahubStringEnum):
 
     GROUP_MEMBER_ADDED = f"{EVENT_NAMESPACE}.group.member_added"
     GROUP_MEMBER_REMOVED = f"{EVENT_NAMESPACE}.group.member_removed"
+    GROUP_AUTO_CREATED = f"{EVENT_NAMESPACE}.group.auto_created"
+    GROUP_AUTO_CREATE_REJECTED = f"{EVENT_NAMESPACE}.group.auto_create_rejected"
+    GROUP_AUTO_CREATE_CAPPED = f"{EVENT_NAMESPACE}.group.auto_create_capped"
 
     PROPOSED_CHANGE_MERGED = f"{EVENT_NAMESPACE}.proposed_change.merged"
     PROPOSED_CHANGE_REVIEW_REQUESTED = f"{EVENT_NAMESPACE}.proposed_change.review_requested"
@@ -104,6 +110,8 @@ class GlobalPermissions(InfrahubStringEnum):
     EDIT_DEFAULT_BRANCH = "edit_default_branch"
     SUPER_ADMIN = "super_admin"
     MERGE_BRANCH = "merge_branch"
+    REBASE_BRANCH = "rebase_branch"
+    DELETE_BRANCH = "delete_branch"
     MERGE_PROPOSED_CHANGE = "merge_proposed_change"
     REVIEW_PROPOSED_CHANGE = "review_proposed_change"
     MANAGE_SCHEMA = "manage_schema"
@@ -111,6 +119,7 @@ class GlobalPermissions(InfrahubStringEnum):
     MANAGE_PERMISSIONS = "manage_permissions"
     MANAGE_REPOSITORIES = "manage_repositories"
     OVERRIDE_CONTEXT = "override_context"
+    READ_TELEMETRY = "read_telemetry"
     UPDATE_OBJECT_HFID_DISPLAY_LABEL = "update_object_hfid_display_label"
 
 

@@ -36,7 +36,12 @@ class RelationshipPeerRelativesConstraint(RelationshipManagerConstraintInterface
         peers: Mapping[str, Node],
         relationship_name: str,
     ) -> None:
-        """Validate that all peers of a given `relm` have the same set of relatives (aka peers) for the given `relationship_name`."""
+        """Validate that all peers of a given `relm` have the same set of relatives (aka peers) for the given `relationship_name`.
+
+        Raises:
+            ValidationError: When the peers do not share the same set of relatives for the relationship.
+
+        """
         nodes_to_validate: list[NodeToValidate] = []
 
         for peer in peers.values():

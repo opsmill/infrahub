@@ -6,19 +6,18 @@ from types import SimpleNamespace
 
 import pytest
 
-from infrahub import config
 from infrahub.exceptions import InitializationError
 from infrahub.health import (
+    DefaultHealthStatusEvaluator,
     DependencyHealth,
     DependencyName,
     DependencyStatus,
     ErrorCategory,
+    HealthChecker,
     HealthResponse,
     OverallStatus,
     check_dependency,
     classify_error,
-    determine_status,
-    get_health_checks,
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.health import FailingProbe, HealthyProbe, SlowProbe, UnhealthyProbe
@@ -28,42 +27,44 @@ from tests.adapters.workflow import WorkflowRecorder
 
 @dataclass
 class ClassifyErrorCase:
-    id: str
+    name: str
     exception: Exception
     expected: ErrorCategory
 
 
 CLASSIFY_ERROR_CASES = [
-    ClassifyErrorCase(id="timeout_error", exception=TimeoutError(), expected=ErrorCategory.TIMEOUT),
+    ClassifyErrorCase(name="timeout_error", exception=TimeoutError(), expected=ErrorCategory.TIMEOUT),
     ClassifyErrorCase(
-        id="initialization_error", exception=InitializationError("not ready"), expected=ErrorCategory.NOT_INITIALIZED
+        name="initialization_error", exception=InitializationError("not ready"), expected=ErrorCategory.NOT_INITIALIZED
     ),
     ClassifyErrorCase(
-        id="connection_refused", exception=ConnectionRefusedError(), expected=ErrorCategory.CONNECTION_REFUSED
+        name="connection_refused", exception=ConnectionRefusedError(), expected=ErrorCategory.CONNECTION_REFUSED
     ),
     ClassifyErrorCase(
-        id="connection_reset", exception=ConnectionResetError(), expected=ErrorCategory.CONNECTION_REFUSED
+        name="connection_reset", exception=ConnectionResetError(), expected=ErrorCategory.CONNECTION_REFUSED
     ),
-    ClassifyErrorCase(id="os_error", exception=OSError("connection failed"), expected=ErrorCategory.CONNECTION_REFUSED),
-    ClassifyErrorCase(id="runtime_error", exception=RuntimeError("something"), expected=ErrorCategory.UNKNOWN_ERROR),
-    ClassifyErrorCase(id="value_error", exception=ValueError("bad"), expected=ErrorCategory.UNKNOWN_ERROR),
+    ClassifyErrorCase(
+        name="os_error", exception=OSError("connection failed"), expected=ErrorCategory.CONNECTION_REFUSED
+    ),
+    ClassifyErrorCase(name="runtime_error", exception=RuntimeError("something"), expected=ErrorCategory.UNKNOWN_ERROR),
+    ClassifyErrorCase(name="value_error", exception=ValueError("bad"), expected=ErrorCategory.UNKNOWN_ERROR),
 ]
 
 
-@pytest.mark.parametrize("case", [pytest.param(c, id=c.id) for c in CLASSIFY_ERROR_CASES])
+@pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in CLASSIFY_ERROR_CASES])
 def test_classify_error(case: ClassifyErrorCase) -> None:
     assert classify_error(case.exception) == case.expected
 
 
 async def test_check_dependency_healthy() -> None:
-    result = await check_dependency(DependencyName.DATABASE, HealthyProbe().is_healthy)
+    result = await check_dependency(DependencyName.DATABASE, HealthyProbe().is_healthy, timeout_seconds=3)
     assert result.name == DependencyName.DATABASE
     assert result.status == DependencyStatus.UP
     assert result.error == ErrorCategory.NONE
 
 
 async def test_check_dependency_returns_false() -> None:
-    result = await check_dependency(DependencyName.CACHE, UnhealthyProbe().is_healthy)
+    result = await check_dependency(DependencyName.CACHE, UnhealthyProbe().is_healthy, timeout_seconds=3)
     assert result.name == DependencyName.CACHE
     assert result.status == DependencyStatus.DOWN
     assert result.error == ErrorCategory.UNKNOWN_ERROR
@@ -71,50 +72,56 @@ async def test_check_dependency_returns_false() -> None:
 
 async def test_check_dependency_connection_refused() -> None:
     probe = FailingProbe(ConnectionRefusedError())
-    result = await check_dependency(DependencyName.MESSAGE_BUS, probe.is_healthy)
+    result = await check_dependency(DependencyName.MESSAGE_BUS, probe.is_healthy, timeout_seconds=3)
     assert result.status == DependencyStatus.DOWN
     assert result.error == ErrorCategory.CONNECTION_REFUSED
 
 
 async def test_check_dependency_initialization_error() -> None:
     probe = FailingProbe(InitializationError("not ready"))
-    result = await check_dependency(DependencyName.TASK_MANAGER, probe.is_healthy)
+    result = await check_dependency(DependencyName.TASK_MANAGER, probe.is_healthy, timeout_seconds=3)
     assert result.status == DependencyStatus.DOWN
     assert result.error == ErrorCategory.NOT_INITIALIZED
 
 
-async def test_check_dependency_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(config.SETTINGS.health, "check_timeout", 1)
-    result = await check_dependency(DependencyName.DATABASE, SlowProbe(delay=5).is_healthy)
+async def test_check_dependency_timeout() -> None:
+    result = await check_dependency(DependencyName.DATABASE, SlowProbe(delay=5).is_healthy, timeout_seconds=1)
     assert result.status == DependencyStatus.DOWN
     assert result.error == ErrorCategory.TIMEOUT
 
 
-def _build_service(*, message_bus: object, cache: object, workflow: object) -> SimpleNamespace:
-    return SimpleNamespace(message_bus=message_bus, cache=cache, workflow=workflow)
+def _build_checker(
+    *, db: object, message_bus: object, cache: object, workflow: object, check_timeout: float = 3
+) -> HealthChecker:
+    service = SimpleNamespace(message_bus=message_bus, cache=cache, workflow=workflow)
+    return HealthChecker(db=db, service=service, check_timeout=check_timeout)  # type: ignore[arg-type]
 
 
-async def test_get_health_checks_all_healthy() -> None:
-    service = _build_service(message_bus=BusRecorder(), cache=MemoryCache(), workflow=WorkflowRecorder())
-    db = HealthyProbe()
-    checks = await get_health_checks(service=service, db=db)  # type: ignore[arg-type]
-    assert len(checks) == 4
-    assert all(c.status == DependencyStatus.UP for c in checks)
-    assert all(c.error == ErrorCategory.NONE for c in checks)
+async def test_report_all_healthy() -> None:
+    checker = _build_checker(
+        db=HealthyProbe(), message_bus=BusRecorder(), cache=MemoryCache(), workflow=WorkflowRecorder()
+    )
+    report = await checker.report()
+    assert report.status == OverallStatus.HEALTHY
+    assert len(report.checks) == 4
+    assert all(c.status == DependencyStatus.UP for c in report.checks)
+    assert all(c.error == ErrorCategory.NONE for c in report.checks)
 
 
-async def test_get_health_checks_database_down() -> None:
-    service = _build_service(message_bus=BusRecorder(), cache=MemoryCache(), workflow=WorkflowRecorder())
-    db = UnhealthyProbe()
-    checks = await get_health_checks(service=service, db=db)  # type: ignore[arg-type]
-    by_name = {c.name: c for c in checks}
+async def test_report_database_down() -> None:
+    checker = _build_checker(
+        db=UnhealthyProbe(), message_bus=BusRecorder(), cache=MemoryCache(), workflow=WorkflowRecorder()
+    )
+    report = await checker.report()
+    assert report.status == OverallStatus.UNHEALTHY
+    by_name = {c.name: c for c in report.checks}
     assert by_name[DependencyName.DATABASE].status == DependencyStatus.DOWN
     assert by_name[DependencyName.MESSAGE_BUS].status == DependencyStatus.UP
     assert by_name[DependencyName.CACHE].status == DependencyStatus.UP
     assert by_name[DependencyName.TASK_MANAGER].status == DependencyStatus.UP
 
 
-async def test_get_health_checks_uninitialized_service() -> None:
+async def test_report_uninitialized_service() -> None:
     """Service property access raising InitializationError must be reported as DOWN, not bubble up."""
 
     class _UninitializedService:
@@ -130,8 +137,10 @@ async def test_get_health_checks_uninitialized_service() -> None:
         def workflow(self) -> object:
             raise InitializationError("Service is not initialized with a workflow")
 
-    checks = await get_health_checks(service=_UninitializedService(), db=HealthyProbe())  # type: ignore[arg-type]
-    by_name = {c.name: c for c in checks}
+    checker = HealthChecker(db=HealthyProbe(), service=_UninitializedService(), check_timeout=3)  # type: ignore[arg-type]
+    report = await checker.report()
+    assert report.status == OverallStatus.UNHEALTHY
+    by_name = {c.name: c for c in report.checks}
     assert by_name[DependencyName.DATABASE].status == DependencyStatus.UP
     assert by_name[DependencyName.MESSAGE_BUS].status == DependencyStatus.DOWN
     assert by_name[DependencyName.MESSAGE_BUS].error == ErrorCategory.NOT_INITIALIZED
@@ -139,23 +148,25 @@ async def test_get_health_checks_uninitialized_service() -> None:
     assert by_name[DependencyName.TASK_MANAGER].error == ErrorCategory.NOT_INITIALIZED
 
 
-async def test_get_health_checks_all_down() -> None:
-    service = _build_service(message_bus=UnhealthyProbe(), cache=UnhealthyProbe(), workflow=UnhealthyProbe())
-    db = UnhealthyProbe()
-    checks = await get_health_checks(service=service, db=db)  # type: ignore[arg-type]
-    assert all(c.status == DependencyStatus.DOWN for c in checks)
+async def test_report_all_down() -> None:
+    checker = _build_checker(
+        db=UnhealthyProbe(), message_bus=UnhealthyProbe(), cache=UnhealthyProbe(), workflow=UnhealthyProbe()
+    )
+    report = await checker.report()
+    assert report.status == OverallStatus.UNHEALTHY
+    assert all(c.status == DependencyStatus.DOWN for c in report.checks)
 
 
 @dataclass
-class DetermineStatusCase:
-    id: str
+class EvaluateStatusCase:
+    name: str
     checks: list[DependencyHealth]
     expected: OverallStatus
 
 
-DETERMINE_STATUS_CASES = [
-    DetermineStatusCase(
-        id="all_up",
+EVALUATE_STATUS_CASES = [
+    EvaluateStatusCase(
+        name="all_up",
         checks=[
             DependencyHealth(name=DependencyName.DATABASE, status=DependencyStatus.UP),
             DependencyHealth(name=DependencyName.MESSAGE_BUS, status=DependencyStatus.UP),
@@ -163,8 +174,8 @@ DETERMINE_STATUS_CASES = [
         ],
         expected=OverallStatus.HEALTHY,
     ),
-    DetermineStatusCase(
-        id="one_down",
+    EvaluateStatusCase(
+        name="one_down",
         checks=[
             DependencyHealth(name=DependencyName.DATABASE, status=DependencyStatus.DOWN, error=ErrorCategory.TIMEOUT),
             DependencyHealth(name=DependencyName.MESSAGE_BUS, status=DependencyStatus.UP),
@@ -172,8 +183,8 @@ DETERMINE_STATUS_CASES = [
         ],
         expected=OverallStatus.UNHEALTHY,
     ),
-    DetermineStatusCase(
-        id="all_down",
+    EvaluateStatusCase(
+        name="all_down",
         checks=[
             DependencyHealth(
                 name=DependencyName.DATABASE, status=DependencyStatus.DOWN, error=ErrorCategory.CONNECTION_REFUSED
@@ -185,13 +196,13 @@ DETERMINE_STATUS_CASES = [
         ],
         expected=OverallStatus.UNHEALTHY,
     ),
-    DetermineStatusCase(id="empty_checks", checks=[], expected=OverallStatus.HEALTHY),
+    EvaluateStatusCase(name="empty_checks", checks=[], expected=OverallStatus.HEALTHY),
 ]
 
 
-@pytest.mark.parametrize("case", [pytest.param(c, id=c.id) for c in DETERMINE_STATUS_CASES])
-def test_determine_status(case: DetermineStatusCase) -> None:
-    assert determine_status(case.checks) == case.expected
+@pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in EVALUATE_STATUS_CASES])
+def test_default_status_evaluator(case: EvaluateStatusCase) -> None:
+    assert DefaultHealthStatusEvaluator().evaluate(case.checks) == case.expected
 
 
 def test_healthy_response_model() -> None:

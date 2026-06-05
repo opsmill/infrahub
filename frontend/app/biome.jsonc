@@ -14,7 +14,8 @@
       "!test-results",
       "!tests/e2e/.auth",
       "!src/shared/api/rest/types.generated.ts",
-      "!src/shared/api/graphql/generated"
+      "!src/shared/api/graphql/generated",
+      "!src/shared/api/errors/catalogue.generated.ts"
     ]
   },
   "formatter": {
@@ -128,6 +129,7 @@
         "noUselessElse": "off",
         "useBlockStatements": "off",
         "useConsistentArrayType": "off",
+        "useConsistentArrowReturn": "off",
         "useConsistentBuiltinInstantiation": "off",
         "useConsistentTypeDefinitions": "off",
         "useConst": "off",
@@ -193,5 +195,5 @@
       "enabled": true
     }
   },
-  "extends": ["ultracite/core", "ultracite/react"]
+  "extends": ["ultracite/biome/core", "ultracite/biome/react"]
 }

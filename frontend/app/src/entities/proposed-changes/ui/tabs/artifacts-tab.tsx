@@ -1,13 +1,13 @@
-import { DIFF_TABS } from "@/shared/config/constants";
-
 import { useGetArtifactsDiff } from "@/entities/diff/ui/queries/get-artifacts-diff.query";
 import { ProposedChangeTab } from "@/entities/proposed-changes/ui/tabs/proposed-change-tab";
+import { getProposedChangeDetailsUrl } from "@/entities/proposed-changes/utils";
 
 export interface ArtifactsTabProps {
   sourceBranch: string;
+  proposedChangeId: string;
 }
 
-export function ArtifactsTab({ sourceBranch }: ArtifactsTabProps) {
+export function ArtifactsTab({ sourceBranch, proposedChangeId }: ArtifactsTabProps) {
   const { isPending, data, error } = useGetArtifactsDiff({ branch: sourceBranch });
 
   const count =
@@ -15,7 +15,7 @@ export function ArtifactsTab({ sourceBranch }: ArtifactsTabProps) {
 
   return (
     <ProposedChangeTab
-      tabId={DIFF_TABS.ARTIFACTS}
+      to={getProposedChangeDetailsUrl(proposedChangeId, "artifacts")}
       label="Artifacts"
       count={count}
       isCountLoading={isPending}

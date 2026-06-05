@@ -139,7 +139,7 @@ export type FormRelationshipValue =
 export type FormFieldValue = FormAttributeValue | FormRelationshipValue;
 
 export type FormFieldProps = {
-  attribute: AttributeSchema;
+  attribute?: AttributeSchema;
   defaultValue?: FormAttributeValue;
   description?: string;
   disabled?: boolean;
@@ -208,6 +208,7 @@ export interface DynamicRelationshipFieldProps
   parent?: string;
   options?: SelectOption[];
   peerField?: string;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
 }
 
 export type DynamicFieldProps = DynamicAttributeFieldProps | DynamicRelationshipFieldProps;

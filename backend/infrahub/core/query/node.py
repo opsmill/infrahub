@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 from collections import defaultdict
-from copy import copy
 from dataclasses import dataclass
 from dataclasses import field as dataclass_field
 from datetime import datetime
@@ -23,6 +22,9 @@ from infrahub.core.constants import (
     RelationshipDirection,
     RelationshipHierarchyDirection,
 )
+from infrahub.core.constants import (
+    NODE_METADATA_PREFIX as _NODE_METADATA_PREFIX,
+)
 from infrahub.core.order import (
     METADATA_CREATED_AT,
     METADATA_CREATED_BY,
@@ -31,9 +33,18 @@ from infrahub.core.order import (
     OrderModel,
 )
 from infrahub.core.query import Query, QueryResult, QueryType
-from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order
+from infrahub.core.query.subquery import build_subquery_filter, build_subquery_order, build_subquery_order_metadata
 from infrahub.core.query.utils import find_node_schema
 from infrahub.core.schema.attribute_schema import AttributeSchema
+from infrahub.core.schema.order_by import (
+    OrderByMetadataField,
+    OrderByTargetKind,
+    ParsedAttributeOrderBy,
+    ParsedMetadataOrderBy,
+    ParsedOrderByEntry,
+    ParsedRelationshipAttributeOrderBy,
+    parse_order_by_entry,
+)
 from infrahub.core.timestamp import Timestamp
 from infrahub.core.utils import build_regex_attrs, extract_field_filters
 from infrahub.exceptions import QueryError
@@ -55,7 +66,7 @@ if TYPE_CHECKING:
 # Grouped constants for validation/iteration
 METADATA_CREATED_FIELDS = (METADATA_CREATED_AT, METADATA_CREATED_BY)
 METADATA_UPDATED_FIELDS = (METADATA_UPDATED_AT, METADATA_UPDATED_BY)
-NODE_METADATA_PREFIX = "node_metadata__"
+NODE_METADATA_PREFIX = f"{_NODE_METADATA_PREFIX}__"
 
 
 @dataclass
@@ -172,11 +183,12 @@ class NodeCreateAllQuery(NodeQuery):
                 )
             )
         if self.node.has_human_friendly_id():
-            attributes_indexed.append(
-                self.node._human_friendly_id.get_node_attribute(node=self.node, at=at).get_create_data(
-                    node_schema=self.node.get_schema()
-                )
-            )
+            hfid_attr = self.node._human_friendly_id.get_node_attribute(node=self.node, at=at)
+            hfid_data = hfid_attr.get_create_data(node_schema=self.node.get_schema())
+            if AttributeDBNodeType.INDEXED in hfid_attr.get_db_node_type():
+                attributes_indexed.append(hfid_data)
+            else:
+                attributes.append(hfid_data)
 
         for attr_name in self.node._attributes:
             attr: BaseAttribute = getattr(self.node, attr_name)
@@ -975,7 +987,7 @@ class GroupedPeerNodes:
         self._rel_directions_map: dict[tuple[str, str], dict[RelationshipDirection, set[str]]] = defaultdict(dict)
         # {(node_id, rel_name, direction, peer_Id): {MetadataOptions: value}}
         self._metadata_map: dict[
-            tuple[str, str, RelationshipDirection, str], dict[MetadataOptions, Timestamp | str | None]
+            tuple[str, str, RelationshipDirection, str], dict[MetadataOptions, Timestamp | str | bool | None]
         ] = {}
 
     def add_peer(
@@ -988,13 +1000,17 @@ class GroupedPeerNodes:
         created_by: str | None = None,
         updated_at: Timestamp | None = None,
         updated_by: str | None = None,
+        source_id: str | None = None,
+        owner_id: str | None = None,
+        is_protected: bool | None = None,
     ) -> None:
         self._rel_names_by_node_id[node_id].add(rel_name)
         if direction not in self._rel_directions_map[node_id, rel_name]:
             self._rel_directions_map[node_id, rel_name][direction] = set()
         self._rel_directions_map[node_id, rel_name][direction].add(peer_id)
         key = (node_id, rel_name, direction, peer_id)
-        if created_at is not None or created_by is not None or updated_at is not None or updated_by is not None:
+        provided = (created_at, created_by, updated_at, updated_by, source_id, owner_id, is_protected)
+        if any(v is not None for v in provided):
             self._metadata_map[key] = {}
         if created_at is not None:
             self._metadata_map[key][MetadataOptions.CREATED_AT] = created_at
@@ -1004,6 +1020,12 @@ class GroupedPeerNodes:
             self._metadata_map[key][MetadataOptions.UPDATED_AT] = updated_at
         if updated_by is not None:
             self._metadata_map[key][MetadataOptions.UPDATED_BY] = updated_by
+        if source_id is not None:
+            self._metadata_map[key][MetadataOptions.SOURCE] = source_id
+        if owner_id is not None:
+            self._metadata_map[key][MetadataOptions.OWNER] = owner_id
+        if is_protected is not None:
+            self._metadata_map[key][MetadataOptions.IS_PROTECTED] = is_protected
 
     def get_peer_ids(self, node_id: str, rel_name: str, direction: RelationshipDirection) -> set[str]:
         if (node_id, rel_name) not in self._rel_directions_map:
@@ -1022,7 +1044,7 @@ class GroupedPeerNodes:
 
     def get_metadata_map(
         self, node_id: str, rel_name: str, direction: RelationshipDirection, peer_id: str
-    ) -> dict[MetadataOptions, Timestamp | str | None]:
+    ) -> dict[MetadataOptions, Timestamp | str | bool | None]:
         return self._metadata_map.get((node_id, rel_name, direction, peer_id), {})
 
 
@@ -1109,6 +1131,52 @@ CALL (rel) {
             """ % {"branch_filter": branch_filter_str, "time_details": time_details}
         self.add_to_query(last_updated_query)
         self.return_labels.extend(["updated_at", "updated_by"])
+
+    def _add_is_protected_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.IS_PROTECTED):
+            return
+        query = """
+CALL (rel) {
+    MATCH (rel)-[r:IS_PROTECTED]->(is_protected)
+    WHERE %(branch_filter)s
+    RETURN is_protected.value AS is_protected_value
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+}
+        """ % {"branch_filter": branch_filter}
+        self.add_to_query(query)
+        self.return_labels.append("is_protected_value")
+
+    def _add_node_property_query(self, node_prop: str, branch_filter: str) -> None:
+        query = """
+CALL (rel) {
+    OPTIONAL MATCH (rel)-[r:HAS_%(node_prop_type)s]->(prop_node:Node)
+    WHERE %(branch_filter)s
+    WITH r, prop_node
+    ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+    LIMIT 1
+    RETURN CASE
+        WHEN r.status = "active" THEN prop_node.uuid
+        ELSE NULL
+    END AS %(node_prop)s_uuid
+}
+        """ % {
+            "node_prop": node_prop,
+            "node_prop_type": node_prop.upper(),
+            "branch_filter": branch_filter,
+        }
+        self.add_to_query(query)
+        self.return_labels.append(f"{node_prop}_uuid")
+
+    def _add_has_owner_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.OWNER):
+            return
+        self._add_node_property_query(node_prop="owner", branch_filter=branch_filter)
+
+    def _add_has_source_query(self, branch_filter: str) -> None:
+        if not (self.include_metadata & MetadataOptions.SOURCE):
+            return
+        self._add_node_property_query(node_prop="source", branch_filter=branch_filter)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs) -> None:  # noqa: ARG002
         self.params["ids"] = self.ids
@@ -1201,6 +1269,9 @@ CALL (rel) {
 
         self._add_created_metadata_to_query()
         self._add_updated_metadata_to_query(branch_filter_str=rels_filter)
+        self._add_is_protected_query(branch_filter=rels_filter)
+        self._add_has_owner_query(branch_filter=rels_filter)
+        self._add_has_source_query(branch_filter=rels_filter)
         return_labels_str = ", ".join(sorted(self.return_labels))
         self.add_to_query(f"WITH DISTINCT {return_labels_str}, rel.name AS rel_name")
         self.return_labels.append("rel_name")
@@ -1231,6 +1302,18 @@ CALL (rel) {
             if self.include_metadata & MetadataOptions.UPDATED_BY:
                 updated_by_str = result.get("updated_by")
 
+            is_protected: bool | None = None
+            if self.include_metadata & MetadataOptions.IS_PROTECTED:
+                is_protected = result.get_as_type("is_protected_value", return_type=bool)
+
+            source_id: str | None = None
+            if self.include_metadata & MetadataOptions.SOURCE:
+                source_id = result.get_as_optional_type("source_uuid", return_type=str)
+
+            owner_id: str | None = None
+            if self.include_metadata & MetadataOptions.OWNER:
+                owner_id = result.get_as_optional_type("owner_uuid", return_type=str)
+
             direction_enum = {
                 "inbound": RelationshipDirection.INBOUND,
                 "outbound": RelationshipDirection.OUTBOUND,
@@ -1245,6 +1328,9 @@ CALL (rel) {
                 created_by=created_by_str,
                 updated_at=updated_at,
                 updated_by=updated_by_str,
+                source_id=source_id,
+                owner_id=owner_id,
+                is_protected=is_protected,
             )
 
         return gpn
@@ -1262,7 +1348,7 @@ class NodeGetKindQuery(Query):
         self.params["ids"] = self.ids
         query = """
 MATCH (n:Node)-[r:IS_PART_OF {status: "active"}]->(:Root)
-WHERE toString(n.uuid) IN $ids
+WHERE n.uuid IN $ids
         """
         # only add the branch filter logic if a branch is included in the query parameters
         if branch := getattr(self, "branch", None):
@@ -1399,7 +1485,6 @@ WITH n, r_is_part_of, head(collect(updated_at)) AS updated_at, head(collect(upda
 
     async def get_nodes(self, db: InfrahubDatabase, duplicate: bool = False) -> AsyncIterator[NodeToProcess]:
         """Return all the node objects as NodeToProcess."""
-
         for result in self.get_results():
             raw_labels: list[str] = result.get_as_type(label="node_labels", return_type=list)
             labels = [str(lbl) for lbl in raw_labels]
@@ -1451,36 +1536,69 @@ class NodeGetByHFIDQuery(Query):
         super().__init__(**kwargs)
 
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
-        branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at)
+        branch_filter, branch_params = self.branch.get_query_filter_path(
+            at=self.at, branch_agnostic=self.branch_agnostic
+        )
         self.params.update(branch_params)
+
         # The list is stored as a string in the database
         self.params["hfid_values"] = [ujson.dumps(hfid) for hfid in self.hfids]
 
         query = """
-        MATCH (n:%(node_kind)s)
+        // --------------------------
+        // Start from the indexed HFID value to ensure the query planner
+        // uses the AttributeValueIndexed index. HFIDs larger than
+        // MAX_STRING_LENGTH are not indexed and thus not searchable.
+        // --------------------------
+        MATCH (av:AttributeValueIndexed)
+        WHERE av.value IN $hfid_values
+        MATCH (av)<-[:HAS_VALUE]-(attr:Attribute {name: "human_friendly_id"})<-[:HAS_ATTRIBUTE]-(n:%(node_kind)s)
+        WITH DISTINCT n, attr, av
+        // --------------------------
+        // Filter IS_PART_OF edges to ensure node is active
+        // --------------------------
         CALL (n) {
             MATCH (n)-[r:IS_PART_OF]->(:Root)
             WHERE %(branch_filter)s
-            RETURN r AS r_part_of
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, r_part_of
-        WHERE r_part_of.status = "active"
-        MATCH (n)-[:HAS_ATTRIBUTE]->(attr:Attribute {name: "human_friendly_id"})
-        CALL (attr) {
-            MATCH (attr)-[r:HAS_VALUE]->(av)
+        WITH n, attr, av
+        WHERE r.status = "active"
+        // --------------------------
+        // Filter HAS_ATTRIBUTE edges to confirm the attribute
+        // is actively linked to the node on the correct branch
+        // --------------------------
+        CALL (n, attr) {
+            MATCH (attr)<-[r:HAS_ATTRIBUTE]-(n)
             WHERE %(branch_filter)s
-            RETURN av, r AS r_attr
+            RETURN r
             ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH n, av, r_attr
-        WHERE r_attr.status = "active" AND av.value IN $hfid_values
-        """ % {"branch_filter": branch_filter, "node_kind": self.node_kind}
+        WITH n, attr, av
+        WHERE r.status = "active"
+        // --------------------------
+        // Filter HAS_VALUE edges to resolve the active value
+        // on the correct branch at the requested point in time
+        // --------------------------
+        CALL (av, attr) {
+            MATCH (av)<-[r:HAS_VALUE]-(attr)
+            WHERE %(branch_filter)s
+            RETURN r
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH n, av, r
+        WHERE r.status = "active"
+        """ % {
+            "branch_filter": branch_filter,
+            "node_kind": self.node_kind,
+        }
 
         self.add_to_query(query)
-        self.return_labels = ["n.uuid AS node_uuid", "av.value AS hfid"]
+        self.return_labels = ["DISTINCT n.uuid AS node_uuid", "av.value AS hfid"]
 
     def get_node_uuids(self) -> list[str]:
         """Get the list of node UUIDs from the query results."""
@@ -1503,6 +1621,7 @@ class FieldAttributeRequirement:
     order_direction: OrderDirection | None = None
     # created_at, updated_at, created_by, updated_by
     is_metadata: bool = False
+    schema_order_position: int | None = None
 
     @property
     def is_attribute_value(self) -> bool:
@@ -1567,11 +1686,7 @@ class NodeGetListQuery(Query):
 
         # Force disabling order when `limit` is 1 as it simplifies the query a lot.
         if "limit" in kwargs and kwargs["limit"] == 1:
-            if order is None:
-                order = OrderModel(disable=True)
-            else:
-                order = copy(order)
-                order.disable = True
+            order = OrderModel(disable=True) if order is None else order.model_copy(update={"disable": True})
 
         self.requested_order = order
 
@@ -1589,17 +1704,17 @@ class NodeGetListQuery(Query):
             return True
         return False
 
-    def _get_metadata_order_fields(self) -> list[tuple[str, OrderDirection]]:
-        """Return the metadata field and direction to order by, or None."""
-        if not self.requested_order or not self.requested_order.node_metadata:
+    def _get_parsed_schema_order_by(self) -> list[ParsedOrderByEntry]:
+        if self.requested_order and self.requested_order.order_by:
+            return [
+                parse_order_by_entry(entry=entry, node_schema=self.schema) for entry in self.requested_order.order_by
+            ]
+        query_time_order_overrides_schema = bool(self.requested_order)
+        if query_time_order_overrides_schema:
             return []
-        fields: list[tuple[str, OrderDirection]] = []
-        nm = self.requested_order.node_metadata
-        if nm.created_at:
-            fields.append((METADATA_CREATED_AT, nm.created_at))
-        if nm.updated_at:
-            fields.append((METADATA_UPDATED_AT, nm.updated_at))
-        return fields
+        if not self.schema.order_by:
+            return []
+        return [parse_order_by_entry(entry=entry, node_schema=self.schema) for entry in self.schema.order_by]
 
     @property
     def _has_metadata_filters(self) -> bool:
@@ -1752,10 +1867,6 @@ WITH %(tracked_vars)s,
                         self.add_to_query(f"AND {field} {far.comparison_operator} ${param_name}")
                     self.params[param_name] = far.field_attr_value
 
-                if far.is_metadata_order:
-                    direction = far.order_direction or OrderDirection.ASC
-                    self.order_by.append(f"{field} {direction.value}")
-
     async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         self.order_by = []
 
@@ -1798,8 +1909,10 @@ WITH %(tracked_vars)s,
             return
 
         # Determine ordering behavior
-        disable_order = self.requested_order is not None and self.requested_order.disable
-        has_any_order = bool(self.schema.order_by) or self._get_metadata_order_fields()
+        disable_order = bool(self.requested_order and self.requested_order.disable)
+        has_any_order = bool(self.schema.order_by) or (
+            self.requested_order is not None and self.requested_order.has_explicit_entries
+        )
 
         # needs ordering or filter if...
         needs_order_or_filter = bool(
@@ -1837,10 +1950,13 @@ WITH %(tracked_vars)s,
         if not is_default_or_global:
             self._add_metadata_subqueries(field_requirements=field_attribute_requirements, branch_filter=branch_filter)
 
-        # Apply order subqueries for non-metadata attributes (metadata ordering handled by _add_metadata_subqueries)
+        # Apply order subqueries for non-metadata attributes.
         await self._add_node_order_attributes(
             db=db, field_requirements=field_attribute_requirements, branch_filter=branch_filter
         )
+
+        # Emit the outer ORDER BY clauses in the schema-declared order.
+        self._emit_schema_order_by(field_attribute_requirements)
 
         # Always order by uuid to guarantee pagination, see https://github.com/opsmill/infrahub/pull/4704.
         self.order_by.append("n.uuid")
@@ -1907,21 +2023,20 @@ WITH %(tracked_vars)s,
     ) -> None:
         """Add ordering subqueries for schema attributes.
 
-        Note: Metadata ordering (created_at, updated_at) is handled by _add_metadata_subqueries.
+        Outer ORDER BY clauses are emitted by _emit_schema_order_by() so mixed
+        metadata/attribute entries land in their schema-declared order.
         """
         for far in field_requirements:
             # Skip metadata ordering - handled by _add_metadata_subqueries
-            if far.is_metadata:
+            if far.is_metadata or not far.is_order:
                 continue
 
-            # Handle schema attribute ordering
             if far.field is None:
                 continue
 
             # If this field is also used for filtering, the filter subquery already
-            # extracted the value - just add it to order_by, don't create another subquery
+            # extracted the value - no dedicated order subquery needed.
             if far.is_filter:
-                self.order_by.append(far.node_value_query_variable)
                 continue
 
             subquery, subquery_params, _ = await build_subquery_order(
@@ -1939,7 +2054,14 @@ WITH %(tracked_vars)s,
 
             self.params.update(subquery_params)
             self.add_to_query(["CALL (n) {", subquery, "}", f"WITH {with_str}"])
-            self.order_by.append(far.node_value_query_variable)
+
+    def _emit_schema_order_by(self, field_requirements: list[FieldAttributeRequirement]) -> None:
+        order_reqs = [far for far in field_requirements if far.is_order]
+        order_reqs.sort(key=lambda far: far.schema_order_position if far.schema_order_position is not None else 0)
+        for far in order_reqs:
+            direction = (far.order_direction or OrderDirection.ASC).value
+            variable = far.field_name if far.is_metadata else far.node_value_query_variable
+            self.order_by.append(f"{variable} {direction}")
 
     def _build_filter_where_clause(self, far: FieldAttributeRequirement) -> str | None:
         """Build a WHERE clause for a single filter requirement.
@@ -1976,6 +2098,7 @@ WITH %(tracked_vars)s,
 
         Returns:
             Tuple of (field_name, operator) like ("created_at", "before"), or None if not a metadata filter.
+
         """
         if not filter_key.startswith(NODE_METADATA_PREFIX):
             return None
@@ -2082,97 +2205,127 @@ WITH %(tracked_vars)s,
 
         return requirements
 
+    def _upsert_metadata_order_requirement(
+        self,
+        filter_requirements: list[FieldAttributeRequirement],
+        metadata_field: str,
+        direction: OrderDirection,
+        position: int,
+        index: int,
+    ) -> FieldAttributeRequirement | None:
+        """Promote an existing filter FAR for the same metadata field, or build a new ORDER-only FAR.
+
+        Metadata filter FARs use operator-specific `field_attr_name` ("before", "after",
+        "value", ...), so we match on `field_name` alone — any FAR for the same metadata
+        field is fine because the outer ORDER BY references the field name directly.
+        """
+        for req in filter_requirements:
+            if req.field_name == metadata_field:
+                req.types.append(FieldAttributeRequirementType.ORDER)
+                req.order_direction = direction
+                req.schema_order_position = position
+                return None
+        return FieldAttributeRequirement(
+            field_name=metadata_field,
+            field=None,
+            field_attr_name=metadata_field,
+            field_attr_value=None,
+            index=index,
+            types=[FieldAttributeRequirementType.ORDER],
+            order_direction=direction,
+            is_metadata=True,
+            schema_order_position=position,
+        )
+
+    def _upsert_attribute_order_requirement(
+        self,
+        filter_requirements: list[FieldAttributeRequirement],
+        parsed: ParsedAttributeOrderBy | ParsedRelationshipAttributeOrderBy,
+        position: int,
+        index: int,
+    ) -> FieldAttributeRequirement | None:
+        if parsed.kind is OrderByTargetKind.ATTRIBUTE:
+            order_by_field_name = parsed.attribute_name
+            order_by_attr_property_name = parsed.property_name
+        else:
+            order_by_field_name = parsed.relationship_name
+            order_by_attr_property_name = f"{parsed.attribute_name}__{parsed.property_name}"
+
+        for req in filter_requirements:
+            if req.field_name == order_by_field_name and req.field_attr_name == order_by_attr_property_name:
+                req.types.append(FieldAttributeRequirementType.ORDER)
+                req.order_direction = parsed.direction
+                req.schema_order_position = position
+                return None
+
+        return FieldAttributeRequirement(
+            field_name=order_by_field_name,
+            field=self.schema.get_field(order_by_field_name),
+            field_attr_name=order_by_attr_property_name,
+            field_attr_value=None,
+            index=index,
+            types=[FieldAttributeRequirementType.ORDER],
+            order_direction=parsed.direction,
+            schema_order_position=position,
+        )
+
     def _get_order_requirements(
         self,
         filter_requirements: list[FieldAttributeRequirement],
-        start_index: int,
     ) -> list[FieldAttributeRequirement]:
         """Build ordering requirements.
 
-        Handles both metadata ordering and schema order_by.
+        Handles metadata-based and attribute-based ordering from query overrides or
+        the order_by defined on the schema.
         May modify existing requirements in filter_requirements to add ORDER type.
         Returns list of new FieldAttributeRequirement objects for order-only fields.
+        Each ORDER requirement is tagged with `schema_order_position` reflecting its
+        position in the originally declared ordering list, so the outer ORDER BY clause
+        can be emitted in the declared order regardless of which helper builds the subquery.
         """
-        # Build nested lookup map: field_name -> {field_attr_name -> requirement}
-        requirements_map: dict[str | None, dict[str, FieldAttributeRequirement]] = {}
-        for req in filter_requirements:
-            if req.field_name not in requirements_map:
-                requirements_map[req.field_name] = {}
-            requirements_map[req.field_name][req.field_attr_name] = req
-
         new_requirements: list[FieldAttributeRequirement] = []
-        index = start_index
+        base_index = len(filter_requirements) + 1
 
-        # Add metadata ordering requirements first
-        for metadata_field, direction in self._get_metadata_order_fields():
-            # Check if any filter exists for this metadata field
-            field_reqs = requirements_map.get(metadata_field)
-            existing_req = next(iter(field_reqs.values()), None) if field_reqs else None
-
-            if existing_req:
-                # Field already used for filtering, add ORDER type
-                existing_req.types.append(FieldAttributeRequirementType.ORDER)
-                existing_req.order_direction = direction
-            else:
-                new_requirements.append(
-                    FieldAttributeRequirement(
-                        field_name=metadata_field,
-                        field=None,
-                        field_attr_name=metadata_field,
-                        field_attr_value=None,
-                        index=index,
-                        types=[FieldAttributeRequirementType.ORDER],
-                        order_direction=direction,
-                        is_metadata=True,
-                    )
+        # requested order only supports metadata ordering for now
+        if self.requested_order and self.requested_order.node_metadata:
+            nm = self.requested_order.node_metadata
+            pairs: list[tuple[str, OrderDirection]] = []
+            if nm.created_at:
+                pairs.append((METADATA_CREATED_AT, nm.created_at))
+            if nm.updated_at:
+                pairs.append((METADATA_UPDATED_AT, nm.updated_at))
+            for position, (metadata_field, direction) in enumerate(pairs):
+                new_req = self._upsert_metadata_order_requirement(
+                    filter_requirements, metadata_field, direction, position, base_index + position
                 )
-            index += 1
+                if new_req is not None:
+                    new_requirements.append(new_req)
+            return new_requirements
 
-        # Add schema order_by requirements
-        for order_by_path in self.schema.order_by or []:
-            order_by_field_name, order_by_attr_property_name = order_by_path.split("__", maxsplit=1)
-
-            field = self.schema.get_field(order_by_field_name)
-            field_reqs = requirements_map.get(order_by_field_name)
-            existing_req = field_reqs.get(order_by_attr_property_name) if field_reqs else None
-            if existing_req:
-                # Field already used for filtering, add ORDER type
-                existing_req.types.append(FieldAttributeRequirementType.ORDER)
-                existing_req.order_direction = OrderDirection.ASC
-            else:
-                # New field requirement for ordering only
-                new_requirements.append(
-                    FieldAttributeRequirement(
-                        field_name=order_by_field_name,
-                        field=field,
-                        field_attr_name=order_by_attr_property_name,
-                        field_attr_value=None,
-                        index=index,
-                        types=[FieldAttributeRequirementType.ORDER],
-                        order_direction=OrderDirection.ASC,
-                    )
+        for position, parsed in enumerate(self._get_parsed_schema_order_by()):
+            if parsed.kind is OrderByTargetKind.METADATA:
+                new_req = self._upsert_metadata_order_requirement(
+                    filter_requirements,
+                    parsed.metadata_field.value,
+                    parsed.direction,
+                    position,
+                    base_index + position,
                 )
-                index += 1
+            else:
+                new_req = self._upsert_attribute_order_requirement(
+                    filter_requirements, parsed, position, base_index + position
+                )
+            if new_req is not None:
+                new_requirements.append(new_req)
 
         return new_requirements
 
     def _get_field_requirements(self, disable_order: bool = False) -> list[FieldAttributeRequirement]:
-        """Build unified list of field requirements for filtering and ordering.
-
-        Iterates through filters once, using _get_metadata_field_details to determine
-        whether each filter is metadata or attribute/relationship based.
-        """
-        # Get filter requirements (single pass through self.filters)
+        """Build unified list of field requirements for filtering and ordering."""
         filter_requirements = self._get_filter_requirements(start_index=1)
-
         if disable_order:
             return filter_requirements
-
-        # Get ordering requirements (may modify filter_requirements to add ORDER type)
-        next_index = len(filter_requirements) + 1
-        order_requirements = self._get_order_requirements(filter_requirements, start_index=next_index)
-
-        return filter_requirements + order_requirements
+        return filter_requirements + self._get_order_requirements(filter_requirements)
 
     def get_node_ids(self) -> list[str]:
         return [str(result.get("n.uuid")) for result in self.get_results()]
@@ -2317,6 +2470,7 @@ class NodeGetHierarchyQuery(Query):
         node_schema: NodeSchema | GenericSchema,
         filters: dict | None = None,
         hierarchical_ordering: bool = False,
+        order: OrderModel | None = None,
         **kwargs: Any,
     ) -> None:
         self.filters = filters or {}
@@ -2324,10 +2478,11 @@ class NodeGetHierarchyQuery(Query):
         self.node_id = node_id
         self.node_schema = node_schema
         self.hierarchical_ordering = hierarchical_ordering
+        self.requested_order = order
 
         super().__init__(**kwargs)
 
-    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002,PLR0915
+    async def query_init(self, db: InfrahubDatabase, **kwargs: Any) -> None:  # noqa: ARG002
         hierarchy_schema = self.node_schema.get_hierarchy_schema(db=db, branch=self.branch)
         branch_filter, branch_params = self.branch.get_query_filter_path(at=self.at.to_string())
         self.params.update(branch_params)
@@ -2339,10 +2494,9 @@ class NodeGetHierarchyQuery(Query):
         )
         self.params["hierarchy"] = hierarchy_schema.kind
 
-        if self.direction == RelationshipHierarchyDirection.ANCESTORS:
-            filter_str = f"-{filter_str}->"
-        else:
-            filter_str = f"<-{filter_str}-"
+        filter_str = (
+            f"-{filter_str}->" if self.direction == RelationshipHierarchyDirection.ANCESTORS else f"<-{filter_str}-"
+        )
 
         froms_var = db.render_list_comprehension(items="relationships(path)", item_name="from")
         with_clause = (
@@ -2353,45 +2507,39 @@ class NodeGetHierarchyQuery(Query):
 
         query = """
         MATCH path = (n:Node { uuid: $uuid } )%(filter)s(peer:Node)
-        WHERE $hierarchy IN LABELS(peer) and all(r IN relationships(path) WHERE (%(branch_filter)s))
-        WITH n, collect(last(nodes(path))) AS peers_with_duplicates
-        CALL (peers_with_duplicates) {
-            UNWIND peers_with_duplicates AS pwd
-            RETURN DISTINCT pwd AS peer
-        }
-
+        WHERE $hierarchy IN LABELS(peer) AND all(r IN relationships(path) WHERE (%(branch_filter)s))
         """ % {"filter": filter_str, "branch_filter": branch_filter}
 
         if not self.branch.is_default:
             query += """
+        WITH DISTINCT n, last(nodes(path)) AS peer
         CALL (n, peer) {
             MATCH path = (n)%(filter)s(peer)
             WHERE all(r IN relationships(path) WHERE (%(branch_filter)s))
             WITH %(with_clause)s
-            RETURN peer as peer1, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+            RETURN all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
             ORDER BY branch_level DESC, froms[-1] DESC, froms[-2] DESC, is_active DESC
             LIMIT 1
         }
-        WITH peer1 as peer, is_active
-            """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
+        WITH peer, is_active
+        """ % {"filter": filter_str, "branch_filter": branch_filter, "with_clause": with_clause}
         else:
             query += """
-        WITH peer
+        WITH DISTINCT n, last(nodes(path)) AS peer, all(r IN relationships(path) WHERE (r.status = "active")) AS is_active
+        WITH peer, is_active
             """
 
         self.add_to_query(query)
-        where_clause = ["is_active = TRUE"] if not self.branch.is_default else []
+        where_clause = ["is_active = TRUE"]
 
         clean_filters = extract_field_filters(field_name=self.direction.value, filters=self.filters)
 
         if (clean_filters and "id" in clean_filters) or "ids" in clean_filters:
             where_clause.append("peer.uuid IN $peer_ids")
-            self.params["peer_ids"] = clean_filters.get("ids", [])
-            if clean_filters.get("id", None):
-                self.params["peer_ids"].append(clean_filters.get("id"))
+            extra_id = [clean_filters["id"]] if clean_filters.get("id") else []
+            self.params["peer_ids"] = list(clean_filters.get("ids", [])) + extra_id
 
-        if where_clause:
-            self.add_to_query("WHERE " + " AND ".join(where_clause))
+        self.add_to_query("WHERE " + " AND ".join(where_clause))
 
         self.return_labels = ["peer"]
 
@@ -2436,32 +2584,83 @@ class NodeGetHierarchyQuery(Query):
         # ----------------------------------------------------------------------------
         if self.hierarchical_ordering:
             return
-        if hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
-            order_cnt = 1
+        await self._add_peer_order_by(db=db, hierarchy_schema=hierarchy_schema, branch_filter=branch_filter)
+        self.order_by.append("peer.uuid ASC")
 
-            for order_by_value in hierarchy_schema.order_by:
-                order_by_field_name, order_by_next_name = order_by_value.split("__", maxsplit=1)
+    async def _add_peer_order_by(
+        self, db: InfrahubDatabase, hierarchy_schema: NodeSchema | GenericSchema, branch_filter: str
+    ) -> None:
+        if self.requested_order and self.requested_order.disable:
+            return
 
-                field = hierarchy_schema.get_field(order_by_field_name)
+        if self.requested_order and self.requested_order.order_by:
+            entries: list[ParsedOrderByEntry] = [
+                parse_order_by_entry(entry=entry, node_schema=hierarchy_schema)
+                for entry in self.requested_order.order_by
+            ]
+        elif self.requested_order and self.requested_order.node_metadata:
+            nm = self.requested_order.node_metadata
+            entries = []
+            if nm.created_at:
+                entries.append(
+                    ParsedMetadataOrderBy(
+                        raw=f"{_NODE_METADATA_PREFIX}__{METADATA_CREATED_AT}",
+                        direction=nm.created_at,
+                        metadata_field=OrderByMetadataField.CREATED_AT,
+                    )
+                )
+            if nm.updated_at:
+                entries.append(
+                    ParsedMetadataOrderBy(
+                        raw=f"{_NODE_METADATA_PREFIX}__{METADATA_UPDATED_AT}",
+                        direction=nm.updated_at,
+                        metadata_field=OrderByMetadataField.UPDATED_AT,
+                    )
+                )
+        elif hasattr(hierarchy_schema, "order_by") and hierarchy_schema.order_by:
+            entries = [
+                parse_order_by_entry(entry=entry, node_schema=hierarchy_schema) for entry in hierarchy_schema.order_by
+            ]
+        else:
+            return
 
-                subquery, subquery_params, subquery_result_name = await build_subquery_order(
-                    db=db,
-                    field=field,
-                    node_alias="peer",
-                    name=order_by_field_name,
-                    order_by=order_by_next_name,
-                    branch_filter=branch_filter,
+        for order_cnt, parsed in enumerate(entries, start=1):
+            if parsed.kind is OrderByTargetKind.METADATA:
+                subquery, subquery_params, subquery_result_name = build_subquery_order_metadata(
+                    metadata_field=parsed.metadata_field.value,
                     branch=self.branch,
+                    branch_filter=branch_filter,
+                    branch_agnostic=self.branch_agnostic,
+                    node_alias="peer",
                     subquery_idx=order_cnt,
                 )
-                self.order_by.append(subquery_result_name)
+                self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
                 self.params.update(subquery_params)
-
                 self.add_subquery(subquery=subquery, node_alias="peer")
+                continue
 
-                order_cnt += 1
-        else:
-            self.order_by.append("peer.uuid")
+            if parsed.kind is OrderByTargetKind.ATTRIBUTE:
+                order_by_field_name = parsed.attribute_name
+                order_by_next_name = parsed.property_name
+            else:
+                order_by_field_name = parsed.relationship_name
+                order_by_next_name = f"{parsed.attribute_name}__{parsed.property_name}"
+
+            field = hierarchy_schema.get_field(order_by_field_name)
+
+            subquery, subquery_params, subquery_result_name = await build_subquery_order(
+                db=db,
+                field=field,
+                node_alias="peer",
+                name=order_by_field_name,
+                order_by=order_by_next_name,
+                branch_filter=branch_filter,
+                branch=self.branch,
+                subquery_idx=order_cnt,
+            )
+            self.order_by.append(f"{subquery_result_name} {parsed.direction.value}")
+            self.params.update(subquery_params)
+            self.add_subquery(subquery=subquery, node_alias="peer")
 
     def get_peer_ids(self) -> Generator[str, None, None]:
         for result in self.get_results_group_by(("peer", "uuid")):

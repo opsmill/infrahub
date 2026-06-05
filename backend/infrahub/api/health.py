@@ -4,21 +4,19 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, Request, Response
 
-from infrahub.health import HealthResponse, OverallStatus, health_report
+from infrahub.health import HealthResponse, OverallStatus
 
 if TYPE_CHECKING:
-    from infrahub.database import InfrahubDatabase
-    from infrahub.services import InfrahubServices
+    from infrahub.health import HealthChecker
 
 router = APIRouter()
 
 
 @router.get("/health", response_model=HealthResponse, responses={503: {"model": HealthResponse}})
 async def health(request: Request) -> Response:
-    service: InfrahubServices = request.app.state.service
-    db: InfrahubDatabase = request.app.state.db
+    health_checker: HealthChecker = request.app.state.health_checker
 
-    response_data = await health_report(service=service, db=db)
+    response_data = await health_checker.report()
 
     return Response(
         content=response_data.model_dump_json(),

@@ -1,3 +1,5 @@
+import re
+import shutil
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
@@ -17,7 +19,6 @@ from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
 from infrahub.exceptions import (
     CheckError,
-    CommitNotFoundError,
     RepositoryError,
     RepositoryFileNotFoundError,
     RepositoryInvalidBranchError,
@@ -209,7 +210,17 @@ async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubReposito
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(CommitNotFoundError):
+    with pytest.raises(GitCommandError, match="invalid reference"):
+        repo.create_commit_worktree(commit=commit)
+
+
+async def test_create_commit_worktree_wrong_commit_no_origin(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    repo.has_origin = False
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    with pytest.raises(RepositoryError, match="no remote origin configured"):
         repo.create_commit_worktree(commit=commit)
 
 
@@ -295,9 +306,17 @@ async def test_get_branches_from_graph(
 
 async def test_get_commit_value(git_repo_01: InfrahubRepository) -> None:
     repo = git_repo_01
-    assert repo.get_commit_value(branch_name="main", remote=True) == "f165752c1047beb50f610c01bf40d45f211607e1"
-    assert repo.get_commit_value(branch_name="branch01", remote=True) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
-    assert repo.get_commit_value(branch_name="branch02", remote=True) == "4e2fd98a5fd1fb61dc53150c778e22ee35f26191"
+    commit_main = repo.get_commit_value(branch_name="main", remote=True)
+    commit_branch01 = repo.get_commit_value(branch_name="branch01", remote=True)
+    commit_branch02 = repo.get_commit_value(branch_name="branch02", remote=True)
+
+    # Each value should be a full 40-character SHA
+    assert re.fullmatch(r"[0-9a-f]{40}", commit_main)
+    assert re.fullmatch(r"[0-9a-f]{40}", commit_branch01)
+    assert re.fullmatch(r"[0-9a-f]{40}", commit_branch02)
+
+    # Each branch should be at a distinct commit
+    assert len({commit_main, commit_branch01, commit_branch02}) == 3
 
     with pytest.raises(ValueError):
         repo.get_commit_value(branch_name="branch01", remote=False)
@@ -321,19 +340,21 @@ async def test_compare_remote_local_no_diff(git_repo_02: InfrahubRepository) -> 
 
 async def test_create_branch_in_git_present_remote(git_repo_01: InfrahubRepository, branch01: BranchData) -> None:
     repo = git_repo_01
+    expected_commit = repo.get_commit_value(branch_name=branch01.name, remote=True)
     await repo.create_branch_in_git(branch_name=branch01.name, branch_id=branch01.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch01.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
+    assert repo.get_commit_value(branch_name=branch01.name) == expected_commit
     assert len(worktrees) == 4
 
 
 async def test_create_branch_in_git_not_in_remote(git_repo_01: InfrahubRepository, branch99: BranchData) -> None:
     repo = git_repo_01
+    expected_commit = repo.get_commit_value(branch_name="main", remote=True)
     await repo.create_branch_in_git(branch_name=branch99.name, branch_id=branch99.id)
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch99.name) == "f165752c1047beb50f610c01bf40d45f211607e1"
+    assert repo.get_commit_value(branch_name=branch99.name) == expected_commit
     assert len(worktrees) == 3
 
 
@@ -395,6 +416,23 @@ async def test_pull_new_branch(git_repo_01: InfrahubRepository) -> None:
         update_commit_value=False,
     )
     assert response is True
+
+
+async def test_pull_new_branch_updates_commit_value(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    await repo.fetch()
+
+    branch_name = "branch02"
+
+    response = await repo.pull(
+        branch_name=branch_name,
+        branch_id="469cd407-0a8f-4d4e-9629-84fa435cf5ad",
+        create_if_missing=True,
+        update_commit_value=True,
+    )
+
+    commit = repo.get_commit_value(branch_name=branch_name, remote=False)
+    assert response == commit
 
 
 async def test_pull_branch_conflict(git_repo_06: InfrahubRepository) -> None:
@@ -512,7 +550,7 @@ async def test_sync_new_branch(
         mock_import.assert_awaited()
     worktrees = repo.get_worktrees()
 
-    assert repo.get_commit_value(branch_name=branch.name) == "30e911e25ef9e4fad9f9d00fe05395031f90d460"
+    assert repo.get_commit_value(branch_name=branch.name) == commit
     assert len(worktrees) == 4
 
 
@@ -1136,3 +1174,35 @@ async def test_repo_merge_use_explicit_merge_commit(
     response = await repo.merge(source_branch=branch02.name, dest_branch="main")
     commit = repo.get_git_repo_main().commit(response)
     assert commit.message.strip() == "Merged by Infrahub"
+
+
+async def test_init_reinitialized_after_missing_directory(
+    git_repo_02: InfrahubRepository, git_upstream_repo_02: dict[str, str | Path]
+) -> None:
+    """Verify that when the local clone directory is missing, re-clones from the upstream and sets the reinitialized flag."""
+    original_commit = git_repo_02.get_commit_value(branch_name="main", remote=False)
+    repo_id = git_repo_02.id
+
+    assert not git_repo_02.reinitialized
+
+    shutil.rmtree(git_repo_02.directory_root)
+    assert not git_repo_02.directory_root.exists()
+
+    recovered = await InfrahubRepository.init(
+        id=repo_id,
+        name=git_upstream_repo_02["name"],
+        location=str(git_upstream_repo_02["path"]),
+        client=InfrahubClient(config=Config(requester=dummy_async_request)),
+    )
+
+    assert recovered.reinitialized
+    assert recovered.directory_root.is_dir()
+    assert recovered.directory_branches.is_dir()
+    assert recovered.directory_commits.is_dir()
+    assert recovered.has_origin
+
+    assert recovered.get_commit_value(branch_name="main", remote=False) == original_commit
+
+    new_branches, updated_branches = await recovered.compare_local_remote()
+    assert not new_branches
+    assert not updated_branches

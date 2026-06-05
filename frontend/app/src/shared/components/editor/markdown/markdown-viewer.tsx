@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { useState } from "react";
 
 import { CodeViewer } from "@/shared/components/editor/code/code-viewer";
-import { Button } from "@/shared/components/ui/button";
 import { classNames } from "@/shared/utils/common";
 
 import { MarkdownRender } from "./markdown-render";
@@ -18,7 +18,7 @@ export function MarkdownViewer({ children }: { children: string }) {
             "rounded-none border-custom-blue-700 border-b",
             displayRaw ? "border-0" : ""
           )}
-          onClick={() => setDisplayRaw(false)}
+          onPress={() => setDisplayRaw(false)}
         >
           View
         </Button>
@@ -29,7 +29,7 @@ export function MarkdownViewer({ children }: { children: string }) {
             "rounded-none border-custom-blue-700 border-b",
             displayRaw ? "" : "border-0"
           )}
-          onClick={() => setDisplayRaw(true)}
+          onPress={() => setDisplayRaw(true)}
         >
           Raw
         </Button>

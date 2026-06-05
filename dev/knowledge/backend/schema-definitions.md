@@ -64,7 +64,7 @@ core_standard_webhook = NodeSchema(
 |------|---------|
 | `GENERIC` | Standard association between nodes |
 | `ATTRIBUTE` | Peer is semantically part of the parent (e.g., headers on a webhook) |
-| `COMPONENT` | Triggers template generation for the peer |
+| `COMPONENT` | Triggers template generation for the peer (see [Object Templates](templates.md)) |
 | `PARENT` | Hierarchical parent-child relationship |
 | `GROUP` | Group membership |
 

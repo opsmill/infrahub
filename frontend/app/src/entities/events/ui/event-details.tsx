@@ -1,6 +1,9 @@
 import type {
   AccountLoggedInEventType,
   AccountLoggedOutEventType,
+  GroupAutoCreateCappedEventType,
+  GroupAutoCreatedEventType,
+  GroupAutoCreateRejectedEventType,
 } from "@/shared/api/graphql/generated/types";
 import { CopyToClipboard } from "@/shared/components/buttons/copy-to-clipboard";
 import { DateDisplay } from "@/shared/components/display/date-display";
@@ -45,8 +48,61 @@ const AccountLoggedOutEventDetails = ({ event }: { event: AccountLoggedOutEventT
   );
 };
 
+const GroupAutoCreatedEventDetails = ({ event }: { event: GroupAutoCreatedEventType }) => {
+  return (
+    <>
+      <PropertyRow title="Identity Provider" value={event.idp} />
+      <PropertyRow title="Protocol" value={event.protocol} />
+      <PropertyRow title="Triggering User" value={event.triggering_user_name} />
+      <PropertyRow title="Group Name" value={event.group_name} />
+      <PropertyRow title="Group ID" value={event.group_id} />
+      <PropertyRow title="Source Pattern" value={event.source_pattern} />
+      <PropertyRow title="Origin" value={event.origin_value} />
+    </>
+  );
+};
+
+const GroupAutoCreateRejectedEventDetails = ({
+  event,
+}: {
+  event: GroupAutoCreateRejectedEventType;
+}) => {
+  return (
+    <>
+      <PropertyRow title="Identity Provider" value={event.idp} />
+      <PropertyRow title="Protocol" value={event.protocol} />
+      <PropertyRow title="Triggering User" value={event.triggering_user_name} />
+      <PropertyRow title="Rejected Claim" value={event.rejected_claim_value} />
+    </>
+  );
+};
+
+const GroupAutoCreateCappedEventDetails = ({
+  event,
+}: {
+  event: GroupAutoCreateCappedEventType;
+}) => {
+  return (
+    <>
+      <PropertyRow title="Identity Provider" value={event.idp} />
+      <PropertyRow title="Protocol" value={event.protocol} />
+      <PropertyRow title="Triggering User" value={event.triggering_user_name} />
+      <PropertyRow title="Cap Value" value={event.cap_value} />
+      <PropertyRow title="Dropped Count" value={event.dropped_count} />
+      <PropertyRow title="Dropped Claims" value={event.dropped_claims.join(", ")} />
+    </>
+  );
+};
+
 export const EventDetails = (props: EventType) => {
   const { id, event, branch, occurred_at, account_id, primary_node, related_nodes } = props;
+
+  const displayedBranch =
+    branch ??
+    ("deleted_branch" in props ? props.deleted_branch : undefined) ??
+    ("created_branch" in props ? props.created_branch : undefined) ??
+    ("rebased_branch" in props ? props.rebased_branch : undefined) ??
+    ("source_branch" in props ? props.source_branch : undefined);
 
   return (
     <div className="divide-y divide-gray-200">
@@ -61,7 +117,7 @@ export const EventDetails = (props: EventType) => {
 
       <PropertyRow title="Event" value={event} />
 
-      <PropertyRow title="Branch" value={branch} />
+      <PropertyRow title="Branch" value={displayedBranch} />
 
       <PropertyRow title="Occured at" value={<DateDisplay date={occurred_at} />} />
 
@@ -178,6 +234,18 @@ export const EventDetails = (props: EventType) => {
 
       {props.__typename === "AccountLoggedOutEventType" && (
         <AccountLoggedOutEventDetails event={props} />
+      )}
+
+      {props.__typename === "GroupAutoCreatedEventType" && (
+        <GroupAutoCreatedEventDetails event={props} />
+      )}
+
+      {props.__typename === "GroupAutoCreateRejectedEventType" && (
+        <GroupAutoCreateRejectedEventDetails event={props} />
+      )}
+
+      {props.__typename === "GroupAutoCreateCappedEventType" && (
+        <GroupAutoCreateCappedEventDetails event={props} />
       )}
     </div>
   );

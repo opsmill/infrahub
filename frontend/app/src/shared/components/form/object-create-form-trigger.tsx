@@ -1,6 +1,8 @@
 import { Icon } from "@iconify-icon/react";
+import { Button, type ButtonProps } from "@infrahub/ui";
 import { useState } from "react";
 
+import { Tooltip } from "@/shared/components/aria/tooltip";
 import SlideOver, { SlideOverTitle } from "@/shared/components/display/slide-over";
 import ObjectForm from "@/shared/components/form/object-form";
 import { ARTIFACT_OBJECT } from "@/shared/config/constants";
@@ -8,10 +10,7 @@ import { ARTIFACT_OBJECT } from "@/shared/config/constants";
 import type { Permission } from "@/entities/permission/types";
 import type { ModelSchema } from "@/entities/schema/types";
 
-import { type ButtonProps, ButtonWithTooltip } from "../ui/button";
-
-interface ObjectCreateFormTriggerProps
-  extends Omit<ButtonProps, "disabled" | "tooltipEnabled" | "tooltipContent"> {
+interface ObjectCreateFormTriggerProps extends ButtonProps {
   schema: ModelSchema;
   onSuccess?: (newObject: any) => void;
   permission: Permission;
@@ -20,7 +19,6 @@ interface ObjectCreateFormTriggerProps
 export const ObjectCreateFormTrigger = ({
   schema,
   onSuccess,
-  isLoading,
   permission,
   ...props
 }: ObjectCreateFormTriggerProps) => {
@@ -33,17 +31,18 @@ export const ObjectCreateFormTrigger = ({
 
   return (
     <>
-      <ButtonWithTooltip
-        data-testid="create-object-button"
-        disabled={!isAllowed || isLoading}
-        onClick={() => setShowCreateDrawer(true)}
-        tooltipContent={message}
-        tooltipEnabled={!isAllowed}
-        {...props}
-      >
-        <Icon icon="mdi:plus" className="mr-1.5 text-sm" />
-        Add {schema?.label}
-      </ButtonWithTooltip>
+      <Tooltip message={message}>
+        <Button
+          data-testid="create-object-button"
+          size="sm"
+          isDisabledAndFocusable={!isAllowed}
+          onPress={() => setShowCreateDrawer(true)}
+          {...props}
+        >
+          <Icon icon="mdi:plus" />
+          Add {schema?.label}
+        </Button>
+      </Tooltip>
 
       <SlideOver
         title={

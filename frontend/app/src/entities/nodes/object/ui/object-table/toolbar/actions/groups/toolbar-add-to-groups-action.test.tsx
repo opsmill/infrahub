@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from "vitest";
 
+import { queryClient } from "@/shared/api/rest/client";
 import { store } from "@/shared/stores";
 
 import { ObjectTableContext } from "@/entities/nodes/object/ui/object-table/object-table-context";
@@ -31,6 +32,7 @@ describe("ToolbarAddToGroupsAction Component", () => {
   const groupSchema = generateNodeSchema({ kind: "CoreGroup" });
 
   beforeEach(() => {
+    queryClient.clear();
     vi.clearAllMocks();
     vi.mocked(getRelationships).mockResolvedValue(mockGroups);
     store.set(nodeSchemasAtom, [groupSchema]);
@@ -57,8 +59,58 @@ describe("ToolbarAddToGroupsAction Component", () => {
 
     // THEN
     await expect.element(component.getByRole("dialog", { name: "Add to groups" })).toBeVisible();
-    await expect.element(component.getByPlaceholder("Filter...")).toBeVisible();
+    await expect.element(component.getByPlaceholder("Search by value or UUID...")).toBeVisible();
     await expect.element(component.getByRole("option", { name: "Test Group 1" })).toBeVisible();
     await expect.element(component.getByRole("option", { name: "Test Group 2" })).toBeVisible();
+  });
+
+  test("hides internal groups from the add-to-groups dropdown", async () => {
+    // GIVEN: a default user-assignable group and an internal system-managed group exist;
+    // the API filters by group_type when the caller asks for it
+    const userGroup: RelationshipNode = {
+      id: "group-default",
+      display_label: "User Group",
+      __typename: "CoreGroup",
+    };
+    const internalGroup: RelationshipNode = {
+      id: "group-internal",
+      display_label: "Internal Group",
+      __typename: "CoreGroup",
+    };
+    vi.mocked(getRelationships).mockImplementation(async (params) => {
+      const requestedTypes = params?.filterQuery?.group_type__values as string[] | undefined;
+      if (requestedTypes && !requestedTypes.includes("internal")) {
+        return [userGroup];
+      }
+      return [userGroup, internalGroup];
+    });
+
+    const component = await render(
+      <ObjectTableContext
+        value={{
+          filters: [],
+          setFilters: vi.fn(),
+          baseSchema: schema,
+          selectedSchema: schema,
+          permission: PERMISSION_ALLOW_ALL,
+        }}
+      >
+        <ToolbarAddToGroupsAction selectedRows={mockSelectedRows} />
+      </ObjectTableContext>
+    );
+
+    // WHEN
+    await component.getByRole("button", { name: "Add to groups" }).click();
+
+    // THEN
+    await expect.element(component.getByRole("option", { name: "User Group" })).toBeVisible();
+    await expect
+      .poll(() =>
+        component
+          .getByTestId("group-selector")
+          .getByRole("option", { name: "Internal Group" })
+          .query()
+      )
+      .toBeNull();
   });
 });

@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 
 import { ACCOUNT_STATE_PATH } from "../../constants";
-import { createBranch, generateRandomBranchName } from "../../utils";
+import { generateRandomBranchName } from "../../utils";
+import { createBranchAPI } from "../utils/graphql";
 
 test.describe("Branches creation and deletion", () => {
   test.describe("when logged in as Admin", () => {
@@ -13,7 +14,7 @@ test.describe("Branches creation and deletion", () => {
 
     test("should create a new branch", async ({ page }) => {
       await page.goto("/");
-      await page.getByTestId("branch-selector-trigger").click();
+      await page.getByRole("button", { name: "main" }).click();
       await page.getByTestId("create-branch-button").click();
 
       // Form
@@ -23,15 +24,15 @@ test.describe("Branches creation and deletion", () => {
       await page.getByRole("button", { name: "Create a new branch" }).click();
 
       // After submit
-      await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
+      await expect(page.getByRole("button", { name: BRANCH_NAME_1 })).toBeVisible();
       await expect(page).toHaveURL(new RegExp(`.*?branch=${BRANCH_NAME_1}`));
     });
 
     test("should display the new branch", async ({ page }) => {
       await page.goto("/");
-      await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("branch-list")).toContainText(BRANCH_NAME_1);
+      await page.getByRole("button", { name: "main" }).click();
 
+      await expect(page.getByLabel("branch list")).toContainText(BRANCH_NAME_1);
       await page.getByRole("link", { name: "View all branches" }).click();
       await expect(page).toHaveURL(/.*\/branches/);
 
@@ -47,9 +48,8 @@ test.describe("Branches creation and deletion", () => {
       expect(page.url()).toContain(`/branches/${BRANCH_NAME_1}`);
     });
 
-    test("create a new branch for next step", async ({ page }) => {
-      await page.goto("/");
-      await createBranch(page, BRANCH_NAME_2);
+    test("create a new branch for next step", async ({ request }) => {
+      await createBranchAPI(request, BRANCH_NAME_2);
     });
 
     test("should delete a non-selected branch and remain on the current branch", async ({
@@ -67,11 +67,13 @@ test.describe("Branches creation and deletion", () => {
       await modalDelete.getByRole("button", { name: "Delete" }).click();
 
       // we should stay on the branch
-      await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
-      await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("branch-list")).toContainText(BRANCH_NAME_1);
-      await expect(page.getByTestId("branch-list")).not.toContainText(BRANCH_NAME_2);
       await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
+      await expect(page.getByTestId("branch-selector-trigger")).toContainText(BRANCH_NAME_1);
+
+      await page.getByTestId("branch-selector-trigger").click();
+      await expect(page.getByLabel("branch list")).toContainText(BRANCH_NAME_1);
+      await expect(page.getByLabel("branch list")).not.toContainText(BRANCH_NAME_2);
+
       expect(page.url()).toContain(`/branches?branch=${BRANCH_NAME_1}`);
     });
 
@@ -83,8 +85,9 @@ test.describe("Branches creation and deletion", () => {
 
       await expect(page.getByRole("heading", { name: "Branches" })).toBeVisible();
       expect(page.url()).toContain("/branches");
-      await page.getByTestId("branch-selector-trigger").click();
-      await expect(page.getByTestId("branch-list")).not.toContainText(BRANCH_NAME_1);
+      await page.getByRole("button", { name: "main" }).click();
+
+      await expect(page.getByLabel("branch list")).not.toContainText(BRANCH_NAME_1);
     });
 
     test("should search for a branch", async ({ page }) => {

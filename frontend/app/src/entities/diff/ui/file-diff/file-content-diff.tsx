@@ -1,5 +1,3 @@
-import { gql, useQuery } from "@apollo/client";
-import { useAtom } from "jotai";
 import { PencilLineIcon } from "lucide-react";
 import { useState } from "react";
 import { Diff, getChangeKey, Hunk, parseDiff } from "react-diff-view";
@@ -14,10 +12,9 @@ import {
 
 import type { FileDiffFile } from "@/entities/diff/domain/get-files-diff";
 import { useGetFile } from "@/entities/diff/ui/queries/get-file.query";
-import { getProposedChangesFilesThreads } from "@/entities/proposed-changes/api/getProposedChangesFilesThreads";
+import { useGetFileContentDiff } from "@/entities/diff/ui/queries/get-file-content-diff.query";
 import { AddComment } from "@/entities/proposed-changes/ui/conversations/add-comment";
 import { Thread } from "@/entities/proposed-changes/ui/conversations/thread";
-import { nodeSchemasAtom } from "@/entities/schema/stores/schema.atom";
 import "react-diff-view/style/index.css";
 
 import { Button } from "react-aria-components";
@@ -113,7 +110,6 @@ export function FileContentDiff({
 }: FileContentDiffProps) {
   const { proposedChangeId } = useParams();
   const { isAuthenticated } = useAuth();
-  const [schemaList] = useAtom(nodeSchemasAtom);
   const [displayAddComment, setDisplayAddComment] = useState<any>({});
   const createObject = useCreateObjectMutation();
   const deleteObject = useDeleteObjectMutation();
@@ -138,28 +134,17 @@ export function FileContentDiff({
     commit: commitTo,
   });
 
-  const schemaData = schemaList.find((s) => s.kind === PROPOSED_CHANGES_FILE_THREAD_OBJECT);
+  const {
+    isLoading: isThreadsLoading,
+    error,
+    data,
+    refetch,
+  } = useGetFileContentDiff(
+    { proposedChangeId: proposedChangeId ?? "" },
+    { enabled: !!proposedChangeId }
+  );
 
-  const queryString =
-    schemaData && proposedChangeId
-      ? getProposedChangesFilesThreads({
-          id: proposedChangeId,
-          kind: schemaData.kind,
-        })
-      : ""; // Empty query to make the gql parsing work
-
-  const query = queryString
-    ? gql`
-        ${queryString}
-      `
-    : "";
-
-  const { loading, error, data, refetch } = query
-    ? useQuery(query, { skip: !schemaData })
-    : { loading: false, error: null, data: null, refetch: null };
-
-  const threads =
-    data && schemaData?.kind ? data[schemaData?.kind]?.edges?.map((edge: any) => edge.node) : [];
+  const threads = data?.threads ?? [];
 
   const handleCloseComment = () => {
     setDisplayAddComment({});
@@ -320,7 +305,7 @@ export function FileContentDiff({
     );
   };
 
-  if (loading || isPendingPreviousFile || isPendingNewFile) {
+  if (isThreadsLoading || isPendingPreviousFile || isPendingNewFile) {
     return <LoadingIndicator className="p-4" />;
   }
 

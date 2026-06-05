@@ -37,7 +37,7 @@ class DiffSummaryCounters(BaseModel):
 
 
 class DiffSummaryQuery(Query):
-    """Get a Summary of the diff"""
+    """Get a Summary of the diff."""
 
     name = "enriched_diff_summary"
     type = QueryType.READ

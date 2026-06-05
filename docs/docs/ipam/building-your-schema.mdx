@@ -1,0 +1,64 @@
+---
+title: Building your IPAM schema
+---
+
+An IPAM namespace is already provided with Infrahub out of the box, so there is no need to redefine it unless you require additional attributes. The default `IpamNamespace` implementation is minimal — it exposes only a name and a description.
+
+The schema below defines two nodes: `IpamIPPrefix` for IP prefixes and `IpamIPAddress` for IP addresses. Both inherit from the built-in generics.
+
+```yaml title="Schema definition implementing IPAM generics"
+# yaml-language-server: $schema=https://schema.infrahub.app/develop/schema.schema.json
+---
+version: "1.0"
+nodes:
+  - name: "IPPrefix"
+    namespace: "Ipam"
+    inherit_from:
+      - "BuiltinIPPrefix"
+    description: "IPv4 or IPv6 network"
+    icon: "mdi:ip-network"
+    label: "IP Prefix"
+    menu_placement: "IpamNamespace"
+  - name: "IPAddress"
+    namespace: "Ipam"
+    inherit_from:
+      - "BuiltinIPAddress"
+    description: "IPv4 or IPv6 address"
+    icon: "mdi:ip"
+    label: "IP Address"
+    menu_placement: "IpamNamespace"
+```
+
+Load the schema with:
+
+```shell
+infrahubctl schema load schema.yml
+```
+
+## GraphQL queries and mutations
+
+A schema inheriting the IPAM generics generates the following GraphQL queries:
+
+- `IpamIPPrefix`
+- `IpamIPAddress`
+
+And the following mutations:
+
+- `IpamIPPrefixCreate`
+- `IpamIPPrefixUpdate`
+- `IpamIPPrefixUpsert`
+- `IpamIPPrefixDelete`
+- `IpamIPAddressCreate`
+- `IpamIPAddressUpdate`
+- `IpamIPAddressUpsert`
+- `IpamIPAddressDelete`
+
+IP prefixes are organised as a hierarchy. Hierarchical nodes have special relationships: `parent`, `children`, `ancestors`, and `descendants`. These can be used in queries. However, in the case of IPAM they cannot be used in mutations — Infrahub manages those relationships automatically.
+
+IP prefixes also expose the following read-only computed attributes:
+
+- `utilization` — utilization of the prefix as a percentage
+- `netmask` — network mask, e.g. `255.255.255.0`
+- `hostmask` — host mask, e.g. `0.0.0.255`
+- `network_address` — first IP address of the prefix
+- `broadcast_address` — last IP address of the prefix

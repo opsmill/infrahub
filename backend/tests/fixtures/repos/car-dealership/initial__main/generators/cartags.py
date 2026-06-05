@@ -3,9 +3,7 @@ from infrahub_sdk.generator import InfrahubGenerator
 
 class Generator(InfrahubGenerator):
     async def generate(self, data: dict) -> None:
-        """
-        This generator creates a tag for each owner-car association.
-        """
+        """This generator creates a tag for each owner-car association."""
         owner = data["TestingPerson"]["edges"][0]["node"]
         owner_name: str = owner["name"]["value"]
         for car in owner["cars"]["edges"]:

@@ -15,14 +15,14 @@ import { objectDecisionOptions } from "@/entities/role-manager/constants";
 import { getDecisionColumn } from "@/entities/role-manager/ui/get-decision-column";
 import type { ModelSchema, RelationshipSchema } from "@/entities/schema/types";
 
-export const OBJECT_PERMISSION_TABLE_ATTRIBUTES = ["name", "action", "decision"];
+export const OBJECT_PERMISSION_TABLE_ATTRIBUTES = ["action", "decision"];
 export const OBJECT_PERMISSION_TABLE_RELATIONSHIPS = ["roles"];
 
 const columnHelper = createColumnHelper<NodeObject>();
 
 export function getObjectPermissionTableColumns(schema: ModelSchema): Array<ColumnDef<NodeObject>> {
-  const allAttributesVisible = (schema.attributes ?? []).filter(
-    ({ name }) => OBJECT_PERMISSION_TABLE_ATTRIBUTES.includes(name) && name !== "name"
+  const allAttributesVisible = (schema.attributes ?? []).filter(({ name }) =>
+    OBJECT_PERMISSION_TABLE_ATTRIBUTES.includes(name)
   );
   const [decisionAttributes, attributesVisible] = partition(
     allAttributesVisible,

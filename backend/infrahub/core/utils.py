@@ -71,7 +71,6 @@ async def get_paths_between_nodes(
     print_query: bool = False,
 ) -> list[Record]:
     """Return all paths between 2 nodes."""
-
     length_limit = f"..{max_length}" if max_length else ""
 
     relationships_str = ""
@@ -97,7 +96,6 @@ async def get_paths_between_nodes(
 
 async def count_relationships(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of relationships in the database."""
-
     label_str = f":{label}" if label else ""
 
     query = f"""
@@ -123,7 +121,6 @@ async def get_nodes(db: InfrahubDatabase, label: str) -> list[Neo4jNode]:
 
 async def count_nodes(db: InfrahubDatabase, label: str | None = None) -> int:
     """Return the total number of nodes of a given label in the database."""
-
     label_str = f":{label}" if label else ""
 
     query = f"""
@@ -174,14 +171,19 @@ def convert_ip_to_binary_str(
 
 
 def build_regex_attrs(values: list[str | int | bool]) -> str:
-    """Build a regex to match one or multiple values in a JSON string, mainly used to match on an attribute of type List"""
+    """Build a regex to match one or multiple values in a JSON string, mainly used to match on an attribute of type List."""
     return ".*(" + "|".join([build_regex_attr(value=value) for value in values]) + ").*"
 
 
 def build_regex_attr(value: str | int | bool) -> str:
-    """Build a single regex to match a value in a JSON string
+    """Build a single regex to match a value in a JSON string.
+
     For a string, it must have quotes
-    For int and bool, it must not have quotes
+    For int and bool, it must not have quotes.
+
+    Raises:
+        ValueError: When `value` is not a string, integer, or boolean.
+
     """
     if isinstance(value, str):
         return f'"{value}"'
@@ -227,10 +229,15 @@ class SubclassWithMeta_Meta(type):
 
 
 class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
-    """This class improves __init_subclass__ to receive automatically the options from meta"""
+    """This class improves __init_subclass__ to receive automatically the options from meta."""
 
     def __init_subclass__(cls, **meta_options: Any) -> None:
-        """This method just terminates the super() chain"""
+        """This method just terminates the super() chain.
+
+        Raises:
+            TypeError: When the inner `Meta` attribute is neither a class nor a dict.
+
+        """
         _Meta = getattr(cls, "Meta", None)
         _meta_props = {}
         if _Meta:
@@ -255,4 +262,4 @@ class SubclassWithMeta(metaclass=SubclassWithMeta_Meta):
 
     @classmethod
     def __init_subclass_with_meta__(cls, **meta_options: Any) -> None:
-        """This method just terminates the super() chain"""
+        """This method just terminates the super() chain."""

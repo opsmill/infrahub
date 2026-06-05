@@ -38,9 +38,12 @@ from .queries import (
     AccountToken,
     BranchQueryList,
     InfrahubBranchQueryList,
+    InfrahubGraphQLQueryReport,
     InfrahubInfo,
     InfrahubIPAddressGetNextAvailable,
     InfrahubIPPrefixGetNextAvailable,
+    InfrahubPathTraversal,
+    InfrahubReachableNodes,
     InfrahubResourcePoolAllocated,
     InfrahubResourcePoolUtilization,
     InfrahubSearchAnywhere,
@@ -65,9 +68,12 @@ class InfrahubBaseQuery(ObjectType):
     Relationship = Relationship
 
     InfrahubBranch = InfrahubBranchQueryList
+    InfrahubGraphQLQueryReport = InfrahubGraphQLQueryReport
     InfrahubInfo = InfrahubInfo
     InfrahubStatus = InfrahubStatus
 
+    InfrahubPathTraversal = InfrahubPathTraversal
+    InfrahubReachableNodes = InfrahubReachableNodes
     InfrahubSearchAnywhere = InfrahubSearchAnywhere
 
     InfrahubTask = Task

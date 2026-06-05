@@ -21,8 +21,9 @@ from infrahub.core.schema.template_schema import TemplateSchema
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import retry_db_transaction
 from infrahub.dependencies.registry import get_component_registry
+from infrahub.errors.validation import raise_classified_from_validation_error
 from infrahub.events.generator import generate_node_mutation_events
-from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError
+from infrahub.exceptions import HFIDViolatedError, InitializationError, NodeNotFoundError, ValidationError
 from infrahub.graphql.context import apply_external_context
 from infrahub.graphql.field_extractor import extract_graphql_fields
 from infrahub.lock import InfrahubMultiLock
@@ -70,7 +71,7 @@ async def emit_node_mutation_events(
         deleted_nodes=deleted_nodes or [],
         db=graphql_context.db,
         branch=graphql_context.branch,
-        context=graphql_context.get_context(),
+        context=graphql_context.to_event_context(),
         request_id=request_id,
         action=action,
         side_effect_nodes=side_effect_nodes or [],
@@ -129,6 +130,7 @@ class InfrahubMutationMixin:
 
         Returns:
             `True` if a file was stored, `False` otherwise.
+
         """
         if not file_processor:
             return False
@@ -210,6 +212,19 @@ class InfrahubMutationMixin:
                     f"Unexpected class Name: {cls.__name__}, should end with Create, Update, Upsert, or Delete"
                 )
             mutation_succeeded = True
+        except ValidationError as exc:
+            # The new catalogued subclasses (AttributeRequiredError, AttributeInvalidTypeError,
+            # AttributeConstraintViolationError) are already classified — let them propagate
+            # unchanged so the formatter can read their typed attributes directly.
+            # The reason we need to have this here is to enrich the ValidationError exceptions,
+            # this is to avoid having to refactor all the places where those errors are raised.
+            # Once that job is completed we'll be able to remove this again.
+            if exc.__class__ is ValidationError:
+                info_path = list(info.path.as_list()) if info.path is not None else []
+                raise_classified_from_validation_error(
+                    exc, node_kind=cls._meta.active_schema.kind, path=[*info_path, "data"]
+                )
+            raise
         finally:
             if file_processor and file_stored and not mutation_succeeded:
                 file_processor.delete_file()
@@ -267,10 +282,7 @@ class InfrahubMutationMixin:
         obj: Node,
         skip_uniqueness_check: bool = False,
     ) -> tuple[Node, Self]:
-        """
-        Wrapper around mutate_update to potentially activate locking and call it within a database transaction.
-        """
-
+        """Wrapper around mutate_update to potentially activate locking and call it within a database transaction."""
         # Prepare a clone to compute locks without triggering pool allocations
         preview_obj = await NodeManager.get_one_by_id_or_default_filter(
             db=db,
@@ -385,13 +397,17 @@ class InfrahubMutationMixin:
         database: InfrahubDatabase | None = None,
         file_processor: FileUploadProcessor | None = None,
     ) -> UpsertResult:
-        """
-        First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for
+        """First, check whether payload contains data identifying the node, such as id, hfid, or relevant fields for.
+
         default_filter. If not, we will try to create the node, but this creation might fail if payload contains
         hfid fields (not `hfid` field itself) that would match an existing node in the database. In that case,
         we would update the node without rerunning uniqueness constraint.
-        """
 
+        Raises:
+            NodeNotFoundError: When an existing node matched by HFID cannot be retrieved on the current branch.
+            RuntimeError: When more than one node matches the same human-friendly ID.
+
+        """
         schema = cls._meta.active_schema
         schema_name = schema.kind
 

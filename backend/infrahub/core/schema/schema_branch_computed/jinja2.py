@@ -56,7 +56,10 @@ class ComputedAttributeTriggerNode(BaseModel):
 
 class RelationshipDependency(BaseModel):
     """Groups the two facets of a relationship-based computed attribute dependency:
-    the targets to recompute and the peer attributes needed for template rendering."""
+
+    the targets to recompute and the peer attributes needed for template rendering.
+
+    """
 
     targets: list[ComputedAttributeTarget] = Field(default_factory=list)
     peer_attributes: set[str] = Field(default_factory=set)
@@ -64,6 +67,7 @@ class RelationshipDependency(BaseModel):
 
 class RegisteredNodeComputedAttribute(BaseModel):
     """Dependency record for a single trigger node kind in the Jinja2 computed attribute registry.
+
     Each instance describes what should happen when a node of a particular kind is mutated.
 
     Example: InfraDevice has ``computed_name = "{{ name__value }}-{{ site__name__value }}"``.
@@ -108,6 +112,7 @@ class RegisteredNodeComputedAttribute(BaseModel):
         Returns:
             Deduplicated list of ResolvedComputedTarget, each pairing a target with the
             query filters needed to locate affected nodes.
+
         """
         resolved: dict[str, ResolvedComputedTarget] = {}
         for attribute, entries in self.local_fields.items():
@@ -242,6 +247,7 @@ class Jinja2ComputedRegistry:
 
         Returns:
             None
+
         """
         # Determine the trigger key: for local attributes it's the node itself,
         # for relationship attributes it's the peer kind.
@@ -283,6 +289,7 @@ class Jinja2ComputedRegistry:
             List of ResolvedComputedTarget entries, each pairing a (kind, attribute) identity with the
             query filters needed to locate affected nodes. The target kind can differ from the input
             kind when the dependency crosses a relationship.
+
         """
         if mapping := self._map.get(kind):
             return mapping.get_targets(updates=updates, trigger_kind=kind)

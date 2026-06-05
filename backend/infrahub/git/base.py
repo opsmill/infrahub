@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import shutil
+import tempfile
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, NoReturn
@@ -93,6 +94,7 @@ def extract_repo_file_information(
 
     Returns:
         RepoFileInformation: Pydantic object to store all information about this file
+
     """
     abs_directory = full_filename.parent.resolve()
     filename = full_filename.name
@@ -139,10 +141,10 @@ class BranchInLocal(BaseModel):
 
 
 class InfrahubRepositoryBase(BaseModel, ABC):
-    """
-    Local version of a Git repository organized to work with Infrahub.
+    """Local version of a Git repository organized to work with Infrahub.
+
     The idea is that all commits that are being tracked in the graph will be checkout out
-    individually as worktree under the <repo_name>/commits subdirectory
+    individually as worktree under the <repo_name>/commits subdirectory.
 
     Directory organization
     <repo_directory>/
@@ -169,6 +171,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     is_read_only: bool = Field(False, description="If true, changes will not be synced to remote")
 
     internal_status: str = Field("active", description="Internal status: Active, Inactive, Staging")
+    reinitialized: bool = Field(False, description="Re-clone is needed because the local directory was missing")
     infrahub_branch_name: str | None = Field(None, description="Infrahub branch on which to sync the remote repository")
     model_config = ConfigDict(arbitrary_types_allowed=True, ignored_types=(Flow, Task))
 
@@ -274,8 +277,8 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         Raises:
             git.exc.InvalidGitRepositoryError if the default directory is not a valid Git repository.
-        """
 
+        """
         if not self.cache_repo:
             self.cache_repo = Repo(self.directory_default)
 
@@ -286,6 +289,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         Returns:
             Repo: git object of the main repository
+
+        Raises:
+            RepositoryError: When no worktree matches the provided identifier.
 
         """
         if worktree := self.get_worktree(identifier=identifier):
@@ -328,8 +334,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         Returns True if everything is correct
         Raises a RepositoryError exception if something is not correct
-        """
 
+        Raises:
+            RepositoryInvalidFileSystemError: When one of the expected repository directories does not exist.
+            RepositoryError: When the on-disk data is not a valid Git repository, the initial commit is
+                missing or the main commit worktree directory is missing.
+
+        """
         directories_to_validate = [
             self.directory_root,
             self.directory_branches,
@@ -376,9 +387,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
     ) -> bool:
         """Ensure the required directory already exist in the filesystem or create them if needed.
 
-        Returns
+        Returns:
             True if the directory has been created,
             False if the directory was already present.
+
+        Raises:
+            RepositoryError: When the repository has no remote location configured.
+
         """
         initialize_repositories_directory()
 
@@ -421,7 +436,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def has_worktree(self, identifier: str) -> bool:
         """Return True if a worktree with a given identifier already exist."""
-
         worktrees = self.get_worktrees()
 
         for worktree in worktrees:
@@ -431,8 +445,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return False
 
     def get_worktree(self, identifier: str) -> Worktree:
-        """Access a specific worktree by its identifier."""
+        """Access a specific worktree by its identifier.
 
+        Raises:
+            RepositoryError: When no worktree matches the provided identifier.
+
+        """
         worktrees = self.get_worktrees()
         for worktree in worktrees:
             if worktree.identifier == identifier:
@@ -442,7 +460,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def get_commit_worktree(self, commit: str) -> Worktree:
         """Access a specific commit worktree."""
-
         worktrees = self.get_worktrees()
 
         for worktree in worktrees:
@@ -467,9 +484,9 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def get_branches_from_graph(self) -> dict[str, BranchInGraph]:
         """Return a dict with all the branches present in the graph.
+
         Query the list of branches first then query the repository for each branch.
         """
-
         response = {}
 
         branches = await self.sdk.branch.all()
@@ -490,7 +507,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def get_branches_from_remote(self) -> dict[str, BranchInRemote]:
         """Return a dict with all the branches present on the remote."""
-
         git_repo = self.get_git_repo_main()
 
         branches = {}
@@ -510,7 +526,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     def get_branches_from_local(self, include_worktree: bool = True) -> dict[str, BranchInLocal]:
         """Return a dict with all the branches present locally."""
-
         git_repo = self.get_git_repo_main()
 
         if include_worktree:
@@ -541,11 +556,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return branch_name in self.get_branches_from_remote()
 
     async def delete_remote_branch(self, branch_name: str) -> None:
-        """Delete branch_name from origin and remove the local tracking ref."""
+        """Delete branch_name from origin."""
         if not self.has_origin:
             return
         repo = self.get_git_repo_main()
         repo.git.push("origin", "--delete", branch_name)
+
+    async def delete_local_branch(self, branch_name: str) -> None:
+        """Remove any worktrees and the local tracking ref for branch_name."""
+        repo = self.get_git_repo_main()
+        for worktree in self.get_worktrees():
+            if worktree.branch == branch_name:
+                repo.git.worktree("remove", "--force", str(worktree.directory))
         local_branches = self.get_branches_from_local(include_worktree=False)
         if branch_name in local_branches:
             repo.delete_head(branch_name, force=True)
@@ -555,44 +577,64 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         raise NotImplementedError()
 
     def has_conflicting_changes(self, target_branch: str, source_branch: str) -> bool:
-        """Use merge tree to spot conflicts and tell if there is any."""
+        """Check if merging source_branch into target_branch would produce conflicts.
+
+        Uses the modern ``git merge-tree --write-tree`` form (git 2.38+) which
+        returns exit code 0 for a clean merge and exit code 1 for conflicts,
+        avoiding false positives from naive string matching of conflict markers
+        in file content.
+
+        Raises:
+            GitCommandError: When ``git merge-tree`` fails for a reason other than detecting conflicts.
+
+        """
         repo = self.get_git_repo_main()
 
         if repo.remotes:
-            # Ensure we have the latest changes from the remote
-            info = repo.remotes.origin.fetch(source_branch)
-
-            target = repo.branches[target_branch]
-            source = repo.commit(info[0].ref)
-
-            merge_base = repo.merge_base(target.commit, source)[0]
-            merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.hexsha)
+            repo.remotes.origin.fetch(source_branch)
+            source_ref = f"origin/{source_branch}"
         else:
-            target = repo.branches[target_branch]
-            source = repo.branches[source_branch]
+            source_ref = source_branch
 
-            merge_base = repo.merge_base(target.commit, source)[0]
-            merge_tree_output = repo.git.merge_tree(merge_base.hexsha, target.commit.hexsha, source.commit.hexsha)
+        target_ref = target_branch
 
-        log.debug(
-            f"Merging {source_branch} into {target_branch} will bring changes",
-            repository=self.name,
-            source=source_branch,
-            target=target_branch,
-            merge_structure=merge_tree_output,
-        )
-
-        return any(marker in merge_tree_output for marker in ("<<<<<<<", "=======", ">>>>>>>"))
+        try:
+            repo.git.merge_tree("--write-tree", target_ref, source_ref)
+            log.debug(
+                f"Merging {source_branch} into {target_branch} has no conflicts",
+                repository=self.name,
+                source=source_branch,
+                target=target_branch,
+            )
+            return False
+        except GitCommandError as exc:
+            if exc.status == 1:
+                log.debug(
+                    f"Merging {source_branch} into {target_branch} would produce conflicts",
+                    repository=self.name,
+                    source=source_branch,
+                    target=target_branch,
+                )
+                return True
+            log.error(
+                f"Unexpected error running git merge-tree for {source_branch} into {target_branch}",
+                repository=self.name,
+                source=source_branch,
+                target=target_branch,
+                error=str(exc),
+            )
+            raise
 
     async def update_commit_value(self, branch_name: str, commit: str) -> bool:
         """Compare the value of the commit in the graph with the current commit on the filesystem.
+
         update it if they don't match.
 
         Returns:
             True if the commit has been updated
             False if they already had the same value
-        """
 
+        """
         infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
         log.debug(
             f"Updating commit value to {commit} for branch {branch_name}", repository=self.name, branch=infrahub_branch
@@ -609,7 +651,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         NOTE We need to validate that we are not gonna end up with a race condition
         since a call to the GraphQL API will trigger a new RPC call to add a branch in this repo.
         """
-
         # TODO need to handle the exception properly
         branch = await self.sdk.branch.create(branch_name=branch_name)
 
@@ -618,7 +659,6 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     async def create_branch_in_git(self, branch_name: str, branch_id: str | None = None) -> bool:
         """Create new branch in the repository, assuming the branch has been created in the graph already."""
-
         repo = self.get_git_repo_main()
 
         # Check if the branch already exists locally, if it does do nothing
@@ -662,8 +702,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return True
 
     def create_commit_worktree(self, commit: str) -> bool | Worktree:
-        """Create a new worktree for a given commit."""
+        """Create a new worktree for a given commit.
 
+        Raises:
+            RepositoryError: When the worktree cannot be created and the commit cannot be fetched from a remote.
+
+        """
         # Check of the worktree already exist
         if self.has_worktree(identifier=commit):
             return False
@@ -677,16 +721,30 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             log.debug(f"Commit worktree created {commit}", repository=self.name)
             return worktree
         except GitCommandError as exc:
-            if "invalid reference" in exc.stderr:
-                raise CommitNotFoundError(
+            if "invalid reference" not in exc.stderr:
+                raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+
+            if not self.has_origin:
+                raise RepositoryError(
                     identifier=self.name,
-                    commit=commit,
+                    message=f"Commit {commit} not found and no remote origin configured to fetch from.",
                 ) from exc
-            raise RepositoryError(identifier=self.name, message=exc.stderr) from exc
+
+            # Commit may exist on the remote but hasn't been fetched to this worker yet
+            log.info(f"Commit {commit} not found locally, fetching from remote.", repository=self.name)
+            repo.remotes.origin.fetch()
+
+            repo.git.worktree("add", directory, commit)
+            log.debug(f"Commit worktree created {commit} after fetch", repository=self.name)
+            return worktree
 
     def create_branch_worktree(self, branch_name: str, branch_id: str) -> bool:
-        """Create a new worktree for a given branch."""
+        """Create a new worktree for a given branch.
 
+        Raises:
+            RepositoryError: When the underlying ``git worktree add`` command fails.
+
+        """
         # Check if the worktree already exist
         if self.has_worktree(identifier=branch_name):
             return False
@@ -704,11 +762,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         self, first_commit: str, second_commit: str
     ) -> tuple[list[str], list[str], list[str]]:
         """TODO need to refactor this function to return more information.
+
         Like :
           - What has changed inside the files
           - Are there some conflicts between the files.
         """
-
         git_repo = self.get_git_repo_main()
 
         commit_to_compare = git_repo.commit(second_commit)
@@ -789,10 +847,11 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return filtered_branches
 
     async def compare_local_remote(self) -> tuple[list[str], list[str]]:
-        """
-        Returns:
-            List[str] New Branches in Remote
-            List[str] Branches with different commit in Remote
+        """Returns:
+
+        List[str] New Branches in Remote
+        List[str] Branches with different commit in Remote.
+
         """
         if not self.has_origin:
             return [], []
@@ -842,7 +901,18 @@ class InfrahubRepositoryBase(BaseModel, ABC):
             return False
 
         # Make sure the branch won't conflict on merge
-        if self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name):
+        try:
+            has_conflicts = self.has_conflicting_changes(target_branch=self.default_branch, source_branch=branch_name)
+        except GitCommandError as exc:
+            log.error(
+                "Unable to determine merge conflicts for branch",
+                branch=branch_name,
+                repository=self.name,
+                error=str(exc),
+            )
+            return False
+
+        if has_conflicts:
             get_run_logger().warning(
                 f"Remote branch {branch_name} will cause conflicts, they need to be resolved before importing the branch into Infrahub"
             )
@@ -854,6 +924,25 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         return True
 
+    def _resolve_worktree_identifier(self, branch_name: str) -> str:
+        """Map a branch name to the identifier used to locate its worktree on disk."""
+        if branch_name == self.default_branch and branch_name != registry.default_branch:
+            return "main"
+        return branch_name
+
+    def _get_branch_worktree(self, branch_name: str) -> Repo | None:
+        """Return the existing worktree for a branch, or None when it has none yet."""
+        identifier = self._resolve_worktree_identifier(branch_name)
+        try:
+            return self.get_git_repo_worktree(identifier=identifier)
+        except RepositoryError:
+            return None
+
+    async def _create_branch_worktree(self, branch_name: str, branch_id: str) -> Repo:
+        """Create the branch in git and return its freshly created worktree."""
+        await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
+        return self.get_git_repo_worktree(identifier=branch_name)
+
     async def pull(
         self,
         branch_name: str,
@@ -861,22 +950,17 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         create_if_missing: bool = False,
         update_commit_value: bool = True,
     ) -> bool | str:
-        """Pull the latest update from the remote repository on a given branch."""
+        """Pull the latest update from the remote repository on a given branch.
 
+        Raises:
+            ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
+
+        """
         if not self.has_origin:
             return False
-        identifier = branch_name
-        if branch_name == self.default_branch and branch_name != registry.default_branch:
-            identifier = "main"
 
-        repo: Repo | None = None
-        try:
-            repo = self.get_git_repo_worktree(identifier=identifier)
-        except RepositoryError as exc:
-            if not create_if_missing:
-                raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}") from exc
-
-        if repo:
+        repo = self._get_branch_worktree(branch_name)
+        if repo is not None:
             try:
                 commit_before = str(repo.head.commit)
                 repo.remotes.origin.pull(branch_name)
@@ -884,27 +968,59 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 await self._raise_enriched_error(error=exc, branch_name=branch_name)
 
             commit_after = str(repo.head.commit)
-
             if commit_after == commit_before:
                 return True
 
             self.create_commit_worktree(commit=commit_after)
-            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
-
-        elif branch_id:
-            await self.create_branch_in_git(branch_name=branch_name, branch_id=branch_id)
-            repo = self.get_git_repo_worktree(identifier=branch_name)
+        elif create_if_missing and branch_id:
+            # create_branch_in_git already syncs any matching remote branch, and a local-only
+            # branch has no upstream ref to pull from, so skip the fast-forward here.
+            repo = await self._create_branch_worktree(branch_name, branch_id)
             commit_after = str(repo.head.commit)
         else:
-            raise ValueError(
-                f"Unable to identify the worktree for the branch : {branch_name} "
-                "and unable to pull the branch because the branch)id is missing"
-            )
+            raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
 
         if update_commit_value:
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
             await self.update_commit_value(branch_name=infrahub_branch, commit=commit_after)
-
         return commit_after
+
+    async def reset_to_commit(
+        self,
+        branch_name: str,
+        commit: str,
+        branch_id: str | None = None,
+        create_if_missing: bool = False,
+        update_commit_value: bool = True,
+    ) -> None:
+        """Hard-reset a branch worktree to a specific commit already present locally.
+
+        The caller must have fetched the commit beforehand; this method does not
+        contact the remote.
+
+        Raises:
+            ValueError: When no worktree exists for the branch and ``branch_id`` is not provided to create one.
+
+        """
+        repo = self._get_branch_worktree(branch_name)
+        if repo is None:
+            if not create_if_missing or not branch_id:
+                raise ValueError(f"Unable to identify the worktree for the branch : {branch_name}")
+            repo = await self._create_branch_worktree(branch_name, branch_id)
+
+        # Hard reset, not merge: the worktree is a disposable mirror of the remote, so we
+        # force it onto the requested commit and intentionally drop any local divergence.
+        # Convergence on this exact SHA is the goal; a fast-forward could land elsewhere.
+        try:
+            repo.git.reset("--hard", commit)
+        except GitCommandError as exc:
+            await self._raise_enriched_error(error=exc, branch_name=branch_name)
+
+        self.create_commit_worktree(commit=commit)
+
+        if update_commit_value:
+            infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
+            await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
 
     async def get_conflicts(self, source_branch: str, dest_branch: str) -> list[str]:
         repo = self.get_git_repo_worktree(identifier=dest_branch)
@@ -922,9 +1038,7 @@ class InfrahubRepositoryBase(BaseModel, ABC):
                 repo.git.merge("--abort")
 
         changed_files = git_status.splitlines()
-        conflict_files = [filename[3:] for filename in changed_files if filename.startswith("UU ")]
-
-        return conflict_files
+        return [filename[3:] for filename in changed_files if filename.startswith("UU ")]
 
     async def find_files(
         self,
@@ -933,7 +1047,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         commit: str | None = None,
         directory: Path | None = None,
     ) -> list[Path]:
-        """Return the path of all files matching a specific extension in a given Branch or Commit."""
+        """Return the path of all files matching a specific extension in a given Branch or Commit.
+
+        Raises:
+            ValueError: When neither ``branch_name`` nor ``commit`` is provided.
+
+        """
         if not branch_name and not commit:
             raise ValueError("Either branch_name or commit must be provided.")
         branch_wt = self.get_worktree(identifier=commit or branch_name)
@@ -959,7 +1078,13 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return path.read_text(encoding="UTF-8")
 
     def validate_location(self, commit: str, worktree_directory: Path, file_path: str) -> Path:
-        """Validate that a file is found inside a repository and return a corresponding `pathlib.Path` object for it."""
+        """Validate that a file is found inside a repository and return a corresponding `pathlib.Path` object for it.
+
+        Raises:
+            FileOutOfRepositoryError: When the resolved path falls outside of the worktree directory.
+            RepositoryFileNotFoundError: When the resolved path does not exist on disk.
+
+        """
         path = (worktree_directory / file_path).resolve()
 
         if not path.is_relative_to(worktree_directory):
@@ -972,7 +1097,10 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
     @classmethod
     def check_connectivity(cls, name: str, url: str) -> None:
-        cmd = git.cmd.Git()
+        # Use a neutral working directory so git doesn't discover a .git pointer
+        # from the process CWD (e.g. worktree builds where /source/.git is a
+        # pointer file referencing a host path absent from a container).
+        cmd = git.cmd.Git(working_dir=tempfile.gettempdir())
         try:
             cmd.ls_remote("--tags", url)
         except GitCommandError as exc:
@@ -1004,6 +1132,15 @@ class InfrahubRepositoryBase(BaseModel, ABC):
 
         if "error: pathspec" in error.stderr:
             raise RepositoryInvalidBranchError(identifier=name, branch_name=branch_name, location=location) from error
+
+        if "reset" in (error.command or []) and "Could not parse object" in error.stderr:
+            raise RepositoryError(
+                identifier=name,
+                message=(
+                    f"Commit not found in the local clone of repository {name}; "
+                    "it may have been force-pushed or pruned upstream."
+                ),
+            ) from error
 
         if "SSL certificate problem" in error.stderr or "server certificate verification failed" in error.stderr:
             raise RepositoryConnectionError(
@@ -1039,7 +1176,12 @@ class InfrahubRepositoryBase(BaseModel, ABC):
         return branch_name
 
     def get_changed_files(self, first_commit: str, second_commit: str | None = None) -> RepoChangedFiles:
-        """Return the changes between two commits in this repo."""
+        """Return the changes between two commits in this repo.
+
+        Raises:
+            CommitNotFoundError: When one of the provided commits cannot be resolved in the repository.
+
+        """
         changes = RepoChangedFiles()
         repo = self.get_git_repo_main()
 

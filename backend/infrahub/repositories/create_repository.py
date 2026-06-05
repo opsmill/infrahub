@@ -12,7 +12,7 @@ from infrahub.message_bus.messages.git_repository_connectivity import GitReposit
 from infrahub.workflows.catalogue import GIT_REPOSITORY_ADD, GIT_REPOSITORY_ADD_READ_ONLY
 
 if TYPE_CHECKING:
-    from infrahub.auth import AccountSession
+    from infrahub.auth.session import AccountSession
     from infrahub.context import InfrahubContext
     from infrahub.core.branch import Branch
     from infrahub.core.protocols import CoreGenericRepository, CoreReadOnlyRepository, CoreRepository
@@ -40,11 +40,15 @@ class RepositoryFinalizer:
         db: InfrahubDatabase,
         delete_on_connectivity_failure: bool = True,
     ) -> None:
-        """
-        Method meant to be called after a repository has been created in the database.
-        It mainly checks the connectivity to the remote repository and submit the workflow to create the repository in the local filesystem.
-        """
+        """Method meant to be called after a repository has been created in the database.
 
+        It mainly checks the connectivity to the remote repository and submit the workflow to create the repository in the local filesystem.
+
+        Raises:
+            ValidationError: When connectivity to the remote repository cannot be established.
+            ValueError: When the repository kind is neither a regular nor a read-only repository.
+
+        """
         # If the connectivity is not good, we remove the repository to allow the user to add a new one
         if delete_on_connectivity_failure:
             message = messages.GitRepositoryConnectivity(

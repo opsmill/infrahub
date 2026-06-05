@@ -49,11 +49,14 @@ jobs:
       yaml: ${{ steps.changes.outputs.yaml_all }}
       infrahub_uv_files: ${{ steps.changes.outputs.infrahub_uv_files }}
       github_workflows: ${{ steps.changes.outputs.github_workflows }}
+      version_upgrade_workflow: ${{ steps.changes.outputs.version_upgrade_workflow }}
       e2e_tests: ${{ steps.changes.outputs.e2e_test_files }}
       testcontainers: ${{ steps.changes.outputs.testcontainers_files }}
       openapi_schema: ${{ steps.changes.outputs.openapi_schema_all }}
       graphql_schema: ${{ steps.changes.outputs.graphql_schema_all }}
+      error_catalogue: ${{ steps.changes.outputs.error_catalogue_all }}
       dev_guidelines: ${{ steps.changes.outputs.dev_guidelines }}
+      observability_standalone: ${{ steps.changes.outputs.observability_standalone_all }}
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
@@ -169,6 +172,47 @@ jobs:
             exit 1
           fi
 
+  frontend-validate-error-catalogue:
+    if: |
+      needs.files-changed.outputs.error_catalogue == 'true'
+    needs: ["files-changed"]
+    defaults:
+      run:
+        working-directory: ./frontend/app
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify generated error bindings match schema/error-catalogue.json
+        run: pnpm check:error-bindings
+      - name: Surface a remediation hint on failure
+        if: failure()
+        run: |
+          echo "❌ Error: Generated error bindings are out of sync with schema/error-catalogue.json"
+          echo ""
+          echo "The backend catalogue has been updated, but the frontend's typed mirror hasn't been regenerated."
+          echo ""
+          echo "To fix this, run the following commands from the repository root:"
+          echo "  cd frontend/app"
+          echo "  pnpm generate:error-bindings"
+          echo "  git add src/shared/api/errors/catalogue.generated.ts"
+          echo "  git commit -m 'chore: regenerate error bindings'"
+
   frontend-validate-graphql-types:
     if: |
       needs.files-changed.outputs.graphql_schema == 'true'
@@ -209,6 +253,45 @@ jobs:
             echo "  pnpm codegen:graphql"
             echo "  git add src/shared/api/graphql/generated/graphql-env.d.ts src/shared/api/graphql/generated/graphql-cache.d.ts"
             echo "  git commit -m 'chore: regenerate GraphQL types'"
+            exit 1
+          fi
+
+  validate-observability-standalone:
+    if: |
+      needs.files-changed.outputs.observability_standalone == 'true'
+    needs: ["files-changed", "prepare-environment"]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: "Check out repository code"
+        uses: "actions/checkout@v6"
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Regenerate standalone compose file
+        working-directory: development
+        run: uv run python convert_compose_standalone.py
+      - name: Check for uncommitted changes
+        run: |
+          if ! git diff --exit-code development/docker-compose-observability-standalone.yml; then
+            echo "❌ Error: development/docker-compose-observability-standalone.yml is out of sync"
+            echo ""
+            echo "The observability source files have been updated, but the standalone compose file hasn't been regenerated."
+            echo ""
+            echo "To fix this, run the following commands from the repository root:"
+            echo "  cd development"
+            echo "  uv run python convert_compose_standalone.py"
+            echo "  git add docker-compose-observability-standalone.yml"
+            echo "  git commit -m 'chore: regenerate standalone observability compose'"
             exit 1
           fi
 
@@ -437,7 +520,7 @@ jobs:
     needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint", "infrahub-testcontainers-check"]
     runs-on:
       group: huge-runners
-    timeout-minutes: 45
+    timeout-minutes: 80
     env:
       INFRAHUB_DB_TYPE: neo4j
     steps:
@@ -732,7 +815,8 @@ jobs:
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
-          node-version: 24
+          # https://github.com/microsoft/playwright/issues/41000
+          node-version: 24.15.0
           cache: pnpm
           cache-dependency-path: frontend/app/pnpm-lock.yaml
       - name: "Install frontend"
@@ -806,6 +890,33 @@ jobs:
         run: "uv sync --all-groups"
       - name: Run validation
         run: uv run invoke schema.validate-jsonschema
+
+  validate-docker-compose-env-vars:
+    if: |
+      always() && !cancelled() &&
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled') &&
+      needs.files-changed.outputs.backend == 'true'
+    needs: ["prepare-environment", "files-changed", "yaml-lint", "python-lint"]
+    runs-on: "ubuntu-22.04"
+    steps:
+      - name: Check out repository code
+        uses: "actions/checkout@v6"
+        with:
+          submodules: true
+      - name: Set up Python
+        id: python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ needs.prepare-environment.outputs.PYTHON_VERSION }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: ${{ needs.prepare-environment.outputs.UV_VERSION }}
+      - name: Install dependencies
+        run: "uv sync --all-groups"
+      - name: Run validation
+        run: uv run invoke release.validate-dockercomposeenv
 
   documentation:
     defaults:
@@ -1119,7 +1230,7 @@ jobs:
 
       - name: playwright-report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.name }}
           path: frontend/app/playwright-report/
@@ -1259,7 +1370,8 @@ jobs:
       always() && !cancelled() &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled') &&
-      needs.files-changed.outputs.e2e == 'true'
+      (needs.files-changed.outputs.e2e == 'true' ||
+      needs.files-changed.outputs.version_upgrade_workflow == 'true')
     uses: ./.github/workflows/version-upgrade.yml
 
   # ------------------------------------------ Benchmarks ------------------------------------------------

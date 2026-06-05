@@ -332,6 +332,49 @@ describe("addFiltersToRequest", () => {
     });
   });
 
+  it("should include before filter value without partial_match flag", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "created_at__before", value: "2026-01-01T00:00:00Z" }];
+
+    // WHEN
+    const result = addFiltersToRequest(filters);
+
+    // THEN
+    expect(result).toEqual({
+      created_at__before: "2026-01-01T00:00:00Z",
+    });
+  });
+
+  it("should include after filter value without partial_match flag", () => {
+    // GIVEN
+    const filters: Filter[] = [{ name: "created_at__after", value: "2025-01-01T00:00:00Z" }];
+
+    // WHEN
+    const result = addFiltersToRequest(filters);
+
+    // THEN
+    expect(result).toEqual({
+      created_at__after: "2025-01-01T00:00:00Z",
+    });
+  });
+
+  it("should handle node_metadata prefixed filters", () => {
+    // GIVEN
+    const filters: Filter[] = [
+      { name: "node_metadata__created_at__after", value: "2025-01-01T00:00:00Z" },
+      { name: "node_metadata__created_by__ids", value: [{ id: "user-1" }, { id: "user-2" }] },
+    ];
+
+    // WHEN
+    const result = addFiltersToRequest(filters);
+
+    // THEN
+    expect(result).toEqual({
+      node_metadata__created_at__after: "2025-01-01T00:00:00Z",
+      node_metadata__created_by__ids: ["user-1", "user-2"],
+    });
+  });
+
   it("should return empty object for filters with invalid field name format", () => {
     // GIVEN
     const filters: Filter[] = [

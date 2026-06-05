@@ -1,13 +1,16 @@
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fast_depends import Provider
 from infrahub_sdk.client import InfrahubClient
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
+from infrahub.core.constants import InfrahubKind
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
@@ -512,3 +515,69 @@ async def test_branch_merge_with_conflict_fails(
     assert result.errors
     assert len(result.errors) == 1
     assert "contains conflicts with the default branch" in result.errors[0].message
+
+
+async def _create_branch(branch_name: str, db: InfrahubDatabase, owner: Node) -> Branch:
+    branch = Branch(name=branch_name, status=BranchStatus.OPEN, hierarchy_level=2, is_default=False)
+    origin_schema = registry.schema.get_schema_branch(name=branch.origin_branch)
+    registry.schema.set_schema_branch(name=branch.name, schema=origin_schema.duplicate(name=branch.name))
+    branch.update_schema_hash()
+    await branch.save(db=db, user_id=owner.id)
+    registry.branch[branch.name] = branch
+    return branch
+
+
+async def test_branch_delete_own_branch_succeeds(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    local_services: InfrahubServices,
+) -> None:
+    """A user who created a branch can delete it without any elevated permissions."""
+    account = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await account.new(db=db, name="delete-own-branch-user", account_type="User", password="TestPassword123!")
+    await account.save(db=db)
+    session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=account.id)
+
+    await _create_branch(branch_name="test-own-branch", db=db, owner=account)
+
+    with patch.object(local_services.workflow, "execute_workflow", new=AsyncMock(return_value=None)):
+        delete_result = await graphql_mutation(
+            query='mutation { BranchDelete(data: { name: "test-own-branch" }) { ok } }',
+            db=db,
+            branch=default_branch,
+            account_session=session,
+            service=local_services,
+        )
+    assert delete_result.errors is None
+    assert delete_result.data
+    assert delete_result.data["BranchDelete"]["ok"] is True
+
+
+async def test_branch_delete_others_branch_denied(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    register_core_models_schema: SchemaBranch,
+    local_services: InfrahubServices,
+) -> None:
+    """A user without DELETE_BRANCH permission cannot delete a branch they did not create."""
+    owner = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await owner.new(db=db, name="branch-creator-user", account_type="User", password="OwnerPassword123!")
+    await owner.save(db=db)
+
+    other = await Node.init(db=db, schema=InfrahubKind.ACCOUNT)
+    await other.new(db=db, name="branch-non-owner-user", account_type="User", password="OtherPassword123!")
+    await other.save(db=db)
+    other_session = AccountSession(authenticated=True, auth_type=AuthType.API, account_id=other.id)
+
+    await _create_branch(branch_name="test-others-branch", db=db, owner=owner)
+
+    delete_result = await graphql_mutation(
+        query='mutation { BranchDelete(data: { name: "test-others-branch" }) { ok } }',
+        db=db,
+        branch=default_branch,
+        account_session=other_session,
+        service=local_services,
+    )
+    assert delete_result.errors
+    assert "You are not allowed to delete a branch you did not create" in delete_result.errors[0].message

@@ -31,7 +31,7 @@ CREATE (attr)-[:HAS_VALUE {branch: $branch_name, branch_level: $branch_level, st
 
 
 async def _get_active_attributes(db: InfrahubDatabase) -> dict[str, set[str]]:
-    """Return a dict of {node_id: {branch_name, ...}} for nodes that still have the testing attribute"""
+    """Return a dict of {node_id: {branch_name, ...}} for nodes that still have the testing attribute."""
     query = """
 MATCH (n:Node)-[has_attr:HAS_ATTRIBUTE]->(:Attribute {name: "smell"})-[:HAS_VALUE]->()
 WITH DISTINCT n.uuid AS node_id, has_attr.branch AS branch

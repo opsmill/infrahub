@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 
 from infrahub_sdk import InfrahubClient
 
-from infrahub.auth import AccountSession
+from infrahub.auth.session import AccountSession
 from infrahub.core.branch import Branch
 from infrahub.core.branch.enums import BranchStatus
 from infrahub.core.schema.schema_branch import SchemaBranch
@@ -251,12 +251,14 @@ class TestBranchQuery(TestInfrahubApp):
             }
         """
         gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+
+        # Query all branches without pagination
         all_branches = await graphql(
             schema=gql_params.schema,
             source=query,
             context_value=gql_params.context,
             root_value=None,
-            variable_values={"offset": 2, "limit": 5},
+            variable_values={},
         )
         assert all_branches.errors is None
         assert all_branches.data
@@ -285,6 +287,19 @@ class TestBranchQuery(TestInfrahubApp):
         )
 
         assert all_branches.data["InfrahubBranch"]["default_branch"]["name"]["value"] == "main"
+
+        # Query with offset and limit to verify pagination works
+        paginated_branches = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+            variable_values={"offset": 2, "limit": 5},
+        )
+        assert paginated_branches.errors is None
+        assert paginated_branches.data
+        assert paginated_branches.data["InfrahubBranch"]["count"] == 12  # count reflects total, not paginated
+        assert len(paginated_branches.data["InfrahubBranch"]["edges"]) == 5
 
         name_branches = await graphql(
             schema=gql_params.schema,
@@ -770,6 +785,31 @@ class TestBranchQuery(TestInfrahubApp):
         assert result.errors is not None
         assert len(result.errors) > 0
         assert "created_at" in str(result.errors[0]) or "updated_at" in str(result.errors[0])
+
+    async def test_order_by_rejects_order_by_string_field(
+        self,
+        db: InfrahubDatabase,
+        default_branch: Branch,
+        service: InfrahubServices,
+    ) -> None:
+        """Branch's MetadataOrderInput does not expose `order_by`, so the field is unknown to the schema."""
+        query = """
+        query {
+            InfrahubBranch(order: {order_by: ["node_metadata__created_at__asc"]}) {
+                edges { node { name { value } } }
+            }
+        }
+        """
+        gql_params = await prepare_graphql_params(db=db, branch=default_branch, service=service)
+        result = await graphql(
+            schema=gql_params.schema,
+            source=query,
+            context_value=gql_params.context,
+            root_value=None,
+        )
+
+        assert result.errors is not None
+        assert any("order_by" in str(err.message) for err in result.errors)
 
     async def test_filter_by_status(
         self,

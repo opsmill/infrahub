@@ -7,15 +7,24 @@ const config: CodegenConfig = {
   ignoreNoDocuments: true, // for better experience with the watcher
   generates: {
     "src/shared/api/graphql/generated/types.ts": {
-      plugins: ["typescript", "typescript-operations"],
+      plugins: ["typescript"],
       config: {
         avoidOptionals: {
           field: true, // Use `null` for nullable fields instead of optionals
           inputValue: false, // Allow nullable input fields to remain unspecified
         },
-        enumsAsTypes: true,
+        enumsAsConst: true,
+        namingConvention: {
+          enumValues: "keep",
+        },
         nonOptionalTypename: true,
         skipTypeNameForRoot: true,
+        scalars: {
+          BigInt: "string",
+          DateTime: "string",
+          FixedGenericScalar: "any",
+          GenericScalar: "any",
+        },
       },
     },
   },

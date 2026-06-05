@@ -1,6 +1,6 @@
 import { Icon } from "@iconify-icon/react";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
-import React from "react";
+import type React from "react";
 
 import {
   Command,
@@ -17,33 +17,40 @@ export const Combobox = Popover;
 
 export interface ComboboxTriggerProps
   extends PopoverTriggerProps,
-    React.HTMLAttributes<HTMLButtonElement> {}
+    React.HTMLAttributes<HTMLButtonElement> {
+  ref?: React.Ref<HTMLButtonElement>;
+}
 
-export const ComboboxTrigger = React.forwardRef<HTMLButtonElement, ComboboxTriggerProps>(
-  ({ children, className, ...props }, ref) => {
-    return (
-      <PopoverTrigger asChild ref={ref} {...props}>
-        <button
-          type="button"
-          role="combobox"
-          className={classNames(
-            inputStyle,
-            "focus:border-custom-blue-600 focus:outline-hidden focus:ring-2 focus:ring-custom-blue-600/25",
-            className
-          )}
-        >
-          {children}
-          <Icon icon="mdi:unfold-more-horizontal" className="ml-auto pl-2 text-gray-600" />
-        </button>
-      </PopoverTrigger>
-    );
-  }
-);
+export const ComboboxTrigger = ({ children, className, ref, ...props }: ComboboxTriggerProps) => {
+  return (
+    <PopoverTrigger asChild ref={ref} {...props}>
+      <button
+        type="button"
+        role="combobox"
+        className={classNames(
+          inputStyle,
+          "focus:border-custom-blue-600 focus:outline-hidden focus:ring-2 focus:ring-custom-blue-600/25",
+          className
+        )}
+      >
+        {children}
+        <Icon icon="mdi:unfold-more-horizontal" className="ml-auto pl-2 text-gray-600" />
+      </button>
+    </PopoverTrigger>
+  );
+};
 
-export const ComboboxContent = React.forwardRef<
-  React.ElementRef<typeof PopoverContent>,
-  React.ComponentPropsWithoutRef<typeof PopoverContent> & { fitTriggerWidth?: boolean }
->(({ className, fitTriggerWidth = true, style, ...props }, ref) => {
+interface ComboboxContentProps extends React.ComponentProps<typeof PopoverContent> {
+  fitTriggerWidth?: boolean;
+}
+
+export const ComboboxContent = ({
+  className,
+  fitTriggerWidth = true,
+  style,
+  ref,
+  ...props
+}: ComboboxContentProps) => {
   return (
     <PopoverContent
       ref={ref}
@@ -59,32 +66,37 @@ export const ComboboxContent = React.forwardRef<
       {...props}
     />
   );
-});
+};
 
-export interface ComboboxListProps extends React.ComponentPropsWithoutRef<typeof CommandList> {
+export interface ComboboxListProps extends React.ComponentProps<typeof CommandList> {
   shouldFilter?: boolean;
   onValueChange?: (search: string) => void;
+  placeholder?: string;
 }
 
-export const ComboboxList = React.forwardRef<
-  React.ElementRef<typeof CommandList>,
-  ComboboxListProps
->(({ shouldFilter, className, autoFocus, onValueChange, ...props }, ref) => {
+export const ComboboxList = ({
+  shouldFilter,
+  className,
+  autoFocus,
+  onValueChange,
+  placeholder = "Filter...",
+  ref,
+  ...props
+}: ComboboxListProps) => {
   return (
     <Command shouldFilter={shouldFilter} className={className}>
-      <CommandInput placeholder="Filter..." autoFocus={autoFocus} onValueChange={onValueChange} />
+      <CommandInput placeholder={placeholder} autoFocus={autoFocus} onValueChange={onValueChange} />
       <CommandList ref={ref} {...props} />
     </Command>
   );
-});
+};
 
-export const ComboboxItem = React.forwardRef<
-  React.ElementRef<typeof CommandItem>,
-  React.ComponentPropsWithoutRef<typeof CommandItem> & {
-    selectedValue?: string | null;
-    value: string;
-  }
->(({ children, selectedValue, ...props }, ref) => {
+interface ComboboxItemProps extends React.ComponentProps<typeof CommandItem> {
+  selectedValue?: string | null;
+  value: string;
+}
+
+export const ComboboxItem = ({ children, selectedValue, ref, ...props }: ComboboxItemProps) => {
   return (
     <CommandItem ref={ref} {...props}>
       <Icon
@@ -94,6 +106,6 @@ export const ComboboxItem = React.forwardRef<
       {children}
     </CommandItem>
   );
-});
+};
 
 export const ComboboxEmpty = CommandEmpty;

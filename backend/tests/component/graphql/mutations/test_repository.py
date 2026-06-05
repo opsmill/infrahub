@@ -5,7 +5,8 @@ from unittest.mock import call, patch
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.context import BranchContext, InfrahubContext
 from infrahub.core import registry
 from infrahub.core.constants import InfrahubKind, RepositoryInternalStatus
@@ -170,8 +171,11 @@ async def test_import_last_commit_rejects_non_read_only_repository(
     create_test_admin: Node,
     default_permission_backend: None,
 ) -> None:
-    """Calling InfrahubReadOnlyRepositoryImportLastCommit on a CoreRepository must fail
-    with a clear error instead of an AttributeError on the missing 'ref' attribute."""
+    """Calling InfrahubReadOnlyRepositoryImportLastCommit on a CoreRepository must fail.
+
+    with a clear error instead of an AttributeError on the missing 'ref' attribute.
+
+    """
     repository_model = registry.schema.get_node_schema(name=InfrahubKind.REPOSITORY, branch=default_branch)
     recorder = BusRecorder()
     service = await InfrahubServices.new(database=db, message_bus=recorder, workflow=WorkflowLocalExecution())

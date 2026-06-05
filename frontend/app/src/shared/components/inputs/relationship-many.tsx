@@ -1,9 +1,9 @@
 import { Icon } from "@iconify-icon/react";
+import { Button } from "@infrahub/ui";
 import type { PopoverTriggerProps } from "@radix-ui/react-popover";
 import React from "react";
 
 import { Badge } from "@/shared/components/ui/badge";
-import { Button } from "@/shared/components/ui/button";
 import { Combobox, ComboboxContent } from "@/shared/components/ui/combobox";
 import { PopoverTrigger } from "@/shared/components/ui/popover";
 import { inputStyle } from "@/shared/components/ui/style";
@@ -20,6 +20,7 @@ export interface RelationshipManyInputProps
   onChange: (value: Array<NodeCore>) => void;
   peer: string;
   value: Array<NodeCore> | null;
+  filterQuery?: Record<string, string | number | boolean | string[]>;
   ref?: React.Ref<HTMLButtonElement>;
 }
 
@@ -28,6 +29,7 @@ export function RelationshipManyInput({
   peer,
   value,
   onChange,
+  filterQuery,
   ref,
   ...props
 }: RelationshipManyInputProps) {
@@ -53,13 +55,13 @@ export function RelationshipManyInput({
                 {getNodeLabel(node)}
 
                 <Button
-                  size="icon"
+                  size="xs"
+                  shape="circle"
                   variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
+                  onPress={() => {
                     onChange(value.filter((item) => item.id !== node.id));
                   }}
-                  className="size-4 text-gray-500 hover:text-gray-800"
+                  className="size-4 text-gray-500 data-hovered:text-gray-800"
                   aria-label="Remove"
                   data-testid="remove-option"
                 >
@@ -86,6 +88,7 @@ export function RelationshipManyInput({
           peer={peer}
           onSelect={handleSelect}
           filterItem={(node) => !value?.some((v) => v.id === node.id)}
+          filterQuery={filterQuery}
         />
         <AddRelationshipAction peer={peer} onSuccess={handleSelect} />
       </ComboboxContent>

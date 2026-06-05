@@ -25,8 +25,9 @@ async def convert_repository_type(
     repository_post_creator: RepositoryFinalizer,
 ) -> Node:
     """Delete the node and return the new created one. If creation fails, the node is not deleted, and raise an error.
-    An extra check is performed on input node peers relationships to make sure they are still valid."""
 
+    An extra check is performed on input node peers relationships to make sure they are still valid.
+    """
     repo_name = repository.name.value
     async with lock.registry.get(name=repo_name, namespace="repository"):
         async with db.start_transaction() as dbt:
@@ -81,7 +82,7 @@ async def convert_repository_type(
         )
 
         # Delete the RepositoryGroup associated with the old repository, as a new one was created for the new repository.
-        repository_groups = (await repository.groups_objects.get_peers(db=db)).values()
+        repository_groups = (await repository.groups_objects.get_peers(db=db, peer_type=Node)).values()
         for repository_group in repository_groups:
             await NodeManager.delete(db=db, branch=branch, nodes=[repository_group], cascade_delete=False)
 

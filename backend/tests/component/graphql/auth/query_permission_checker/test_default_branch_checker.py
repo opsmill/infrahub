@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, create_autospec, patch
 from uuid import uuid4
 
 import pytest
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core.constants import GlobalPermissions, InfrahubKind, PermissionDecision
 from infrahub.core.node import Node
 from infrahub.exceptions import PermissionDeniedError
@@ -88,8 +89,12 @@ class TestDefaultBranchPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.first.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+        permission_manager = await PermissionManager.load_for_account(
+            db=db,
+            branch=permissions_helper.default_branch,
+            default_branch_name=permissions_helper.default_branch.name,
+            account_session=session,
+        )
 
         graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.branch = MagicMock()
@@ -134,8 +139,12 @@ class TestDefaultBranchPermission:
         session = AccountSession(
             authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
         )
-        permission_manager = PermissionManager(account_session=session)
-        await permission_manager.load_permissions(db=db, branch=permissions_helper.default_branch)
+        permission_manager = await PermissionManager.load_for_account(
+            db=db,
+            branch=permissions_helper.default_branch,
+            default_branch_name=permissions_helper.default_branch.name,
+            account_session=session,
+        )
 
         graphql_query = MagicMock(spec=InfrahubGraphQLQueryAnalyzer)
         graphql_query.branch = MagicMock()
@@ -175,3 +184,46 @@ class TestDefaultBranchPermission:
                     query_parameters=query_parameters,
                     branch=permissions_helper.default_branch,
                 )
+
+    async def test_branch_delete_exempt_for_user_without_permission(
+        self,
+        db: InfrahubDatabase,
+        default_permission_backend: None,
+        permissions_helper: PermissionsHelper,
+    ) -> None:
+        checker = DefaultBranchPermissionChecker()
+        session = AccountSession(
+            authenticated=True, account_id=permissions_helper.second.id, session_id=str(uuid4()), auth_type=AuthType.JWT
+        )
+        permission_manager = await PermissionManager.load_for_account(
+            db=db,
+            branch=permissions_helper.default_branch,
+            default_branch_name=permissions_helper.default_branch.name,
+            account_session=session,
+        )
+
+        graphql_query = create_autospec(spec=InfrahubGraphQLQueryAnalyzer)
+        graphql_query.branch = None
+        graphql_query.contains_mutation = True
+        graphql_query.operation_names = ["BranchDelete"]
+
+        graphql_context = GraphqlContext(
+            db=MagicMock(),
+            branch=MagicMock(),
+            types=MagicMock(),
+            single_relationship_resolver=MagicMock(),
+            many_relationship_resolver=MagicMock(),
+            account_metadata_resolver=AccountMetadataResolver(),
+            account_session=session,
+            permissions=permission_manager,
+        )
+        query_parameters = GraphqlParams(schema=MagicMock(), context=graphql_context)
+
+        resolution = await checker.check(
+            db=db,
+            account_session=session,
+            analyzed_query=graphql_query,
+            query_parameters=query_parameters,
+            branch=permissions_helper.default_branch,
+        )
+        assert resolution == CheckerResolution.NEXT_CHECKER

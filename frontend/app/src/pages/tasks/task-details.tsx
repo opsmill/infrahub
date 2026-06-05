@@ -1,40 +1,39 @@
-import { gql } from "@apollo/client";
 import { Icon } from "@iconify-icon/react";
-import { useParams } from "react-router";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import { constructPath } from "@/shared/api/rest/fetch";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import Content from "@/shared/components/layout/content";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
 import { Link } from "@/shared/components/ui/link";
-import { TASK_OBJECT } from "@/shared/config/constants";
+import { useRequiredParams } from "@/shared/hooks/use-required-params";
 import { useTitle } from "@/shared/hooks/useTitle";
 
-import { getTaskItemDetailsTitle } from "@/entities/tasks/api/getTasksItemDetailsTitle";
+import { useGetTaskDetailsTitle } from "@/entities/tasks/ui/queries/get-task-details-title.query";
 import { TaskItemDetails } from "@/entities/tasks/ui/task-item-details";
 
 const TaskDetailsPage = () => {
   useTitle("Task Details");
-  const { task: taskId } = useParams();
+  const { taskId } = useRequiredParams("taskId");
 
-  const query = gql(
-    getTaskItemDetailsTitle({
-      kind: TASK_OBJECT,
-      id: taskId,
-    })
-  );
-  const { loading, error, data, refetch } = useQuery(query);
+  const {
+    isLoading,
+    isFetching,
+    error,
+    data: taskData,
+    refetch,
+  } = useGetTaskDetailsTitle({ ids: [taskId] });
 
   if (error) {
     return <ErrorScreen message="An error occurred while fetching task details." />;
   }
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingIndicator className="h-full" />;
   }
 
-  const taskData = data?.[TASK_OBJECT]?.edges?.[0]?.node;
+  if (!taskData) {
+    return <ErrorScreen message={`Task with ID ${taskId} not found.`} />;
+  }
 
   const title = (
     <div className="flex items-center gap-2">
@@ -48,13 +47,9 @@ const TaskDetailsPage = () => {
     </div>
   );
 
-  if (!taskData) {
-    return <ErrorScreen message={`Task with ID ${taskId} not found.`} />;
-  }
-
   return (
     <Content.Card>
-      <Content.CardTitle title={title} isReloadLoading={loading} reload={() => refetch()} />
+      <Content.CardTitle title={title} isReloadLoading={isFetching} reload={() => refetch()} />
 
       <TaskItemDetails />
     </Content.Card>

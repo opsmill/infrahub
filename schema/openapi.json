@@ -262,6 +262,84 @@
                 ]
             }
         },
+        "/api/auth/ldap/login": {
+            "post": {
+                "summary": "Login Ldap",
+                "operationId": "login_ldap_api_auth_ldap_login_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LDAPCredentials"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UserToken"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Authentication failed.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Enterprise runtime not active.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EnterpriseRequiredResponse"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Username collides with an existing local-only account.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPCollisionResponse"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "LDAP directory unavailable.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/LDAPAuthErrorResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/diff/files": {
             "get": {
                 "summary": "Get Diff Files",
@@ -430,7 +508,7 @@
         "/api/file/{repository_id}/{file_path}": {
             "get": {
                 "summary": "Get File",
-                "description": "Retrieve a file from a git repository.",
+                "description": "Retrieve a file from a git repository.\n\nRaises:\n    CommitNotFoundError: When no commit is provided and the repository has no commits.\n    PropagatedFromWorkerError: When the worker returns an error response while reading the file.",
                 "operationId": "get_file_api_file__repository_id___file_path__get",
                 "security": [
                     {
@@ -1567,7 +1645,7 @@
         "/api/storage/files/by-hfid/{kind}": {
             "get": {
                 "summary": "Download File Object By Hfid",
-                "description": "Download a file by the FileObject node's Human-Friendly ID (HFID).\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.",
+                "description": "Download a file by the FileObject node's Human-Friendly ID (HFID).\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.\n\nRaises:\n    HTTPException: When the requested kind does not inherit from the FileObject schema.",
                 "operationId": "download_file_object_by_hfid_api_storage_files_by_hfid__kind__get",
                 "security": [
                     {
@@ -1678,7 +1756,7 @@
         "/api/storage/files/by-storage-id/{storage_id}": {
             "get": {
                 "summary": "Download File Object By Storage Id",
-                "description": "Download a file from storage by its storage_id.\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.",
+                "description": "Download a file from storage by its storage_id.\n\nRequires `VIEW` permission on the FileObject node.\nReturns the binary file content with `Content-Type` from the node's `file_type` attribute and `Content-Disposition` header with the original\nfilename.\n\nRaises:\n    NodeNotFoundError: When no FileObject node matches the provided storage_id.",
                 "operationId": "download_file_object_by_storage_id_api_storage_files_by_storage_id__storage_id__get",
                 "security": [
                     {
@@ -2004,6 +2082,142 @@
                         "APIKeyHeader": []
                     }
                 ]
+            }
+        },
+        "/api/telemetry/snapshots": {
+            "get": {
+                "summary": "Get Telemetry Snapshots",
+                "operationId": "get_telemetry_snapshots_api_telemetry_snapshots_get",
+                "security": [
+                    {
+                        "HTTPBearer": []
+                    },
+                    {
+                        "APIKeyHeader": []
+                    }
+                ],
+                "parameters": [
+                    {
+                        "name": "start_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Include snapshots created on or after this date (ISO 8601)",
+                            "title": "Start Date"
+                        },
+                        "description": "Include snapshots created on or after this date (ISO 8601)"
+                    },
+                    {
+                        "name": "end_date",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Include snapshots created on or before this date (ISO 8601)",
+                            "title": "End Date"
+                        },
+                        "description": "Include snapshots created on or before this date (ISO 8601)"
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "description": "Maximum number of snapshots to return",
+                            "default": 1000,
+                            "title": "Limit"
+                        },
+                        "description": "Maximum number of snapshots to return"
+                    },
+                    {
+                        "name": "offset",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "description": "Number of snapshots to skip",
+                            "default": 0,
+                            "title": "Offset"
+                        },
+                        "description": "Number of snapshots to skip"
+                    },
+                    {
+                        "name": "branch",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Name of the branch to use for the query",
+                            "title": "Branch"
+                        },
+                        "description": "Name of the branch to use for the query"
+                    },
+                    {
+                        "name": "at",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "anyOf": [
+                                {
+                                    "type": "string"
+                                },
+                                {
+                                    "type": "null"
+                                }
+                            ],
+                            "description": "Time to use for the query, in absolute or relative format",
+                            "title": "At"
+                        },
+                        "description": "Time to use for the query, in absolute or relative format"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Successful Response",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/TelemetrySnapshotListResponse"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation Error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         "/api/transform/python/{transform_id}": {
@@ -2426,7 +2640,7 @@
                             }
                         ],
                         "title": "Order By",
-                        "description": "List of attributes to use to order the results by default",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
                         "update": "allowed"
                     },
                     "uniqueness_constraints": {
@@ -2446,7 +2660,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -2728,7 +2942,7 @@
                             }
                         ],
                         "title": "Order By",
-                        "description": "List of attributes to use to order the results by default",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
                         "update": "allowed"
                     },
                     "uniqueness_constraints": {
@@ -2748,7 +2962,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3053,7 +3267,7 @@
                             }
                         ],
                         "title": "Order By",
-                        "description": "List of attributes to use to order the results by default",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
                         "update": "allowed"
                     },
                     "uniqueness_constraints": {
@@ -3073,7 +3287,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3324,7 +3538,7 @@
                             }
                         ],
                         "title": "Order By",
-                        "description": "List of attributes to use to order the results by default",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
                         "update": "allowed"
                     },
                     "uniqueness_constraints": {
@@ -3344,7 +3558,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -3687,7 +3901,7 @@
                         "title": "Unique",
                         "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
                         "default": false,
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "optional": {
                         "type": "boolean",
@@ -3953,7 +4167,7 @@
                         "title": "Unique",
                         "description": "Indicate if the value of this attribute must be unique in the database for a given model.",
                         "default": false,
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "optional": {
                         "type": "boolean",
@@ -4066,7 +4280,7 @@
                 "properties": {
                     "file": {
                         "type": "string",
-                        "format": "binary",
+                        "contentMediaType": "application/octet-stream",
                         "title": "File"
                     }
                 },
@@ -4358,6 +4572,9 @@
                     "sso": {
                         "$ref": "#/components/schemas/SSOInfo"
                     },
+                    "ldap": {
+                        "$ref": "#/components/schemas/LDAPInfo"
+                    },
                     "installation_type": {
                         "type": "string",
                         "title": "Installation Type"
@@ -4373,6 +4590,7 @@
                     "analytics",
                     "experimental_features",
                     "sso",
+                    "ldap",
                     "installation_type",
                     "policy"
                 ],
@@ -4487,6 +4705,35 @@
                     "name"
                 ],
                 "title": "DropdownChoice"
+            },
+            "EnterpriseRequiredResponse": {
+                "properties": {
+                    "error_code": {
+                        "type": "string",
+                        "title": "Error Code",
+                        "default": "ENTERPRISE_REQUIRED"
+                    },
+                    "feature": {
+                        "type": "string",
+                        "title": "Feature"
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "feature"
+                ],
+                "title": "EnterpriseRequiredResponse"
             },
             "ErrorCategory": {
                 "type": "string",
@@ -4703,7 +4950,7 @@
                             }
                         ],
                         "title": "Order By",
-                        "description": "List of attributes to use to order the results by default",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
                         "update": "allowed"
                     },
                     "uniqueness_constraints": {
@@ -4723,7 +4970,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -5032,6 +5279,104 @@
                     "type"
                 ],
                 "title": "JSONSchema"
+            },
+            "LDAPAuthErrorResponse": {
+                "properties": {
+                    "error_code": {
+                        "type": "string",
+                        "title": "Error Code"
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "error_code"
+                ],
+                "title": "LDAPAuthErrorResponse"
+            },
+            "LDAPCollisionResponse": {
+                "properties": {
+                    "error_code": {
+                        "type": "string",
+                        "title": "Error Code",
+                        "default": "LDAP_ACCOUNT_COLLISION"
+                    },
+                    "account_name": {
+                        "type": "string",
+                        "title": "Account Name"
+                    },
+                    "message": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Message"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "account_name"
+                ],
+                "title": "LDAPCollisionResponse"
+            },
+            "LDAPCredentials": {
+                "properties": {
+                    "username": {
+                        "type": "string",
+                        "maxLength": 256,
+                        "minLength": 1,
+                        "title": "Username"
+                    },
+                    "password": {
+                        "type": "string",
+                        "minLength": 1,
+                        "title": "Password"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "username",
+                    "password"
+                ],
+                "title": "LDAPCredentials"
+            },
+            "LDAPInfo": {
+                "properties": {
+                    "enabled": {
+                        "type": "boolean",
+                        "title": "Enabled",
+                        "description": "True when LDAP sign-in is available on this deployment, meaning it has been configured and the running edition supports it.",
+                        "default": false
+                    },
+                    "display_label": {
+                        "type": "string",
+                        "title": "Display Label",
+                        "description": "Text shown on the LDAP sign-in button on the login page.",
+                        "default": "Sign in with LDAP"
+                    },
+                    "icon": {
+                        "type": "string",
+                        "title": "Icon",
+                        "description": "Icon shown on the LDAP sign-in button on the login page.",
+                        "default": "mdi:account-key-outline"
+                    }
+                },
+                "type": "object",
+                "title": "LDAPInfo"
             },
             "ListAttributeParameters": {
                 "properties": {
@@ -5520,7 +5865,7 @@
                             }
                         ],
                         "title": "Order By",
-                        "description": "List of attributes to use to order the results by default",
+                        "description": "List of entries to order results by. Supports attributes, relationship attributes, and node_metadata with __asc/__desc.",
                         "update": "allowed"
                     },
                     "uniqueness_constraints": {
@@ -5540,7 +5885,7 @@
                         ],
                         "title": "Uniqueness Constraints",
                         "description": "List of multi-element uniqueness constraints that can combine relationships and attributes",
-                        "update": "validate_constraint"
+                        "update": "migration_required"
                     },
                     "documentation": {
                         "anyOf": [
@@ -6145,6 +6490,16 @@
                 "type": "object",
                 "title": "RemoteLoggingSettings"
             },
+            "RemoteSendStatus": {
+                "type": "string",
+                "enum": [
+                    "pending",
+                    "sent",
+                    "skipped",
+                    "failed"
+                ],
+                "title": "RemoteSendStatus"
+            },
             "SSOInfo": {
                 "properties": {
                     "providers": {
@@ -6434,7 +6789,7 @@
                     "schema_updated": {
                         "type": "boolean",
                         "title": "Schema Updated",
-                        "description": "Indicates if the loading of the schema changed the existing schema",
+                        "description": "Indicates if the loading of the schema changed the existing schema.",
                         "readOnly": true
                     }
                 },
@@ -6522,6 +6877,80 @@
                     "schemas"
                 ],
                 "title": "SchemasLoadAPI"
+            },
+            "TelemetrySnapshotListResponse": {
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "title": "Count"
+                    },
+                    "snapshots": {
+                        "items": {
+                            "$ref": "#/components/schemas/TelemetrySnapshotResponse"
+                        },
+                        "type": "array",
+                        "title": "Snapshots"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "count",
+                    "snapshots"
+                ],
+                "title": "TelemetrySnapshotListResponse"
+            },
+            "TelemetrySnapshotResponse": {
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "title": "Id"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "title": "Created At"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "title": "Kind"
+                    },
+                    "payload_format": {
+                        "type": "string",
+                        "title": "Payload Format"
+                    },
+                    "deployment_id": {
+                        "type": "string",
+                        "title": "Deployment Id"
+                    },
+                    "infrahub_version": {
+                        "type": "string",
+                        "title": "Infrahub Version"
+                    },
+                    "data": {
+                        "additionalProperties": true,
+                        "type": "object",
+                        "title": "Data"
+                    },
+                    "checksum": {
+                        "type": "string",
+                        "title": "Checksum"
+                    },
+                    "remote_send_status": {
+                        "$ref": "#/components/schemas/RemoteSendStatus"
+                    }
+                },
+                "type": "object",
+                "required": [
+                    "id",
+                    "created_at",
+                    "kind",
+                    "payload_format",
+                    "deployment_id",
+                    "infrahub_version",
+                    "data",
+                    "checksum",
+                    "remote_send_status"
+                ],
+                "title": "TelemetrySnapshotResponse"
             },
             "TextAttributeParameters": {
                 "properties": {
@@ -6684,6 +7113,13 @@
                     "type": {
                         "type": "string",
                         "title": "Error Type"
+                    },
+                    "input": {
+                        "title": "Input"
+                    },
+                    "ctx": {
+                        "type": "object",
+                        "title": "Context"
                     }
                 },
                 "type": "object",

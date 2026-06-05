@@ -1,5 +1,7 @@
-import { forwardRef } from "react";
+import { Button } from "@infrahub/ui";
+import type React from "react";
 
+import { Row } from "@/shared/components/container";
 import CheckboxField from "@/shared/components/form/fields/checkbox.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
@@ -17,7 +19,6 @@ import RelationshipManyField from "@/shared/components/form/fields/relationships
 import { SelectField } from "@/shared/components/form/fields/select.field";
 import TextareaField from "@/shared/components/form/fields/textarea.field";
 import type { DynamicFieldProps, FormFieldValue } from "@/shared/components/form/type";
-import { Button } from "@/shared/components/ui/button";
 import { Form, type FormProps, type FormRef, FormSubmit } from "@/shared/components/ui/form";
 import { warnUnexpectedType } from "@/shared/utils/common";
 
@@ -31,34 +32,40 @@ export interface DynamicFormProps extends Omit<FormProps, "onSubmit"> {
   onCancel?: () => void;
   submitLabel?: string;
   onSubmit?: (data: Record<string, FormFieldValue>) => void;
+  ref?: React.Ref<FormRef>;
 }
 
-const DynamicForm = forwardRef<FormRef, DynamicFormProps>(
-  ({ fields, onCancel, submitLabel, isBulkUpdate, ...props }, ref) => {
-    const formDefaultValues = fields.reduce(
-      (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
-      {}
-    );
+const DynamicForm = ({
+  fields,
+  onCancel,
+  submitLabel,
+  isBulkUpdate,
+  ref,
+  ...props
+}: DynamicFormProps) => {
+  const formDefaultValues = fields.reduce(
+    (acc, field) => ({ ...acc, [field.name]: field.defaultValue }),
+    {}
+  );
 
-    return (
-      <Form ref={ref} {...props} defaultValues={formDefaultValues}>
-        {fields.map((field) => (
-          <DynamicField key={`${field.type}_${field.name}`} {...field} />
-        ))}
+  return (
+    <Form ref={ref} {...props} defaultValues={formDefaultValues}>
+      {fields.map((field) => (
+        <DynamicField key={`${field.type}_${field.name}`} {...field} />
+      ))}
 
-        <div className="text-right">
-          {onCancel && (
-            <Button variant="outline" className="mr-2" onClick={onCancel}>
-              Cancel
-            </Button>
-          )}
+      <Row className="justify-end">
+        {onCancel && (
+          <Button variant="outline" onPress={onCancel}>
+            Cancel
+          </Button>
+        )}
 
-          <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
-        </div>
-      </Form>
-    );
-  }
-);
+        <FormSubmit>{submitLabel ?? "Save"}</FormSubmit>
+      </Row>
+    </Form>
+  );
+};
 
 export const DynamicField = (props: DynamicFieldProps) => {
   switch (props.type) {

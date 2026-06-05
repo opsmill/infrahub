@@ -1,13 +1,8 @@
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup, ScrollArea } from "@infrahub/ui";
 import { Outlet, useLocation, useParams } from "react-router";
 
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import Content from "@/shared/components/layout/content";
-import {
-  ResizableHandle,
-  ResizablePanel,
-  ResizablePanelGroup,
-} from "@/shared/components/ui/resizable";
-import { ScrollArea } from "@/shared/components/ui/scroll-area";
 
 import { ObjectHierarchyTreeWrapper } from "@/entities/nodes/hierarchy/ui/object-hierarchy-tree-wrapper";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
@@ -30,7 +25,7 @@ const ObjectPageLayout = () => {
   return (
     <ResizablePanelGroup className="items-stretch overflow-hidden">
       <ResizablePanel defaultSize={300} minSize={40} maxSize="90%" className="flex grow flex-col">
-        <Content.Card className="flex grow flex-col">
+        <Content.Card className="grow">
           <ScrollArea scrollX className="h-full p-1">
             <ObjectHierarchyTreeWrapper
               key={genericSchemaOfHierarchy.kind}

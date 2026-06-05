@@ -182,7 +182,7 @@ class SchemaNode(BaseModel):
     attributes: list[SchemaAttribute]
     relationships: list[SchemaRelationship]
     display_label: str | None = None
-    display_labels: list[str]
+    display_labels: list[str] | None = None
     uniqueness_constraints: list[list[str]] | None = None
     human_friendly_id: list[str] | None = None
 
@@ -229,7 +229,7 @@ base_node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     attributes=[
         SchemaAttribute(
             name="id",
@@ -341,7 +341,10 @@ base_node_schema = SchemaNode(
             name="order_by",
             kind="List",
             internal_kind=str,
-            description="List of attributes to use to order the results by default",
+            description=(
+                "List of entries to order results by. Supports attributes, relationship attributes, "
+                "and node_metadata with __asc/__desc."
+            ),
             optional=True,
             extra={"update": UpdateSupport.ALLOWED},
         ),
@@ -351,7 +354,7 @@ base_node_schema = SchemaNode(
             internal_kind=list[list[str]],
             description="List of multi-element uniqueness constraints that can combine relationships and attributes",
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="documentation",
@@ -397,7 +400,7 @@ node_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     human_friendly_id=["namespace__value", "name__value"],
     uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes
@@ -479,7 +482,7 @@ attribute_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_labels=["name__value"],
+    display_label="name__value",
     uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
@@ -580,7 +583,7 @@ attribute_schema = SchemaNode(
             description="Indicate if the value of this attribute must be unique in the database for a given model.",
             default_value=False,
             optional=True,
-            extra={"update": UpdateSupport.VALIDATE_CONSTRAINT},
+            extra={"update": UpdateSupport.MIGRATION_REQUIRED},
         ),
         SchemaAttribute(
             name="optional",
@@ -698,7 +701,7 @@ relationship_schema = SchemaNode(
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
     default_filter=None,
-    display_labels=["name__value"],
+    display_label="name__value",
     uniqueness_constraints=[["name__value", "node"]],
     attributes=[
         SchemaAttribute(
@@ -929,7 +932,7 @@ generic_schema = SchemaNode(
     namespace="Schema",
     branch=BranchSupportType.AWARE.value,
     include_in_menu=False,
-    display_labels=["label__value"],
+    display_label="label__value",
     human_friendly_id=["namespace__value", "name__value"],
     uniqueness_constraints=[["namespace__value", "name__value"]],
     attributes=base_node_schema.attributes

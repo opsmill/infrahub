@@ -1,7 +1,5 @@
-import { gql } from "@apollo/client";
 import { toast } from "react-toastify";
 
-import useQuery from "@/shared/api/graphql/useQuery";
 import ErrorScreen from "@/shared/components/errors/error-screen";
 import NoDataFound from "@/shared/components/errors/no-data-found";
 import ObjectForm, { type ObjectFormProps } from "@/shared/components/form/object-form";
@@ -12,7 +10,8 @@ import { areObjectArraysEqualById } from "@/shared/utils/array";
 
 import type { DynamicFieldData } from "@/entities/nodes/edit-form-hook/dynamic-control-types";
 import { useUpdateObjectMutation } from "@/entities/nodes/object/ui/queries/update-object.mutation";
-import { generateObjectEditFormQuery } from "@/entities/nodes/object-item-edit/generateObjectEditFormQuery";
+import { useGetObjectForEditing } from "@/entities/nodes/object-item-edit/ui/queries/get-object-for-editing.query";
+import type { NodeSchema, ProfileSchema } from "@/entities/schema/types";
 import { useSchema } from "@/entities/schema/ui/hooks/useSchema";
 
 interface Props {
@@ -21,25 +20,37 @@ interface Props {
   closeDrawer: () => void;
   onUpdateComplete?: () => void;
   formStructure?: DynamicFieldData[];
+  extraRelationshipNames?: string[];
 }
 
 export default function ObjectItemEditComponent(props: Props) {
-  const { objectname, objectId, closeDrawer, onUpdateComplete } = props;
-
-  const { schema } = useSchema(objectname);
+  const { schema } = useSchema(props.objectname);
 
   if (!schema) {
-    return <NoDataFound message={`Schema ${objectname} not found`} />;
+    return <NoDataFound message={`Schema ${props.objectname} not found`} />;
   }
 
-  const query = gql(
-    generateObjectEditFormQuery({
-      schema,
-      objectId,
-    })
-  );
+  return <ObjectItemEditForm {...props} schema={schema} />;
+}
 
-  const { loading, error, data } = useQuery(query, { skip: !schema });
+interface ObjectItemEditFormProps extends Props {
+  schema: NodeSchema | ProfileSchema;
+}
+
+function ObjectItemEditForm({
+  schema,
+  objectname,
+  objectId,
+  closeDrawer,
+  onUpdateComplete,
+  extraRelationshipNames,
+}: ObjectItemEditFormProps) {
+  const { isLoading, error, data } = useGetObjectForEditing({
+    schema,
+    objectKind: objectname,
+    objectId,
+    extraRelationshipNames,
+  });
 
   const updateObject = useUpdateObjectMutation();
 
@@ -47,7 +58,7 @@ export default function ObjectItemEditComponent(props: Props) {
     return <ErrorScreen message="Something went wrong when fetching the object details." />;
   }
 
-  if (loading || !schema) {
+  if (isLoading) {
     return <LoadingIndicator className="p-4" />;
   }
 
@@ -55,9 +66,8 @@ export default function ObjectItemEditComponent(props: Props) {
     return <NoDataFound message="No details found." />;
   }
 
-  const objectDetailsData = data[schema.kind as string]?.edges[0]?.node;
-
-  const objectProfiles = objectDetailsData?.profiles?.edges?.map((edge: any) => edge?.node) ?? [];
+  const objectDetailsData = data.objectDetails;
+  const objectProfiles = data.profiles;
 
   const onSubmit: ObjectFormProps["onSubmit"] = async ({ fields, formData, profiles }) => {
     const updatedObject = getUpdateMutationFromFormData({ formData, fields });

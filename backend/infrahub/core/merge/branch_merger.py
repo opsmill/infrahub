@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from infrahub.core.diff.coordinator import DiffCoordinator
     from infrahub.core.diff.diff_locker import DiffLocker
     from infrahub.core.diff.merger.merger import DiffMerger
-    from infrahub.core.diff.model.path import EnrichedDiffRoot
     from infrahub.core.diff.repository.repository import DiffRepository
     from infrahub.core.models import SchemaUpdateConstraintInfo, SchemaUpdateMigrationInfo
     from infrahub.core.schema.manager import SchemaDiff
@@ -87,9 +86,10 @@ class BranchMerger:
 
     async def get_initial_source_branch(self) -> SchemaBranch:
         """Retrieve the schema of the source branch when the branch was created.
+
         For now we are querying the full schema, but this is something we'll need to revisit in the future by either:
          - having a faster way to pull a previous version of the schema
-         - using the diff generated from the data
+         - using the diff generated from the data.
         """
         if self._initial_source_schema:
             return self._initial_source_schema
@@ -132,9 +132,7 @@ class BranchMerger:
 
         diff_source = initial_source_schema.diff(other=self.source_schema)
         diff_destination = initial_source_schema.diff(other=self.destination_schema)
-        diff_both = diff_source + diff_destination
-
-        return diff_both
+        return diff_source + diff_destination
 
     async def calculate_migrations(self, target_schema: SchemaBranch) -> list[SchemaUpdateMigrationInfo]:
         diff_3way = await self.get_3ways_diff_schema()
@@ -150,8 +148,15 @@ class BranchMerger:
     async def merge(
         self,
         at: str | Timestamp | None = None,
-    ) -> EnrichedDiffRoot:
-        """Merge the current branch into main."""
+    ) -> None:
+        """Merge the current branch into main.
+
+        Raises:
+            ValidationError: When the source branch is the default branch or when there are
+                unresolved conflicts.
+            MergeFailedError: When the underlying graph merge raises an exception.
+
+        """
         if self.source_branch.name == registry.default_branch:
             raise ValidationError(f"Unable to merge the branch '{self.source_branch.name}' into itself")
         log.info("Updating diff for merge")
@@ -181,16 +186,13 @@ class BranchMerger:
                         f"Unable to merge the branch '{self.source_branch.name}', conflict resolution missing: {', '.join(errors)}"
                     )
 
-                # TODO need to find a way to properly communicate back to the user any issue that could come up during the merge
-                # From the Graph or From the repositories
                 self._merge_at = Timestamp(at)
-                branch_diff = await self.diff_merger.merge_graph(at=self._merge_at)
+                await self.diff_merger.merge_graph(at=self._merge_at)
             except Exception as exc:
                 log.exception("Merge failed, beginning rollback")
                 await self.rollback()
                 raise MergeFailedError(branch_name=self.source_branch.name) from exc
         await self.merge_repositories()
-        return branch_diff
 
     async def rollback(self) -> None:
         await self.diff_merger.rollback(at=self._merge_at)

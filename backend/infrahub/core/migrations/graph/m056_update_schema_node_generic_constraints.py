@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from infrahub.core import registry
 from infrahub.core.branch import Branch
-from infrahub.core.migrations.shared import MigrationInput, MigrationResult, get_migration_console
+from infrahub.core.migrations.shared import MigrationInput, MigrationResult
 from infrahub.core.schema import SchemaRoot, internal_schema
 from infrahub.core.schema.definitions.internal import (
     generic_schema as internal_generic_schema,
@@ -22,7 +22,6 @@ if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
 
 log = get_logger()
-console = get_migration_console()
 
 
 async def update_schema_on_branch(db: InfrahubDatabase, branch: Branch, at: Timestamp, user_id: str) -> None:
@@ -71,6 +70,7 @@ class Migration056(ArbitraryMigration):
         return MigrationResult()
 
     async def execute(self, migration_input: MigrationInput) -> MigrationResult:
+        console = migration_input.console
         db = migration_input.db
         at = migration_input.at
         user_id = migration_input.user_id
@@ -82,8 +82,7 @@ class Migration056(ArbitraryMigration):
         console.log(f"Updating on default branch: {default_branch.name}")
         await update_schema_on_branch(db=db, branch=default_branch, at=at, user_id=user_id)
 
-        branches = await Branch.get_list(db=db)
-        branches = [b for b in branches if not b.is_default and not b.is_global]
+        branches = await Branch.get_list(db=db, exclude_global=True, exclude_default=True)
         console.log(f"Found {len(branches)} branches to update")
         for branch in branches:
             console.log(f"Updating on branch: {branch.name}")

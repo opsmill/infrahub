@@ -46,8 +46,8 @@ RETURN edge_to_add.identifier AS abstract_id, %(id_func_name)s(e) AS db_id
         self,
         edges_to_add: list[EdgeToAdd],
     ) -> AsyncGenerator[dict[str, str], None]:
-        """
-        Create edges_to_add on the database.
+        """Create edges_to_add on the database.
+
         Returns a generator that yields dictionaries mapping EdgeToAdd.identifier to the database-level ID of the newly created edge.
         """
         edges_map_queue: dict[str, list[EdgeToAdd]] = defaultdict(list)

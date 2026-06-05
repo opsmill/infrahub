@@ -13,12 +13,14 @@ from typing import Any
 
 import pytest
 
+from infrahub.core import registry
 from infrahub.core.branch import Branch
 from infrahub.core.constants import MetadataOptions
 from infrahub.core.initialization import create_branch
 from infrahub.core.manager import NodeManager
 from infrahub.core.node import Node
 from infrahub.core.schema import NodeSchema
+from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
@@ -868,7 +870,7 @@ class TestMetadataFilters:
     async def test_combined_created_by_and_created_at_after(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
-        """Test combining created_by__id with created_at__after"""
+        """Test combining created_by__id with created_at__after."""
         query = """
         query($userId: ID!, $cutoff: DateTime!) {
             TestCriticality(node_metadata__created_by__id: $userId, node_metadata__created_at__after: $cutoff) {
@@ -890,7 +892,7 @@ class TestMetadataFilters:
     async def test_combined_updated_by_and_updated_at_after(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
-        """Test combining updated_by__id with updated_at__after"""
+        """Test combining updated_by__id with updated_at__after."""
         query = """
         query($userId: ID!, $cutoff: DateTime!) {
             TestCriticality(node_metadata__updated_by__id: $userId, node_metadata__updated_at__after: $cutoff) {
@@ -912,7 +914,7 @@ class TestMetadataFilters:
     async def test_created_at_range(
         self, db: InfrahubDatabase, default_branch_scope_class: Branch, metadata_filter_data: MetadataFilterTestData
     ) -> None:
-        """Test created_at__after combined with created_at__before (date range)"""
+        """Test created_at__after combined with created_at__before (date range)."""
         query = """
         query($after: DateTime!, $before: DateTime!) {
             TestCriticality(node_metadata__created_at__after: $after, node_metadata__created_at__before: $before) {
@@ -1455,3 +1457,181 @@ class TestMetadataFilters:
         )
         assert updated_data["TestCriticality"]["count"] == 1
         assert self._get_names(updated_data) == {"node1"}
+
+
+async def test_graphql_schema_order_by_metadata_honored_without_query_order(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    schema = schema_branch.get(name="TestCriticality", duplicate=False)
+    schema.order_by = ["node_metadata__created_at__desc"]
+    schema_branch.set(name="TestCriticality", schema=schema)
+    default_branch.update_schema_hash()
+
+    nodes = []
+    for idx in range(3):
+        node = await Node.init(db=db, schema=schema)
+        await node.new(db=db, name=f"schema-order-{idx}", level=idx)
+        await node.save(db=db)
+        nodes.append(node)
+
+    query = """
+    query {
+        TestCriticality {
+            edges {
+                node { name { value } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    names = [edge["node"]["name"]["value"] for edge in result.data["TestCriticality"]["edges"]]
+    assert names == ["schema-order-2", "schema-order-1", "schema-order-0"]
+
+
+async def test_graphql_query_order_replaces_schema_order(
+    db: InfrahubDatabase, default_branch: Branch, criticality_schema: NodeSchema
+) -> None:
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    criticality_schema.order_by = ["node_metadata__created_at__desc"]
+    schema_branch.set(name="TestCriticality", schema=criticality_schema)
+    default_branch.update_schema_hash()
+
+    nodes = []
+    for idx in range(3):
+        node = await Node.init(db=db, schema=criticality_schema)
+        await node.new(db=db, name=f"override-order-{idx}", level=idx)
+        await node.save(db=db)
+        nodes.append(node)
+
+    query = """
+    query {
+        TestCriticality(order: {node_metadata: {created_at: ASC}}) {
+            edges {
+                node { name { value } }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={},
+    )
+
+    assert result.errors is None
+    assert result.data
+    names = [edge["node"]["name"]["value"] for edge in result.data["TestCriticality"]["edges"]]
+    assert names == ["override-order-0", "override-order-1", "override-order-2"]
+
+
+async def test_graphql_relationship_peer_schema_order_by_metadata_honored(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    car_schema = car_person_schema.get_node(name="TestCar", duplicate=False)
+    person_schema = car_person_schema.get_node(name="TestPerson", duplicate=False)
+    car_schema.order_by = ["node_metadata__created_at__desc"]
+    car_person_schema.set(name="TestCar", schema=car_schema)
+
+    owner = await Node.init(db=db, schema=person_schema)
+    await owner.new(db=db, name="rel-peer-order-owner")
+    await owner.save(db=db)
+
+    cars: list[Node] = []
+    for idx in range(3):
+        car = await Node.init(db=db, schema=car_schema)
+        await car.new(db=db, name=f"rel-peer-car-{idx}", nbr_seats=4, is_electric=False, owner=owner)
+        await car.save(db=db)
+        cars.append(car)
+
+    default_branch.update_schema_hash()
+
+    query = """
+    query($owner_id: ID!) {
+        TestPerson(ids: [$owner_id]) {
+            edges {
+                node {
+                    cars {
+                        edges { node { name { value } } }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"owner_id": owner.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    cars_edges = result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]
+    names = [e["node"]["name"]["value"] for e in cars_edges]
+    assert names == ["rel-peer-car-2", "rel-peer-car-1", "rel-peer-car-0"]
+
+
+async def test_graphql_relationship_peer_query_order_replaces_schema_order(
+    db: InfrahubDatabase, default_branch: Branch, car_person_schema: SchemaBranch
+) -> None:
+    car_schema = car_person_schema.get_node(name="TestCar", duplicate=False)
+    person_schema = car_person_schema.get_node(name="TestPerson", duplicate=False)
+    car_schema.order_by = ["node_metadata__created_at__desc"]
+
+    owner = await Node.init(db=db, schema=person_schema)
+    await owner.new(db=db, name="rel-peer-override-owner")
+    await owner.save(db=db)
+
+    cars: list[Node] = []
+    for idx in range(3):
+        car = await Node.init(db=db, schema=car_schema)
+        await car.new(db=db, name=f"rel-peer-override-car-{idx}", nbr_seats=4, is_electric=False, owner=owner)
+        await car.save(db=db)
+        cars.append(car)
+
+    default_branch.update_schema_hash()
+
+    query = """
+    query($owner_id: ID!) {
+        TestPerson(ids: [$owner_id]) {
+            edges {
+                node {
+                    cars(order: {node_metadata: {created_at: ASC}}) {
+                        edges { node { name { value } } }
+                    }
+                }
+            }
+        }
+    }
+    """
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"owner_id": owner.id},
+    )
+
+    assert result.errors is None
+    assert result.data
+    cars_edges = result.data["TestPerson"]["edges"][0]["node"]["cars"]["edges"]
+    names = [e["node"]["name"]["value"] for e in cars_edges]
+    assert names == ["rel-peer-override-car-0", "rel-peer-override-car-1", "rel-peer-override-car-2"]

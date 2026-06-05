@@ -1,6 +1,7 @@
 import bcrypt
 
-from infrahub.auth import AccountSession, AuthType
+from infrahub.auth.session import AccountSession
+from infrahub.auth.types import AuthType
 from infrahub.core.account import GlobalPermission, ObjectPermission
 from infrahub.core.branch import Branch
 from infrahub.core.constants import GlobalPermissions, PermissionAction, PermissionDecision
@@ -9,6 +10,14 @@ from infrahub.core.node import Node
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.initialization import prepare_graphql_params
 from tests.helpers.graphql import graphql
+
+CORE_ACCOUNT_DELETE = """
+mutation CoreAccountDelete($id: String!) {
+    CoreAccountDelete(data: {id: $id}) {
+        ok
+    }
+}
+"""
 
 
 async def test_everyone_can_update_password(db: InfrahubDatabase, default_branch: Branch, first_account: Node) -> None:
@@ -138,3 +147,30 @@ async def test_permissions(
     assert result.errors is None
     assert result.data
     assert not result.data["InfrahubPermissions"]["global_permissions"]["edges"]
+
+
+async def test_admin_cannot_delete_own_account(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    default_permission_backend: None,
+    authentication_base: None,
+    session_admin: AccountSession,
+    create_test_admin: Node,
+) -> None:
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(
+        db=db,
+        branch=default_branch,
+        account_session=session_admin,
+    )
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=CORE_ACCOUNT_DELETE,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": create_test_admin.id},
+    )
+
+    assert result.errors
+    assert str(result.errors[0].message) == "Cannot delete your own account"

@@ -1,13 +1,9 @@
-import { graphql } from "gql.tada";
-
-import useQuery from "@/shared/api/graphql/useQuery";
 import { Clipboard } from "@/shared/components/buttons/clipboard";
 import { BadgeCircle, CIRCLE_BADGE_TYPES } from "@/shared/components/display/badge-circle";
 import { LoadingIndicator } from "@/shared/components/loading/loading-indicator";
-import { CONFIG } from "@/shared/config/config";
 import { NODE_OBJECT } from "@/shared/config/constants";
 
-import { getObjectDisplayLabel } from "@/entities/nodes/api/getObjectDisplayLabel";
+import { useNodeLabel } from "@/entities/nodes/object/ui/queries/get-display-label.query";
 import { getNodeLabel } from "@/entities/nodes/object/utils/get-node-label";
 
 type tId = {
@@ -19,14 +15,18 @@ type tId = {
 };
 
 export const Id = ({ id, kind = NODE_OBJECT, preventCopy, branch, date }: tId) => {
-  const { loading, error, data } = useQuery(graphql(getObjectDisplayLabel({ kind })), {
-    variables: { ids: [id] },
-    context: { uri: CONFIG.GRAPHQL_URL(branch, date) },
+  const {
+    isPending,
+    error,
+    data: object,
+  } = useNodeLabel({
+    objectId: id,
+    kind,
+    branch,
+    atDate: date,
   });
 
-  const object = data?.[kind]?.edges?.[0]?.node ?? {};
-
-  if (loading) {
+  if (isPending) {
     return <LoadingIndicator />;
   }
 

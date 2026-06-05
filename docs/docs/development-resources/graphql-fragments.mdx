@@ -1,0 +1,233 @@
+---
+title: Using GraphQL fragments
+---
+
+# Using GraphQL fragments
+
+GraphQL fragments are reusable field selections that can be shared across multiple stored queries. Instead of duplicating the same nested field selections in every query, you define them once as a fragment and reference them using the standard GraphQL spread syntax (`...fragmentName`).
+
+This is particularly useful when multiple [Transformations](../transformations/overview) or [Generators](../generators/overview) need to query the same fields from a model. Update the fragment once, and all queries that reference it pick up the change on their next execution.
+
+## How fragments work in Infrahub
+
+Fragment files are `.gql` files containing one or more `fragment ... on Type { }` definitions. They are declared in the [`.infrahub.yml`](../git-integration/infrahub-yml) configuration file under `graphql_fragments`:
+
+```yaml
+graphql_fragments:
+  - name: interface_fields
+    file_path: "fragments/interface_fields.gql"
+```
+
+When Infrahub imports a query from a Git repository, it checks for fragment spread references (`...fragmentName`). If any are found, the corresponding fragment definitions are resolved from the declared fragment files and included inline in the query before it is stored in the database.
+
+### Fragment resolution behavior
+
+- **Transitive resolution**: If fragment A references fragment B, both are included automatically
+- **Duplicate detection**: A fragment name defined in multiple files raises an error
+- **Circular dependency detection**: Fragments that reference each other in a cycle are rejected
+- **Directory support**: The `file_path` in `.infrahub.yml` can point to a directory, loading all `.gql` files within it
+
+### Using fragments in queries
+
+Reference a fragment in any query file declared in the same repository:
+
+```graphql
+query DeviceInterfaces($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        interfaces {
+          edges {
+            node {
+              ...interfaceFields
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+## Prerequisites
+
+- A running Infrahub instance
+- An [external Git repository](../git-integration/connect-repository) connected to Infrahub (or a local repository for testing with `infrahubctl`)
+- Familiarity with [GraphQL queries](./graphql/overview) in Infrahub
+
+## 1. Define a fragment file
+
+Create a `.gql` file containing one or more fragment definitions. Each fragment targets a specific GraphQL type and selects the fields you want to reuse.
+
+Create a file named `fragments/interface_fields.gql`:
+
+```graphql
+fragment interfaceFields on InfraInterfaceL3 {
+  name {
+    value
+  }
+  description {
+    value
+  }
+  speed {
+    value
+  }
+  ip_addresses {
+    edges {
+      node {
+        address {
+          value
+        }
+      }
+    }
+  }
+}
+```
+
+:::info
+
+The type after `on` must match a valid model in your Infrahub schema. In this example, `InfraInterfaceL3` refers to the model kind as it appears in GraphQL queries.
+
+:::
+
+## 2. Declare the fragment in `.infrahub.yml`
+
+Add a `graphql_fragments` section to your `.infrahub.yml` file. Each entry requires a `name` and a `file_path` relative to the repository root.
+
+```yaml
+graphql_fragments:
+  - name: interface_fields
+    file_path: "fragments/interface_fields.gql"
+
+queries:
+  - name: device_interfaces_query
+    file_path: "queries/device_interfaces.gql"
+```
+
+The `file_path` field accepts either a single `.gql` file or a directory. When pointing to a directory, Infrahub loads all `.gql` files within it.
+
+## 3. Reference fragments in a query
+
+Use the standard GraphQL spread syntax (`...fragmentName`) to reference a fragment in any query file declared in the same repository.
+
+Create a file named `queries/device_interfaces.gql`:
+
+```graphql
+query DeviceInterfaces($device_name: String!) {
+  InfraDevice(name__value: $device_name) {
+    edges {
+      node {
+        name {
+          value
+        }
+        interfaces {
+          edges {
+            node {
+              ...interfaceFields
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+When Infrahub imports this query from the repository, it detects the `...interfaceFields` spread, resolves it against the declared fragment files, and stores the complete query with the fragment definition included inline.
+
+## 4. Sync the repository
+
+After committing the fragment file, the `.infrahub.yml` update, and the query file, sync the repository with Infrahub. Fragments are processed during the same repository sync that imports GraphQL queries.
+
+If you are testing locally with `infrahubctl`, the fragment resolution happens automatically when rendering Transformations:
+
+```shell
+infrahubctl render device_config_transform device_name=router01
+```
+
+## 5. Verify the result
+
+Open the GraphQL query in the Infrahub web interface or query it via the API. The stored query contains the fragment definition included inline alongside the operation, so it executes without any additional resolution at runtime.
+
+```shell
+curl -s "https://<host>/api/query/device_interfaces_query?device_name=router01" | python -m json.tool
+```
+
+## Advanced usage
+
+### Multiple fragments per file
+
+A single `.gql` file can contain multiple fragment definitions:
+
+```graphql
+fragment interfaceFields on InfraInterfaceL3 {
+  name {
+    value
+  }
+  speed {
+    value
+  }
+}
+
+fragment addressFields on InfraIPAddress {
+  address {
+    value
+  }
+  prefix_length {
+    value
+  }
+}
+```
+
+Both fragments become available to any query in the repository.
+
+### Directory-based declarations
+
+Point `file_path` to a directory to load all `.gql` files within it:
+
+```yaml
+graphql_fragments:
+  - name: all_fragments
+    file_path: "fragments/"
+```
+
+Infrahub loads all `.gql` files in the `fragments/` directory in alphabetical order.
+
+### Transitive fragments
+
+Fragments can reference other fragments. Infrahub resolves dependencies transitively and detects circular references.
+
+```graphql
+fragment deviceDetails on InfraDevice {
+  name {
+    value
+  }
+  interfaces {
+    edges {
+      node {
+        ...interfaceFields
+      }
+    }
+  }
+}
+```
+
+When a query uses `...deviceDetails`, Infrahub automatically includes both `deviceDetails` and `interfaceFields` in the resolved query.
+
+## Error handling
+
+Infrahub validates fragments during repository sync and raises specific errors:
+
+| Error | Cause |
+|-------|-------|
+| `FragmentFileNotFoundError` | The `file_path` in `.infrahub.yml` does not exist in the repository |
+| `FragmentNotFoundError` | A query references a fragment name that is not defined in any declared fragment file |
+| `DuplicateFragmentError` | The same fragment name is defined in multiple files |
+| `CircularFragmentError` | Two or more fragments reference each other, creating a dependency cycle |
+
+## Related resources
+
+- [GraphQL in Infrahub](./graphql/overview) — query format, stored queries, and endpoint reference
+- [`.infrahub.yml` configuration](../git-integration/infrahub-yml) — repository manifest structure and resource types
+- [Creating a Jinja Transformation](../academy/tutorials/transformations/build-a-jinja2-transformation) — using queries with Jinja2 templates
+- [Creating a Python Transformation](../academy/tutorials/transformations/build-a-python-transformation) — using queries with Python code

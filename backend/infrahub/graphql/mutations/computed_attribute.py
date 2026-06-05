@@ -83,7 +83,7 @@ class UpdateComputedAttribute(Mutation):
                 kind=node_schema.kind,
                 id=str(data.id),
                 branch=graphql_context.branch,
-                fields={target_attribute.name: None},
+                fields={target_attribute.name: None, "display_label": None},
             )
         ):
             raise NodeNotFoundError(
@@ -113,7 +113,7 @@ class UpdateComputedAttribute(Mutation):
                 changelog=target_node.node_changelog,
                 fields=[str(data.attribute)],
                 meta=EventMeta(
-                    context=graphql_context.get_context(),
+                    context=graphql_context.to_event_context(),
                     initiator_id=WORKER_IDENTITY,
                     request_id=request_id,
                     account_id=graphql_context.active_account_session.account_id,
