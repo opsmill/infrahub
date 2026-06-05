@@ -74,6 +74,8 @@ from infrahub.message_bus.types import (
     ProposedChangeSubscriber,
 )
 from infrahub.proposed_change.branch_diff import (
+    GitRepositoryFileDiffer,
+    RepositoryFileDiffPopulator,
     get_modified_node_ids,
     has_data_changes,
     has_node_changes,
@@ -1400,7 +1402,8 @@ async def run_proposed_change_pipeline(model: RequestProposedChangePipeline, con
                 )
         return
 
-    await _gather_repository_repository_diffs(repositories=repositories, client=client)
+    file_diff_populator = RepositoryFileDiffPopulator(differ=GitRepositoryFileDiffer(client=client))
+    await file_diff_populator.populate(repositories=repositories)
 
     database = await get_database()
     async with database.start_session() as dbs:
@@ -1913,30 +1916,6 @@ async def _validate_repository_merge_conflicts(
                     log.info(f"no conflict identified for {repo.repository_name}")
 
     return conflicts
-
-
-async def _gather_repository_repository_diffs(
-    repositories: list[ProposedChangeRepository], client: InfrahubClient
-) -> None:
-    for repo in repositories:
-        if repo.has_diff and repo.source_commit and repo.destination_commit:
-            # TODO we need to find a way to return all files in the repo if the repo is new
-            git_repo = await InfrahubRepository.init(id=repo.repository_id, name=repo.repository_name, client=client)
-
-            files_changed: list[str] = []
-            files_added: list[str] = []
-            files_removed: list[str] = []
-
-            if repo.destination_branch:
-                files_changed, files_added, files_removed = await git_repo.calculate_diff_between_commits(
-                    first_commit=repo.source_commit, second_commit=repo.destination_commit
-                )
-            else:
-                files_added = await git_repo.list_all_files(commit=repo.source_commit)
-
-            repo.files_removed = files_removed
-            repo.files_added = files_added
-            repo.files_changed = files_changed
 
 
 async def _get_subscribers_for_nodes(
