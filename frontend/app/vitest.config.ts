@@ -36,6 +36,15 @@ export default mergeConfig(
         ],
       },
       exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
+      deps: {
+        optimizer: {
+          web: {
+            // Pre-bundle deps pulled in by @infrahub/ui workspace-source so Vite
+            // doesn't discover them mid-run and trigger a reload that resets vi.mock().
+            include: ["lucide-react"],
+          },
+        },
+      },
     },
   })
 );
