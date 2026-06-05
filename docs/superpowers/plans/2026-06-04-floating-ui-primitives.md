@@ -789,10 +789,10 @@ export const Default: Story = {
 };
 ```
 
-- [ ] **Step 7: Run the full ui test suite + verify the package builds**
+- [ ] **Step 7: Run the full ui test suite**
 
-Run: `cd frontend/packages/ui && pnpm test && pnpm build`
-Expected: all tests PASS, build succeeds.
+Run: `cd frontend/packages/ui && pnpm test`
+Expected: all tests PASS. NOTE: `pnpm build` currently fails on a **pre-existing** `tsconfig` `TS5101` (`baseUrl` deprecation) already present on `develop` — not introduced by this work and not gating, because the app consumes `@infrahub/ui` from source (no built artifact required). Fixing that deprecation is out of scope here.
 
 - [ ] **Step 8: Commit**
 
@@ -820,8 +820,8 @@ In `frontend/packages/ui/package.json` `"exports"`, add:
 
 - [ ] **Step 2: Verify the barrel still resolves**
 
-Run: `cd frontend/packages/ui && pnpm build`
-Expected: build succeeds.
+Run: `cd frontend/packages/ui && pnpm test`
+Expected: all tests PASS — the new subpath exports resolve (tests import via the barrel). `pnpm build` is **not** used as a gate: it fails on the pre-existing `TS5101` deprecation noted in Task 5 Step 7.
 
 - [ ] **Step 3: Commit**
 

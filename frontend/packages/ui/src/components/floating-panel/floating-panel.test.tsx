@@ -28,7 +28,7 @@ describe("FloatingPanel", () => {
     );
 
     // THEN
-    expect(component.container.querySelector('[role="heading"]')).toBeNull();
+    expect(component.container.querySelector("h2")).toBeNull();
     expect(component.container.querySelector("p")).toBeNull();
   });
 
