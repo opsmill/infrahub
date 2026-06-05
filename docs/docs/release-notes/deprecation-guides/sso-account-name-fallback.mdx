@@ -37,7 +37,9 @@ You are exposed while **all** of the following hold:
 - you have pre-existing local Infrahub accounts that have not yet been linked to an SSO
   identity, **and**
 - you are running a version where the display-name fallback is still active, meaning anything
-  from **1.8.6 up to (but not including) 1.11**.
+  from **1.8.6 up to (but not including) 1.11**, **and**
+- your SSO provider lets end users set or change their own display name (the `name` claim), so
+  an attacker can present the display name of a privileged user.
 
 On **1.8.7+, 1.9.7+, and all 1.10.x releases** you can close the exposure by setting
 `sso_account_name_fallback = false`.
