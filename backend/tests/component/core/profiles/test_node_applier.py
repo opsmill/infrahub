@@ -257,8 +257,10 @@ async def _validate_node_profile_relationships(
 
         if expected_profile_relationship:
             assert {p.id for p in updated_peers} == {p.id for p in expected_profile_relationship.peers}
-            if expected_profile_relationship.source_uuid or updated_source:
+            if expected_profile_relationship.source_uuid:
                 assert updated_source == {expected_profile_relationship.source_uuid}
+            else:
+                assert updated_source == set()
         else:
             assert {p.id for p in updated_peers} == {p.id for p in original_peers}
             assert updated_source == set()
@@ -647,7 +649,9 @@ async def test_get_many_with_profile_relationships_partial_override(
     )
     await augmented_child_profile.save(db=db)
 
-    await child_and_thing_nodes.child_nodes[0].profiles.update(db=db, data=[augmented_child_profile])
+    await (
+        child_and_thing_nodes.child_nodes[0].get_relationship("profiles").update(db=db, data=[augmented_child_profile])
+    )
     await child_and_thing_nodes.child_nodes[0].save(db=db)
 
     node_applier = NodeProfilesApplier(db=db, branch=branch)
@@ -675,11 +679,13 @@ async def test_get_many_with_profile_relationships_partial_override(
         ],
     )
 
-    await updated_child_one.things.update(
+    await updated_child_one.get_relationship("things").update(
         db=db, data=[child_and_thing_nodes.thing_nodes[1], child_and_thing_nodes.thing_nodes[2]]
     )
 
     updated_field_names = await node_applier.apply_profiles(node=updated_child_one)
+    # no profiles are applied: thing_nodes[1] is kept but de-sourced, thing_nodes[2] is added,
+    # and thing_nodes[0] is removed.
     assert updated_field_names == []
     await updated_child_one.save(db=db)
 
