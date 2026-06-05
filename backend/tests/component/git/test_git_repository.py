@@ -214,6 +214,49 @@ async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubReposito
         repo.create_commit_worktree(commit=commit)
 
 
+async def test_init_fetches_missing_commit_under_repo_lock(
+    git_repo_01: InfrahubRepository, git_upstream_repo_01: dict[str, str | Path]
+) -> None:
+    repo = git_repo_01
+
+    # Add a commit to the upstream main after the local clone exists, without fetching it locally.
+    upstream = Repo(git_upstream_repo_01["path"])
+    first_file = find_first_file_in_directory(git_upstream_repo_01["path"])
+    assert first_file
+    async with await anyio.open_file(first_file, mode="a", encoding="utf-8") as file:
+        await file.write("new line\n")
+    upstream.index.add([first_file])
+    new_commit = str(upstream.index.commit("Change first file"))
+
+    # The local clone has not fetched the new commit, so the local primitive cannot find it.
+    with pytest.raises(CommitNotFoundError):
+        repo.create_commit_worktree(commit=new_commit)
+
+    # init() recovers by fetching the missing commit and materializing its worktree.
+    recovered = await InfrahubRepository.init(id=repo.id, name=repo.name, commit=new_commit, client=repo.client)
+    assert recovered.has_worktree(identifier=new_commit) is True
+
+
+async def test_init_missing_commit_without_origin_raises(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+    repo.get_git_repo_main().git.remote("remove", "origin")
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    with pytest.raises(CommitNotFoundError):
+        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
+
+
+async def test_init_missing_commit_absent_on_remote_raises(git_repo_01: InfrahubRepository) -> None:
+    repo = git_repo_01
+
+    commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
+
+    # The commit exists neither locally nor on the remote, so init fetches once and still raises.
+    with pytest.raises(CommitNotFoundError):
+        await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
+
+
 async def test_get_worktrees(git_repo_01: InfrahubRepository) -> None:
     repo = git_repo_01
 
