@@ -4,6 +4,7 @@
 ARG PYTHON_VER=3.14.3
 ARG NODE_VER=24.15.0
 ARG UV_VER
+ARG RUST_VER=1
 FROM docker.io/python:${PYTHON_VER}-slim AS base
 
 ENV PYTHONUNBUFFERED=1
@@ -44,15 +45,21 @@ FROM docker.io/node:${NODE_VER}-slim AS node-base
 #   lives in its own repo; override the repo/ref with build args once a release
 #   ref is available (the default tracks `main`).
 # ****************************************************************
-ARG RUST_VER=1
 FROM docker.io/rust:${RUST_VER}-slim AS pingora-granian-builder
-ARG PINGORA_GRANIAN_REPO=https://github.com/opsmill/pingora-granian.git
-ARG PINGORA_GRANIAN_REF=main
+# TEMP: clone the PRIVATE repo over SSH using the host's ssh-agent.
+# Build with:  DOCKER_BUILDKIT=1 docker build --ssh default \
+#                --build-arg PINGORA_GRANIAN_REF=001-infrahub-pingora-granian ...
+# Revert to the HTTPS default once the repo/ref is public or a token is used.
+ARG PINGORA_GRANIAN_REPO=git@github.com:opsmill/pingora-granian.git
+ARG PINGORA_GRANIAN_REF=001-infrahub-pingora-granian
 RUN apt-get update && \
-    apt-get install --no-install-recommends -y git pkg-config libssl-dev build-essential perl ca-certificates && \
+    apt-get install --no-install-recommends -y git pkg-config libssl-dev build-essential cmake perl ca-certificates openssh-client && \
     rm -rf /var/lib/apt/lists/*
 WORKDIR /build
-RUN git clone "${PINGORA_GRANIAN_REPO}" . && git checkout "${PINGORA_GRANIAN_REF}"
+RUN --mount=type=ssh \
+    mkdir -p -m 0700 ~/.ssh && \
+    ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null && \
+    git clone "${PINGORA_GRANIAN_REPO}" . && git checkout "${PINGORA_GRANIAN_REF}"
 RUN cargo build --release
 # Produces /build/target/release/pingora-granian
 

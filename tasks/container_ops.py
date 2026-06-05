@@ -46,7 +46,7 @@ def build_images(
         compose_cmd = get_compose_cmd(namespace=namespace)
         base_cmd = f"{get_env_vars(context, namespace=namespace)} {compose_cmd} {compose_files_cmd} -p {BUILD_NAME}"
         print(f"base_cmd={base_cmd}")
-        exec_cmd = f"build --build-arg PYTHON_VER={python_ver}"
+        exec_cmd = f"build --ssh default --build-arg PYTHON_VER={python_ver}"
         print(f"exec_cmd={exec_cmd}")
         if nocache:
             exec_cmd += " --no-cache"
