@@ -6,6 +6,12 @@ import viteConfig from "./vite.config";
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    // @infrahub/ui is consumed as workspace SOURCE, so transitive deps it pulls in (e.g.
+    // lucide-react via FloatingPanel) must be pre-bundled up front. Otherwise Vite discovers
+    // them mid-run and triggers a page reload that resets vi.mock(), breaking unrelated tests.
+    optimizeDeps: {
+      include: ["lucide-react"],
+    },
     test: {
       browser: {
         enabled: true,
@@ -36,15 +42,6 @@ export default mergeConfig(
         ],
       },
       exclude: ["**/node_modules/**", "**/dist/**", "**/e2e/**", "**/playwright-report/**"],
-      deps: {
-        optimizer: {
-          web: {
-            // Pre-bundle deps pulled in by @infrahub/ui workspace-source so Vite
-            // doesn't discover them mid-run and trigger a reload that resets vi.mock().
-            include: ["lucide-react"],
-          },
-        },
-      },
     },
   })
 );
