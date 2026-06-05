@@ -89,6 +89,14 @@ class InfrahubRepositoryJinja2(InfrahubJinja2TransformConfig):
     dependencies: list[str] = Field(default_factory=list)
     dependencies_complete: bool = False
 
+    @property
+    def payload(self) -> dict[str, Any]:
+        # `watch` is an SDK-config-only field that drives closure detection; it is not a
+        # graph attribute, so it must not reach the node create/update payload.
+        data = self.model_dump(exclude_none=True, exclude={"watch"})
+        data["template_path"] = self.template_path_value
+        return data
+
 
 class CheckDefinitionInformation(BaseModel):
     name: str
@@ -275,7 +283,7 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
         for config_transform in config_file.jinja2_transforms:
             try:
                 self.sdk.schema.validate_data_against_schema(
-                    schema=schema, data=config_transform.model_dump(exclude_none=True)
+                    schema=schema, data=config_transform.model_dump(exclude_none=True, exclude={"watch"})
                 )
             except PydanticValidationError as exc:
                 for error in exc.errors():
