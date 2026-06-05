@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from git import Repo
 from infrahub_sdk.schema.repository import (
@@ -10,6 +12,11 @@ from infrahub_sdk.schema.repository import (
 
 from infrahub.git.closure_builder.result import ClosureResult, UnresolvedRef
 from infrahub.git.closure_builder.watch import union_watch_files
+
+if TYPE_CHECKING:
+    import pytest
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _init_repo(root: Path, *, gitignore: str = "") -> Repo:
@@ -63,6 +70,7 @@ def test_directory_entry_expands_recursively(tmp_path: Path) -> None:
         result=ClosureResult(dependencies=(), complete=True, unresolved=()),
         transform_config=_config(watch=["templates/partials"]),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert "templates/partials/header.j2" in result.dependencies
@@ -85,6 +93,7 @@ def test_watch_files_union_with_auto_detected_closure(tmp_path: Path) -> None:
         result=ClosureResult(dependencies=("transforms/network/main.py",), complete=True, unresolved=()),
         transform_config=_config(watch=["utils/helper.py"]),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert "transforms/network/main.py" in result.dependencies
@@ -114,6 +123,7 @@ def test_nonempty_watch_flips_complete_true_after_incomplete_autodetection(tmp_p
         result=incomplete,
         transform_config=_config(watch=["templates/partials"]),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert result.complete is True
@@ -136,6 +146,7 @@ def test_each_entry_is_canonicalized(tmp_path: Path) -> None:
         result=ClosureResult(dependencies=(), complete=True, unresolved=()),
         transform_config=_config(watch=["/utils/helper.py"]),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert "utils/helper.py" in result.dependencies
@@ -157,6 +168,7 @@ def test_symlinks_under_a_watched_directory_are_skipped(tmp_path: Path) -> None:
         result=ClosureResult(dependencies=(), complete=True, unresolved=()),
         transform_config=_config(watch=["templates/partials"]),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert "templates/partials/real.j2" in result.dependencies
@@ -186,12 +198,62 @@ def test_pyc_pycache_and_gitignored_files_are_excluded(tmp_path: Path) -> None:
         result=ClosureResult(dependencies=(), complete=True, unresolved=()),
         transform_config=_config(watch=["utils"]),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert "utils/helper.py" in result.dependencies
     assert "utils/cached.pyc" not in result.dependencies
     assert not any("__pycache__" in entry for entry in result.dependencies)
     assert "utils/secret.py" not in result.dependencies
+
+
+def test_entry_matching_no_tracked_file_is_warned_and_keeps_completeness(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A watch entry that matches nothing is logged but still counts as a declaration.
+
+    A typo'd or non-existent entry cannot extend the closure, but the completeness
+    rule is "any watch.files declared", so the closure stays complete by design (the
+    user has opted into trusting their declaration). The mismatch is surfaced as a
+    warning so it does not silently cause under-regeneration rather than being lost.
+    """
+    repo = _init_repo(tmp_path)
+    _write(tmp_path, "utils/config.yaml", "")
+    _track(repo, "utils/config.yaml")
+
+    with caplog.at_level(logging.WARNING):
+        result = union_watch_files(
+            result=ClosureResult(dependencies=("transforms/network/main.py",), complete=False, unresolved=()),
+            transform_config=_config(watch=["utils/config.yml"]),
+            worktree_root=tmp_path,
+            logger=LOGGER,
+        )
+
+    assert result.complete is True
+    assert "utils/config.yml" not in result.dependencies
+    assert "matched no tracked file" in caplog.text
+    assert "utils/config.yml" in caplog.text
+
+
+def test_entry_beginning_with_dash_is_treated_as_a_path(tmp_path: Path) -> None:
+    """A watch entry starting with `-` is a path, not a git option.
+
+    `git ls-files` is invoked with `--` separating options from the pathspec, so an
+    unusual but legal filename beginning with a hyphen still resolves instead of being
+    parsed as a flag (which would error and drop the whole closure to incomplete).
+    """
+    repo = _init_repo(tmp_path)
+    _write(tmp_path, "-weird/helper.py", "")
+    _track(repo, "-weird/helper.py")
+
+    result = union_watch_files(
+        result=ClosureResult(dependencies=(), complete=True, unresolved=()),
+        transform_config=_config(watch=["-weird/"]),
+        worktree_root=tmp_path,
+        logger=LOGGER,
+    )
+
+    assert "-weird/helper.py" in result.dependencies
 
 
 def test_absent_watch_returns_the_auto_detected_result_unchanged(tmp_path: Path) -> None:
@@ -211,6 +273,7 @@ def test_absent_watch_returns_the_auto_detected_result_unchanged(tmp_path: Path)
         result=auto,
         transform_config=_config(watch=None),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert result is auto
@@ -228,6 +291,7 @@ def test_empty_watch_files_list_returns_the_auto_detected_result_unchanged(tmp_p
         result=auto,
         transform_config=_config(watch=[]),
         worktree_root=tmp_path,
+        logger=LOGGER,
     )
 
     assert result is auto

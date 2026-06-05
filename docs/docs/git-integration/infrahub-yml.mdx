@@ -84,11 +84,11 @@ The configuration enables Infrahub to resolve dependencies between resources:
 
 This dependency management ensures that all resources have what they need when they execute.
 
-### Declaring extra transform dependencies with `watch`
+### Declaring extra dependencies with `watch`
 
-Infrahub automatically detects the files a transform reads: a Python transform's package directory, and the templates a Jinja2 transform statically includes, imports, or extends. When a file in that detected set changes in a proposed change, only the artifacts of the affected transform regenerate.
+Infrahub automatically detects the files a Transformation reads: a Python Transformation's package directory, and the templates a Jinja2 Transformation statically includes, imports, or extends. When a file in that detected set changes in a proposed change, only the artifacts of the affected Transformation regenerate.
 
-Some dependencies cannot be detected automatically, such as a template pulled in through a dynamic `{% include some_variable %}` or a helper module imported at runtime from another package. Declare these with the optional `watch` key on a `jinja2_transforms` or `python_transforms` entry. Watched files are added to the transform's auto-detected dependencies; they never replace them.
+Some dependencies cannot be detected automatically, such as a template pulled in through a dynamic `{% include some_variable %}` or a helper module imported at runtime from another package. Declare these with the optional `watch` key on a `jinja2_transforms` or `python_transforms` entry. Watched files are added to the Transformation's auto-detected dependencies; they never replace them.
 
 `watch` is a strict object. Today it accepts a single key, `files`:
 
@@ -113,7 +113,7 @@ jinja2_transforms:
         - templates/partials/
 ```
 
-Python example, where a transform imports helpers from a sibling top-level package:
+Python example, where a Transformation imports helpers from a sibling top-level package:
 
 ```yaml
 python_transforms:
@@ -126,7 +126,7 @@ python_transforms:
         - shared/helpers.py
 ```
 
-Declaring any `watch.files` entry also marks the transform's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete auto-detection would otherwise trigger. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
+Declaring any `watch.files` entry also marks the Transformation's dependency closure as complete, which suppresses the conservative regenerate-on-any-change fallback that an incomplete auto-detection would otherwise trigger. See [the proposed changes overview](../proposed-changes/overview#understanding-artifact-regeneration) for what an incomplete closure means and how to resolve it.
 
 ## Group targeting
 

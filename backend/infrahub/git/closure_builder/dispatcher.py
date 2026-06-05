@@ -52,7 +52,10 @@ class AggregatedTransformClosureBuilder:
             raw = builder.build(transform_config=transform_config, worktree_root=worktree_root)
             with_manifest = append_manifest_path(result=raw)
             return union_watch_files(
-                result=with_manifest, transform_config=transform_config, worktree_root=worktree_root
+                result=with_manifest,
+                transform_config=transform_config,
+                worktree_root=worktree_root,
+                logger=self._logger,
             )
         except ISOLATED_FAILURES:
             self._logger.exception(f"Closure builder failed for transform {transform_config.name!r}")
