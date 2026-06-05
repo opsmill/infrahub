@@ -20,7 +20,7 @@ const buttonVariants = tv({
     "transition-all duration-150 ease-out",
     "data-disabled:pointer-events-none data-disabled:cursor-default data-disabled:opacity-60 data-disabled:shadow-none",
     "data-pending:cursor-default data-pending:select-none",
-    "data-pressed:scale-95 data-pressed:shadow-none data-pressed:duration-75",
+    "data-pressed:scale-97 data-pressed:shadow-none data-pressed:duration-75",
     "[&_svg:not([class*='size-'])]:size-3.5 [&_svg]:pointer-events-none [&_svg]:shrink-0",
   ],
   variants: {
@@ -55,11 +55,12 @@ const buttonVariants = tv({
       ],
       ghost: [
         "border-transparent text-stone-800 shadow-none",
-        "data-hovered:bg-neutral-200/50",
+        "data-hovered:bg-neutral-600/10",
         "data-pressed:bg-neutral-200",
       ],
     },
     size: {
+      xxs: "h-6",
       xs: "h-7",
       sm: "h-8",
       md: "h-9",
@@ -71,6 +72,7 @@ const buttonVariants = tv({
     },
   },
   compoundVariants: [
+    { shape: "default", size: "xxs", class: "gap-1 px-1.5" },
     { shape: "default", size: "xs", class: "gap-1 px-2" },
     { shape: "default", size: "sm", class: "gap-1.5 px-2" },
     { shape: "default", size: "md", class: "gap-2 px-3" },
