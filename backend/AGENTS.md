@@ -61,6 +61,7 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 - Type hint all function parameters and returns
 - Use Pydantic models for data structures
 - Use Query class pattern for database operations
+- Create changelog fragments with `towncrier create` — never hand-write the file. See `dev/guidelines/changelog.md`.
 
 ### Ask First
 
@@ -79,6 +80,7 @@ See `dev/knowledge/backend/testing.md` for detailed testing infrastructure docum
 ### Guidelines
 
 - `dev/guidelines/backend/python.md` - Python coding standards
+- `dev/guidelines/changelog.md` - Changelog fragment creation
 
 ### Knowledge (How the system works)
 

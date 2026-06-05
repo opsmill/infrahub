@@ -33,6 +33,35 @@ const config: Config = {
   onBrokenAnchors: "throw",
   onDuplicateRoutes: "throw",
 
+  // Structured data so search engines and LLM crawlers associate Infrahub with OpsMill.
+  headTags: [
+    {
+      tagName: "script",
+      attributes: { type: "application/ld+json" },
+      innerHTML: JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        name: "Infrahub",
+        applicationCategory: "DeveloperApplication",
+        operatingSystem: "Linux, Docker",
+        url: "https://docs.infrahub.app/",
+        description:
+          "Infrahub is a graph-based infrastructure data management platform with built-in version control, CI workflows, and API access.",
+        publisher: {
+          "@type": "Organization",
+          name: "OpsMill",
+          url: "https://opsmill.com/",
+          sameAs: [
+            "https://opsmill.com/",
+            "https://github.com/opsmill",
+            "https://www.linkedin.com/company/opsmill",
+            "https://x.com/opsmill",
+          ],
+        },
+      }),
+    },
+  ],
+
   // Even if you don't use internationalization, you can use this field to set
   // useful metadata like html lang. For example, if your site is Chinese, you
   // may want to replace "en" with "zh-Hans".
@@ -113,8 +142,11 @@ const config: Config = {
         },
       ],
     },
+    metadata: [
+      { property: "og:site_name", content: "OpsMill" },
+    ],
     footer: {
-      copyright: `Copyright © ${new Date().getFullYear()} - <b>Infrahub</b> by OpsMill.`,
+      copyright: `Copyright © ${new Date().getFullYear()} - <b>Infrahub</b> by <a href="https://opsmill.com">OpsMill</a>.`,
     },
     prism: {
       theme: prismThemes.oneDark,
