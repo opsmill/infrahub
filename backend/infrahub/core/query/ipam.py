@@ -1043,37 +1043,47 @@ class IPPrefixUtilization(Query):
         }
         WITH pfx, pfx_root
         WHERE pfx_root.status = "active"
-        WITH pfx
-        CALL (pfx) {
-            MATCH path = (pfx)
-                -[r_rel1:IS_RELATED]-(rl:Relationship)
-                <-[r_rel2:IS_RELATED]-(child:%(allocated_labels)s)
-                -[r_attr:HAS_ATTRIBUTE]->(attr:Attribute)
-                -[r_attr_val:HAS_VALUE]->(av:%(prefix_label)s|%(address_label)s)
-            WHERE rl.name IN $allocated_kinds_rel
-            AND attr.name IN ["prefix", "address"]
-            AND child <> pfx
-            AND all(r IN relationships(path) WHERE %(branch_filter)s)
-            WITH
-                child,
-                av,
-                r_rel1.branch_level + r_rel2.branch_level + r_attr.branch_level + r_attr_val.branch_level AS sum_branch_level,
-                all(r IN relationships(path) WHERE r.status = "active") AS is_active,
-                r_rel1, r_rel2, r_attr, r_attr_val
-            ORDER BY child.uuid, sum_branch_level DESC, r_rel1.from DESC, r_rel2.from DESC, r_attr.from DESC, r_attr_val.from DESC
-            WITH child, head(collect(av)) AS av, head(collect(is_active)) AS is_latest_active
-            WHERE is_latest_active
-            RETURN child, av
-        }
-        CALL (child) {
-            MATCH (child)-[r:IS_PART_OF]-(:Root)
+        MATCH (pfx)-[:IS_RELATED]-(rl:Relationship)
+        WHERE rl.name IN $allocated_kinds_rel
+        WITH DISTINCT pfx, rl
+        CALL (pfx, rl) {
+            MATCH (pfx)-[r:IS_RELATED]-(rl)
             WHERE %(branch_filter)s
-            RETURN r AS child_root
-            ORDER BY r.branch_level DESC, r.from DESC
+            RETURN r AS r_rel1
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
             LIMIT 1
         }
-        WITH pfx, child, av, child_root
-        WHERE child_root.status = "active"
+        WITH pfx, rl, r_rel1
+        WHERE r_rel1.status = "active"
+        CALL (rl, pfx) {
+            MATCH (rl)<-[r:IS_RELATED]-(child:%(allocated_labels)s)
+            WHERE child <> pfx
+            AND %(branch_filter)s
+            RETURN r AS r_rel2, child
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH pfx, child, r_rel2
+        WHERE r_rel2.status = "active"
+        CALL (child) {
+            MATCH (child)-[r:HAS_ATTRIBUTE]->(attr:Attribute)
+            WHERE attr.name IN ["prefix", "address"]
+            AND %(branch_filter)s
+            RETURN r AS r_attr, attr
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH pfx, child, attr, r_attr
+        WHERE r_attr.status = "active"
+        CALL (attr) {
+            MATCH (attr)-[r:HAS_VALUE]->(av:%(prefix_label)s|%(address_label)s)
+            WHERE %(branch_filter)s
+            RETURN r AS r_attr_val, av
+            ORDER BY r.branch_level DESC, r.from DESC, r.status ASC
+            LIMIT 1
+        }
+        WITH pfx, child, av, r_attr_val
+        WHERE r_attr_val.status = "active"
         """ % {
             "branch_filter": branch_filter,
             "allocated_labels": "|".join(self.allocated_kinds),
