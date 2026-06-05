@@ -79,7 +79,7 @@ Reference documentation under `docs/docs/reference/` (and `docs/reference/config
 | Repository config (`.infrahub.yml`) | `docs/docs/reference/dotinfrahub.mdx` |
 | Message-bus events | `docs/docs/reference/message-bus-events.mdx` |
 | Infrahub events (e.g. an event class and its fields) | `docs/docs/reference/infrahub-events/` |
-| Server config | `docs/reference/configuration.mdx` |
+| Server config | `docs/docs/reference/configuration.mdx` |
 
 ```bash
 uv run invoke docs.generate    # regenerate all of the above
