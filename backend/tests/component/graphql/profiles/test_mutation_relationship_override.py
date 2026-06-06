@@ -100,18 +100,29 @@ async def _verify_state(
 
 class TestProfileRelationshipOverride:
     @pytest.fixture(scope="class")
-    async def things_and_profile(
+    async def child_thing_schema(
         self,
         db: InfrahubDatabase,
         default_branch_scope_class: Branch,
         data_schema_scope_class: None,
         register_core_models_schema_scope_class: None,
-    ) -> ThingsAndProfile:
-        branch = default_branch_scope_class
+    ) -> None:
         thing_copy = copy.deepcopy(THING)
         thing_copy.relationships[0].optional = True
-        await load_schema(db=db, schema=SchemaRoot(nodes=[CHILD, thing_copy]), branch_name=branch.name)
+        await load_schema(
+            db=db, schema=SchemaRoot(nodes=[CHILD, thing_copy]), branch_name=default_branch_scope_class.name
+        )
 
+    @pytest.fixture
+    async def things_and_profile(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        child_thing_schema: None,
+    ) -> ThingsAndProfile:
+        # Fresh peers per test: `TestingThing.owner` is cardinality one, so a thing cannot be owned by
+        # more than one child across tests sharing the same database.
+        branch = default_branch_scope_class
         thing_node_schema = registry.schema.get_node_schema(name=THING.kind, branch=branch, duplicate=False)
         thing_ids: list[str] = []
         for name, color in [("Eye cover", "black"), ("Cybernetic arms", "black"), ("Pearl necklace", "white")]:
@@ -242,4 +253,121 @@ class TestProfileRelationshipOverride:
             expected=ChildState(
                 thing_sources={profile_peer: None, non_profile_peer: None}, profile_ids={things_and_profile.profile_id}
             ),
+        )
+
+    async def test_relationship_add_new_peer_keeps_existing_profile_sources(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        things_and_profile: ThingsAndProfile,
+        child_id: str,
+    ) -> None:
+        """Tests that adding a new peer via RelationshipAdd does not affect the sources of existing peers
+
+        This does not need to remain the case. It is codified in this test to prevent it from unexpectedly changing
+        """
+        branch = default_branch_scope_class
+        existing_profile_peers = [things_and_profile.thing_ids[0], things_and_profile.thing_ids[1]]
+        new_peer = things_and_profile.thing_ids[2]
+
+        # Add a single new peer to the profile-sourced relationship.
+        add = """
+        mutation AddThing($child_id: String!, $thing_id: String!) {
+            RelationshipAdd(data: {
+                id: $child_id,
+                name: "things",
+                nodes: [{ id: $thing_id }],
+            }) {
+                ok
+            }
+        }
+        """
+        result = await _run_graphql(
+            db=db, branch=branch, query=add, variables={"child_id": child_id, "thing_id": new_peer}
+        )
+        assert result.errors is None
+        assert result.data
+        assert result.data["RelationshipAdd"]["ok"] is True
+
+        # RelationshipAdd does not re-apply profiles for an ordinary relationship: the pre-existing peers
+        # keep their profile source and only the newly-added peer is user-owned.
+        assert await _get_child_state_via_manager(db=db, branch=branch, child_id=child_id) == ChildState(
+            thing_sources={
+                existing_profile_peers[0]: things_and_profile.profile_id,
+                existing_profile_peers[1]: things_and_profile.profile_id,
+                new_peer: None,
+            },
+            profile_ids={things_and_profile.profile_id},
+        )
+
+    @pytest.mark.xfail(reason="Profile changes are not propagated to a mixed relationship; see docstring.", strict=True)
+    async def test_profile_change_propagates_to_mixed_relationship(
+        self,
+        db: InfrahubDatabase,
+        default_branch_scope_class: Branch,
+        things_and_profile: ThingsAndProfile,
+        child_id: str,
+    ) -> None:
+        """Profile changes should propagate to the profile-sourced portion of a mixed relationship.
+
+        A mixed relationship holds both profile-sourced and user-owned peers. When the profile drops
+        one of its peers, that peer should be removed from the node while the still-sourced peer and
+        the user-owned peer remain.
+
+        This currently fails: NodeProfilesApplier._get_rel_names_for_profiles
+        (backend/infrahub/profiles/node_applier.py) gates on the relationship-manager-level
+        `is_from_profile`, which RelationshipManager.fetch_relationship_ids
+        (backend/infrahub/core/relationship/model.py) computes as `all(peer.is_from_profile ...)`. A
+        mixed relationship therefore reports is_from_profile=False and is excluded from reconciliation,
+        so its profile-sourced peers are frozen and never updated or removed when the profile changes.
+        Fixing it requires either
+        - reconciling the profile-sourced portion per-peer instead of treating the
+        relationship as all-or-nothing
+        - or ensuring that relationship are either all profile-sourced or none of them are
+        """
+        branch = default_branch_scope_class
+        # thing_ids[1] is the profile peer that gets dropped from the profile below.
+        kept_profile_peer = things_and_profile.thing_ids[0]
+        user_peer = things_and_profile.thing_ids[2]
+
+        # Produce a mixed relationship: profile sources thing0 + thing1, user adds thing2.
+        add = """
+        mutation AddThing($child_id: String!, $thing_id: String!) {
+            RelationshipAdd(data: { id: $child_id, name: "things", nodes: [{ id: $thing_id }] }) { ok }
+        }
+        """
+        result = await _run_graphql(
+            db=db, branch=branch, query=add, variables={"child_id": child_id, "thing_id": user_peer}
+        )
+        assert result.errors is None
+
+        # Change the profile so it no longer sources thing1.
+        profile_update = """
+        mutation UpdateProfile($profile_id: String!, $thing_id: String!) {
+            ProfileTestingChildUpdate(data: { id: $profile_id, things: [{ id: $thing_id }] }) { ok }
+        }
+        """
+        result = await _run_graphql(
+            db=db,
+            branch=branch,
+            query=profile_update,
+            variables={"profile_id": things_and_profile.profile_id, "thing_id": kept_profile_peer},
+        )
+        assert result.errors is None
+
+        # Re-apply the profiles to the child. In production a Prefect automation does this when the
+        # profile changes; that automation does not run in component tests, so trigger it explicitly.
+        refresh = """
+        mutation RefreshProfiles($child_id: String!) {
+            InfrahubProfilesRefresh(data: { id: $child_id }) { ok }
+        }
+        """
+        result = await _run_graphql(db=db, branch=branch, query=refresh, variables={"child_id": child_id})
+        assert result.errors is None
+
+        # Desired behavior: the profile-sourced peer the profile dropped (thing1) is removed, the still-
+        # sourced peer (thing0) stays profile-sourced, and the user peer (thing2) is untouched.
+        assert await _get_child_state_via_manager(db=db, branch=branch, child_id=child_id) == ChildState(
+            thing_sources={kept_profile_peer: things_and_profile.profile_id, user_peer: None},
+            profile_ids={things_and_profile.profile_id},
         )
