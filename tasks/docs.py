@@ -1,3 +1,4 @@
+import json
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -900,8 +901,6 @@ def _generate_error_catalogue_documentation() -> None:
     The output is fully data-driven and deterministic (codes sorted, no timestamps) so it can be
     validated with `git diff --exit-code` the same way the other generated reference pages are.
     """
-    import json
-
     import jinja2
 
     schema_file = CURRENT_DIRECTORY.parent / "schema" / "error-catalogue.json"
