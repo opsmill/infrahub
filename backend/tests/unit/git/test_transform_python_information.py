@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 from infrahub_sdk import Config, InfrahubClient
 from infrahub_sdk.node import InfrahubNode
 from infrahub_sdk.protocols import CoreTransformPython
@@ -19,6 +17,8 @@ TRANSFORM_PYTHON_SCHEMA = NodeSchemaAPI(
         AttributeSchemaAPI(name="class_name", kind=AttributeKind.TEXT),
         AttributeSchemaAPI(name="timeout", kind=AttributeKind.NUMBER),
         AttributeSchemaAPI(name="convert_query_response", kind=AttributeKind.BOOLEAN, optional=True),
+        AttributeSchemaAPI(name="dependencies", kind=AttributeKind.LIST, optional=True),
+        AttributeSchemaAPI(name="dependencies_complete", kind=AttributeKind.BOOLEAN, optional=True),
     ],
     relationships=[
         RelationshipSchemaAPI(
@@ -56,6 +56,8 @@ def _make_existing_transform(
         "class_name": {"value": "TestTransform", "__typename": "Text"},
         "timeout": {"value": timeout, "__typename": "Number"},
         "convert_query_response": {"value": convert_query_response, "__typename": "Boolean"},
+        "dependencies": {"value": [], "__typename": "List"},
+        "dependencies_complete": {"value": False, "__typename": "Boolean"},
         "query": {
             "node": {"id": query_id, "display_label": "test-query", "__typename": "CoreGraphQLQuery"},
             "__typename": "NestedEdgedCoreGraphQLQuery",
@@ -68,20 +70,18 @@ def _make_existing_transform(
     return InfrahubNode(client=client, schema=TRANSFORM_PYTHON_SCHEMA, data=data)  # type: ignore[return-value, ty:invalid-return-type]
 
 
-def _make_local_transform(**kwargs: object) -> TransformPythonInformation:
-    defaults: dict[str, object] = {
-        "name": "test",
-        "repository": "repo-id",
-        "file_path": "transforms/test.py",
-        "query": "query-id",
-        "class_name": "TestTransform",
-        "transform_class": MagicMock(),
-        "timeout": 10,
-        "convert_query_response": False,
-        "description": None,
-    }
-    defaults.update(kwargs)
-    return TransformPythonInformation(**defaults)  # type: ignore[arg-type]
+def _make_local_transform(description: str | None = None) -> TransformPythonInformation:
+    return TransformPythonInformation(
+        name="test",
+        repository="repo-id",
+        file_path="transforms/test.py",
+        query="query-id",
+        class_name="TestTransform",
+        transform_class=object(),
+        timeout=10,
+        convert_query_response=False,
+        description=description,
+    )
 
 
 class TestTransformPythonInformation:
@@ -92,7 +92,7 @@ class TestTransformPythonInformation:
             file_path="transforms/test.py",
             query="query-id",
             class_name="TestTransform",
-            transform_class=MagicMock(),
+            transform_class=object(),
             timeout=10,
             convert_query_response=False,
         )
@@ -105,7 +105,7 @@ class TestTransformPythonInformation:
             file_path="transforms/test.py",
             query="query-id",
             class_name="TestTransform",
-            transform_class=MagicMock(),
+            transform_class=object(),
             timeout=10,
             convert_query_response=False,
             description="A useful transform",
