@@ -5,14 +5,21 @@ import pytest
 
 from infrahub.errors.catalogue import CATALOGUE
 from infrahub.errors.export import CATALOGUE_VERSION, export_catalogue, write_catalogue
+from tests.helpers.fixtures import get_repository_dir
 
 
 def test_export_top_level_shape() -> None:
     payload = export_catalogue()
     assert payload["$schema"] == "https://json-schema.org/draft/2020-12/schema"
     assert payload["infrahub_catalogue_version"] == CATALOGUE_VERSION
-    assert "generated_at" in payload
     assert set(payload["codes"]) == set(CATALOGUE)
+
+
+def test_export_matches_committed_file() -> None:
+    """The committed schema/error-catalogue.json must stay in sync with the backend catalogue."""
+    committed_path = get_repository_dir() / "schema" / "error-catalogue.json"
+    committed = json.loads(committed_path.read_text(encoding="utf-8"))
+    assert export_catalogue() == committed
 
 
 def test_export_preserves_catalogue_order() -> None:

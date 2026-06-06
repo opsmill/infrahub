@@ -1,3 +1,4 @@
+import json
 import sys
 from collections import defaultdict
 from dataclasses import dataclass, field
@@ -81,6 +82,12 @@ def generate_bus_events(context: Context) -> None:  # noqa: ARG001
 def generate_infrahub_events(context: Context) -> None:  # noqa: ARG001
     """Generate documentation for Infrahub events."""
     _generate_infrahub_events_documentation()
+
+
+@task
+def generate_error_catalogue(context: Context) -> None:  # noqa: ARG001
+    """Render the GraphQL error catalogue reference page from schema/error-catalogue.json."""
+    _generate_error_catalogue_documentation()
 
 
 @task
@@ -197,6 +204,7 @@ def _generate(context: Context) -> None:
     _generate_infrahub_bus_events_documentation()
     _generate_infrahub_events_documentation()
     _generate_infrahub_config_documentation()
+    _generate_error_catalogue_documentation()
 
 
 def _generate_infrahub_schema_attribute_kind_parameters_snippet() -> None:
@@ -859,3 +867,101 @@ def _generate_infrahub_events_documentation() -> None:
         output_file = output_dir / f"{category.lower()}.mdx"
         output_file.write_text(template.render(title=category, events=events), encoding="utf-8")
         print(f"Docs saved to: {output_file}")
+
+
+def _error_catalogue_type_label(schema: dict[str, Any]) -> str:
+    """Render a JSON Schema fragment as a human-readable type label for the data-shape table.
+
+    The ``\\|`` escape keeps a nullable union (``string | null``) from breaking the markdown table.
+    """
+    if isinstance(schema.get("anyOf"), list):
+        return " \\| ".join(_error_catalogue_type_label(branch) for branch in schema["anyOf"])
+    if schema.get("format") == "date-time":
+        return "string (date-time)"
+    json_type = schema.get("type")
+    return str(json_type) if json_type is not None else "object"
+
+
+def _error_catalogue_example_value(schema: dict[str, Any]) -> Any:  # noqa: ANN401
+    """Produce a representative value for a property, used to render the worked-example envelope."""
+    if isinstance(schema.get("anyOf"), list):
+        for branch in schema["anyOf"]:
+            if branch.get("type") != "null":
+                return _error_catalogue_example_value(branch)
+        return None
+    if schema.get("format") == "date-time":
+        return "2026-01-01T00:00:00Z"
+    samples: dict[str, Any] = {"string": "example", "integer": 1, "number": 1, "boolean": True, "null": None}
+    return samples.get(str(schema.get("type")))
+
+
+def _generate_error_catalogue_documentation() -> None:
+    """Render the GraphQL error catalogue reference page from the committed JSON Schema artefact.
+
+    The output is fully data-driven and deterministic (codes sorted, no timestamps) so it can be
+    validated with `git diff --exit-code` the same way the other generated reference pages are.
+    """
+    import jinja2
+
+    schema_file = CURRENT_DIRECTORY.parent / "schema" / "error-catalogue.json"
+    template_file = DOCUMENTATION_DIRECTORY / "_templates" / "error-catalogue.j2"
+    output_file = DOCUMENTATION_DIRECTORY / "docs" / "reference" / "error-catalogue.mdx"
+
+    print(" - Generating Error Catalogue documentation")
+
+    for required_file in (schema_file, template_file):
+        if not required_file.exists():
+            print(f"Unable to find the file at {required_file}")
+            sys.exit(-1)
+
+    catalogue = json.loads(schema_file.read_text(encoding="utf-8"))
+    sorted_codes = dict(sorted(catalogue["codes"].items()))
+
+    codes: list[dict[str, Any]] = []
+    for code, entry in sorted_codes.items():
+        data_schema = entry["data_schema"]
+        properties: dict[str, Any] = data_schema.get("properties", {})
+        required = set(data_schema.get("required", []))
+        example_envelope = {
+            "data": None,
+            "errors": [
+                {
+                    "message": entry["description"],
+                    "extensions": {
+                        "code": code,
+                        "http_status": entry["http_status"],
+                        "data": {name: _error_catalogue_example_value(prop) for name, prop in properties.items()},
+                    },
+                }
+            ],
+        }
+        codes.append(
+            {
+                "code": code,
+                "description": entry["description"],
+                "stability": entry["stability"],
+                "http_status": entry["http_status"],
+                "fields": [
+                    {
+                        "name": name,
+                        "type": _error_catalogue_type_label(prop),
+                        "required": name in required,
+                    }
+                    for name, prop in properties.items()
+                ],
+                "example": json.dumps(example_envelope, indent=2),
+            }
+        )
+
+    template_text = template_file.read_text(encoding="utf-8")
+    environment = jinja2.Environment(trim_blocks=True)
+    template = environment.from_string(template_text)
+    rendered = template.render(
+        version=catalogue["infrahub_catalogue_version"],
+        code_count=len(codes),
+        codes=codes,
+    )
+
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(rendered, encoding="utf-8")
+    print(f"Docs saved to: {output_file}")
