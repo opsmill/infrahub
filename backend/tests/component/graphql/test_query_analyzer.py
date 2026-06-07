@@ -1,9 +1,11 @@
+from copy import deepcopy
+
 from graphql import DocumentNode, GraphQLSchema
 
 from infrahub.core.branch import Branch
 from infrahub.core.constants import InfrahubKind
 from infrahub.core.registry import registry
-from infrahub.core.schema import SchemaRoot
+from infrahub.core.schema import AttributeSchema, SchemaRoot
 from infrahub.core.schema.schema_branch import SchemaBranch
 from infrahub.database import InfrahubDatabase
 from infrahub.graphql.analyzer import GraphQLArgument, GraphQLVariable, InfrahubGraphQLQueryAnalyzer, MutateAction
@@ -738,3 +740,128 @@ async def test_query_report_single_target(
     assert gqa_optional_id.query_report.only_has_unique_targets is False
     # Querying by ID is not always a single result query if the ID is an optional array
     assert gqa_optional_ids.query_report.only_has_unique_targets is False
+
+
+async def test_query_report_single_target_complex_constraints(
+    db: InfrahubDatabase, default_branch: Branch, register_core_models_schema: None
+) -> None:
+    # TestingTShirtComposite: name + the mandatory single-cardinality `color` relationship
+    tshirt_composite = deepcopy(TSHIRT)
+    tshirt_composite.name = "TShirtComposite"
+    tshirt_composite.uniqueness_constraints = [["name__value", "color"]]
+
+    # TestingTShirtMultiple: two independent single-field uniqueness constraints
+    tshirt_multiple = deepcopy(TSHIRT)
+    tshirt_multiple.name = "TShirtMultiple"
+    tshirt_multiple.attributes.append(AttributeSchema(name="serial", kind="Text", optional=True))
+    tshirt_multiple.uniqueness_constraints = [["name__value"], ["serial__value"]]
+
+    # TestingTShirtRel: uniqueness defined solely on the mandatory single-cardinality relationship
+    tshirt_rel = deepcopy(TSHIRT)
+    tshirt_rel.name = "TShirtRel"
+    tshirt_rel.uniqueness_constraints = [["color"]]
+
+    # TestingTShirtHfid: a human-friendly id enables filtering by `hfid`
+    tshirt_hfid = deepcopy(TSHIRT)
+    tshirt_hfid.name = "TShirtHfid"
+    tshirt_hfid.human_friendly_id = ["name__value"]
+
+    schema_root = SchemaRoot(nodes=[COLOR, tshirt_composite, tshirt_multiple, tshirt_rel, tshirt_hfid])
+    registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
+    default_branch.update_schema_hash()
+
+    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    def analyze(query: str) -> InfrahubGraphQLQueryAnalyzer:
+        return InfrahubGraphQLQueryAnalyzer(
+            query=query, schema=gql_params.schema, branch=default_branch, schema_branch=schema_branch
+        )
+
+    composite_fully_pinned = """
+    query ($name: String!, $color: ID!) {
+        TestingTShirtComposite(name__value: $name, color__ids: [$color]) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    composite_partially_pinned = """
+    query ($name: String!) {
+        TestingTShirtComposite(name__value: $name) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    composite_relationship_list_var = """
+    query ($name: String!, $colors: [ID!]) {
+        TestingTShirtComposite(name__value: $name, color__ids: $colors) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    multiple_one_group_pinned = """
+    query ($name: String!) {
+        TestingTShirtMultiple(name__value: $name) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    multiple_other_group_pinned = """
+    query ($serial: String!) {
+        TestingTShirtMultiple(serial__value: $serial) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    multiple_none_pinned = """
+    query ($description: String!) {
+        TestingTShirtMultiple(description__value: $description) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    relationship_pinned = """
+    query ($color: ID!) {
+        TestingTShirtRel(color__ids: [$color]) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    relationship_optional = """
+    query ($color: ID) {
+        TestingTShirtRel(color__ids: [$color]) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    hfid_pinned = """
+    query ($hfid: String!) {
+        TestingTShirtHfid(hfid: [$hfid]) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    hfid_optional = """
+    query ($hfid: String) {
+        TestingTShirtHfid(hfid: [$hfid]) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+
+    # A composite constraint is a single target only when every component is pinned
+    assert analyze(composite_fully_pinned).query_report.only_has_unique_targets is True
+    assert analyze(composite_partially_pinned).query_report.only_has_unique_targets is False
+    # A relationship component is not pinned by a list of ids
+    assert analyze(composite_relationship_list_var).query_report.only_has_unique_targets is False
+    # Satisfying any one of several uniqueness constraints is enough
+    assert analyze(multiple_one_group_pinned).query_report.only_has_unique_targets is True
+    assert analyze(multiple_other_group_pinned).query_report.only_has_unique_targets is True
+    # Filtering on a field that is not part of any uniqueness constraint is not a single target
+    assert analyze(multiple_none_pinned).query_report.only_has_unique_targets is False
+    # A uniqueness constraint made solely of a single-cardinality relationship can be pinned by id
+    assert analyze(relationship_pinned).query_report.only_has_unique_targets is True
+    assert analyze(relationship_optional).query_report.only_has_unique_targets is False
+    # Filtering by a required human-friendly id pins a single target
+    assert analyze(hfid_pinned).query_report.only_has_unique_targets is True
+    assert analyze(hfid_optional).query_report.only_has_unique_targets is False
