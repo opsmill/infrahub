@@ -23,6 +23,12 @@
 #   PG_SOCKET_DIR              per-tier UDS dir (default /tmp/pingora-granian)
 #   PG_LISTEN                  gateway bind (default 0.0.0.0:8000)
 #   PG_CONFIG_FILE             explicit tier config; skips env-rendering when set
+#   INFRAHUB_PG_BACKEND        subprocess (default, Phase 1) | embedded (Phase 2, free-threaded no-GIL)
+#   INFRAHUB_FT_PYTHON         embedded only: the free-threaded python (default: `python` on PATH)
+#   PG_EMBED_DIR               embedded only: pingora-granian pyembed fork-glue dir
+#                              (default /usr/local/lib/pingora-granian/pyembed)
+#   PINGORA_GRANIAN_BIN        supervisor binary (default pingora-granian;
+#                              pingora-granian-embedded when INFRAHUB_PG_BACKEND=embedded)
 set -euo pipefail
 
 APP_TARGET="${INFRAHUB_APP_TARGET:-infrahub.server:app}"
@@ -66,5 +72,36 @@ EOF
     export PG_CONFIG_FILE
 fi
 
-echo "infrahub-serve: pingora-granian | app=${APP_TARGET} interactive=${INTERACTIVE_WORKERS} automation=${AUTOMATION_WORKERS} drain_grace=${DRAIN_GRACE}s listen=${PG_LISTEN}"
-exec pingora-granian
+# 3) Backend selection. subprocess (default, Phase 1) runs one stock granian
+#    PROCESS per tier. embedded (Phase 2) runs each tier's granian workers as
+#    THREADS in one process sharing a free-threaded (no-GIL) CPython — this is
+#    what exercises the no-GIL throughput path.
+PG_BACKEND="${INFRAHUB_PG_BACKEND:-subprocess}"
+PINGORA_BIN="${PINGORA_GRANIAN_BIN:-pingora-granian}"
+
+if [ "${PG_BACKEND}" = "embedded" ]; then
+    # The embedded supervisor links an embedded CPython via PyO3 and drives
+    # Granian's MTServer worker loop as in-process threads. It refuses to start
+    # unless the GIL is disabled (FR-021). Derive every path from the free-threaded
+    # venv python on PATH; the GIL-re-enabling deps are already neutralised
+    # (orjson->msgspec shim in infrahub/__init__, lazy gRPC, no hiredis — see
+    # pyproject.toml [tool.uv]).
+    PINGORA_BIN="${PINGORA_GRANIAN_BIN:-pingora-granian-embedded}"
+    FT_PYTHON="${INFRAHUB_FT_PYTHON:-$(command -v python)}"
+    if ! "${FT_PYTHON}" -c 'import sys; sys.exit(0 if not sys._is_gil_enabled() else 1)' 2>/dev/null; then
+        echo "infrahub-serve: FATAL — embedded backend needs a free-threaded interpreter (3.14t);" \
+             "'${FT_PYTHON}' has the GIL enabled" >&2
+        exit 2
+    fi
+    PG_EMBED_DIR="${PG_EMBED_DIR:-/usr/local/lib/pingora-granian/pyembed}"
+    GRANIAN_SITE="$("${FT_PYTHON}" -c 'import granian, os; print(os.path.dirname(os.path.dirname(granian.__file__)))')"
+    export PYO3_PYTHON="${FT_PYTHON}"
+    export LD_LIBRARY_PATH="$("${FT_PYTHON}" -c 'import sysconfig; print(sysconfig.get_config_var("LIBDIR"))'):${LD_LIBRARY_PATH:-}"
+    export PYTHONHOME="$("${FT_PYTHON}" -c 'import sys; print(sys.base_prefix)')"
+    # Embedded interpreter import path: the venv site-packages (Granian + infrahub),
+    # the pyembed fork-glue, and the app import root.
+    export PG_EMBED_PYTHONPATH="${GRANIAN_SITE}:${PG_EMBED_DIR}:${APP_DIR}"
+fi
+
+echo "infrahub-serve: pingora-granian (${PG_BACKEND}) | app=${APP_TARGET} interactive=${INTERACTIVE_WORKERS} automation=${AUTOMATION_WORKERS} drain_grace=${DRAIN_GRACE}s listen=${PG_LISTEN}"
+exec "${PINGORA_BIN}"

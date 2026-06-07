@@ -1,7 +1,7 @@
 # ****************************************************************
 # STAGE : Base Python Image
 # ****************************************************************
-ARG PYTHON_VER=3.14.3
+ARG PYTHON_VER=3.14.5
 ARG NODE_VER=24.15.0
 ARG UV_VER
 ARG RUST_VER=1
@@ -137,18 +137,44 @@ ENV PREFECT_WORKER_QUERY_SECONDS="2" \
     PREFECT_SERVER_API_MAX_PARAMETER_SIZE=0
 
 # --------------------------------------------
-# Install Dependencies
-#   Copy in only pyproject.toml/uv.lock to help with caching this layer if no updates to dependencies
+# Rust toolchain + native build deps for the free-threaded (cp314t) rebuilds.
+#   On 3.14t several deps have no prebuilt wheel and compile from source during
+#   `uv sync`:
+#     - neo4j-rust-ext (PyO3; no cp314t wheel) — GIL-safe, drives the codec accel
+#     - ujson (pinned to upstream git for the free-threaded build; maturin/Rust)
+#   and the embedded pingora-granian supervisor (PyO3) is linked further down.
+#   orjson / ruamel.yaml.clib / grpcio are dropped on 3.14 via pyproject [tool.uv],
+#   so they are NOT compiled here. cmake/perl/libssl-dev are for the embedded
+#   pingora-granian build (boringssl/openssl).
+# --------------------------------------------
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y cmake perl libssl-dev && \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal && \
+    rm -rf /var/lib/apt/lists/*
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# --------------------------------------------
+# Install Dependencies (free-threaded venv on CPython 3.14t)
+#   Copy in only pyproject.toml/uv.lock to help with caching this layer if no updates to dependencies.
+#   NOTE: regenerate uv.lock (`uv lock --python 3.14t`) after the pyproject
+#   free-threaded changes, otherwise `--frozen` fails (lock no longer matches).
 # --------------------------------------------
 ENV UV_PROJECT_ENVIRONMENT="/.venv"
-COPY uv.lock pyproject.toml python_sdk/pyproject.toml python_testcontainers/pyproject.toml python_testcontainers/uv.lock /source/
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project --no-install-workspace
+# Copy each manifest to its own path — a single multi-source `COPY ... /source/`
+# FLATTENS basenames, so the workspace-member uv.lock/pyproject.toml clobber the
+# root ones (/source/uv.lock would become python_testcontainers/uv.lock). That
+# standalone lock lacks the free-threaded [tool.uv] overrides, so the cache-prime
+# sync below would try to source-build ruamel-yaml-clib on 3.14t and fail.
+COPY uv.lock pyproject.toml /source/
+COPY python_sdk/pyproject.toml /source/python_sdk/pyproject.toml
+COPY python_testcontainers/pyproject.toml python_testcontainers/uv.lock /source/python_testcontainers/
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --python 3.14t --frozen --no-dev --no-install-project --no-install-workspace
 
 # --------------------------------------------
 # Copy in the rest of the source code and install the project
 # --------------------------------------------
 COPY . ./
-RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --python 3.14t --frozen --no-dev
 
 # Import Frontend & Documentation builds last so frontend/docs edits don't invalidate any uv sync layer
 COPY --from=frontend /frontend/app/dist/ /opt/infrahub/frontend/app/dist
@@ -157,10 +183,25 @@ COPY --from=docs /docs/build/ /opt/infrahub/docs/build
 # --------------------------------------------
 # Bundle the pingora-granian supervisor + its launcher (replaces the gunicorn
 # command). `granian` is on PATH via the venv below (FR-010).
+#
+#   - pingora-granian          : subprocess backend (default features, Phase 1).
+#   - pingora-granian-embedded : embedded free-threaded backend (Phase 2), built
+#       with --features embedded and linked against THIS image's venv libpython
+#       (PYO3_PYTHON), so the runtime libpython3.14t matches exactly. The pyembed
+#       fork-glue the embedded interpreter imports is bundled alongside.
+#   infrahub-serve picks the binary from INFRAHUB_PG_BACKEND (subprocess|embedded).
 # --------------------------------------------
 COPY --from=pingora-granian-builder /build/target/release/pingora-granian /usr/local/bin/pingora-granian
+COPY --from=pingora-granian-builder /build /opt/pingora-granian-src
+RUN --mount=type=cache,target=/root/.cache/pg-embed-target \
+    cd /opt/pingora-granian-src && \
+    PYO3_PYTHON=/.venv/bin/python CARGO_TARGET_DIR=/root/.cache/pg-embed-target \
+        cargo build --release --features embedded && \
+    cp /root/.cache/pg-embed-target/release/pingora-granian /usr/local/bin/pingora-granian-embedded && \
+    mkdir -p /usr/local/lib/pingora-granian && \
+    cp -r /opt/pingora-granian-src/pyembed /usr/local/lib/pingora-granian/pyembed
 COPY development/infrahub-serve.sh /usr/local/bin/infrahub-serve
-RUN chmod +x /usr/local/bin/pingora-granian /usr/local/bin/infrahub-serve
+RUN chmod +x /usr/local/bin/pingora-granian /usr/local/bin/pingora-granian-embedded /usr/local/bin/infrahub-serve
 
 ENV PATH="/.venv/bin:$PATH"
 ENTRYPOINT ["tini", "-g", "--"]

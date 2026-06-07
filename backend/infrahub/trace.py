@@ -1,9 +1,6 @@
 import os
 
 from opentelemetry import trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter as GRPCSpanExporter,
-)
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import (
     OTLPSpanExporter as HTTPSpanExporter,
 )
@@ -70,6 +67,13 @@ def create_tracer_provider(
         if exporter_protocol == "http/protobuf":
             exporter = HTTPSpanExporter(endpoint=exporter_endpoint)
         elif exporter_protocol == "grpc":
+            # Lazy import: the gRPC exporter pulls grpcio, whose C extension
+            # re-enables the GIL (Py_MOD_GIL_USED) and breaks the embedded
+            # free-threaded backend. Only import it when gRPC is actually selected.
+            from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+                OTLPSpanExporter as GRPCSpanExporter,
+            )
+
             exporter = GRPCSpanExporter(endpoint=exporter_endpoint)
     else:
         raise ValueError("Exporter type unsupported by Infrahub")

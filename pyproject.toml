@@ -25,12 +25,13 @@ dependencies = [
     "structlog==24.1.0",
     "boto3==1.34.129",
     "email-validator>=2.1,<2.2",
-    "redis[hiredis]==6.0.0",
+    "redis==6.0.0", # hiredis dropped: its C ext re-enables the GIL under the free-threaded backend
     "typer==0.19.2",
     "click>=8.3,<9",
     "prefect==3.7.5",
     "prefect-redis==0.2.12",
-    "ujson>=5,<6",
+    "ujson>=5,<6", # free-threaded build pinned via [tool.uv.sources] (released 5.12.1 re-enables the GIL)
+    "msgspec>=0.19,<0.22", # GIL-safe backend for the orjson shim (infrahub/_compat/orjson_shim.py)
     "Jinja2>=3,<4",
     "gitpython>=3.1.50,<4",
     "pyyaml>=6,<7",
@@ -46,12 +47,13 @@ dependencies = [
     "starlette-exporter>=0.23,<0.24",
     "python-multipart==0.0.27", # Required by FastAPI to upload large files
     "asgi-correlation-id==4.2.0", # Middleware for FastAPI to generate ID per request
-    "bcrypt>=4.1,<4.2", # Used to hash and validate password
+    "bcrypt>=5,<6", # Used to hash and validate password (5.x ships cp314t wheels; <5 has none -> source build fails on 3.14t)
     "pyjwt==2.12.1", # Used to manage JWT tokens
     "uvicorn[standard]>=0.32,<0.33",
     "opentelemetry-instrumentation-aio-pika==0.60b0",
     "opentelemetry-instrumentation-fastapi==0.60b0",
-    "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+    # opentelemetry-exporter-otlp-proto-grpc dropped: grpcio's C ext re-enables the GIL.
+    # infrahub/trace.py imports the gRPC exporter lazily; the HTTP exporter is the free-threaded path.
     "opentelemetry-exporter-otlp-proto-http==1.39.0",
     "nats-py==2.7.2",
     "netaddr==1.3.0",
@@ -78,10 +80,35 @@ Homepage = "https://opsmill.com"
 Repository = "https://github.com/opsmill/infrahub"
 Documentation = "https://docs.infrahub.app/"
 
+[tool.uv]
+# Free-threaded (cp314t) overrides for the pingora-granian embedded backend.
+# Dropped on 3.14 (this branch targets CPython 3.14t free-threaded) because they
+# have no GIL-safe build today and would block/break a 3.14t install:
+#  - orjson: declares Py_MOD_GIL_USED; replaced at runtime by a msgspec-backed shim
+#    (infrahub/_compat/orjson_shim.py), registered in infrahub/__init__.py.
+#  - ruamel.yaml.clib: no cp314t wheel, sdist won't compile on 3.14 (optional accel).
+#  - grpcio: C ext re-enables the GIL (belt-and-suspenders; the gRPC OTLP exporter is dropped).
+override-dependencies = [
+    'orjson; python_version < "3.14"',
+    'ruamel.yaml.clib; python_version < "3.14"',
+    'grpcio; python_version < "3.14"',
+]
+# Floor these transitive C-extensions to versions that ship a free-threaded-safe
+# cp314t wheel. Older pins have no cp314t wheel, so they source-build and the
+# resulting module re-enables the GIL (no Py_mod_gil NOT_USED declaration),
+# silently defeating free-threading.
+constraint-dependencies = [
+    "greenlet>=3.5",
+    "httptools>=0.8",
+]
+
 [tool.uv.sources]
 infrahub-server = { workspace = true }
 infrahub-sdk = { path = "python_sdk", editable = true }
 infrahub-testcontainers = { path = "python_testcontainers", editable = true }
+# Free-threaded ujson: released 5.12.1 re-enables the GIL; upstream main declares
+# Py_mod_gil NOT_USED. Pin until a release includes the free-threaded support.
+ujson = { git = "https://github.com/ultrajson/ultrajson", rev = "d18f6bdfd53a40a572dddced99df296a6ad17009" }
 
 [dependency-groups]
 dev = [
