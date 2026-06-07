@@ -24,7 +24,8 @@ services:
       retries: 3
   task-manager:
     profiles: [demo, dev]
-    image: "${IMAGE_NAME}:${IMAGE_VER}"
+    #image: "${IMAGE_NAME}:${IMAGE_VER}"
+    image: "registry.opsmill.io/opsmill/infrahub:1.9.7"
     command: "${PREFECT_SERVER_COMMAND:-uvicorn --host 0.0.0.0 --port 4200 --factory infrahub.prefect_server.app:create_infrahub_prefect}"
     environment:
       PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://postgres:postgres@task-manager-db:5432/prefect
