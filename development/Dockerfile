@@ -110,7 +110,9 @@ COPY --from=frontend /docs/build/ /opt/infrahub/docs/build
 #   Copy in only pyproject.toml/uv.lock to help with caching this layer if no updates to dependencies
 # --------------------------------------------
 ENV UV_PROJECT_ENVIRONMENT="/.venv"
-COPY uv.lock pyproject.toml python_sdk/pyproject.toml python_testcontainers/pyproject.toml python_testcontainers/uv.lock /source/
+COPY uv.lock pyproject.toml /source/
+COPY python_sdk/pyproject.toml /source/python_sdk/
+COPY python_testcontainers/pyproject.toml python_testcontainers/uv.lock /source/python_testcontainers/
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project --no-install-workspace
 
 # --------------------------------------------
