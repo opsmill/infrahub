@@ -14,7 +14,7 @@ from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.message_bus.types import MessageTTL
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.worker import get_worker_identity
 
 if TYPE_CHECKING:
     from aio_pika.abc import (
@@ -119,8 +119,8 @@ class RabbitMQMessageBus(InfrahubMessageBus):
         await self._initialize_connection()
 
     async def _initialize_api_server(self) -> None:
-        self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{WORKER_IDENTITY}", exclusive=True)
-        self.events_queue = await self.channel.declare_queue(name=f"api-events-{WORKER_IDENTITY}", exclusive=True)
+        self.callback_queue = await self.channel.declare_queue(name=f"api-callback-{get_worker_identity()}", exclusive=True)
+        self.events_queue = await self.channel.declare_queue(name=f"api-events-{get_worker_identity()}", exclusive=True)
 
         await self.callback_queue.consume(self.on_callback, no_ack=True)
         await self.events_queue.consume(self.on_callback, no_ack=True)
@@ -164,7 +164,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
     async def _initialize_git_worker(self) -> None:
         bindings = self.event_bindings + self.broadcasted_event_bindings
-        events_queue = await self.channel.declare_queue(name=f"worker-events-{WORKER_IDENTITY}", exclusive=True)
+        events_queue = await self.channel.declare_queue(name=f"worker-events-{get_worker_identity()}", exclusive=True)
 
         self.exchange = await self.channel.declare_exchange(
             f"{self.settings.namespace}.events", type="topic", durable=True
@@ -176,7 +176,7 @@ class RabbitMQMessageBus(InfrahubMessageBus):
 
         await events_queue.consume(callback=self.on_callback, no_ack=True)
         self.callback_queue = await self.channel.declare_queue(
-            name=f"worker-callback-{WORKER_IDENTITY}", exclusive=True
+            name=f"worker-callback-{get_worker_identity()}", exclusive=True
         )
         await self.callback_queue.consume(self.on_callback, no_ack=True)
 

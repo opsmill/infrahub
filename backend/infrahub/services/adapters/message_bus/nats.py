@@ -16,7 +16,7 @@ from infrahub.log import clear_log_context, get_log_data, get_logger
 from infrahub.message_bus import InfrahubMessage, Meta, messages
 from infrahub.message_bus.operations import execute_message
 from infrahub.services.adapters.message_bus import InfrahubMessageBus
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.worker import get_worker_identity
 
 if TYPE_CHECKING:
     from infrahub.config import BrokerSettings
@@ -142,13 +142,13 @@ class NATSMessageBus(InfrahubMessageBus):
 
     async def _setup_callback(self, identity: str) -> None:
         self.callback_queue = await self.jetstream.add_stream(
-            name=f"{self.settings.namespace}-callback-{WORKER_IDENTITY}",
+            name=f"{self.settings.namespace}-callback-{get_worker_identity()}",
             retention=nats.js.api.RetentionPolicy.LIMITS,
         )
 
         await self.jetstream.subscribe(
             subject="*",
-            stream=f"{self.settings.namespace}-callback-{WORKER_IDENTITY}",
+            stream=f"{self.settings.namespace}-callback-{get_worker_identity()}",
             cb=self.on_callback,
             config=nats.js.api.ConsumerConfig(ack_policy=nats.js.api.AckPolicy.NONE, description=identity),
         )
@@ -166,15 +166,15 @@ class NATSMessageBus(InfrahubMessageBus):
             retention=nats.js.api.RetentionPolicy.WORK_QUEUE,
         )
 
-        await self._subscribe_events(self.event_bindings, f"api-worker-{WORKER_IDENTITY}")
+        await self._subscribe_events(self.event_bindings, f"api-worker-{get_worker_identity()}")
 
-        await self._setup_callback(f"api-worker-{WORKER_IDENTITY}")
+        await self._setup_callback(f"api-worker-{get_worker_identity()}")
 
         self.message_enrichers.append(_add_request_id)
 
     async def _initialize_git_worker(self) -> None:
         bindings = self.event_bindings + self.broadcasted_event_bindings
-        await self._subscribe_events(bindings, f"git-worker-{WORKER_IDENTITY}")
+        await self._subscribe_events(bindings, f"git-worker-{get_worker_identity()}")
 
         consumer_config = nats.js.api.ConsumerConfig(
             ack_policy=nats.js.api.AckPolicy.EXPLICIT,
@@ -206,7 +206,7 @@ class NATSMessageBus(InfrahubMessageBus):
                 manual_ack=True,
             )
 
-        await self._setup_callback(f"git-worker-{WORKER_IDENTITY}")
+        await self._setup_callback(f"git-worker-{get_worker_identity()}")
 
     async def _publish_with_delay(self, message: InfrahubMessage, routing_key: str, delay: MessageTTL) -> None:
         await asyncio.sleep(delay.value / 1000)

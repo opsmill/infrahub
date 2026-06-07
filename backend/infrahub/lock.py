@@ -15,7 +15,7 @@ from redis.asyncio.lock import Lock as GlobalLock
 
 from infrahub import config
 from infrahub.core.timestamp import current_timestamp
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.worker import get_worker_identity
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -99,7 +99,7 @@ class NATSLock:
         await self.release()
 
     async def acquire(self) -> None:
-        token = f"{current_timestamp()}::{WORKER_IDENTITY}"
+        token = f"{current_timestamp()}::{get_worker_identity()}"
         while True:
             if await self.do_acquire(token):
                 self.token = token
@@ -183,11 +183,11 @@ class InfrahubLock:
         if self.metrics:
             with LOCK_ACQUIRE_TIME_METRICS.labels(self.name, self.lock_type).time():
                 if not self.use_local:
-                    await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+                    await self.remote.acquire(token=f"{current_timestamp()}::{get_worker_identity()}")
                 else:
                     await self.local.acquire()
         elif not self.use_local:
-            await self.remote.acquire(token=f"{current_timestamp()}::{WORKER_IDENTITY}")
+            await self.remote.acquire(token=f"{current_timestamp()}::{get_worker_identity()}")
         else:
             await self.local.acquire()
 

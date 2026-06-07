@@ -11,7 +11,7 @@ from infrahub.core.registry import registry
 from infrahub.core.timestamp import Timestamp
 from infrahub.log import get_logger
 from infrahub.message_bus.types import KVTTL
-from infrahub.worker import WORKER_IDENTITY
+from infrahub.worker import get_worker_identity
 
 if TYPE_CHECKING:
     from infrahub.database import InfrahubDatabase
@@ -50,7 +50,7 @@ class InfrahubComponent:
 
     async def is_primary_gunicorn_worker(self) -> bool:
         primary_identity = await self.cache.get(PRIMARY_API_SERVER)
-        return primary_identity == WORKER_IDENTITY
+        return primary_identity == get_worker_identity()
 
     async def list_workers(self, branch: str, schema_hash: bool) -> list[WorkerInfo]:
         keys = await self.cache.list_keys(filter_pattern="workers:*")
@@ -94,7 +94,7 @@ class InfrahubComponent:
 
                 for component in self.component_names:
                     await self.cache.set(
-                        key=f"workers:schema_hash:branch:{branch_id}:{component}:worker:{WORKER_IDENTITY}",
+                        key=f"workers:schema_hash:branch:{branch_id}:{component}:worker:{get_worker_identity()}",
                         value=hash_value,
                         expires=KVTTL.TWO_HOURS,
                     )
@@ -102,28 +102,28 @@ class InfrahubComponent:
     async def refresh_heartbeat(self) -> None:
         for component in self.component_names:
             await self.cache.set(
-                key=f"workers:active:{component}:worker:{WORKER_IDENTITY}",
+                key=f"workers:active:{component}:worker:{get_worker_identity()}",
                 value=Timestamp().to_string(),
                 expires=KVTTL.FIFTEEN,
             )
         if self.component_type == ComponentType.API_SERVER:
             await self._set_primary_api_server()
         await self.cache.set(
-            key=f"workers:worker:{WORKER_IDENTITY}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS
+            key=f"workers:worker:{get_worker_identity()}", value=Timestamp().to_string(), expires=KVTTL.TWO_HOURS
         )
 
     async def _set_primary_api_server(self) -> None:
         result = await self.cache.set(
-            key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN, not_exists=True
+            key=PRIMARY_API_SERVER, value=get_worker_identity(), expires=KVTTL.FIFTEEN, not_exists=True
         )
         if result:
-            log.info("api_worker promoted to primary", worker_id=WORKER_IDENTITY)
+            log.info("api_worker promoted to primary", worker_id=get_worker_identity())
         else:
             log.debug("Primary node already set")
             primary_id = await self.cache.get(key=PRIMARY_API_SERVER)
-            if primary_id == WORKER_IDENTITY:
+            if primary_id == get_worker_identity():
                 log.debug("Primary node set but same as ours, refreshing lifetime")
-                await self.cache.set(key=PRIMARY_API_SERVER, value=WORKER_IDENTITY, expires=KVTTL.FIFTEEN)
+                await self.cache.set(key=PRIMARY_API_SERVER, value=get_worker_identity(), expires=KVTTL.FIFTEEN)
 
 
 class WorkerInfo:
