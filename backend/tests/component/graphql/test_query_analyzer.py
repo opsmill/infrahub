@@ -756,6 +756,12 @@ async def test_query_report_single_target_complex_constraints(
     tshirt_multiple.attributes.append(AttributeSchema(name="serial", kind="Text", optional=True))
     tshirt_multiple.uniqueness_constraints = [["name__value"], ["serial__value"]]
 
+    # TestingTShirtOverlap: overlapping constraints where one group is a subset of another
+    tshirt_overlapping = deepcopy(TSHIRT)
+    tshirt_overlapping.name = "TShirtOverlap"
+    tshirt_overlapping.attributes.append(AttributeSchema(name="serial_number", kind="Text", optional=True))
+    tshirt_overlapping.uniqueness_constraints = [["name__value"], ["name__value", "serial_number__value"]]
+
     # TestingTShirtRel: uniqueness defined solely on the mandatory single-cardinality relationship
     tshirt_rel = deepcopy(TSHIRT)
     tshirt_rel.name = "TShirtRel"
@@ -766,7 +772,9 @@ async def test_query_report_single_target_complex_constraints(
     tshirt_hfid.name = "TShirtHfid"
     tshirt_hfid.human_friendly_id = ["name__value"]
 
-    schema_root = SchemaRoot(nodes=[COLOR, tshirt_composite, tshirt_multiple, tshirt_rel, tshirt_hfid])
+    schema_root = SchemaRoot(
+        nodes=[COLOR, tshirt_composite, tshirt_multiple, tshirt_overlapping, tshirt_rel, tshirt_hfid]
+    )
     registry.schema.register_schema(schema=schema_root, branch=default_branch.name)
     default_branch.update_schema_hash()
 
@@ -834,6 +842,27 @@ async def test_query_report_single_target_complex_constraints(
         }
     }
     """
+    overlap_subset_group_pinned = """
+    query ($name: String!) {
+        TestingTShirtOverlap(name__value: $name) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    overlap_full_group_pinned = """
+    query ($name: String!, $serial: String!) {
+        TestingTShirtOverlap(name__value: $name, serial_number__value: $serial) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    overlap_partial_only = """
+    query ($serial: String!) {
+        TestingTShirtOverlap(serial_number__value: $serial) {
+            edges { node { name { value } } }
+        }
+    }
+    """
     relationship_pinned = """
     query ($color: ID!) {
         TestingTShirtRel(color__ids: [$color]) {
@@ -878,6 +907,13 @@ async def test_query_report_single_target_complex_constraints(
     assert analyze(multiple_other_group_pinned).query_report.only_has_unique_targets is True
     # Filtering on a field that is not part of any uniqueness constraint is not a single target
     assert analyze(multiple_none_pinned).query_report.only_has_unique_targets is False
+    # Overlapping constraints [["name__value"], ["name__value", "serial_number__value"]]:
+    # satisfying the smaller subset group (name) alone is enough
+    assert analyze(overlap_subset_group_pinned).query_report.only_has_unique_targets is True
+    # Satisfying the larger group (name + serial_number) is also a single target
+    assert analyze(overlap_full_group_pinned).query_report.only_has_unique_targets is True
+    # Pinning only serial_number satisfies neither group (it is never a standalone unique key)
+    assert analyze(overlap_partial_only).query_report.only_has_unique_targets is False
     # A uniqueness constraint made solely of a single-cardinality relationship can be pinned by id
     assert analyze(relationship_pinned).query_report.only_has_unique_targets is True
     assert analyze(relationship_optional).query_report.only_has_unique_targets is False
