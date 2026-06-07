@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 import time
 import uuid
+import weakref
 from asyncio import Lock as LocalLock
 from asyncio import sleep
 from contextvars import ContextVar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import redis.asyncio as redis
 from prometheus_client import Histogram
@@ -23,7 +25,48 @@ if TYPE_CHECKING:
     from infrahub.services import InfrahubServices
 
 
-registry: InfrahubLockRegistry = None
+class _LockRegistryProxy:
+    """Per-event-loop lock registry (FR-024/FR-025).
+
+    InfrahubLockRegistry holds loop-bound primitives: local ``asyncio.Lock``s
+    and/or a redis async client whose connection pool has a loop-bound
+    ``asyncio.Lock``. Under the embedded free-threaded backend each worker thread
+    runs its own event loop, so a single shared registry gets awaited across
+    loops ("bound to a different event loop"). This module-level proxy routes
+    ``lock.registry.<attr>`` to the InfrahubLockRegistry that ``initialize_lock``
+    built for the current loop. It is created once and never reassigned, so
+    captured references (``self.x = lock.registry``) keep working. Cross-worker
+    coordination still happens via the GLOBAL (redis) locks, which share the same
+    keyspace regardless of which loop's redis client is used.
+    """
+
+    def __init__(self) -> None:
+        self._by_loop: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, InfrahubLockRegistry]" = (
+            weakref.WeakKeyDictionary()
+        )
+        self._lock = threading.Lock()
+
+    def set_for_current_loop(self, lock_registry: InfrahubLockRegistry) -> None:
+        with self._lock:
+            self._by_loop[asyncio.get_running_loop()] = lock_registry
+
+    def _current(self) -> InfrahubLockRegistry:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError as exc:
+            raise RuntimeError("lock.registry accessed outside a running event loop") from exc
+        with self._lock:
+            lock_registry = self._by_loop.get(loop)
+        if lock_registry is None:
+            raise RuntimeError("lock registry is not initialised for the current event loop; call initialize_lock()")
+        return lock_registry
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._current(), name)
+
+
+# The module-level `registry` is a per-loop proxy (set once, never reassigned).
+registry: InfrahubLockRegistry = _LockRegistryProxy()  # type: ignore[assignment]
 
 
 METRIC_PREFIX = "infrahub_lock"
@@ -343,5 +386,8 @@ class InfrahubLockRegistry:
 
 
 def initialize_lock(local_only: bool = False, service: InfrahubServices | None = None) -> None:
-    global registry
-    registry = InfrahubLockRegistry(local_only=local_only, service=service)
+    # Per event loop (FR-024): store this worker loop's registry in the proxy
+    # instead of reassigning the module global, so each loop uses its own
+    # loop-bound redis/asyncio locks. Cross-worker coordination still goes through
+    # the GLOBAL redis locks (shared keyspace).
+    registry.set_for_current_loop(InfrahubLockRegistry(local_only=local_only, service=service))
