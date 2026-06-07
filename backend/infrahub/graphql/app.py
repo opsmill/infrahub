@@ -48,6 +48,7 @@ from infrahub.graphql.execution import cached_parse, execute_graphql_query
 from infrahub.graphql.initialization import GraphqlParams, prepare_graphql_params
 from infrahub.log import get_logger
 from infrahub.log_forwarding.models import LogForwardingContext
+from infrahub.workers.dependencies import build_database
 
 from .metrics import (
     GRAPHQL_DURATION_METRICS,
@@ -120,7 +121,7 @@ class InfrahubGraphQLApp:
             api_key = await api_key_scheme(request)
             cookie_auth = await cookie_auth_scheme(request)
 
-            db = request.app.state.db
+            db = await build_database()  # per-loop (FR-024), not the shared app.state singleton
 
             async with db.start_session() as db:
                 jwt_token = None
@@ -154,7 +155,7 @@ class InfrahubGraphQLApp:
         elif scope["type"] == "websocket":
             websocket = WebSocket(scope=scope, receive=receive, send=send)
 
-            db = websocket.app.state.db
+            db = await build_database()  # per-loop (FR-024), not the shared app.state singleton
 
             async with db.start_session(read_only=True) as db:
                 branch_name = websocket.path_params.get("branch_name", registry.default_branch)

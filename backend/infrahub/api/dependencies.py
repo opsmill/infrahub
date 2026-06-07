@@ -17,6 +17,7 @@ from infrahub.core.timestamp import Timestamp
 from infrahub.database import InfrahubDatabase  # noqa: TC001
 from infrahub.exceptions import AuthorizationError
 from infrahub.permissions import PermissionManager
+from infrahub.workers.dependencies import build_database
 
 if TYPE_CHECKING:
     from infrahub.models import RefreshTokenData
@@ -36,8 +37,12 @@ class BranchParams(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
-async def get_db(request: Request) -> AsyncGenerator[InfrahubDatabase, None]:
-    async with request.app.state.db.start_session() as db:
+async def get_db() -> AsyncGenerator[InfrahubDatabase, None]:
+    # Resolve the database for the current event loop (FR-024) rather than the
+    # shared app.state singleton, so embedded free-threaded workers never await a
+    # driver built on another worker thread's loop.
+    database = await build_database()
+    async with database.start_session() as db:
         yield db
 
 

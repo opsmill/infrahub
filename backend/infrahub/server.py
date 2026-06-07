@@ -33,6 +33,7 @@ from infrahub.services import InfrahubServices
 from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
+    close_loop_database,
     get_cache,
     get_component,
     get_database,
@@ -64,8 +65,11 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     component_type = ComponentType.API_SERVER
     set_component_type(component_type=component_type)
 
-    # Initialize database Driver and load local registry
-    database = application.state.db = await get_database()
+    # Initialize database Driver and load local registry. get_database() resolves
+    # a driver for THIS worker's event loop (FR-024); app.state.db is kept for
+    # backward compatibility but request paths resolve per-loop via get_database.
+    database = await get_database()
+    application.state.db = database
 
     build_component_registry()
 
@@ -88,7 +92,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     await log_forwarding.start()
     initialize_lock(service=service)
     # We must initialize DB after initialize lock and initialize lock depends on cache initialization
-    async with application.state.db.start_session() as db:
+    async with database.start_session() as db:
         is_initial_setup = await initialization(db=db, add_database_indexes=True)
 
     async with database.start_session() as dbs:
@@ -105,7 +109,9 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
 
 async def shutdown(application: FastAPI) -> None:
     await application.state.service.shutdown()
-    await application.state.db.close()
+    # Close the database for THIS worker's loop (FR-024); closing another loop's
+    # driver raises 'got Future attached to a different loop'.
+    await close_loop_database()
 
 
 @asynccontextmanager

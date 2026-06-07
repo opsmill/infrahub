@@ -1,3 +1,6 @@
+import asyncio
+import threading
+import weakref
 from typing import Any
 
 from fast_depends import Depends, inject
@@ -24,10 +27,39 @@ from infrahub.tls.registry import TlsContextRegistry
 
 _singletons: dict[str, Any] = {}
 
+# Per-event-loop Neo4j databases (FR-024). The Neo4j async driver binds to the
+# event loop that created it; under the embedded free-threaded backend each
+# worker thread runs its own loop, so one shared driver cannot be awaited across
+# loops ("got Future attached to a different loop"). Resolve an InfrahubDatabase
+# per running loop instead of a single global singleton.
+#
+# Keyed on the loop OBJECT (not id(loop)) via WeakKeyDictionary: this avoids
+# id-reuse aliasing when a loop is GC'd, and auto-drops a loop's entry if it dies
+# without close_loop_database() being called. All access is guarded by a
+# threading.Lock for free-threaded safety; the per-loop asyncio.Lock then
+# serializes the (async) driver build within a single loop.
+_db_by_loop: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, InfrahubDatabase]" = weakref.WeakKeyDictionary()
+_db_loop_locks: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock]" = weakref.WeakKeyDictionary()
+_db_registry_lock = threading.Lock()
+
 
 def clear_singletons() -> None:
-    """Drop every cached singleton."""
+    """Drop every cached singleton (and every per-loop database reference)."""
     _singletons.clear()
+    with _db_registry_lock:
+        _db_by_loop.clear()
+        _db_loop_locks.clear()
+
+
+def _get_db_loop_lock(loop: asyncio.AbstractEventLoop) -> asyncio.Lock:
+    # asyncio.Lock() (3.10+) binds to a loop on first use, not at construction, so
+    # it is safe to create here under a threading.Lock and await it on its loop.
+    with _db_registry_lock:
+        lock = _db_loop_locks.get(loop)
+        if lock is None:
+            lock = asyncio.Lock()
+            _db_loop_locks[loop] = lock
+        return lock
 
 
 def set_component_type(component_type: ComponentType) -> None:
@@ -74,15 +106,39 @@ def get_installation_type(installation_type: str = Depends(build_installation_ty
 
 
 async def build_database(singleton: bool = True) -> InfrahubDatabase:
-    if not singleton or "database" not in _singletons:
-        db = InfrahubDatabase(driver=await get_db(retry=5))
+    # singleton=False always builds a fresh, throwaway database (caller owns it).
+    if not singleton:
+        return InfrahubDatabase(driver=await get_db(retry=5))
 
-        if singleton:
-            _singletons["database"] = db
-
+    # Per running event loop (FR-024): one InfrahubDatabase per loop, built lazily.
+    loop = asyncio.get_running_loop()
+    with _db_registry_lock:
+        db = _db_by_loop.get(loop)
+    if db is not None:
+        return db
+    async with _get_db_loop_lock(loop):
+        with _db_registry_lock:
+            db = _db_by_loop.get(loop)
+        if db is None:
+            db = InfrahubDatabase(driver=await get_db(retry=5))
+            with _db_registry_lock:
+                _db_by_loop[loop] = db
         return db
 
-    return _singletons["database"]
+
+async def close_loop_database() -> None:
+    """Close the current running loop's database and drop it from the registry.
+
+    Call at lifespan shutdown so each worker thread closes the driver it built on
+    its own loop — closing it from another loop raises 'attached to a different
+    loop' (FR-024).
+    """
+    loop = asyncio.get_running_loop()
+    with _db_registry_lock:
+        db = _db_by_loop.pop(loop, None)
+        _db_loop_locks.pop(loop, None)
+    if db is not None:
+        await db.close()
 
 
 @inject
