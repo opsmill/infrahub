@@ -1,4 +1,5 @@
 import importlib
+import threading
 from collections.abc import Sequence
 from typing import TYPE_CHECKING
 from uuid import UUID, uuid4
@@ -47,6 +48,10 @@ if TYPE_CHECKING:
     from infrahub.database.index import IndexManagerBase
 
 log = get_logger()
+
+# Serializes the process-shared schema + GraphQL registry build across the
+# embedded backend's worker threads (FR-024/FR-025). See initialization().
+_REGISTRY_BUILD_LOCK = threading.Lock()
 
 
 async def get_root_node(db: InfrahubDatabase, initialize: bool = False) -> Root:
@@ -163,51 +168,59 @@ async def initialization(db: InfrahubDatabase, add_database_indexes: bool = Fals
     # Load all schema in the database into the registry
     #  ... Unless the schema has been initialized already
     # ---------------------------------------------------
-    if not registry.schema_has_been_initialized():
-        registry.schema = SchemaManager()
-        schema = SchemaRoot(**internal_schema)
-        registry.schema.register_schema(schema=schema)
+    # Build the process-shared schema + GraphQL registry exactly once across the
+    # embedded backend's worker threads (FR-024/FR-025). core.registry.schema and
+    # the graphql registry are process-shared, and schema_has_been_initialized()
+    # flips True as soon as the (still-empty) SchemaManager is assigned, so a
+    # concurrent worker could read a half-built schema (ValueError: Unable to find
+    # 'LineageSource'). One worker builds it; the others block, then see it
+    # complete and reuse it. (No-op/uncontended under the subprocess backend.)
+    with _REGISTRY_BUILD_LOCK:
+        if not registry.schema_has_been_initialized():
+            registry.schema = SchemaManager()
+            schema = SchemaRoot(**internal_schema)
+            registry.schema.register_schema(schema=schema)
 
-        # Import the default branch
-        default_branch: Branch = registry.get_branch_from_registry(branch=registry.default_branch)
-        hash_in_db = default_branch.active_schema_hash.main
-        schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
-        registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
+            # Import the default branch
+            default_branch: Branch = registry.get_branch_from_registry(branch=registry.default_branch)
+            hash_in_db = default_branch.active_schema_hash.main
+            schema_default_branch = await registry.schema.load_schema_from_db(db=db, branch=default_branch)
+            registry.schema.set_schema_branch(name=default_branch.name, schema=schema_default_branch)
 
-        if default_branch.update_schema_hash():
-            log.warning(
-                "New schema detected after pulling the schema from the db",
-                hash_current=hash_in_db,
-                hash_new=default_branch.active_schema_hash.main,
-                branch=default_branch.name,
-            )
-            await default_branch.save(db=db)
-
-        for branch in list(registry.branch.values()):
-            if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
-                continue
-
-            hash_in_db = branch.active_schema_hash.main
-            log.info("Importing schema", branch=branch.name)
-            await registry.schema.load_schema(db=db, branch=branch)
-
-            if branch.update_schema_hash():
+            if default_branch.update_schema_hash():
                 log.warning(
-                    f"New schema detected after pulling the schema from the db :"
-                    f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
-                    branch=branch.name,
+                    "New schema detected after pulling the schema from the db",
+                    hash_current=hash_in_db,
+                    hash_new=default_branch.active_schema_hash.main,
+                    branch=default_branch.name,
                 )
-                await branch.save(db=db)
+                await default_branch.save(db=db)
 
-    default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
-    schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
-    gqlm = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
-    gqlm.get_graphql_schema(
-        include_query=True,
-        include_mutation=True,
-        include_subscription=True,
-        include_types=True,
-    )
+            for branch in list(registry.branch.values()):
+                if branch.name in [default_branch.name, GLOBAL_BRANCH_NAME]:
+                    continue
+
+                hash_in_db = branch.active_schema_hash.main
+                log.info("Importing schema", branch=branch.name)
+                await registry.schema.load_schema(db=db, branch=branch)
+
+                if branch.update_schema_hash():
+                    log.warning(
+                        f"New schema detected after pulling the schema from the db :"
+                        f" {hash_in_db!r} >> {branch.active_schema_hash.main!r}",
+                        branch=branch.name,
+                    )
+                    await branch.save(db=db)
+
+        default_branch = registry.get_branch_from_registry(branch=registry.default_branch)
+        schema_branch = registry.schema.get_schema_branch(name=default_branch.name)
+        gqlm = graphql_registry.get_manager_for_branch(branch=default_branch, schema_branch=schema_branch)
+        gqlm.get_graphql_schema(
+            include_query=True,
+            include_mutation=True,
+            include_subscription=True,
+            include_types=True,
+        )
 
     # ---------------------------------------------------
     # Load Default Namespace
