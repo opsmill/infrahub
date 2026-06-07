@@ -25,7 +25,55 @@ from infrahub.services.adapters.workflow.worker import WorkflowWorkerExecution
 from infrahub.services.component import InfrahubComponent
 from infrahub.tls.registry import TlsContextRegistry
 
-_singletons: dict[str, Any] = {}
+class _PerLoopSingletons:
+    """A mapping that scopes cached singletons to the current event loop (FR-024).
+
+    Loop-bound async clients (cache, message bus, component, http, ...) bind to
+    the loop that builds them; under the embedded free-threaded backend each
+    worker thread has its own loop, so they must not be shared across loops. This
+    transparently routes the existing ``_singletons[...]`` access to a per-loop
+    dict, so the ``build_*`` helpers need no changes. A process-global fallback
+    dict is used when there is no running loop (e.g. sync CLI paths).
+    """
+
+    def __init__(self) -> None:
+        self._by_loop: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, dict[str, Any]]" = (
+            weakref.WeakKeyDictionary()
+        )
+        self._fallback: dict[str, Any] = {}
+        self._lock = threading.Lock()
+
+    def _store(self) -> dict[str, Any]:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return self._fallback
+        with self._lock:
+            store = self._by_loop.get(loop)
+            if store is None:
+                store = {}
+                self._by_loop[loop] = store
+            return store
+
+    def __contains__(self, key: str) -> bool:
+        return key in self._store()
+
+    def __getitem__(self, key: str) -> Any:
+        return self._store()[key]
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        self._store()[key] = value
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self._store().get(key, default)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._by_loop.clear()
+        self._fallback.clear()
+
+
+_singletons = _PerLoopSingletons()
 
 # Per-event-loop Neo4j databases (FR-024). The Neo4j async driver binds to the
 # event loop that created it; under the embedded free-threaded backend each
@@ -42,13 +90,19 @@ _db_by_loop: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, InfrahubDatab
 _db_loop_locks: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock]" = weakref.WeakKeyDictionary()
 _db_registry_lock = threading.Lock()
 
+# Per-event-loop InfrahubServices (FR-024). Each embedded worker thread builds its
+# own service on its loop; app.state.service is a proxy that routes to the current
+# loop's service (see infrahub.server). Guarded by the shared registry lock.
+_service_by_loop: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, Any]" = weakref.WeakKeyDictionary()
+
 
 def clear_singletons() -> None:
-    """Drop every cached singleton (and every per-loop database reference)."""
+    """Drop every cached singleton (and every per-loop database/service reference)."""
     _singletons.clear()
     with _db_registry_lock:
         _db_by_loop.clear()
         _db_loop_locks.clear()
+        _service_by_loop.clear()
 
 
 def _get_db_loop_lock(loop: asyncio.AbstractEventLoop) -> asyncio.Lock:
@@ -139,6 +193,26 @@ async def close_loop_database() -> None:
         _db_loop_locks.pop(loop, None)
     if db is not None:
         await db.close()
+
+
+def set_loop_service(service: Any) -> None:
+    """Register the InfrahubServices built for the current event loop (FR-024)."""
+    with _db_registry_lock:
+        _service_by_loop[asyncio.get_running_loop()] = service
+
+
+def get_loop_service() -> Any:
+    """Return the InfrahubServices for the current event loop, or None."""
+    with _db_registry_lock:
+        return _service_by_loop.get(asyncio.get_running_loop())
+
+
+async def close_loop_service() -> None:
+    """Shut down and drop the current event loop's InfrahubServices (FR-024)."""
+    with _db_registry_lock:
+        service = _service_by_loop.pop(asyncio.get_running_loop(), None)
+    if service is not None:
+        await service.shutdown()
 
 
 @inject

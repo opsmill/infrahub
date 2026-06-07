@@ -3,7 +3,7 @@ import time
 from contextlib import asynccontextmanager
 from functools import partial
 from pathlib import Path
-from typing import AsyncGenerator, Awaitable, Callable
+from typing import Any, AsyncGenerator, Awaitable, Callable
 
 from asgi_correlation_id import CorrelationIdMiddleware
 from asgi_correlation_id.context import correlation_id
@@ -34,18 +34,46 @@ from infrahub.trace import add_span_exception, configure_trace, get_traceid
 from infrahub.worker import WORKER_IDENTITY
 from infrahub.workers.dependencies import (
     close_loop_database,
+    close_loop_service,
     get_cache,
     get_component,
     get_database,
     get_http,
     get_installation_type,
     get_log_forwarding_service,
+    get_loop_service,
     get_message_bus,
     get_workflow,
     set_component_type,
+    set_loop_service,
 )
 
 CURRENT_DIRECTORY = Path(__file__).parent.resolve()
+
+
+class _PerLoopInfrahubServices:
+    """app.state.service proxy that resolves to the InfrahubServices built for the
+    current event loop (FR-024).
+
+    Under the embedded free-threaded backend each worker thread runs its own loop
+    and builds its own loop-bound service (cache/message bus/component/...). This
+    routes every ``app.state.service`` access to the right per-loop service, so
+    the request-path readers stay unchanged. ``__class__`` is spoofed so
+    ``isinstance(service, InfrahubServices)`` still holds.
+    """
+
+    @property
+    def __class__(self) -> type:  # type: ignore[override]
+        return InfrahubServices
+
+    def __getattr__(self, name: str) -> Any:
+        service = get_loop_service()
+        if service is None:
+            raise RuntimeError("InfrahubServices is not initialised for the current event loop")
+        return getattr(service, name)
+
+
+_SERVICE_PROXY = _PerLoopInfrahubServices()
 
 
 async def app_initialization(application: FastAPI, enable_scheduler: bool = True) -> None:
@@ -101,16 +129,20 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
     # Initialize the workflow after the registry has been setup
     await service.initialize_workflow(is_initial_setup=is_initial_setup)
 
-    application.state.service = service
+    # Register THIS worker loop's service (FR-024) and point app.state.service at
+    # the per-loop proxy, so each worker thread resolves its own loop-bound service.
+    set_loop_service(service)
+    application.state.service = _SERVICE_PROXY
 
     if enable_scheduler:
         await service.scheduler.start_schedule()
 
 
 async def shutdown(application: FastAPI) -> None:
-    await application.state.service.shutdown()
-    # Close the database for THIS worker's loop (FR-024); closing another loop's
-    # driver raises 'got Future attached to a different loop'.
+    # Shut down THIS worker loop's service + database (FR-024); each worker owns
+    # the loop-bound clients it built, and closing another loop's driver raises
+    # 'got Future attached to a different loop'.
+    await close_loop_service()
     await close_loop_database()
 
 
