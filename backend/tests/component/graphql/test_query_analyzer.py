@@ -799,6 +799,20 @@ async def test_query_report_single_target_complex_constraints(
         }
     }
     """
+    composite_relationship_required_list_var = """
+    query ($name: String!, $colors: [ID!]!) {
+        TestingTShirtComposite(name__value: $name, color__ids: $colors) {
+            edges { node { name { value } } }
+        }
+    }
+    """
+    composite_ids_required_list = """
+    query ($ids: [ID!]!) {
+        TestingTShirtComposite(ids: $ids) {
+            edges { node { name { value } } }
+        }
+    }
+    """
     multiple_one_group_pinned = """
     query ($name: String!) {
         TestingTShirtMultiple(name__value: $name) {
@@ -852,8 +866,13 @@ async def test_query_report_single_target_complex_constraints(
     # A composite constraint is a single target only when every component is pinned
     assert analyze(composite_fully_pinned).query_report.only_has_unique_targets is True
     assert analyze(composite_partially_pinned).query_report.only_has_unique_targets is False
-    # A relationship component is not pinned by a list of ids
+    # A relationship component is not pinned by an optional list of ids
     assert analyze(composite_relationship_list_var).query_report.only_has_unique_targets is False
+    # A relationship component is not pinned by a required list variable either: the list may carry
+    # several ids and match several objects, so it cannot be relied on for a single target
+    assert analyze(composite_relationship_required_list_var).query_report.only_has_unique_targets is False
+    # The top-level ids selector is driven per target member, so a required list variable there is a single target
+    assert analyze(composite_ids_required_list).query_report.only_has_unique_targets is True
     # Satisfying any one of several uniqueness constraints is enough
     assert analyze(multiple_one_group_pinned).query_report.only_has_unique_targets is True
     assert analyze(multiple_other_group_pinned).query_report.only_has_unique_targets is True

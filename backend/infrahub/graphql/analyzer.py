@@ -317,12 +317,18 @@ class GraphQLQueryReport:
             return self.queries[0].variables
         return []
 
-    def _argument_provides_single_value(self, argument: GraphQLArgument) -> bool:
+    def _argument_provides_single_value(self, argument: GraphQLArgument, *, allow_required_list: bool = False) -> bool:
         """Indicate whether a filter argument is guaranteed to resolve to exactly one value.
 
-        A list-valued filter (``ids``, ``hfid``, ``<relationship>__ids``, ...) pins a single
-        object only when it holds exactly one element that is certain to be provided. A scalar
-        filter pins a single value when it is a static literal or a required, non-list variable.
+        A list literal (``[$id]``, ``["x"]``) provides a single value only when it holds exactly
+        one element that is certain to be provided. A scalar filter provides a single value when
+        it is a static literal or a required variable.
+
+        ``allow_required_list`` controls how a required *list-typed* variable is treated. The
+        artifact target selector (``ids`` / ``hfid``) is driven per target member, so a required
+        list variable there resolves to a single object and is accepted. When pinning the
+        components of a uniqueness constraint there is no such guarantee, so a required list
+        variable is rejected (it could carry several values and match several objects).
         """
         if argument.kind == "list_value":
             if not isinstance(argument.value, list) or len(argument.value) != 1:
@@ -337,7 +343,12 @@ class GraphQLQueryReport:
         if not argument.is_variable:
             # A statically-defined value is always provided.
             return True
-        return any(variable.name == argument.as_variable_name and variable.required for variable in self.variables)
+        return any(
+            variable.name == argument.as_variable_name
+            and variable.required
+            and (allow_required_list or not variable.is_list)
+            for variable in self.variables
+        )
 
     @cached_property
     def top_level_kinds(self) -> list[str]:
@@ -391,7 +402,7 @@ class GraphQLQueryReport:
 
         for special_filter in ("ids", "hfid"):
             argument = arguments_by_name.get(special_filter)
-            if argument is not None and self._argument_provides_single_value(argument):
+            if argument is not None and self._argument_provides_single_value(argument, allow_required_list=True):
                 return True
 
         if self.schema_branch is None:
