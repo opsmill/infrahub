@@ -1,4 +1,5 @@
 import type { HTMLAttributes } from "react";
+
 import { cn } from "tailwind-variants";
 
 export interface ToolbarProps extends HTMLAttributes<HTMLDivElement> {
@@ -9,10 +10,7 @@ export function Toolbar({ className, ...props }: ToolbarProps) {
   return (
     <div
       role="toolbar"
-      className={cn(
-        "flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-lg",
-        className,
-      )}
+      className={cn("flex items-center gap-2 rounded-lg bg-white px-3 py-2 shadow-lg", className)}
       {...props}
     />
   );

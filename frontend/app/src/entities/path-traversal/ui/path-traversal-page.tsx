@@ -1,4 +1,5 @@
-import { Button, FloatingPanel } from "@infrahub/ui";
+import { FloatingPanel } from "@infrahub/graph";
+import { Button } from "@infrahub/ui";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useState } from "react";
 

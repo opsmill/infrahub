@@ -1,5 +1,6 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, Toolbar, useDismiss } from "@infrahub/ui";
+import { Toolbar } from "@infrahub/graph";
+import { Button, useDismiss } from "@infrahub/ui";
 import { Panel, useReactFlow } from "@xyflow/react";
 import { useRef, useState } from "react";
 

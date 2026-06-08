@@ -1,6 +1,6 @@
 import { describe, expect, test, vi } from "vitest";
-import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
+import { userEvent } from "vitest/browser";
 
 import { FloatingPanel } from "./floating-panel";
 

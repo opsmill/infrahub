@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+
+import { Button } from "@infrahub/ui";
 import { Minus, Plus } from "lucide-react";
 
-import { Button } from "../../button/button";
 import { Toolbar } from "./toolbar";
 
 const meta: Meta<typeof Toolbar> = {

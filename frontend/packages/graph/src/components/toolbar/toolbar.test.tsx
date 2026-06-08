@@ -1,7 +1,7 @@
+import { Button } from "@infrahub/ui";
 import { describe, expect, test } from "vitest";
 import { render } from "vitest-browser-react";
 
-import { Button } from "../../button/button";
 import { Toolbar } from "./toolbar";
 
 describe("Toolbar", () => {
@@ -16,9 +16,7 @@ describe("Toolbar", () => {
     );
 
     // THEN
-    await expect
-      .element(component.getByRole("toolbar", { name: "Graph controls" }))
-      .toBeVisible();
+    await expect.element(component.getByRole("toolbar", { name: "Graph controls" })).toBeVisible();
   });
 
   test("renders child controls reachable by name", async () => {

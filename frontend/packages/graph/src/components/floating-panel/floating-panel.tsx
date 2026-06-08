@@ -1,10 +1,7 @@
+import { Button, Card, CardContent, CardHeader, useDismiss } from "@infrahub/ui";
 import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
 import { cn } from "tailwind-variants";
-
-import { useDismiss } from "../../../hooks/use-dismiss";
-import { Button } from "../../button/button";
-import { Card, CardContent, CardHeader } from "../../card/card";
 
 export interface FloatingPanelProps {
   title: ReactNode;

@@ -36,5 +36,3 @@ export {
   type TreeItemProps,
 } from "./components/tree/tree";
 export { useDismiss } from "./hooks/use-dismiss";
-export { Toolbar, type ToolbarProps, type ToolbarDividerProps } from "./components/graph/toolbar/toolbar";
-export { FloatingPanel, type FloatingPanelProps } from "./components/graph/floating-panel/floating-panel";
