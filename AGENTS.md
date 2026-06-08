@@ -90,13 +90,15 @@ cd docs && npm run build              # Build documentation
 - `frontend/app/src/shared/api/rest/types.generated.ts` – REST types
 - `schema/schema.graphql` - GraphQL schema of the Core Schema
 - `schema/openapi.json` - OpenAPI schema for the REST API
+- `docs/docs/reference/{infrahub-cli,schema,infrahub-events}/`, `docs/docs/reference/{dotinfrahub,message-bus-events,configuration}.mdx` – Reference docs rendered from backend source (CLI, schema, events, repository config, message-bus events, configuration)
 
 Regenerate backend (offline): `uv run invoke backend.generate`
 Export GraphQL schema: `uv run invoke schema.generate-graphqlschema`
 Export OpenAPI schema: `uv run invoke schema.generate-jsonschema`
 Regenerate frontend types (offline, reads local schema files): `cd frontend/app && pnpm codegen`
+Regenerate reference docs (offline): `uv run invoke docs.generate`
 
-See `dev/knowledge/backend/code-generation.md` for the full pipeline.
+CI validates that all generated files are committed — the `validate-generated-documentation` job runs `uv run invoke docs.validate` and fails when a generated doc is stale. After changing event classes, schema models, CLI commands, or config, regenerate and commit the affected files. See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 
 ## Boundaries
 
@@ -106,6 +108,7 @@ See `dev/knowledge/backend/code-generation.md` for the full pipeline.
 - Run formatters before committing (`uv run invoke format`, `pnpm biome:fix`)
 - Write tests for new functionality
 - Use type hints for Python (backend) and TypeScript types (frontend)
+- Before pushing, run `/pre-ci` (`dev/commands/pre-ci.md`) — it runs the locally-executable CI checks, including generated-file and generated-doc validation (`docs.validate`); CI fails if any generated file is stale
 
 ### Ask First
 
