@@ -2,7 +2,7 @@ import { Button } from "@infrahub/ui";
 import type React from "react";
 
 import { Row } from "@/shared/components/container";
-import CheckboxField from "@/shared/components/form/fields/checkbox.field";
+import BooleanField from "@/shared/components/form/fields/boolean.field";
 import ColorField from "@/shared/components/form/fields/color.field";
 import DatetimeField from "@/shared/components/form/fields/datetime.field";
 import DropdownField from "@/shared/components/form/fields/dropdown.field";
@@ -80,7 +80,7 @@ export const DynamicField = (props: DynamicFieldProps) => {
     case ATTRIBUTE_KIND.BOOLEAN:
     case ATTRIBUTE_KIND.CHECKBOX: {
       const { type, ...otherProps } = props;
-      return <CheckboxField {...otherProps} />;
+      return <BooleanField {...otherProps} />;
     }
     case ATTRIBUTE_KIND.DROPDOWN: {
       const { type, ...otherProps } = props;

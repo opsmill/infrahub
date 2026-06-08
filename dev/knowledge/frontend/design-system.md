@@ -14,6 +14,7 @@ The package is published locally via the workspace and consumed in `frontend/app
 |---|---|---|
 | `Button` | `Button`, `LinkButton`, `buttonVariants`, `ButtonProps`, `LinkButtonProps` | Migrated in #9065. Replaces ad-hoc `<button>` with Tailwind classes. |
 | `Card` | `Card`, `CardHeader`, `CardContent`, `CardProps`, `CardHeaderProps`, `CardContentProps` | Migrated in #9048. Replaces hand-rolled `<section className="rounded-md border bg-white p-4 shadow-lg">` patterns. |
+| `CheckboxCard` | `CheckboxCard`, `CheckboxCardProps` | Card-style checkbox primitive for selectable card choices. |
 | `Modal` | `Modal`, `ModalOverlay`, `ModalProps`, `ModalOverlayProps` | Migrated in #9088. Use instead of HeadlessUI Dialog for new modals. |
 | `Spinner` | `Spinner`, `SpinnerProps` | Loading indicator. |
 | `Meter` | `Meter`, `MeterProps` | Migrated in #9100. Replaces ad-hoc progress-bar charts. |
@@ -26,6 +27,7 @@ Source of truth: `frontend/packages/ui/src/index.ts`.
 Always, for the components above. Do not reimplement them inline in feature code, even if it "feels lighter":
 
 - Card visual: bordered + rounded + shadow + padded surface.
+- CheckboxCard visual: selectable card choice with checkbox semantics.
 - Button visual: any clickable styled button.
 - Modal: any dialog/overlay.
 - Spinner: any loading indicator.
