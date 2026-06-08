@@ -18,7 +18,7 @@ describe("ExportMenu", () => {
 
     // WHEN a format is chosen (native click — the popover renders above the trigger,
     // outside the headless viewport)
-    component.getByRole("button", { name: "PNG" }).element().click();
+    (component.getByRole("button", { name: "PNG" }).element() as HTMLElement).click();
 
     // THEN onExport fires with that format
     expect(onExport).toHaveBeenCalledExactlyOnceWith("png");
