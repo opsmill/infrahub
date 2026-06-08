@@ -8,6 +8,7 @@ import pytest
 
 from infrahub.exceptions import InitializationError
 from infrahub.health import (
+    TASK_MANAGER_DB_CONNECTION_URL_ENV,
     DefaultHealthStatusEvaluator,
     DependencyHealth,
     DependencyName,
@@ -18,6 +19,7 @@ from infrahub.health import (
     OverallStatus,
     check_dependency,
     classify_error,
+    probe_task_manager_db,
 )
 from tests.adapters.cache import MemoryCache
 from tests.adapters.health import FailingProbe, HealthyProbe, SlowProbe, UnhealthyProbe
@@ -91,10 +93,21 @@ async def test_check_dependency_timeout() -> None:
 
 
 def _build_checker(
-    *, db: object, message_bus: object, cache: object, workflow: object, check_timeout: float = 3
+    *,
+    db: object,
+    message_bus: object,
+    cache: object,
+    workflow: object,
+    task_manager_db: object | None = None,
 ) -> HealthChecker:
     service = SimpleNamespace(message_bus=message_bus, cache=cache, workflow=workflow)
-    return HealthChecker(db=db, service=service, check_timeout=check_timeout)  # type: ignore[arg-type]
+    task_manager_db_probe = (task_manager_db or HealthyProbe()).is_healthy  # type: ignore[union-attr]
+    return HealthChecker(
+        db=db,  # type: ignore[arg-type]
+        service=service,  # type: ignore[arg-type]
+        check_timeout=3,
+        task_manager_db_probe=task_manager_db_probe,
+    )
 
 
 async def test_report_all_healthy() -> None:
@@ -103,7 +116,8 @@ async def test_report_all_healthy() -> None:
     )
     report = await checker.report()
     assert report.status == OverallStatus.HEALTHY
-    assert len(report.checks) == 4
+    assert len(report.checks) == 5
+    assert {c.name for c in report.checks} == set(DependencyName)
     assert all(c.status == DependencyStatus.UP for c in report.checks)
     assert all(c.error == ErrorCategory.NONE for c in report.checks)
 
@@ -119,6 +133,43 @@ async def test_report_database_down() -> None:
     assert by_name[DependencyName.MESSAGE_BUS].status == DependencyStatus.UP
     assert by_name[DependencyName.CACHE].status == DependencyStatus.UP
     assert by_name[DependencyName.TASK_MANAGER].status == DependencyStatus.UP
+    assert by_name[DependencyName.TASK_MANAGER_DB].status == DependencyStatus.UP
+
+
+@dataclass
+class ReportTaskManagerDbCase:
+    name: str
+    exception: Exception
+    expected_error: ErrorCategory
+
+
+REPORT_TASK_MANAGER_DB_CASES = [
+    ReportTaskManagerDbCase(
+        name="connection_refused", exception=ConnectionRefusedError(), expected_error=ErrorCategory.CONNECTION_REFUSED
+    ),
+    ReportTaskManagerDbCase(
+        name="not_initialized",
+        exception=InitializationError("not configured"),
+        expected_error=ErrorCategory.NOT_INITIALIZED,
+    ),
+]
+
+
+@pytest.mark.parametrize("case", [pytest.param(c, id=c.name) for c in REPORT_TASK_MANAGER_DB_CASES])
+async def test_report_task_manager_db_down(case: ReportTaskManagerDbCase) -> None:
+    checker = _build_checker(
+        db=HealthyProbe(),
+        message_bus=BusRecorder(),
+        cache=MemoryCache(),
+        workflow=WorkflowRecorder(),
+        task_manager_db=FailingProbe(case.exception),
+    )
+    report = await checker.report()
+    assert report.status == OverallStatus.UNHEALTHY
+    by_name = {c.name: c for c in report.checks}
+    assert by_name[DependencyName.TASK_MANAGER].status == DependencyStatus.UP
+    assert by_name[DependencyName.TASK_MANAGER_DB].status == DependencyStatus.DOWN
+    assert by_name[DependencyName.TASK_MANAGER_DB].error == case.expected_error
 
 
 async def test_report_uninitialized_service() -> None:
@@ -137,7 +188,12 @@ async def test_report_uninitialized_service() -> None:
         def workflow(self) -> object:
             raise InitializationError("Service is not initialized with a workflow")
 
-    checker = HealthChecker(db=HealthyProbe(), service=_UninitializedService(), check_timeout=3)  # type: ignore[arg-type]
+    checker = HealthChecker(
+        db=HealthyProbe(),  # type: ignore[arg-type]
+        service=_UninitializedService(),  # type: ignore[arg-type]
+        check_timeout=3,
+        task_manager_db_probe=HealthyProbe().is_healthy,
+    )
     report = await checker.report()
     assert report.status == OverallStatus.UNHEALTHY
     by_name = {c.name: c for c in report.checks}
@@ -146,15 +202,38 @@ async def test_report_uninitialized_service() -> None:
     assert by_name[DependencyName.MESSAGE_BUS].error == ErrorCategory.NOT_INITIALIZED
     assert by_name[DependencyName.CACHE].error == ErrorCategory.NOT_INITIALIZED
     assert by_name[DependencyName.TASK_MANAGER].error == ErrorCategory.NOT_INITIALIZED
+    assert by_name[DependencyName.TASK_MANAGER_DB].status == DependencyStatus.UP
 
 
 async def test_report_all_down() -> None:
     checker = _build_checker(
-        db=UnhealthyProbe(), message_bus=UnhealthyProbe(), cache=UnhealthyProbe(), workflow=UnhealthyProbe()
+        db=UnhealthyProbe(),
+        message_bus=UnhealthyProbe(),
+        cache=UnhealthyProbe(),
+        workflow=UnhealthyProbe(),
+        task_manager_db=UnhealthyProbe(),
     )
     report = await checker.report()
     assert report.status == OverallStatus.UNHEALTHY
+    assert len(report.checks) == 5
     assert all(c.status == DependencyStatus.DOWN for c in report.checks)
+
+
+async def test_probe_task_manager_db_not_configured(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv(TASK_MANAGER_DB_CONNECTION_URL_ENV, raising=False)
+    with pytest.raises(InitializationError, match=r"connection URL is not configured"):
+        await probe_task_manager_db()
+
+
+async def test_probe_task_manager_db_uses_configured_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    # A refused localhost target proves the probe connects to whatever URL is configured rather than
+    # short-circuiting, so the check behaves the same whether the store is in-deployment or external.
+    monkeypatch.setenv(TASK_MANAGER_DB_CONNECTION_URL_ENV, "postgresql+asyncpg://infrahub:infrahub@127.0.0.1:1/prefect")
+    result = await check_dependency(DependencyName.TASK_MANAGER_DB, probe_task_manager_db, timeout_seconds=5)
+    assert result.status == DependencyStatus.DOWN
+    # The probe attempted a real connection to the configured URL rather than short-circuiting; the
+    # exact failure category (connection refused vs. timeout) depends on the environment's networking.
+    assert result.error != ErrorCategory.NOT_INITIALIZED
 
 
 @dataclass
@@ -247,3 +326,6 @@ def test_no_internal_details_in_serialization() -> None:
     assert "neo4j://" not in json_str
     assert "redis://" not in json_str
     assert "amqp://" not in json_str
+    assert "postgresql" not in json_str
+    assert "asyncpg" not in json_str
+    assert ":5432" not in json_str

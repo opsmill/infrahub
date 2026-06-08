@@ -248,7 +248,7 @@ services:
       task-manager-db:
         condition: service_healthy
     environment:
-      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://${INFRAHUB_TASKMANAGER_DB_USER:-postgres}:${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}@task-manager-db:5432/${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
+      PREFECT_API_DATABASE_CONNECTION_URL: &prefect_db_url postgresql+asyncpg://${INFRAHUB_TASKMANAGER_DB_USER:-postgres}:${INFRAHUB_TASKMANAGER_DB_PASSWORD:-postgres}@task-manager-db:5432/${INFRAHUB_TASKMANAGER_DB_DATABASE:-prefect}
     healthcheck:
       test: curl -s -f -o /dev/null http://localhost:4200/api/health || exit 1
       interval: 5s
@@ -290,6 +290,8 @@ services:
         condition: service_healthy
       task-manager:
         condition: service_healthy
+      task-manager-db:
+        condition: service_healthy
     environment:
       <<: [*infrahub_config, *infrahub_sso]
       INFRAHUB_PRODUCTION: ${INFRAHUB_PRODUCTION:-false}
@@ -298,6 +300,8 @@ services:
       INFRAHUB_CACHE_ADDRESS: ${INFRAHUB_CACHE_ADDRESS:-cache}
       INFRAHUB_DB_ADDRESS: ${INFRAHUB_DB_ADDRESS:-database}
       INFRAHUB_WORKFLOW_ADDRESS: ${INFRAHUB_WORKFLOW_ADDRESS:-task-manager}
+      # Used by the /api/health endpoint to probe the task manager's Postgres backing store
+      PREFECT_API_DATABASE_CONNECTION_URL: *prefect_db_url
       INFRAHUB_INITIAL_ADMIN_TOKEN: ${INFRAHUB_INITIAL_ADMIN_TOKEN:-06438eb2-8019-4776-878c-0941b1f1d1ec}
       INFRAHUB_INITIAL_AGENT_TOKEN: ${INFRAHUB_INITIAL_AGENT_TOKEN:-44af444d-3b26-410d-9546-b758657e026c}
       INFRAHUB_SECURITY_SECRET_KEY: ${INFRAHUB_SECURITY_SECRET_KEY:-327f747f-efac-42be-9e73-999f08f86b92"}

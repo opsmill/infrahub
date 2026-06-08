@@ -1473,7 +1473,7 @@ export interface components {
          * DependencyName
          * @enum {string}
          */
-        DependencyName: "database" | "message_bus" | "cache" | "task_manager";
+        DependencyName: "database" | "message_bus" | "cache" | "task_manager" | "task_manager_db";
         /**
          * DependencyStatus
          * @enum {string}

@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from fast_depends import Depends, inject
@@ -9,6 +10,7 @@ from infrahub.components import ComponentType
 from infrahub.constants.environment import INSTALLATION_TYPE
 from infrahub.core.registry import registry
 from infrahub.database import InfrahubDatabase, get_db
+from infrahub.health import probe_task_manager_db
 from infrahub.ldap_auth.service import LDAPAuthService, LDAPAuthServiceCommunity
 from infrahub.log_forwarding.service import LogForwardingService, LogForwardingServiceCommunity
 from infrahub.services.adapters.cache import InfrahubCache
@@ -142,6 +144,17 @@ def build_workflow() -> InfrahubWorkflow:
 @inject
 def get_workflow(workflow: InfrahubWorkflow = Depends(build_workflow)) -> InfrahubWorkflow:  # noqa: B008
     return workflow
+
+
+def build_task_manager_db_probe() -> Callable[[], Awaitable[bool]]:
+    return probe_task_manager_db
+
+
+@inject
+def get_task_manager_db_probe(
+    probe: Callable[[], Awaitable[bool]] = Depends(build_task_manager_db_probe),  # noqa: B008
+) -> Callable[[], Awaitable[bool]]:
+    return probe
 
 
 def build_tls_registry() -> TlsContextRegistry:

@@ -18,11 +18,11 @@ class TestHealthEndpoint(TestInfrahubApp):
 
         data = response.json()
         assert data["status"] == "healthy"
-        assert len(data["checks"]) == 4
+        assert len(data["checks"]) == 5
         assert "timestamp" in data
 
         check_names = {check["name"] for check in data["checks"]}
-        assert check_names == {"database", "message_bus", "cache", "task_manager"}
+        assert check_names == {"database", "message_bus", "cache", "task_manager", "task_manager_db"}
 
         for check in data["checks"]:
             assert check["status"] == "up"
@@ -76,3 +76,6 @@ class TestHealthEndpoint(TestInfrahubApp):
         assert "redis://" not in body
         assert "amqp://" not in body
         assert "nats://" not in body
+        assert "postgresql" not in body
+        assert "asyncpg" not in body
+        assert ":5432" not in body

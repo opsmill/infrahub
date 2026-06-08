@@ -43,6 +43,7 @@ from infrahub.workers.dependencies import (
     get_installation_type,
     get_log_forwarding_service,
     get_message_bus,
+    get_task_manager_db_probe,
     get_workflow,
     set_component_type,
 )
@@ -105,6 +106,7 @@ async def app_initialization(application: FastAPI, enable_scheduler: bool = True
         db=database,
         service=service,
         check_timeout=config.SETTINGS.health.check_timeout,
+        task_manager_db_probe=get_task_manager_db_probe(),
     )
     application.state.response_delay = config.SETTINGS.miscellaneous.response_delay
 

@@ -4622,7 +4622,8 @@
                     "database",
                     "message_bus",
                     "cache",
-                    "task_manager"
+                    "task_manager",
+                    "task_manager_db"
                 ],
                 "title": "DependencyName"
             },

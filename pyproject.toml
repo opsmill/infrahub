@@ -59,6 +59,8 @@ dependencies = [
     "fast-depends==3.0.5",
     "cachetools-async==0.0.5",
     "puremagic>=1.30,<2",
+    "sqlalchemy==2.0.50",
+    "asyncpg==0.31.0",
     # Dependencies specific to the SDK
     "rich>=13,<14",
     "pyarrow>=14",

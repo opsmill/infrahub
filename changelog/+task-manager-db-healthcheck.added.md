@@ -1,0 +1,1 @@
+The `/api/health` endpoint now reports a dedicated `task_manager_db` dependency that probes the task manager's Postgres backing store directly, so a backing-store outage is pinpointed instead of only surfacing as a degraded task manager.
