@@ -1635,6 +1635,47 @@ async def test_relationship_add_cardinality_one_rejected(
     assert primary_tag.id == tag_blue_main.id
 
 
+async def test_relationship_add_cardinality_one_multiple_peers_rejected(
+    db: InfrahubDatabase,
+    default_branch: Branch,
+    person_jack_main: Node,
+    tag_blue_main: Node,
+    tag_red_main: Node,
+) -> None:
+    """RelationshipAdd on an empty cardinality-one relationship with more than one peer in a single request is rejected."""
+    query = """
+    mutation RelationshipAdd($id: String!, $node_id_1: String!, $node_id_2: String!) {
+        RelationshipAdd(data: {
+            id: $id,
+            name: "primary_tag",
+            nodes: [{id: $node_id_1}, {id: $node_id_2}],
+        }) {
+            ok
+        }
+    }
+    """
+
+    default_branch.update_schema_hash()
+    gql_params = await prepare_graphql_params(db=db, branch=default_branch)
+
+    result = await graphql(
+        schema=gql_params.schema,
+        source=query,
+        context_value=gql_params.context,
+        root_value=None,
+        variable_values={"id": person_jack_main.id, "node_id_1": tag_blue_main.id, "node_id_2": tag_red_main.id},
+    )
+    assert result.errors
+    assert (
+        result.errors[0].message
+        == "'primary_tag' is a cardinality-one relationship and cannot be assigned more than one peer"
+    )
+
+    refreshed = await NodeManager.get_one(db=db, id=person_jack_main.id, branch=default_branch)
+    primary_tag = await refreshed.get_relationship("primary_tag").get_peer(db=db)
+    assert primary_tag is None
+
+
 class TestRelationshipRemoveMandatory:
     @pytest.fixture
     async def mandatory_schemas(
