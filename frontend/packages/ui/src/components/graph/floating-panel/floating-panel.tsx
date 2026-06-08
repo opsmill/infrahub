@@ -2,9 +2,9 @@ import { X } from "lucide-react";
 import { type ReactNode, useRef } from "react";
 import { cn } from "tailwind-variants";
 
-import { useDismiss } from "../../hooks/use-dismiss";
-import { Card, CardContent, CardHeader } from "../card/card";
-import { IconButton } from "../icon-button/icon-button";
+import { useDismiss } from "../../../hooks/use-dismiss";
+import { Button } from "../../button/button";
+import { Card, CardContent, CardHeader } from "../../card/card";
 
 export interface FloatingPanelProps {
   title: ReactNode;
@@ -47,14 +47,16 @@ export function FloatingPanel({
             <h2 className="font-semibold text-lg text-neutral-900">{title}</h2>
             {description && <p className="mt-1 text-neutral-500 text-sm">{description}</p>}
           </div>
-          <IconButton
-            aria-label={closeLabel}
+          <Button
+            variant="ghost"
             size="xs"
+            shape="square"
+            aria-label={closeLabel}
             onPress={onClose}
             className="-mt-1 -mr-1 text-neutral-400"
           >
             <X className="size-4" />
-          </IconButton>
+          </Button>
         </div>
         {headerContent}
       </CardHeader>

@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vitest";
 import { render } from "vitest-browser-react";
 
-import { IconButton } from "../icon-button/icon-button";
+import { Button } from "../../button/button";
 import { Toolbar } from "./toolbar";
 
 describe("Toolbar", () => {
@@ -9,9 +9,9 @@ describe("Toolbar", () => {
     // GIVEN
     const component = await render(
       <Toolbar aria-label="Graph controls">
-        <IconButton aria-label="Zoom in">
+        <Button variant="ghost" size="sm" shape="square" aria-label="Zoom in">
           <svg aria-hidden="true" />
-        </IconButton>
+        </Button>
       </Toolbar>,
     );
 
@@ -25,13 +25,13 @@ describe("Toolbar", () => {
     // GIVEN
     const component = await render(
       <Toolbar aria-label="Graph controls">
-        <IconButton aria-label="Zoom in">
+        <Button variant="ghost" size="sm" shape="square" aria-label="Zoom in">
           <svg aria-hidden="true" />
-        </IconButton>
+        </Button>
         <Toolbar.Divider />
-        <IconButton aria-label="Zoom out">
+        <Button variant="ghost" size="sm" shape="square" aria-label="Zoom out">
           <svg aria-hidden="true" />
-        </IconButton>
+        </Button>
       </Toolbar>,
     );
 

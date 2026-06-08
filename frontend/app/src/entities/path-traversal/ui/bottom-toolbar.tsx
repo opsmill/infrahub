@@ -1,5 +1,5 @@
 import { Icon } from "@iconify-icon/react";
-import { Button, IconButton, Toolbar, useDismiss } from "@infrahub/ui";
+import { Button, Toolbar, useDismiss } from "@infrahub/ui";
 import { Panel, useReactFlow } from "@xyflow/react";
 import { useRef, useState } from "react";
 
@@ -50,23 +50,26 @@ export function BottomToolbar({
     <Panel position="bottom-center">
       <Toolbar aria-label="Graph controls" className="mb-4">
         <Tooltip message="Zoom out">
-          <IconButton aria-label="Zoom out" onPress={() => zoomOut()} className="text-gray-600">
+          <Button variant="ghost" size="sm" shape="square" aria-label="Zoom out" onPress={() => zoomOut()} className="text-gray-600">
             <Icon icon="mdi:minus" className="text-lg" />
-          </IconButton>
+          </Button>
         </Tooltip>
         <Tooltip message="Fit to screen">
-          <IconButton
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
             aria-label="Fit to screen"
             onPress={() => fitView({ padding: 0.2 })}
             className="text-gray-600"
           >
             <Icon icon="mdi:fit-to-screen" className="text-lg" />
-          </IconButton>
+          </Button>
         </Tooltip>
         <Tooltip message="Zoom in">
-          <IconButton aria-label="Zoom in" onPress={() => zoomIn()} className="text-gray-600">
+          <Button variant="ghost" size="sm" shape="square" aria-label="Zoom in" onPress={() => zoomIn()} className="text-gray-600">
             <Icon icon="mdi:plus" className="text-lg" />
-          </IconButton>
+          </Button>
         </Tooltip>
         <Toolbar.Divider className="mx-2" />
         <Tooltip message={`Switch to ${edgeStyle === "bezier" ? "step" : "smooth"} edges`}>
@@ -85,26 +88,35 @@ export function BottomToolbar({
         </Tooltip>
         <Toolbar.Divider className="mx-2" />
         <Tooltip message="Auto-layout horizontal">
-          <IconButton
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
             aria-label="Auto-layout horizontal"
             onPress={() => onLayout("LR")}
             className="text-gray-600"
           >
             <Icon icon="mdi:arrow-right" className="text-lg" />
-          </IconButton>
+          </Button>
         </Tooltip>
         <Tooltip message="Auto-layout vertical">
-          <IconButton
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
             aria-label="Auto-layout vertical"
             onPress={() => onLayout("TB")}
             className="text-gray-600"
           >
             <Icon icon="mdi:arrow-down" className="text-lg" />
-          </IconButton>
+          </Button>
         </Tooltip>
         <Toolbar.Divider className="mx-2" />
         <Tooltip message={isParametersOpen ? "Hide parameters" : "Show parameters"}>
-          <IconButton
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
             aria-label={isParametersOpen ? "Hide parameters" : "Show parameters"}
             onPress={onParametersClick}
             className={classNames(
@@ -114,11 +126,14 @@ export function BottomToolbar({
             )}
           >
             <Icon icon="mdi:tune-variant" className="text-lg" />
-          </IconButton>
+          </Button>
         </Tooltip>
         {onReload && (
           <Tooltip message="Reload">
-            <IconButton
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
               aria-label="Reload"
               onPress={onReload}
               isDisabled={isReloading}
@@ -128,13 +143,16 @@ export function BottomToolbar({
                 icon="mdi:refresh"
                 className={classNames("text-lg", isReloading && "animate-spin")}
               />
-            </IconButton>
+            </Button>
           </Tooltip>
         )}
         <Toolbar.Divider className="mx-2" />
         <div className="relative" ref={exportMenuRef}>
           <Tooltip message="Export diagram">
-            <IconButton
+            <Button
+              variant="ghost"
+              size="sm"
+              shape="square"
               aria-label="Export diagram"
               onPress={() => setExportMenuOpen(!exportMenuOpen)}
               className={classNames(
@@ -144,7 +162,7 @@ export function BottomToolbar({
               )}
             >
               <Icon icon="mdi:download" className="text-lg" />
-            </IconButton>
+            </Button>
           </Tooltip>
           {exportMenuOpen && (
             <div className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">

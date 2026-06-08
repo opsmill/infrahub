@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Minus, Plus } from "lucide-react";
 
-import { IconButton } from "../icon-button/icon-button";
+import { Button } from "../../button/button";
 import { Toolbar } from "./toolbar";
 
 const meta: Meta<typeof Toolbar> = {
@@ -15,13 +15,13 @@ type Story = StoryObj<typeof Toolbar>;
 export const Default: Story = {
   render: () => (
     <Toolbar aria-label="Example controls">
-      <IconButton aria-label="Zoom out">
+      <Button variant="ghost" size="sm" shape="square" aria-label="Zoom out">
         <Minus />
-      </IconButton>
+      </Button>
       <Toolbar.Divider />
-      <IconButton aria-label="Zoom in">
+      <Button variant="ghost" size="sm" shape="square" aria-label="Zoom in">
         <Plus />
-      </IconButton>
+      </Button>
     </Toolbar>
   ),
 };
