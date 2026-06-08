@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
@@ -25,6 +26,10 @@ from tests.adapters.cache import MemoryCache
 from tests.adapters.health import FailingProbe, HealthyProbe, SlowProbe, UnhealthyProbe
 from tests.adapters.message_bus import BusRecorder
 from tests.adapters.workflow import WorkflowRecorder
+
+if TYPE_CHECKING:
+    from infrahub.database import InfrahubDatabase
+    from infrahub.services import InfrahubServices
 
 
 @dataclass
@@ -101,12 +106,12 @@ def _build_checker(
     task_manager_db: object | None = None,
 ) -> HealthChecker:
     service = SimpleNamespace(message_bus=message_bus, cache=cache, workflow=workflow)
-    task_manager_db_probe = (task_manager_db or HealthyProbe()).is_healthy  # type: ignore[union-attr]
+    probe = cast("HealthyProbe", task_manager_db or HealthyProbe())
     return HealthChecker(
-        db=db,  # ty: ignore[invalid-argument-type]
-        service=service,  # ty: ignore[invalid-argument-type]
+        db=cast("InfrahubDatabase", db),
+        service=cast("InfrahubServices", service),
         check_timeout=3,
-        task_manager_db_probe=task_manager_db_probe,
+        task_manager_db_probe=probe.is_healthy,
     )
 
 
@@ -189,8 +194,8 @@ async def test_report_uninitialized_service() -> None:
             raise InitializationError("Service is not initialized with a workflow")
 
     checker = HealthChecker(
-        db=HealthyProbe(),  # ty: ignore[invalid-argument-type]
-        service=_UninitializedService(),  # ty: ignore[invalid-argument-type]
+        db=cast("InfrahubDatabase", HealthyProbe()),
+        service=cast("InfrahubServices", _UninitializedService()),
         check_timeout=3,
         task_manager_db_probe=HealthyProbe().is_healthy,
     )
