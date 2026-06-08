@@ -1463,6 +1463,8 @@ export type CoreAccount = CoreGenericAccount & CoreNode & LineageOwner & Lineage
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Scalars['String']['output'];
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
@@ -6910,6 +6912,8 @@ export type CoreGenericAccount = {
   hfid: Maybe<Array<Scalars['String']['output']>>;
   /** Unique identifier */
   id: Maybe<Scalars['String']['output']>;
+  /** True when the account is linked to an external identity provider (LDAP, OIDC, OAuth2). Local password changes are refused for such accounts. */
+  is_externally_managed: Scalars['Boolean']['output'];
   label: Maybe<TextAttribute>;
   member_of_groups: NestedPaginatedCoreGroup;
   name: Maybe<TextAttribute>;
