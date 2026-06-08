@@ -5,7 +5,6 @@ from unittest.mock import ANY, AsyncMock, patch
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-    from pathlib import Path
 
 import pytest
 from infrahub_sdk import Config, InfrahubClient
@@ -386,10 +385,10 @@ class TestPullReadOnly:
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
 
+@pytest.mark.usefixtures("git_repos_dir")
 async def test_add_git_repository_releases_lock_before_import(
     prefect_test_fixture: None,
     git_upstream_repo_01: dict[str, str],
-    git_repos_dir: Path,
 ) -> None:
     """The default-branch import must run after the repository lock held for the clone is released."""
     timeline = LockTimeline()
