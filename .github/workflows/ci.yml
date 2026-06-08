@@ -62,7 +62,7 @@ jobs:
         with:
           submodules: true
       - name: Check for file changes
-        uses: opsmill/paths-filter@v3.0.2
+        uses: dorny/paths-filter@v4.0.1
         id: changes
         with:
           token: ${{ github.token }}
@@ -109,16 +109,16 @@ jobs:
         uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Check formatting and linting (Biome)
@@ -142,16 +142,16 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate OpenAPI types
@@ -185,16 +185,16 @@ jobs:
     steps:
       - name: "Check out repository code"
         uses: "actions/checkout@v6"
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Generate GraphQL types
@@ -766,17 +766,17 @@ jobs:
         uses: "actions/checkout@v6"
         with:
           submodules: true
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
           # https://github.com/microsoft/playwright/issues/41000
           node-version: 24.15.0
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: "Install frontend"
         working-directory: ./frontend/app
         run: pnpm install --frozen-lockfile
@@ -1072,16 +1072,16 @@ jobs:
         uses: actions/checkout@v6
         with:
           submodules: true
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - name: Install NodeJS
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: pnpm
-          cache-dependency-path: frontend/app/pnpm-lock.yaml
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10
+          cache: true
+          cache_dependency_path: frontend/app/pnpm-lock.yaml
       - name: Set up Python
         id: python
         uses: actions/setup-python@v6
