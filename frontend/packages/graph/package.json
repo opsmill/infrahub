@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./styles.css": "./src/index.css",
     "./toolbar": "./src/components/toolbar/toolbar.tsx",
-    "./floating-panel": "./src/components/floating-panel/floating-panel.tsx"
+    "./floating-panel": "./src/components/floating-panel/floating-panel.tsx",
+    "./use-dismiss": "./src/hooks/use-dismiss.ts"
   },
   "scripts": {
     "build": "tsc -b && vite build",
