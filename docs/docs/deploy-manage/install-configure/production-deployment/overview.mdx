@@ -93,7 +93,7 @@ Test your backup and restore process periodically to ensure it works as expected
 This section is informational and optional. Infrahub works with administrative credentials for its backing services, but it does not require them. The privileges below let you run Infrahub with restricted users if your security policy calls for it.
 :::
 
-Infrahub never administers its backing services: it does not manage users, roles, databases, or server configuration. The privileges it actually uses are the following.
+Infrahub does not manage users, roles, or server configuration. It primarily uses application-level privileges; only optional first-start Neo4j database bootstrap requires `CREATE DATABASE`.
 
 ### Neo4j
 
@@ -155,7 +155,7 @@ The task manager stores its state in PostgreSQL and runs its own schema migratio
 ```sql
 CREATE ROLE prefect WITH LOGIN PASSWORD '<strong-task-manager-db-password>';
 ALTER DATABASE prefect OWNER TO prefect;
-GRANT ALL ON SCHEMA public TO prefect;
+ALTER SCHEMA public OWNER TO prefect;
 ```
 
 Then point the task manager's database connection string at this role instead of a superuser.
