@@ -25,8 +25,8 @@ log = get_logger()
 
 
 @dataclass
-class BranchImport:
-    """One object import to run: the Infrahub branch to import into and the commit to import from."""
+class PendingObjectImport:
+    """A repository object import waiting to run: which commit to import from and which Infrahub branch to import into."""
 
     infrahub_branch_name: str
     commit: str
@@ -86,7 +86,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 commit=pending.commit,
             )
 
-    async def collect_pending_imports(self, staging_branch: str | None = None) -> list[BranchImport]:
+    async def collect_pending_imports(self, staging_branch: str | None = None) -> list[PendingObjectImport]:
         """Run the git working-copy side of a sync and return the imports it produced.
 
         Performs the on-disk git mutations (fetch, branch creation, pull, commit-worktree pinning)
@@ -102,7 +102,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
         new_branches, updated_branches = await self.compare_local_remote()
 
-        pending_imports: list[BranchImport] = []
+        pending_imports: list[PendingObjectImport] = []
         if not new_branches and not updated_branches:
             return pending_imports
 
@@ -129,7 +129,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 self.create_commit_worktree(commit=commit)
                 await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
 
-                pending_imports.append(BranchImport(infrahub_branch_name=infrahub_branch, commit=commit))
+                pending_imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
                 is_valid = self.validate_remote_branch(branch_name=branch_name)
@@ -140,7 +140,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 commit_after = await self.pull(branch_name=branch_name)
                 if isinstance(commit_after, str):
-                    pending_imports.append(BranchImport(infrahub_branch_name=infrahub_branch, commit=commit_after))
+                    pending_imports.append(
+                        PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after)
+                    )
 
                 elif commit_after is True:
                     log.warning(
@@ -156,7 +158,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
     async def _collect_staging_imports(
         self, staging_branch: str | None, updated_branches: list[str]
-    ) -> list[BranchImport]:
+    ) -> list[PendingObjectImport]:
         if not (
             self.internal_status == RepositoryInternalStatus.STAGING.value
             and staging_branch
@@ -167,7 +169,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
         commit_after = await self.pull(branch_name=self.default_branch)
         if isinstance(commit_after, str):
             return [
-                BranchImport(
+                PendingObjectImport(
                     infrahub_branch_name=staging_branch, git_branch_name=self.default_branch, commit=commit_after
                 )
             ]

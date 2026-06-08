@@ -3,7 +3,7 @@ from uuid import uuid4
 from infrahub.core.branch import Branch
 from infrahub.core.registry import registry
 from infrahub.git import InfrahubRepository
-from infrahub.git.repository import BranchImport
+from infrahub.git.repository import PendingObjectImport
 from infrahub.git.sync import RepositoryImporter, RepositorySyncer
 from tests.adapters.lock import LockTimeline, RecordingLockRegistry
 
@@ -14,7 +14,7 @@ class _RecordingImporter(RepositoryImporter):
     def __init__(self, timeline: LockTimeline) -> None:
         self._timeline = timeline
 
-    async def import_branch(self, repo: InfrahubRepository, branch_import: BranchImport) -> None:
+    async def import_branch(self, repo: InfrahubRepository, pending_import: PendingObjectImport) -> None:
         self._timeline.checkpoint("import")
 
 
