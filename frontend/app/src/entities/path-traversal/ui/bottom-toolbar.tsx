@@ -1,8 +1,7 @@
 import { Icon } from "@iconify-icon/react";
-import { Toolbar, useDismiss } from "@infrahub/graph";
+import { ExportMenu, Toolbar } from "@infrahub/graph";
 import { Button } from "@infrahub/ui";
 import { Panel, useReactFlow } from "@xyflow/react";
-import { useRef, useState } from "react";
 
 import { Tooltip } from "@/shared/components/aria/tooltip";
 import { classNames } from "@/shared/utils/common";
@@ -34,18 +33,6 @@ export function BottomToolbar({
   isReloading,
 }: BottomToolbarProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
-  const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const exportMenuRef = useRef<HTMLDivElement>(null);
-
-  const handleExport = (format: ExportFormat) => {
-    onExport(format);
-    setExportMenuOpen(false);
-  };
-
-  function closeExportMenu() {
-    setExportMenuOpen(false);
-  }
-  useDismiss(exportMenuRef, closeExportMenu, exportMenuOpen);
 
   return (
     <Panel position="bottom-center">
@@ -162,46 +149,7 @@ export function BottomToolbar({
           </Tooltip>
         )}
         <Toolbar.Divider className="mx-2" />
-        <div className="relative" ref={exportMenuRef}>
-          <Tooltip message="Export diagram">
-            <Button
-              variant="ghost"
-              size="sm"
-              shape="square"
-              aria-label="Export diagram"
-              onPress={() => setExportMenuOpen(!exportMenuOpen)}
-              className={classNames(
-                exportMenuOpen
-                  ? "bg-indigo-500 text-white data-hovered:bg-indigo-600"
-                  : "text-gray-600"
-              )}
-            >
-              <Icon icon="mdi:download" className="text-lg" />
-            </Button>
-          </Tooltip>
-          {exportMenuOpen && (
-            <div className="absolute bottom-full left-1/2 mb-2 min-w-[120px] -translate-x-1/2 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => handleExport("png")}
-                className="w-full justify-start rounded-none px-3 py-2 text-gray-700 text-sm"
-              >
-                <Icon icon="mdi:image-outline" className="text-gray-500 text-lg" />
-                PNG
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onPress={() => handleExport("svg")}
-                className="w-full justify-start rounded-none px-3 py-2 text-gray-700 text-sm"
-              >
-                <Icon icon="mdi:file-code-outline" className="text-gray-500 text-lg" />
-                SVG
-              </Button>
-            </div>
-          )}
-        </div>
+        <ExportMenu onExport={onExport} />
       </Toolbar>
     </Panel>
   );

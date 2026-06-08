@@ -9,6 +9,7 @@
     "./styles.css": "./src/index.css",
     "./toolbar": "./src/components/toolbar/toolbar.tsx",
     "./floating-panel": "./src/components/floating-panel/floating-panel.tsx",
+    "./export-menu": "./src/components/export-menu/export-menu.tsx",
     "./use-dismiss": "./src/hooks/use-dismiss.ts"
   },
   "scripts": {
@@ -26,6 +27,7 @@
     "test:watch": "vitest watch"
   },
   "dependencies": {
+    "@iconify-icon/react": "^3.0.3",
     "@infrahub/ui": "file:../ui",
     "@tailwindcss/vite": "^4.2.4",
     "lucide-react": "^1.14.0",

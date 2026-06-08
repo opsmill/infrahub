@@ -7289,6 +7289,7 @@ snapshots:
 
   '@infrahub/graph@file:../packages/graph(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(tailwind-merge@3.6.0)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))':
     dependencies:
+      '@iconify-icon/react': 3.0.3(react@19.2.7)
       '@infrahub/ui': file:../packages/ui(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       '@tailwindcss/vite': 4.3.0(vite@8.0.16(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
       lucide-react: 1.17.0(react@19.2.7)
