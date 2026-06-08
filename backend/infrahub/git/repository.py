@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache
@@ -21,6 +22,15 @@ if TYPE_CHECKING:
     from infrahub_sdk.client import InfrahubClient
 
 log = get_logger()
+
+
+@dataclass
+class PendingObjectImport:
+    """A repository object import waiting to run: which commit to import from and which Infrahub branch to import into."""
+
+    infrahub_branch_name: str
+    commit: str
+    git_branch_name: str | None = None
 
 
 class InfrahubRepository(InfrahubRepositoryIntegrator):
@@ -69,14 +79,32 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
             GraphQLError: When creating a branch in the graph fails for a reason other than the branch already existing.
 
         """
+        for pending in await self.collect_pending_imports(staging_branch=staging_branch):
+            await self.import_objects_from_files(
+                infrahub_branch_name=pending.infrahub_branch_name,
+                git_branch_name=pending.git_branch_name,
+                commit=pending.commit,
+            )
+
+    async def collect_pending_imports(self, staging_branch: str | None = None) -> list[PendingObjectImport]:
+        """Run the git working-copy side of a sync and return the imports it produced.
+
+        Performs the on-disk git mutations (fetch, branch creation, pull, commit-worktree pinning)
+        and returns one entry per branch whose objects must be imported.
+
+        Raises:
+            GraphQLError: When creating a branch in the graph fails for a reason other than the branch already existing.
+
+        """
         log.info("Starting the synchronization.", repository=self.name)
 
         await self.fetch()
 
         new_branches, updated_branches = await self.compare_local_remote()
 
+        pending_imports: list[PendingObjectImport] = []
         if not new_branches and not updated_branches:
-            return
+            return pending_imports
 
         log.debug(f"New Branches {new_branches}, Updated Branches {updated_branches}", repository=self.name)
 
@@ -101,7 +129,7 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                 self.create_commit_worktree(commit=commit)
                 await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
 
-                await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit)
+                pending_imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
             for branch_name in updated_branches:
                 is_valid = self.validate_remote_branch(branch_name=branch_name)
@@ -112,7 +140,9 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 commit_after = await self.pull(branch_name=branch_name)
                 if isinstance(commit_after, str):
-                    await self.import_objects_from_files(infrahub_branch_name=infrahub_branch, commit=commit_after)
+                    pending_imports.append(
+                        PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after)
+                    )
 
                 elif commit_after is True:
                     log.warning(
@@ -121,26 +151,36 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
                         branch=branch_name,
                     )
 
-        await self._sync_staging(staging_branch=staging_branch, updated_branches=updated_branches)
+        pending_imports.extend(
+            await self._collect_staging_imports(staging_branch=staging_branch, updated_branches=updated_branches)
+        )
+        return pending_imports
 
-    async def _sync_staging(self, staging_branch: str | None, updated_branches: list[str]) -> None:
-        if (
+    async def _collect_staging_imports(
+        self, staging_branch: str | None, updated_branches: list[str]
+    ) -> list[PendingObjectImport]:
+        if not (
             self.internal_status == RepositoryInternalStatus.STAGING.value
             and staging_branch
             and self.default_branch in updated_branches
         ):
-            commit_after = await self.pull(branch_name=self.default_branch)
-            if isinstance(commit_after, str):
-                await self.import_objects_from_files(
-                    git_branch_name=self.default_branch, infrahub_branch_name=staging_branch, commit=commit_after
-                )
+            return []
 
-            elif commit_after is True:
-                log.warning(
-                    f"An update was detected but the commit remained the same after pull() ({commit_after}).",
-                    repository=self.name,
-                    branch=self.default_branch,
+        commit_after = await self.pull(branch_name=self.default_branch)
+        if isinstance(commit_after, str):
+            return [
+                PendingObjectImport(
+                    infrahub_branch_name=staging_branch, git_branch_name=self.default_branch, commit=commit_after
                 )
+            ]
+
+        if commit_after is True:
+            log.warning(
+                f"An update was detected but the commit remained the same after pull() ({commit_after}).",
+                repository=self.name,
+                branch=self.default_branch,
+            )
+        return []
 
     async def push(self, branch_name: str) -> bool:
         """Push a given branch to the remote Origin repository."""

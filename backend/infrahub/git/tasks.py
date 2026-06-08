@@ -62,6 +62,7 @@ from .models import (
     UserCheckDefinitionData,
 )
 from .repository import InfrahubReadOnlyRepository, InfrahubRepository, get_initialized_repo
+from .sync import RepositoryFileImporter, RepositorySyncer
 from .utils import fetch_artifact_definition_targets, fetch_check_definition_targets, get_repositories_commit_per_branch
 
 
@@ -228,8 +229,9 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
         default_branch_name=default_branch_name,
     )
 
+    syncer = RepositorySyncer(lock_registry=lock.registry, importer=RepositoryFileImporter())
     try:
-        await repo.sync(staging_branch=staging_branch)
+        await syncer.sync(repo, staging_branch=staging_branch)
     except RepositoryError:
         if operational_status == RepositoryOperationalStatus.ONLINE.value:
             params: dict[str, Any] = {
@@ -263,6 +265,7 @@ async def sync_remote_repositories() -> None:
 
         infrahub_branch = staging_branch or registry.default_branch
 
+        default_import_git_branch: str | None = None
         async with lock.registry.get(name=repo_name, namespace="repository"):
             init_failed = False
             try:
@@ -288,55 +291,56 @@ async def sync_remote_repositories() -> None:
                         internal_status=active_internal_status,
                         default_branch_name=repository.default_branch.value,
                     )
-                    await repo.import_objects_from_files(  # type: ignore[call-overload]
-                        git_branch_name=registry.default_branch, infrahub_branch_name=infrahub_branch
-                    )
                 except RepositoryError as exc:
                     log.info(exc.message)
                     continue
+                default_import_git_branch = registry.default_branch
 
             if repo.reinitialized:
-                try:
-                    await repo.import_objects_from_files(  # type: ignore[call-overload]
-                        git_branch_name=repo.default_branch, infrahub_branch_name=infrahub_branch
-                    )
-                except RepositoryError as exc:
-                    log.info(exc.message)
-                    continue
+                default_import_git_branch = repo.default_branch
 
+        if default_import_git_branch is not None:
             try:
-                await sync_git_repo_with_origin_and_tag_on_failure(
-                    client=client,
-                    repository_id=repository.id,
-                    repository_name=repository.name.value,
-                    repository_location=repository.location.value,
-                    internal_status=active_internal_status,
-                    default_branch_name=repository.default_branch.value,
-                    operational_status=repository.operational_status.value,
-                    staging_branch=staging_branch,
-                    infrahub_branch=infrahub_branch,
+                await repo.import_objects_from_files(  # type: ignore[call-overload]
+                    git_branch_name=default_import_git_branch, infrahub_branch_name=infrahub_branch
                 )
-                try:
-                    pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
-                except (ValueError, InvalidGitRepositoryError) as exc:
-                    log.debug(f"Could not resolve pinned commit for {repo_name}, workers will fall back to pull: {exc}")
-                    pinned_commit = None
-                # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
-                # pool converges on the same commit even if upstream advances during fan-out.
-                message = messages.RefreshGitFetch(
-                    meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
-                    location=repository.location.value,
-                    repository_id=repository.id,
-                    repository_name=repository.name.value,
-                    repository_kind=repository.get_kind(),
-                    infrahub_branch_name=infrahub_branch,
-                    infrahub_branch_id=branches[infrahub_branch].id,
-                    commit=pinned_commit,
-                )
-                message_bus = await get_message_bus()
-                await message_bus.send(message=message)
             except RepositoryError as exc:
                 log.info(exc.message)
+                continue
+
+        try:
+            await sync_git_repo_with_origin_and_tag_on_failure(
+                client=client,
+                repository_id=repository.id,
+                repository_name=repository.name.value,
+                repository_location=repository.location.value,
+                internal_status=active_internal_status,
+                default_branch_name=repository.default_branch.value,
+                operational_status=repository.operational_status.value,
+                staging_branch=staging_branch,
+                infrahub_branch=infrahub_branch,
+            )
+            try:
+                pinned_commit: str | None = repo.get_commit_value(branch_name=infrahub_branch, remote=False)
+            except (ValueError, InvalidGitRepositoryError) as exc:
+                log.debug(f"Could not resolve pinned commit for {repo_name}, workers will fall back to pull: {exc}")
+                pinned_commit = None
+            # Tell workers to fetch and check out the SHA pinned by this sync, so the whole
+            # pool converges on the same commit even if upstream advances during fan-out.
+            message = messages.RefreshGitFetch(
+                meta=Meta(initiator_id=WORKER_IDENTITY, request_id=get_log_data().get("request_id", "")),
+                location=repository.location.value,
+                repository_id=repository.id,
+                repository_name=repository.name.value,
+                repository_kind=repository.get_kind(),
+                infrahub_branch_name=infrahub_branch,
+                infrahub_branch_id=branches[infrahub_branch].id,
+                commit=pinned_commit,
+            )
+            message_bus = await get_message_bus()
+            await message_bus.send(message=message)
+        except RepositoryError as exc:
+            log.info(exc.message)
 
 
 @task(  # type: ignore[arg-type]
