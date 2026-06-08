@@ -59,5 +59,6 @@ class InfrahubWorkflow(ABC):
     async def is_healthy(self) -> bool:
         """Check if the workflow service is reachable.
 
-        Default implementation returns False. Concrete adapters should override."""
+        Default implementation returns False. Concrete adapters should override.
+        """
         return False

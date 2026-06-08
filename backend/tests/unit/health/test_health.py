@@ -103,8 +103,8 @@ def _build_checker(
     service = SimpleNamespace(message_bus=message_bus, cache=cache, workflow=workflow)
     task_manager_db_probe = (task_manager_db or HealthyProbe()).is_healthy  # type: ignore[union-attr]
     return HealthChecker(
-        db=db,  # type: ignore[arg-type]
-        service=service,  # type: ignore[arg-type]
+        db=db,  # ty: ignore[invalid-argument-type]
+        service=service,  # ty: ignore[invalid-argument-type]
         check_timeout=3,
         task_manager_db_probe=task_manager_db_probe,
     )
@@ -189,8 +189,8 @@ async def test_report_uninitialized_service() -> None:
             raise InitializationError("Service is not initialized with a workflow")
 
     checker = HealthChecker(
-        db=HealthyProbe(),  # type: ignore[arg-type]
-        service=_UninitializedService(),  # type: ignore[arg-type]
+        db=HealthyProbe(),  # ty: ignore[invalid-argument-type]
+        service=_UninitializedService(),  # ty: ignore[invalid-argument-type]
         check_timeout=3,
         task_manager_db_probe=HealthyProbe().is_healthy,
     )

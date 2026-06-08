@@ -82,5 +82,6 @@ class InfrahubMessageBus(ABC):
     async def is_healthy(self) -> bool:
         """Check if the message bus service is reachable.
 
-        Default implementation returns False. Concrete adapters should override."""
+        Default implementation returns False. Concrete adapters should override.
+        """
         return False
