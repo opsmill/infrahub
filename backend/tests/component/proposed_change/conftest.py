@@ -73,8 +73,13 @@ def make_node_diff(
     branch: str,
     field_names: list[str],
     action: str = "updated",
+    element_type: str = DiffElementType.ATTRIBUTE.value,
 ) -> NodeDiff:
-    """Build a NodeDiff for use in diff summary cache."""
+    """Build a NodeDiff for use in diff summary cache.
+
+    `element_type` accepts the raw diff value (e.g. "RELATIONSHIP_ONE") so tests can reproduce a
+    relationship endpoint flip exactly as the diff summary emits it.
+    """
     return NodeDiff(
         branch=branch,
         action=action,
@@ -84,7 +89,7 @@ def make_node_diff(
         elements=[
             NodeDiffElement(
                 name=field_name,
-                element_type=DiffElementType.ATTRIBUTE.value,
+                element_type=element_type,
                 action="updated",
                 summary=NodeDiffSummary(added=0, updated=1, removed=0),
             )

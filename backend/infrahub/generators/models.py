@@ -74,4 +74,5 @@ class GeneratorDefinitionModel(BaseModel):
 
 class ProposedChangeGeneratorDefinition(GeneratorDefinitionModel):
     query_models: list[str] = Field(..., description="The models to use when collecting data.")
+    query_payload: str = Field(..., description="The GraphQL query string used to collect data.")
     repository_id: str = Field(..., description="The id of the repository.")

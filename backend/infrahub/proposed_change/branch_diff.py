@@ -130,13 +130,6 @@ def get_modified_kinds(diff_summary: list[NodeDiff], branch: str) -> list[str]:
     )
 
 
-def get_modified_node_ids(diff_summary: list[NodeDiff], branch: str) -> list[str]:
-    """Return a list of non schema nodes that have been modified on the branch."""
-    return [
-        entry["id"] for entry in diff_summary if entry["branch"] == branch and not SCHEMA_CHANGE.match(entry["kind"])
-    ]
-
-
 async def set_diff_summary_cache(pipeline_id: UUID, diff_summary: list[NodeDiff], cache: InfrahubCache) -> None:
     serialized = json.dumps(diff_summary)
     await cache.set(
