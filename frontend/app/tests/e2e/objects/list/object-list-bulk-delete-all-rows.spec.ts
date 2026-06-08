@@ -26,9 +26,18 @@ test.describe("/objects/BuiltinTag - Bulk delete all rows", () => {
 
     await test.step("select all rows", async () => {
       await page.getByTestId("select-all-rows").click();
-      await expect(page.getByTestId("identifier-checkbox-cell").nth(0)).toBeChecked();
-      await expect(page.getByTestId("identifier-checkbox-cell").nth(1)).toBeChecked();
-      await expect(page.getByTestId("identifier-checkbox-cell").nth(2)).toBeChecked();
+      await expect(page.getByTestId("identifier-checkbox-cell").nth(0)).toHaveAttribute(
+        "data-selected",
+        "true"
+      );
+      await expect(page.getByTestId("identifier-checkbox-cell").nth(1)).toHaveAttribute(
+        "data-selected",
+        "true"
+      );
+      await expect(page.getByTestId("identifier-checkbox-cell").nth(2)).toHaveAttribute(
+        "data-selected",
+        "true"
+      );
     });
 
     await test.step("delete all rows", async () => {
