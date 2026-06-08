@@ -6,7 +6,6 @@ export {
   type LinkButtonProps,
 } from "./components/button/button";
 export { CheckboxCard, type CheckboxCardProps } from "./components/checkbox-card/checkbox-card";
-export { Spinner, type SpinnerProps } from "./components/spinner/spinner";
 export {
   Card,
   CardContent,
