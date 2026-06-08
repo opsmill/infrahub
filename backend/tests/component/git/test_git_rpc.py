@@ -99,30 +99,31 @@ class TestAddRepository:
         self.mock_repo.import_objects_from_files = AsyncMock()
         self.mock_repo.collect_pending_imports = AsyncMock(return_value=[])
 
-        with (
-            patch("infrahub.git.tasks.lock") as mock_infra_lock,
-            patch("infrahub.git.tasks.InfrahubRepository", spec=InfrahubRepository) as mock_repo_class,
-        ):
-            mock_infra_lock.registry = AsyncMock(spec=InfrahubLockRegistry)
-            mock_repo_class.new.return_value = self.mock_repo
-            await add_git_repository(model=model)
+        original_registry = lock.registry
+        timeline = install_recording_lock_registry()
+        try:
+            with patch("infrahub.git.tasks.InfrahubRepository", spec=InfrahubRepository) as mock_repo_class:
+                mock_repo_class.new.return_value = self.mock_repo
+                await add_git_repository(model=model)
 
-            mock_infra_lock.registry.get.assert_any_call(name=git_upstream_repo_01["name"], namespace="repository")
+                assert f"repository.{git_upstream_repo_01['name']}" in timeline.acquire_sequence()
 
-            mock_repo_class.new.assert_awaited_once_with(
-                id=repo_id,
-                name=git_upstream_repo_01["name"],
-                location=str(git_upstream_repo_01["path"]),
-                client=ANY,
-                infrahub_branch_name=self.default_branch_name,
-                internal_status="active",
-                default_branch_name=self.default_branch_name,
-            )
-            self.mock_repo.import_objects_from_files.assert_awaited_once_with(
-                infrahub_branch_name=self.default_branch_name,
-                git_branch_name=self.default_branch_name,
-                commit="0123456789abcdef0123456789abcdef01234567",
-            )
+                mock_repo_class.new.assert_awaited_once_with(
+                    id=repo_id,
+                    name=git_upstream_repo_01["name"],
+                    location=str(git_upstream_repo_01["path"]),
+                    client=ANY,
+                    infrahub_branch_name=self.default_branch_name,
+                    internal_status="active",
+                    default_branch_name=self.default_branch_name,
+                )
+                self.mock_repo.import_objects_from_files.assert_awaited_once_with(
+                    infrahub_branch_name=self.default_branch_name,
+                    git_branch_name=self.default_branch_name,
+                    commit="0123456789abcdef0123456789abcdef01234567",
+                )
+        finally:
+            lock.registry = original_registry
 
         assert len(self.recorder.messages) > 0
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
