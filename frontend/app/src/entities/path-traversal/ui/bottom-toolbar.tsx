@@ -50,7 +50,14 @@ export function BottomToolbar({
     <Panel position="bottom-center">
       <Toolbar aria-label="Graph controls" className="mb-4">
         <Tooltip message="Zoom out">
-          <Button variant="ghost" size="sm" shape="square" aria-label="Zoom out" onPress={() => zoomOut()} className="text-gray-600">
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
+            aria-label="Zoom out"
+            onPress={() => zoomOut()}
+            className="text-gray-600"
+          >
             <Icon icon="mdi:minus" className="text-lg" />
           </Button>
         </Tooltip>
@@ -67,7 +74,14 @@ export function BottomToolbar({
           </Button>
         </Tooltip>
         <Tooltip message="Zoom in">
-          <Button variant="ghost" size="sm" shape="square" aria-label="Zoom in" onPress={() => zoomIn()} className="text-gray-600">
+          <Button
+            variant="ghost"
+            size="sm"
+            shape="square"
+            aria-label="Zoom in"
+            onPress={() => zoomIn()}
+            className="text-gray-600"
+          >
             <Icon icon="mdi:plus" className="text-lg" />
           </Button>
         </Tooltip>
