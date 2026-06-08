@@ -171,10 +171,8 @@ class InfrahubRepositoryIntegrator(InfrahubRepositoryBase):
             except CommitNotFoundError:
                 if not self.has_origin:
                     raise
-                # The commit is recorded in the database but this worker's clone may
-                # predate it. Fetch once under the repository lock, which serializes the
-                # shared-clone mutation against concurrent resets and merges, then
-                # materialize the worktree.
+                # The commit may exist on the remote but not yet in this worker's clone.
+                # Fetch under the repository lock, which serializes shared-clone mutations, and retry.
                 async with lock.registry.get(name=self.name, namespace="repository"):
                     await self.fetch()
                     self.get_commit_worktree(commit=commit)
