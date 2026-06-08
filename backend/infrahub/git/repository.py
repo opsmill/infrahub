@@ -117,17 +117,28 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
                 try:
-                    branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
-                except GraphQLError as exc:
-                    if "already exist" not in exc.errors[0]["message"]:
-                        raise
-                    branch = await self.sdk.branch.get(branch_name=infrahub_branch)
+                    try:
+                        branch = await self.create_branch_in_graph(branch_name=infrahub_branch)
+                    except GraphQLError as exc:
+                        if "already exist" not in exc.errors[0]["message"]:
+                            raise
+                        branch = await self.sdk.branch.get(branch_name=infrahub_branch)
 
-                await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
+                    await self.create_branch_in_git(branch_name=branch.name, branch_id=branch.id, push_origin=True)
 
-                commit = self.get_commit_value(branch_name=branch_name, remote=False)
-                self.create_commit_worktree(commit=commit)
-                await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
+                    commit = self.get_commit_value(branch_name=branch_name, remote=False)
+                    self.create_commit_worktree(commit=commit)
+                    await self.update_commit_value(branch_name=infrahub_branch, commit=commit)
+                except (RepositoryError, GitCommandError, ValueError) as exc:
+                    # Isolate per-branch git failures so imports already collected for the other
+                    # branches are still returned and applied.
+                    log.warning(
+                        "Failed to prepare branch for import, skipping it.",
+                        repository=self.name,
+                        branch=branch_name,
+                        error=str(exc),
+                    )
+                    continue
 
                 pending_imports.append(PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit))
 
@@ -138,7 +149,19 @@ class InfrahubRepository(InfrahubRepositoryIntegrator):
 
                 infrahub_branch = self._get_mapped_target_branch(branch_name=branch_name)
 
-                commit_after = await self.pull(branch_name=branch_name)
+                try:
+                    commit_after = await self.pull(branch_name=branch_name)
+                except (RepositoryError, GitCommandError, ValueError) as exc:
+                    # Isolate per-branch git failures so imports already collected for the other
+                    # branches are still returned and applied; graph errors are left to propagate.
+                    log.warning(
+                        "Failed to pull branch for import, skipping it.",
+                        repository=self.name,
+                        branch=branch_name,
+                        error=str(exc),
+                    )
+                    continue
+
                 if isinstance(commit_after, str):
                     pending_imports.append(
                         PendingObjectImport(infrahub_branch_name=infrahub_branch, commit=commit_after)
