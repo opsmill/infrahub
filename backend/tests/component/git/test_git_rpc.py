@@ -25,8 +25,7 @@ from infrahub.git.models import (
     GitRepositoryMerge,
     GitRepositoryPullReadOnly,
 )
-from infrahub.git.repository import BranchImport, InfrahubReadOnlyRepository
-from infrahub.git.sync import RepositoryImporter
+from infrahub.git.repository import InfrahubReadOnlyRepository
 from infrahub.git.tasks import add_git_repository, add_git_repository_read_only, pull_read_only
 from infrahub.lock import InfrahubLockRegistry
 from infrahub.message_bus.messages import RefreshGitFetch
@@ -34,7 +33,7 @@ from infrahub.services import InfrahubServices
 from infrahub.services.adapters.workflow.local import WorkflowLocalExecution
 from infrahub.workers.dependencies import build_client, build_message_bus, build_workflow
 from infrahub.workflows.catalogue import GIT_REPOSITORIES_DIFF_NAMES_ONLY, GIT_REPOSITORIES_MERGE
-from tests.adapters.lock import LockTimeline, install_recording_lock_registry
+from tests.adapters.lock import RecordingImporter, install_recording_lock_registry
 from tests.adapters.message_bus import BusSimulator
 from tests.helpers.test_client import dummy_async_request
 
@@ -387,16 +386,6 @@ class TestPullReadOnly:
         assert isinstance(self.recorder.messages[0], RefreshGitFetch)
 
 
-class _RecordingImporter(RepositoryImporter):
-    """Records a timeline checkpoint instead of importing, to capture the lock state at the import call."""
-
-    def __init__(self, timeline: LockTimeline) -> None:
-        self._timeline = timeline
-
-    async def import_branch(self, repo: InfrahubRepository, branch_import: BranchImport) -> None:
-        self._timeline.checkpoint("import")
-
-
 async def test_add_git_repository_releases_lock_before_import(
     prefect_test_fixture: None,
     dependency_provider: Provider,
@@ -406,7 +395,7 @@ async def test_add_git_repository_releases_lock_before_import(
     """The default-branch import must run after the repository lock held for the clone is released."""
     original_registry = lock.registry
     timeline = install_recording_lock_registry()
-    importer = _RecordingImporter(timeline)
+    importer = RecordingImporter(timeline)
     client = InfrahubClient(config=Config(requester=dummy_async_request))
     model = GitRepositoryAdd(
         repository_id=str(UUIDT()),
@@ -424,4 +413,4 @@ async def test_add_git_repository_releases_lock_before_import(
     finally:
         lock.registry = original_registry
 
-    timeline.assert_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "import", expected=False)
+    timeline.assert_not_held_at_checkpoint(f"repository.{git_upstream_repo_01['name']}", "import")
