@@ -235,7 +235,7 @@ async def sync_git_repo_with_origin_and_tag_on_failure(
 
 
 @flow(name="git_repositories_sync", flow_run_name="Sync Git Repositories")
-async def sync_remote_repositories() -> None:
+async def sync_remote_repositories() -> None:  # noqa: PLR0915
     log = get_run_logger()
     db = await get_database()
 
@@ -258,6 +258,7 @@ async def sync_remote_repositories() -> None:
         infrahub_branch = staging_branch or registry.default_branch
 
         default_import_git_branch: str | None = None
+        pinned_import_commit: str | None = None
         async with lock.registry.get(name=repo_name, namespace="repository"):
             init_failed = False
             try:
@@ -291,10 +292,17 @@ async def sync_remote_repositories() -> None:
             if repo.reinitialized:
                 default_import_git_branch = repo.default_branch
 
+            if default_import_git_branch is not None:
+                # Pin the commit while the lock is held so the import below reads an immutable
+                # worktree even though it runs after the lock is released.
+                pinned_import_commit = repo.get_commit_value(branch_name=default_import_git_branch, remote=False)
+
         if default_import_git_branch is not None:
             try:
                 await repo.import_objects_from_files(  # type: ignore[call-overload]
-                    git_branch_name=default_import_git_branch, infrahub_branch_name=infrahub_branch
+                    git_branch_name=default_import_git_branch,
+                    infrahub_branch_name=infrahub_branch,
+                    commit=pinned_import_commit,
                 )
             except RepositoryError as exc:
                 log.info(exc.message)
