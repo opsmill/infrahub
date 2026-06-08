@@ -1,7 +1,7 @@
+import { BreadcrumbItem, Breadcrumbs } from "@infrahub/ui";
 import { matchPath, useLocation } from "react-router";
 
 import { constructPath } from "@/shared/api/rest/fetch";
-import { BreadcrumbItem, Breadcrumbs } from "@/shared/components/aria/breadcrumbs";
 
 export function BreadcrumbRoleManagement() {
   const { pathname } = useLocation();

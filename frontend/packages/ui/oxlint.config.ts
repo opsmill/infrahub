@@ -1,6 +1,9 @@
 import { defineConfig } from "oxlint";
 
 export default defineConfig({
+  env: {
+    browser: true,
+  },
   categories: {
     correctness: "error",
     nursery: "error",
@@ -14,6 +17,9 @@ export default defineConfig({
   rules: {
     "eslint/arrow-body-style": "off",
     "eslint/func-style": "off",
+    "eslint/id-length": "off",
+    "eslint/no-console": ["error", { allow: ["error"] }],
+    "eslint/no-empty-function": "off",
     "eslint/no-magic-numbers": ["error", { ignore: [0, 1] }],
     "eslint/max-lines-per-function": "off",
     "eslint/no-ternary": "off",

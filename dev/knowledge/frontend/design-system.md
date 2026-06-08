@@ -12,6 +12,7 @@ The package is published locally via the workspace and consumed in `frontend/app
 
 | Component | Exports | Notes |
 |---|---|---|
+| `Breadcrumbs` | `Breadcrumbs`, `Breadcrumb`, `BreadcrumbItem`, `BreadcrumbItemLoading`, `BreadcrumbItemError`, `BreadcrumbsProps`, `BreadcrumbProps`, `BreadcrumbItemProps` | Trail of links/buttons with `/` separator, plus loading and error item variants. |
 | `Button` | `Button`, `LinkButton`, `buttonVariants`, `ButtonProps`, `LinkButtonProps` | Migrated in #9065. Replaces ad-hoc `<button>` with Tailwind classes. |
 | `Card` | `Card`, `CardHeader`, `CardContent`, `CardProps`, `CardHeaderProps`, `CardContentProps` | Migrated in #9048. Replaces hand-rolled `<section className="rounded-md border bg-white p-4 shadow-lg">` patterns. |
 | `CheckboxCard` | `CheckboxCard`, `CheckboxCardProps` | Card-style checkbox primitive for selectable card choices. |
