@@ -210,7 +210,7 @@ async def test_create_commit_worktree_wrong_commit(git_repo_01: InfrahubReposito
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(CommitNotFoundError):
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
         repo.create_commit_worktree(commit=commit)
 
 
@@ -229,7 +229,7 @@ async def test_init_fetches_missing_commit_under_repo_lock(
     new_commit = str(upstream.index.commit("Change first file"))
 
     # The local clone has not fetched the new commit, so the local primitive cannot find it.
-    with pytest.raises(CommitNotFoundError):
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {new_commit} not found with GitRepository '{repo.name}'"):
         repo.create_commit_worktree(commit=new_commit)
 
     # init() recovers by fetching the missing commit and materializing its worktree.
@@ -243,7 +243,7 @@ async def test_init_missing_commit_without_origin_raises(git_repo_01: InfrahubRe
 
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
-    with pytest.raises(CommitNotFoundError):
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
         await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
 
 
@@ -253,7 +253,7 @@ async def test_init_missing_commit_absent_on_remote_raises(git_repo_01: Infrahub
     commit = "ffff1c0c64122bb2a7b208f7a9452146685bc7dd"
 
     # The commit exists neither locally nor on the remote, so init fetches once and still raises.
-    with pytest.raises(CommitNotFoundError):
+    with pytest.raises(CommitNotFoundError, match=rf"Commit {commit} not found with GitRepository '{repo.name}'"):
         await InfrahubRepository.init(id=repo.id, name=repo.name, commit=commit, client=repo.client)
 
 
