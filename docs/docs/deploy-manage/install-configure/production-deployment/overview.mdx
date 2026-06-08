@@ -87,13 +87,13 @@ Implement regular database backups to prevent data loss in case of hardware fail
 Test your backup and restore process periodically to ensure it works as expected.
 :::
 
-## Least-privilege database and cache credentials
+## Least-privilege service credentials
 
 :::note
-This section is informational and optional. Infrahub works with administrative database and cache credentials, but it does not require them. The privileges below let you run Infrahub with restricted users if your security policy calls for it.
+This section is informational and optional. Infrahub works with administrative credentials for its backing services, but it does not require them. The privileges below let you run Infrahub with restricted users if your security policy calls for it.
 :::
 
-Infrahub never administers its own data stores: it does not manage users, roles, databases, or server configuration. The privileges it actually uses are the following.
+Infrahub never administers its backing services: it does not manage users, roles, databases, or server configuration. The privileges it actually uses are the following.
 
 ### Neo4j
 
@@ -138,6 +138,28 @@ user infrahub on ><strong-cache-password> ~* resetchannels +@read +@write +@conn
 `+@transaction` is only exercised when the task manager is backed by Redis (distributed or high-availability deployments). It is harmless to grant otherwise.
 :::
 
+### RabbitMQ
+
+Infrahub talks to RabbitMQ over AMQP only: it declares its own exchanges and queues and publishes and consumes messages. It does not use the management API, so the user needs `configure`, `write` and `read` on the virtual host but no administrator or management tags.
+
+```shell
+rabbitmqctl add_user infrahub '<strong-broker-password>'
+rabbitmqctl set_permissions -p / infrahub ".*" ".*" ".*"
+# Do not set any user tags: the application does not need management access.
+```
+
+### PostgreSQL
+
+The task manager stores its state in PostgreSQL and runs its own schema migrations, so its role must be able to create and change objects in its own database, but it does not need to be a cluster superuser. Create a non-superuser role that owns its database and schema:
+
+```sql
+CREATE ROLE prefect WITH LOGIN PASSWORD '<strong-task-manager-db-password>';
+ALTER DATABASE prefect OWNER TO prefect;
+GRANT ALL ON SCHEMA public TO prefect;
+```
+
+Then point the task manager's database connection string at this role instead of a superuser.
+
 ### Point Infrahub at the restricted users
 
 ```shell title=".env"
@@ -145,6 +167,8 @@ INFRAHUB_DB_USERNAME=infrahub
 INFRAHUB_DB_PASSWORD=<strong-database-password>
 INFRAHUB_CACHE_USERNAME=infrahub
 INFRAHUB_CACHE_PASSWORD=<strong-cache-password>
+INFRAHUB_BROKER_USERNAME=infrahub
+INFRAHUB_BROKER_PASSWORD=<strong-broker-password>
 ```
 
 ## Operations and maintenance
